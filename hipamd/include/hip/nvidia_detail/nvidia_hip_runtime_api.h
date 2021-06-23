@@ -56,13 +56,12 @@ extern "C" {
  * Memory copy types
  *
  */
-typedef enum hipMemcpyKind {
-    hipMemcpyHostToHost,
-    hipMemcpyHostToDevice,
-    hipMemcpyDeviceToHost,
-    hipMemcpyDeviceToDevice,
-    hipMemcpyDefault
-} hipMemcpyKind;
+typedef enum cudaMemcpyKind hipMemcpyKind;
+#define hipMemcpyHostToHost cudaMemcpyHostToHost
+#define hipMemcpyHostToDevice cudaMemcpyHostToDevice
+#define hipMemcpyDeviceToHost cudaMemcpyDeviceToHost
+#define hipMemcpyDeviceToDevice cudaMemcpyDeviceToDevice
+#define hipMemcpyDefault cudaMemcpyDefault
 
 typedef enum hipMemoryAdvise {
     hipMemAdviseSetReadMostly,
@@ -907,6 +906,54 @@ inline static enum cudaChannelFormatKind hipChannelFormatKindToCudaChannelFormat
 }
 
 /**
+ * graph types
+ *
+ */
+typedef cudaGraph_t hipGraph_t;
+typedef cudaGraphNode_t hipGraphNode_t;
+typedef cudaGraphExec_t hipGraphExec_t;
+
+typedef enum cudaGraphNodeType hipGraphNodeType;
+#define hipGraphNodeTypeKernel cudaGraphNodeTypeKernel
+#define hipGraphNodeTypeMemcpy cudaGraphNodeTypeMemcpy
+#define hipGraphNodeTypeMemset cudaGraphNodeTypeMemset
+#define hipGraphNodeTypeHost cudaGraphNodeTypeHost
+#define hipGraphNodeTypeGraph cudaGraphNodeTypeGraph
+#define hipGraphNodeTypeEmpty cudaGraphNodeTypeEmpty
+#define hipGraphNodeTypeWaitEvent cudaGraphNodeTypeWaitEvent
+#define hipGraphNodeTypeEventRecord cudaGraphNodeTypeEventRecord
+#define hipGraphNodeTypeMemcpy1D cudaGraphNodeTypeMemcpy1D
+#define hipGraphNodeTypeMemcpyFromSymbol cudaGraphNodeTypeMemcpyFromSymbol
+#define hipGraphNodeTypeMemcpyToSymbol cudaGraphNodeTypeMemcpyToSymbol
+#define hipGraphNodeTypeCount cudaGraphNodeTypeCount
+
+typedef cudaHostFn_t hipHostFn_t;
+typedef struct cudaHostNodeParams hipHostNodeParams;
+typedef struct cudaKernelNodeParams hipKernelNodeParams;
+typedef struct cudaMemsetParams hipMemsetParams;
+
+typedef enum cudaGraphExecUpdateResult hipGraphExecUpdateResult;
+#define hipGraphExecUpdateSuccess cudaGraphExecUpdateSuccess
+#define hipGraphExecUpdateError cudaGraphExecUpdateError
+#define hipGraphExecUpdateErrorTopologyChanged cudaGraphExecUpdateErrorTopologyChanged
+#define hipGraphExecUpdateErrorNodeTypeChanged cudaGraphExecUpdateErrorNodeTypeChanged
+#define hipGraphExecUpdateErrorFunctionChanged cudaGraphExecUpdateErrorFunctionChanged
+#define hipGraphExecUpdateErrorParametersChanged cudaGraphExecUpdateErrorParametersChanged
+#define hipGraphExecUpdateErrorNotSupported cudaGraphExecUpdateErrorNotSupported
+#define hipGraphExecUpdateErrorUnsupportedFunctionChange                                           \
+  cudaGraphExecUpdateErrorUnsupportedFunctionChange
+
+typedef enum cudaStreamCaptureMode hipStreamCaptureMode;
+#define hipStreamCaptureModeGlobal cudaStreamCaptureModeGlobal
+#define hipStreamCaptureModeThreadLocal cudaStreamCaptureModeThreadLocal
+#define hipStreamCaptureModeRelaxed cudaStreamCaptureModeRelaxed
+
+typedef enum cudaStreamCaptureStatus hipStreamCaptureStatus;
+#define hipStreamCaptureStatusNone cudaStreamCaptureStatusNone
+#define hipStreamCaptureStatusActive cudaStreamCaptureStatusActive
+#define hipStreamCaptureStatusInvalidated cudaStreamCaptureStatusInvalidated
+
+/**
  * Stream CallBack struct
  */
 #define HIPRT_CB CUDART_CB
@@ -1096,33 +1143,29 @@ inline static hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dst, hipDeviceptr_t s
 inline static hipError_t hipMemcpy(void* dst, const void* src, size_t sizeBytes,
                                    hipMemcpyKind copyKind) {
     return hipCUDAErrorTohipError(
-        cudaMemcpy(dst, src, sizeBytes, hipMemcpyKindToCudaMemcpyKind(copyKind)));
+        cudaMemcpy(dst, src, sizeBytes, copyKind));
 }
 
 
-inline static hipError_t hipMemcpyWithStream(void* dst, const void* src,
-				      size_t sizeBytes, hipMemcpyKind copyKind,
-				      hipStream_t stream) {
-	cudaError_t error = cudaMemcpyAsync(dst, src, sizeBytes, 
-										hipMemcpyKindToCudaMemcpyKind(copyKind),
-										stream);
-	
-	if (error != cudaSuccess) return hipCUDAErrorTohipError(error);
-	
-	return hipCUDAErrorTohipError(cudaStreamSynchronize(stream));
+inline static hipError_t hipMemcpyWithStream(void* dst, const void* src, size_t sizeBytes,
+                                             hipMemcpyKind copyKind, hipStream_t stream) {
+    cudaError_t error = cudaMemcpyAsync(dst, src, sizeBytes, copyKind, stream);
+
+    if (error != cudaSuccess) return hipCUDAErrorTohipError(error);
+
+    return hipCUDAErrorTohipError(cudaStreamSynchronize(stream));
 }
 
 inline static hipError_t hipMemcpyAsync(void* dst, const void* src, size_t sizeBytes,
                                         hipMemcpyKind copyKind, hipStream_t stream __dparm(0)) {
     return hipCUDAErrorTohipError(
-        cudaMemcpyAsync(dst, src, sizeBytes, hipMemcpyKindToCudaMemcpyKind(copyKind), stream));
+        cudaMemcpyAsync(dst, src, sizeBytes, copyKind, stream));
 }
 
-inline static hipError_t hipMemcpyToSymbol(const void* symbol, const void* src, size_t sizeBytes,
-                                           size_t offset __dparm(0),
-                                           hipMemcpyKind copyType __dparm(hipMemcpyHostToDevice)) {
-    return hipCUDAErrorTohipError(cudaMemcpyToSymbol(symbol, src, sizeBytes, offset,
-                                                     hipMemcpyKindToCudaMemcpyKind(copyType)));
+inline static hipError_t hipMemcpyToSymbol(
+    const void* symbol, const void* src, size_t sizeBytes, size_t offset __dparm(0),
+    hipMemcpyKind copyType __dparm(hipMemcpyKindToCudaMemcpyKind(hipMemcpyHostToDevice))) {
+    return hipCUDAErrorTohipError(cudaMemcpyToSymbol(symbol, src, sizeBytes, offset, copyType));
 }
 
 inline static hipError_t hipMemcpyToSymbolAsync(const void* symbol, const void* src,
@@ -1130,14 +1173,13 @@ inline static hipError_t hipMemcpyToSymbolAsync(const void* symbol, const void* 
                                                 hipMemcpyKind copyType,
                                                 hipStream_t stream __dparm(0)) {
     return hipCUDAErrorTohipError(cudaMemcpyToSymbolAsync(
-        symbol, src, sizeBytes, offset, hipMemcpyKindToCudaMemcpyKind(copyType), stream));
+        symbol, src, sizeBytes, offset, copyType, stream));
 }
 
-inline static hipError_t hipMemcpyFromSymbol(void* dst, const void* symbolName, size_t sizeBytes,
-                                             size_t offset __dparm(0),
-                                             hipMemcpyKind kind __dparm(hipMemcpyDeviceToHost)) {
-    return hipCUDAErrorTohipError(cudaMemcpyFromSymbol(dst, symbolName, sizeBytes, offset,
-                                                       hipMemcpyKindToCudaMemcpyKind(kind)));
+inline static hipError_t hipMemcpyFromSymbol(
+    void* dst, const void* symbolName, size_t sizeBytes, size_t offset __dparm(0),
+    hipMemcpyKind kind __dparm(hipMemcpyKindToCudaMemcpyKind(hipMemcpyDeviceToHost))) {
+    return hipCUDAErrorTohipError(cudaMemcpyFromSymbol(dst, symbolName, sizeBytes, offset, kind));
 }
 
 inline static hipError_t hipMemcpyFromSymbolAsync(void* dst, const void* symbolName,
@@ -1145,7 +1187,7 @@ inline static hipError_t hipMemcpyFromSymbolAsync(void* dst, const void* symbolN
                                                   hipMemcpyKind kind,
                                                   hipStream_t stream __dparm(0)) {
     return hipCUDAErrorTohipError(cudaMemcpyFromSymbolAsync(
-        dst, symbolName, sizeBytes, offset, hipMemcpyKindToCudaMemcpyKind(kind), stream));
+        dst, symbolName, sizeBytes, offset, kind, stream));
 }
 
 inline static hipError_t hipGetSymbolAddress(void** devPtr, const void* symbolName) {
@@ -1159,7 +1201,7 @@ inline static hipError_t hipGetSymbolSize(size_t* size, const void* symbolName) 
 inline static hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch,
                                      size_t width, size_t height, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(
-        cudaMemcpy2D(dst, dpitch, src, spitch, width, height, hipMemcpyKindToCudaMemcpyKind(kind)));
+        cudaMemcpy2D(dst, dpitch, src, spitch, width, height, kind));
 }
 
 inline static hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy) {
@@ -1190,7 +1232,7 @@ inline static hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* 
                                           size_t width, size_t height, hipMemcpyKind kind,
                                           hipStream_t stream) {
     return hipCUDAErrorTohipError(cudaMemcpy2DAsync(dst, dpitch, src, spitch, width, height,
-                                                    hipMemcpyKindToCudaMemcpyKind(kind), stream));
+                                                    kind, stream));
 }
 
 inline static hipError_t hipMemcpy2DFromArray(void* dst, size_t dpitch, hipArray* src,
@@ -1198,7 +1240,7 @@ inline static hipError_t hipMemcpy2DFromArray(void* dst, size_t dpitch, hipArray
                                               size_t height, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(cudaMemcpy2DFromArray(dst, dpitch, src, wOffset, hOffset, width,
                                                         height,
-                                                        hipMemcpyKindToCudaMemcpyKind(kind)));
+                                                        kind));
 }
 
 inline static hipError_t hipMemcpy2DFromArrayAsync(void* dst, size_t dpitch, hipArray* src,
@@ -1207,7 +1249,7 @@ inline static hipError_t hipMemcpy2DFromArrayAsync(void* dst, size_t dpitch, hip
                                                    hipStream_t stream) {
     return hipCUDAErrorTohipError(cudaMemcpy2DFromArrayAsync(dst, dpitch, src, wOffset, hOffset,
                                                              width, height,
-                                                             hipMemcpyKindToCudaMemcpyKind(kind),
+                                                             kind,
                                                              stream));
 }
 
@@ -1215,7 +1257,7 @@ inline static hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_
                                             const void* src, size_t spitch, size_t width,
                                             size_t height, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(cudaMemcpy2DToArray(dst, wOffset, hOffset, src, spitch, width,
-                                                      height, hipMemcpyKindToCudaMemcpyKind(kind)));
+                                                      height, kind));
 }
 
 inline static hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset,
@@ -1224,7 +1266,7 @@ inline static hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, 
                                                  hipStream_t stream) {
     return hipCUDAErrorTohipError(cudaMemcpy2DToArrayAsync(dst, wOffset, hOffset, src, spitch,
                                                            width, height,
-                                                           hipMemcpyKindToCudaMemcpyKind(kind),
+                                                           kind,
                                                            stream));
 }
 
@@ -1232,14 +1274,14 @@ __HIP_DEPRECATED inline static hipError_t hipMemcpyToArray(hipArray* dst, size_t
                                                            size_t hOffset, const void* src,
                                                            size_t count, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(
-        cudaMemcpyToArray(dst, wOffset, hOffset, src, count, hipMemcpyKindToCudaMemcpyKind(kind)));
+        cudaMemcpyToArray(dst, wOffset, hOffset, src, count, kind));
 }
 
 __HIP_DEPRECATED inline static hipError_t hipMemcpyFromArray(void* dst, hipArray_const_t srcArray,
                                                              size_t wOffset, size_t hOffset,
                                                              size_t count, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(cudaMemcpyFromArray(dst, srcArray, wOffset, hOffset, count,
-                                                      hipMemcpyKindToCudaMemcpyKind(kind)));
+                                                      kind));
 }
 
 inline static hipError_t hipMemcpyAtoH(void* dst, hipArray* srcArray, size_t srcOffset,
@@ -1973,10 +2015,10 @@ inline static hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* im
 }
 
 inline static hipError_t hipLaunchKernel(const void* function_address, dim3 numBlocks,
-					 dim3 dimBlocks, void** args, size_t sharedMemBytes,
-					 hipStream_t stream)
-{
-   return hipCUDAErrorTohipError(cudaLaunchKernel(function_address,numBlocks,dimBlocks,args,sharedMemBytes,stream));
+                                         dim3 dimBlocks, void** args, size_t sharedMemBytes,
+                                         hipStream_t stream) {
+    return hipCUDAErrorTohipError(
+        cudaLaunchKernel(function_address, numBlocks, dimBlocks, args, sharedMemBytes, stream));
 }
 
 inline static hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX,
@@ -2163,36 +2205,91 @@ inline static hipError_t hipTexRefSetFilterMode(hipTexRef hTexRef, hipFilter_mod
 }
 
 inline static hipError_t hipTexRefSetAddress(size_t *ByteOffset, hipTexRef hTexRef, hipDeviceptr_t dptr, size_t bytes){
-   return hipCUResultTohipError(cuTexRefSetAddress(ByteOffset,hTexRef,dptr,bytes));
+    return hipCUResultTohipError(cuTexRefSetAddress(ByteOffset,hTexRef,dptr,bytes));
 }
 
 inline static hipError_t hipTexRefSetAddress2D(hipTexRef hTexRef, const CUDA_ARRAY_DESCRIPTOR *desc, hipDeviceptr_t dptr, size_t Pitch){
-   return hipCUResultTohipError(cuTexRefSetAddress2D(hTexRef,desc,dptr,Pitch));
+    return hipCUResultTohipError(cuTexRefSetAddress2D(hTexRef,desc,dptr,Pitch));
 }
 
 inline static hipError_t hipTexRefSetFormat(hipTexRef hTexRef, hipArray_Format fmt, int NumPackedComponents){
-   return hipCUResultTohipError(cuTexRefSetFormat(hTexRef,fmt,NumPackedComponents));
+    return hipCUResultTohipError(cuTexRefSetFormat(hTexRef,fmt,NumPackedComponents));
 }
 
 inline static hipError_t hipTexRefSetFlags(hipTexRef hTexRef, unsigned int Flags){
-   return hipCUResultTohipError(cuTexRefSetFlags(hTexRef,Flags));
+    return hipCUResultTohipError(cuTexRefSetFlags(hTexRef,Flags));
 }
 
 inline static hipError_t hipTexRefSetArray(hipTexRef hTexRef, hiparray hArray, unsigned int Flags){
-   return hipCUResultTohipError(cuTexRefSetArray(hTexRef,hArray,Flags));
+    return hipCUResultTohipError(cuTexRefSetArray(hTexRef,hArray,Flags));
 }
 
 inline static hipError_t hipArrayCreate(hiparray* pHandle, const HIP_ARRAY_DESCRIPTOR* pAllocateArray){
-   return hipCUResultTohipError(cuArrayCreate(pHandle, pAllocateArray));
+    return hipCUResultTohipError(cuArrayCreate(pHandle, pAllocateArray));
 }
 
 inline static hipError_t hipArrayDestroy(hiparray hArray){
-   return hipCUResultTohipError(cuArrayDestroy(hArray));
+    return hipCUResultTohipError(cuArrayDestroy(hArray));
 }
 
 inline static hipError_t hipArray3DCreate(hiparray* pHandle,
                                           const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray){
-   return hipCUResultTohipError(cuArray3DCreate(pHandle, pAllocateArray));
+    return hipCUResultTohipError(cuArray3DCreate(pHandle, pAllocateArray));
+}
+
+inline static hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) {
+    return hipCUDAErrorTohipError(cudaStreamBeginCapture(stream, mode));
+}
+
+inline static hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
+    return hipCUDAErrorTohipError(cudaStreamEndCapture(stream, pGraph));
+}
+
+inline static hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags) {
+    return hipCUDAErrorTohipError(cudaGraphCreate(pGraph, flags));
+}
+
+inline static hipError_t hipGraphDestroy(hipGraph_t graph) {
+    return hipCUDAErrorTohipError(cudaGraphDestroy(graph));
+}
+
+inline static hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
+    return hipCUDAErrorTohipError(cudaGraphExecDestroy(pGraphExec));
+}
+
+inline static hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                             hipGraphNode_t* pErrorNode, char* pLogBuffer,
+                                             size_t bufferSize) {
+    return hipCUDAErrorTohipError(
+        cudaGraphInstantiate(pGraphExec, graph, pErrorNode, pLogBuffer, bufferSize));
+}
+
+inline static hipError_t hipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
+    return hipCUDAErrorTohipError(cudaGraphLaunch(graphExec, stream));
+}
+
+inline static hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                               const hipGraphNode_t* pDependencies,
+                                               size_t numDependencies,
+                                               const hipKernelNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(
+        cudaGraphAddKernelNode(pGraphNode, graph, pDependencies, numDependencies, pNodeParams));
+}
+
+inline static hipError_t hipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                               const hipGraphNode_t* pDependencies,
+                                               size_t numDependencies,
+                                               const hipMemcpy3DParms* pCopyParams) {
+    return hipCUDAErrorTohipError(
+        cudaGraphAddMemcpyNode(pGraphNode, graph, pDependencies, numDependencies, pCopyParams));
+}
+
+inline static hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                               const hipGraphNode_t* pDependencies,
+                                               size_t numDependencies,
+                                               const hipMemsetParams* pMemsetParams) {
+    return hipCUDAErrorTohipError(
+        cudaGraphAddMemsetNode(pGraphNode, graph, pDependencies, numDependencies, pMemsetParams));
 }
 
 inline static hipError_t hipStreamWriteValue32(hipStream_t stream,
