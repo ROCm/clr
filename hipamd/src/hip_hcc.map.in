@@ -85,7 +85,6 @@ global:
     hipMalloc3DArray;
     hipMallocManaged;
     hipArrayCreate;
-    hipArrayDestroy;
     hipArray3DCreate;
     hipMallocArray;
     hipMallocPitch;
@@ -96,8 +95,6 @@ global:
     hipMemcpy2D;
     hipMemcpy2DAsync;
     hipMemcpy2DToArray;
-    hipMemcpy2DToArrayAsync;
-    hipDrvMemcpy2DUnaligned;
     hipMemcpy3D;
     hipMemcpy3DAsync;
     hipDrvMemcpy3D;
@@ -267,13 +264,6 @@ global:
     hipTexObjectGetResourceDesc;
     hipTexObjectGetResourceViewDesc;
     hipTexObjectGetTextureDesc;
-    hipImportExternalMemory;
-    hipExternalMemoryGetMappedBuffer;
-    hipDestroyExternalMemory;
-    hipImportExternalSemaphore;
-    hipSignalExternalSemaphoresAsync;
-    hipWaitExternalSemaphoresAsync;
-    hipDestroyExternalSemaphore;
     extern "C++" {
     hip_impl::hipLaunchKernelGGLImpl*;
     hip_impl::demangle*;
@@ -311,6 +301,16 @@ global:
     hipStreamBeginCapture;
     hipStreamEndCapture;
     hipGraphExecDestroy;
+    hipImportExternalSemaphore;
+    hipSignalExternalSemaphoresAsync;
+    hipWaitExternalSemaphoresAsync;
+    hipDestroyExternalSemaphore;
+    hipImportExternalMemory;
+    hipExternalMemoryGetMappedBuffer;
+    hipDestroyExternalMemory;
+    hipMemcpy2DToArrayAsync;
+    hipDrvMemcpy2DUnaligned;
+    hipArrayDestroy;
 local:
     *;
 } hip_4.2;
