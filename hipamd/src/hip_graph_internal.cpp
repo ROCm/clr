@@ -355,10 +355,23 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (!event.setCallback(CL_COMPLETE, hipGraphExec::ResetGraph, command)) {
     return hipErrorInvalidHandle;
   }
+
   hipGraphExec::activeGraphExec_[command] = this;
   lastEnqueuedGraphCmd_ = command;
   bExecPending_.store(true);
   command->enqueue();
+
+  // Add the new barrier to stall the stream, until the callback is done
+  amd::Command::EventWaitList eventWaitList;;
+  eventWaitList.push_back(command);
+  amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
+  if (block_command == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  block_command->enqueue();
+  block_command->release();
+
   command->release();
+
   return hipSuccess;
 }
