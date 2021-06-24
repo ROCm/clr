@@ -289,7 +289,8 @@ bool createIpcEventShmemIfNeeded(hip::Event::ihipIpcEvent_t& ipc_evt) {
   ipc_evt.ipc_name_ = name_template;
   ipc_evt.ipc_name_.replace(0, 5, "/hip_");
   if (!amd::Os::MemoryMapFileTruncated(ipc_evt.ipc_name_.c_str(),
-      const_cast<const void**> (reinterpret_cast<void**>(&(ipc_evt.ipc_shmem_))), sizeof(hip::ihipIpcEventShmem_t))) {
+      const_cast<const void**> (reinterpret_cast<void**>(&(ipc_evt.ipc_shmem_))),
+      sizeof(hip::ihipIpcEventShmem_t))) {
     return false;
   }
   ipc_evt.ipc_shmem_->owners = 1;
@@ -306,6 +307,7 @@ bool createIpcEventShmemIfNeeded(hip::Event::ihipIpcEvent_t& ipc_evt) {
 #endif
 }
 
+// ================================================================================================
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
 
@@ -346,6 +348,17 @@ hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
     }
     command->enqueue();
     tEvent.notifyCmdQueue();
+
+    // Add the new barrier to stall the stream, until the callback is done
+    amd::Command::EventWaitList eventWaitList;;
+    eventWaitList.push_back(command);
+    amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
+    if (block_command == nullptr) {
+      return hipErrorInvalidValue;
+    }
+    block_command->enqueue();
+    block_command->release();
+
     // Update read index to indicate new signal.
     int expected = write_index - 1;
     while (!e->ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
