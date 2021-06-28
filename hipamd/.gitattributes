@@ -9,3 +9,12 @@
 *.h text eol=lf
 *.hpp text eol=lf
 *.txt text eol=lf
+
+# Define files to support auto-remove trailing white space
+# Need to run the command below, before add modified file(s) to the staging area
+# git config filter.trimspace.clean 'sed -e "s/[[:space:]]*$//g"'
+*.cpp filter=trimspace
+*.c filter=trimspace
+*.h filter=trimspacecpp
+*.hpp filter=trimspace
+*.md filter=trimspace
