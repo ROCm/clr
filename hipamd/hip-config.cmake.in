@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+cmake_minimum_required(VERSION 3.3)
 
 @PACKAGE_INIT@
 include(CheckCXXCompilerFlag)
@@ -58,6 +59,29 @@ if (NOT _CMakeFindDependencyMacro_FOUND)
     endif()
   endmacro()
 endif()
+
+set(_HIP_SHELL "SHELL:")
+if(CMAKE_VERSION VERSION_LESS 3.12)
+  set(_HIP_SHELL "")
+endif()
+
+function(hip_add_interface_compile_flags TARGET)
+  set_property(TARGET ${TARGET} APPEND PROPERTY
+    INTERFACE_COMPILE_OPTIONS "$<$<COMPILE_LANGUAGE:CXX>:${_HIP_SHELL}${ARGN}>"
+  )
+endfunction()
+
+function(hip_add_interface_link_flags TARGET)
+  if(CMAKE_VERSION VERSION_LESS 3.18)
+    set_property(TARGET ${TARGET} APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES "${ARGN}"
+    )
+  else()
+    set_property(TARGET ${TARGET} APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES "$<$<LINK_LANGUAGE:CXX>:${ARGN}>"
+    )
+  endif()
+endfunction()
 
 #Number of parallel jobs by default is 1
 if(NOT DEFINED HIP_CLANG_NUM_PARALLEL_JOBS)
@@ -198,37 +222,24 @@ if(HIP_COMPILER STREQUAL "clang")
   get_property(compilePropIsSet TARGET hip::device PROPERTY INTERFACE_COMPILE_OPTIONS SET)
 
   if (NOT compilePropIsSet AND HIP_CXX_COMPILER MATCHES ".*clang\\+\\+")
-    set_property(TARGET hip::device APPEND PROPERTY
-      INTERFACE_COMPILE_OPTIONS -mllvm -amdgpu-early-inline-all=true -mllvm -amdgpu-function-calls=false
-    )
+    hip_add_interface_compile_flags(hip::device -mllvm -amdgpu-early-inline-all=true -mllvm -amdgpu-function-calls=false)
   endif()
 
   if (NOT compilePropIsSet)
-    if (EXISTS ${AMD_DEVICE_LIBS_PREFIX}/amdgcn/bitcode)
-      set_property(TARGET hip::device APPEND PROPERTY
-        INTERFACE_COMPILE_OPTIONS -xhip
-      )
-    else()
+    hip_add_interface_compile_flags(hip::device -x hip)
+    if (NOT EXISTS ${AMD_DEVICE_LIBS_PREFIX}/amdgcn/bitcode)
       # This path is to support an older build of the device library
       # TODO: To be removed in the future.
       if(WIN32)
-        set_property(TARGET hip::device APPEND PROPERTY
-          INTERFACE_COMPILE_OPTIONS -xhip -fms-extensions -fms-compatibility
-        )
-        set_property(TARGET hip::device APPEND PROPERTY
-          INTERFACE_COMPILE_OPTIONS "--hip-device-lib-path=${HIP_PATH}/lib/bitcode"
-        )
+        hip_add_interface_compile_flags(hip::device -fms-extensions -fms-compatibility)
+        hip_add_interface_compile_flags(hip::device --hip-device-lib-path=\"${HIP_PATH}/lib/bitcode\")
       else()
-        set_property(TARGET hip::device APPEND PROPERTY
-          INTERFACE_COMPILE_OPTIONS -xhip --hip-device-lib-path=${AMD_DEVICE_LIBS_PREFIX}/lib
-        )
+        hip_add_interface_compile_flags(hip::device --hip-device-lib-path=\"${AMD_DEVICE_LIBS_PREFIX}/lib\")
       endif()
     endif()
   endif()
 
-  set_property(TARGET hip::device APPEND PROPERTY
-     INTERFACE_LINK_LIBRARIES --hip-link
-  )
+  hip_add_interface_link_flags(hip::device --hip-link)
 
   set_property(TARGET hip::device APPEND PROPERTY
     INTERFACE_INCLUDE_DIRECTORIES "${HIP_CLANG_INCLUDE_PATH}/.."
@@ -240,13 +251,9 @@ if(HIP_COMPILER STREQUAL "clang")
 
   foreach(GPU_TARGET ${GPU_TARGETS})
       if (NOT compilePropIsSet)
-        set_property(TARGET hip::device APPEND PROPERTY
-          INTERFACE_COMPILE_OPTIONS "--offload-arch=${GPU_TARGET}"
-        )
+        hip_add_interface_compile_flags(hip::device --offload-arch=${GPU_TARGET})
       endif()
-      set_property(TARGET hip::device APPEND PROPERTY
-        INTERFACE_LINK_LIBRARIES "--offload-arch=${GPU_TARGET}"
-      )
+      hip_add_interface_link_flags(hip::device --offload-arch=${GPU_TARGET})
   endforeach()
   #Add support for parallel build and link
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
@@ -255,25 +262,17 @@ if(HIP_COMPILER STREQUAL "clang")
   if(HIP_CLANG_NUM_PARALLEL_JOBS GREATER 1)
     if(${HIP_CLANG_SUPPORTS_PARALLEL_JOBS} )
       if (NOT compilePropIsSet)
-        set_property(TARGET hip::device APPEND PROPERTY
-          INTERFACE_COMPILE_OPTIONS -parallel-jobs=${HIP_CLANG_NUM_PARALLEL_JOBS} -Wno-format-nonliteral
-        )
+        hip_add_interface_compile_flags(hip::device -parallel-jobs=${HIP_CLANG_NUM_PARALLEL_JOBS} -Wno-format-nonliteral)
       endif()
-      set_property(TARGET hip::device APPEND PROPERTY
-        INTERFACE_LINK_LIBRARIES -parallel-jobs=${HIP_CLANG_NUM_PARALLEL_JOBS}
-      )
+      hip_add_interface_link_flags(hip::device -parallel-jobs=${HIP_CLANG_NUM_PARALLEL_JOBS})
     else()
       message("clang compiler doesn't support parallel jobs")
     endif()
   endif()
 
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
-  set_property(TARGET hip::host APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES "-L\"${HIP_CLANG_INCLUDE_PATH}/../lib/linux\" -lclang_rt.builtins-x86_64"
-  )
-  set_property(TARGET hip::device APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES "-L\"${HIP_CLANG_INCLUDE_PATH}/../lib/linux\" -lclang_rt.builtins-x86_64"
-  )
+  hip_add_interface_link_flags(hip::host   -L\"${HIP_CLANG_INCLUDE_PATH}/../lib/linux\" -lclang_rt.builtins-x86_64)
+  hip_add_interface_link_flags(hip::device -L\"${HIP_CLANG_INCLUDE_PATH}/../lib/linux\" -lclang_rt.builtins-x86_64)
 endif()
 
 set( hip_LIBRARIES hip::host hip::device)
