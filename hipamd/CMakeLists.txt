@@ -51,8 +51,7 @@ endif()
 message (STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}" )
 set(HIP_COMMON_INCLUDE_DIR ${HIP_COMMON_DIR}/include)
 set(HIP_COMMON_BIN_DIR ${HIP_COMMON_DIR}/bin)
-set(HIP_HIPCC_EXECUTABLE ${HIP_COMMON_DIR}/bin/hipcc)
-set(HIP_HIPCONFIG_EXECUTABLE ${HIP_COMMON_DIR}/bin/hipconfig)
+set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
 
 #############################
 # Setup config generation
@@ -71,7 +70,7 @@ endmacro()
 if(NOT WIN32)
 # Determine HIP_BASE_VERSION
 set(ENV{HIP_PATH} "")
-execute_process(COMMAND ${HIP_HIPCONFIG_EXECUTABLE} --version
+execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --version
     OUTPUT_VARIABLE HIP_BASE_VERSION
     OUTPUT_STRIP_TRAILING_WHITESPACE)
 string(REPLACE "." ";" VERSION_LIST ${HIP_BASE_VERSION})
@@ -193,7 +192,7 @@ endif()
 # Determine HIP_PLATFORM
 if(NOT DEFINED HIP_PLATFORM)
     if(NOT DEFINED ENV{HIP_PLATFORM})
-        execute_process(COMMAND ${HIP_HIPCONFIG_EXECUTABLE} --platform
+        execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform
             OUTPUT_VARIABLE HIP_PLATFORM
             OUTPUT_STRIP_TRAILING_WHITESPACE)
     else()
