@@ -121,7 +121,7 @@ class Os : AllStatic {
   // Given a valid file name, returns mmapped memory with the mapped size.
   static bool MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_size);
 
-  // Given a valid file name amd mapped size, returns ftruncated mmaped memory 
+  // Given a valid file name amd mapped size, returns ftruncated mmaped memory
   static bool MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t mmap_size);
 
   // Given a valid mmaped ptr with correct size, unmaps the ptr from memory
@@ -181,6 +181,9 @@ class Os : AllStatic {
   static void setThreadAffinity(const void* handle, const ThreadAffinityMask& mask);
   //! Set the currently running thread's name.
   static void setCurrentThreadName(const char* name);
+  //! Set current threads affinity to that of main thread
+  static bool setThreadAffinityToMainThread();
+
   //! Check if the thread is alive
   static bool isThreadAlive(const Thread& osThread);
 
