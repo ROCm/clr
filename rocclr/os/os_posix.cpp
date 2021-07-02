@@ -131,6 +131,7 @@ static pthread_setaffinity_fn pthread_setaffinity_fptr;
 
 static void init() __attribute__((constructor(101)));
 static void init() { Os::init(); }
+static cpu_set_t nativeMask_;
 
 bool Os::installSigfpeHandler() {
   // Install a SIGFPE signal handler @todo: Chain the handlers
@@ -160,6 +161,7 @@ bool Os::init() {
   pageSize_ = (size_t)::sysconf(_SC_PAGESIZE);
   processorCount_ = ::sysconf(_SC_NPROCESSORS_CONF);
 
+  pthread_getaffinity_np(pthread_self(), sizeof(cpu_set_t), &nativeMask_);
   pthread_setaffinity_fptr = (pthread_setaffinity_fn)dlsym(RTLD_NEXT, "pthread_setaffinity_np");
 
   return Thread::init();
@@ -392,11 +394,18 @@ const void* Os::createOsThread(amd::Thread* thread) {
   return reinterpret_cast<const void*>(handle);
 }
 
-
 void Os::setThreadAffinity(const void* handle, const Os::ThreadAffinityMask& mask) {
   if (pthread_setaffinity_fptr != NULL) {
     pthread_setaffinity_fptr((pthread_t)handle, sizeof(cpu_set_t), &mask.mask_);
   }
+}
+
+bool Os::setThreadAffinityToMainThread() {
+  if (AMD_CPU_AFFINITY) {
+    ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Setting Affinity to the main thread's affinity");
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &nativeMask_);
+  }
+  return true;
 }
 
 void Os::yield() { ::sched_yield(); }

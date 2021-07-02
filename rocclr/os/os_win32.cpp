@@ -341,6 +341,9 @@ void Os::setThreadAffinity(const void* handle, const Os::ThreadAffinityMask& mas
   }
 }
 
+bool Os::setThreadAffinityToMainThread() {
+  return true;
+}
 void Os::yield() { ::SwitchToThread(); }
 
 uint64_t Os::timeNanos() {
