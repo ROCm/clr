@@ -135,7 +135,7 @@ class Timestamp : public amd::HeapObject {
     // Timestamp value can be updated by HW profiling if current command had a stall.
     // Although CPU TS should be still valid in this situation, there are cases in VM mode
     // when CPU timeline is out of sync with GPU timeline and shifted time can be reported
-    if (end_ != 0) {
+    if (end_ == 0) {
       end_ = amd::Os::timeNanos();
     }
   }
