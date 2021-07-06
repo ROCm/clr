@@ -34,7 +34,7 @@ project(hip)
 #  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "/opt/rocm/hip".
 #  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${HIP_COMMON_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 #############################
 # Options
 #############################
@@ -66,31 +66,36 @@ endmacro()
 #############################
 # Setup version information
 #############################
-# hipconfig is a perl script and is not trivially invokable on Windows.
-if(NOT WIN32)
+find_package(Perl REQUIRED)
+
 # Determine HIP_BASE_VERSION
 set(ENV{HIP_PATH} "")
-execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --version
-    OUTPUT_VARIABLE HIP_BASE_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(COMMAND ${PERL_EXECUTABLE} ${__HIPCONFIG_EXECUTABLE__} --version
+  OUTPUT_VARIABLE HIP_BASE_VERSION
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
 string(REPLACE "." ";" VERSION_LIST ${HIP_BASE_VERSION})
 list(GET VERSION_LIST 0 HIP_VERSION_MAJOR)
 list(GET VERSION_LIST 1 HIP_VERSION_MINOR)
 set(HIP_VERSION_GITDATE 0)
-endif()
 
 find_package(Git)
 
 # FIXME: Two different version strings used.
 # Below we use UNIX commands, not compatible with Windows.
-if(GIT_FOUND AND (NOT WIN32))
+if(GIT_FOUND)
+  # use the commit date, instead of build date
+  execute_process(COMMAND ${GIT_EXECUTABLE} show -s --format=%ct
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(git_result EQUAL 0)
+    set(HIP_VERSION_UNIXDATE ${git_output})
+  endif()
+
   # get date information based on UTC
   # use the last two digits of year + week number + day in the week as HIP_VERSION_GITDATE
-  # use the commit date, instead of build date
-  # add xargs to remove strange trailing newline character
-  execute_process(COMMAND ${GIT_EXECUTABLE} show -s --format=@%ct
-    COMMAND xargs
-    COMMAND date -f - --utc +%y%U%w
+  execute_process(COMMAND ${PERL_EXECUTABLE} "-MPOSIX=strftime" "-le" "print strftime \'%y%W%w\',gmtime(${HIP_VERSION_UNIXDATE})"
     RESULT_VARIABLE git_result
     OUTPUT_VARIABLE git_output
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
@@ -266,13 +271,6 @@ set(CONFIG_LANG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip-lang)
 # Build clang hipify if enabled
 if (BUILD_HIPIFY_CLANG)
     add_subdirectory(hipify-clang)
-endif()
-
-# Workaround for current versioning logic not being compatible with Windows
-if(WIN32)
-  set(HIP_VERSION_MAJOR 0)
-  set(HIP_VERSION_MINOR 0)
-  set(HIP_VERSION_GITDATE 0)
 endif()
 
 # Generate hip_version.h
