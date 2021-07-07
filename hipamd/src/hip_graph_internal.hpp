@@ -120,7 +120,7 @@ class hipGraphKernelNode : public hipGraphNode {
   void GetParams(hipKernelNodeParams* params) {
     std::memcpy(params, pKernelParams_, sizeof(hipKernelNodeParams));
   }
-  void SetParams(hipKernelNodeParams* params) {
+  void SetParams(const hipKernelNodeParams* params) {
     std::memcpy(pKernelParams_, params, sizeof(hipKernelNodeParams));
   }
 };
@@ -145,7 +145,7 @@ class hipGraphMemcpyNode : public hipGraphNode {
   void GetParams(hipMemcpy3DParms* params) {
     std::memcpy(params, pCopyParams_, sizeof(hipMemcpy3DParms));
   }
-  void SetParams(hipMemcpy3DParms* params) {
+  void SetParams(const hipMemcpy3DParms* params) {
     std::memcpy(pCopyParams_, params, sizeof(hipMemcpy3DParms));
   }
 };
@@ -263,7 +263,7 @@ class hipGraphMemsetNode : public hipGraphNode {
   void GetParams(hipMemsetParams* params) {
     std::memcpy(params, pMemsetParams_, sizeof(hipMemsetParams));
   }
-  void SetParams(hipMemsetParams* params) {
+  void SetParams(const hipMemsetParams* params) {
     std::memcpy(pMemsetParams_, params, sizeof(hipMemsetParams));
   }
 };
