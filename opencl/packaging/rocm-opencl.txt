@@ -34,7 +34,7 @@ endif()
 message("Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}")
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/postinst;${PROJECT_BINARY_DIR}/prerm")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libelf-dev, comgr, hsa-rocr-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libelf-dev, comgr, hsa-rocr-dev, rocm-core")
 
 # RPM CPACK variables
 set(CPACK_BINARY_RPM "ON")
@@ -59,6 +59,11 @@ set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
 set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_BINARY_DIR}/rpm_post")
 set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_BINARY_DIR}/rpm_postun")
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-set(CPACK_RPM_PACKAGE_REQUIRES "comgr, hsa-rocr-dev")
+set(CPACK_RPM_PACKAGE_REQUIRES "comgr, hsa-rocr-dev, rocm-core")
+# Remove dependency on rocm-core if -DROCM_DEP_ROCMCORE=ON not given to cmake
+if(NOT ROCM_DEP_ROCMCORE)
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_PACKAGE_REQUIRES ${CPACK_RPM_PACKAGE_REQUIRES})
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS})
+endif()
 
 include(CPack)
