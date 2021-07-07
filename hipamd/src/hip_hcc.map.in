@@ -314,3 +314,20 @@ global:
 local:
     *;
 } hip_4.2;
+
+hip_4.4 {
+global:
+    hipGraphGetNodes;
+    hipGraphGetRootNodes;
+    hipGraphKernelNodeGetParams;
+    hipGraphKernelNodeSetParams;
+    hipGraphMemcpyNodeGetParams;
+    hipGraphMemcpyNodeSetParams;
+    hipGraphMemsetNodeGetParams;
+    hipGraphMemsetNodeSetParams;
+    hipGraphExecKernelNodeSetParams;
+    hipGraphAddDependencies;
+    hipGraphAddEmptyNode;
+local:
+    *;
+}hip_4.3;

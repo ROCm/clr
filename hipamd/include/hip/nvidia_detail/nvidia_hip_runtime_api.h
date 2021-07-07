@@ -2292,6 +2292,64 @@ inline static hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGr
         cudaGraphAddMemsetNode(pGraphNode, graph, pDependencies, numDependencies, pMemsetParams));
 }
 
+inline static hipError_t hipGraphGetNodes(hipGraph_t graph, hipGraphNode_t* nodes,
+                                          size_t* numNodes) {
+    return hipCUDAErrorTohipError(cudaGraphGetNodes(graph, nodes, numNodes));
+}
+
+inline static hipError_t hipGraphGetRootNodes(hipGraph_t graph, hipGraphNode_t* pRootNodes,
+                                              size_t* pNumRootNodes) {
+    return hipCUDAErrorTohipError(cudaGraphGetRootNodes(graph, pRootNodes, pNumRootNodes));
+}
+
+inline static hipError_t hipGraphKernelNodeGetParams(hipGraphNode_t node,
+                                                     hipKernelNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphKernelNodeGetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphKernelNodeSetParams(hipGraphNode_t node,
+                                                     const hipKernelNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphKernelNodeSetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphMemcpyNodeGetParams(hipGraphNode_t node,
+                                                     hipMemcpy3DParms* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphMemcpyNodeGetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphMemcpyNodeSetParams(hipGraphNode_t node,
+                                                     const hipMemcpy3DParms* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphMemcpyNodeSetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphMemsetNodeGetParams(hipGraphNode_t node,
+                                                     hipMemsetParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphMemsetNodeGetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphMemsetNodeSetParams(hipGraphNode_t node,
+                                                     const hipMemsetParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphMemsetNodeSetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphExecKernelNodeSetParams(hipGraphExec_t hGraphExec,
+                                                         hipGraphNode_t node,
+                                                         const hipKernelNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphExecKernelNodeSetParams(hGraphExec, node, pNodeParams));
+}
+
+inline static hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
+                                                 const hipGraphNode_t* to, size_t numDependencies) {
+    return hipCUDAErrorTohipError(cudaGraphAddDependencies(graph, from, to, numDependencies));
+}
+
+inline static hipError_t hipGraphAddEmptyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                              const hipGraphNode_t* pDependencies,
+                                              size_t numDependencies) {
+    return hipCUDAErrorTohipError(
+      cudaGraphAddEmptyNode(pGraphNode, graph, pDependencies, numDependencies));
+}
+
 inline static hipError_t hipStreamWriteValue32(hipStream_t stream,
                                                void* ptr, int32_t value, unsigned int flags) {
    if (value < 0) {

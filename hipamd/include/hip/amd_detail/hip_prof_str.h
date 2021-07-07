@@ -236,14 +236,23 @@ enum hip_api_id_t {
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectTextureDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureReference = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphAddDependencies = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphAddKernelNode = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphAddMemcpyNode = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphAddMemsetNode = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphCreate = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphDestroy = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphExecDestroy = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphGetNodes = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphGetRootNodes = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphInstantiate = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphKernelNodeGetParams = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphKernelNodeSetParams = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphLaunch = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphMemcpyNodeGetParams = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphMemcpyNodeSetParams = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphMemsetNodeGetParams = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphMemsetNodeSetParams = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphicsGLRegisterBuffer = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphicsMapResources = HIP_API_ID_NONE,
   HIP_API_ID_hipGraphicsResourceGetMappedPointer = HIP_API_ID_NONE,
@@ -3136,6 +3145,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetTextureObjectTextureDesc_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureReference()
 #define INIT_hipGetTextureReference_CB_ARGS_DATA(cb_data) {};
+// hipGraphAddDependencies()
+#define INIT_hipGraphAddDependencies_CB_ARGS_DATA(cb_data) {};
 // hipGraphAddKernelNode()
 #define INIT_hipGraphAddKernelNode_CB_ARGS_DATA(cb_data) {};
 // hipGraphAddMemcpyNode()
@@ -3148,10 +3159,26 @@ typedef struct hip_api_data_s {
 #define INIT_hipGraphDestroy_CB_ARGS_DATA(cb_data) {};
 // hipGraphExecDestroy()
 #define INIT_hipGraphExecDestroy_CB_ARGS_DATA(cb_data) {};
+// hipGraphGetNodes()
+#define INIT_hipGraphGetNodes_CB_ARGS_DATA(cb_data) {};
+// hipGraphGetRootNodes()
+#define INIT_hipGraphGetRootNodes_CB_ARGS_DATA(cb_data) {};
 // hipGraphInstantiate()
 #define INIT_hipGraphInstantiate_CB_ARGS_DATA(cb_data) {};
+// hipGraphKernelNodeGetParams()
+#define INIT_hipGraphKernelNodeGetParams_CB_ARGS_DATA(cb_data) {};
+// hipGraphKernelNodeSetParams()
+#define INIT_hipGraphKernelNodeSetParams_CB_ARGS_DATA(cb_data) {};
 // hipGraphLaunch()
 #define INIT_hipGraphLaunch_CB_ARGS_DATA(cb_data) {};
+// hipGraphMemcpyNodeGetParams()
+#define INIT_hipGraphMemcpyNodeGetParams_CB_ARGS_DATA(cb_data) {};
+// hipGraphMemcpyNodeSetParams()
+#define INIT_hipGraphMemcpyNodeSetParams_CB_ARGS_DATA(cb_data) {};
+// hipGraphMemsetNodeGetParams()
+#define INIT_hipGraphMemsetNodeGetParams_CB_ARGS_DATA(cb_data) {};
+// hipGraphMemsetNodeSetParams()
+#define INIT_hipGraphMemsetNodeSetParams_CB_ARGS_DATA(cb_data) {};
 // hipGraphicsGLRegisterBuffer()
 #define INIT_hipGraphicsGLRegisterBuffer_CB_ARGS_DATA(cb_data) {};
 // hipGraphicsMapResources()
