@@ -259,12 +259,12 @@ hipError_t hipEventDestroy(hipEvent_t event) {
 hipError_t hipEventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop) {
   HIP_INIT_API(hipEventElapsedTime, ms, start, stop);
 
-  if (start == nullptr || stop == nullptr) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
-
   if (ms == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (start == nullptr || stop == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
 
   hip::Event* eStart = reinterpret_cast<hip::Event*>(start);
