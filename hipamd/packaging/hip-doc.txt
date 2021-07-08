@@ -55,7 +55,7 @@ set(CPACK_GENERATOR "TGZ;DEB;RPM")
 set(CPACK_BINARY_DEB "ON")
 set(CPACK_DEBIAN_PACKAGE_RELEASE @CPACK_DEBIAN_PACKAGE_RELEASE@)
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "hip-devel (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE})")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "hip-devel (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
 set(CPACK_DEBIAN_PACKAGE_PROVIDES "hip-doc")
 
 set(CPACK_BINARY_RPM "ON")
@@ -64,7 +64,19 @@ set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
 set(CPACK_RPM_PACKAGE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}")
+set(CPACK_RPM_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/opt")
 set(CPACK_SOURCE_GENERATOR "TGZ")
+
+# Remove depenency on rocm-core if not wanted. Add a -DROCM_DEP_ROCMCORE=ON
+# to the cmake invocation. Do it this way so we can have the same code
+# in all the packages, and don't need to worry if we need commas or not
+# because there are other dependencies. Code is slightly fragile as we are
+# using regular expressions to edit strings.
+set(ROCM_DEP_ROCMCORE "@ROCM_DEP_ROCMCORE@")
+if(NOT ROCM_DEP_ROCMCORE)
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_PACKAGE_REQUIRES ${CPACK_RPM_PACKAGE_REQUIRES})
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS})
+endif()
+
 include(CPack)
