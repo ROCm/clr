@@ -21,23 +21,15 @@
 
 ROCMDIR=@ROCM_PATH@
 ROCMLIBDIR=$ROCMDIR/lib
-ROCCLRDIR=$ROCMDIR/rocclr
-ROCCLRLIBDIR=$ROCMDIR/rocclr/lib
 HIPDIR=$ROCMDIR/hip
 HIPLIBDIR=$ROCMDIR/hip/lib
-([ ! -d $ROCMDIR ] || [ ! -d $ROCCLRDIR ] || [ ! -d $HIPDIR ]) && exit 0
-([ ! -d $ROCMLIBDIR ] || [ ! -d $ROCCLRLIBDIR ] || [ ! -d $HIPLIBDIR ]) && exit 0
+([ ! -d $ROCMDIR ] || [ ! -d $HIPDIR ]) && exit 0
+([ ! -d $ROCMLIBDIR ] || [ ! -d $HIPLIBDIR ]) && exit 0
 CURRENTDIR=`pwd`
 # Remove soft-links to libraries
-ROCCLRLIBFILES=$(ls -A $ROCCLRLIBDIR | grep -v [-/$])
 HIPLIBFILES=$(ls -A $HIPLIBDIR | grep -v [-/$])
 
 cd  $ROCMLIBDIR
-for f in $ROCCLRLIBFILES; do
-    [ -e $f ] || continue
-    rm $(basename $f)
-done
-
 for f in $HIPLIBFILES; do
     [ -e $f ] || continue
     rm $(basename $f)
@@ -45,7 +37,6 @@ done
 cd $CURRENTDIR
 
 cd $ROCMLIBDIR/cmake
-unlink rocclr
 unlink hip
 unlink hip-lang
 cd $CURRENTDIR
@@ -54,4 +45,3 @@ cd $ROCMLIBDIR
 rmdir --ignore-fail-on-non-empty cmake
 cd $CURRENTDIR
 rmdir --ignore-fail-on-non-empty $ROCMLIBDIR
-

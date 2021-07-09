@@ -21,24 +21,16 @@
 
 ROCMDIR=@ROCM_PATH@
 ROCMLIBDIR=$ROCMDIR/lib
-ROCCLRDIR=$ROCMDIR/rocclr
-ROCCLRLIBDIR=$ROCMDIR/rocclr/lib
 HIPDIR=$ROCMDIR/hip
 HIPLIBDIR=$ROCMDIR/hip/lib
 CURRENTDIR=`pwd`
 # Soft-link to library files
-ROCCLRLIBFILES=$(ls -A $ROCCLRLIBDIR | grep -v "cmake\|[-/$]")
 HIPLIBFILES=$(ls -A $HIPLIBDIR | grep -v "cmake\|[-/$]")
 
 mkdir -p $ROCMLIBDIR
 mkdir -p $ROCMLIBDIR/cmake
 
 cd $ROCMLIBDIR
-for f in $ROCCLRLIBFILES
-do
-    ln -s -r -f $ROCCLRLIBDIR/$f $(basename $f)
-done
-
 for f in $HIPLIBFILES
 do
     ln -s -r -f $HIPLIBDIR/$f $(basename $f)
@@ -47,7 +39,6 @@ cd $CURRENTDIR
 
 # Make the hip cmake directory link.
 cd $ROCMLIBDIR/cmake
-ln -s -r -f $ROCCLRLIBDIR/cmake/rocclr rocclr
 ln -s -r -f $HIPLIBDIR/cmake/hip hip
 ln -s -r -f $HIPLIBDIR/cmake/hip-lang hip-lang
 cd $CURRENTDIR
