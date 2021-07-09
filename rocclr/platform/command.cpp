@@ -265,7 +265,7 @@ bool Event::awaitCompletion() {
 bool Event::notifyCmdQueue() {
   HostQueue* queue = command().queue();
   if (AMD_DIRECT_DISPATCH) {
-    ScopedLock l(lock_);
+    ScopedLock l(notify_lock_);
     if ((status() > CL_COMPLETE) && (nullptr != queue) &&
         // If HW event was assigned, then notification can be ignored, since a barrier was issued
         (HwEvent() == nullptr) &&

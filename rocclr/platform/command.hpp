@@ -89,6 +89,7 @@ class Event : public RuntimeObject {
 
  private:
   Monitor lock_;
+  Monitor notify_lock_;   //!< Lock used for notification with direct dispatch only
 
   std::atomic<CallBackEntry*> callbacks_;  //!< linked list of callback entries.
   std::atomic<int32_t> status_;            //!< current execution status.
