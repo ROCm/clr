@@ -91,6 +91,13 @@ if(WIN32)
   target_compile_definitions(rocclr PUBLIC ATI_OS_WIN)
 else()
   target_compile_definitions(rocclr PUBLIC ATI_OS_LINUX)
+
+  # Additional settings for LinuxPro
+  option(BUILD_LINUXPRO "Build LinuxPro" OFF)
+  if(BUILD_LINUXPRO)
+    target_compile_definitions(rocclr PUBLIC
+      ROCCLR_DISABLE_PREVEGA ROCCLR_ENABLE_GL_SHARING)
+  endif()
 endif()
 
 target_compile_definitions(rocclr PUBLIC
