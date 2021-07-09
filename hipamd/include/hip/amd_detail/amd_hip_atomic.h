@@ -281,28 +281,34 @@ __device__
 inline
 unsigned int atomicInc(unsigned int* address, unsigned int val)
 {
-    return __builtin_amdgcn_atomic_inc32(address, val, __ATOMIC_RELAXED, "agent");
+    __device__
+    extern
+    unsigned int __builtin_amdgcn_atomic_inc(
+        unsigned int*,
+        unsigned int,
+        unsigned int,
+        unsigned int,
+        bool) __asm("llvm.amdgcn.atomic.inc.i32.p0i32");
+
+    return __builtin_amdgcn_atomic_inc(
+        address, val, __ATOMIC_RELAXED, 1 /* Device scope */, false);
 }
 
 __device__
 inline
 unsigned int atomicDec(unsigned int* address, unsigned int val)
 {
-    return __builtin_amdgcn_atomic_dec32(address, val, __ATOMIC_RELAXED, "agent");
-}
+    __device__
+    extern
+    unsigned int __builtin_amdgcn_atomic_dec(
+        unsigned int*,
+        unsigned int,
+        unsigned int,
+        unsigned int,
+        bool) __asm("llvm.amdgcn.atomic.dec.i32.p0i32");
 
-__device__
-inline
-unsigned int atomicInc_system(unsigned int* address, unsigned int val)
-{
-    return __builtin_amdgcn_atomic_inc32(address, val, __ATOMIC_RELAXED, "one-as");
-}
-
-__device__
-inline
-unsigned int atomicDec_system(unsigned int* address, unsigned int val)
-{
-    return __builtin_amdgcn_atomic_dec32(address, val, __ATOMIC_RELAXED, "one-as");
+    return __builtin_amdgcn_atomic_dec(
+        address, val, __ATOMIC_RELAXED, 1 /* Device scope */, false);
 }
 
 __device__
