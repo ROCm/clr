@@ -250,28 +250,28 @@ endif()
 # Profiling API support
 #############################
 # Generate profiling API macros/structures header
-set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
-set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/include/hip/amd_detail/hip_prof_str.h")
-set(PROF_API_HDR "${HIP_COMMON_INCLUDE_DIR}/hip/hip_runtime_api.h")
-set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
-set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
-set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
-
-find_package(PythonInterp REQUIRED)
-add_custom_command(OUTPUT ${PROF_API_STR}
-  COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
-  DEPENDS ${PROF_API_STR_IN} ${PROF_API_HDR} ${PROF_API_GEN}
-  COMMENT "Generating profiling primitives: ${PROF_API_STR}")
-
-add_custom_target(gen-prof-api-str-header ALL
-  DEPENDS ${PROF_API_STR}
-  SOURCES ${PROF_API_HDR})
-
-set_target_properties(amdhip64 PROPERTIES PUBLIC_HEADER ${PROF_API_STR})
-
 option(USE_PROF_API ON "Enable roctracer integration")
 # Enable profiling API
 if(USE_PROF_API)
+  set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
+  set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/include/hip/amd_detail/hip_prof_str.h")
+  set(PROF_API_HDR "${HIP_COMMON_INCLUDE_DIR}/hip/hip_runtime_api.h")
+  set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
+  set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
+  set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
+
+  find_package(PythonInterp REQUIRED)
+  add_custom_command(OUTPUT ${PROF_API_STR}
+    COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
+    DEPENDS ${PROF_API_STR_IN} ${PROF_API_HDR} ${PROF_API_GEN}
+    COMMENT "Generating profiling primitives: ${PROF_API_STR}")
+
+  add_custom_target(gen-prof-api-str-header ALL
+    DEPENDS ${PROF_API_STR}
+    SOURCES ${PROF_API_HDR})
+
+  set_target_properties(amdhip64 PROPERTIES PUBLIC_HEADER ${PROF_API_STR})
+
   find_path(PROF_API_HEADER_DIR prof_protocol.h
     HINTS
       ${PROF_API_HEADER_PATH}
@@ -287,9 +287,9 @@ if(USE_PROF_API)
     target_include_directories(amdhip64 PUBLIC ${PROF_API_HEADER_DIR})
     message(STATUS "Profiling API: ${PROF_API_HEADER_DIR}")
   endif()
-endif()
 
-add_dependencies(amdhip64 gen-prof-api-str-header)
+  add_dependencies(amdhip64 gen-prof-api-str-header)
+endif()
 
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
   ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
