@@ -178,7 +178,7 @@ hipError_t hipMemRangeGetAttributes(void** data, size_t* data_sizes,
 }
 
 // ================================================================================================
-hipError_t hipStreamAttachMemAsync(hipStream_t stream, hipDeviceptr_t* dev_ptr,
+hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
                                    size_t length, unsigned int flags) {
   HIP_INIT_API(hipStreamAttachMemAsync, stream, dev_ptr, length, flags);
 

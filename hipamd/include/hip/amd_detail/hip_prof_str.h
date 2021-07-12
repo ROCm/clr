@@ -1798,8 +1798,7 @@ typedef struct hip_api_data_s {
     } hipStreamAddCallback;
     struct {
       hipStream_t stream;
-      hipDeviceptr_t* dev_ptr;
-      hipDeviceptr_t dev_ptr__val;
+      void* dev_ptr;
       size_t length;
       unsigned int flags;
     } hipStreamAttachMemAsync;
@@ -3011,10 +3010,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamAddCallback.userData = (void*)userData; \
   cb_data.args.hipStreamAddCallback.flags = (unsigned int)flags; \
 };
-// hipStreamAttachMemAsync[('hipStream_t', 'stream'), ('hipDeviceptr_t*', 'dev_ptr'), ('size_t', 'length'), ('unsigned int', 'flags')]
+// hipStreamAttachMemAsync[('hipStream_t', 'stream'), ('void*', 'dev_ptr'), ('size_t', 'length'), ('unsigned int', 'flags')]
 #define INIT_hipStreamAttachMemAsync_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamAttachMemAsync.stream = (hipStream_t)stream; \
-  cb_data.args.hipStreamAttachMemAsync.dev_ptr = (hipDeviceptr_t*)dev_ptr; \
+  cb_data.args.hipStreamAttachMemAsync.dev_ptr = (void*)dev_ptr; \
   cb_data.args.hipStreamAttachMemAsync.length = (size_t)length; \
   cb_data.args.hipStreamAttachMemAsync.flags = (unsigned int)flags; \
 };
@@ -3983,9 +3982,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipStreamAddCallback[('hipStream_t', 'stream'), ('hipStreamCallback_t', 'callback'), ('void*', 'userData'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamAddCallback:
       break;
-// hipStreamAttachMemAsync[('hipStream_t', 'stream'), ('hipDeviceptr_t*', 'dev_ptr'), ('size_t', 'length'), ('unsigned int', 'flags')]
+// hipStreamAttachMemAsync[('hipStream_t', 'stream'), ('void*', 'dev_ptr'), ('size_t', 'length'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamAttachMemAsync:
-      if (data->args.hipStreamAttachMemAsync.dev_ptr) data->args.hipStreamAttachMemAsync.dev_ptr__val = *(data->args.hipStreamAttachMemAsync.dev_ptr);
       break;
 // hipStreamCreate[('hipStream_t*', 'stream')]
     case HIP_API_ID_hipStreamCreate:
@@ -5515,8 +5513,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipStreamAttachMemAsync:
       oss << "hipStreamAttachMemAsync(";
       oss << "stream=" << data->args.hipStreamAttachMemAsync.stream;
-      if (data->args.hipStreamAttachMemAsync.dev_ptr == NULL) oss << ", dev_ptr=NULL";
-      else oss << ", dev_ptr=" << data->args.hipStreamAttachMemAsync.dev_ptr__val;
+      oss << ", dev_ptr=" << data->args.hipStreamAttachMemAsync.dev_ptr;
       oss << ", length=" << data->args.hipStreamAttachMemAsync.length;
       oss << ", flags=" << data->args.hipStreamAttachMemAsync.flags;
       oss << ")";
