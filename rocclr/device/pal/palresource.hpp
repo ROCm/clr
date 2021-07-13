@@ -296,7 +296,8 @@ class Resource : public amd::HeapObject {
   bool mipMapped() const { return (desc().mipLevels_ > 1) ? true : false; }
 
   //! Checks if persistent memory can have a direct map
-  bool isPersistentDirectMap() const;
+  bool isPersistentDirectMap(bool writeMap = true) const;
+  int getMapCount() const { return mapCount_; }
 
   /*! \brief Locks the resource and returns a physical pointer
    *
