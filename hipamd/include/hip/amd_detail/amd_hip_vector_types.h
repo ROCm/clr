@@ -48,7 +48,73 @@ THE SOFTWARE.
     #include <array>
     #include <iosfwd>
     #include <type_traits>
-#endif // !defined(__HIPCC_RTC__)
+#else
+namespace std {
+using ::size_t;
+
+template <bool __B, class __T = void> struct enable_if {};
+template <class __T> struct enable_if<true, __T> { typedef __T type; };
+
+struct true_type { static const __constant__ bool value = true; };
+struct false_type { static const __constant__ bool value = false; };
+template<bool _B> struct true_or_false_type : public false_type {};
+template<> struct true_or_false_type<true> : public true_type {};
+
+template <class _Tp> struct is_integral : public false_type {};
+template <> struct is_integral<bool> : public true_type {};
+template <> struct is_integral<char> : public true_type {};
+template <> struct is_integral<signed char> : public true_type {};
+template <> struct is_integral<unsigned char> : public true_type {};
+template <> struct is_integral<wchar_t> : public true_type {};
+template <> struct is_integral<short> : public true_type {};
+template <> struct is_integral<unsigned short> : public true_type {};
+template <> struct is_integral<int> : public true_type {};
+template <> struct is_integral<unsigned int> : public true_type {};
+template <> struct is_integral<long> : public true_type {};
+template <> struct is_integral<unsigned long> : public true_type {};
+template <> struct is_integral<long long> : public true_type {};
+template <> struct is_integral<unsigned long long> : public true_type {};
+
+template <class _Tp> struct is_arithmetic : public false_type {};
+template <> struct is_arithmetic<bool> : public true_type {};
+template <> struct is_arithmetic<char> : public true_type {};
+template <> struct is_arithmetic<signed char> : public true_type {};
+template <> struct is_arithmetic<unsigned char> : public true_type {};
+template <> struct is_arithmetic<wchar_t> : public true_type {};
+template <> struct is_arithmetic<short> : public true_type {};
+template <> struct is_arithmetic<unsigned short> : public true_type {};
+template <> struct is_arithmetic<int> : public true_type {};
+template <> struct is_arithmetic<unsigned int> : public true_type {};
+template <> struct is_arithmetic<long> : public true_type {};
+template <> struct is_arithmetic<unsigned long> : public true_type {};
+template <> struct is_arithmetic<long long> : public true_type {};
+template <> struct is_arithmetic<unsigned long long> : public true_type {};
+template <> struct is_arithmetic<float> : public true_type {};
+template <> struct is_arithmetic<double> : public true_type {};
+
+template<typename _Tp> struct is_floating_point : public false_type {};
+template<> struct is_floating_point<float> : public true_type {};
+template<> struct is_floating_point<double> : public true_type {};
+template<> struct is_floating_point<long double> : public true_type {};
+
+template <typename __T, typename __U> struct is_same : public false_type {};
+template <typename __T> struct is_same<__T, __T> : public true_type {};
+
+template<typename _Tp, bool = is_arithmetic<_Tp>::value>
+  struct is_signed : public false_type {};
+template<typename _Tp>
+  struct is_signed<_Tp, true> : public true_or_false_type<_Tp(-1) < _Tp(0)> {};
+
+template <class _T1, class _T2> struct is_convertible
+  : public true_or_false_type<__is_convertible_to(_T1, _T2)> {};
+
+template<typename _CharT> struct char_traits;
+template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_istream;
+template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_ostream;
+typedef basic_istream<char> istream;
+typedef basic_ostream<char> ostream;
+} // Namespace std.
+#endif // defined(__HIPCC_RTC__)
 
     namespace hip_impl {
         template<typename, typename, unsigned int> struct Scalar_accessor;
@@ -57,10 +123,10 @@ THE SOFTWARE.
     namespace std {
         template<typename T, typename U, unsigned int n>
         struct is_integral<hip_impl::Scalar_accessor<T, U, n>>
-            : is_integral<T> {};
+            : std::is_integral<T> {};
         template<typename T, typename U, unsigned int n>
         struct is_floating_point<hip_impl::Scalar_accessor<T, U, n>>
-            : is_floating_point<T> {};
+            : std::is_floating_point<T> {};
     } // Namespace std.
 
     namespace hip_impl {
@@ -663,7 +729,7 @@ THE SOFTWARE.
         template<
             typename U,
             typename std::enable_if<
-                std::is_convertible<U, T>{}>::type* = nullptr>
+                std::is_convertible<U, T>::value>::type* = nullptr>
         __HOST_DEVICE__
         explicit
         constexpr

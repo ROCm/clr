@@ -44,6 +44,17 @@ THE SOFTWARE.
 #include <string.h>
 #include <stddef.h>
 #endif // __cplusplus
+#else
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
+typedef signed int int32_t;
+typedef signed long long int64_t;
+namespace std {
+using ::uint32_t;
+using ::uint64_t;
+using ::int32_t;
+using ::int64_t;
+}
 #endif // !defined(__HIPCC_RTC__)
 
 // __hip_malloc is not working. Disable it by default.
