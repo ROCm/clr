@@ -295,6 +295,11 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   oarr.push_back("-include hiprtc_runtime.h");
   oarr.push_back("-std=c++14");
   oarr.push_back("-nogpuinc");
+#ifdef _WIN32
+  oarr.push_back("-target x86_64-pc-windows-msvc");
+  oarr.push_back("-fms-extensions");
+  oarr.push_back("-fms-compatibility");
+#endif
 #endif
 
   transformOptions(oarr, program);
