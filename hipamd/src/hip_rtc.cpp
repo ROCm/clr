@@ -346,21 +346,36 @@ hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expressio
 
   auto it = ProgramState::instance().nameExpresssion_.find(name_expression);
   if (it == ProgramState::instance().nameExpresssion_.end()) {
-    return HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID;
+    return HIPRTC_RETURN(HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID);
   }
 
   std::string strippedName = it->second.first;
+  std::string strippedNameNoSpace = strippedName;
+  strippedNameNoSpace.erase(std::remove_if(strippedNameNoSpace.begin(),
+                                           strippedNameNoSpace.end(),
+                                           [](unsigned char c) {
+                                             return std::isspace(c);
+                                           }), strippedNameNoSpace.end());
   std::vector<std::string> mangledNames;
 
   if (!dev_program->getLoweredNames(&mangledNames)) {
     HIPRTC_RETURN(HIPRTC_ERROR_COMPILATION);
   }
 
-  for (auto &name : mangledNames) {
+  for (auto& name : mangledNames) {
     std::string demangledName = handleMangledName(name);
-    if (demangledName == strippedName) {
+    demangledName.erase(std::remove_if(demangledName.begin(), demangledName.end(),
+                                       [](unsigned char c) { return std::isspace(c); }),
+                        demangledName.end());
+    if (demangledName == strippedNameNoSpace) {
       it->second.second.assign(name);
+      break;
     }
+  }
+
+  // Return error if the added symbol is not in code
+  if (it->second.second.size() == 0) {
+    return HIPRTC_RETURN(HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID);
   }
 
   *loweredName = it->second.second.c_str();
