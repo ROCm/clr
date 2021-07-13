@@ -41,11 +41,16 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(__HIP_ENABLE_RTC "Enable/Disable pre-processed hiprtc shared lib" ON)
+option(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS "Enable/Disable FP Atomics version" OFF)
 
 if(__HIP_ENABLE_PCH)
   set(_pchStatus 1)
 else()
   set(_pchStatus 0)
+endif()
+
+if(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS MATCHES "ON")
+  add_definitions(-D__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
 endif()
 
 message (STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}" )
