@@ -281,6 +281,7 @@ typedef enum cudaMemRangeAttribute hipMemRangeAttribute;
 #define HIP_LAUNCH_PARAM_BUFFER_POINTER CU_LAUNCH_PARAM_BUFFER_POINTER
 #define HIP_LAUNCH_PARAM_BUFFER_SIZE CU_LAUNCH_PARAM_BUFFER_SIZE
 #define HIP_LAUNCH_PARAM_END CU_LAUNCH_PARAM_END
+#define hipLimitPrintfFifoSize cudaLimitPrintfFifoSize
 #define hipLimitMallocHeapSize cudaLimitMallocHeapSize
 #define hipIpcMemLazyEnablePeerAccess cudaIpcMemLazyEnablePeerAccess
 
@@ -1967,6 +1968,10 @@ inline static hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) 
 
 inline static hipError_t hipDeviceGetLimit(size_t* pValue, hipLimit_t limit) {
     return hipCUDAErrorTohipError(cudaDeviceGetLimit(pValue, limit));
+}
+
+inline static hipError_t hipDeviceSetLimit(hipLimit_t limit, size_t value) {
+    return hipCUDAErrorTohipError(cudaDeviceSetLimit(limit, value));
 }
 
 inline static hipError_t hipDeviceTotalMem(size_t* bytes, hipDevice_t device) {
