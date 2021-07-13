@@ -2276,6 +2276,9 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     amd::Coord3D size(sizeBytes);
     bool entire = amdMemory->isEntirelyCovered(origin, size);
 
+    // Ensure memory ordering preceding the write
+    dispatchBarrierPacket(kBarrierPacketAcquireHeader);
+
     // Use GPU Blit to write
     bool result = blitMgr().fillBuffer(*memory, &value, sizeBytes, origin, size, entire, true);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writting value: 0x%lx", value);
