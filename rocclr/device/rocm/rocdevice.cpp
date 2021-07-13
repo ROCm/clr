@@ -1081,6 +1081,7 @@ Memory* Device::getGpuMemory(amd::Memory* mem) const {
   return static_cast<roc::Memory*>(mem->getDeviceMemory(*this));
 }
 
+// ================================================================================================
 bool Device::populateOCLDeviceConstants() {
   info_.available_ = true;
 
@@ -1572,14 +1573,23 @@ bool Device::populateOCLDeviceConstants() {
       &info_.hmmCpuMemoryAccessible_)) {
     LogError("HSA_AMD_SYSTEM_INFO_SVM_ACCESSIBLE_BY_DEFAULT query failed.");
   }
-  LogPrintfInfo("HMM support: %d, xnack: %d\n",
-    info_.hmmSupported_, info_.hmmCpuMemoryAccessible_);
+
+  // HMM specific capability for CPU direct access to device memory
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
+      static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS),
+      &info_.hmmDirectHostAccess_)) {
+    LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
+  }
+
+  LogPrintfInfo("HMM support: %d, xnack: %d, direct host access: %d\n",
+    info_.hmmSupported_, info_.hmmCpuMemoryAccessible_, info_.hmmDirectHostAccess_);
 
   info_.globalCUMask_ = {};
 
   return true;
 }
 
+// ================================================================================================
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   amd::ScopedLock lock(vgpusAccess());
 
@@ -2266,7 +2276,10 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
             //! @note: HMM should support automatic page table update with xnack enabled,
             //! but currently it doesn't and runtime explicitly enables access from all devices
             for (const auto dev : devices()) {
-              attr.push_back({attrib, static_cast<Device*>(dev)->getBackendDevice().handle});
+              // Skip null devices
+              if (static_cast<Device*>(dev)->getBackendDevice().handle != 0) {
+                attr.push_back({attrib, static_cast<Device*>(dev)->getBackendDevice().handle});
+              }
             }
           } else {
             attr.push_back({attrib, getBackendDevice().handle});
@@ -2292,7 +2305,7 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
     hsa_status_t status = hsa_amd_svm_attributes_set(const_cast<void*>(dev_ptr), count,
                                                     attr.data(), attr.size());
     if (status != HSA_STATUS_SUCCESS) {
-      LogPrintfError("hsa_amd_svm_attributes_set() failed. Advice: %d", advice);
+      LogPrintfError("hsa_amd_svm_attributes_set() failed. Advice: %d, status: %d", advice, status);
       return false;
     }
   } else {
