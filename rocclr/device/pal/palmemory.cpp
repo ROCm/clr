@@ -786,11 +786,15 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
     mapAddress = reinterpret_cast<address>(owner()->getHostMem());
   }
   // If resource is a persistent allocation, we can use it directly
-  else if (isPersistentDirectMap()) {
+  else if ((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
+           isPersistentMapped()) {
     if (nullptr == map(nullptr)) {
       LogError("Could not map target persistent resource");
       decIndMapCount();
       return nullptr;
+    }
+    if (getMapCount() == 1) {
+      setPersistentMapFlag(true);
     }
     mapAddress = data();
   }
@@ -1046,14 +1050,17 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   //! runtime can't use it directly,
   //! because CAL volume map doesn't work properly.
   //! @todo arrays can be added for persistent lock with some CAL changes
-  else if (isPersistentDirectMap()) {
+  else if((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
+          isPersistentMapped()) {
     if (nullptr == map(nullptr)) {
       useRemoteResource = true;
       LogError("Could not map target persistent resource, try remote resource");
     } else {
       useRemoteResource = false;
       mapAddress = data();
-
+      if (getMapCount() == 1) {
+        setPersistentMapFlag(true);
+      }
       // Calculate the offset in bytes
       offset *= elementSize();
 
@@ -1075,7 +1082,6 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
       const static bool SysMem = true;
       bool failed = false;
       amd::Memory* memory;
-
       // Search for a possible indirect resource
       memory = dev().findMapTarget(owner()->getSize());
 

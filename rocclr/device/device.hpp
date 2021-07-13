@@ -841,7 +841,8 @@ class Memory : public amd::HeapObject {
     SubMemoryObject = 0x00000008,         //!< Memory is sub-memory
     HostMemoryRegistered = 0x00000010,    //!< Host memory was registered
     MemoryCpuUncached = 0x00000020,       //!< Memory is uncached on CPU access(slow read)
-    AllowedPeerAccess = 0x00000040        //!< Memory can be accessed from peer
+    AllowedPeerAccess = 0x00000040,       //!< Memory can be accessed from peer
+    PersistentMap = 0x00000080            //!< Map Peristent memory
   };
   uint flags_;  //!< Memory object flags
 

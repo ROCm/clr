@@ -1824,9 +1824,9 @@ bool Resource::isMemoryType(MemoryType memType) const {
 }
 
 // ================================================================================================
-bool Resource::isPersistentDirectMap() const {
-  bool directMap =
-      ((memoryType() == Resource::Persistent) && (desc().dimSize_ < 3) && !desc().imageArray_);
+bool Resource::isPersistentDirectMap(bool writeMap) const {
+  bool directMap = ((memoryType() == Resource::Persistent) &&
+                    (desc().dimSize_ < 3) && !desc().imageArray_ && writeMap);
 
   // If direct map is possible, then validate it with the current tiling
   if (directMap && desc().tiled_) {

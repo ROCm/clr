@@ -1620,7 +1620,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
 
     // Add memory to VA cache, so rutnime can detect direct access to VA
     dev().addVACache(memory);
-  } else if (memory->isPersistentDirectMap()) {
+  } else if (memory->isPersistentMapped()) {
     // Nothing to do here
   } else if (memory->mapMemory() != nullptr) {
     // Target is a remote resource, so copy
@@ -1721,10 +1721,13 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
     }
     // data check was added for persistent memory that failed to get aperture
     // and therefore are treated like a remote resource
-    else if (memory->isPersistentDirectMap() && (memory->data() != nullptr)) {
+    else if (memory->isPersistentMapped()) {
       // Map/unmap must be serialized
       amd::ScopedLock lock(owner->lockMemoryOps());
       memory->unmap(this);
+      if (memory->getMapount() == 0) {
+        memory->setPersistentMapFlag(false);
+      }
     } else if (memory->mapMemory() != nullptr) {
       if (writeMapInfo->isUnmapWrite()) {
         amd::Coord3D srcOrigin(0, 0, 0);
