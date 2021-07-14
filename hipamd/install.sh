@@ -115,11 +115,11 @@ function buildHIP()
     if [ "$OS_NAME" == "Ubuntu" ]
     then
       cp hip-*.deb $WORKING_DIR
-      sudo dpkg -i -B hip-base*.deb hip-rocclr*.deb hip-sample*.deb hip-doc*.deb
+      sudo dpkg -i -B hip-devel*.deb hip-runtime-amd*.deb hip-sample*.deb hip-doc*.deb
     elif [ "$OS_NAME" == "CentOS" ]
     then
       cp hip-*.rpm $WORKING_DIR
-      sudo rpm -ivh --replacefiles --force hip-base*.rpm hip-rocclr*.rpm hip-sample*.rpm \
+      sudo rpm -ivh --replacefiles --force hip-devel*.rpm hip-runtime-amd*.rpm hip-sample*.rpm \
          hip-doc*.rpm
     fi
     popd
