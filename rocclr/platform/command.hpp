@@ -207,7 +207,7 @@ class Event : public RuntimeObject {
 
   /*! \brief Notifies current command queue about execution status
    */
-  bool notifyCmdQueue();
+  bool notifyCmdQueue(bool cpu_wait = false);
 
   //! RTTI internal implementation
   virtual ObjectType objectType() const { return ObjectTypeEvent; }
@@ -998,14 +998,21 @@ class ExternalSemaphoreCmd : public Command {
 
 
 class Marker : public Command {
+ private:
+  bool cpu_wait_;   //!< If true, then the marker was issued for CPU/GPU sync
+
  public:
   //! Create a new Marker
   Marker(HostQueue& queue, bool userVisible, const EventWaitList& eventWaitList = nullWaitList,
-         const Event* waitingEvent = nullptr)
-      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent) {}
+         const Event* waitingEvent = nullptr, bool cpu_wait = false)
+      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent)
+      , cpu_wait_(cpu_wait) {}
 
   //! The actual command implementation.
   virtual void submit(device::VirtualDevice& device) { device.submitMarker(*this); }
+
+  //! Check if this marker requires CPU wait
+  bool CpuWaitRequested() const { return cpu_wait_; }
 
 };
 

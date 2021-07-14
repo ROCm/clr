@@ -77,7 +77,8 @@ class VirtualDevice;
 class PrintfDbg;
 class IProDevice;
 
-struct ProfilingSignal : public amd::HeapObject {
+class ProfilingSignal : public amd::ReferenceCountedObject {
+public:
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
@@ -89,6 +90,8 @@ struct ProfilingSignal : public amd::HeapObject {
     , done_(true)
     , lock_("Signal Ops Lock", true)
     { signal_.handle = 0; }
+
+  virtual ~ProfilingSignal();
   amd::Monitor& LockSignalOps() { return lock_; }
 };
 
@@ -530,8 +533,6 @@ class Device : public NullDevice {
   void getGlobalCUMask(std::string cuMaskStr);
 
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset);
-
-  ProfilingSignal* GetGlobalSignal(Timestamp* ts) const;
 
  private:
   bool create();
