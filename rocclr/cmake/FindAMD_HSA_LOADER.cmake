@@ -28,7 +28,8 @@ find_path(AMD_LIBELF_INCLUDE_DIR libelf.h
   PATHS
     ${CMAKE_SOURCE_DIR}/hsail-compiler/lib/loaders/elf/utils/libelf
     ${CMAKE_SOURCE_DIR}/../hsail-compiler/lib/loaders/elf/utils/libelf
-    ${CMAKE_SOURCE_DIR}/../../hsail-compiler/lib/loaders/elf/utils/libelf)
+    ${CMAKE_SOURCE_DIR}/../../hsail-compiler/lib/loaders/elf/utils/libelf
+  NO_DEFAULT_PATH)
 
 find_path(AMD_HSAIL_INCLUDE_DIR hsa.h
   HINTS

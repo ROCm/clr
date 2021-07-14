@@ -35,7 +35,8 @@ find_path(AMD_UGL_INCLUDE_DIR GL/glx.h
     ${CMAKE_SOURCE_DIR}/../drivers/drivers
     ${CMAKE_SOURCE_DIR}/../../drivers/drivers
   PATH_SUFFIXES
-    ugl/inc)
+    ugl/inc
+  NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(AMD_UGL
