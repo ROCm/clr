@@ -379,11 +379,11 @@ install(
 #############################
 # Packaging steps
 #############################
-# Package: hip_base
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-base)
-configure_file(packaging/hip-base.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-configure_file(packaging/hip-base.postinst ${BUILD_DIR}/postinst @ONLY)
-configure_file(packaging/hip-base.prerm ${BUILD_DIR}/prerm @ONLY)
+# Package: hip_devel
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-devel)
+configure_file(packaging/hip-devel.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+configure_file(packaging/hip-devel.postinst ${BUILD_DIR}/postinst @ONLY)
+configure_file(packaging/hip-devel.prerm ${BUILD_DIR}/prerm @ONLY)
 
 add_custom_target(pkg_hip_base COMMAND ${CMAKE_COMMAND} .
     COMMAND rm -rf *.deb *.rpm *.tar.gz
@@ -400,9 +400,9 @@ endif()
 
 if(HIP_RUNTIME STREQUAL "rocclr")
     set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/rocclr)
-    configure_file(packaging/hip-rocclr.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-    configure_file(packaging/hip-rocclr.postinst ${BUILD_DIR}/postinst @ONLY)
-    configure_file(packaging/hip-rocclr.prerm ${BUILD_DIR}/prerm @ONLY)
+    configure_file(packaging/hip-runtime-amd.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+    configure_file(packaging/hip-runtime-amd.postinst ${BUILD_DIR}/postinst @ONLY)
+    configure_file(packaging/hip-runtime-amd.prerm ${BUILD_DIR}/prerm @ONLY)
     add_custom_target(hip_on_rocclr COMMAND ${CMAKE_COMMAND} .
         COMMAND rm -rf *.deb *.rpm *.tar.gz
         COMMAND make package
@@ -412,9 +412,9 @@ if(HIP_RUNTIME STREQUAL "rocclr")
         WORKING_DIRECTORY ${BUILD_DIR} )
 endif()
 
-# Package: hip_nvcc
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-nvcc)
-configure_file(packaging/hip-nvcc.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+# Package: hip_runtime_nvidia
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-runtime-nvidia)
+configure_file(packaging/hip-runtime-nvidia.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
 add_custom_target(pkg_hip_nvcc COMMAND ${CMAKE_COMMAND} .
     COMMAND rm -rf *.deb *.rpm *.tar.gz
     COMMAND make package

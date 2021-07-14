@@ -19,17 +19,17 @@
 # THE SOFTWARE.
 
 cmake_minimum_required(VERSION 2.8.3)
-project(hip_nvcc)
+project(hip_runtime_nvidia)
 
 #############################
 # Packaging steps
 #############################
 set(CPACK_SET_DESTDIR TRUE)
 set(CPACK_INSTALL_PREFIX @CPACK_INSTALL_PREFIX@ )
-set(CPACK_PACKAGE_NAME "hip-nvcc")
+set(CPACK_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_PACKAGE_DESCRIPTION "HIP:
-          Heterogenous-computing Interface for Portability [NVCC]")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HIP: Heterogenous-computing Interface for Portability [NVCC]")
+          Heterogenous-computing Interface for Portability [RUNTIME - NVIDIA]")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HIP: Heterogenous-computing Interface for Portability [RUNTIME - NVIDIA]")
 set(CPACK_PACKAGE_VENDOR "Advanced Micro Devices, Inc.")
 set(CPACK_PACKAGE_CONTACT "HIP Support <hip.support@amd.com>")
 set(CPACK_PACKAGE_VERSION_MAJOR @HIP_VERSION_MAJOR@)
@@ -42,9 +42,8 @@ set(CPACK_BINARY_DEB "ON")
 set(CPACK_DEBIAN_PACKAGE_RELEASE @CPACK_DEBIAN_PACKAGE_RELEASE@)
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${PROJECT_BINARY_DIR}/postinst;${PROJECT_BINARY_DIR}/prerm")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "hip-base (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), cuda (>= 7.5)")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "cuda (>= 7.5)")
 set(CPACK_DEBIAN_PACKAGE_PROVIDES "hip-nvcc")
-set(CPACK_DEBIAN_PACKAGE_REPLACES "hip_nvcc")
 
 set(CPACK_BINARY_RPM "ON")
 set(CPACK_RPM_PACKAGE_RELEASE @CPACK_RPM_PACKAGE_RELEASE@)
@@ -54,9 +53,7 @@ set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_BINARY_DIR}/postinst")
 set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_BINARY_DIR}/prerm")
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_PACKAGE_REQUIRES "hip-base = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, cuda >= 7.5")
-set(CPACK_RPM_PACKAGE_OBSOLETES "hip_nvcc")
-set(CPACK_RPM_PACKAGE_CONFLICTS "hip_nvcc")
+set(CPACK_RPM_PACKAGE_REQUIRES "cuda >= 7.5")
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/opt")
 set(CPACK_SOURCE_GENERATOR "TGZ")
 include(CPack)
