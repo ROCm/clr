@@ -232,11 +232,12 @@ void Event::processCallbacks(int32_t status) const {
   }
 }
 
+static constexpr bool kCpuWait = true;
 // ================================================================================================
 bool Event::awaitCompletion() {
   if (status() > CL_COMPLETE) {
-    // Notifies current command queue about waiting
-    if (!notifyCmdQueue()) {
+    // Notifies the current command queue about waiting
+    if (!notifyCmdQueue(kCpuWait)) {
       return false;
     }
 
@@ -262,7 +263,7 @@ bool Event::awaitCompletion() {
 }
 
 // ================================================================================================
-bool Event::notifyCmdQueue() {
+bool Event::notifyCmdQueue(bool cpu_wait) {
   HostQueue* queue = command().queue();
   if (AMD_DIRECT_DISPATCH) {
     ScopedLock l(notify_lock_);
@@ -271,7 +272,7 @@ bool Event::notifyCmdQueue() {
         (HwEvent() == nullptr) &&
         !notified_.test_and_set()) {
       // Make sure the queue is draining the enqueued commands.
-      amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this);
+      amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this, cpu_wait);
       if (command == NULL) {
         notified_.clear();
         return false;
@@ -341,7 +342,7 @@ void Command::enqueue() {
     // Notify all commands about the waiter. Barrier will be sent in order to obtain
     // HSA signal for a wait on the current queue
     std::for_each(eventWaitList().begin(), eventWaitList().end(),
-        std::mem_fun(&Command::notifyCmdQueue));
+        std::bind2nd(std::mem_fun(&Command::notifyCmdQueue), !kCpuWait));
 
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time

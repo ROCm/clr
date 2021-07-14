@@ -3012,36 +3012,22 @@ amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset) {
 }
 
 // ================================================================================================
-ProfilingSignal* Device::GetGlobalSignal(Timestamp* ts) const {
-  std::unique_ptr<ProfilingSignal> prof_signal(new ProfilingSignal());
-  if (prof_signal != nullptr) {
-    hsa_agent_t agent = getBackendDevice();
-    hsa_agent_t* agents = (settings().system_scope_signal_) ? nullptr : &agent;
-    uint32_t num_agents = (settings().system_scope_signal_) ? 0 : 1;
-
-    if (ts != 0) {
-      // Save HSA signal earlier to make sure the possible callback will have a valid
-      // value for processing
-      prof_signal->ts_ = ts;
-      ts->AddProfilingSignal(prof_signal.get());
-    }
-
-    if (HSA_STATUS_SUCCESS == hsa_signal_create(kInitSignalValueOne,
-                                                num_agents, agents, &prof_signal->signal_)) {
-      return prof_signal.release();
-    }
+void Device::ReleaseGlobalSignal(void* signal) const {
+  if (signal != nullptr) {
+    reinterpret_cast<ProfilingSignal*>(signal)->release();
   }
-  return nullptr;
 }
 
 // ================================================================================================
-void Device::ReleaseGlobalSignal(void* signal) const {
-  if (signal != nullptr) {
-    ProfilingSignal* prof_signal = reinterpret_cast<ProfilingSignal*>(signal);
-    if (prof_signal->signal_.handle != 0) {
-      hsa_signal_destroy(prof_signal->signal_);
+ProfilingSignal::~ProfilingSignal() {
+  if (signal_.handle != 0) {
+    if (hsa_signal_load_relaxed(signal_) > 0) {
+      LogError("Runtime shouldn't destroy a signal that is still busy!");
+      if (hsa_signal_wait_scacquire(signal_, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+      }
     }
-    delete prof_signal;
+    hsa_signal_destroy(signal_);
   }
 }
 
