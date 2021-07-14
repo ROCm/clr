@@ -2277,7 +2277,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     bool entire = amdMemory->isEntirelyCovered(origin, size);
 
     // Ensure memory ordering preceding the write
-    dispatchBarrierPacket(kBarrierPacketAcquireHeader);
+    dispatchBarrierPacket(kBarrierPacketReleaseHeader);
 
     // Use GPU Blit to write
     bool result = blitMgr().fillBuffer(*memory, &value, sizeBytes, origin, size, entire, true);
