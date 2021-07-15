@@ -23,12 +23,14 @@
 #include <hip/hiprtc.h>
 #include "platform/program.hpp"
 
-#ifdef __HIP_ENABLE_PCH
-extern const char __hip_pch[];
-extern unsigned __hip_pch_size;
-void __hipGetPCH(const char** pch, unsigned int *size) {
-  *pch = __hip_pch;
-  *size = __hip_pch_size;
+#ifdef __HIP_ENABLE_RTC
+extern "C" {
+extern const char __hipRTC_header[];
+extern unsigned __hipRTC_header_size;
+}
+void __hipGetRTC(const char** rtc, unsigned int* size) {
+  *rtc = __hipRTC_header;
+  *size = __hipRTC_header_size;
 }
 #endif
 
@@ -160,17 +162,12 @@ static std::string getValueOf(const std::string& option) {
 static void transformOptions(std::vector<std::string>& options, amd::Program* program) {
   std::vector<const char*> t_option;
   for (auto& i : options) {
-#ifdef __HIP_ENABLE_PCH
-    // Use precompiled header for hip
+    // This functionality is no longer supported - just consume at the moment and remove this in
+    // couple of releases
     if (i == "-hip-pch") {
-      const char* pch = nullptr;
-      unsigned int pch_size = 0;
-      __hipGetPCH(&pch, &pch_size);
-      program->addPreCompiledHeader(std::string(pch, pch_size));
-      i = "-nogpuinc";
+      i.clear();
       continue;
     }
-#endif
     // Some rtc samples use --gpu-architecture
     if (i.rfind("--gpu-architecture=", 0) == 0) {
       auto val = getValueOf(i);
@@ -230,8 +227,33 @@ hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const cha
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
-  amd::Program* program = new amd::Program(*hip::getCurrentDevice()->asContext(), src, amd::Program::HIP,
-                                           numHeaders, headers, headerNames);
+  // Add header from hiprtc_header.o
+  std::vector<const char*> header_sources;
+  std::vector<const char*> header_names;
+
+  header_sources.reserve(numHeaders + 1);
+  header_names.reserve(numHeaders + 1);
+
+#ifdef __HIP_ENABLE_RTC
+  const char* rtc_pch = nullptr;
+  unsigned rtc_size = 0;
+  __hipGetRTC(&rtc_pch, &rtc_size);
+  if (rtc_pch == nullptr || rtc_size == 0) {
+    HIPRTC_RETURN(HIPRTC_ERROR_BUILTIN_OPERATION_FAILURE);
+  }
+  std::string rtc_pch_str(rtc_pch, rtc_size);
+  header_sources.push_back(rtc_pch_str.data());
+  header_names.push_back("hiprtc_runtime.h");
+#endif
+
+  for (int i = 0; i < numHeaders; i++) {
+    header_sources.push_back(headers[i]);
+    header_names.push_back(headerNames[i]);
+  }
+
+  amd::Program* program =
+      new amd::Program(*hip::getCurrentDevice()->asContext(), src, amd::Program::HIP,
+                       header_sources.size(), header_sources.data(), header_names.data());
   if (program == NULL) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
@@ -268,6 +290,12 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   oarr.push_back(hipVerMajor);
   oarr.push_back(hipVerMinor);
   oarr.push_back(hipVerPatch);
+#ifdef __HIP_ENABLE_RTC
+  oarr.push_back("-D__HIPCC_RTC__");
+  oarr.push_back("-include hiprtc_runtime.h");
+  oarr.push_back("-std=c++14");
+  oarr.push_back("-nogpuinc");
+#endif
 
   transformOptions(oarr, program);
   std::copy(oarr.begin(), oarr.end(), std::ostream_iterator<std::string>(ostrstr, " "));
