@@ -325,9 +325,7 @@ global:
     hipGraphMemcpyNodeSetParams;
     hipGraphMemsetNodeGetParams;
     hipGraphMemsetNodeSetParams;
-    hipGraphExecKernelNodeSetParams;
     hipGraphAddDependencies;
-    hipGraphAddEmptyNode;
 local:
     *;
 }hip_4.3;
