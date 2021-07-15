@@ -299,6 +299,4 @@ hipGraphMemcpyNodeGetParams
 hipGraphMemcpyNodeSetParams
 hipGraphMemsetNodeGetParams
 hipGraphMemsetNodeSetParams
-hipGraphExecKernelNodeSetParams
 hipGraphAddDependencies
-hipGraphAddEmptyNode
