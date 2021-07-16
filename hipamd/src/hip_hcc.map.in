@@ -172,10 +172,6 @@ global:
     hipStreamQuery;
     hipStreamSynchronize;
     hipStreamWaitEvent;
-    hipStreamWaitValue32;
-    hipStreamWaitValue64;
-    hipStreamWriteValue32;
-    hipStreamWriteValue64;
     __hipPopCallConfiguration;
     __hipPushCallConfiguration;
     __hipRegisterFatBinary;
@@ -326,6 +322,10 @@ global:
     hipGraphMemsetNodeGetParams;
     hipGraphMemsetNodeSetParams;
     hipGraphAddDependencies;
+    hipStreamWaitValue32;
+    hipStreamWaitValue64;
+    hipStreamWriteValue32;
+    hipStreamWriteValue64;
 local:
     *;
-}hip_4.3;
+} hip_4.3;

@@ -2139,27 +2139,27 @@ typedef struct hip_api_data_s {
     struct {
       hipStream_t stream;
       void* ptr;
-      int32_t value;
+      uint32_t value;
       unsigned int flags;
       unsigned int mask;
     } hipStreamWaitValue32;
     struct {
       hipStream_t stream;
       void* ptr;
-      int64_t value;
+      uint64_t value;
       unsigned int flags;
       uint64_t mask;
     } hipStreamWaitValue64;
     struct {
       hipStream_t stream;
       void* ptr;
-      int32_t value;
+      uint32_t value;
       unsigned int flags;
     } hipStreamWriteValue32;
     struct {
       hipStream_t stream;
       void* ptr;
-      int64_t value;
+      uint64_t value;
       unsigned int flags;
     } hipStreamWriteValue64;
     struct {
@@ -3626,7 +3626,7 @@ typedef struct hip_api_data_s {
 #define INIT_hipStreamWaitValue32_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamWaitValue32.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamWaitValue32.ptr = (void*)ptr; \
-  cb_data.args.hipStreamWaitValue32.value = (int32_t)value; \
+  cb_data.args.hipStreamWaitValue32.value = (uint32_t)value; \
   cb_data.args.hipStreamWaitValue32.flags = (unsigned int)flags; \
   cb_data.args.hipStreamWaitValue32.mask = (unsigned int)mask; \
 };
@@ -3634,7 +3634,7 @@ typedef struct hip_api_data_s {
 #define INIT_hipStreamWaitValue64_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamWaitValue64.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamWaitValue64.ptr = (void*)ptr; \
-  cb_data.args.hipStreamWaitValue64.value = (int64_t)value; \
+  cb_data.args.hipStreamWaitValue64.value = (uint64_t)value; \
   cb_data.args.hipStreamWaitValue64.flags = (unsigned int)flags; \
   cb_data.args.hipStreamWaitValue64.mask = (uint64_t)mask; \
 };
@@ -3642,14 +3642,14 @@ typedef struct hip_api_data_s {
 #define INIT_hipStreamWriteValue32_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamWriteValue32.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamWriteValue32.ptr = (void*)ptr; \
-  cb_data.args.hipStreamWriteValue32.value = (int32_t)value; \
+  cb_data.args.hipStreamWriteValue32.value = (uint32_t)value; \
   cb_data.args.hipStreamWriteValue32.flags = (unsigned int)flags; \
 };
 // hipStreamWriteValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('int64_t', 'value'), ('unsigned int', 'flags')]
 #define INIT_hipStreamWriteValue64_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamWriteValue64.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamWriteValue64.ptr = (void*)ptr; \
-  cb_data.args.hipStreamWriteValue64.value = (int64_t)value; \
+  cb_data.args.hipStreamWriteValue64.value = (uint64_t)value; \
   cb_data.args.hipStreamWriteValue64.flags = (unsigned int)flags; \
 };
 // hipTexRefGetAddress[('hipDeviceptr_t*', 'dev_ptr'), ('const textureReference*', 'texRef')]
@@ -4725,16 +4725,16 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipStreamWaitEvent[('hipStream_t', 'stream'), ('hipEvent_t', 'event'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamWaitEvent:
       break;
-// hipStreamWaitValue32[('hipStream_t', 'stream'), ('void*', 'ptr'), ('int32_t', 'value'), ('unsigned int', 'flags'), ('unsigned int', 'mask')]
+// hipStreamWaitValue32[('hipStream_t', 'stream'), ('void*', 'ptr'), ('uint32_t', 'value'), ('unsigned int', 'flags'), ('unsigned int', 'mask')]
     case HIP_API_ID_hipStreamWaitValue32:
       break;
-// hipStreamWaitValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('int64_t', 'value'), ('unsigned int', 'flags'), ('uint64_t', 'mask')]
+// hipStreamWaitValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('uint64_t', 'value'), ('unsigned int', 'flags'), ('uint64_t', 'mask')]
     case HIP_API_ID_hipStreamWaitValue64:
       break;
-// hipStreamWriteValue32[('hipStream_t', 'stream'), ('void*', 'ptr'), ('int32_t', 'value'), ('unsigned int', 'flags')]
+// hipStreamWriteValue32[('hipStream_t', 'stream'), ('void*', 'ptr'), ('uint32_t', 'value'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamWriteValue32:
       break;
-// hipStreamWriteValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('int64_t', 'value'), ('unsigned int', 'flags')]
+// hipStreamWriteValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('uint64_t', 'value'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamWriteValue64:
       break;
 // hipTexRefGetAddress[('hipDeviceptr_t*', 'dev_ptr'), ('const textureReference*', 'texRef')]
