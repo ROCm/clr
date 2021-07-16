@@ -646,7 +646,7 @@ class FillMemoryCommand : public OneMemoryArgCommand {
 
 class StreamOperationCommand : public OneMemoryArgCommand {
  private:
-  int64_t value_;       // !< Value to Wait on or to Write.
+  uint64_t value_;       // !< Value to Wait on or to Write.
   uint64_t mask_;       // !< Mask to be applied on signal value for Wait operation.
   unsigned int flags_;  // !< Flags defining the Wait condition.
   size_t offset_;       // !< Offset into memory for Write
@@ -657,7 +657,7 @@ class StreamOperationCommand : public OneMemoryArgCommand {
 
  public:
   StreamOperationCommand(HostQueue& queue, cl_command_type cmdType,
-                         const EventWaitList& eventWaitList, Memory& memory, const int64_t value,
+                         const EventWaitList& eventWaitList, Memory& memory, const uint64_t value,
                          const uint64_t mask, unsigned int flags, size_t offset, size_t sizeBytes)
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         value_(value),
@@ -675,7 +675,7 @@ class StreamOperationCommand : public OneMemoryArgCommand {
   virtual void submit(device::VirtualDevice& device) { device.submitStreamOperation(*this); }
 
   //! Returns the value
-  const int64_t value() const { return value_; }
+  const uint64_t value() const { return value_; }
   //! Returns the wait mask
   const uint64_t mask() const { return mask_; }
   //! Return the wait flags
