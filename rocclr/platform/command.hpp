@@ -242,6 +242,8 @@ class Command : public Event {
   const Event* waitingEvent_;     //!< Waiting event associated with the marker
 
  protected:
+  bool cpu_wait_ = false;         //!< If true, then the command was issued for CPU/GPU sync
+
   //! The Events that need to complete before this command is submitted.
   EventWaitList eventWaitList_;
 
@@ -336,6 +338,9 @@ class Command : public Event {
   Command* GetBatchHead() const { return batch_head_; }
 
   const Event* waitingEvent() const { return waitingEvent_; }
+
+  //! Check if this command(should be a marker) requires CPU wait
+  bool CpuWaitRequested() const { return cpu_wait_; }
 };
 
 class UserEvent : public Command {
@@ -998,22 +1003,14 @@ class ExternalSemaphoreCmd : public Command {
 
 
 class Marker : public Command {
- private:
-  bool cpu_wait_;   //!< If true, then the marker was issued for CPU/GPU sync
-
  public:
   //! Create a new Marker
   Marker(HostQueue& queue, bool userVisible, const EventWaitList& eventWaitList = nullWaitList,
          const Event* waitingEvent = nullptr, bool cpu_wait = false)
-      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent)
-      , cpu_wait_(cpu_wait) {}
+      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent) { cpu_wait_ = cpu_wait; }
 
   //! The actual command implementation.
   virtual void submit(device::VirtualDevice& device) { device.submitMarker(*this); }
-
-  //! Check if this marker requires CPU wait
-  bool CpuWaitRequested() const { return cpu_wait_; }
-
 };
 
 /*! \brief  Maps CL objects created from external ones and syncs the contents (blocking).
