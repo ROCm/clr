@@ -403,7 +403,8 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     ts->AddProfilingSignal(prof_signal);
     // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
     // requires the batch update upon HSA signal completion
-    if (AMD_DIRECT_DISPATCH && (ts->command().GetBatchHead() != nullptr)) {
+    if (AMD_DIRECT_DISPATCH && (ts->command().GetBatchHead() != nullptr) &&
+        !ts->command().CpuWaitRequested()) {
       uint32_t init_value = kInitSignalValueOne;
       // If API callback is enabled, then use a blocking signal for AQL queue.
       // HSA signal will be acquired in SW and released after HSA signal callback
@@ -421,6 +422,9 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
           prof_signal->signal_.handle, prof_signal);
       }
+      // Update the current command/marker with HW event
+      prof_signal->retain();
+      ts->command().SetHwEvent(prof_signal);
     }
     if (!sdma_profiling_) {
       hsa_amd_profiling_async_copy_enable(true);
@@ -1253,13 +1257,6 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
       timestamp_->end();
     }
     command.setData(timestamp_);
-
-    // Update HW event only for batches
-    if ((AMD_DIRECT_DISPATCH) && (command.GetBatchHead() != nullptr)) {
-      timestamp_->Signals().back()->retain();
-      command.SetHwEvent(timestamp_->Signals().back());
-    }
-
     timestamp_ = nullptr;
   }
 }
@@ -2949,7 +2946,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   if (AMD_DIRECT_DISPATCH || vcmd.profilingInfo().marker_ts_) {
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
-    if (vcmd.CpuWaitRequested() && hasPendingDispatch_ == false) {
+    if (vcmd.CpuWaitRequested()) {
       // It should be safe to call flush directly if there are not pending dispatches without
       // HSA signal callback
       flush(vcmd.GetBatchHead());

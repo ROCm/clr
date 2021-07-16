@@ -89,7 +89,7 @@ class Timestamp : public amd::HeapObject {
   uint64_t    start_;
   uint64_t    end_;
   VirtualGPU* gpu_;               //!< Virtual GPU, associated with this timestamp
-  const amd::Command& command_;   //!< Command, associated with this timestamp
+  amd::Command& command_;         ///!< Command, associated with this timestamp
   amd::Command* parsedCommand_;   //!< Command down the list, considering command_ as head
   std::vector<ProfilingSignal*> signals_; //!< The list of all signals, associated with the TS
   hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
@@ -98,7 +98,7 @@ class Timestamp : public amd::HeapObject {
   Timestamp& operator=(const Timestamp&) = delete;
 
  public:
-  Timestamp(VirtualGPU* gpu, const amd::Command& command)
+  Timestamp(VirtualGPU* gpu, amd::Command& command)
     : start_(std::numeric_limits<uint64_t>::max())
     , end_(0)
     , gpu_(gpu)
@@ -144,7 +144,7 @@ class Timestamp : public amd::HeapObject {
   static double getGpuTicksToTime() { return ticksToTime_; }
 
   //! Returns amd::command assigned to this timestamp
-  const amd::Command& command() const { return command_; }
+  amd::Command& command() const { return command_; }
 
   //! Sets the parsed command
   void setParsedCommand(amd::Command* command) { parsedCommand_ = command; }
