@@ -508,7 +508,7 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
     } else {
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
               std::this_thread::get_id(), signal->signal_.handle);
-      if (!WaitForSignal(signal->signal_)) {
+      if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
         LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
         return false;
       }
