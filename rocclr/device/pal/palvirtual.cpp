@@ -1725,7 +1725,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
       // Map/unmap must be serialized
       amd::ScopedLock lock(owner->lockMemoryOps());
       memory->unmap(this);
-      if (memory->getMapount() == 0) {
+      if (memory->getMapCount() == 0) {
         memory->setPersistentMapFlag(false);
       }
     } else if (memory->mapMemory() != nullptr) {
