@@ -178,7 +178,7 @@ def parse_api(inp_file_p, out):
       m = api_pattern.match(record)
       if m:
         found = 0
-        if end_pattern.search(record): break
+        if end_pattern.search(record): continue
         api_name = filtr_api_name(m.group(2))
         api_args = m.group(3)
         if not api_name in out:
