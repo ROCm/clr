@@ -45,34 +45,34 @@ constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 template <bool active_wait_timeout = false>
-inline bool WaitForSignal(hsa_signal_t signal) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
   if (hsa_signal_load_relaxed(signal) > 0) {
-    if (active_wait_timeout) {
-      uint64_t timeout = ROC_ACTIVE_WAIT_TIMEOUT * K;
+    uint64_t timeout = kTimeout100us;
+    if (active_wait) {
+      timeout = kUnlimitedWait;
+    } else if (active_wait_timeout) {
+      timeout = ROC_ACTIVE_WAIT_TIMEOUT * K;
       if (timeout == 0) {
         return false;
       }
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d us",
-              signal.handle, ROC_ACTIVE_WAIT_TIMEOUT);
+    }
 
-      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
+            signal.handle, timeout);
+
+    // Active wait with a timeout
+    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                  timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
+      if (active_wait_timeout) {
         return false;
       }
-    } else {
-
-      uint64_t timeout = kTimeout100us;
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host wait until Signal = (0x%lx) decremented",
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
               signal.handle);
 
-      // Active wait with a timeout
+      // Wait until the completion with CPU suspend
       if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-        // Wait until the completion with CPU suspend
-        if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                      kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
-          return false;
-        }
+                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
+        return false;
       }
     }
   }
