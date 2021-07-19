@@ -238,12 +238,10 @@ if(__HIP_ENABLE_RTC)
   target_link_libraries(amdhip64 PRIVATE ${HIPRTC_GEN_OBJ})
   target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
   add_dependencies(amdhip64 hiprtc-builtins)
-  # Windows will install the library to the bin directory instead.
-  if(WIN32)
-    install(TARGETS hiprtc-builtins DESTINATION ${CMAKE_INSTALL_BINDIR})
-  else()
-    install(TARGETS hiprtc-builtins DESTINATION lib)
-  endif()
+  install(TARGETS hiprtc-builtins
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 #############################
