@@ -1246,7 +1246,7 @@ class MemObjMap : public AllStatic {
   static amd::Memory* FindMemObj(
       const void* k);  //!< find the mem object based on the input pointer
   static void UpdateAccess(amd::Device *peerDev);
-  static void Purge(amd::Device*dev); //!< Purge all the memories on the given device
+  static void Purge(amd::Device* dev); //!< Purge all user allocated memories on the given device
  private:
   static std::map<uintptr_t, amd::Memory*>
       MemObjMap_;                      //!< the mem object<->hostptr information container
