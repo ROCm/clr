@@ -279,6 +279,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectTextureDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureReference = HIP_API_ID_NONE,
+  HIP_API_ID_hipGraphAddMemcpyNode1D = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpy2DArrayToArray = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyArrayToArray = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyAtoA = HIP_API_ID_NONE,
@@ -3769,6 +3770,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetTextureObjectTextureDesc_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureReference()
 #define INIT_hipGetTextureReference_CB_ARGS_DATA(cb_data) {};
+// hipGraphAddMemcpyNode1D()
+#define INIT_hipGraphAddMemcpyNode1D_CB_ARGS_DATA(cb_data) {};
 // hipMemcpy2DArrayToArray()
 #define INIT_hipMemcpy2DArrayToArray_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyArrayToArray()
