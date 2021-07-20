@@ -302,7 +302,7 @@ hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) 
   if (stream == nullptr || s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  s->SetCaptureGraph(new hipGraph());
+  s->SetCaptureGraph(new ihipGraph());
   s->SetCaptureMode(mode);
   s->SetOriginStream();
   g_captureStreams.push_back(stream);
@@ -339,7 +339,7 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
 
 hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags) {
   HIP_INIT_API(hipGraphCreate, pGraph, flags);
-  *pGraph = new hipGraph();
+  *pGraph = new ihipGraph();
   HIP_RETURN(hipSuccess);
 }
 
