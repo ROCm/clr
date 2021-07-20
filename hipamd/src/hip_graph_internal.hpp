@@ -32,6 +32,7 @@
 #include "hip_graph_helper.hpp"
 
 typedef hipGraphNode* Node;
+hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams);
 
 struct hipGraphNode {
  protected:
@@ -123,6 +124,24 @@ class hipGraphKernelNode : public hipGraphNode {
   void SetParams(const hipKernelNodeParams* params) {
     std::memcpy(pKernelParams_, params, sizeof(hipKernelNodeParams));
   }
+  hipError_t SetCommandParams(const hipKernelNodeParams* params) {
+    if (params->func != pKernelParams_->func) {
+      return hipErrorInvalidValue;
+    }
+    // updates kernel params
+    hipError_t status = ihipValidateKernelParams(params);
+    if (hipSuccess != status) {
+      return status;
+    }
+    size_t globalWorkOffset[3] = {0};
+    size_t globalWorkSize[3] = {params->gridDim.x, params->gridDim.y, params->gridDim.z};
+    size_t localWorkSize[3] = {params->blockDim.x, params->blockDim.y, params->blockDim.z};
+    reinterpret_cast<amd::NDRangeKernelCommand*>(commands_[0])
+        ->setSizes(globalWorkOffset, globalWorkSize, localWorkSize);
+    reinterpret_cast<amd::NDRangeKernelCommand*>(commands_[0])
+        ->setSharedMemBytes(params->sharedMemBytes);
+    return hipSuccess;
+  }
 };
 
 class hipGraphMemcpyNode : public hipGraphNode {
@@ -149,7 +168,6 @@ class hipGraphMemcpyNode : public hipGraphNode {
     std::memcpy(pCopyParams_, params, sizeof(hipMemcpy3DParms));
   }
 };
-
 
 class hipGraphMemcpyNode1D : public hipGraphNode {
   void* dst_;
@@ -312,6 +330,20 @@ class hipGraphHostNode : public hipGraphNode {
   }
   void SetParams(hipHostNodeParams* params) {
     std::memcpy(pNodeParams_, params, sizeof(hipHostNodeParams));
+  }
+};
+
+class hipGraphEmptyNode : public hipGraphNode {
+ public:
+  hipGraphEmptyNode() : hipGraphNode(hipGraphNodeTypeEmpty) {}
+  ~hipGraphEmptyNode() {}
+
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    amd::Command::EventWaitList waitList;
+    commands_.reserve(1);
+    amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
+    commands_.emplace_back(command);
+    return hipSuccess;
   }
 };
 

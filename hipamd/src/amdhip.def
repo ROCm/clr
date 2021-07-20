@@ -281,6 +281,7 @@ hipGraphDestroy
 hipGraphAddKernelNode
 hipGraphAddMemsetNode
 hipGraphAddMemcpyNode
+hipGraphAddMemcpyNode1D
 hipGraphInstantiate
 hipGraphLaunch
 hipStreamIsCapturing
@@ -300,3 +301,5 @@ hipGraphMemcpyNodeSetParams
 hipGraphMemsetNodeGetParams
 hipGraphMemsetNodeSetParams
 hipGraphAddDependencies
+hipGraphExecKernelNodeSetParams
+hipGraphAddEmptyNode
