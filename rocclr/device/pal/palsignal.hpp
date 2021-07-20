@@ -24,8 +24,6 @@
 
 #include <amd_hsa_signal.h>
 
-#include "palEvent.h"
-
 namespace pal {
 
 class Device;
@@ -34,7 +32,6 @@ class Signal: public device::Signal {
 private:
   const Device* dev_;
   amd_signal_t* amdSignal_;
-  Util::Event   event_;
 
 public:
   ~Signal() override;

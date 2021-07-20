@@ -29,21 +29,6 @@ namespace pal {
 
 Signal::~Signal() {
   dev_->context().svmFree(amdSignal_);
-
-  if (ws_ == device::Signal::WaitState::Blocked) {
-#if defined(_WIN32)
-    Pal::Result result = Pal::Result::Success;
-
-    Pal::UnregisterEventInfo eventInfo = {};
-    eventInfo.pEvent = &event_;
-    eventInfo.trackingType = Pal::EventTrackingType::ShaderInterrupt;
-    result = dev_->iDev()->UnregisterEvent(eventInfo);
-    if (result != Pal::Result::Success) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
-              "Failed to unregister SQ event needed for hostcall buffer");
-    }
-#endif
-  }
 }
 
 bool Signal::Init(const amd::Device& dev, uint64_t init, device::Signal::WaitState ws) {
@@ -61,47 +46,6 @@ bool Signal::Init(const amd::Device& dev, uint64_t init, device::Signal::WaitSta
 
   amdSignal_ = new (buffer) amd_signal_t();
   amdSignal_->value = init;
-
-  if (ws_ == device::Signal::WaitState::Blocked) {
-#if defined(_WIN32)
-    Pal::Result result = Pal::Result::Success;
-
-    Util::EventCreateFlags flags = {};
-    flags.manualReset = false;
-    flags.initiallySignaled = false;
-    result = event_.Init(flags);
-    if (result != Pal::Result::Success) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
-              "Failed to create Pal::Util::Event needed for hostcall buffer");
-      return false;
-    }
-
-    result = event_.Set();
-    if (result != Pal::Result::Success) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
-              "Failed to set Pal::Util::Event needed for hostcall buffer");
-      return false;
-    }
-
-    Pal::RegisterEventInfo eventInputInfo = {};
-    eventInputInfo.pEvent = &event_;
-    eventInputInfo.trackingType = Pal::EventTrackingType::ShaderInterrupt;
-    Pal::RegisterEventOutputInfo eventOutputInfo = {};
-    result = dev_->iDev()->RegisterEvent(
-      eventInputInfo,
-      &eventOutputInfo);
-    if (result != Pal::Result::Success) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
-              "Failed to register SQ event needed for hostcall buffer");
-      return false;
-    }
-    amdSignal_->event_id = eventOutputInfo.shaderInterrupt.eventId;
-    amdSignal_->event_mailbox_ptr = eventOutputInfo.shaderInterrupt.eventMailboxGpuVa;
-    ClPrint(amd::LOG_INFO, amd::LOG_INIT,
-            "Registered SQ event %d with mailbox slot %p",
-            amdSignal_->event_id, amdSignal_->event_mailbox_ptr);
-#endif
-  }
 
   return true;
 }
@@ -123,19 +67,7 @@ uint64_t Signal::Wait(uint64_t value, device::Signal::Condition c, uint64_t time
   } (c);
 
   if (ws_ == device::Signal::WaitState::Blocked) {
-#if defined(_WIN32)
-    Pal::Result result = Pal::Result::Success;
-
-    float timeoutInSec = timeout / (1000 * 1000);
-    result = event_.Wait(timeoutInSec);
-
-    if (result != Pal::Result::Success) {
-      return -1;
-    }
-
-    std::atomic_thread_fence(std::memory_order_acquire);
-    return amdSignal_->value;
-#endif
+    guarantee(false, "Unimplemented");
   } else if (ws_ == device::Signal::WaitState::Active) {
     auto start = amd::Os::timeNanos();
     while (true) {
