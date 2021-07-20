@@ -508,6 +508,7 @@ bool HSAILProgram::createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_p
   }
 
   /* Create a View from the global pal::Memory */
+  flags = ROCCLR_MEM_INTERNAL_MEMORY;
   parent = codeSegGpu_->owner();
   *amd_mem_obj = new (parent->getContext()) amd::Buffer(*parent, flags, offset, *bytes);
 

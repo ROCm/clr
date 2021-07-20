@@ -38,7 +38,8 @@
 #include <memory>
 #include <limits>
 #define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
-#define ROCCLR_MEM_HSA_SIGNAL_MEMORY (1u << 30)
+#define ROCCLR_MEM_HSA_SIGNAL_MEMORY                (1u << 30)
+#define ROCCLR_MEM_INTERNAL_MEMORY                  (1u << 29)
 
 namespace device {
 class Memory;

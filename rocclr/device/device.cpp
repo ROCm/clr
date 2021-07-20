@@ -333,9 +333,11 @@ void MemObjMap::Purge(amd::Device* dev) {
   assert(dev != nullptr);
 
   amd::ScopedLock lock(AllocatedLock_);
-  for (auto it = MemObjMap_.cbegin() ; it != MemObjMap_.cend() ;) {
-    const std::vector<Device*>& devices = it->second->getContext().devices();
-    if (devices.size() == 1 && devices[0] == dev) {
+  for (auto it = MemObjMap_.cbegin(); it != MemObjMap_.cend(); ) {
+    amd::Memory* memObj = it->second;
+    unsigned int flags = memObj->getMemFlags();
+    const std::vector<Device*>& devices = memObj->getContext().devices();
+    if (devices.size() == 1 && devices[0] == dev && !(flags & ROCCLR_MEM_INTERNAL_MEMORY)) {
       it = MemObjMap_.erase(it);
     } else {
       ++it;
