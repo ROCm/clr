@@ -58,15 +58,15 @@ class hipGraphNode {
   void SetLevel(uint32_t level) { level_ = level; }
 };
 
-class hipGraph {
+class ihipGraph {
   std::unordered_map<Node, size_t> nodeInDegree_;   // count of in coming edges for every vertex
   std::unordered_map<Node, size_t> nodeOutDegree_;  // count of outgoing edges for every vertex
   std::vector<Node> vertices_;
   std::unordered_map<Node, std::vector<Node>> edges_;
 
  public:
-  hipGraph() {}
-  ~hipGraph(){};
+  ihipGraph() {}
+  ~ihipGraph(){};
   /// add node to the graph
   hipError_t AddNode(const Node& node);
   /// add edge to the graph

@@ -45,7 +45,7 @@ const char* GetGraphNodeTypeString(uint32_t op) {
   return case_string;
 };
 
-hipError_t hipGraph::AddNode(const Node& node) {
+hipError_t ihipGraph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
   nodeOutDegree_[node] = 0;
   nodeInDegree_[node] = 0;
@@ -55,7 +55,7 @@ hipError_t hipGraph::AddNode(const Node& node) {
   return hipSuccess;
 }
 
-hipError_t hipGraph::AddEdge(const Node& parentNode, const Node& childNode) {
+hipError_t ihipGraph::AddEdge(const Node& parentNode, const Node& childNode) {
   // if vertice doesn't exist, add it to the graph
   if (std::find(vertices_.begin(), vertices_.end(), parentNode) == vertices_.end()) {
     AddNode(parentNode);
@@ -84,7 +84,7 @@ hipError_t hipGraph::AddEdge(const Node& parentNode, const Node& childNode) {
 }
 
 // root nodes are all vertices with 0 in-degrees
-std::vector<Node> hipGraph::GetRootNodes() const {
+std::vector<Node> ihipGraph::GetRootNodes() const {
   std::vector<Node> roots;
   for (auto entry : vertices_) {
     if (nodeInDegree_.at(entry) == 0) {
@@ -98,7 +98,7 @@ std::vector<Node> hipGraph::GetRootNodes() const {
 }
 
 // leaf nodes are all vertices with 0 out-degrees
-std::vector<Node> hipGraph::GetLeafNodes() const {
+std::vector<Node> ihipGraph::GetLeafNodes() const {
   std::vector<Node> leafNodes;
   for (auto entry : vertices_) {
     if (nodeOutDegree_.at(entry) == 0) {
@@ -108,7 +108,7 @@ std::vector<Node> hipGraph::GetLeafNodes() const {
   return leafNodes;
 }
 
-size_t hipGraph::GetLeafNodeCount() const {
+size_t ihipGraph::GetLeafNodeCount() const {
   int numLeafNodes = 0;
   for (auto entry : vertices_) {
     if (nodeOutDegree_.at(entry) == 0) {
@@ -118,7 +118,7 @@ size_t hipGraph::GetLeafNodeCount() const {
   return numLeafNodes;
 }
 
-std::vector<std::pair<Node, Node>> hipGraph::GetEdges() const {
+std::vector<std::pair<Node, Node>> ihipGraph::GetEdges() const {
   std::vector<std::pair<Node, Node>> edges;
   for (const auto& i : edges_) {
     for (const auto& j : i.second) {
@@ -128,7 +128,7 @@ std::vector<std::pair<Node, Node>> hipGraph::GetEdges() const {
   return edges;
 }
 
-void hipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
+void ihipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
                               std::vector<Node>& singleList,
                               std::vector<std::vector<Node>>& parallelLists,
                               std::unordered_map<Node, std::vector<Node>>& dependencies) {
@@ -174,7 +174,7 @@ void hipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
 }
 // The function to do Topological Sort.
 // It uses recursive GetRunListUtil()
-void hipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
+void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
                           std::unordered_map<Node, std::vector<Node>>& dependencies) {
   std::vector<Node> singleList;
 
@@ -196,7 +196,7 @@ void hipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
 }
 
-hipError_t hipGraph::LevelOrder(std::vector<Node>& levelOrder) {
+hipError_t ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
   std::vector<Node> roots = GetRootNodes();
   std::unordered_map<Node, bool> visited;
   std::queue<Node> q;
