@@ -100,10 +100,13 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
 {
   HIP_INIT_API(hipModuleGetGlobal, dptr, bytes, hmod, name);
 
-  if(dptr == nullptr || bytes == nullptr || name == nullptr) {
+  if (dptr == nullptr || bytes == nullptr) {
+    // If either is nullptr, ignore it
+    return hipSuccess;
+  }
+  if (name == nullptr) {
     return hipErrorInvalidValue;
   }
-
   /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynGlobalVar(name, hmod, dptr, bytes)) {
     LogPrintfError("Cannot find global Var: %s for module: 0x%x at device: %d \n", name, hmod,
