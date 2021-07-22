@@ -136,6 +136,16 @@ class NDRangeContainer : public HeapObject {
     }
   }
 
+  //! updates nd-range container
+  void update(size_t dimensions, const size_t* globalWorkOffset, const size_t* globalWorkSize,
+              const size_t* localWorkSize) {
+    for (size_t i = 0; i < dimensions; ++i) {
+      offset_[i] = globalWorkOffset != NULL ? globalWorkOffset[i] : 0;
+      global_[i] = globalWorkSize[i];
+      local_[i] = localWorkSize[i];
+    }
+  }
+
   //! Return the number of dimensions.
   size_t dimensions() const { return dimensions_; }
 
