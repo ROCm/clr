@@ -6,10 +6,10 @@
 ## Getting the source code
 
 ```bash
-git clone -b rocm-4.4.x https://github.com/ROCm-Developer-Tools/hipamd.git
-git clone -b rocm-4.4.x https://github.com/ROCm-Developer-Tools/hip.git
-git clone -b rocm-4.4.x https://github.com/ROCm-Developer-Tools/ROCclr.git
-git clone -b rocm-4.4.x https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime.git
+git clone -b develop https://github.com/ROCm-Developer-Tools/hipamd.git
+git clone -b develop https://github.com/ROCm-Developer-Tools/hip.git
+git clone -b develop https://github.com/ROCm-Developer-Tools/ROCclr.git
+git clone -b develop https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime.git
 ```
 
 ## Set the environment variables
@@ -21,8 +21,8 @@ export ROCclr_DIR="$(readlink -f ROCclr)"
 export OPENCL_DIR="$(readlink -f ROCm-OpenCL-Runtime)"
 ```
 
-## Build AMDHIP
-Commands to build amdhip are as following,
+## Build HIPAMD
+Commands to build hipamd are as following,
 
 ```bash
 cd "$HIPAMD_DIR"
@@ -33,6 +33,6 @@ sudo make install
 ```
 
 Note,
-HIP_COMMON_DIR looks for hip common source codes.
-By default, release version of AMDHIP is built.
+HIP_COMMON_DIR looks for hip common ([HIP](https://github.com/ROCm-Developer-Tools/HIP/)) source codes.
+By default, release version of hipamd is built.
 
