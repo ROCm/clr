@@ -198,6 +198,9 @@ inline static CUresourcetype hipResourcetype_enumToCUresourcetype(
     }
 }
 
+// hipStreamPerThread
+#define hipStreamPerThread ((cudaStream_t)2)
+
 #define hipTexRef CUtexref
 #define hiparray CUarray
 

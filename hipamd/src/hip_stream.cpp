@@ -172,10 +172,14 @@ void Stream::destroyAllStreams(int deviceId) {
 }
 
 // ================================================================================================
-bool isValid(hipStream_t stream) {
+bool isValid(hipStream_t& stream) {
   // NULL stream is always valid
   if (stream == nullptr) {
     return true;
+  }
+
+  if (hipStreamPerThread == stream) {
+    getStreamPerThread(stream);
   }
 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
@@ -264,6 +268,36 @@ static hipError_t ihipStreamCreate(hipStream_t* stream,
   *stream = reinterpret_cast<hipStream_t>(hStream);
 
   return hipSuccess;
+}
+
+// ================================================================================================
+class stream_per_thread {
+private:
+  hipStream_t m_stream;
+public:
+  stream_per_thread():m_stream(nullptr) {}
+  stream_per_thread(const stream_per_thread& ) = delete;
+  void operator=(const stream_per_thread& ) = delete;
+  ~stream_per_thread() {
+    if (m_stream != nullptr && hip::isValid(m_stream)) {
+      delete reinterpret_cast<hip::Stream*>(m_stream);
+    }
+  }
+
+  hipStream_t& get() {
+    if (m_stream == nullptr) {
+      ihipStreamCreate(&m_stream, hipStreamDefault, hip::Stream::Priority::Normal);
+    }
+    return m_stream;
+  }
+};
+thread_local stream_per_thread streamPerThreadObj;
+
+// ================================================================================================
+hipError_t getStreamPerThread(hipStream_t& stream) {
+  if (stream == hipStreamPerThread) {
+    stream = streamPerThreadObj.get();
+  }
 }
 
 // ================================================================================================
@@ -520,6 +554,7 @@ hipError_t hipExtStreamCreateWithCUMask(hipStream_t* stream, uint32_t cuMaskSize
 // ================================================================================================
 hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
   HIP_INIT_API(hipStreamGetPriority, stream, priority);
+
   if ((priority != nullptr) && (stream != nullptr)) {
     if (!hip::isValid(stream)) {
       return HIP_RETURN(hipErrorContextIsDestroyed);
@@ -576,7 +611,7 @@ hipError_t hipExtStreamGetCUMask(hipStream_t stream, uint32_t cuMaskSize, uint32
 
   // if the stream is null then either return globalCUMask_ (if it is defined)
   // or return defaultCUMask
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamPerThread) {
     if (info.globalCUMask_.size() != 0) {
       std::copy(info.globalCUMask_.begin(), info.globalCUMask_.end(), cuMask);
     } else {

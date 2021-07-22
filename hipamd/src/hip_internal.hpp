@@ -127,6 +127,7 @@ typedef struct ihipIpcEventHandle_st {
   } while (0);
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
+  getStreamPerThread(stream);                                                                      \
   if (stream != nullptr &&                                                                         \
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
@@ -325,7 +326,7 @@ namespace hip {
   /// Get default stream of the thread
   extern amd::HostQueue* getNullStream();
   /// Check if stream is valid
-  extern bool isValid(hipStream_t stream);
+  extern bool isValid(hipStream_t& stream);
 };
 
 struct ihipExec_t {
@@ -347,6 +348,7 @@ extern int ihipGetDevice();
 extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
 extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset);
 extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size);
+extern hipError_t getStreamPerThread(hipStream_t& stream);
 
 constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;
