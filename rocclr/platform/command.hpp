@@ -915,8 +915,17 @@ class NDRangeKernelCommand : public Command {
   //! Return the kernel NDRange.
   const NDRangeContainer& sizes() const { return sizes_; }
 
+  //! updates kernel NDRange.
+  void setSizes(const size_t* globalWorkOffset, const size_t* globalWorkSize,
+                const size_t* localWorkSize) {
+    sizes_.update(3, globalWorkOffset, globalWorkSize, localWorkSize);
+  }
+
   //! Return the shared memory size
   uint32_t sharedMemBytes() const { return sharedMemBytes_; }
+
+  //! updates shared memory size
+  uint32_t setSharedMemBytes(uint32_t sharedMemBytes) { sharedMemBytes_ = sharedMemBytes; }
 
   //! Return the cooperative groups mode
   bool cooperativeGroups() const { return (extraParam_ & CooperativeGroups) ? true : false; }
