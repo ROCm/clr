@@ -33,7 +33,7 @@
 
 typedef hipGraphNode* Node;
 
-class hipGraphNode {
+struct hipGraphNode {
  protected:
   uint32_t level_;
   hipGraphNodeType type_;
@@ -58,7 +58,7 @@ class hipGraphNode {
   void SetLevel(uint32_t level) { level_ = level; }
 };
 
-class ihipGraph {
+struct ihipGraph {
   std::unordered_map<Node, size_t> nodeInDegree_;   // count of in coming edges for every vertex
   std::unordered_map<Node, size_t> nodeOutDegree_;  // count of outgoing edges for every vertex
   std::vector<Node> vertices_;
@@ -315,7 +315,7 @@ class hipGraphHostNode : public hipGraphNode {
   }
 };
 
-class hipGraphExec {
+struct hipGraphExec {
   std::vector<std::vector<Node>> parallelLists_;
   std::vector<Node> levelOrder_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
