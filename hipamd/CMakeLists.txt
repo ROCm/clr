@@ -49,7 +49,7 @@ else()
   set(_pchStatus 0)
 endif()
 
-if(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS MATCHES "ON")
+if(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
   add_definitions(-D__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
 endif()
 
