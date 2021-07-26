@@ -39,8 +39,14 @@ void init() {
   if (!amd::Runtime::initialized()) {
     amd::IS_HIP = true;
     GPU_NUM_MEM_DEPENDENCY = 0;
-    AMD_DIRECT_DISPATCH = flagIsDefault(AMD_DIRECT_DISPATCH) ? IS_LINUX : AMD_DIRECT_DISPATCH;
+#if DISABLE_DIRECT_DISPATCH
+    constexpr bool kDirectDispatch = false;
+#else
+    constexpr bool kDirectDispatch = IS_LINUX;
+#endif
+    AMD_DIRECT_DISPATCH = flagIsDefault(AMD_DIRECT_DISPATCH) ? kDirectDispatch : AMD_DIRECT_DISPATCH;
     amd::Runtime::init();
+    LogPrintfInfo("Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
   }
 
   const std::vector<amd::Device*>& devices = amd::Device::getDevices(CL_DEVICE_TYPE_GPU, false);
