@@ -1699,7 +1699,7 @@ inline static hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attribut
                 attributes->memoryType = hipMemoryTypeHost;
                 break;
             default:
-                return hipErrorUnknown;
+                return hipErrorInvalidValue;
         }
         attributes->device = cPA.device;
         attributes->devicePointer = cPA.devicePointer;
