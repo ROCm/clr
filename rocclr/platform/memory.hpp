@@ -651,7 +651,7 @@ class LiquidFlashFile : public RuntimeObject {
 class ArenaMemory: public Buffer {
 public:
   ArenaMemory(Context& context)
-    : Buffer(context, 0, std::numeric_limits<uint64_t>::max(),
+    : Buffer(context, 0, std::numeric_limits<size_t>::max(),
              reinterpret_cast<void*>(kArenaMemoryPtr)) {}
 };
 
