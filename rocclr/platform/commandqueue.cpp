@@ -221,23 +221,21 @@ void HostQueue::append(Command& command) {
     return;
   }
 
-  if (command.waitingEvent() == nullptr) {
-    // Set last submitted command
-    Command* prevLastEnqueueCommand;
-    command.retain();
-    {
-       // lastCmdLock_ ensures that lastEnqueueCommand() can retain the command before it is swapped
-       // out. We want to keep this critical section as short as possible, so the command should be
-       // released outside this section.
-       ScopedLock l(lastCmdLock_);
+  // Set last submitted command
+  Command* prevLastEnqueueCommand;
+  command.retain();
+  {
+    // lastCmdLock_ ensures that lastEnqueueCommand() can retain the command before it is swapped
+    // out. We want to keep this critical section as short as possible, so the command should be
+    // released outside this section.
+    ScopedLock l(lastCmdLock_);
 
-       prevLastEnqueueCommand = lastEnqueueCommand_;
-       lastEnqueueCommand_ = &command;
-    }
+    prevLastEnqueueCommand = lastEnqueueCommand_;
+    lastEnqueueCommand_ = &command;
+  }
 
-    if (prevLastEnqueueCommand != nullptr) {
-      prevLastEnqueueCommand->release();
-    }
+  if (prevLastEnqueueCommand != nullptr) {
+    prevLastEnqueueCommand->release();
   }
 }
 
