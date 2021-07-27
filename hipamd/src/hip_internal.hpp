@@ -348,7 +348,7 @@ extern int ihipGetDevice();
 extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
 extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset);
 extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size);
-extern hipError_t getStreamPerThread(hipStream_t& stream);
+extern void getStreamPerThread(hipStream_t& stream);
 
 constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;
