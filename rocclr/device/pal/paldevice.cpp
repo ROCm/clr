@@ -1396,7 +1396,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
       return nullptr;
     }
 
-    if (nullptr != owner.parent()->getSvmPtr()) {
+    if ((nullptr != owner.parent()->getSvmPtr()) &&
+        (owner.parent()->getContext().devices().size() > 1)) {
       amd::Memory* amdParent = owner.parent();
       {
         // Lock memory object, so only one commitment will occur
