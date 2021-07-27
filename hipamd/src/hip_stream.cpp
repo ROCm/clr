@@ -294,7 +294,7 @@ public:
 thread_local stream_per_thread streamPerThreadObj;
 
 // ================================================================================================
-hipError_t getStreamPerThread(hipStream_t& stream) {
+void getStreamPerThread(hipStream_t& stream) {
   if (stream == hipStreamPerThread) {
     stream = streamPerThreadObj.get();
   }
