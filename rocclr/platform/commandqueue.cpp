@@ -108,7 +108,7 @@ void HostQueue::finish() {
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
     // Check if the queue has nothing to process and return
-    if (command == nullptr) {
+    if (AMD_DIRECT_DISPATCH &&  command == nullptr) {
       return;
     }
   }
