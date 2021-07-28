@@ -925,7 +925,7 @@ class NDRangeKernelCommand : public Command {
   uint32_t sharedMemBytes() const { return sharedMemBytes_; }
 
   //! updates shared memory size
-  uint32_t setSharedMemBytes(uint32_t sharedMemBytes) { sharedMemBytes_ = sharedMemBytes; }
+  void setSharedMemBytes(uint32_t sharedMemBytes) { sharedMemBytes_ = sharedMemBytes; }
 
   //! Return the cooperative groups mode
   bool cooperativeGroups() const { return (extraParam_ & CooperativeGroups) ? true : false; }
