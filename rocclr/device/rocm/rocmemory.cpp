@@ -269,13 +269,12 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 
   if (status != HSA_STATUS_SUCCESS) return false;
 
-  //! @todo Need to handle metadata correctly
-#if 0
-  // if map_buffer wrote anything in metadata, copy it to amdImageDesc_
-  if (metadata_size != 0) {
+  // if map_buffer wrote a legitimate SRD, copy it to amdImageDesc_
+  if ((metadata_size != 0) &&
+      (reinterpret_cast<hsa_amd_image_descriptor_t*>(metadata)->deviceID ==
+       amdImageDesc_->deviceID)) {
     memcpy(amdImageDesc_, metadata, metadata_size);
   }
-#endif //0
 
   kind_ = MEMORY_KIND_INTEROP;
   assert(deviceMemory_ != nullptr && "Interop map failed to produce a pointer!");

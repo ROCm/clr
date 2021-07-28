@@ -96,7 +96,7 @@ else()
   option(BUILD_LINUXPRO "Build LinuxPro" OFF)
   if(BUILD_LINUXPRO)
     target_compile_definitions(rocclr PUBLIC
-      ROCCLR_DISABLE_PREVEGA ROCCLR_ENABLE_GL_SHARING)
+      ROCCLR_DISABLE_PREVEGA )
   endif()
 endif()
 
