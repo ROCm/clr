@@ -72,7 +72,7 @@ function(hip_add_interface_compile_flags TARGET)
 endfunction()
 
 function(hip_add_interface_link_flags TARGET)
-  if(CMAKE_VERSION VERSION_LESS 3.18)
+  if(CMAKE_VERSION VERSION_LESS 3.20)
     set_property(TARGET ${TARGET} APPEND PROPERTY
       INTERFACE_LINK_LIBRARIES "${ARGN}"
     )
