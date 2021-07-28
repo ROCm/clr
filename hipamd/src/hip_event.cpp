@@ -21,6 +21,9 @@
 #include <hip/hip_runtime.h>
 
 #include "hip_event.hpp"
+#if !defined(_MSC_VER)
+#include <unistd.h>
+#endif
 
 void ipcEventCallback(hipStream_t stream, hipError_t status, void* user_data)
 {
@@ -413,6 +416,8 @@ hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
   if (!createIpcEventShmemIfNeeded(e->ipc_evt_)) {
     HIP_RETURN(hipErrorInvalidConfiguration);
   }
+  e->ipc_evt_.ipc_shmem_->owners_device_id = e->deviceId();
+  e->ipc_evt_.ipc_shmem_->owners_process_id = getpid();
   ihipIpcEventHandle_t* iHandle = reinterpret_cast<ihipIpcEventHandle_t*>(handle);
   memset(iHandle->shmem_name, 0, HIP_IPC_HANDLE_SIZE);
   e->ipc_evt_.ipc_name_.copy(iHandle->shmem_name, std::string::npos);
@@ -441,6 +446,11 @@ hipError_t hipIpcOpenEventHandle(hipEvent_t* event, hipIpcEventHandle_t handle) 
   if (!amd::Os::MemoryMapFileTruncated(ipc_evt.ipc_name_.c_str(),
                     (const void**) &(ipc_evt.ipc_shmem_), sizeof(hip::ihipIpcEventShmem_t))) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (getpid() == ipc_evt.ipc_shmem_->owners_process_id.load()) {
+    // If this is in the same process, return error.
+    HIP_RETURN(hipErrorInvalidContext);
   }
 
   ipc_evt.ipc_shmem_->owners += 1;
