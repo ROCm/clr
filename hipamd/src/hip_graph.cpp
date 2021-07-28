@@ -50,6 +50,7 @@ hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams) {
   if (status != hipSuccess) {
     return status;
   }
+  return hipSuccess;
 }
 
 hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
