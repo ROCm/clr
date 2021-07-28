@@ -58,6 +58,7 @@ public:
 typedef struct ihipIpcEventShmem_s {
   std::atomic<int> owners;
   std::atomic<int> owners_device_id;
+  std::atomic<int> owners_process_id;
   std::atomic<int> read_index;
   std::atomic<int> write_index;
   std::atomic<int> signal[IPC_SIGNALS_PER_EVENT];
