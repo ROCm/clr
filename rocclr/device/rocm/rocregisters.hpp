@@ -18,13 +18,6 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-/*
-Definitions taken from Mesa radeonsi and GCN3 isa manual.
-https://cgit.freedesktop.org/mesa/mesa/tree/src/gallium/drivers/radeonsi/sid.h
-http://gpuopen.com/compute-product/amd-gcn3-isa-architecture-manual/
-
-WORD7 is defined in mesa but has no fields and isn't in GCN3 doc.  Can I use this?
-*/
 #pragma once
 
 #ifndef WITHOUT_HSA_BACKEND
