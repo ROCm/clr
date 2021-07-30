@@ -110,6 +110,7 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 
 // ================================================================================================
 void Timestamp::checkGpuTime() {
+  amd::ScopedLock s(lock_);
   if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
     uint64_t  end = 0;
@@ -140,7 +141,6 @@ void Timestamp::checkGpuTime() {
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
           "end = %ld", it->signal_.handle, start, end);
       }
-      it->ts_ = nullptr;
       it->done_ = true;
     }
     signals_.clear();
@@ -399,6 +399,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   if (ts != 0) {
     // Save HSA signal earlier to make sure the possible callback will have a valid
     // value for processing
+    ts->retain();
     prof_signal->ts_ = ts;
     ts->AddProfilingSignal(prof_signal);
     // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
@@ -437,7 +438,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
 // ================================================================================================
 std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine) {
   bool explicit_wait = false;
-  // Rest all current waiting signals
+  // Reset all current waiting signals
   waiting_signals_.clear();
 
   // Does runtime switch the active engine?
@@ -499,21 +500,22 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
-  amd::ScopedLock lock(signal->LockSignalOps());
   // Wait for the current signal
-  if (!signal->done_) {
+  if (signal->ts_ != nullptr) {
     // Update timestamp values if requested
-    if (signal->ts_ != nullptr) {
-      signal->ts_->checkGpuTime();
-    } else {
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
-              std::this_thread::get_id(), signal->signal_.handle);
-      if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
-        LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
-        return false;
-      }
-      signal->done_ = true;
+    auto ts = signal->ts_;
+    ts->checkGpuTime();
+    ts->release();
+    signal->ts_ = nullptr;
+  } else if (!signal->done_) {
+    amd::ScopedLock lock(signal->LockSignalOps());
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
+            std::this_thread::get_id(), signal->signal_.handle);
+    if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
+      LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
+      return false;
     }
+    signal->done_ = true;
   }
   return true;
 }
@@ -1079,7 +1081,7 @@ VirtualGPU::~VirtualGPU() {
   releasePinnedMem();
 
   if (timestamp_ != nullptr) {
-    delete timestamp_;
+    timestamp_->release();
     timestamp_ = nullptr;
     LogError("There was a timestamp that was not used; deleting.");
   }
@@ -1315,7 +1317,7 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
         ts = reinterpret_cast<Timestamp*>(current->data());
         startTimeStamp = ts->getStart();
         endTimeStamp = ts->getEnd();
-        delete ts;
+        ts->release();
         current->setData(nullptr);
       } else {
         // If we don't have a command that contains a valid timestamp,
