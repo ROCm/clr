@@ -42,6 +42,8 @@ find_package(AMD_OPENCL)
 
 add_library(rocclr STATIC)
 
+include(ROCclrCompilerOptions)
+
 set(ROCCLR_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
 mark_as_advanced(ROCCLR_SRC_DIR)
 
