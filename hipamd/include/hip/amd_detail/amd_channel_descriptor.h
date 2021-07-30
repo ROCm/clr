@@ -24,7 +24,7 @@ THE SOFTWARE.
 #define HIP_INCLUDE_HIP_AMD_DETAIL_CHANNEL_DESCRIPTOR_H
 
 #include <hip/hip_common.h>
-#include <hip/amd_detail/amd_driver_types.h>
+#include <hip/driver_types.h>
 #include <hip/amd_detail/amd_hip_vector_types.h>
 
 #ifdef __cplusplus
