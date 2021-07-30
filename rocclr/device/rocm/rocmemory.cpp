@@ -1005,28 +1005,28 @@ void Image::populateImageDescriptor() {
   switch (image->getType()) {
     case CL_MEM_OBJECT_IMAGE1D:
       imageDescriptor_.geometry = HSA_EXT_IMAGE_GEOMETRY_1D;
-      imageDescriptor_.height = 1;
-      imageDescriptor_.depth = 1;
+      imageDescriptor_.height = 0;
+      imageDescriptor_.depth = 0;
       break;
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
       imageDescriptor_.geometry = HSA_EXT_IMAGE_GEOMETRY_1DB;
-      imageDescriptor_.height = 1;
-      imageDescriptor_.depth = 1;
+      imageDescriptor_.height = 0;
+      imageDescriptor_.depth = 0;
       break;
     case CL_MEM_OBJECT_IMAGE1D_ARRAY:
       //@todo - arraySize = height ?!
       imageDescriptor_.geometry = HSA_EXT_IMAGE_GEOMETRY_1DA;
-      imageDescriptor_.height = 1;
+      imageDescriptor_.height = 0;
       imageDescriptor_.array_size = image->getHeight();
       break;
     case CL_MEM_OBJECT_IMAGE2D:
       imageDescriptor_.geometry = HSA_EXT_IMAGE_GEOMETRY_2D;
-      imageDescriptor_.depth = 1;
+      imageDescriptor_.depth = 0;
       break;
     case CL_MEM_OBJECT_IMAGE2D_ARRAY:
       //@todo - arraySize = depth ?!
       imageDescriptor_.geometry = HSA_EXT_IMAGE_GEOMETRY_2DA;
-      imageDescriptor_.depth = 1;
+      imageDescriptor_.depth = 0;
       imageDescriptor_.array_size = image->getDepth();
       break;
     case CL_MEM_OBJECT_IMAGE3D:
