@@ -82,7 +82,7 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
 
 // Timestamp for keeping track of some profiling information for various commands
 // including EnqueueNDRangeKernel and clEnqueueCopyBuffer.
-class Timestamp : public amd::HeapObject {
+class Timestamp : public amd::ReferenceCountedObject {
  private:
   static double ticksToTime_;
 
@@ -93,6 +93,7 @@ class Timestamp : public amd::HeapObject {
   amd::Command* parsedCommand_;   //!< Command down the list, considering command_ as head
   std::vector<ProfilingSignal*> signals_; //!< The list of all signals, associated with the TS
   hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
+  amd::Monitor  lock_;            //!< Serialize timestamp update
 
   Timestamp(const Timestamp&) = delete;
   Timestamp& operator=(const Timestamp&) = delete;
@@ -104,7 +105,8 @@ class Timestamp : public amd::HeapObject {
     , gpu_(gpu)
     , command_(command)
     , parsedCommand_(nullptr)
-    , callback_signal_(hsa_signal_t{}) {}
+    , callback_signal_(hsa_signal_t{})
+    , lock_("Timestamp lock", true) {}
 
   ~Timestamp() {}
 
