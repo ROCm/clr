@@ -64,7 +64,8 @@ set_target_properties(amdhip64 PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   # Workaround for many places in the HIP project
   # having hardcoded references to build/lib/libamdhip64.so
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set_target_properties(amdhip64 PROPERTIES OUTPUT_NAME "amdhip64")

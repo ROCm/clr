@@ -17,7 +17,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16.8)
 project(hip)
 
 # sample command for hip-rocclr runtime, you'll need to have rocclr built
@@ -413,6 +413,8 @@ endif()
 # Package: hip_runtime_nvidia
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-runtime-nvidia)
 configure_file(packaging/hip-runtime-nvidia.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+configure_file(packaging/hip-runtime-nvidia.postinst ${BUILD_DIR}/postinst @ONLY)
+configure_file(packaging/hip-runtime-nvidia.prerm ${BUILD_DIR}/prerm @ONLY)
 add_custom_target(pkg_hip_nvcc COMMAND ${CMAKE_COMMAND} .
     COMMAND rm -rf *.deb *.rpm *.tar.gz
     COMMAND make package
