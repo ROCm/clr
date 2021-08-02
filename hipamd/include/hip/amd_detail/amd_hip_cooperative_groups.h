@@ -252,8 +252,7 @@ class tiled_group : public thread_group {
   }
 
   __CG_QUALIFIER__ void sync() const {
-    // enforce memory ordering for memory instructions.
-    __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "agent");
+    internal::tiled_group::sync();
   }
 };
 
@@ -361,8 +360,7 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
 
  public:
   __CG_STATIC_QUALIFIER__ void sync() {
-    // enforce ordering for memory instructions
-    __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "agent");
+    internal::tiled_group::sync();
   }
 
   template <class T> __CG_QUALIFIER__ T shfl(T var, int srcRank) const {

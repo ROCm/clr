@@ -170,6 +170,13 @@ __CG_STATIC_QUALIFIER__ void sync() { __syncthreads(); }
 
 }  // namespace workgroup
 
+namespace tiled_group {
+
+// enforce ordering for memory intructions
+__CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "agent"); }
+
+}  // namespace tiled_group
+
 }  // namespace internal
 
 }  // namespace cooperative_groups
