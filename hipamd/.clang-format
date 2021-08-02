@@ -8,3 +8,4 @@ DerivePointerAlignment: false
 IndentFunctionDeclarationAfterType: false
 MaxEmptyLinesToKeep: 2
 SortIncludes: false
+ColumnLimit: 80
