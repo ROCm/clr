@@ -198,6 +198,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   hsailExplicitXnack_ = enableXNACK;
 
   switch (palProp.revision) {
+    case Pal::AsicRevision::Rembrandt:
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
