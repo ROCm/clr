@@ -2536,9 +2536,73 @@ Program::file_type_t Program::getNextCompilationStageFromBinary(amd::option::Opt
 
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
-bool Program::createKernelMetadataMap() {
+bool Comgr_Binary_Data::create(amd_comgr_data_kind_t kind, void* binary, size_t binSize) {
+  amd_comgr_status_t status = amd::Comgr::create_data(kind, &binaryData_);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+  created_ = true;
+
+  status = amd::Comgr::set_data(binaryData_, binSize, reinterpret_cast<const char*>(binary));
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  return true;
+}
+
+amd_comgr_data_t& Comgr_Binary_Data::data() {
+  assert(created_);
+  return binaryData_;
+}
+
+Comgr_Binary_Data::~Comgr_Binary_Data() {
+  if (created_) {
+    amd::Comgr::release_data(binaryData_);
+  }
+}
+
+bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
+
+  Comgr_Binary_Data binaryData;
+  if (!binaryData.create(AMD_COMGR_DATA_KIND_EXECUTABLE, binary, binSize)) {
+    buildLog_ += "Error: COMGR failed to create code object data object.\n";
+    return false;
+  }
 
   amd_comgr_status_t status;
+  size_t requiredSize = 0;
+  status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, nullptr);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
+    return false;
+  }
+
+  std::vector<char> binaryIsaName(requiredSize);
+  status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, binaryIsaName.data());
+  if ((status != AMD_COMGR_STATUS_SUCCESS) || (requiredSize != binaryIsaName.size())) {
+    buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
+    return false;
+  }
+
+  const amd::Isa *binaryIsa = amd::Isa::findIsa(binaryIsaName.data());
+  if (!binaryIsa) {
+    buildLog_ += "Error: Could not find the program ISA " + std::string(binaryIsaName.data());
+    return false;
+  }
+
+  if (!amd::Isa::isCompatible(*binaryIsa, device().isa())) {
+    buildLog_ += "Error: The program ISA " + std::string(binaryIsaName.data());
+    buildLog_ += " is not compatible with the device ISA " + device().isa().isaName();
+    return false;
+  }
+
+  status = amd::Comgr::get_data_metadata(binaryData.data(), &metadata_);
+  if (status != AMD_COMGR_STATUS_SUCCESS) {
+    buildLog_ += "Error: COMGR failed to get the metadata.\n";
+    return false;
+  }
+
   amd_comgr_metadata_node_t kernelsMD;
   bool hasKernelMD = false;
   size_t size = 0;
@@ -2689,62 +2753,14 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
   }
 
   auto numpHdrs = elfIn.getSegmentNum();
-  bool metadata_found = false;
   for (unsigned int i = 0; i < numpHdrs; ++i) {
     amd::ELFIO::segment* seg = nullptr;
     if (!elfIn.getSegment(i, seg)) {
       continue;
     }
-    // Look for the runtime metadata note
-    if (seg->get_type() == PT_NOTE && seg->get_align() >= sizeof(int)) {
-      // Iterate over the notes in this segment
-      address ptr = (address)binary + seg->get_offset();
-      address segmentEnd = ptr + seg->get_file_size();
 
-      while (ptr < segmentEnd) {
-        // see spec of note:
-        // https://docs.oracle.com/cd/E19683-01/816-1386/6m7qcoblj/index.html#chapter6-18048
-        auto note = reinterpret_cast<amd::Elf::ElfNote*>(ptr);
-        address name = reinterpret_cast<address>(&note[1]);
-        address desc = name + amd::alignUp(note->n_namesz, sizeof(int));
-
-        if (note->n_type == 7 ||
-            note->n_type == 8) {
-          buildLog_ += "Error: object code with old metadata is not supported\n";
-          return false;
-        }
-        else if ((note->n_type == 10 /* NT_AMD_AMDGPU_HSA_METADATA V2 */ &&
-                  note->n_namesz == sizeof "AMD" && !memcmp(name, "AMD", note->n_namesz)) ||
-                (note->n_type == 32 /* NT_AMD_AMDGPU_HSA_METADATA V3 */ &&
-                  note->n_namesz == sizeof "AMDGPU" && !memcmp(name, "AMDGPU", note->n_namesz))) {
-          amd_comgr_status_t status;
-          amd_comgr_data_t binaryData;
-
-          status  = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &binaryData);
-          if (status == AMD_COMGR_STATUS_SUCCESS) {
-            status = amd::Comgr::set_data(binaryData, binSize,
-                                          reinterpret_cast<const char*>(binary));
-          }
-
-          if (status == AMD_COMGR_STATUS_SUCCESS) {
-            status = amd::Comgr::get_data_metadata(binaryData, &metadata_);
-          }
-
-          amd::Comgr::release_data(binaryData);
-
-          if (status != AMD_COMGR_STATUS_SUCCESS) {
-            buildLog_ += "Error: COMGR fails to get the metadata.\n";
-            return false;
-          }
-          metadata_found = true;
-          break;
-        }
-        ptr += sizeof(*note) + amd::alignUp(note->n_namesz, sizeof(int)) +
-          amd::alignUp(note->n_descsz, sizeof(int));
-      }
-    }
     // Accumulate the size of R & !X loadable segments
-    else if (seg->get_type() == PT_LOAD && !(seg->get_flags() & PF_X)) {
+    if (seg->get_type() == PT_LOAD && !(seg->get_flags() & PF_X)) {
       if (seg->get_flags() & PF_R) {
         progvarsTotalSize += seg->get_memory_size();
       }
@@ -2757,12 +2773,7 @@ bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
     }
   }
 
-  if (!metadata_found) {
-    buildLog_ += "Error: runtime metadata section not present in ELF program binary\n";
-    return false;
-  }
-
-  if (!createKernelMetadataMap()) {
+  if (!createKernelMetadataMap(binary, binSize)) {
     buildLog_ += "Error: create kernel metadata map using COMgr\n";
     return false;
   }

@@ -454,7 +454,7 @@ class Program : public amd::HeapObject {
     char* executable[], size_t* executableSize);
 
   //! Create the map for the kernel name and its metadata for fast access
-  bool createKernelMetadataMap();
+  bool createKernelMetadataMap(void* binary, size_t binSize);
 #endif
 
   bool trySubstObjFile(const char *SubstCfgFile,
@@ -467,5 +467,21 @@ class Program : public amd::HeapObject {
   //! Disable operator=
   Program& operator=(const Program&);
 };
+
+#if defined(USE_COMGR_LIBRARY)
+
+class Comgr_Binary_Data {
+ public:
+  Comgr_Binary_Data() : binaryData_({0}), created_(false) {}
+  ~Comgr_Binary_Data();
+  bool create(amd_comgr_data_kind_t kind, void* binary, size_t binSize);
+  amd_comgr_data_t& data();
+
+ private:
+  amd_comgr_data_t binaryData_;
+  bool created_;
+};
+
+#endif
 
 } // namespace device
