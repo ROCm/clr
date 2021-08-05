@@ -118,6 +118,7 @@ enum MemRangeAttribute : uint32_t {
     AccessedBy = 3,           ///< Memory range has hipMemAdviseSetAccessedBy
                               ///< set for specified device
     LastPrefetchLocation = 4, ///< The last location to which the range was prefetched
+    CoherencyMode = 100,      ///< Current coherency mode for the specified range
 };
 
 constexpr int CpuDeviceId = static_cast<int>(-1);
