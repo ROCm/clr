@@ -2334,6 +2334,29 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
       return false;
     }
   }
+
+  hsa_amd_pointer_info_t ptr_info = {};
+  for (size_t i = 0; i < num_attributes; ++i) {
+    if (attributes[i] == amd::MemRangeAttribute::CoherencyMode) {
+      ptr_info.size = sizeof(hsa_amd_pointer_info_t);
+      // Query ptr type to see if it's a HMM allocation
+      hsa_status_t status = hsa_amd_pointer_info(
+        const_cast<void*>(dev_ptr), &ptr_info, nullptr, nullptr, nullptr);
+      // The call shoudl never fail in ROCR, but just check for an error and continue
+      if (status != HSA_STATUS_SUCCESS) {
+        LogError("hsa_amd_pointer_info() failed");
+      }
+      // Check if it's a legacy non-HMM allocation and update query
+      if (ptr_info.type != HSA_EXT_POINTER_TYPE_UNKNOWN) {
+        if (ptr_info.global_flags & HSA_AMD_MEMORY_POOL_GLOBAL_FLAG_COARSE_GRAINED) {
+          *reinterpret_cast<uint32_t*>(data[i]) = HSA_AMD_SVM_GLOBAL_FLAG_COARSE_GRAINED;
+        } else if (ptr_info.global_flags & HSA_AMD_MEMORY_POOL_GLOBAL_FLAG_FINE_GRAINED) {
+          *reinterpret_cast<uint32_t*>(data[i]) = HSA_AMD_SVM_GLOBAL_FLAG_FINE_GRAINED;
+        }
+      }
+    }
+  }
+
   if (info().hmmSupported_) {
     uint32_t accessed_by = 0;
     std::vector<hsa_amd_svm_attribute_pair_t> attr;
@@ -2360,6 +2383,11 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
           break;
         case amd::MemRangeAttribute::LastPrefetchLocation:
           attr.push_back({HSA_AMD_SVM_ATTRIB_PREFETCH_LOCATION, 0});
+          break;
+        case amd::MemRangeAttribute::CoherencyMode:
+          if (ptr_info.type == HSA_EXT_POINTER_TYPE_UNKNOWN) {
+            attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, 0});
+          }
           break;
         default:
           return false;
@@ -2455,6 +2483,16 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
           }
           break;
         }
+        case amd::MemRangeAttribute::CoherencyMode:
+          if (data_sizes[idx] != sizeof(uint32_t)) {
+            return false;
+          }
+          // if ptr is HMM alloc then overwrite the values
+          if (ptr_info.type == HSA_EXT_POINTER_TYPE_UNKNOWN) {
+            // Cast ROCr value into the hip format
+            *reinterpret_cast<uint32_t*>(data[idx]) = static_cast<uint32_t>(it.value);
+          }
+          break;
         default:
           return false;
         break;
@@ -2462,7 +2500,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
       // Find the next location in the query
       ++idx;
     }
-  } else {
+  } else if (ptr_info.type == HSA_EXT_POINTER_TYPE_UNKNOWN) {
     LogError("GetSvmAttributes() failed, because no HMM support");
     return false;
   }
