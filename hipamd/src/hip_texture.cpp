@@ -329,6 +329,7 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
                            !texObject->image->isParent();
   if (isImageFromBuffer || isImageView) {
     texObject->image->release();
+    texObject->sampler->release();
   }
 
   // TODO Should call ihipFree() to not polute the api trace.
