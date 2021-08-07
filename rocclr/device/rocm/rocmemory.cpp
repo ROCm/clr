@@ -712,7 +712,8 @@ bool Buffer::create() {
   // Allocate backing storage in device local memory unless UHP or AHP are set
   cl_mem_flags memFlags = owner()->getMemFlags();
 
-  if (owner()->getSvmPtr() != nullptr) {
+  if ((owner()->parent() == nullptr) &&
+      (owner()->getSvmPtr() != nullptr)) {
     if (dev().forceFineGrain(owner()) || dev().isFineGrainedSystem(true)) {
       memFlags |= CL_MEM_SVM_FINE_GRAIN_BUFFER;
     }
