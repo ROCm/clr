@@ -115,6 +115,10 @@ class Os : AllStatic {
   // Given a valid file name, returns file descriptor and file size
   static bool GetFileHandle(const char* fname, FileDesc* fd_ptr, size_t* sz_ptr);
 
+  // Returns the file name & file offset of mapped memory if the file is mapped.
+  static bool FindFileNameFromAddress(const void* image, std::string* fname_ptr,
+                                      size_t* foffset_ptr);
+
   // Given a valid file descriptor returns mmaped memory for size and offset
   static bool MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset,
                                 const void** mmap_ptr);

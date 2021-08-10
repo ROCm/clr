@@ -63,6 +63,7 @@
 #include <memory>
 #include <algorithm>
 #include <mutex>
+#include <fstream>
 
 namespace amd {
 
@@ -746,7 +747,6 @@ void Os::getAppPathAndFileName(std::string& appName, std::string& appPathAndName
   return;
 }
 
-
 bool Os::GetURIFromMemory(const void* image, size_t image_size, std::string& uri) {
   pid_t pid = getpid();
   std::ostringstream uri_stream;
@@ -788,6 +788,57 @@ bool Os::GetFileHandle(const char* fname, FileDesc* fd_ptr, size_t* sz_ptr) {
   *sz_ptr = stat_buf.st_size;
 
   return true;
+}
+
+bool amd::Os::FindFileNameFromAddress(const void* image, std::string* fname_ptr,
+                                      size_t* foffset_ptr) {
+
+  // Get the list of mapped file list
+  bool ret_value = false;
+  std::ifstream proc_maps;
+  proc_maps.open("/proc/self/maps", std::ifstream::in);
+  if (!proc_maps.is_open() || !proc_maps.good()) {
+    return ret_value;
+  }
+
+  // For every line on the list map find out low, high address
+  std::string line;
+  while (std::getline(proc_maps, line)) {
+    char dash;
+    std::stringstream tokens(line);
+    uintptr_t low_address, high_address;
+    tokens >> std::hex >> low_address >> std::dec
+           >> dash
+           >> std::hex >> high_address >> std::dec;
+    if (dash != '-') {
+      continue;
+    }
+
+    // If address is > low_address and < high_address, then this
+    // is the mapped file. Get the URI path and offset.
+    uintptr_t address = reinterpret_cast<uintptr_t>(image);
+    if ((address >= low_address) && (address < high_address)) {
+      std::string permissions, device, uri_file_path;
+      size_t offset;
+      uint64_t inode;
+      tokens >> permissions
+             >> std::hex >> offset >> std::dec
+             >> device
+             >> inode
+             >> uri_file_path;
+
+      if (inode == 0 || uri_file_path.empty()) {
+        return ret_value;
+      }
+
+      *fname_ptr = uri_file_path;
+      *foffset_ptr = offset + address - low_address;
+      ret_value = true;
+      break;
+    }
+  }
+
+  return ret_value;
 }
 
 bool Os::MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const void** mmap_ptr) {
