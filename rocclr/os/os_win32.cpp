@@ -935,6 +935,12 @@ bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t
 
   return true;
 }
+
+bool Os::FindFileNameFromAddress(const void* image, std::string* fname_ptr, size_t* foffset_ptr) {
+  // TODO: Implementation on windows side pending.
+  return false;
+}
+
 }  // namespace amd
 
 #endif  // _WIN32 || __CYGWIN__
