@@ -532,7 +532,9 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hasOutput = true;
 
-    if (amdOptions->isDumpFlagSet(amd::option::DUMP_ISA)){
+    if ((amdOptions->isDumpFlagSet(amd::option::DUMP_ISA)) ||
+        (isHIP() &&
+         amdOptions->origOptionStr.find("-save-temps") != std::string::npos)) {
       //  create the assembly data set
       amd_comgr_data_set_t assemblyData;
       bool hasAssemblyData = false;
