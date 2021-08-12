@@ -192,7 +192,7 @@ class api_callbacks_spawner_t {
   {
     if (!is_enabled()) return;
 
-    static_assert(cid_ >= HIP_API_ID_FIRST || cid_ <= HIP_API_ID_LAST);
+    static_assert(cid_ >= HIP_API_ID_FIRST || cid_ <= HIP_API_ID_LAST, "invalid callback id");
     callbacks_table.sem_sync(cid_);
     auto &entry = this->entry(cid_);
     fun_ = std::make_pair(entry.fun, entry.arg);
