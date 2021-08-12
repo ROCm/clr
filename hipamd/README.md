@@ -13,6 +13,7 @@ The information contained herein is for informational purposes only, and is subj
 The hipamd repository maintains several branches. The branches that are of importance are:
 
 * Main branch: This is the stable branch. It is up to date with the latest release branch, for example, if the latest HIP release is rocm-4.4, main branch will be the repository based on this release.
+* Develop branch: This is the default branch, on which the new features are still under development and visible. While this maybe of interest to many, it should be noted that this branch and the features under development might not be stable.
 * Release branches. These are branches corresponding to each ROCM release, listed with release tags, such as rocm-4.4, etc.
 
 ## Release tagging:
