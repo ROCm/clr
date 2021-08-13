@@ -2364,7 +2364,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
     for (size_t i = 0; i < num_attributes; ++i) {
       switch (attributes[i]) {
         case amd::MemRangeAttribute::ReadMostly:
-          attr.push_back({HSA_AMD_SVM_ATTRIB_READ_ONLY, 0});
+          attr.push_back({HSA_AMD_SVM_ATTRIB_READ_MOSTLY, 0});
           break;
         case amd::MemRangeAttribute::PreferredLocation:
           attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, 0});
