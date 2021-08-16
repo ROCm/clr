@@ -174,7 +174,7 @@ public:
         GLsizei             numSamples,
         GLenum              glCubemapFace = 0)
         : Image(amdContext, clType, clFlags, format, width, height, depth,
-            Format(format).getElementSize() * width,    
+            Format(format).getElementSize() * width,
             Format(format).getElementSize() * width * depth)
         , GLObject(glTarget, gluiName, gliMipLevel, glInternalFormat,
             static_cast<GLint>(width), static_cast<GLint>(height),
@@ -191,6 +191,7 @@ protected:
     virtual void initDeviceMemory();
 };
 
+    typedef EGLContext (*PFN_eglGetCurrentContext) ();
 #ifdef _WIN32
 #define APICALL WINAPI
 #define GETPROCADDRESS      GetProcAddress
@@ -263,6 +264,7 @@ private:
     EGLContext eglInternalContext_;
     EGLContext eglTempContext_;
     bool isEGL_;
+    PFN_eglGetCurrentContext eglGetCurrentContext_;
 
 #ifdef _WIN32
     HGLRC       hOrigGLRC_;
@@ -271,6 +273,7 @@ private:
     HDC         tempDC_;
     HGLRC       tempGLRC_;
 
+public:
     PFN_wglCreateContext     wglCreateContext_;
     PFN_wglGetCurrentContext wglGetCurrentContext_;
     PFN_wglGetCurrentDC      wglGetCurrentDC_;
@@ -306,6 +309,21 @@ public:
 
     GLFunctions(HMODULE h, bool isEGL);
     ~GLFunctions();
+
+    bool IsCurrentGlContext(const amd::Context::Info& info) const {
+      if (isEGL_) {
+        return ((info.hCtx_ != nullptr) && (eglGetCurrentContext_ != nullptr) &&
+                (info.hCtx_ == eglGetCurrentContext_()));
+      } else {
+#ifdef _WIN32
+        return ((info.hCtx_ != nullptr) && (info.hCtx_ == wglGetCurrentContext_()));
+#else
+        return ((info.hCtx_ != nullptr) && (info.hCtx_ == glXGetCurrentContext_()));
+#endif  // _WIN32
+      }
+    }
+
+    void WaitCurrentGlContext(const amd::Context::Info& info) const;
 
     // Query CL-GL context association
     bool isAssociated() const
