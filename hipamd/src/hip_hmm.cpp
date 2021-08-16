@@ -79,6 +79,14 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   if ((dev_ptr == nullptr) || (count == 0)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
+  // Return error if count passed is more than the actual size allocated
+  if (memObj && count  > (memObj->getSize() - offset)) {
+    return hipErrorInvalidValue;
+  }
+
   amd::HostQueue* queue = nullptr;
   bool cpu_access = (device == hipCpuDeviceId) ? true : false;
 
