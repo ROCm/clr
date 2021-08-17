@@ -9,6 +9,7 @@
 *.h text eol=lf
 *.hpp text eol=lf
 *.txt text eol=lf
+*.asm test eol=lf
 
 # Define files to support auto-remove trailing white space
 # Need to run the command below, before add modified file(s) to the staging area
