@@ -1509,17 +1509,19 @@ class CopyMemoryP2PCommand : public CopyMemoryCommand {
 
 /*! \brief      Prefetch command for SVM memory
  *
- *  \details    Prefetches SVM memory into the current device or CPU
+ *  \details    Prefetches SVM memory into the destination device or CPU
  */
 class SvmPrefetchAsyncCommand : public Command {
   const void* dev_ptr_;   //!< Device pointer to memory for prefetch
   size_t count_;          //!< the size for prefetch
-  bool   cpu_access_;     //!< Prefetch data into CPU location
+  bool cpu_access_;       //!< Prefetch data into CPU location
+  amd::Device* dev_;      //!< Destination device to prefetch to
 
  public:
   SvmPrefetchAsyncCommand(HostQueue& queue, const EventWaitList& eventWaitList,
-                          const void* dev_ptr, size_t count, bool cpu_access)
-      : Command(queue, 1, eventWaitList), dev_ptr_(dev_ptr), count_(count), cpu_access_(cpu_access) {}
+                          const void* dev_ptr, size_t count, amd::Device* dev, bool cpu_access)
+      : Command(queue, 1, eventWaitList), dev_ptr_(dev_ptr), count_(count),
+        dev_(dev), cpu_access_(cpu_access) {}
 
   virtual void submit(device::VirtualDevice& device) { device.submitSvmPrefetchAsync(*this); }
 
@@ -1527,6 +1529,7 @@ class SvmPrefetchAsyncCommand : public Command {
 
   const void* dev_ptr() const { return dev_ptr_; }
   size_t count() const { return count_; }
+  amd::Device* device() const { return dev_; }
   size_t cpu_access() const { return cpu_access_; }
 };
 
