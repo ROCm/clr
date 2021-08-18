@@ -244,7 +244,8 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   amd::Program* program = as_amd(reinterpret_cast<cl_program>(prog));
 
   std::ostringstream ostrstr;
-  std::vector<std::string> oarr(&options[0], &options[numOptions]);
+  std::vector<std::string> oarr;
+  oarr.reserve(numOptions + 12);
 
   const std::string hipVerOpt{"--hip-version=" + std::to_string(HIP_VERSION_MAJOR) + '.' +
                               std::to_string(HIP_VERSION_MINOR) + '.' +
@@ -268,6 +269,9 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   oarr.push_back("-fms-compatibility");
 #endif
 #endif
+
+  // Append the rest of options
+  oarr.insert(oarr.end(), &options[0], &options[numOptions]);
 
   transformOptions(oarr, program);
   std::copy(oarr.begin(), oarr.end(), std::ostream_iterator<std::string>(ostrstr, " "));
