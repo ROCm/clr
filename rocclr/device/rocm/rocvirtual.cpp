@@ -1578,7 +1578,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     // Find the requested agent for the transfer
     hsa_agent_t agent = (cmd.cpu_access() ||
         (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory)) ?
-        dev().getCpuAgent() : gpu_device();
+        dev().getCpuAgent() : (static_cast<const roc::Device*>(cmd.device()))->getBackendDevice();
 
     // Initiate a prefetch command
     hsa_status_t status = hsa_amd_svm_prefetch_async(
