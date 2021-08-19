@@ -2477,8 +2477,8 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
             }
           }
           rocr_attr += accessed_by;
-          for (uint32_t idx = entry; idx < device_count; ++idx) {
-            reinterpret_cast<int32_t*>(data[idx])[idx] =
+          for (uint32_t i = entry; i < device_count; ++i) {
+            reinterpret_cast<int32_t*>(data[idx])[i] =
               static_cast<int32_t>(amd::InvalidDeviceId);
           }
           break;
