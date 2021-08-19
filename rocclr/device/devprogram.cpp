@@ -746,7 +746,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     }
   }
   else {
-    buildLog_ += "Error: Failed to compile opencl source (from CL or HIP source to LLVM IR).\n";
+    buildLog_ += "Error: Failed to compile source (from CL or HIP source to LLVM IR).\n";
   }
 
   amd::Comgr::destroy_data_set(inputs);
