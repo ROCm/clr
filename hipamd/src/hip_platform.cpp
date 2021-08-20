@@ -875,6 +875,10 @@ hipError_t PlatformState::getDynTexRef(const char* hostVar, hipModule_t hmod, te
   hip::DeviceVar* dvar = nullptr;
   IHIP_RETURN_ONFAIL(it->second->getDeviceVar(&dvar, hostVar));
 
+  if (dvar->size() != sizeof(textureReference)) {
+    return hipErrorNotFound;  // Any better way to verify texture type?
+  }
+
   dvar->shadowVptr = new texture<char>();
   *texRef =  reinterpret_cast<textureReference*>(dvar->shadowVptr);
   return hipSuccess;
