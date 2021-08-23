@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #pragma once
 
+#ifdef __cplusplus
 /**
  * @brief Unsafe floating point rmw atomic add for gfx90a.
  *
@@ -52,7 +53,8 @@ THE SOFTWARE.
     __has_builtin(__builtin_amdgcn_ds_atomic_fadd_f32) &&                      \
     __has_builtin(__builtin_amdgcn_global_atomic_fadd_f32)
 __device__ inline float unsafeAtomicAdd(float* addr, float value) {
-  if (__builtin_amdgcn_is_shared(addr))
+  if (__builtin_amdgcn_is_shared(
+          (const __attribute__((address_space(0))) void*)addr))
     return __builtin_amdgcn_ds_atomic_fadd_f32(addr, value);
   else
     return __builtin_amdgcn_global_atomic_fadd_f32(addr, value);
@@ -89,9 +91,11 @@ __device__ inline float unsafeAtomicAdd(float* addr, float value) {
     __has_builtin(__builtin_amdgcn_ds_atomic_fadd_f64) &&                      \
     __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f64)
 __device__ inline double unsafeAtomicAdd(double* addr, double value) {
-  if (__builtin_amdgcn_is_shared(addr))
+  if (__builtin_amdgcn_is_shared(
+          (const __attribute__((address_space(0))) void*)addr))
     return __builtin_amdgcn_ds_atomic_fadd_f64(addr, value);
   else
     return __builtin_amdgcn_flat_atomic_fadd_f64(addr, value);
 }
+#endif
 #endif
