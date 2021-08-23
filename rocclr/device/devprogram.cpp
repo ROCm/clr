@@ -2536,7 +2536,7 @@ Program::file_type_t Program::getNextCompilationStageFromBinary(amd::option::Opt
 
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
-bool Comgr_Binary_Data::create(amd_comgr_data_kind_t kind, void* binary, size_t binSize) {
+bool ComgrBinaryData::create(amd_comgr_data_kind_t kind, void* binary, size_t binSize) {
   amd_comgr_status_t status = amd::Comgr::create_data(kind, &binaryData_);
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     return false;
@@ -2551,12 +2551,12 @@ bool Comgr_Binary_Data::create(amd_comgr_data_kind_t kind, void* binary, size_t 
   return true;
 }
 
-amd_comgr_data_t& Comgr_Binary_Data::data() {
+amd_comgr_data_t& ComgrBinaryData::data() {
   assert(created_);
   return binaryData_;
 }
 
-Comgr_Binary_Data::~Comgr_Binary_Data() {
+ComgrBinaryData::~ComgrBinaryData() {
   if (created_) {
     amd::Comgr::release_data(binaryData_);
   }
@@ -2564,7 +2564,7 @@ Comgr_Binary_Data::~Comgr_Binary_Data() {
 
 bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
 
-  Comgr_Binary_Data binaryData;
+  ComgrBinaryData binaryData;
   if (!binaryData.create(AMD_COMGR_DATA_KIND_EXECUTABLE, binary, binSize)) {
     buildLog_ += "Error: COMGR failed to create code object data object.\n";
     return false;
