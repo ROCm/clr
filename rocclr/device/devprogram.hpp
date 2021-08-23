@@ -470,10 +470,10 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
 
-class Comgr_Binary_Data {
+class ComgrBinaryData {
  public:
-  Comgr_Binary_Data() : binaryData_({0}), created_(false) {}
-  ~Comgr_Binary_Data();
+  ComgrBinaryData() : binaryData_({0}), created_(false) {}
+  ~ComgrBinaryData();
   bool create(amd_comgr_data_kind_t kind, void* binary, size_t binSize);
   amd_comgr_data_t& data();
 
