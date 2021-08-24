@@ -1243,7 +1243,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
 
 bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const void* pattern,
                             size_t patternSize, const amd::Coord3D& origin,
-                            const amd::Coord3D& size) {
+                            const amd::Coord3D& size, bool forceBlit) {
   gpu::Memory* memory = dev().getGpuMemory(amdMemory);
   bool entire = amdMemory->isEntirelyCovered(origin, size);
 
@@ -1284,7 +1284,7 @@ bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const 
         patternSize = elemSize;
       }
       result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize,
-                                    amdMemory->isEntirelyCovered(origin, size));
+                                    amdMemory->isEntirelyCovered(origin, size), forceBlit);
       if (NULL != bufferFromImage) {
         bufferFromImage->release();
       }
