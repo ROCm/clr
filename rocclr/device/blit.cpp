@@ -677,4 +677,108 @@ uint32_t HostBlitManager::sRGBmap(float fc) const {
 
   return (uint32_t)(c * 255.0 + 0.5);
 }
+
+bool HostBlitManager::FillBufferInfo::ExpandPattern64(size_t pattern, size_t pattern_size,
+                                                      size_t& pattern64) {
+
+  bool retval = true;
+
+  do {
+
+    // If the pattern is 0 or if the pattern_size is same as max size.
+    if (pattern == 0 ||  pattern_size == sizeof(size_t)) {
+      pattern64 = pattern;
+      break;
+    }
+
+    // Clean Curr_pattern, since it was casted off from const void* with a lesser size than size_t.
+    ClearBits64(pattern, (pattern_size * 8));
+    pattern64 = 0;
+
+    if (pattern_size == sizeof(uint8_t)) {
+      pattern64 = pattern & 0xff;
+      pattern64 = ((pattern << 56) | (pattern << 48) | (pattern << 40) | (pattern << 32)
+                    | (pattern << 24) | (pattern << 16) | (pattern << 8) | (pattern));
+    } else if (pattern_size == sizeof(uint16_t)) {
+      pattern = pattern & 0xffff;
+      pattern64 = ((pattern << 48) | (pattern << 32) | (pattern << 16) | (pattern));
+    } else if (pattern_size == sizeof(uint32_t)) {
+      pattern = pattern & 0xffffffff;
+      pattern64 = ((pattern << 32) | (pattern));
+    } else {
+      LogPrintfError("Unsupported Pattern size: %u \n", pattern_size);
+      retval = false;
+      break;
+    }
+
+  } while (0);
+
+  return retval;
+}
+
+bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, size_t fill_size,
+                                           size_t fill_origin, const void* pattern_ptr,
+                                           size_t pattern_size,
+                                           std::vector<FillBufferInfo>& packed_info) {
+
+  // 1. Validate input arguments
+  guarantee(fill_size >= pattern_size, "Pattern Size cannot be greater than fill size");
+  guarantee(fill_size <= memory.size(), "Cannot fill more than the mem object size");
+
+  // 2. Calculate the next closest dword aligned address for faster processing
+  size_t dst_addr = memory.virtualAddress() + fill_origin;
+  size_t aligned_dst_addr = amd::alignUp(dst_addr, sizeof(size_t));
+  guarantee(aligned_dst_addr >= dst_addr, "Aligned address cannot be greater than destination"
+                                          "address");
+
+  // 3. If given address is not aligned calculate head and tail size.
+  size_t head_size = (aligned_dst_addr - dst_addr);
+  size_t aligned_size = ((fill_size - head_size) / sizeof(size_t)) * sizeof(size_t);
+  size_t tail_size = (fill_size - head_size) % sizeof(size_t);
+
+  // 4. Clear unwanted bytes from the pattern if the pattern size is < sizeof(size_t).
+  size_t pattern = *(reinterpret_cast<size_t*>(const_cast<void*>(pattern_ptr)));
+  if (pattern_size < sizeof(size_t)) {
+    ClearBits64(pattern, (pattern_size * 8));
+  }
+
+  // 5. Fill the head, aligned, tail info if they exist.
+  FillBufferInfo fill_info;
+  if (head_size > 0) {
+    // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
+    guarantee((head_size % pattern_size) == 0);
+
+    fill_info.fill_size_ = head_size;
+    packed_info.push_back(fill_info);
+  }
+
+  fill_info.clearInfo();
+  if (aligned_size > 0) {
+    // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
+    guarantee((aligned_size % pattern_size) == 0);
+
+    if (pattern_size < sizeof(size_t)) {
+      if (!ExpandPattern64(pattern, pattern_size, fill_info.expanded_pattern_)) {
+        DevLogPrintfError("Failed Expanding the pattern for pattern:%u, pattern_size: %u",
+                          pattern, pattern_size);
+        return false;
+      }
+      fill_info.pattern_expanded_ = true;
+    }
+    fill_info.fill_size_ = aligned_size;
+    packed_info.push_back(fill_info);
+  }
+  fill_info.clearInfo();
+
+  if (tail_size > 0) {
+    // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
+    guarantee((tail_size % pattern_size) == 0);
+
+    fill_info.fill_size_ = tail_size;
+    packed_info.push_back(fill_info);
+  }
+  fill_info.clearInfo();
+
+  return true;
+}
 }  // namespace gpu
