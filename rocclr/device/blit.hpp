@@ -351,6 +351,37 @@ class HostBlitManager : public device::BlitManager {
   VirtualDevice& vDev_;     //!< Virtual device object
   const amd::Device& dev_;  //!< Physical device
 
+  // Packed Fill Buffer
+  class FillBufferInfo {
+  public:
+    FillBufferInfo(): fill_size_(0), expanded_pattern_(0), pattern_expanded_(false) {}
+
+    static bool PackInfo(const device::Memory& memory, size_t fill_size,
+                  size_t fill_origin, const void* pattern, size_t pattern_size,
+                  std::vector<FillBufferInfo>& packed_info);
+
+  private:
+    static bool ExpandPattern64(size_t pattern, size_t pattern_size, size_t& pattern64);
+
+    static inline void ClearBits64(size_t& pattern, size_t num_bits) {
+      pattern &= ~(~(static_cast<size_t>(0)) << num_bits);
+
+    }
+
+    void clearInfo () {
+      fill_size_ = 0;
+      expanded_pattern_ = 0;
+      pattern_expanded_ = false;
+    }
+
+  public:
+    size_t fill_size_;          // Fill size for this command
+    size_t expanded_pattern_;   // Pattern for this command
+    bool pattern_expanded_;     // Boolean to check if pattern is expanded
+  };
+
+
+
  private:
   //! Disable copy constructor
   HostBlitManager(const HostBlitManager&);

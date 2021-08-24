@@ -1960,68 +1960,88 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     synchronize();
     return result;
   } else {
-    uint fillType = FillBufferAligned;
-    size_t globalWorkOffset[3] = {0, 0, 0};
-    uint64_t fillSize = size[0] / patternSize;
-    size_t globalWorkSize = amd::alignUp(fillSize, 256);
-    size_t localWorkSize = 256;
-    uint32_t alignment = (patternSize & 0x7) == 0 ?
-                          sizeof(uint64_t) :
-                          (patternSize & 0x3) == 0 ?
-                          sizeof(uint32_t) :
-                          (patternSize & 0x1) == 0 ?
-                          sizeof(uint16_t) : sizeof(uint8_t);
 
-    // Program kernels arguments for the fill operation
-    cl_mem mem = as_cl<amd::Memory>(memory.owner());
-    if (alignment == sizeof(uint64_t)) {
-      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
-    } else if (alignment == sizeof(uint32_t)) {
-      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
-      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
-    } else if (alignment == sizeof(uint16_t)) {
-      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
-      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
-    } else {
-      setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+    // Pack the fill buffer info, that handles unaligned memories.
+    std::vector<FillBufferInfo> packed_vector{};
+    FillBufferInfo::PackInfo(memory, size[0], origin[0], pattern, patternSize, packed_vector);
+
+    size_t overall_offset = origin[0];
+    for (auto& packed_obj: packed_vector) {
+      uint fillType = FillBufferAligned;
+      size_t globalWorkOffset[3] = {0, 0, 0};
+      size_t globalWorkSize = amd::alignUp(packed_obj.fill_size_, 256);
+      size_t localWorkSize = 256;
+
+      uint32_t kpattern_size32 = (packed_obj.pattern_expanded_) ? sizeof(size_t) : patternSize;
+      size_t kfill_size = packed_obj.fill_size_/kpattern_size32;
+      size_t koffset = overall_offset;
+      overall_offset += packed_obj.fill_size_;
+
+      uint32_t alignment = (kpattern_size32 & 0x7) == 0 ?
+                            sizeof(uint64_t) :
+                            (kpattern_size32 & 0x3) == 0 ?
+                            sizeof(uint32_t) :
+                            (kpattern_size32 & 0x1) == 0 ?
+                            sizeof(uint16_t) : sizeof(uint8_t);
+
+      // Program kernels arguments for the fill operation
+      cl_mem mem = as_cl<amd::Memory>(memory.owner());
+      if (alignment == sizeof(uint64_t)) {
+        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
+      } else if (alignment == sizeof(uint32_t)) {
+        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
+        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+      } else if (alignment == sizeof(uint16_t)) {
+        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
+        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+      } else {
+        setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
+        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+      }
+
+      Memory* gpuCB = dev().getRocMemory(constantBuffer_);
+      if (gpuCB == nullptr) {
+        return false;
+      }
+
+      // Find offset in the current constant buffer to allow multipel fills
+      uint32_t  constBufOffset = ConstantBufferOffset();
+      auto constBuf = reinterpret_cast<address>(constantBuffer_->getHostMem()) + constBufOffset;
+
+      // If pattern has been expanded, use the expanded pattern, otherwise use the default pattern.
+      if (packed_obj.pattern_expanded_) {
+        memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size32);
+      } else {
+        memcpy(constBuf, pattern, kpattern_size32);
+      }
+
+      mem = as_cl<amd::Memory>(gpuCB->owner());
+      setArgument(kernels_[fillType], 4, sizeof(cl_mem), &mem, constBufOffset);
+
+      koffset /= alignment;
+      kpattern_size32 /= alignment;
+
+      setArgument(kernels_[fillType], 5, sizeof(uint32_t), &kpattern_size32);
+      setArgument(kernels_[fillType], 6, sizeof(koffset), &koffset);
+      setArgument(kernels_[fillType], 7, sizeof(kfill_size), &kfill_size);
+
+      // Create ND range object for the kernel's execution
+      amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
+
+      // Execute the blit
+      address parameters = captureArguments(kernels_[fillType]);
+      result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
+      releaseArguments(parameters);
     }
-    Memory* gpuCB = dev().getRocMemory(constantBuffer_);
-    if (gpuCB == nullptr) {
-      return false;
-    }
-    // Find offset in the current constant buffer to allow multipel fills
-    uint32_t  constBufOffset = ConstantBufferOffset();
-    auto constBuf = reinterpret_cast<address>(constantBuffer_->getHostMem()) + constBufOffset;
-    memcpy(constBuf, pattern, patternSize);
-
-    mem = as_cl<amd::Memory>(gpuCB->owner());
-    setArgument(kernels_[fillType], 4, sizeof(cl_mem), &mem, constBufOffset);
-    uint64_t offset = origin[0];
-
-    patternSize/= alignment;
-    offset /= alignment;
-
-    setArgument(kernels_[fillType], 5, sizeof(uint32_t), &patternSize);
-    setArgument(kernels_[fillType], 6, sizeof(offset), &offset);
-    setArgument(kernels_[fillType], 7, sizeof(fillSize), &fillSize);
-
-    // Create ND range object for the kernel's execution
-    amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
-
-    // Execute the blit
-    address parameters = captureArguments(kernels_[fillType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
-    releaseArguments(parameters);
   }
 
   synchronize();
