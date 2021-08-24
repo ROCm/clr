@@ -1791,7 +1791,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
 
 bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const void* pattern,
                             size_t patternSize, const amd::Coord3D& origin,
-                            const amd::Coord3D& size) {
+                            const amd::Coord3D& size, bool forceBlit) {
   pal::Memory* memory = dev().getGpuMemory(amdMemory);
   bool entire = amdMemory->isEntirelyCovered(origin, size);
 
@@ -1832,7 +1832,7 @@ bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const 
         patternSize = elemSize;
       }
       result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize,
-                                    amdMemory->isEntirelyCovered(origin, size));
+                                    amdMemory->isEntirelyCovered(origin, size), forceBlit);
       if (nullptr != bufferFromImage) {
         bufferFromImage->release();
       }
@@ -2052,16 +2052,10 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd) {
     amd::Coord3D size(fillSize, 1, 1);
 
     assert((dstMemory->validateRegion(origin, size)) && "The incorrect fill size!");
-    // Synchronize memory from host if necessary
-    device::Memory::SyncFlags syncFlags;
-    syncFlags.skipEntire_ = dstMemory->isEntirelyCovered(origin, size);
-    memory->syncCacheFromHost(*this, syncFlags);
 
     if (!fillMemory(vcmd.type(), dstMemory, vcmd.pattern(), vcmd.patternSize(), origin, size)) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
-    // Mark this as the most-recently written cache of the destination
-    dstMemory->signalWrite(&gpuDevice_);
   } else {
     // for FGS capable device, fill CPU memory directly
     amd::SvmBuffer::memFill(vcmd.dst(), vcmd.pattern(), vcmd.patternSize(), vcmd.times());

@@ -415,7 +415,8 @@ class VirtualGPU : public device::VirtualDevice {
                   const void* pattern,         //!< pattern to fill the memory
                   size_t patternSize,          //!< pattern size
                   const amd::Coord3D& origin,  //!< memory origin
-                  const amd::Coord3D& size     //!< memory size for filling
+                  const amd::Coord3D& size,    //!< memory size for filling
+                  bool forceBlit = false       //!< force shader blit path
                   );
 
   //! Common function for memory copy used by both svm Copy and non-svm Copy

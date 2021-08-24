@@ -2147,7 +2147,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
 
 bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const void* pattern,
                             size_t patternSize, const amd::Coord3D& origin,
-                            const amd::Coord3D& size) {
+                            const amd::Coord3D& size, bool forceBlit) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
@@ -2185,7 +2185,7 @@ bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const 
         pattern = fillValue;
         patternSize = elemSize;
       }
-      result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize, entire);
+      result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize, entire, forceBlit);
       break;
     }
     case CL_COMMAND_FILL_IMAGE: {
@@ -2307,18 +2307,14 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   } else if (type == ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
     amd::Coord3D origin(offset);
     amd::Coord3D size(sizeBytes);
-    bool entire = amdMemory->isEntirelyCovered(origin, size);
 
     // Ensure memory ordering preceding the write
     dispatchBarrierPacket(kBarrierPacketReleaseHeader);
 
-    // Use GPU Blit to write
-    bool result = blitMgr().fillBuffer(*memory, &value, sizeBytes, origin, size, entire, true);
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writting value: 0x%lx", value);
-
-    if (!result) {
-      LogError("submitStreamOperation: Write failed!");
+    if (!fillMemory(CL_COMMAND_FILL_BUFFER, amdMemory, &value, sizeBytes, origin, size, true)) {
+      cmd.setStatus(CL_INVALID_OPERATION);
     }
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writing value: 0x%lx", value);
   } else {
     ShouldNotReachHere();
   }
@@ -2348,16 +2344,10 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
     amd::Coord3D size(fillSize, 1, 1);
 
     assert((dstMemory->validateRegion(origin, size)) && "The incorrect fill size!");
-    // Synchronize memory from host if necessary
-    device::Memory::SyncFlags syncFlags;
-    syncFlags.skipEntire_ = dstMemory->isEntirelyCovered(origin, size);
-    memory->syncCacheFromHost(*this, syncFlags);
 
-    if (!fillMemory(cmd.type(), dstMemory, cmd.pattern(), cmd.patternSize(), origin, size)) {
+    if (!fillMemory(cmd.type(), dstMemory, cmd.pattern(), cmd.patternSize(), origin, size, true)) {
       cmd.setStatus(CL_INVALID_OPERATION);
     }
-    // Mark this as the most-recently written cache of the destination
-    dstMemory->signalWrite(&dev());
   } else {
     // Stall GPU for CPU access to memory
     releaseGpuMemoryFence();
