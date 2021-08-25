@@ -148,11 +148,13 @@ int Stream::DeviceId(const hipStream_t hStream) {
   return deviceId;
 }
 
-void Stream::syncNonBlockingStreams() {
+void Stream::syncNonBlockingStreams(int deviceId) {
   amd::ScopedLock lock(streamSetLock);
   for (auto& it : streamSet) {
     if (it->Flags() & hipStreamNonBlocking) {
-      it->asHostQueue()->finish();
+      if (deviceId == -1 || it->DeviceId() == deviceId) {
+        it->asHostQueue()->finish();
+      }
     }
   }
 }
