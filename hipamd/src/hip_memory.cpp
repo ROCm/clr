@@ -86,7 +86,7 @@ hipError_t ihipFree(void *ptr)
 
   size_t offset = 0;
   amd::Memory* memory_object = getMemoryObject(ptr, offset);
-
+  int deviceID = -1;
   if (memory_object != nullptr) {
     // Check if it's an allocation in system memory and can be shared across all devices
     if (memory_object->getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER) {
@@ -102,7 +102,9 @@ hipError_t ihipFree(void *ptr)
     } else {
       // Wait on the device, associated with the current memory object
       hip::getNullStream(memory_object->getContext())->finish();
+      deviceID = hip::getDeviceID(memory_object->getContext());
     }
+    hip::Stream::syncNonBlockingStreams(deviceID);
     amd::SvmBuffer::free(memory_object->getContext(), ptr);
     return hipSuccess;
   }

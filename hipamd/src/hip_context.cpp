@@ -116,6 +116,16 @@ amd::HostQueue* getNullStream(amd::Context& ctx) {
 }
 
 // ================================================================================================
+int getDeviceID(amd::Context& ctx) {
+  for (auto& it : g_devices) {
+    if (it->asContext() == &ctx) {
+      return it->deviceId();
+    }
+  }
+  return -1;
+}
+
+// ================================================================================================
 amd::HostQueue* getNullStream() {
   Device* device = getCurrentDevice();
   return device ? device->NullStream() : nullptr;

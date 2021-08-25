@@ -210,7 +210,7 @@ namespace hip {
     const std::vector<uint32_t> GetCUMask() const { return cuMask_; }
 
     /// Sync all non-blocking streams
-    static void syncNonBlockingStreams();
+    static void syncNonBlockingStreams(int deviceId = -1);
 
     /// Destroy all streams on a given device
     static void destroyAllStreams(int deviceId);
@@ -325,6 +325,8 @@ namespace hip {
   extern amd::HostQueue* getNullStream(amd::Context&);
   /// Get default stream of the thread
   extern amd::HostQueue* getNullStream();
+  /// Get device ID associated with the ROCclr context
+  int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid
   extern bool isValid(hipStream_t& stream);
 };
