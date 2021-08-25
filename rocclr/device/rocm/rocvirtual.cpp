@@ -663,11 +663,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
           ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-            "!\targ%d: %s %s = ptr:%p obj:[%p-%p] threadId : %zx",
-            index, desc.typeName_.c_str(), desc.name_.c_str(),
+            "[%zx]!\tArg%d: %s %s = ptr:%p obj:[%p-%p]",
+            std::this_thread::get_id(), i, desc.typeName_.c_str(), desc.name_.c_str(),
             globalAddress, gpuMem->getDeviceMemory(),
-            reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize(),
-            std::this_thread::get_id());
+            reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize());
 
           // Validate memory for a dependency in the queue
           memoryDependency().validate(*this, gpuMem, (desc.info_.readOnly_ == 1));
@@ -732,8 +731,8 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
       WriteAqlArgAt(const_cast<address>(params), &vqVA, sizeof(vqVA), desc.offset_);
     }
     else if (desc.type_ == T_VOID) {
+      const_address srcArgPtr = params + desc.offset_;
       if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ReferenceObject) {
-        const_address srcArgPtr = params + desc.offset_;
         void* mem = allocKernArg(desc.size_, 128);
         if (mem == nullptr) {
           LogError("Out of memory");
@@ -743,6 +742,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         const auto it = hsaKernel.patch().find(desc.offset_);
         WriteAqlArgAt(const_cast<address>(params), &mem, sizeof(void*), it->second);
       }
+      ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+        "[%zx]!\tArg%d: %s %s = val:%lld",
+        std::this_thread::get_id(), i, desc.typeName_.c_str(), desc.name_.c_str(),
+        *reinterpret_cast<const long long*>(srcArgPtr));
     }
     else if (desc.type_ == T_SAMPLER) {
       uint32_t index = desc.info_.arrayIndex_;
