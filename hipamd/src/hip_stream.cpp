@@ -212,8 +212,15 @@ void iHipWaitActiveStreams(amd::HostQueue* blocking_queue, bool wait_null_stream
         // Get the last valid command
         amd::Command* command = active_queue->getLastQueuedCommand(true);
         if (command != nullptr) {
+          amd::Event& event = command->event();
+          // Check HW status of the ROCcrl event.
+          // Note: not all ROCclr modes support HW status
+          bool ready = active_queue->device().IsHwEventReady(event);
+          if (!ready) {
+            ready = (command->status() == CL_COMPLETE);
+          }
           // Check the current active status
-          if (command->status() != CL_COMPLETE) {
+          if (!ready) {
             command->notifyCmdQueue();
             eventWaitList.push_back(command);
           } else {
