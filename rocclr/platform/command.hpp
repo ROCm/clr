@@ -1521,7 +1521,7 @@ class SvmPrefetchAsyncCommand : public Command {
   SvmPrefetchAsyncCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                           const void* dev_ptr, size_t count, amd::Device* dev, bool cpu_access)
       : Command(queue, 1, eventWaitList), dev_ptr_(dev_ptr), count_(count),
-        dev_(dev), cpu_access_(cpu_access) {}
+        cpu_access_(cpu_access), dev_(dev) {}
 
   virtual void submit(device::VirtualDevice& device) { device.submitSvmPrefetchAsync(*this); }
 
