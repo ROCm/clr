@@ -1303,6 +1303,9 @@ class Isa {
 
   /// @returns If the ROCm runtime supports the ISA.
   bool runtimeRocSupported() const {
+    if (!IS_HIP && !ROC_ENABLE_PRE_VEGA && (versionMajor_ == 8)) {
+      return false;
+    }
     return runtimeRocSupported_;
   }
 

@@ -606,14 +606,6 @@ bool Device::create() {
     return false;
   }
 
-#if ROCCLR_DISABLE_PREVEGA
-  if (isa->versionMajor() < 9) {
-    LogPrintfError("Disabled HSA device %s (PCI ID %x) for ISA %s", agent_name, pciDeviceId_,
-                   isa_name.data());
-    return false;
-  }
-#endif
-
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
     LogPrintfError("Unable to get profile for HSA device %s (PCI ID %x)", agent_name, pciDeviceId_);
