@@ -2114,36 +2114,55 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     synchronize();
     return result;
   } else {
-    uint fillType = FillBuffer;
+    uint fillType = FillBufferAligned;
     size_t globalWorkOffset[3] = {0, 0, 0};
     uint64_t fillSize = size[0] / patternSize;
     size_t globalWorkSize = amd::alignUp(fillSize, 256);
     size_t localWorkSize = 256;
-    bool dwordAligned = ((patternSize % sizeof(uint32_t)) == 0) ? true : false;
+    uint32_t alignment = (patternSize & 0x7) == 0 ?
+                          sizeof(uint64_t) :
+                          (patternSize & 0x3) == 0 ?
+                          sizeof(uint32_t) :
+                          (patternSize & 0x1) == 0 ?
+                          sizeof(uint16_t) : sizeof(uint8_t);
 
     // Program kernels arguments for the fill operation
     Memory* mem = &gpuMem(memory);
-    if (dwordAligned) {
-      setArgument(kernels_[fillType], 0, sizeof(cl_mem), NULL);
+    if (alignment == sizeof(uint64_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
+    } else if (alignment == sizeof(uint32_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+    } else if (alignment == sizeof(uint16_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
       setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
     } else {
       setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-      setArgument(kernels_[fillType], 1, sizeof(cl_mem), NULL);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
     }
     Memory& gpuCB = gpu().xferWrite().Acquire(patternSize);
     void* constBuf = gpuCB.map(&gpu(), Resource::NoWait);
     memcpy(constBuf, pattern, patternSize);
     gpuCB.unmap(&gpu());
     Memory* pGpuCB = &gpuCB;
-    setArgument(kernels_[fillType], 2, sizeof(cl_mem), &pGpuCB);
+    setArgument(kernels_[fillType], 4, sizeof(cl_mem), &pGpuCB);
     uint64_t offset = origin[0];
-    if (dwordAligned) {
-      patternSize /= sizeof(uint32_t);
-      offset /= sizeof(uint32_t);
-    }
-    setArgument(kernels_[fillType], 3, sizeof(uint32_t), &patternSize);
-    setArgument(kernels_[fillType], 4, sizeof(offset), &offset);
-    setArgument(kernels_[fillType], 5, sizeof(fillSize), &fillSize);
+
+    patternSize/= alignment;
+    offset /= alignment;
+
+    setArgument(kernels_[fillType], 5, sizeof(uint32_t), &patternSize);
+    setArgument(kernels_[fillType], 6, sizeof(offset), &offset);
+    setArgument(kernels_[fillType], 7, sizeof(fillSize), &fillSize);
 
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);

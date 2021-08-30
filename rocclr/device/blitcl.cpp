@@ -31,8 +31,8 @@ const char* BlitSourceCode = BLIT_KERNELS(
 
     extern void __amd_copyBufferAligned(__global uint*, __global uint*, ulong, ulong, ulong, uint);
 
-    extern void __amd_fillBuffer(__global uchar*, __global uint*, __constant uchar*, uint, ulong,
-                                 ulong);
+    extern void __amd_fillBufferAligned(__global uchar*, __global ushort*, __global uint*, __global ulong*,
+                                        __constant uchar*, uint, ulong, ulong);
 
     __kernel void __amd_rocclr_copyBufferRect(__global uchar* src, __global uchar* dst, ulong4 srcRect,
                                  ulong4 dstRect, ulong4 size) {
@@ -54,11 +54,18 @@ const char* BlitSourceCode = BLIT_KERNELS(
       __amd_copyBufferAligned(src, dst, srcOrigin, dstOrigin, size, alignment);
     }
 
-    __kernel void __amd_rocclr_fillBuffer(__global uchar* bufUChar, __global uint* bufUInt,
-                             __constant uchar* pattern, uint patternSize, ulong offset,
-                             ulong size) {
-      __amd_fillBuffer(bufUChar, bufUInt, pattern, patternSize, offset, size);
-    } extern void __amd_copyBufferToImage(__global uint*, __write_only image2d_array_t, ulong4,
+    __kernel void __amd_rocclr_fillBufferAligned(__global uchar* bufUChar,
+                                                 __global ushort* bufUShort,
+                                                 __global uint* bufUInt,
+                                                 __global ulong* bufULong,
+                                                 __constant uchar* pattern,
+                                                 uint patternSize, ulong offset,
+                                                 ulong size) {
+      __amd_fillBufferAligned(bufUChar, bufUShort, bufUInt, bufULong,
+                              pattern, patternSize, offset, size);
+    }
+
+    extern void __amd_copyBufferToImage(__global uint*, __write_only image2d_array_t, ulong4,
                                           int4, int4, uint4, ulong4);
 
     extern void __amd_copyImageToBuffer(__read_only image2d_array_t, __global uint*,

@@ -220,7 +220,7 @@ class KernelBlitManager : public DmaBlitManager {
     BlitCopyBufferRectAligned,
     BlitCopyBuffer,
     BlitCopyBufferAligned,
-    FillBuffer,
+    FillBufferAligned,
     FillImage,
     Scheduler,
     BlitTotal
@@ -416,9 +416,10 @@ class KernelBlitManager : public DmaBlitManager {
 
 static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyImage", "__amd_rocclr_copyImage1DA", "__amd_rocclr_copyImageToBuffer",
-    "__amd_rocclr_copyBufferToImage", "__amd_rocclr_copyBufferRect", "__amd_rocclr_copyBufferRectAligned",
-    "__amd_rocclr_copyBuffer", "__amd_rocclr_copyBufferAligned", "__amd_rocclr_fillBuffer",
-    "__amd_rocclr_fillImage", "__amd_rocclr_scheduler",
+    "__amd_rocclr_copyBufferToImage", "__amd_rocclr_copyBufferRect",
+    "__amd_rocclr_copyBufferRectAligned", "__amd_rocclr_copyBuffer",
+    "__amd_rocclr_copyBufferAligned", "__amd_rocclr_fillBufferAligned",
+    "__amd_rocclr_fillImage", "__amd_rocclr_scheduler"
 };
 
 /*@}*/} // namespace gpu
