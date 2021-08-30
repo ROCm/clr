@@ -21,7 +21,7 @@
 #ifndef _OCL_INCLUDES_H
 #define _OCL_INCLUDES_H
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #define POINTER_64 __ptr64
 #include <windows.h>
 #include "d3d9.h"

@@ -26,7 +26,7 @@
 #include <stdlib.h>
 
 #include "OCL/Thread.h"
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include <process.h>
 #endif
 
@@ -37,7 +37,7 @@ typedef struct __argsToThreadFunc {
 
 } argsToThreadFunc;
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 //! Windows thread callback - invokes the callback set by
 //! the application in OCLThread constructor
 unsigned _stdcall win32ThreadFunc(void *args) {
@@ -54,7 +54,7 @@ unsigned _stdcall win32ThreadFunc(void *args) {
 //! Constructor for OCLLock
 //!
 OCLutil::Lock::Lock() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   InitializeCriticalSection(&_cs);
 #else
   pthread_mutex_init(&_lock, NULL);
@@ -66,7 +66,7 @@ OCLutil::Lock::Lock() {
 //! Destructor for OCLLock
 //!
 OCLutil::Lock::~Lock() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   DeleteCriticalSection(&_cs);
 #else
   pthread_mutex_destroy(&_lock);
@@ -79,7 +79,7 @@ OCLutil::Lock::~Lock() {
 //! else hold the lock and enter the protected area
 //!
 void OCLutil::Lock::lock() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   EnterCriticalSection(&_cs);
 #else
   pthread_mutex_lock(&_lock);
@@ -93,7 +93,7 @@ void OCLutil::Lock::lock() {
 //! section as well in this case).
 //!
 bool OCLutil::Lock::tryLock() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   return (TryEnterCriticalSection(&_cs) != 0);
 #else
   return !((bool)pthread_mutex_trylock(&_lock));
@@ -105,7 +105,7 @@ bool OCLutil::Lock::tryLock() {
 //! Unlock the lock
 //!
 void OCLutil::Lock::unlock() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   LeaveCriticalSection(&_cs);
 #else
   pthread_mutex_unlock(&_lock);
@@ -117,7 +117,7 @@ void OCLutil::Lock::unlock() {
 //! Constructor for OCLThread
 //!
 OCLutil::Thread::Thread() : _tid(0), _data(0) {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   _ID = 0;
 #else
 #endif
@@ -128,7 +128,7 @@ OCLutil::Thread::Thread() : _tid(0), _data(0) {
 //! Destructor for OCLLock
 //!
 OCLutil::Thread::~Thread() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   CloseHandle(_tid);
 #else
 #endif
@@ -146,7 +146,7 @@ bool OCLutil::Thread::create(oclThreadFunc func, void *arg) {
 
   bool verbose = getenv("VERBOSE") != NULL;
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   // Setup the callback struct for thread function and pass to the
   // begin thread routine
   // xxx The following struct is allocated but never freed!!!!
@@ -180,7 +180,7 @@ bool OCLutil::Thread::create(oclThreadFunc func, void *arg) {
 //! Return the thread ID for the current OCLThread
 //!
 unsigned int OCLutil::Thread::getID() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   return GetCurrentThreadId();
   // Type cast the thread handle to unsigned in and send it over
 #else
@@ -193,7 +193,7 @@ unsigned int OCLutil::Thread::getID() {
 //! Wait for this thread to join
 //!
 bool OCLutil::Thread::join() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   DWORD rc = WaitForSingleObject(_tid, INFINITE);
 
   if (rc == WAIT_FAILED) {

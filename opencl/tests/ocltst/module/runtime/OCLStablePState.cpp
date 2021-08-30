@@ -109,7 +109,7 @@ void OCLStablePState::run(void) {
   cl_set_device_clock_mode_output_amd setClockModeOutput = {};
   error_ = _wrapper->clSetDeviceClockModeAMD(gpu_device, setClockModeInput,
                                              &setClockModeOutput);
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   CHECK_RESULT(error_ != CL_SUCCESS, "SetClockMode profiling failed\n");
 #else
   error_ = CL_SUCCESS;
@@ -119,7 +119,7 @@ void OCLStablePState::run(void) {
   setClockModeOutput = {};
   error_ = _wrapper->clSetDeviceClockModeAMD(gpu_device, setClockModeInput,
                                              &setClockModeOutput);
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   CHECK_RESULT(error_ != CL_SUCCESS, "SetClockMode default failed\n");
 #else
   error_ = CL_SUCCESS;

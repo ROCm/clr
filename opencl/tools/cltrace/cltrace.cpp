@@ -4377,7 +4377,7 @@ vdiAgent_OnLoad(vdi_agent * agent)
         std::string clTraceLogStr = clTraceLogEnv;
         const std::size_t pidPos = clTraceLogStr.find("%pid%");
         if (pidPos != std::string::npos) {
-#if defined(ATI_OS_WIN)
+#if defined(_WIN32)
             const std::int32_t pid = _getpid();
 #else
             const std::int32_t pid = getpid();

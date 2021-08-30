@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 #include <assert.h>
 #include <stdio.h>
@@ -172,4 +172,4 @@ void Window::ShowImage(unsigned int width, unsigned int height, float* data) {
   OnPaint();
 }
 
-#endif  // ATI_OS_WIN
+#endif  // _WIN32

@@ -21,10 +21,10 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 typedef __int64 i64;
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 typedef long long i64;
 #endif
 

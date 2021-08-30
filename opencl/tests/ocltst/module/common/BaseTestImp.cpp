@@ -45,7 +45,7 @@ BaseTestImp::BaseTestImp()
   _platformIndex = 0;
   _perfInfo = 0.0f;
 
-#ifdef ATI_OS_LINUX  //
+#ifdef __linux__  //
   _useThreads = 0;  // disable threads on linux
 #else
   _useThreads = 1;  // if available on platform

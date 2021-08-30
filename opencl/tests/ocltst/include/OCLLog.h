@@ -21,7 +21,7 @@
 #ifndef OCLLOG_H_
 #define OCLLOG_H_
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 #ifdef OCLTST_LOG_BUILD
 #define DLLIMPORT __declspec(dllexport)
@@ -32,7 +32,7 @@
 #else
 #define DLLIMPORT
 
-#endif  // ATI_OS_WIN
+#endif  // _WIN32
 
 enum oclLoggingLevel {
   OCLTEST_LOG_ALWAYS,

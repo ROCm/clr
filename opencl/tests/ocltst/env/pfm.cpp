@@ -20,7 +20,7 @@
 
 #include "pfm.h"
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include <io.h>
 #endif
 

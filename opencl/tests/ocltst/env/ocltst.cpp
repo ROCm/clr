@@ -22,7 +22,7 @@
 
 #include <CL/cl.h>
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include <windows.h>
 
 #include "Window.h"
@@ -31,7 +31,7 @@ typedef HMODULE ModuleHandle;
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #include <dlfcn.h>
 typedef void* ModuleHandle;
 #endif
@@ -68,7 +68,7 @@ static OCLutil::Lock moduleLock;
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 static LONG WINAPI xFilter(LPEXCEPTION_POINTERS xEP);
 void serviceStubCall();
 #endif
@@ -386,7 +386,7 @@ void App::printOCLinfo(void) {
 /*-----------------------------------------------------
 Function to randomize the order in which tests are executed
 -------------------------------------------------------*/
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include <time.h>
 #endif
 // void App::SetTestRunOrder(int test_count)
@@ -745,7 +745,7 @@ void App::PrintTestOrder(int mod_index) {
 
 //! Function that runs all the tests specified in the command-line
 void App::RunAllTests() {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
   if (!m_console) m_window = new Window("Test", 100, 100, m_width, m_height, 0);
 #endif
@@ -889,7 +889,7 @@ void App::RunAllTests() {
                "##teamcity[testSuiteFinished name='ocltst']\n");
   }
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   if (!m_console && m_window) {
     ((Window*)m_window)->ConsumeEvents();
   }
@@ -1374,7 +1374,7 @@ void App::ScanForTests() {
   for (unsigned int i = 0; i < m_paths.size(); i++) {
     Module mod;
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
     std::string::iterator myIter;
     myIter = m_paths[i].end();
     myIter--;
@@ -1382,20 +1382,20 @@ void App::ScanForTests() {
 
     mod.hmodule = LoadLibrary(m_paths[i].c_str());
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
     mod.hmodule = dlopen(m_paths[i].c_str(), RTLD_NOW);
 #endif
 
     if (mod.hmodule == NULL) {
       fprintf(stderr, "Could not load module: %s\n", m_paths[i].c_str());
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
       fprintf(stderr, "Error : %s\n", dlerror());
 #else
 #endif
     } else {
       mod.name = m_paths[i];
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
       mod.get_count = (TestCountFuncPtr)GetProcAddress(mod.hmodule,
                                                        "OCLTestList_TestCount");
       mod.get_name =
@@ -1409,7 +1409,7 @@ void App::ScanForTests() {
       mod.get_libname = (TestLibNameFuncPtr)GetProcAddress(
           mod.hmodule, "OCLTestList_TestLibName");
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
       mod.get_count =
           (TestCountFuncPtr)dlsym(mod.hmodule, "OCLTestList_TestCount");
       mod.get_name =
@@ -1437,15 +1437,15 @@ void App::CleanUp() {
     if (m_modules[i].cached_test) {
       delete[] m_modules[i].cached_test;
     }
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
     FreeLibrary(m_modules[i].hmodule);
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
     dlclose(m_modules[i].hmodule);
 #endif
   }
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   if (m_window) delete m_window;
   m_window = 0;
 #endif
@@ -1461,7 +1461,7 @@ int main(int argc, char** argv) {
   // reset optind as we really didn't parse the full command line
   optind = 1;
   App app(platform);
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   // this function is registers windows service routine when ocltst is launched
   // by the OS on service initialization. On other scenarios, this function does
   // nothing.
@@ -1469,7 +1469,7 @@ int main(int argc, char** argv) {
   // SetErrorMode(SEM_NOGPFAULTERRORBOX);
   // const LPTOP_LEVEL_EXCEPTION_FILTER oldFilter =
   // SetUnhandledExceptionFilter(xFilter);
-#endif  // ATI_OS_WIN
+#endif  // _WIN32
 #ifdef AUTO_REGRESS
   try {
 #endif /* AUTO_REGRESS */
@@ -1490,7 +1490,7 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 #include <dbghelp.h>
 

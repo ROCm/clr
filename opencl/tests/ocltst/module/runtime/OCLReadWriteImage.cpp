@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include <sstream>
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #endif

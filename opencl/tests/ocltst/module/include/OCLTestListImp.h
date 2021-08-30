@@ -24,11 +24,11 @@
 //
 // Testing module (plugin) interface forward declarations
 //
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #define OCL_DLLEXPORT __declspec(dllexport)
 #define OCL_CALLCONV __cdecl
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #define OCL_DLLEXPORT
 #define OCL_CALLCONV
 #endif

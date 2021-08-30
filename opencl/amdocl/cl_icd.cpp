@@ -134,7 +134,7 @@ cl_icd_dispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {
      clSetProgramReleaseCallback,
      clSetProgramSpecializationConstant }};
 
-#if defined(ATI_OS_WIN)
+#if defined(_WIN32)
 #include <Shlwapi.h>
 
 #pragma comment(lib, "shlwapi.lib")
@@ -260,7 +260,7 @@ static bool ShouldLoadPlatform() {
   return shouldLoad;
 }
 
-#endif // defined(ATI_OS_WIN)
+#endif // defined(_WIN32)
 
 CL_API_ENTRY cl_int CL_API_CALL clIcdGetPlatformIDsKHR(cl_uint num_entries,
                                                        cl_platform_id* platforms,
