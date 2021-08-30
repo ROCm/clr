@@ -206,7 +206,7 @@ release(bool, GPU_IMAGE_BUFFER_WAR, true,                                     \
 release(cstring, HIP_VISIBLE_DEVICES, "",                                     \
         "Only devices whose index is present in the sequence are visible to HIP")  \
 release(cstring, CUDA_VISIBLE_DEVICES, "",                                    \
-        "Only devices whose index is present in the sequence are visible to HIP")    \
+        "Only devices whose index is present in the sequence are visible to CUDA") \
 release(bool, GPU_ENABLE_WGP_MODE, true,                                      \
         "Enables WGP Mode in HW if available")                                \
 release(bool, GPU_DUMP_CODE_OBJECT, false,                                    \
@@ -245,6 +245,8 @@ release(bool, ROC_SYSTEM_SCOPE_SIGNAL, true,                                  \
         "Enable system scope for signals (uses interrupts).")                 \
 release(bool, ROC_SKIP_COPY_SYNC, false,                                      \
         "Skips copy syncs if runtime can predict the same engine.")           \
+release(bool, ROC_ENABLE_PRE_VEGA, false,                                     \
+        "Enable support of pre-vega ASICs in ROCm path")                      \
 release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
