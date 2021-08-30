@@ -1459,7 +1459,7 @@ int main(int argc, char** argv) {
   unsigned int platform = 0;
   platform = parseCommandLineForPlatform(argc, argv);
   // reset optind as we really didn't parse the full command line
-  optind = 0;
+  optind = 1;
   App app(platform);
 #ifdef ATI_OS_WIN
   // this function is registers windows service routine when ocltst is launched
