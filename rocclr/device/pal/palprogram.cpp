@@ -744,6 +744,12 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
 bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                      bool internalKernel) {
 #if defined(USE_COMGR_LIBRARY)
+  // Stop compilation if it is an offline device - PAL runtime does not
+  // support ISA compiled offline
+  if (!device().isOnline()) {
+    return true;
+  }
+
   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
     buildLog_ += "Error: Cannot Find Global Var Sizes\n";
@@ -763,18 +769,6 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
     kernels()[kernelName] = kernel;
 
     kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
-  }
-#endif
-  return true;
-}
-
-bool LightningProgram::setKernels(void* binary, size_t binSize,
-                                  amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
-#if defined(USE_COMGR_LIBRARY)
-  // Stop compilation if it is an offline device - PAL runtime does not
-  // support ISA compiled offline
-  if (!device().isOnline()) {
-    return true;
   }
 
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
@@ -798,6 +792,16 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
   if (status != HSA_STATUS_SUCCESS) {
     LogError("Error: Freezing the executable failed.");
     return false;
+  }
+#endif
+  return true;
+}
+
+bool LightningProgram::setKernels(void* binary, size_t binSize,
+                                  amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
+#if defined(USE_COMGR_LIBRARY)
+  if (!device().isOnline()) {
+    return true;
   }
 
   for (auto& kit : kernels()) {
