@@ -24,7 +24,6 @@ set_target_properties(Common PROPERTIES
 
 target_compile_definitions(Common
     PUBLIC
-        ATI_OS_LINUX
         CL_TARGET_OPENCL_VERSION=220)
 
 if(OPENGL_FOUND AND GLEW_FOUND)

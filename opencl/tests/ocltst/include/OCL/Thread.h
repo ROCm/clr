@@ -25,7 +25,7 @@
 //! \file Thread.h
 //!
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0501
 #endif
@@ -86,7 +86,7 @@ class Lock {
   //!
 
   //! System specific synchronization primitive
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   CRITICAL_SECTION _cs;
 #else
   pthread_mutex_t _lock;
@@ -131,7 +131,7 @@ class Thread {
   //! Private data members and methods
   //!
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   //!  store the handle
   HANDLE _tid;
 

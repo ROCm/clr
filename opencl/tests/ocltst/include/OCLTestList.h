@@ -21,10 +21,10 @@
 #ifndef _OCLMODULE_H_
 #define _OCLMODULE_H_
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #define OCLLCONV __cdecl
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #define OCLLCONV
 #endif
 

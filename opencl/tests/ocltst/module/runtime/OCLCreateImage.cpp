@@ -25,7 +25,7 @@
 #include <string.h>
 
 #include <sstream>
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #endif
@@ -194,7 +194,7 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
       if (ImageSizeY >= max2DHeight) {
         ImageSizeY = max2DHeight - 0x1000;
       }
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
       // On linux, if the size of total system memory is less than 4GB,
       // then, we can allocate much smaller image.
       // TODO, need to find the root cause
@@ -289,7 +289,7 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
     float *data;
     size_t ActualImageSizeY = ImageSizeY;
     size_t maxImageSize = maxSize_;
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     if (maxImageSize > ((size_t)pages * page_size)) {
@@ -357,7 +357,7 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
 
     size_t ActualImageSizeZ = ImageSizeZ;
     size_t maxImageSize = maxSize_;
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
     long pages = sysconf(_SC_PHYS_PAGES);
     long page_size = sysconf(_SC_PAGE_SIZE);
     if (maxImageSize > ((size_t)pages * page_size)) {

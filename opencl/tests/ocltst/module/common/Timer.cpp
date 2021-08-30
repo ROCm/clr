@@ -20,23 +20,23 @@
 
 #include "Timer.h"
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include <windows.h>
 #endif
 
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #include <time.h>
 #define NANOSECONDS_PER_SEC 1000000000
 #endif
 
 CPerfCounter::CPerfCounter() : _clocks(0), _start(0) {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
   QueryPerformanceFrequency((LARGE_INTEGER *)&_freq);
 
 #endif
 
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
   _freq = NANOSECONDS_PER_SEC;
 #endif
 }
@@ -46,7 +46,7 @@ CPerfCounter::~CPerfCounter() {
 }
 
 void CPerfCounter::Start(void) {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
   if (_start) {
     MessageBox(NULL, "Bad Perf Counter Start", "Error", MB_OK);
@@ -55,7 +55,7 @@ void CPerfCounter::Start(void) {
   QueryPerformanceCounter((LARGE_INTEGER *)&_start);
 
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 
   struct timespec s;
   clock_gettime(CLOCK_MONOTONIC, &s);
@@ -67,7 +67,7 @@ void CPerfCounter::Start(void) {
 void CPerfCounter::Stop(void) {
   i64 n;
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
   if (!_start) {
     MessageBox(NULL, "Bad Perf Counter Stop", "Error", MB_OK);
@@ -77,7 +77,7 @@ void CPerfCounter::Stop(void) {
   QueryPerformanceCounter((LARGE_INTEGER *)&n);
 
 #endif
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 
   struct timespec s;
   clock_gettime(CLOCK_MONOTONIC, &s);
@@ -91,7 +91,7 @@ void CPerfCounter::Stop(void) {
 }
 
 void CPerfCounter::Reset(void) {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   if (_start) {
     MessageBox(NULL, "Bad Perf Counter Reset", "Error", MB_OK);
     exit(0);
@@ -101,7 +101,7 @@ void CPerfCounter::Reset(void) {
 }
 
 double CPerfCounter::GetElapsedTime(void) {
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
   if (_start) {
     MessageBox(NULL, "Trying to get time while still running.", "Error", MB_OK);
     exit(0);

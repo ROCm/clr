@@ -23,7 +23,7 @@
 //
 // Includes for tests
 //
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 #include "OCLDX11YUY2.h"
 #endif
 
@@ -38,7 +38,7 @@ static void* dictionary_CreateTestFunc(void) {
 #define TEST(name) \
   { #name, &dictionary_CreateTestFunc < name> }
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 TestEntry TestList[] = {TEST(OCLDX11YUY2)};
 

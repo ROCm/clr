@@ -147,7 +147,7 @@ int oclSysInfo(std::string &info_string, bool use_cpu, unsigned dev_id,
   clGetDeviceInfo(device, CL_DEVICE_BOARD_NAME_AMD, sizeof(c), &c, NULL);
   sprintf(tmpString, "\tBoard Name: %s\n", c);
   info_string.append(tmpString);
-#if defined(ATI_OS_LINUX)
+#if defined(__linux__)
   cl_device_topology_amd topology;
   clGetDeviceInfo(device, CL_DEVICE_TOPOLOGY_AMD, sizeof(topology), &topology,
                   NULL);

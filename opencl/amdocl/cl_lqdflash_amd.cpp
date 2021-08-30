@@ -58,7 +58,7 @@ bool LiquidFlashFile::open() {
       flags = LF_READ | LF_WRITE;
       break;
   }
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
   assert(sizeof(wchar_t) != sizeof(lf_char));
   std::string name_char;
   std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t> cv;
@@ -130,7 +130,7 @@ bool LiquidFlashFile::transferBlock(bool writeBuffer, void* srcDst, uint64_t buf
 RUNTIME_ENTRY_RET(cl_file_amd, clCreateSsgFileObjectAMD,
                   (cl_context context, cl_file_flags_amd flags, const wchar_t* file_name,
                    cl_int* errcode_ret)) {
-#if WITH_LIQUID_FLASH && defined ATI_OS_LINUX
+#if WITH_LIQUID_FLASH && defined __linux__
   if (!is_valid(context)) {
     *not_null(errcode_ret) = CL_INVALID_CONTEXT;
     LogWarning("invalid parameter \"context\"");

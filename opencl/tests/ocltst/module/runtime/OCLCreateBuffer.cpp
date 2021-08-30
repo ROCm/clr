@@ -26,7 +26,7 @@
 #include <string.h>
 
 #include <sstream>
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 #include <unistd.h>
 #endif
 
@@ -79,7 +79,7 @@ void OCLCreateBuffer::run(void) {
   _wrapper->clFinish(cmdQueues_[_deviceId]);
 
   size_t maxSteps = maxSize_;
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
   long pages = sysconf(_SC_PHYS_PAGES);
   long page_size = sysconf(_SC_PAGE_SIZE);
   if (maxSteps > (size_t)(pages * page_size / 2)) {

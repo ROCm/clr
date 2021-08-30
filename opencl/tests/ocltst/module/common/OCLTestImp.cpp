@@ -241,7 +241,7 @@ void OCLTestImp::setOCLWrapper(OCLWrapper* wrapper) { _wrapper = wrapper; }
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 #include <windows.h>
 
@@ -251,11 +251,11 @@ static int initializeSeed(void) {
   return (int)val;
 }
 
-#endif  // ATI_OS_WIN
+#endif  // _WIN32
 
 /////////////////////////////////////////////////////////////////////////////
 
-#ifdef ATI_OS_LINUX
+#ifdef __linux__
 
 #include <sys/time.h>
 
@@ -265,7 +265,7 @@ static int initializeSeed(void) {
   return (int)t.tv_usec;
 }
 
-#endif  // ATI_OS_LINUX
+#endif  // __linux__
 
 /////////////////////////////////////////////////////////////////////////////
 //

@@ -21,7 +21,7 @@
 #ifndef _WINDOW_H_
 #define _WINDOW_H_
 
-#ifdef ATI_OS_WIN
+#ifdef _WIN32
 
 #include <gl\gl.h>
 #include <windows.h>
@@ -50,6 +50,6 @@ class Window {
   static unsigned int _h;
 };
 
-#endif  // ATI_OS_WIN
+#endif  // _WIN32
 
 #endif  // _WINDOW_H_

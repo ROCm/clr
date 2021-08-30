@@ -27,7 +27,7 @@
 #include "CL/cl.h"
 #include "CL/cl_ext.h"
 
-#if !defined(ATI_OS_LINUX)
+#if !defined(__linux__)
 #include "WinBase.h"
 typedef DWORD(WINAPI* GetThreadId)(__in HANDLE Thread);
 #endif
@@ -63,7 +63,7 @@ void OCLGetQueueThreadID::open(unsigned int test, char* units,
 static void CL_CALLBACK notify_callback(cl_event event,
                                         cl_int event_command_exec_status,
                                         void* user_data) {
-#if defined(ATI_OS_LINUX)
+#if defined(__linux__)
   pthread_t id = (pthread_t)user_data;
   pthread_t handle = pthread_self();
 #else
