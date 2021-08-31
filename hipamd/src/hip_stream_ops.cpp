@@ -36,8 +36,8 @@ hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void
   // 'flags' for now used only for Wait, but in future there will usecases for Write too.
 
   if (cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE) {
-    // Wait is only supported on SignalMemory objects
-    if (!(memory->getMemFlags() & ROCCLR_MEM_HSA_SIGNAL_MEMORY)) {
+      // Stream Wait on AQL barrier-value type packet is only supported on SignalMemory objects
+      if (GPU_STREAMOPS_CP_WAIT && (!(memory->getMemFlags() & ROCCLR_MEM_HSA_SIGNAL_MEMORY))) {
       return hipErrorInvalidValue;
     }
     switch (flags) {
@@ -88,7 +88,7 @@ hipError_t hipStreamWaitValue32(hipStream_t stream, void* ptr, uint32_t value, u
       value,
       mask,
       flags,
-      0));  // sizeBytes un-used for wait, set it to 0
+      sizeof(uint32_t)));
 }
 
 hipError_t hipStreamWaitValue64(hipStream_t stream, void* ptr, uint64_t value, unsigned int flags,
@@ -101,7 +101,7 @@ hipError_t hipStreamWaitValue64(hipStream_t stream, void* ptr, uint64_t value, u
       value,
       mask,
       flags,
-      0));  // sizeBytes un-used for wait, set it to 0
+      sizeof(uint64_t)));
 }
 
 hipError_t hipStreamWriteValue32(hipStream_t stream, void* ptr, uint32_t value, unsigned int flags) {
@@ -113,7 +113,7 @@ hipError_t hipStreamWriteValue32(hipStream_t stream, void* ptr, uint32_t value, 
       value,
       0,  // mask un-used set it to 0
       0,  // flags un-used for now set it to 0
-      4));
+      sizeof(uint32_t)));
 }
 
 hipError_t hipStreamWriteValue64(hipStream_t stream, void* ptr, uint64_t value, unsigned int flags) {
@@ -125,5 +125,5 @@ hipError_t hipStreamWriteValue64(hipStream_t stream, void* ptr, uint64_t value, 
       value,
       0,  // mask un-used set it to 0
       0,  // flags un-used for now set it to 0
-      8));
+      sizeof(uint64_t)));
 }
