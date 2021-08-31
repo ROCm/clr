@@ -48,8 +48,8 @@ add_custom_command(
 
 add_custom_target(test.ocltst.oclgl
     COMMAND
-        ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:amdocl>:$ENV{LD_LIBRARY_PATH}"
-        $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclgl> -A oclgl.exclude
+        ${CMAKE_COMMAND} -E env "OCL_ICD_FILENAMES=$<TARGET_FILE:amdocl>"
+        $<TARGET_FILE:ocltst> -p 0 -m $<TARGET_FILE:oclgl> -A oclgl.exclude
     DEPENDS
         ocltst oclgl amdocl
     WORKING_DIRECTORY
@@ -59,8 +59,8 @@ add_custom_target(test.ocltst.oclgl
 foreach(TEST ${TESTS})
     add_custom_target(test.ocltst.oclgl.${TEST}
         COMMAND
-            ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=$<TARGET_FILE_DIR:amdocl>:$ENV{LD_LIBRARY_PATH}"
-            $<TARGET_FILE:ocltst> -m $<TARGET_FILE:oclgl> -t ${TEST}
+            ${CMAKE_COMMAND} -E env "OCL_ICD_FILENAMES=$<TARGET_FILE:amdocl>"
+            $<TARGET_FILE:ocltst> -p 0 -m $<TARGET_FILE:oclgl> -t ${TEST}
         DEPENDS
             ocltst oclgl amdocl
         WORKING_DIRECTORY
