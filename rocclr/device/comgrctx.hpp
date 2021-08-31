@@ -71,6 +71,7 @@ typedef amd_comgr_status_t (*t_amd_comgr_index_list_metadata)(amd_comgr_metadata
 typedef amd_comgr_status_t (*t_amd_comgr_iterate_symbols)(amd_comgr_data_t data, amd_comgr_status_t(*callback)(amd_comgr_symbol_t symbol, void *user_data), void *user_data);
 typedef amd_comgr_status_t (*t_amd_comgr_symbol_lookup)(amd_comgr_data_t data, const char *name, amd_comgr_symbol_t *symbol);
 typedef amd_comgr_status_t (*t_amd_comgr_symbol_get_info)(amd_comgr_symbol_t symbol, amd_comgr_symbol_info_t attribute, void *value);
+typedef amd_comgr_status_t (*t_amd_comgr_demangle_symbol_name)(amd_comgr_data_t MangledSymbolName, amd_comgr_data_t* DemangledSymbolName);
 
 struct ComgrEntryPoints {
   void* handle;
@@ -119,6 +120,7 @@ struct ComgrEntryPoints {
   t_amd_comgr_iterate_symbols           amd_comgr_iterate_symbols;
   t_amd_comgr_symbol_lookup             amd_comgr_symbol_lookup;
   t_amd_comgr_symbol_get_info           amd_comgr_symbol_get_info;
+  t_amd_comgr_demangle_symbol_name      amd_comgr_demangle_symbol_name;
 };
 
 #ifdef COMGR_DYN_DLL
@@ -274,8 +276,12 @@ public:
   static amd_comgr_status_t symbol_get_info(amd_comgr_symbol_t symbol, amd_comgr_symbol_info_t attribute, void *value) {
     return COMGR_DYN(amd_comgr_symbol_get_info)(symbol, attribute, value);
   }
+  static amd_comgr_status_t demangle_symbol_name(amd_comgr_data_t MangledSymbolName,
+                                                 amd_comgr_data_t* DemangledSymbolName) {
+    return COMGR_DYN(amd_comgr_demangle_symbol_name)(MangledSymbolName, DemangledSymbolName);
+  }
 
-private:
+ private:
   static ComgrEntryPoints cep_;
   static bool is_ready_;
 };
