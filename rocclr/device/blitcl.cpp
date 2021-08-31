@@ -34,6 +34,10 @@ const char* BlitSourceCode = BLIT_KERNELS(
     extern void __amd_fillBufferAligned(__global uchar*, __global ushort*, __global uint*, __global ulong*,
                                         __constant uchar*, uint, ulong, ulong);
 
+    extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong, ulong);
+
+    extern void __amd_streamOpsWait(__global uint*,__global ulong*, ulong, ulong, ulong);
+
     __kernel void __amd_rocclr_copyBufferRect(__global uchar* src, __global uchar* dst, ulong4 srcRect,
                                  ulong4 dstRect, ulong4 size) {
       __amd_copyBufferRect(src, dst, srcRect, dstRect, size);
@@ -109,6 +113,14 @@ const char* BlitSourceCode = BLIT_KERNELS(
                             int4 patternINT4, uint4 patternUINT4, int4 origin, int4 size,
                             uint type) {
       __amd_fillImage(image, patternFLOAT4, patternINT4, patternUINT4, origin, size, type);
-    });
+    }
 
+    __kernel void __amd_rocclr_streamOpsWait(__global uint* ptrInt, __global ulong* ptrUlong, ulong value, ulong flags,
+                               ulong mask) {
+      __amd_streamOpsWait(ptrInt, ptrUlong, value, flags, mask);
+    }
+
+    __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong, ulong value, ulong sizeBytes) {
+      __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);
+    });
 }  // namespace device
