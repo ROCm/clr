@@ -2257,7 +2257,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   profilingBegin(cmd);
 
   const cl_command_type type = cmd.type();
-  const int64_t value = cmd.value();
+  const uint64_t value = cmd.value();
   const uint64_t mask = cmd.mask();
   const unsigned int flags = cmd.flags();
   const size_t sizeBytes = cmd.sizeBytes();
@@ -2267,44 +2267,58 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   Memory* memory = dev().getRocMemory(amdMemory);
 
   if (type == ROCCLR_COMMAND_STREAM_WAIT_VALUE) {
-    hsa_amd_barrier_value_packet_t aqlPacket;
-    hsa_amd_vendor_packet_header_t header;
-    hsa_signal_t signal;
-    Buffer* buff = static_cast<Buffer*>(memory);
+    if (GPU_STREAMOPS_CP_WAIT) {
+      hsa_amd_barrier_value_packet_t aqlPacket;
+      hsa_amd_vendor_packet_header_t header;
+      hsa_signal_t signal;
+      Buffer* buff = static_cast<Buffer*>(memory);
 
-    header.header = kBarrierVendorPacketHeader;
-    header.AmdFormat = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
-    aqlPacket.signal = buff->getSignal();
-    aqlPacket.completion_signal = Barriers().ActiveSignal();
+      header.header = kBarrierVendorPacketHeader;
+      header.AmdFormat = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
+      aqlPacket.signal = buff->getSignal();
+      aqlPacket.completion_signal = Barriers().ActiveSignal();
 
-    // mask is always applied on value at signal before performing
-    // the comparision defiend by 'condition'
-    switch (flags) {
-      case ROCCLR_STREAM_WAIT_VALUE_GTE:
-        aqlPacket.value = value;
-        aqlPacket.mask = mask;
-        aqlPacket.cond = HSA_SIGNAL_CONDITION_GTE;
-        break;
-      case ROCCLR_STREAM_WAIT_VALUE_EQ:
-        aqlPacket.value = value;
-        aqlPacket.mask = mask;
-        aqlPacket.cond = HSA_SIGNAL_CONDITION_EQ;
-        break;
-      case ROCCLR_STREAM_WAIT_VALUE_AND:
-        aqlPacket.value = 0;
-        aqlPacket.mask = (value & mask);
-        aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
-        break;
-      case ROCCLR_STREAM_WAIT_VALUE_NOR:
-        aqlPacket.value = ~value & mask;
-        aqlPacket.mask = ~value & mask;
-        aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
-        break;
-      default:
-        ShouldNotReachHere();
-        break;
+      // mask is always applied on value at signal before performing
+      // the comparision defiend by 'condition'
+      switch (flags) {
+        case ROCCLR_STREAM_WAIT_VALUE_GTE:
+          aqlPacket.value = value;
+          aqlPacket.mask = mask;
+          aqlPacket.cond = HSA_SIGNAL_CONDITION_GTE;
+          break;
+        case ROCCLR_STREAM_WAIT_VALUE_EQ:
+          aqlPacket.value = value;
+          aqlPacket.mask = mask;
+          aqlPacket.cond = HSA_SIGNAL_CONDITION_EQ;
+          break;
+        case ROCCLR_STREAM_WAIT_VALUE_AND:
+          aqlPacket.value = 0;
+          aqlPacket.mask = (value & mask);
+          aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
+          break;
+        case ROCCLR_STREAM_WAIT_VALUE_NOR:
+          aqlPacket.value = ~value & mask;
+          aqlPacket.mask = ~value & mask;
+          aqlPacket.cond = HSA_SIGNAL_CONDITION_NE;
+          break;
+        default:
+          ShouldNotReachHere();
+          break;
+      }
+      dispatchBarrierValuePacket(&aqlPacket, header);
     }
-    dispatchBarrierValuePacket(&aqlPacket, header);
+    // Use a blit kernel to perform the wait operation
+    else {
+    // mask is applied on value before performing
+    // the comparision defined by 'condition'
+      bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWait(*memory, value,
+                                                  sizeBytes, flags, mask);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Waiting for value: 0x%lx."
+              " Flags: 0x%lx mask: 0x%lx", value, flags, mask);
+      if (!result) {
+        LogError("submitStreamOperation: Wait failed!");
+      }
+    }
   } else if (type == ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
     amd::Coord3D origin(offset);
     amd::Coord3D size(sizeBytes);
@@ -2312,10 +2326,12 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     // Ensure memory ordering preceding the write
     dispatchBarrierPacket(kBarrierPacketReleaseHeader);
 
-    if (!fillMemory(CL_COMMAND_FILL_BUFFER, amdMemory, &value, sizeBytes, origin, size, true)) {
-      cmd.setStatus(CL_INVALID_OPERATION);
-    }
+    bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWrite(*memory, value,
+                                                  sizeBytes);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writing value: 0x%lx", value);
+    if (!result) {
+      LogError("submitStreamOperation: Write failed!");
+    }
   } else {
     ShouldNotReachHere();
   }

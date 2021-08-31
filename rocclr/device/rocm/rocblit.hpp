@@ -242,6 +242,8 @@ class KernelBlitManager : public DmaBlitManager {
     FillImage,
     Scheduler,
     GwsInit,
+    StreamOpsWrite,
+    StreamOpsWait,
     BlitTotal
   };
 
@@ -387,6 +389,20 @@ class KernelBlitManager : public DmaBlitManager {
   bool RunGwsInit(uint32_t value             //!< Initial value for GWS resource
                   ) const;
 
+  //! Stream memory write operation - Write a 'value' at 'memory'.
+  bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+                             uint64_t value,
+                             size_t sizeBytes
+  ) const;
+
+  //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
+  bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+                             uint64_t value,
+                             size_t sizeBytes,
+                             uint64_t flags,
+                             uint64_t mask
+  ) const;
+
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
  private:
@@ -466,7 +482,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyBufferRectAligned", "__amd_rocclr_copyBuffer",
     "__amd_rocclr_copyBufferAligned", "__amd_rocclr_fillBufferAligned",
     "__amd_rocclr_fillImage", "__amd_rocclr_scheduler",
-    "__amd_rocclr_gwsInit"
+    "__amd_rocclr_gwsInit", "__amd_rocclr_streamOpsWrite", "__amd_rocclr_streamOpsWait"
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
