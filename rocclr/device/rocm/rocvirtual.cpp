@@ -509,8 +509,8 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
     signal->ts_ = nullptr;
   } else if (!signal->done_) {
     amd::ScopedLock lock(signal->LockSignalOps());
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "[%zx]!\t Host wait on completion_signal=0x%zx",
-            std::this_thread::get_id(), signal->signal_.handle);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host wait on completion_signal=0x%zx",
+            signal->signal_.handle);
     if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
       LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
       return false;
@@ -663,9 +663,8 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
           const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
           ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-            "[%zx]!\tArg%d: %s %s = ptr:%p obj:[%p-%p]",
-            std::this_thread::get_id(), i, desc.typeName_.c_str(), desc.name_.c_str(),
-            globalAddress, gpuMem->getDeviceMemory(),
+            "Arg%d: %s %s = ptr:%p obj:[%p-%p]", i, desc.typeName_.c_str(),
+             desc.name_.c_str(), globalAddress, gpuMem->getDeviceMemory(),
             reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize());
 
           // Validate memory for a dependency in the queue
@@ -743,8 +742,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         WriteAqlArgAt(const_cast<address>(params), &mem, sizeof(void*), it->second);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-        "[%zx]!\tArg%d: %s %s = val:%lld",
-        std::this_thread::get_id(), i, desc.typeName_.c_str(), desc.name_.c_str(),
+        "Arg%d: %s %s = val:%lld", i, desc.typeName_.c_str(), desc.name_.c_str(),
         *reinterpret_cast<const long long*>(srcArgPtr));
     }
     else if (desc.type_ == T_SAMPLER) {
@@ -816,12 +814,12 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
     }
     ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-            "[%zx] HWq=0x%zx, Dispatch Header = "
+            "HWq=0x%zx, Dispatch Header = "
             "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
             "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
             "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
-            std::this_thread::get_id(), gpu_queue_,
-            header, extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
+            gpu_queue_, header,
+            extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
             extractAqlBits(header, HSA_PACKET_HEADER_BARRIER,
                            HSA_PACKET_HEADER_WIDTH_BARRIER),
             extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
@@ -953,10 +951,10 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-          "[%zx] HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
+          "HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
           " release=%d), "
           "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
-          std::this_thread::get_id(), gpu_queue_, packetHeader,
+          gpu_queue_, packetHeader,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
                          HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER,
@@ -2239,10 +2237,10 @@ void VirtualGPU::dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-          "[%zx] HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x ",
+          "HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x ",
           "(type=%d, barrier=%d, acquire=%d, release=%d), "
           "completion_signal=0x%zx value = 0x%llx mask = 0x%llx cond: %d (GTE: %d EQ: %d NE: %d)",
-          std::this_thread::get_id(), gpu_queue_, header.header, header.AmdFormat,
+          gpu_queue_, header.header, header.AmdFormat,
           extractAqlBits(header.header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(header.header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
           extractAqlBits(header.header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
@@ -2655,8 +2653,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "[%zx]!\tShaderName : %s",
-            std::this_thread::get_id(), gpuKernel.name().c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s", gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
