@@ -86,8 +86,8 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
 
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
-  // Return error if count passed is more than the actual size allocated
-  if (memObj && count  > (memObj->getSize() - offset)) {
+
+  if (memObj == nullptr || (count  > (memObj->getSize() - offset))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -119,10 +119,6 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
     return hipErrorOutOfMemory;
   }
 
-  if (!command->validateMemory()) {
-    delete command;
-    HIP_RETURN(hipErrorInvalidValue);
-  }
   command->enqueue();
   command->release();
 
