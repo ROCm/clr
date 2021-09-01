@@ -85,42 +85,9 @@ uint32_t ProgramState::addNameExpression(const char* name_expression) {
   return nameExpresssion_.size();
 }
 
-char* demangle(const char* loweredName) {
-  if (!loweredName) {
-    return nullptr;
-  }
-#if __linux__
-  int status = 0;
-  char* demangledName = DEMANGLE(loweredName, nullptr, nullptr, &status);
-  if (status != 0) {
-    LogPrintfError("Cannot demangle loweredName: %s \n", loweredName);
-    return nullptr;
-  }
-#elif defined(_WIN32)
-  char* demangledName = (char*)malloc(UNDECORATED_SIZE);
-
-  if (!UnDecorateSymbolName(loweredName, demangledName,
-                            UNDECORATED_SIZE/ sizeof(*demangledName), UNDNAME_COMPLETE))
-  {
-    free(demangledName);
-    LogPrintfError("Cannot undecorate loweredName: %s demangledName: %s \n",
-                      loweredName, demangledName);
-    return nullptr;
-  }
-#else
-#error "Only Linux and Windows are supported"
-#endif // __linux__
-  return demangledName;
-}
-
-static std::string handleMangledName(std::string name) {
-  std::string loweredName;
-  char* demangled = demangle(name.c_str());
-  loweredName.assign(demangled == nullptr ? std::string() : demangled);
-  free(demangled);
-
+static std::string handleMangledName(std::string loweredName) {
   if (loweredName.empty()) {
-    return name;
+    return loweredName;
   }
 
   if (loweredName.find(".kd") != std::string::npos) {
@@ -362,13 +329,24 @@ hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expressio
     HIPRTC_RETURN(HIPRTC_ERROR_COMPILATION);
   }
 
-  for (auto& name : mangledNames) {
-    std::string demangledName = handleMangledName(name);
+  std::vector<std::string> demangledNames;
+  for (const auto& name : mangledNames) {
+    std::string demangledName;
+    if (!dev_program->getDemangledName(name, demangledName)) {
+      LogPrintfError("Unable to demangle name: %s \n", name.c_str());
+      HIPRTC_RETURN(HIPRTC_ERROR_COMPILATION);
+    }
+    demangledNames.push_back(demangledName);
+  }
+
+
+  for(size_t i = 0; i < demangledNames.size(); i++) {
+    std::string demangledName = handleMangledName(demangledNames[i]);
     demangledName.erase(std::remove_if(demangledName.begin(), demangledName.end(),
                                        [](unsigned char c) { return std::isspace(c); }),
                         demangledName.end());
     if (demangledName == strippedNameNoSpace) {
-      it->second.second.assign(name);
+      it->second.second.assign(mangledNames[i]);
       break;
     }
   }
