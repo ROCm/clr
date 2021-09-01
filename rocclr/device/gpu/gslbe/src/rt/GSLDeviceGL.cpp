@@ -723,7 +723,7 @@ CALGSLDevice::glCanInterop(CALvoid* GLplatformContext, CALvoid* GLdeviceContext)
     GLuint glDeviceId = 0 ;
     GLuint glChainMask = 0 ;
     GLXContext ctx = (GLXContext)GLplatformContext;
-    
+
     if (glXGetContextMVPUInfoAMD(ctx,&glDeviceId,&glChainMask)){
         GLuint deviceId = 0 ;
         GLuint chainMask = 0 ;

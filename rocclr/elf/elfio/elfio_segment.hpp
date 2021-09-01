@@ -56,7 +56,7 @@ class segment
   protected:
     ELFIO_SET_ACCESS_DECL( Elf64_Off, offset );
     ELFIO_SET_ACCESS_DECL( Elf_Half,  index  );
-    
+
     virtual const std::vector<Elf_Half>& get_sections() const               = 0;
     virtual void load( std::istream& stream, std::streampos header_offset ) = 0;
     virtual void save( std::ostream& stream, std::streampos header_offset,
@@ -103,7 +103,7 @@ class segment_impl : public segment
     }
 
 //------------------------------------------------------------------------------
-    void 
+    void
     set_stream_size(size_t value)
     {
        stream_size = value;
@@ -179,7 +179,7 @@ class segment_impl : public segment
     {
         return sections;
     }
-    
+
 //------------------------------------------------------------------------------
     void
     set_index( Elf_Half value )
@@ -213,7 +213,7 @@ class segment_impl : public segment
                 } catch (const std::bad_alloc&) {
                     data = 0;
                 }
-            
+
                 if ( 0 != data ) {
                     stream.read( data, size );
                     data[size] = 0;

@@ -74,7 +74,7 @@ class WaveLimiter : public amd::ProfilingCallback {
   uint SIMDPerSH_;  // Number of SIMDs per SH
   uint waves_;      // Waves per SIMD to be set
   uint bestWave_;   // Optimal waves per SIMD
-  uint worstWave_;  // Wave number with the worst performance 
+  uint worstWave_;  // Wave number with the worst performance
   uint countAll_;   // Number of kernel executions
   StateKind state_;
   WaveLimiterManager* manager_;

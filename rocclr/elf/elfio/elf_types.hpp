@@ -278,7 +278,7 @@ typedef uint64_t Elf64_Off;
 #define EM_TILE64        187 // Tilera TILE64 multicore architecture family
 #define EM_TILEPRO       188 // Tilera TILEPro multicore architecture family
 #define EM_MICROBLAZE    189 // Xilinx MicroBlaze 32-bit RISC soft processor core
-#define EM_CUDA          190 // NVIDIA CUDA architecture 
+#define EM_CUDA          190 // NVIDIA CUDA architecture
 #define EM_TILEGX        191 // Tilera TILE-Gx multicore architecture family
 #define EM_CLOUDSHIELD   192 // CloudShield architecture family
 #define EM_COREA_1ST     193 // KIPO-KAIST Core-A 1st generation processor family

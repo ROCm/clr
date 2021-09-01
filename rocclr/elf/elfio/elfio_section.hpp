@@ -60,7 +60,7 @@ class section
 protected:
     ELFIO_SET_ACCESS_DECL( Elf64_Off, offset );
     ELFIO_SET_ACCESS_DECL( Elf_Half,  index  );
-    
+
     virtual void load( std::istream&  stream,
                        std::streampos header_offset ) = 0;
     virtual void save( std::ostream&  stream,

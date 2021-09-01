@@ -37,7 +37,7 @@ namespace ELFIO {
 static struct class_table_t {
     const char  key;
     const char* str;
-} class_table [] = 
+} class_table [] =
 {
     { ELFCLASS32, "ELF32" },
     { ELFCLASS64, "ELF64" },
@@ -47,7 +47,7 @@ static struct class_table_t {
 static struct endian_table_t {
     const char  key;
     const char* str;
-} endian_table [] = 
+} endian_table [] =
 {
     { ELFDATANONE, "None"          },
     { ELFDATA2LSB, "Little endian" },
@@ -58,7 +58,7 @@ static struct endian_table_t {
 static struct version_table_t {
     const Elf64_Word key;
     const char*      str;
-} version_table [] = 
+} version_table [] =
 {
     { EV_NONE   , "None"    },
     { EV_CURRENT, "Current" },
@@ -68,7 +68,7 @@ static struct version_table_t {
 static struct type_table_t {
     const Elf32_Half key;
     const char*      str;
-} type_table [] = 
+} type_table [] =
 {
     { ET_NONE, "No file type"       },
     { ET_REL , "Relocatable file"   },
@@ -81,7 +81,7 @@ static struct type_table_t {
 static struct machine_table_t {
     const Elf64_Half key;
     const char*      str;
-} machine_table [] = 
+} machine_table [] =
 {
     { EM_NONE         , "No machine"                                                              },
     { EM_M32          , "AT&T WE 32100"                                                           },
@@ -283,7 +283,7 @@ static struct machine_table_t {
 static struct section_type_table_t {
     const Elf64_Half key;
     const char*      str;
-} section_type_table [] = 
+} section_type_table [] =
 {
     { SHT_NULL         , "NULL"          },
     { SHT_PROGBITS     , "PROGBITS"      },
@@ -308,7 +308,7 @@ static struct section_type_table_t {
 static struct segment_type_table_t {
     const Elf_Word key;
     const char*    str;
-} segment_type_table [] = 
+} segment_type_table [] =
 {
     { PT_NULL   , "NULL"    },
     { PT_LOAD   , "LOAD"    },
@@ -324,7 +324,7 @@ static struct segment_type_table_t {
 static struct segment_flag_table_t {
     const Elf_Word key;
     const char*    str;
-} segment_flag_table [] = 
+} segment_flag_table [] =
 {
     { 0, ""    },
     { 1, "X"   },
@@ -340,7 +340,7 @@ static struct segment_flag_table_t {
 static struct symbol_bind_t {
     const Elf_Word key;
     const char*    str;
-} symbol_bind_table [] = 
+} symbol_bind_table [] =
 {
     { STB_LOCAL   , "LOCAL"    },
     { STB_GLOBAL  , "GLOBAL"   },
@@ -356,7 +356,7 @@ static struct symbol_bind_t {
 static struct symbol_type_t {
     const Elf_Word key;
     const char*    str;
-} symbol_type_table [] = 
+} symbol_type_table [] =
 {
     { STT_NOTYPE , "NOTYPE"  },
     { STT_OBJECT , "OBJECT"  },
@@ -375,7 +375,7 @@ static struct symbol_type_t {
 static struct dynamic_tag_t {
     const Elf_Word key;
     const char*    str;
-} dynamic_tag_table [] = 
+} dynamic_tag_table [] =
 {
     { DT_NULL           , "NULL"            },
     { DT_NEEDED         , "NEEDED"          },
@@ -431,7 +431,7 @@ class dump
     static void
     header( std::ostream& out, const elfio& reader )
     {
-        if (!reader.get_header_size()) 
+        if (!reader.get_header_size())
         {
             return;
         }
@@ -465,12 +465,12 @@ class dump
             out << "[  Nr ] Type              Addr             Size             ES   Flg" << std::endl
                 << "        Lk   Inf  Al      Name" << std::endl;
         }
-            
+
         for ( Elf_Half i = 0; i < n; ++i ) { // For all sections
             section* sec = reader.sections[i];
             section_header( out, i, sec, reader.get_class() );
         }
-        
+
         out << "Key to Flags: W (write), A (alloc), X (execute)\n\n"
             << std::endl;
     }
@@ -483,7 +483,7 @@ class dump
         std::ios_base::fmtflags original_flags = out.flags();
 
         if ( elf_class == ELFCLASS32 ) { // Output for 32-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_STR_FORMAT( 17 ) << str_section_type( sec->get_type() ) << " "
@@ -498,7 +498,7 @@ class dump
                 << std::endl;
         }
         else {                           // Output for 64-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_STR_FORMAT( 17 ) << str_section_type( sec->get_type() ) << " "
@@ -517,7 +517,7 @@ class dump
 
         out.flags(original_flags);
 
-        return; 
+        return;
     }
 
 //------------------------------------------------------------------------------
@@ -539,12 +539,12 @@ class dump
                 << "                       FileSize         Mem.Size         Align"
                 << std::endl;
         }
-            
+
         for ( Elf_Half i = 0; i < n; ++i ) {
             segment* seg = reader.segments[i];
             segment_header( out, i, seg, reader.get_class() );
         }
-            
+
         out << std::endl;
     }
 
@@ -556,7 +556,7 @@ class dump
         std::ios_base::fmtflags original_flags = out.flags();
 
         if ( elf_class == ELFCLASS32 ) { // Output for 32-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_STR_FORMAT( 14 ) << str_segment_type( seg->get_type() )  << " "
@@ -569,7 +569,7 @@ class dump
                 << std::endl;
         }
         else {                           // Output for 64-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_STR_FORMAT( 14 ) << str_segment_type( seg->get_type() )  << " "
@@ -586,7 +586,7 @@ class dump
 
         out.flags(original_flags);
     }
-    
+
 //------------------------------------------------------------------------------
     static void
     symbol_tables( std::ostream& out, const elfio& reader )
@@ -626,7 +626,7 @@ class dump
             }
         }
     }
-    
+
 //------------------------------------------------------------------------------
     static void
     symbol_table( std::ostream& out,
@@ -642,7 +642,7 @@ class dump
         std::ios_base::fmtflags original_flags = out.flags();
 
         if ( elf_class == ELFCLASS32 ) { // Output for 32-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_HEX_FORMAT(  8 ) << value                   << " "
@@ -654,7 +654,7 @@ class dump
                 << std::endl;
         }
         else {                           // Output for 64-bit
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_HEX_FORMAT( 16 ) << value                   << " "
@@ -670,7 +670,7 @@ class dump
 
         out.flags(original_flags);
     }
-    
+
 //------------------------------------------------------------------------------
     static void
     notes( std::ostream& out, const elfio& reader )
@@ -690,14 +690,14 @@ class dump
                         std::string name;
                         void*       desc;
                         Elf_Word    descsz;
-                    
+
                         if ( notes.get_note( j, type, name, desc, descsz ) ) {
                             // 'name' usually contains \0 at the end. Try to fix it
                             name = name.c_str();
                             note( out, j, type, name );
                         }
                     }
-                    
+
                     out << std::endl;
                 }
             }
@@ -711,14 +711,14 @@ class dump
           Elf_Word           type,
           const std::string& name )
     {
-        out << "  [" 
+        out << "  ["
             << DUMP_DEC_FORMAT( 2 ) << no
             << "] "
             << DUMP_HEX_FORMAT( 8 ) << type << " "
             << DUMP_STR_FORMAT( 1 ) << name
             << std::endl;
     }
-    
+
 //------------------------------------------------------------------------------
     static void
     dynamic_tags( std::ostream& out, const elfio& reader )
@@ -749,7 +749,7 @@ class dump
             }
         }
     }
-    
+
 //------------------------------------------------------------------------------
     static void
     dynamic_tag( std::ostream& out,
@@ -759,7 +759,7 @@ class dump
                  std::string   str,
                  unsigned int  /*elf_class*/ )
     {
-            out << "[" 
+            out << "["
                 << DUMP_DEC_FORMAT(  5 ) << no
                 << "] "
                 << DUMP_STR_FORMAT( 16 ) << str_dynamic_tag( tag ) << " ";
@@ -800,7 +800,7 @@ class dump
             out.flags(original_flags);
         }
 
-        return; 
+        return;
     }
 
 //------------------------------------------------------------------------------
@@ -854,7 +854,7 @@ class dump
             out.flags(original_flags);
         }
 
-        return; 
+        return;
     }
 
 //------------------------------------------------------------------------------
@@ -876,7 +876,7 @@ class dump
 
         out << std::endl;
     }
-    
+
   private:
 //------------------------------------------------------------------------------
     template< typename T, typename K >
@@ -922,7 +922,7 @@ class dump
         return format_assoc( table, (const int)key );
     }
 
-    
+
 //------------------------------------------------------------------------------
     static
     std::string
@@ -970,7 +970,7 @@ class dump
 #undef DUMP_HEX_FORMAT
 #undef DUMP_STR_FORMAT
 }; // class dump
-    
+
 
 } // namespace ELFIO
 } // namespace amd

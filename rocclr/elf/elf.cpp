@@ -456,7 +456,7 @@ bool Elf::getTarget(uint16_t& machine, ElfPlatform& platform) const
 bool Elf::setTarget(uint16_t machine, ElfPlatform platform)
 {
   Elf64_Half mach;
-  if (platform == CPU_PLATFORM) 
+  if (platform == CPU_PLATFORM)
     mach = machine + CPU_BASE;
   else if (platform == CAL_PLATFORM)
     mach = machine + CAL_BASE;
