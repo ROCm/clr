@@ -120,7 +120,7 @@ bool NullDevice::create(const amd::Isa &isa) {
   roc::Settings* hsaSettings = new roc::Settings();
   settings_ = hsaSettings;
   if (!hsaSettings ||
-      !hsaSettings->create(false, isa.versionMajor(), isa.versionMinor(),
+      !hsaSettings->create(false, isa.versionMajor(), isa.versionMinor(), isa.versionStepping(),
                            isa.xnack() == amd::Isa::Feature::Enabled)) {
     LogPrintfError("Error creating settings for offline HSA device %s", isa.targetId());
     return false;
@@ -631,7 +631,8 @@ bool Device::create() {
   settings_ = hsaSettings;
   if (!hsaSettings ||
       !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), isa->versionMajor(),
-                           isa->versionMinor(), isa->xnack() == amd::Isa::Feature::Enabled,
+                           isa->versionMinor(), isa->versionStepping(),
+                           isa->xnack() == amd::Isa::Feature::Enabled,
                            coop_groups)) {
     LogPrintfError("Unable to create settings for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
@@ -1847,7 +1848,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
   hsa_amd_memory_pool_t segment{0};
   switch (mem_seg) {
     case kKernArg : {
-      if (::strcmp(isa().processorName().c_str(), "gfx90a") == 0) {
+      if (settings().fgs_kernel_arg_) {
         segment = system_kernarg_segment_;
         break;
       }

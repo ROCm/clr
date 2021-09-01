@@ -52,7 +52,8 @@ class Settings : public device::Settings {
       uint cpu_wait_for_signal_ : 1;    //!< Wait for HSA signal on CPU
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint skip_copy_sync_ : 1;         //!< Ignore explicit HSA signal waits for copy functionality
-      uint reserved_ : 21;
+      uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
+      uint reserved_ : 20;
     };
     uint value_;
   };
@@ -89,8 +90,8 @@ class Settings : public device::Settings {
   Settings();
 
   //! Creates settings
-  bool create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, bool enableXNACK,
-              bool coop_groups = false);
+  bool create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, uint32_t gfxStepping,
+              bool enableXNACK, bool coop_groups = false);
 
  private:
   //! Disable copy constructor
