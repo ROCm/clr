@@ -250,7 +250,7 @@ class App {
                           m_height,
                           m_perflab,
                           i,
-                          m_platform);            
+                          m_platform);
             }
 #else
     for (unsigned int i = 0; i < 1; i++) {

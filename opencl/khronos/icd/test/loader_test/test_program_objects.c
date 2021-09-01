@@ -162,7 +162,7 @@ int test_clGetExtensionFunctionAddressForPlatform(const struct clGetExtensionFun
 {
     void *return_value;
     test_icd_app_log("clGetExtensionFunctionAddressForPlatform(%p, %p)\n",
-                     platform,  
+                     platform,
                      data->func_name);
 
     return_value=clGetExtensionFunctionAddressForPlatform(platform,
@@ -224,7 +224,7 @@ int test_program_objects()
 
     for (i=0;i<NUM_ITEMS_clRetainProgram;i++)   {
         test_clRetainProgram(&clRetainProgramData[i]);
-    }    
+    }
 
     for (i=0;i<NUM_ITEMS_clBuildProgram;i++)    {
         test_clBuildProgram(&clBuildProgramData[i]);

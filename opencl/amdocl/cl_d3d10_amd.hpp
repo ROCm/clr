@@ -159,7 +159,7 @@ public:
     UINT getDepth() const {return objDesc_.objSize_.Depth;}
     size_t getElementBytes(DXGI_FORMAT dxgiFomat);
     size_t getElementBytes() {return getElementBytes(objDesc_.dxgiFormat_);}
-    DXGI_FORMAT getDxgiFormat() {return objDesc_.dxgiFormat_;} 
+    DXGI_FORMAT getDxgiFormat() {return objDesc_.dxgiFormat_;}
     UINT getSubresource() const {return subRes_;}
     const D3D10ObjDesc_t* getObjDesc() const { return &objDesc_; }
 

@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 
     test_icd_close_app_log();
     test_icd_close_stub_log();
-    
+
     if (test_icd_match()) {
         printf("ICD Loader Test FAILED\n");
         return 1;

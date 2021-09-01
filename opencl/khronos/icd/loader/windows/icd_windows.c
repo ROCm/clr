@@ -96,12 +96,12 @@ void adapterFree(WinAdapter *pWinAdapter)
 }
 
 /*
- * 
+ *
  * Vendor enumeration functions
  *
  */
 
-// go through the list of vendors in the registry and call khrIcdVendorAdd 
+// go through the list of vendors in the registry and call khrIcdVendorAdd
 // for each vendor encountered
 BOOL CALLBACK khrIcdOsVendorsEnumerate(PINIT_ONCE InitOnce, PVOID Parameter, PVOID *lpContext)
 {
@@ -164,7 +164,7 @@ BOOL CALLBACK khrIcdOsVendorsEnumerate(PINIT_ONCE InitOnce, PVOID Parameter, PVO
                 break;
             }
             KHR_ICD_TRACE("Value %s found...\n", cszLibraryName);
-        
+
             // Require that the value be a DWORD and equal zero
             if (REG_DWORD != dwLibraryNameType)
             {
@@ -243,9 +243,9 @@ void khrIcdOsVendorsEnumerateOnce()
 {
     InitOnceExecuteOnce(&initialized, khrIcdOsVendorsEnumerate, NULL, NULL);
 }
- 
+
 /*
- * 
+ *
  * Dynamic library loading functions
  *
  */

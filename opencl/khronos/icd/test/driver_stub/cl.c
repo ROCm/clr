@@ -88,7 +88,7 @@ clGetPlatformIDs(cl_uint           num_entries ,
                       platforms,
                       num_platforms);
     return_value = clIcdGetPlatformIDsKHR(num_entries, platforms, num_platforms);
-    test_icd_stub_log("Value returned: %d\n", return_value); 
+    test_icd_stub_log("Value returned: %d\n", return_value);
     return return_value;
 }
 
@@ -102,11 +102,11 @@ clGetPlatformInfo(cl_platform_id    platform,
     cl_int ret = CL_SUCCESS;
     const char *returnString = NULL;
     size_t returnStringLength = 0;
-    /*test_icd_stub_log("clGetPlatformInfo(%p, %u, %u, %p, %p)\n", 
-                      platform, 
-                      param_name, 
-                      param_value_size, 
-                      param_value, 
+    /*test_icd_stub_log("clGetPlatformInfo(%p, %u, %u, %p, %p)\n",
+                      platform,
+                      param_name,
+                      param_value_size,
+                      param_value,
                       param_value_size_ret);*/
 
     // validate the arguments
@@ -306,13 +306,13 @@ clCreateContextFromType(const cl_context_properties * properties,
                       errcode_ret);
     pfn_notify(NULL, NULL, 0, NULL);
 
-    test_icd_stub_log ("createcontext_callback(%p, %p, %u, %p)\n", 
-                       NULL, 
-                       NULL, 
-                       0, 
+    test_icd_stub_log ("createcontext_callback(%p, %p, %u, %p)\n",
+                       NULL,
+                       NULL,
+                       0,
                        NULL);
-    
-    test_icd_stub_log("Value returned: %p\n", 
+
+    test_icd_stub_log("Value returned: %p\n",
 		              obj);
     return obj;
 }

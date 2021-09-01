@@ -27,11 +27,11 @@ struct clRetainKernel_st clRetainKernelData[NUM_ITEMS_clRetainKernel] =
 int test_clRetainKernel(const struct clRetainKernel_st* data)
 {
     test_icd_app_log("clRetainKernel(%p)\n", kernel);
-		
+
     ret_val=clRetainKernel(kernel);
-        
+
     test_icd_app_log("Value returned: %d\n", ret_val);
-        
+
     return 0;
 }
 
@@ -43,18 +43,18 @@ struct clSetKernelArg_st clSetKernelArgData[NUM_ITEMS_clSetKernelArg] =
 int test_clSetKernelArg(const struct clSetKernelArg_st* data)
 {
     test_icd_app_log("clSetKernelArg(%p, %u, %u, %p)\n",
-                     kernel, 
-                     data->arg_index,    
+                     kernel,
+                     data->arg_index,
                      data->arg_size,
                      data->arg_value);
-		
-    ret_val=clSetKernelArg(kernel, 
-                           data->arg_index,    
+
+    ret_val=clSetKernelArg(kernel,
+                           data->arg_index,
                            data->arg_size,
                            data->arg_value);
-        
+
     test_icd_app_log("Value returned: %d\n", ret_val);
-        
+
     return 0;
 }
 
@@ -67,19 +67,19 @@ int test_clGetKernelInfo(const struct clGetKernelInfo_st* data)
 {
     test_icd_app_log("clGetKernelInfo(%p, %u, %u, %p, %p)\n",
                      kernel,
-                     data->param_name, 
+                     data->param_name,
                      data->param_value_size,
-                     data->param_value, 
+                     data->param_value,
                      data->param_value_size_ret);
 
     ret_val=clGetKernelInfo(kernel,
-                                    data->param_name, 
+                                    data->param_name,
                                     data->param_value_size,
-                                    data->param_value, 
+                                    data->param_value,
                                     data->param_value_size_ret);
-                                    
+
     test_icd_app_log("Value returned: %d\n", ret_val);
-        
+
         return 0;
 }
 
@@ -91,14 +91,14 @@ struct clGetKernelArgInfo_st clGetKernelArgInfoData[NUM_ITEMS_clGetKernelArgInfo
 int test_clGetKernelArgInfo(const struct clGetKernelArgInfo_st* data)
 {
     test_icd_app_log("clGetKernelArgInfo(%p, %u, %u, %u, %p, %p)\n",
-                     kernel, 
+                     kernel,
                      data->arg_indx,
                      data->param_name,
                      data->param_value_size,
                      data->param_value,
                      data->param_value_size_ret);
 
-    ret_val=clGetKernelArgInfo(kernel, 
+    ret_val=clGetKernelArgInfo(kernel,
             data->arg_indx,
             data->param_name,
             data->param_value_size,
@@ -118,14 +118,14 @@ struct clGetKernelWorkGroupInfo_st clGetKernelWorkGroupInfoData[NUM_ITEMS_clGetK
 int test_clGetKernelWorkGroupInfo(const struct clGetKernelWorkGroupInfo_st* data)
 {
     test_icd_app_log("clGetKernelWorkGroupInfo(%p, %p, %u, %u, %p, %p)\n",
-                     kernel, 
+                     kernel,
                      devices,
                      data->param_name,
                      data->param_value_size,
                      data->param_value,
                      data->param_value_size_ret);
 
-    ret_val=clGetKernelWorkGroupInfo(kernel, 
+    ret_val=clGetKernelWorkGroupInfo(kernel,
             devices,
             data->param_name,
             data->param_value_size,
@@ -146,7 +146,7 @@ int test_clEnqueueMigrateMemObjects(const struct clEnqueueMigrateMemObjects_st* 
 {
     test_icd_app_log("clEnqueueMigrateMemObjects(%p, %u, %p, %x, %u, %p, %p)\n",
                      command_queue,
-                     data->num_mem_objects, 
+                     data->num_mem_objects,
                      data->mem_objects,
                      data->flags,
                      data->num_events_in_wait_list,
@@ -154,7 +154,7 @@ int test_clEnqueueMigrateMemObjects(const struct clEnqueueMigrateMemObjects_st* 
                      &event);
 
     ret_val=clEnqueueMigrateMemObjects(command_queue,
-            data->num_mem_objects, 
+            data->num_mem_objects,
             data->mem_objects,
             data->flags,
             data->num_events_in_wait_list,
@@ -175,7 +175,7 @@ int test_clEnqueueNDRangeKernel(const struct clEnqueueNDRangeKernel_st* data)
 {
     test_icd_app_log("clEnqueueNDRangeKernel(%p, %p, %u, %p, %p, %p, %u, %p, %p)\n",
                      command_queue,
-                     kernel, 
+                     kernel,
                      data->work_dim,
                      data->global_work_offset,
                      data->global_work_size,
@@ -185,7 +185,7 @@ int test_clEnqueueNDRangeKernel(const struct clEnqueueNDRangeKernel_st* data)
                      &event);
 
     ret_val=clEnqueueNDRangeKernel(command_queue,
-            kernel, 
+            kernel,
             data->work_dim,
             data->global_work_offset,
             data->global_work_size,
@@ -194,7 +194,7 @@ int test_clEnqueueNDRangeKernel(const struct clEnqueueNDRangeKernel_st* data)
             data->event_wait_list,
             &event);
 
-    test_icd_app_log("Value returned: %d\n", ret_val);	
+    test_icd_app_log("Value returned: %d\n", ret_val);
 
     return 0;
 }
@@ -207,16 +207,16 @@ struct clEnqueueTask_st clEnqueueTaskData[NUM_ITEMS_clEnqueueTask] =
 int test_clEnqueueTask(const struct clEnqueueTask_st* data)
 {
     test_icd_app_log("clEnqueueTask(%p, %p, %u, %p, %p)\n",
-                     command_queue, 
-                     kernel, 
+                     command_queue,
+                     kernel,
                      data->num_events_in_wait_list,
-                     data->event_wait_list, 
+                     data->event_wait_list,
                      &event);
 
-    ret_val=clEnqueueTask(command_queue, 
-            kernel, 
+    ret_val=clEnqueueTask(command_queue,
+            kernel,
             data->num_events_in_wait_list,
-            data->event_wait_list, 
+            data->event_wait_list,
             &event);
 
     test_icd_app_log("Value returned: %d\n", ret_val);
@@ -230,29 +230,29 @@ struct clEnqueueNativeKernel_st clEnqueueNativeKernelData[NUM_ITEMS_clEnqueueNat
 
 int test_clEnqueueNativeKernel(const struct clEnqueueNativeKernel_st* data) {
     test_icd_app_log("clEnqueueNativeKernel(%p, %p, %p, %u, %u, %p, %p, %u, %p, %p)\n",
-                     command_queue, 
+                     command_queue,
                      data->user_func,
-                     data->args, 
-                     data->cb_args, 
+                     data->args,
+                     data->cb_args,
                      data->num_mem_objects,
-                     data->mem_list, 
+                     data->mem_list,
                      data->args_mem_loc,
                      data->num_events_in_wait_list,
-                     data->event_wait_list, 
+                     data->event_wait_list,
                      &event);
 
-    ret_val=clEnqueueNativeKernel(command_queue, 
+    ret_val=clEnqueueNativeKernel(command_queue,
             data->user_func,
-            data->args, 
-            data->cb_args, 
+            data->args,
+            data->cb_args,
             data->num_mem_objects,
-            data->mem_list, 
+            data->mem_list,
             data->args_mem_loc,
             data->num_events_in_wait_list,
-            data->event_wait_list, 
+            data->event_wait_list,
             &event);
 
-    test_icd_app_log("Value returned: %d\n", ret_val);		
+    test_icd_app_log("Value returned: %d\n", ret_val);
     return 0;
 }
 
@@ -300,15 +300,15 @@ struct clGetEventInfo_st clGetEventInfoData[NUM_ITEMS_clGetEventInfo] =
 int test_clGetEventInfo(const struct clGetEventInfo_st* data){
     test_icd_app_log("clGetEventInfo(%p, %u, %u, %p, %p)\n",
                      event,
-                     data->param_name, 
+                     data->param_name,
                      data->param_value_size,
-                     data->param_value, 
+                     data->param_value,
                      data->param_value_size_ret);
 
     ret_val=clGetEventInfo(event,
-            data->param_name, 
+            data->param_name,
             data->param_value_size,
-            data->param_value, 
+            data->param_value,
             data->param_value_size_ret);
 
     test_icd_app_log("Value returned: %d\n", ret_val);
@@ -424,11 +424,11 @@ int test_clEnqueueWaitForEvents(const struct clEnqueueWaitForEvents_st* data)
 {
     test_icd_app_log("clEnqueueWaitForEvents(%p, %u, %p)\n",
                      command_queue,
-                     data->num_events, 
+                     data->num_events,
                      data->event_list);
 
     ret_val = clEnqueueWaitForEvents(command_queue,
-            data->num_events, 
+            data->num_events,
             data->event_list);
 
     test_icd_app_log("Value returned: %d\n", ret_val);
@@ -461,13 +461,13 @@ int test_clGetEventProfilingInfo(const struct clGetEventProfilingInfo_st* data)
     test_icd_app_log("clGetEventProfilingInfo(%p, %u, %u, %p, %p)\n",
                      event,
                      data->param_name,
-                     data->param_value_size, 
+                     data->param_value_size,
                      data->param_value,
                      data->param_value_size_ret);
 
     ret_val=clGetEventProfilingInfo(event,
             data->param_name,
-            data->param_value_size, 
+            data->param_value_size,
             data->param_value,
             data->param_value_size_ret);
 
@@ -512,88 +512,88 @@ int test_kernel()
 {
     int i;
 
-    for (i=0; i<NUM_ITEMS_clRetainKernel; i++) { 
-        test_clRetainKernel(&clRetainKernelData[i]); 
-    }	
-
-    for (i=0; i<NUM_ITEMS_clSetKernelArg; i++) { 
-        test_clSetKernelArg(&clSetKernelArgData[i]); 
+    for (i=0; i<NUM_ITEMS_clRetainKernel; i++) {
+        test_clRetainKernel(&clRetainKernelData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clGetKernelInfo; i++) { 
-        test_clGetKernelInfo(&clGetKernelInfoData[i]); 
+    for (i=0; i<NUM_ITEMS_clSetKernelArg; i++) {
+        test_clSetKernelArg(&clSetKernelArgData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clGetKernelArgInfo; i++) { 
-        test_clGetKernelArgInfo(&clGetKernelArgInfoData[i]); 
+    for (i=0; i<NUM_ITEMS_clGetKernelInfo; i++) {
+        test_clGetKernelInfo(&clGetKernelInfoData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clGetKernelWorkGroupInfo; i++) { 
-        test_clGetKernelWorkGroupInfo(&clGetKernelWorkGroupInfoData[i]); 
+    for (i=0; i<NUM_ITEMS_clGetKernelArgInfo; i++) {
+        test_clGetKernelArgInfo(&clGetKernelArgInfoData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueMigrateMemObjects; i++) { 
-        test_clEnqueueMigrateMemObjects(&clEnqueueMigrateMemObjectsData[i]); 
+    for (i=0; i<NUM_ITEMS_clGetKernelWorkGroupInfo; i++) {
+        test_clGetKernelWorkGroupInfo(&clGetKernelWorkGroupInfoData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueNDRangeKernel; i++) { 
-        test_clEnqueueNDRangeKernel(&clEnqueueNDRangeKernelData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueMigrateMemObjects; i++) {
+        test_clEnqueueMigrateMemObjects(&clEnqueueMigrateMemObjectsData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueTask; i++) { 
-        test_clEnqueueTask(&clEnqueueTaskData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueNDRangeKernel; i++) {
+        test_clEnqueueNDRangeKernel(&clEnqueueNDRangeKernelData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueNativeKernel; i++) { 
-        test_clEnqueueNativeKernel(&clEnqueueNativeKernelData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueTask; i++) {
+        test_clEnqueueTask(&clEnqueueTaskData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clSetUserEventStatus; i++) { 
-        test_clSetUserEventStatus(&clSetUserEventStatusData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueNativeKernel; i++) {
+        test_clEnqueueNativeKernel(&clEnqueueNativeKernelData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clWaitForEvents; i++) { 
-        test_clWaitForEvents(&clWaitForEventsData[i]); 
+    for (i=0; i<NUM_ITEMS_clSetUserEventStatus; i++) {
+        test_clSetUserEventStatus(&clSetUserEventStatusData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clGetEventInfo; i++) { 
-        test_clGetEventInfo(&clGetEventInfoData[i]); 
+    for (i=0; i<NUM_ITEMS_clWaitForEvents; i++) {
+        test_clWaitForEvents(&clWaitForEventsData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clSetEventCallback; i++) { 
-        test_clSetEventCallback(&clSetEventCallbackData[i]); 
+    for (i=0; i<NUM_ITEMS_clGetEventInfo; i++) {
+        test_clGetEventInfo(&clGetEventInfoData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clRetainEvent; i++) { 
-        test_clRetainEvent(&clRetainEventData[i]); 
+    for (i=0; i<NUM_ITEMS_clSetEventCallback; i++) {
+        test_clSetEventCallback(&clSetEventCallbackData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueMarker; i++) { 
-        test_clEnqueueMarker(&clEnqueueMarkerData[i]); 
+    for (i=0; i<NUM_ITEMS_clRetainEvent; i++) {
+        test_clRetainEvent(&clRetainEventData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueBarrier; i++) { 
-        test_clEnqueueBarrier(&clEnqueueBarrierData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueMarker; i++) {
+        test_clEnqueueMarker(&clEnqueueMarkerData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueMarkerWithWaitList; i++) { 
-        test_clEnqueueMarkerWithWaitList(&clEnqueueMarkerWithWaitListData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueBarrier; i++) {
+        test_clEnqueueBarrier(&clEnqueueBarrierData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clEnqueueBarrierWithWaitList; i++) { 
-        test_clEnqueueBarrierWithWaitList(&clEnqueueBarrierWithWaitListData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueMarkerWithWaitList; i++) {
+        test_clEnqueueMarkerWithWaitList(&clEnqueueMarkerWithWaitListData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clGetEventProfilingInfo; i++) { 
-        test_clGetEventProfilingInfo(&clGetEventProfilingInfoData[i]); 
+    for (i=0; i<NUM_ITEMS_clEnqueueBarrierWithWaitList; i++) {
+        test_clEnqueueBarrierWithWaitList(&clEnqueueBarrierWithWaitListData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clFlush; i++) { 
-        test_clFlush(&clFlushData[i]); 
+    for (i=0; i<NUM_ITEMS_clGetEventProfilingInfo; i++) {
+        test_clGetEventProfilingInfo(&clGetEventProfilingInfoData[i]);
     }
 
-    for (i=0; i<NUM_ITEMS_clFinish; i++) { 
-        test_clFinish(&clFinishData[i]); 
+    for (i=0; i<NUM_ITEMS_clFlush; i++) {
+        test_clFlush(&clFlushData[i]);
+    }
+
+    for (i=0; i<NUM_ITEMS_clFinish; i++) {
+        test_clFinish(&clFinishData[i]);
     }
 
     return 0;
