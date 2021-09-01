@@ -48,7 +48,7 @@ extern "C" char * __cxa_demangle(const char *mangled_name, char *output_buffer,
 
 // This macro should be called at the beginning of every HIP RTC API.
 #define HIPRTC_INIT_API(...)                                 \
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "[%zx] %s ( %s )", std::this_thread::get_id(), __func__, ToString( __VA_ARGS__ ).c_str()); \
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "%s ( %s )", __func__, ToString( __VA_ARGS__ ).c_str()); \
   amd::Thread* thread = amd::Thread::current();              \
   if (!VDI_CHECK_THREAD(thread)) {                           \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);              \
@@ -57,7 +57,7 @@ extern "C" char * __cxa_demangle(const char *mangled_name, char *output_buffer,
 
 #define HIPRTC_RETURN(ret)             \
   hiprtc::g_lastRtcError = ret;        \
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "[%zx] %s: Returned %s", std::this_thread::get_id(), __func__, \
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s", __func__, \
           hiprtcGetErrorString(hiprtc::g_lastRtcError));                 \
   return hiprtc::g_lastRtcError;
 
