@@ -100,8 +100,8 @@ Settings::Settings() {
 }
 
 // ================================================================================================
-bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, bool enableXNACK,
-                      bool coop_groups) {
+bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor,
+                      uint32_t gfxStepping, bool enableXNACK, bool coop_groups) {
   customHostAllocator_ = false;
 
   if (fullProfile) {
@@ -172,6 +172,10 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
 
   lcWavefrontSize64_ = !enableWave32Mode_;
 
+  // Enable fgs kernel arg segment only for a specific HW
+  fgs_kernel_arg_ = gfxipMajor == 9 && gfxStepping == 10;
+  fgs_kernel_arg_ = (!flagIsDefault(ROC_USE_FGS_KERNARG)) ?
+                          ROC_USE_FGS_KERNARG : fgs_kernel_arg_;
   // Override current device settings
   override();
 
