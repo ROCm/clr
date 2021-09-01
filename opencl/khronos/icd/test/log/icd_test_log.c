@@ -18,7 +18,7 @@ int test_icd_initialize_app_log(void)
 		printf("Unable to open file %s\n", APP_LOG_FILE);
         return -1;
     }
-    
+
     return 0;
 }
 
@@ -42,7 +42,7 @@ int test_icd_initialize_stub_log(void)
 		printf("Unable to open file %s\n", STUB_LOG_FILE);
         return -1;
     }
-    
+
     return 0;
 
 }

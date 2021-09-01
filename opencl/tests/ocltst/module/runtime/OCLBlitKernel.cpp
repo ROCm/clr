@@ -32,7 +32,7 @@ const static cl_uint ThreadsForCheck = 1 << Stages;
 
 #define KERNEL_CODE(...) #__VA_ARGS__
 
-const static char* strKernel = 
+const static char* strKernel =
     KERNEL_CODE(
     \n
     \x23 if OCL20

@@ -131,7 +131,7 @@ public:
             //if the resouce is being used
             if(resources_.size()) {
                 for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
-                    if( surfInfo_.resource && 
+                    if( surfInfo_.resource &&
                         ((*it).first.surfInfo.resource == surfInfo_.resource) &&
                         ((*it).first.surfPlane == surfPlane_)) {
                             resources_.erase(it);
@@ -141,7 +141,7 @@ public:
             }
         }
     }
-    static int initD3D9Object(const Context& amdContext, cl_dx9_media_adapter_type_khr adapter_type, 
+    static int initD3D9Object(const Context& amdContext, cl_dx9_media_adapter_type_khr adapter_type,
         cl_dx9_surface_info_khr* cl_surf_info, cl_uint plane, D3D9Object& obj);
     cl_uint getMiscFlag(void);
 

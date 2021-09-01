@@ -97,7 +97,7 @@ On Windows, add the "stub" ICD by adding a `REG_DWORD` value to the registry key
 
     // For 32-bit operating systems, or 64-bit tests on a 64-bit operating system:
     HKEY_LOCAL_MACHINE\SOFTWARE\Khronos\OpenCL\Vendors
-    
+
     // For 32-bit tests on a 64-bit operating system:
     HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Khronos\OpenCL\Vendors
 

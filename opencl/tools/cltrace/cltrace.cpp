@@ -267,7 +267,7 @@ getMemoryString(const void* ptr, size_t size)
     }
     std::ostringstream ss;
     ss << "&" << ptr;
-    return ss.str();    
+    return ss.str();
 }
 
 static std::string
@@ -513,7 +513,7 @@ getQueuePropertyString(const cl_queue_properties* qprops)
         switch(p->name) {
         case CL_QUEUE_PROPERTIES:
             property = static_cast<cl_command_queue_properties>(p->value.raw);
-            
+
             if (property & CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) {
             ss << "CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE";
             property &= ~CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE;
@@ -3392,7 +3392,7 @@ EnqueueReleaseGLObjects(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 RetainDevice(
     cl_device_id     device)
 {
@@ -3412,7 +3412,7 @@ RetainDevice(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 ReleaseDevice(
     cl_device_id     device)
 {
@@ -3432,7 +3432,7 @@ ReleaseDevice(
     return ret;
 }
 
-static cl_mem CL_API_CALL 
+static cl_mem CL_API_CALL
 CreateImage(
     cl_context              context,
     cl_mem_flags            flags,
@@ -3463,7 +3463,7 @@ CreateImage(
     return ret;
 }
 
-static cl_program CL_API_CALL 
+static cl_program CL_API_CALL
 CreateProgramWithBuiltInKernels(
     cl_context            context,
     cl_uint               num_devices,
@@ -3491,7 +3491,7 @@ CreateProgramWithBuiltInKernels(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 CompileProgram(
     cl_program           program,
     cl_uint              num_devices,
@@ -3526,7 +3526,7 @@ CompileProgram(
     return ret;
 }
 
-static cl_program CL_API_CALL 
+static cl_program CL_API_CALL
 LinkProgram(
     cl_context           context,
     cl_uint              num_devices,
@@ -3560,7 +3560,7 @@ LinkProgram(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 UnloadPlatformCompiler(
     cl_platform_id     platform)
 {
@@ -3581,7 +3581,7 @@ UnloadPlatformCompiler(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 GetKernelArgInfo(
     cl_kernel       kernel,
     cl_uint         arg_indx,
@@ -3613,7 +3613,7 @@ GetKernelArgInfo(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 EnqueueFillBuffer(
     cl_command_queue   command_queue,
     cl_mem             buffer,
@@ -3647,7 +3647,7 @@ EnqueueFillBuffer(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 EnqueueFillImage(
     cl_command_queue   command_queue,
     cl_mem             image,
@@ -3682,7 +3682,7 @@ EnqueueFillImage(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 EnqueueMigrateMemObjects(
     cl_command_queue       command_queue,
     cl_uint                num_mem_objects,
@@ -3715,7 +3715,7 @@ EnqueueMigrateMemObjects(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 EnqueueMarkerWithWaitList(
     cl_command_queue  command_queue,
     cl_uint           num_events_in_wait_list,
@@ -3742,7 +3742,7 @@ EnqueueMarkerWithWaitList(
     return ret;
 }
 
-static cl_int CL_API_CALL 
+static cl_int CL_API_CALL
 EnqueueBarrierWithWaitList(
     cl_command_queue  command_queue,
     cl_uint           num_events_in_wait_list,
@@ -3769,7 +3769,7 @@ EnqueueBarrierWithWaitList(
     return ret;
 }
 
-static void * CL_API_CALL 
+static void * CL_API_CALL
 GetExtensionFunctionAddressForPlatform(
     cl_platform_id platform,
     const char *   function_name)
@@ -4365,13 +4365,13 @@ int32_t CL_CALLBACK
 vdiAgent_OnLoad(vdi_agent * agent)
 {
     char *clTraceLogEnv;
-    
+
     int32_t err = agent->GetICDDispatchTable(
             agent, &original_dispatch, sizeof(original_dispatch));
     if (err != CL_SUCCESS) {
         return err;
     }
-    
+
     clTraceLogEnv = getenv("CL_TRACE_OUTPUT");
     if(clTraceLogEnv!=NULL) {
         std::string clTraceLogStr = clTraceLogEnv;
@@ -4402,7 +4402,7 @@ vdiAgent_OnLoad(vdi_agent * agent)
         return err;
     }
 
-    std::cerr << "!!!" << std::endl << "!!! API trace for \"" 
+    std::cerr << "!!!" << std::endl << "!!! API trace for \""
         << version << "\"" << std::endl << "!!!" << std::endl;
 
     SET_ORIGINAL_EXTENSION(D3D10KHR);

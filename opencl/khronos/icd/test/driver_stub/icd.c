@@ -21,7 +21,7 @@
  */
 extern CL_API_ENTRY cl_int CL_API_CALL
 clSetCommandQueueProperty(cl_command_queue              /* command_queue */,
-                          cl_command_queue_properties   /* properties */, 
+                          cl_command_queue_properties   /* properties */,
                           cl_bool                       /* enable */,
                           cl_command_queue_properties * /* old_properties */);
 
@@ -152,7 +152,7 @@ cl_int cliIcdDispatchTableCreate(CLIicdDispatchTable **outDispatchTable)
     ICD_DISPATCH_TABLE_ENTRY ( /*clRetainDeviceEXT*/ NULL);
     ICD_DISPATCH_TABLE_ENTRY ( /*clReleaseDevice*/NULL);
 
-    ICD_DISPATCH_TABLE_ENTRY ( clCreateEventFromGLsyncKHR); 
+    ICD_DISPATCH_TABLE_ENTRY ( clCreateEventFromGLsyncKHR);
 
     ICD_DISPATCH_TABLE_ENTRY ( clCreateSubDevices);
     ICD_DISPATCH_TABLE_ENTRY ( clRetainDevice);
