@@ -154,7 +154,7 @@ bool ProDevice::Create(uint32_t bus, uint32_t device, uint32_t func) {
           Funcs().AmdgpuQueryInfo(dev_handle_, AMDGPU_INFO_CAPABILITY, sizeof(drm_amdgpu_capability), &cap);
 
           // Check if DGMA and SSG are available
-          if ((cap.flag & (AMDGPU_CAPABILITY_DIRECT_GMA_FLAG | AMDGPU_CAPABILITY_SSG_FLAG)) == 
+          if ((cap.flag & (AMDGPU_CAPABILITY_DIRECT_GMA_FLAG | AMDGPU_CAPABILITY_SSG_FLAG)) ==
               (AMDGPU_CAPABILITY_DIRECT_GMA_FLAG | AMDGPU_CAPABILITY_SSG_FLAG)) {
             result = true;
             break;

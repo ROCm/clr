@@ -26,8 +26,8 @@
 #include <D3D11.h>
 
 /**************************************************************************************************************
-* Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch. 
-* This means CAL client spec will need to change to include headers directly from the DXX perforce tree. 
+* Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch.
+* This means CAL client spec will need to change to include headers directly from the DXX perforce tree.
 * However, CAL only cares about the DXX OpenCL extension interface class. The spec cannot change
 * without notification. So it is safe to use a local copy of the relevant DXX extension interface classes.
 **************************************************************************************************************/
@@ -107,7 +107,7 @@ queryD3D11DeviceGPUMask(ID3D11Device* pd3d11Device, UINT* pd3d11DeviceGPUMask)
     if (pExt != NULL)
     {
         pExt->Release();
-    }    
+    }
 
     return (SUCCEEDED(hr));
 }
@@ -148,8 +148,8 @@ CALGSLDevice::associateD3D11Device(void* d3d11Device)
         }
         else
         {
-            // special handling for Intel iGPU + AMD dGPU in LDA mode (only occurs on a PX platform) where 
-            // the D3D11Device object is created on the Intel iGPU and passed to AMD dGPU (secondary) to interoperate. 
+            // special handling for Intel iGPU + AMD dGPU in LDA mode (only occurs on a PX platform) where
+            // the D3D11Device object is created on the Intel iGPU and passed to AMD dGPU (secondary) to interoperate.
             if (calDevChainBitMask > 1)
             {
                 canInteroperate = false;

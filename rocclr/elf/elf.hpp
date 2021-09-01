@@ -208,7 +208,7 @@ private:
 
     bool _successful;
 
-public: 
+public:
 
     /*
        Elf object can be created for reading or writing (it could be created for

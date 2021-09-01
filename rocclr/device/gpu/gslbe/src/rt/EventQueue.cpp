@@ -52,7 +52,7 @@ EventQueue::open(gsCtx* cs, gslQueryTarget target, EQManagerConfig config, uint3
     assert((GpuEvent::InvalidID+1) % m_queueSize  == 0);
 
     m_cs = cs;
-    
+
     m_headId   = m_queueSize - 1 ;
     m_tail = 0;
     m_latestRetired = 0;
@@ -74,7 +74,7 @@ EventQueue::close()
     {
         return;
     }
-    
+
     for (unsigned int i = 0; i < m_queueSize; i++)
     {
         m_cs->destroyQuery(m_queries[i]);

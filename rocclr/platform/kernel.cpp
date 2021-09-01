@@ -226,7 +226,7 @@ address KernelParameters::capture(const Device& device, uint64_t lclMemSize, int
     *error = CL_OUT_OF_RESOURCES;
   }
 
-  // Check if capture was successful 
+  // Check if capture was successful
   if (CL_SUCCESS != *error) {
     AlignedMemory::deallocate(mem);
     mem = nullptr;

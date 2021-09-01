@@ -27,8 +27,8 @@
 #include <dxgi.h>
 
 /**************************************************************************************************************
-* Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch. 
-* This means CAL client spec will need to change to include headers directly from the DXX perforce tree. 
+* Note: ideally the DXX extension interfaces should be mapped from the DXX perforce branch.
+* This means CAL client spec will need to change to include headers directly from the DXX perforce tree.
 * However, CAL only cares about the DXX OpenCL extension interface class. The spec cannot change
 * without notification. So it is safe to use a local copy of the relevant DXX extension interface classes.
 **************************************************************************************************************/

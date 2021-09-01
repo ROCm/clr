@@ -70,7 +70,7 @@ bool Init(MESA_INTEROP_KIND Kind) {
   if (loadedGLAPITypes == MESA_INTEROP_NONE) {
   void* glxinfo=dlsym(RTLD_DEFAULT, "MesaGLInteropGLXQueryDeviceInfo");
   void* eglinfo=dlsym(RTLD_DEFAULT, "MesaGLInteropEGLQueryDeviceInfo");
-  
+
   GlxInfo=(PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC*)glxinfo;
   EglInfo=(PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC*)eglinfo;
 
