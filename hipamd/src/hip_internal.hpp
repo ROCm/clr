@@ -80,11 +80,11 @@ typedef struct ihipIpcEventHandle_st {
   }
 
 #define HIP_API_PRINT(...)                                 \
-  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%-5d: [%zx] %s%s ( %s )%s",  getpid(), std::this_thread::get_id(), KGRN,    \
+  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s%s ( %s )%s", KGRN,    \
           __func__, ToString( __VA_ARGS__ ).c_str(),KNRM);
 
 #define HIP_ERROR_PRINT(err, ...)                             \
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "%-5d: [%zx] %s: Returned %s : %s", getpid(), std::this_thread::get_id(),  \
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",  \
           __func__, hipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
 // This macro should be called at the beginning of every HIP API.
@@ -99,7 +99,7 @@ typedef struct ihipIpcEventHandle_st {
 
 #define HIP_RETURN_DURATION(ret, ...)                      \
   hip::g_lastError = ret;                         \
-  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%-5d: [%zx] %s: Returned %s : %s",  getpid(), std::this_thread::get_id(),  \
+  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s",  \
           __func__, hipGetErrorName(hip::g_lastError), ToString( __VA_ARGS__ ).c_str()); \
   return hip::g_lastError;
 

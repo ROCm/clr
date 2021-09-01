@@ -230,7 +230,6 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
     return hipErrorMemoryAllocation;
   }
 
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "%-5d: [%zx] ihipMallocManaged ptr=0x%zx",  getpid(),
-    std::this_thread::get_id(), *ptr);
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "ihipMallocManaged ptr=0x%zx", *ptr);
   return hipSuccess;
 }
