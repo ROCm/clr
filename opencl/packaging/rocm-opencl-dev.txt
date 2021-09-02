@@ -35,7 +35,7 @@ else()
 endif()
 message("Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}")
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl, rocm-core")
 
 # RPM CPACK variables
 set(CPACK_BINARY_RPM "ON")
@@ -59,6 +59,11 @@ if(PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "")
 endif()
 set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
-set(CPACK_RPM_PACKAGE_REQUIRES "rocm-opencl")
+set(CPACK_RPM_PACKAGE_REQUIRES "rocm-opencl, rocm-core")
+# Remove dependency on rocm-core if -DROCM_DEP_ROCMCORE=ON not given to cmake
+if(NOT ROCM_DEP_ROCMCORE)
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_PACKAGE_REQUIRES ${CPACK_RPM_PACKAGE_REQUIRES})
+    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_PACKAGE_DEPENDS})
+endif()
 
 include(CPack)
