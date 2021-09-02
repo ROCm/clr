@@ -1785,12 +1785,7 @@ inline static hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallb
 }
 
 inline static hipError_t hipDriverGetVersion(int* driverVersion) {
-    cudaError_t err = cudaDriverGetVersion(driverVersion);
-
-    // Override driver version to match version reported on HCC side.
-    *driverVersion = 4;
-
-    return hipCUDAErrorTohipError(err);
+    return hipCUDAErrorTohipError(cudaDriverGetVersion(driverVersion));
 }
 
 inline static hipError_t hipRuntimeGetVersion(int* runtimeVersion) {
