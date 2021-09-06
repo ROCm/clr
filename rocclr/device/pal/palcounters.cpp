@@ -59,13 +59,8 @@ PalCounterReference::~PalCounterReference() {
   // so we have to lock just this queue
   amd::ScopedLock lock(gpu_.execution());
 
-  if (layout_ != nullptr) {
-    delete layout_;
-  }
-
-  if (memory_ != nullptr) {
-    delete memory_;
-  }
+  delete layout_;
+  delete memory_;
 
   if (nullptr != iPerf()) {
     iPerf()->Destroy();

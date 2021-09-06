@@ -720,11 +720,9 @@ void RgpCaptureMgr::DestroyRGPTracing() {
   delete user_event_;
 
   // Destroy the GPA session
-  if (trace_.gpa_session_ != nullptr) {
-    // Util::Destructor(trace_.gpa_session_);
-    delete trace_.gpa_session_;
-    trace_.gpa_session_ = nullptr;
-  }
+  // Util::Destructor(trace_.gpa_session_);
+  delete trace_.gpa_session_;
+  trace_.gpa_session_ = nullptr;
 
   memset(&trace_, 0, sizeof(trace_));
 }

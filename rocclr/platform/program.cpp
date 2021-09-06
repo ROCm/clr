@@ -467,12 +467,11 @@ void Program::StubProgramSource(const std::string& app_name) {
     size_t size = stub_read.tellg();
     stub_read.seekg(0, std::ios::beg);
 
-    char* data = new char[size];
-    stub_read.read(data, size);
+    std::vector<char> file_data(size);
+    stub_read.read(file_data.data(), size);
     stub_read.close();
 
-    sourceCode_.assign(data, size);
-    delete[] data;
+    sourceCode_.assign(file_data.data(), size);
   } else {
     std::fstream stub_write;
     stub_write.open(file_name.str().c_str(), (std::fstream::out | std::fstream::binary));

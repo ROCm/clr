@@ -64,9 +64,7 @@ GpuDebugManager::GpuDebugManager(amd::Device* device)
 }
 
 GpuDebugManager::~GpuDebugManager() {
-  if (nullptr != addressWatch_) {
-    delete[] addressWatch_;
-  }
+  delete[] addressWatch_;
 }
 
 void GpuDebugManager::executePreDispatchCallBack(void* aqlPacket, void* toolInfo) {
@@ -269,9 +267,7 @@ void GpuDebugManager::setAddressWatch(uint32_t numWatchPoints, void** watchAddre
 
   //  previously allocated size is not big enough, allocate new memory
   if (addressWatchSize_ < requiredSize) {
-    if (nullptr != addressWatch_) {  // free the smaller address watch storage
-      delete[] addressWatch_;
-    }
+    delete[] addressWatch_;
     addressWatch_ = new HwDbgAddressWatch[numWatchPoints];
     addressWatchSize_ = requiredSize;
   }

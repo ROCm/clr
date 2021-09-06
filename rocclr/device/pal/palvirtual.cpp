@@ -974,7 +974,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   // Create HSAILPrintf class
   printfDbgHSA_ = new PrintfDbgHSA(gpuDevice_);
   if (nullptr == printfDbgHSA_) {
-    delete printfDbgHSA_;
     LogError("Could not create PrintfDbgHSA class!");
     return false;
   }
@@ -1107,13 +1106,8 @@ VirtualGPU::~VirtualGPU() {
 
   {
     // Destroy queues
-    if (nullptr != queues_[MainEngine]) {
-      delete queues_[MainEngine];
-    }
-
-    if (nullptr != queues_[SdmaEngine]) {
-      delete queues_[SdmaEngine];
-    }
+    delete queues_[MainEngine];
+    delete queues_[SdmaEngine];
 
     if (nullptr != cmdAllocator_) {
       cmdAllocator_->Destroy();

@@ -310,8 +310,7 @@ void HostcallListener::terminate() {
 
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
-  if (urilocator)
-   delete urilocator;
+  delete urilocator;
 #endif
 #endif
   delete doorbell_;
@@ -355,8 +354,7 @@ bool HostcallListener::initialize(const amd::Device &dev) {
     delete doorbell_;
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
-    if (urilocator)
-      delete urilocator;
+    delete urilocator;
 #endif
 #endif
     return false;
