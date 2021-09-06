@@ -1426,10 +1426,8 @@ bool Program::initClBinary() {
 
 // ================================================================================================
 void Program::releaseClBinary() {
-  if (clBinary_ != nullptr) {
-    delete clBinary_;
-    clBinary_ = nullptr;
-  }
+  delete clBinary_;
+  clBinary_ = nullptr;
 }
 
 // ================================================================================================
@@ -2171,9 +2169,7 @@ bool Program::initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc 
 
     if (!isElf(bin)) {
       // Invalid binary.
-      if (decryptedBin != nullptr) {
-        delete[] decryptedBin;
-      }
+      delete[] decryptedBin;
       DevLogError("Bin is not ELF \n");
       return false;
     }

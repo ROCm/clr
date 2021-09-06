@@ -244,15 +244,9 @@ Device::~Device() {
     context_->release();
   }
 
-  if (info_.extensions_) {
-    delete[] info_.extensions_;
-    info_.extensions_ = nullptr;
-  }
+  delete[] info_.extensions_;
 
-  if (settings_) {
-    delete settings_;
-    settings_ = nullptr;
-  }
+  delete settings_;
 
   delete[] p2p_agents_list_;
 
@@ -316,15 +310,8 @@ bool NullDevice::init() {
 }
 
 NullDevice::~NullDevice() {
-  if (info_.extensions_) {
-    delete[] info_.extensions_;
-    info_.extensions_ = nullptr;
-  }
-
-  if (settings_) {
-    delete settings_;
-    settings_ = nullptr;
-  }
+  delete[] info_.extensions_;
+  delete settings_;
 }
 
 hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
@@ -2914,13 +2901,12 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
   }
 
   // Retrieve link info on the pool.
-  hsa_amd_memory_pool_link_info_t* link_info = new hsa_amd_memory_pool_link_info_t[hops];
+  std::vector<hsa_amd_memory_pool_link_info_t> link_info(hops);
   hsa_status = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
-               HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info);
+               HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info.data());
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
     DevLogPrintfError("Cannot retrieve link info, hsa failed with status: %d", hsa_status);
-    delete[] link_info;
     return false;
   }
 
@@ -2959,13 +2945,10 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
       }
       default: {
         DevLogPrintfError("Invalid LinkAttribute: %d ", link_attr.first);
-        delete[] link_info;
         return false;
       }
     }
   }
-
-  delete[] link_info;
 
   return true;
 }

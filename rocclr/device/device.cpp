@@ -481,22 +481,14 @@ Device::~Device() {
     delete vaCacheMap_;
   }
 
-  if (vaCacheAccess_) {
-    delete vaCacheAccess_;
-  }
+  delete vaCacheAccess_;
 
   if (arena_mem_obj_ != nullptr) {
     arena_mem_obj_->release();
   }
 
-  // Destroy device settings
-  if (settings_ != nullptr) {
-    delete settings_;
-  }
-
-  if (info_.extensions_ != nullptr) {
-    delete[] info_.extensions_;
-  }
+  delete settings_;
+  delete[] info_.extensions_;
 }
 
 bool Device::ValidateComgr() {
@@ -789,12 +781,8 @@ ClBinary::ClBinary(const amd::Device& dev, BinaryImageFormat bifVer)
 ClBinary::~ClBinary() {
   release();
 
-  if (elfIn_) {
-    delete elfIn_;
-  }
-  if (elfOut_) {
-    delete elfOut_;
-  }
+  delete elfIn_;
+  delete elfOut_;
 }
 
 bool ClBinary::setElfTarget() {
@@ -1072,10 +1060,8 @@ bool ClBinary::setElfIn() {
   }
   elfIn_ = new amd::Elf(ELFCLASSNONE, binary_, size_, nullptr, amd::Elf::ELF_C_READ);
   if ((elfIn_ == nullptr) || !elfIn_->isSuccessful()) {
-    if (elfIn_) {
-      delete elfIn_;
-      elfIn_ = nullptr;
-    }
+    delete elfIn_;
+    elfIn_ = nullptr;
     LogError("Creating input ELF object failed");
     return false;
   }
@@ -1084,20 +1070,16 @@ bool ClBinary::setElfIn() {
 }
 
 void ClBinary::resetElfIn() {
-  if (elfIn_) {
-    delete elfIn_;
-    elfIn_ = nullptr;
-  }
+  delete elfIn_;
+  elfIn_ = nullptr;
 }
 
 bool ClBinary::setElfOut(unsigned char eclass,
                          const char* outFile, bool tempFile) {
   elfOut_ = new amd::Elf(eclass, nullptr, 0, outFile, amd::Elf::ELF_C_WRITE);
   if ((elfOut_ == nullptr) || !elfOut_->isSuccessful()) {
-    if (elfOut_) {
-      delete elfOut_;
-      elfOut_ = nullptr;
-    }
+    delete elfOut_;
+    elfOut_ = nullptr;
     LogError("Creating ouput ELF object failed");
     return false;
   }
@@ -1109,10 +1091,8 @@ bool ClBinary::setElfOut(unsigned char eclass,
 }
 
 void ClBinary::resetElfOut() {
-  if (elfOut_) {
-    delete elfOut_;
-    elfOut_ = nullptr;
-  }
+  delete elfOut_;
+  elfOut_ = nullptr;
 }
 
 bool ClBinary::loadLlvmBinary(std::string& llvmBinary,

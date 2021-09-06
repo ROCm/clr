@@ -73,8 +73,7 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   char* decryptedBin;
   size_t decryptedSize;
   if (!clBinary()->decryptElf(binaryIn, size, &decryptedBin, &decryptedSize, &encryptCode)) {
-    buildLog_ += "Decrypting ELF Failed ";
-    buildLog_ += "\n";
+    buildLog_ += "Decrypting ELF Failed\n";
     return false;
   }
   if (decryptedBin != nullptr) {
@@ -86,11 +85,8 @@ bool Program::initClBinary(char* binaryIn, size_t size) {
   // Both 32-bit and 64-bit are allowed!
   if (!amd::Elf::isElfMagic(bin)) {
     // Invalid binary.
-    if (decryptedBin != nullptr) {
-      delete[] decryptedBin;
-    }
-    buildLog_ += "Elf Magic failed";
-    buildLog_ += "\n";
+    delete[] decryptedBin;
+    buildLog_ += "Elf Magic failed\n";
     return false;
   }
 

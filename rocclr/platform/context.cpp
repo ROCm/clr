@@ -89,13 +89,8 @@ Context::~Context() {
     it->release();
   }
 
-  if (properties_ != NULL) {
-    delete[] properties_;
-  }
-  if (glenv_ != NULL) {
-    delete glenv_;
-    glenv_ = NULL;
-  }
+  delete[] properties_;
+  delete glenv_;
 
 #if WITH_LIQUID_FLASH
   lfTerminate();

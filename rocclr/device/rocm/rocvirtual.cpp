@@ -1086,10 +1086,8 @@ VirtualGPU::~VirtualGPU() {
     timestamp_ = nullptr;
     LogError("There was a timestamp that was not used; deleting.");
   }
-  if (printfdbg_ != nullptr) {
-    delete printfdbg_;
-    printfdbg_ = nullptr;
-  }
+
+  delete printfdbg_;
 
   if (0 != schedulerSignal_.handle) {
     hsa_signal_destroy(schedulerSignal_);
