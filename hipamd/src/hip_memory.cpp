@@ -1682,6 +1682,9 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
 hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
   hipError_t status;
+  if (pCopy == nullptr || !hip::isValid(stream)) {
+    return hipErrorInvalidValue;
+  }
   if (pCopy->WidthInBytes == 0 || pCopy->Height == 0 || pCopy->Depth == 0) {
     LogPrintfInfo("Either Width :%d or Height: %d and Depth: %d is zero", pCopy->WidthInBytes,
                   pCopy->Height, pCopy->Depth);
