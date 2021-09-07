@@ -27,10 +27,11 @@ find_package(hsa-runtime64 1.3 REQUIRED CONFIG
     lib64/cmake/hsa-runtime64)
 target_link_libraries(rocclr PUBLIC hsa-runtime64::hsa-runtime64)
 
-find_package(NUMA QUIET)
+find_package(NUMA)
 if(NUMA_FOUND)
   target_compile_definitions(rocclr PUBLIC ROCCLR_SUPPORT_NUMA_POLICY)
-  target_link_libraries(rocclr PUBLIC NUMA)
+  target_include_directories(rocclr PUBLIC ${NUMA_INCLUDE_DIR})
+  target_link_libraries(rocclr PUBLIC ${NUMA_LIBRARIES})
 endif()
 
 target_sources(rocclr PRIVATE
