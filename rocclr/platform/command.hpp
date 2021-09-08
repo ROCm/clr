@@ -977,7 +977,9 @@ class NativeFnCommand : public Command {
   ~NativeFnCommand() { delete[] args_; }
 
   void releaseResources() {
-    std::for_each(memObjects_.begin(), memObjects_.end(), std::mem_fun(&Memory::release));
+    for (const auto& memObject: memObjects_) {
+      memObject->release();
+    }
     Command::releaseResources();
   }
 
