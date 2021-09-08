@@ -280,6 +280,11 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 
   *ptr = amd::SvmBuffer::malloc(*amdContext, flags, sizeBytes, amdContext->devices()[0]->info().memBaseAddrAlign_,
               useHostDevice ? curDevContext->svmDevices()[0] : nullptr);
+  size_t offset = 0; //this is ignored
+  amd::Memory* memObj = getMemoryObject(*ptr, offset);
+  //saves the current device id so that it can be accessed later
+  memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
+
   if (*ptr == nullptr) {
     size_t free = 0, total =0;
     hipMemGetInfo(&free, &total);
@@ -649,6 +654,10 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 
   *ptr = amd::SvmBuffer::malloc(*hip::getCurrentDevice()->asContext(), 0, sizeBytes,
                                 device->info().memBaseAddrAlign_);
+  size_t offset = 0; //this is ignored
+  amd::Memory* memObj = getMemoryObject(*ptr, offset);
+  //saves the current device id so that it can be accessed later
+  memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
   if (*ptr == nullptr) {
     return hipErrorOutOfMemory;
@@ -2473,19 +2482,8 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     attributes->allocationFlags = memObj->getMemFlags() >> 16;
 
     amd::Context* memObjCtx = &memObj->getContext();
-    if (hip::host_device->asContext() == memObjCtx) {
-        attributes->device = ihipGetDevice();
-        HIP_RETURN(hipSuccess);
-    }
-    for (auto& ctx : g_devices) {
-      if (ctx->asContext() == memObjCtx) {
-        attributes->device = device;
-        HIP_RETURN(hipSuccess);
-      }
-      ++device;
-    }
-    LogPrintfError("Cannot find memory object context, memObjCtx: 0x%x \n", memObjCtx);
-    HIP_RETURN(hipErrorInvalidDevice);
+    attributes->device = memObj->getUserData().deviceId;
+    HIP_RETURN(hipSuccess);
   }
 
   LogPrintfError("Cannot get amd_mem_obj for ptr: 0x%x \n", ptr);
