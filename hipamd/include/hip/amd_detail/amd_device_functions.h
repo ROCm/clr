@@ -283,9 +283,9 @@ __device__ static inline unsigned __hip_ds_permute(int index, unsigned src) {
 }
 
 __device__ static inline float __hip_ds_permutef(int index, float src) {
-    union { int i; unsigned u; float f; } tmp; tmp.u = src;
+    union { int i; unsigned u; float f; } tmp; tmp.f = src;
     tmp.i = __builtin_amdgcn_ds_permute(index, tmp.i);
-    return tmp.u;
+    return tmp.f;
 }
 
 #define __hip_ds_swizzle(src, pattern)  __hip_ds_swizzle_N<(pattern)>((src))
