@@ -312,7 +312,9 @@ Command::Command(HostQueue& queue, cl_command_type type,
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.
-  std::for_each(eventWaitList.begin(), eventWaitList.end(), std::mem_fun(&Command::retain));
+  for (const auto &event: eventWaitList) {
+    event->retain();
+  }
   if (type != 0) activity_.Initialize(type, queue.vdev()->index(), queue.device().index());
 }
 
@@ -321,7 +323,9 @@ void Command::releaseResources() {
   const Command::EventWaitList& events = eventWaitList();
 
   // Release the commands from the event wait list.
-  std::for_each(events.begin(), events.end(), std::mem_fun(&Command::release));
+  for (const auto &event: events) {
+    event->release();
+  }
 }
 
 // ================================================================================================
@@ -341,8 +345,9 @@ void Command::enqueue() {
 
     // Notify all commands about the waiter. Barrier will be sent in order to obtain
     // HSA signal for a wait on the current queue
-    std::for_each(eventWaitList().begin(), eventWaitList().end(),
-        std::bind2nd(std::mem_fun(&Command::notifyCmdQueue), !kCpuWait));
+    for (const auto &event: eventWaitList()) {
+      event->notifyCmdQueue(!kCpuWait);
+    }
 
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time
