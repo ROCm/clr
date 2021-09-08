@@ -141,6 +141,11 @@ class Memory : public amd::RuntimeObject {
     kArenaMemoryPtr = 0x2
   };
 
+  struct UserData
+  {
+     int deviceId = 0;
+  };
+
  protected:
   typedef cl_mem_object_type Type;
   typedef cl_mem_flags Flags;
@@ -183,6 +188,9 @@ class Memory : public amd::RuntimeObject {
     };
     uint32_t flagsEx_;
   };
+
+  //! used to save the user data during memory allocation.
+  UserData userData_;
 
  private:
   //! Disable default assignment operator
@@ -357,6 +365,11 @@ class Memory : public amd::RuntimeObject {
   //! Returns the base device memory object for possible P2P access
   device::Memory* BaseP2PMemory() const { return deviceMemories_[0].value_; }
   device::Memory* svmBase() const { return svmBase_; }  //!< Returns SVM base for MGPU case
+
+
+  //!save the user data during memory allocation
+  UserData& getUserData() { return userData_; }
+
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,
