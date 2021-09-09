@@ -419,7 +419,7 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
 hipError_t hipDeviceGetSharedMemConfig ( hipSharedMemConfig * pConfig ) {
   HIP_INIT_API(hipDeviceGetSharedMemConfig, pConfig);
   if (pConfig == nullptr) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
   *pConfig = hipSharedMemBankSizeFourByte;
 

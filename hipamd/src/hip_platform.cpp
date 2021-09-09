@@ -438,7 +438,7 @@ hipError_t hipOccupancyMaxPotentialBlockSize(int* gridSize, int* blockSize,
   hipFunction_t func = nullptr;
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, f, ihipGetDevice());
   if ((hip_error != hipSuccess) || (func == nullptr)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
   const amd::Device& device = *hip::getCurrentDevice()->devices()[0];
   int max_blocks_per_grid = 0;
@@ -543,7 +543,7 @@ hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks,
   hipFunction_t func = nullptr;
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, f, ihipGetDevice());
   if ((hip_error != hipSuccess) || (func == nullptr)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   const amd::Device& device = *hip::getCurrentDevice()->devices()[0];
@@ -569,7 +569,7 @@ hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks,
   hipFunction_t func = nullptr;
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, f, ihipGetDevice());
   if ((hip_error != hipSuccess) || (func == nullptr)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   const amd::Device& device = *hip::getCurrentDevice()->devices()[0];

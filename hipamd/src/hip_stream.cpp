@@ -371,7 +371,7 @@ hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags) {
 
   if ((flags != nullptr) && (stream != nullptr)) {
     if (!hip::isValid(stream)) {
-      return HIP_RETURN(hipErrorContextIsDestroyed);
+      HIP_RETURN(hipErrorContextIsDestroyed);
     }
     *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
   } else {
@@ -386,7 +386,7 @@ hipError_t hipStreamSynchronize(hipStream_t stream) {
   HIP_INIT_API(hipStreamSynchronize, stream);
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   // Wait for the current host queue
@@ -404,7 +404,7 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   }
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   delete reinterpret_cast<hip::Stream*>(stream);
@@ -437,7 +437,7 @@ hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int
   }
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   amd::HostQueue* queue = hip::getQueue(stream);
@@ -465,7 +465,7 @@ hipError_t hipStreamQuery(hipStream_t stream) {
   HIP_INIT_API(hipStreamQuery, stream);
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   amd::HostQueue* hostQueue = hip::getQueue(stream);
@@ -500,7 +500,7 @@ hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback
   }
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   amd::HostQueue* hostQueue = hip::getQueue(stream);
@@ -567,7 +567,7 @@ hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
 
   if ((priority != nullptr) && (stream != nullptr)) {
     if (!hip::isValid(stream)) {
-      return HIP_RETURN(hipErrorContextIsDestroyed);
+      HIP_RETURN(hipErrorContextIsDestroyed);
     }
     *priority = static_cast<int>(reinterpret_cast<hip::Stream*>(stream)->GetPriority());
   } else {
