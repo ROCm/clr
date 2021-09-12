@@ -244,10 +244,6 @@ Device::~Device() {
     context_->release();
   }
 
-  delete[] info_.extensions_;
-
-  delete settings_;
-
   delete[] p2p_agents_list_;
 
   if (coopHostcallBuffer_) {
@@ -310,8 +306,6 @@ bool NullDevice::init() {
 }
 
 NullDevice::~NullDevice() {
-  delete[] info_.extensions_;
-  delete settings_;
 }
 
 hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
