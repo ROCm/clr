@@ -2268,8 +2268,8 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
         break;
       }
       case amd::MemoryAdvice::UnsetAccessedBy:
-        // @note: 0 may cause a failure on old runtimes
-        attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE_IN_PLACE, 0});
+        // When unsetting we should use HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE for the agent
+        attr.push_back({HSA_AMD_SVM_ATTRIB_AGENT_ACCESSIBLE, getBackendDevice().handle});
         break;
       case amd::MemoryAdvice::SetCoarseGrain:
         attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, HSA_AMD_SVM_GLOBAL_FLAG_COARSE_GRAINED});
