@@ -110,7 +110,8 @@ target_sources(amdhip64 PRIVATE
   hip_stream_ops.cpp
   hip_stream.cpp
   hip_surface.cpp
-  hip_texture.cpp)
+  hip_texture.cpp
+  hip_gl.cpp)
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
@@ -135,7 +136,8 @@ target_include_directories(amdhip64
     ${PROJECT_BINARY_DIR}/include)
 
 target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
-
+find_package(OpenGL REQUIRED)
+target_link_libraries(amdhip64 PRIVATE ${OPENGL_LIBRARIES})
 target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
 # Additional dependencies for hipRTC
 if(WIN32)
