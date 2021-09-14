@@ -176,11 +176,15 @@ void setupGLInteropOnce() {
   HDC dc;
   HGLRC glrc;
 
+  dc = wglGetCurrentDC();
+  glrc = wglGetCurrentContext();
+
+/*
   if (!getDeviceGLContext(dc, glrc)) {
     LogError(" Context setup failed \n");
     return;
   }
-
+*/
   cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
                                         (cl_context_properties)AMD_PLATFORM,
                                         CL_GL_CONTEXT_KHR,
@@ -197,11 +201,14 @@ void setupGLInteropOnce() {
   hGL->context = nullptr;
   hGL->window = 0;
   hGL->cmap = 0;
-
+  hGL->context = glXGetCurrentContext();
+  hGL->display = glXGetCurrentDisplay();
+/*
   if (!getDeviceGLContext(hGL)) {
     LogError(" Context setup failed \n");
     return;
   }
+*/
 
   cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
                                         (cl_context_properties)AMD_PLATFORM,
