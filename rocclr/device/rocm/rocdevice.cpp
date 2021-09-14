@@ -2564,8 +2564,7 @@ bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
     ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event");
     return false;
   } else if (wait) {
-    auto* vdev = event.command().queue()->vdev();
-    WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, vdev->ActiveWait());
+    WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, ActiveWait());
     return true;
   }
   return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) <= 0);
