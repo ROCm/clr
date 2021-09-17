@@ -58,7 +58,15 @@ endif()
 message (STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}" )
 set(HIP_COMMON_INCLUDE_DIR ${HIP_COMMON_DIR}/include)
 set(HIP_COMMON_BIN_DIR ${HIP_COMMON_DIR}/bin)
+set(HIP_COMMON_SRC_DIR ${HIP_COMMON_DIR}/src)
 set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
+
+
+if(EXISTS ${HIP_COMMON_SRC_DIR})
+  option(BUILD_HIPCONFIG "Build hipconfig/hipcc executable" ON)
+else()
+  option(BUILD_HIPCONFIG "Using hipconfig/hipcc perl scripts" OFF)
+endif()
 
 #############################
 # Setup config generation
@@ -77,15 +85,23 @@ find_package(Perl REQUIRED)
 
 # Determine HIP_BASE_VERSION
 set(ENV{HIP_PATH} "")
-execute_process(COMMAND ${PERL_EXECUTABLE} ${__HIPCONFIG_EXECUTABLE__} --version
-  OUTPUT_VARIABLE HIP_BASE_VERSION
-  OUTPUT_STRIP_TRAILING_WHITESPACE)
-string(REPLACE "." ";" VERSION_LIST ${HIP_BASE_VERSION})
-list(GET VERSION_LIST 0 HIP_VERSION_MAJOR)
-list(GET VERSION_LIST 1 HIP_VERSION_MINOR)
-list(GET VERSION_LIST 2 HIP_VERSION_PATCH_GITHASH)
-string(REPLACE "-" ";" VERSION_LIST ${HIP_VERSION_PATCH_GITHASH})
-list(GET VERSION_LIST 0 HIP_VERSION_PATCH)
+
+if (BUILD_HIPCONFIG)
+    #the built executables are copied to build/bin folder
+    add_subdirectory(${HIP_COMMON_SRC_DIR} ./bin) 
+endif()
+
+if (NOT BUILD_HIPCONFIG)
+  execute_process(COMMAND ${PERL_EXECUTABLE} ${__HIPCONFIG_EXECUTABLE__} --version
+    OUTPUT_VARIABLE HIP_BASE_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  string(REPLACE "." ";" VERSION_LIST ${HIP_BASE_VERSION})
+  list(GET VERSION_LIST 0 HIP_VERSION_MAJOR)
+  list(GET VERSION_LIST 1 HIP_VERSION_MINOR)
+  list(GET VERSION_LIST 2 HIP_VERSION_PATCH_GITHASH)
+  string(REPLACE "-" ";" VERSION_LIST ${HIP_VERSION_PATCH_GITHASH})
+  list(GET VERSION_LIST 0 HIP_VERSION_PATCH)
+endif()
 set(HIP_VERSION_GITDATE 0)
 
 find_package(Git)
@@ -190,23 +206,28 @@ endif ()
 # overwrite HIP_VERSION_PATCH for packaging
 set(HIP_VERSION ${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_PACKAGING_VERSION_PATCH})
 
-# Remove when CI is updated
-if(HIP_PLATFORM STREQUAL "rocclr")
-   set(HIP_PLATFORM "amd")
-endif()
+
 #############################
 # Configure variables
 #############################
 # Determine HIP_PLATFORM
 if(NOT DEFINED HIP_PLATFORM)
-    if(NOT DEFINED ENV{HIP_PLATFORM})
+  if(NOT DEFINED ENV{HIP_PLATFORM})
+    if(BUILD_HIPCONFIG)
+        #HIP_PLATFORM could be set as a command line arg
+        if((HIP_PLATFORM STREQUAL "") OR NOT (HIP_PLATFORM STREQUAL "nvidia" OR HIP_PLATFORM STREQUAL "amd"))
+            set(HIP_PLATFORM "amd" CACHE STRING "HIP Platform")
+            message(STATUS "HIP Platform defaulting to AMD")
+        endif()
+    else() 
         execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform
-            OUTPUT_VARIABLE HIP_PLATFORM
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-    else()
-        set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+        OUTPUT_VARIABLE HIP_PLATFORM
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
-endif()
+  else()
+    set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+  endif() #end of env hip_platform
+endif() #end of not defined hip_platform
 message(STATUS "HIP Platform: " ${HIP_PLATFORM})
 
 if(HIP_PLATFORM STREQUAL "nvidia")
@@ -329,6 +350,19 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS
               PATTERN *.bat EXCLUDE)
     endif()
+    # installing build/bin hipcc/hipconfig to build/install/bin
+    if(BUILD_HIPCONFIG)
+      if(WIN32)
+        SET(EXE_FILES FILES "${CMAKE_CURRENT_BINARY_DIR}/bin/hipcc.exe" "${CMAKE_CURRENT_BINARY_DIR}/bin/hipconfig.exe")
+      else()
+        SET(EXE_FILES FILES "${CMAKE_CURRENT_BINARY_DIR}/bin/hipcc" "${CMAKE_CURRENT_BINARY_DIR}/bin/hipconfig")
+      endif()
+      FOREACH(EXE_FILE ${EXE_FILES})
+        install(FILES ${EXE_FILE}
+                PERMISSIONS  OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_WRITE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+                DESTINATION ./bin/)
+      ENDFOREACH()
+    endif()
 
     # The following two lines will be removed after upstream updation
     install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/include\")")
@@ -392,6 +426,11 @@ add_custom_target(pkg_hip_base COMMAND ${CMAKE_COMMAND} .
     COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
     COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
     WORKING_DIRECTORY ${BUILD_DIR} )
+# Packaging needs to wait for hipcc/hipconfig to build if it's enabled...
+if (BUILD_HIPCONFIG)
+    add_dependencies(pkg_hip_base hipcc)
+    add_dependencies(pkg_hip_base hipconfig)
+endif()
 
 # Packaging needs to wait for hipify-clang to build if it's enabled...
 if (BUILD_HIPIFY_CLANG)
