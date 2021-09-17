@@ -228,12 +228,12 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
                                 size, (align == 0) ? dev.info().memBaseAddrAlign_ : align);
   size_t offset = 0; //this is ignored
   amd::Memory* memObj = getMemoryObject(*ptr, offset);
-  //saves the current device id so that it can be accessed later
-  memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
   if (*ptr == nullptr) {
     return hipErrorMemoryAllocation;
   }
+  //saves the current device id so that it can be accessed later
+  memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
   ClPrint(amd::LOG_INFO, amd::LOG_API, "ihipMallocManaged ptr=0x%zx", *ptr);
   return hipSuccess;
