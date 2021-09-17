@@ -2070,9 +2070,11 @@ hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, si
   amd::Command::EventWaitList waitList;
   amd::Coord3D fillOffset(offset, 0, 0);
   amd::Coord3D fillSize(sizeBytes, 1, 1);
+  // surface=[pitch, width, height]
+  amd::Coord3D surface(sizeBytes, sizeBytes, 1);
   command =
       new amd::FillMemoryCommand(*queue, CL_COMMAND_FILL_BUFFER, waitList, *memory->asBuffer(),
-                                 &value, valueSize, fillOffset, fillSize);
+                                 &value, valueSize, fillOffset, fillSize, surface);
   if (command == nullptr) {
     return hipErrorOutOfMemory;
   }
@@ -2264,23 +2266,20 @@ hipError_t ihipMemset3DCommand(std::vector<amd::Command*> &commands, hipPitchedP
   // Workaround for cases when pitch > row until fill kernel will be updated to support pitch.
   // Fall back to filling one row at a time.
   amd::Coord3D origin(offset);
-  amd::Coord3D region(pitchedDevPtr.xsize, pitchedDevPtr.ysize, extent.depth);
+  amd::Coord3D region(extent.width, extent.height, extent.depth);
+  amd::Coord3D surface(pitchedDevPtr.pitch, pitchedDevPtr.xsize, pitchedDevPtr.ysize);
   amd::BufferRect rect;
   if (pitchedDevPtr.pitch == 0 ||
-      !rect.create(static_cast<size_t*>(origin), static_cast<size_t*>(region), pitchedDevPtr.pitch,
-                   0)) {
+      !rect.create(static_cast<size_t*>(origin),
+      static_cast<size_t*>(amd::Coord3D{pitchedDevPtr.xsize, pitchedDevPtr.ysize, extent.depth}),
+      pitchedDevPtr.pitch, 0)) {
     return hipErrorInvalidValue;
   }
   amd::FillMemoryCommand* command;
-  for (size_t slice = 0; slice < extent.depth; slice++) {
-    for (size_t row = 0; row < extent.height; row++) {
-      const size_t rowOffset = rect.offset(0, row, slice);
-      command = new amd::FillMemoryCommand(
-          *queue, CL_COMMAND_FILL_BUFFER, amd::Command::EventWaitList{}, *memory->asBuffer(),
-          &value, sizeof(int8_t), amd::Coord3D{rowOffset, 0, 0}, amd::Coord3D{extent.width, 1, 1});
-      commands.push_back(command);
-    }
-  }
+  command = new amd::FillMemoryCommand(
+      *queue, CL_COMMAND_FILL_BUFFER, amd::Command::EventWaitList{}, *memory->asBuffer(),
+      &value, sizeof(int8_t), origin, region, surface);
+  commands.push_back(command);
   return hipSuccess;
 }
 
