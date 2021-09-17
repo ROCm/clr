@@ -601,16 +601,18 @@ class FillMemoryCommand : public OneMemoryArgCommand {
  private:
   Coord3D origin_;                   //!< Origin of the region to write to.
   Coord3D size_;                     //!< Size of the region to write to.
+  Coord3D surface_;                  //!< Total surface
   char pattern_[MaxFillPatterSize];  //!< The fill pattern
   size_t patternSize_;               //!< Pattern size
 
  public:
   FillMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
-                    Memory& memory, const void* pattern, size_t patternSize, Coord3D origin,
-                    Coord3D size)
+                    Memory& memory, const void* pattern, size_t patternSize, const Coord3D& origin,
+                    const Coord3D& size, const Coord3D& surface)
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         origin_(origin),
         size_(size),
+        surface_(surface),
         patternSize_(patternSize) {
     // Sanity checks
     assert(pattern != NULL && "pattern cannot be null");
@@ -631,6 +633,9 @@ class FillMemoryCommand : public OneMemoryArgCommand {
   const Coord3D& origin() const { return origin_; }
   //! Return the region size
   const Coord3D& size() const { return size_; }
+
+  //! Return the surface
+  const Coord3D& surface() const { return surface_; }
 
   //! Return true if the entire memory object is written.
   bool isEntireMemory() const;
