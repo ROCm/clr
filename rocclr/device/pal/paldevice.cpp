@@ -882,7 +882,7 @@ bool Device::create(Pal::IDevice* device) {
   Pal::PalPublicSettings* const palSettings = iDev()->GetPublicSettings();
   // Modify settings here
   // palSettings ...
-  palSettings->forceHighClocks = amd::IS_HIP || appProfile_.enableHighPerformanceState();
+  palSettings->forceHighClocks = appProfile_.enableHighPerformanceState();
   palSettings->longRunningSubmissions = true;
   palSettings->cmdBufBatchedSubmitChainLimit = 0;
   palSettings->disableResourceProcessingManager = true;
