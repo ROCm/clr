@@ -85,6 +85,12 @@ typedef enum hipMemoryAdvise {
 #define STREAM_OPS_WAIT_MASK_32 0xFFFFFFFF
 #define STREAM_OPS_WAIT_MASK_64 0xFFFFFFFFFFFFFFFF
 
+// stream operation flags
+#define hipStreamWaitValueGte CU_STREAM_WAIT_VALUE_GEQ
+#define hipStreamWaitValueEq  CU_STREAM_WAIT_VALUE_EQ
+#define hipStreamWaitValueAnd CU_STREAM_WAIT_VALUE_AND
+#define hipStreamWaitValueNor CU_STREAM_WAIT_VALUE_NOR
+
 // hipLibraryPropertyType
 #define hipLibraryPropertyType libraryPropertyType
 #define HIP_LIBRARY_MAJOR_VERSION MAJOR_VERSION
@@ -2380,7 +2386,7 @@ inline static hipError_t hipStreamWriteValue64(hipStream_t stream,
 
 inline static hipError_t hipStreamWaitValue32(hipStream_t stream,
                                               void* ptr, int32_t value, unsigned int flags,
-                                              uint32_t mask) {
+                                              uint32_t mask __dparm(0xFFFFFFFF)) {
    if (value < 0) {
      printf("Warning! value is negative, CUDA accept positive values\n");
    }
@@ -2393,7 +2399,7 @@ inline static hipError_t hipStreamWaitValue32(hipStream_t stream,
 
 inline static hipError_t hipStreamWaitValue64(hipStream_t stream,
                                               void* ptr, int64_t value, unsigned int flags,
-                                              uint64_t mask) {
+                                              uint64_t mask __dparm(0xFFFFFFFFFFFFFFFF)) {
    if (value < 0) {
      printf("Warning! value is negative, CUDA accept positive values\n");
    }
