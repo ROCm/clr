@@ -2567,30 +2567,32 @@ bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
   }
 
   amd_comgr_status_t status;
-  size_t requiredSize = 0;
-  status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, nullptr);
-  if (status != AMD_COMGR_STATUS_SUCCESS) {
-    buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
-    return false;
-  }
+  if (device().isOnline()) {
+    size_t requiredSize = 0;
+    status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, nullptr);
+    if (status != AMD_COMGR_STATUS_SUCCESS) {
+      buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
+      return false;
+    }
 
-  std::vector<char> binaryIsaName(requiredSize);
-  status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, binaryIsaName.data());
-  if ((status != AMD_COMGR_STATUS_SUCCESS) || (requiredSize != binaryIsaName.size())) {
-    buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
-    return false;
-  }
+    std::vector<char> binaryIsaName(requiredSize);
+    status = amd::Comgr::get_data_isa_name(binaryData.data(), &requiredSize, binaryIsaName.data());
+    if ((status != AMD_COMGR_STATUS_SUCCESS) || (requiredSize != binaryIsaName.size())) {
+      buildLog_ += "Error: COMGR failed to get code object ISA name.\n";
+      return false;
+    }
 
-  const amd::Isa *binaryIsa = amd::Isa::findIsa(binaryIsaName.data());
-  if (!binaryIsa) {
-    buildLog_ += "Error: Could not find the program ISA " + std::string(binaryIsaName.data());
-    return false;
-  }
+    const amd::Isa *binaryIsa = amd::Isa::findIsa(binaryIsaName.data());
+    if (!binaryIsa) {
+      buildLog_ += "Error: Could not find the program ISA " + std::string(binaryIsaName.data());
+      return false;
+    }
 
-  if (!amd::Isa::isCompatible(*binaryIsa, device().isa())) {
-    buildLog_ += "Error: The program ISA " + std::string(binaryIsaName.data());
-    buildLog_ += " is not compatible with the device ISA " + device().isa().isaName();
-    return false;
+    if (!amd::Isa::isCompatible(*binaryIsa, device().isa())) {
+      buildLog_ += "Error: The program ISA " + std::string(binaryIsaName.data());
+      buildLog_ += " is not compatible with the device ISA " + device().isa().isaName();
+      return false;
+    }
   }
 
   status = amd::Comgr::get_data_metadata(binaryData.data(), &metadata_);
