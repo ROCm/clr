@@ -50,6 +50,17 @@ extern "C" {
 #define __HIP_DEPRECATED
 #endif
 
+// Add Deprecated Support for CUDA Mapped HIP APIs
+#if defined(__DOXYGEN_ONLY__) || defined(HIP_ENABLE_DEPRECATED)
+#define __HIP_DEPRECATED_MSG(msg)
+#elif defined(_MSC_VER)
+#define __HIP_DEPRECATED_MSG(msg) __declspec(deprecated(msg))
+#elif defined(__GNUC__)
+#define __HIP_DEPRECATED_MSG(msg) __attribute__((deprecated(msg)))
+#else
+#define __HIP_DEPRECATED_MSG(msg)
+#endif
+
 
 // TODO -move to include/hip_runtime_api.h as a common implementation.
 /**
@@ -998,20 +1009,17 @@ inline static hipError_t hipMalloc3D(hipPitchedPtr* pitchedDevPtr, hipExtent ext
 
 inline static hipError_t hipFree(void* ptr) { return hipCUDAErrorTohipError(cudaFree(ptr)); }
 
-inline static hipError_t hipMallocHost(void** ptr, size_t size)
-    __attribute__((deprecated("use hipHostMalloc instead")));
+__HIP_DEPRECATED_MSG("use hipHostMalloc instead")
 inline static hipError_t hipMallocHost(void** ptr, size_t size) {
     return hipCUDAErrorTohipError(cudaMallocHost(ptr, size));
 }
 
-inline static hipError_t hipMemAllocHost(void** ptr, size_t size)
-    __attribute__((deprecated("use hipHostMalloc instead")));
+__HIP_DEPRECATED_MSG("use hipHostMalloc instead")
 inline static hipError_t hipMemAllocHost(void** ptr, size_t size) {
     return hipCUResultTohipError(cuMemAllocHost(ptr, size));
 }
 
-inline static hipError_t hipHostAlloc(void** ptr, size_t size, unsigned int flags)
-    __attribute__((deprecated("use hipHostMalloc instead")));
+__HIP_DEPRECATED_MSG("use hipHostMalloc instead")
 inline static hipError_t hipHostAlloc(void** ptr, size_t size, unsigned int flags) {
     return hipCUDAErrorTohipError(cudaHostAlloc(ptr, size, flags));
 }
@@ -1087,8 +1095,7 @@ inline static hipError_t hipHostUnregister(void* ptr) {
     return hipCUDAErrorTohipError(cudaHostUnregister(ptr));
 }
 
-inline static hipError_t hipFreeHost(void* ptr)
-    __attribute__((deprecated("use hipHostFree instead")));
+__HIP_DEPRECATED_MSG("use hipHostFree instead")
 inline static hipError_t hipFreeHost(void* ptr) {
     return hipCUDAErrorTohipError(cudaFreeHost(ptr));
 }
