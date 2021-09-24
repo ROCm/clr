@@ -76,6 +76,10 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                                    const hipResourceViewDesc* pResViewDesc) {
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    return hipErrorNotSupported;
+  }
 
   // Validate input params
   if (pTexObject == nullptr || pResDesc == nullptr || pTexDesc == nullptr) {
@@ -313,6 +317,12 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
   if (texObject == nullptr) {
     return hipSuccess;
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    return hipErrorNotSupported;
+  }
 
   const hipResourceType type = texObject->resDesc.resType;
   const bool isImageFromBuffer = (type == hipResourceTypeLinear) || (type == hipResourceTypePitch2D);
@@ -341,6 +351,13 @@ hipError_t ihipUnbindTexture(textureReference* texRef) {
       break;
     }
 
+    amd::Device* device = hip::getCurrentDevice()->devices()[0];
+    const device::Info& info = device->info();
+    if (!info.imageSupport_) {
+      LogPrintfError("Texture not supported on the device %s", info.name_);
+      HIP_RETURN(hipErrorNotSupported);
+    }
+
     hip_error = ihipDestroyTextureObject(texRef->textureObject);
     if (hip_error != hipSuccess) {
       break;
@@ -367,6 +384,12 @@ hipError_t hipGetTextureObjectResourceDesc(hipResourceDesc* pResDesc,
   if ((pResDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pResDesc = texObject->resDesc;
 
@@ -379,6 +402,12 @@ hipError_t hipGetTextureObjectResourceViewDesc(hipResourceViewDesc* pResViewDesc
 
   if ((pResViewDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   *pResViewDesc = texObject->resViewDesc;
@@ -393,16 +422,26 @@ hipError_t hipGetTextureObjectTextureDesc(hipTextureDesc* pTexDesc,
   if ((pTexDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pTexDesc = texObject->texDesc;
 
   HIP_RETURN(hipSuccess);
 }
 
-inline bool ihipGetTextureAlignmentOffset(size_t* offset,
+inline hipError_t ihipGetTextureAlignmentOffset(size_t* offset,
                                           const void* devPtr) {
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    return hipErrorNotSupported;
+  }
 
   const char* alignedDevPtr = amd::alignUp(static_cast<const char*>(devPtr), info.imageBaseAddressAlignment_);
   const size_t alignedOffset = alignedDevPtr - static_cast<const char*>(devPtr);
@@ -411,14 +450,14 @@ inline bool ihipGetTextureAlignmentOffset(size_t* offset,
   // the offset is guaranteed to be 0 and NULL may be passed as the offset parameter.
   if ((alignedOffset != 0) && (offset == nullptr)) {
     LogPrintfError("Texture object not aligned with offset %u \n", alignedOffset);
-    return false;
+    return hipErrorInvalidValue;
   }
 
   if (offset != nullptr) {
     *offset = alignedOffset;
   }
 
-  return true;
+  return hipSuccess;
 }
 
 hipError_t ihipBindTexture(size_t* offset,
@@ -435,21 +474,23 @@ hipError_t ihipBindTexture(size_t* offset,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texref->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texref->textureObject);
+  if (err != hipSuccess) {
+    return err;
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeLinear;
   resDesc.res.linear.devPtr = const_cast<void*>(devPtr);
   resDesc.res.linear.desc = *desc;
   resDesc.res.linear.sizeInBytes = size;
-
-  if (ihipGetTextureAlignmentOffset(offset, devPtr)) {
-    // Align the user ptr to HW requirments.
-    resDesc.res.linear.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
-  } else {
-    return hipErrorInvalidValue;
+  err = ihipGetTextureAlignmentOffset(offset, devPtr);
+  if (err != hipSuccess) {
+    return err;
   }
 
+  // Align the user ptr to HW requirments.
+  resDesc.res.linear.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
   hipTextureDesc texDesc = hip::getTextureDesc(texref);
 
   return ihipCreateTextureObject(const_cast<hipTextureObject_t*>(&texref->textureObject), &resDesc, &texDesc, nullptr);
@@ -471,7 +512,10 @@ hipError_t ihipBindTexture2D(size_t* offset,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texref->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texref->textureObject);
+  if (err != hipSuccess) {
+    return err;
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypePitch2D;
@@ -480,14 +524,13 @@ hipError_t ihipBindTexture2D(size_t* offset,
   resDesc.res.pitch2D.width = width;
   resDesc.res.pitch2D.height = height;
   resDesc.res.pitch2D.pitchInBytes = pitch;
-
-  if (ihipGetTextureAlignmentOffset(offset, devPtr)) {
-    // Align the user ptr to HW requirments.
-    resDesc.res.pitch2D.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
-  } else {
-    return hipErrorInvalidValue;
+  err = ihipGetTextureAlignmentOffset(offset, devPtr);
+  if (err != hipSuccess) {
+    return err;
   }
 
+  // Align the user ptr to HW requirments.
+  resDesc.res.pitch2D.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
   hipTextureDesc texDesc = hip::getTextureDesc(texref);
 
   return ihipCreateTextureObject(const_cast<hipTextureObject_t*>(&texref->textureObject), &resDesc, &texDesc, nullptr);
@@ -530,7 +573,10 @@ hipError_t ihipBindTextureToArray(const textureReference* texref,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texref->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texref->textureObject);
+  if (err != hipSuccess) {
+    return err;
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeArray;
@@ -576,7 +622,10 @@ hipError_t ihipBindTextureToMipmappedArray(const textureReference* texref,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texref->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texref->textureObject);
+  if (err != hipSuccess) {
+    return err;
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeMipmappedArray;
@@ -645,6 +694,12 @@ hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc,
   if ((desc == nullptr) || (array == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   // It is UB to call hipGetChannelDesc() on an array created via hipArrayCreate()/hipArray3DCreate().
   // This is due to hip not differentiating between runtime and driver types.
@@ -660,6 +715,12 @@ hipError_t hipGetTextureAlignmentOffset(size_t* offset,
   if ((offset == nullptr) || (texref == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   // TODO enforce alignment on devPtr.
   *offset = 0;
@@ -673,6 +734,13 @@ hipError_t hipGetTextureReference(const textureReference** texref, const void* s
   if (texref == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
+
   *texref = reinterpret_cast<const textureReference *>(symbol);
 
   HIP_RETURN(hipSuccess);
@@ -685,6 +753,12 @@ hipError_t hipTexRefSetFormat(textureReference* texRef,
 
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   texRef->format = fmt;
@@ -699,6 +773,12 @@ hipError_t hipTexRefSetFlags(textureReference* texRef,
 
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   texRef->readMode = hipReadModeNormalizedFloat;
@@ -727,6 +807,12 @@ hipError_t hipTexRefSetFilterMode(textureReference* texRef,
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   texRef->filterMode = fm;
 
@@ -741,6 +827,12 @@ hipError_t hipTexRefGetAddressMode(hipTextureAddressMode* pam,
 
   if ((pam == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   // Currently, the only valid value for dim are 0 and 1.
@@ -772,6 +864,12 @@ hipError_t hipTexRefSetAddressMode(textureReference* texRef,
         "dim : %d \n",
         dim);
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   texRef->addressMode[dim] = am;
@@ -831,7 +929,10 @@ hipError_t hipTexRefSetArray(textureReference* texRef,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texRef->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texRef->textureObject);
+  if (err != hipSuccess) {
+    HIP_RETURN(err);
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeArray;
@@ -842,7 +943,7 @@ hipError_t hipTexRefSetArray(textureReference* texRef,
   hipResourceViewFormat format = hip::getResourceViewFormat(hip::getChannelFormatDesc(texRef->numChannels, texRef->format));
   hipResourceViewDesc resViewDesc = hip::getResourceViewDesc(array, format);
 
-  hipError_t err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, &resViewDesc);
+  err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, &resViewDesc);
   if (err != hipSuccess) {
     HIP_RETURN(err);
   }
@@ -906,24 +1007,26 @@ hipError_t hipTexRefSetAddress(size_t* ByteOffset,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texRef->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texRef->textureObject);
+  if (err != hipSuccess) {
+    HIP_RETURN(err);
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeLinear;
   resDesc.res.linear.devPtr = dptr;
   resDesc.res.linear.desc = hip::getChannelFormatDesc(texRef->numChannels, texRef->format);
   resDesc.res.linear.sizeInBytes = bytes;
-
-  if (ihipGetTextureAlignmentOffset(ByteOffset, dptr)) {
-    // Align the user ptr to HW requirments.
-    resDesc.res.linear.devPtr = static_cast<char*>(dptr) - *ByteOffset;
-  } else {
-    HIP_RETURN(hipErrorInvalidValue);
+  err = ihipGetTextureAlignmentOffset(ByteOffset, dptr);
+  if (err != hipSuccess) {
+    HIP_RETURN(err);
   }
 
+  // Align the user ptr to HW requirments.
+  resDesc.res.linear.devPtr = static_cast<char*>(dptr) - *ByteOffset;
   hipTextureDesc texDesc = hip::getTextureDesc(texRef);
 
-  hipError_t err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, nullptr);
+  err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, nullptr);
   if (err != hipSuccess) {
     HIP_RETURN(err);
   }
@@ -950,7 +1053,10 @@ hipError_t hipTexRefSetAddress2D(textureReference* texRef,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texRef->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texRef->textureObject);
+  if (err != hipSuccess) {
+    HIP_RETURN(err);
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypePitch2D;
@@ -962,7 +1068,7 @@ hipError_t hipTexRefSetAddress2D(textureReference* texRef,
 
   hipTextureDesc texDesc = hip::getTextureDesc(texRef);
 
-  hipError_t err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, nullptr);
+  err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, nullptr);
   if (err != hipSuccess) {
     HIP_RETURN(err);
   }
@@ -983,6 +1089,12 @@ hipError_t hipTexRefGetBorderColor(float* pBorderColor,
   if ((pBorderColor == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   // TODO add textureReference::borderColor.
   assert(false && "textureReference::borderColor is missing in header");
@@ -999,6 +1111,12 @@ hipError_t hipTexRefGetFilterMode(hipTextureFilterMode* pfm,
   if ((pfm == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pfm = texRef->filterMode;
 
@@ -1012,6 +1130,12 @@ hipError_t hipTexRefGetFlags(unsigned int* pFlags,
 
   if ((pFlags == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   *pFlags = 0;
@@ -1041,6 +1165,12 @@ hipError_t hipTexRefGetFormat(hipArray_Format* pFormat,
       (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pFormat = texRef->format;
   *pNumChannels = texRef->numChannels;
@@ -1056,6 +1186,12 @@ hipError_t hipTexRefGetMaxAnisotropy(int* pmaxAnsio,
   if ((pmaxAnsio == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pmaxAnsio = texRef->maxAnisotropy;
 
@@ -1070,6 +1206,12 @@ hipError_t hipTexRefGetMipmapFilterMode(hipTextureFilterMode* pfm,
   if ((pfm == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pfm = texRef->mipmapFilterMode;
 
@@ -1083,6 +1225,12 @@ hipError_t hipTexRefGetMipmapLevelBias(float* pbias,
 
   if ((pbias == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   *pbias = texRef->mipmapLevelBias;
@@ -1100,6 +1248,12 @@ hipError_t hipTexRefGetMipmapLevelClamp(float* pminMipmapLevelClamp,
       (texRef == nullptr)){
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pminMipmapLevelClamp = texRef->minMipmapLevelClamp;
   *pmaxMipmapLevelClamp = texRef->maxMipmapLevelClamp;
@@ -1114,6 +1268,12 @@ hipError_t hipTexRefGetMipmappedArray(hipMipmappedArray_t* pArray,
 
   if ((pArray == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   hipResourceDesc resDesc = {};
@@ -1144,6 +1304,12 @@ hipError_t hipTexRefSetBorderColor(textureReference* texRef,
   if ((texRef == nullptr) || (pBorderColor == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   // TODO add textureReference::borderColor.
   assert(false && "textureReference::borderColor is missing in header");
@@ -1159,6 +1325,12 @@ hipError_t hipTexRefSetMaxAnisotropy(textureReference* texRef,
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   texRef->maxAnisotropy = maxAniso;
 
@@ -1171,6 +1343,12 @@ hipError_t hipTexRefSetMipmapFilterMode(textureReference* texRef,
 
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   texRef->mipmapFilterMode = fm;
@@ -1185,6 +1363,12 @@ hipError_t hipTexRefSetMipmapLevelBias(textureReference* texRef,
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   texRef->mipmapLevelBias = bias;
 
@@ -1198,6 +1382,12 @@ hipError_t hipTexRefSetMipmapLevelClamp(textureReference* texRef,
 
   if (texRef == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   texRef->minMipmapLevelClamp = minMipMapLevelClamp;
@@ -1227,7 +1417,10 @@ hipError_t hipTexRefSetMipmappedArray(textureReference* texRef,
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
-  ihipDestroyTextureObject(texRef->textureObject);
+  hipError_t err = ihipDestroyTextureObject(texRef->textureObject);
+  if (err != hipSuccess) {
+    HIP_RETURN(err);
+  }
 
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeMipmappedArray;
@@ -1238,7 +1431,7 @@ hipError_t hipTexRefSetMipmappedArray(textureReference* texRef,
   hipResourceViewFormat format = hip::getResourceViewFormat(hip::getChannelFormatDesc(texRef->numChannels, texRef->format));
   hipResourceViewDesc resViewDesc = hip::getResourceViewDesc(mipmappedArray, format);
 
-  hipError_t err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, &resViewDesc);
+  err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, &resViewDesc);
   if (err != hipSuccess) {
     HIP_RETURN(err);
   }
@@ -1281,6 +1474,12 @@ hipError_t hipTexObjectGetResourceDesc(HIP_RESOURCE_DESC* pResDesc,
   if ((pResDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pResDesc = hip::getResourceDesc(texObject->resDesc);
 
@@ -1294,6 +1493,12 @@ hipError_t hipTexObjectGetResourceViewDesc(HIP_RESOURCE_VIEW_DESC* pResViewDesc,
   if ((pResViewDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   *pResViewDesc = hip::getResourceViewDesc(texObject->resViewDesc);
 
@@ -1306,6 +1511,12 @@ hipError_t hipTexObjectGetTextureDesc(HIP_TEXTURE_DESC* pTexDesc,
 
   if ((pTexDesc == nullptr) || (texObject == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
   }
 
   *pTexDesc = hip::getTextureDesc(texObject->texDesc);

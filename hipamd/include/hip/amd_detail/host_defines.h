@@ -50,6 +50,12 @@ THE SOFTWARE.
 #define __noinline__ __attribute__((noinline))
 #define __forceinline__ inline __attribute__((always_inline))
 
+#if __HIP_NO_IMAGE_SUPPORT
+#define __hip_img_chk__ __attribute__((unavailable("The image/texture API not supported on the device")))
+#else
+#define __hip_img_chk__
+#endif
+
 #else
 
 // Non-HCC compiler
@@ -67,6 +73,7 @@ THE SOFTWARE.
 #define __shared__
 #define __constant__
 
+#define __hip_img_chk__
 #endif
 
 #endif
