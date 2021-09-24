@@ -663,6 +663,12 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
   if ((texRef == nullptr) || (name == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
    /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynTexRef(name, hmod, texRef)) {

@@ -318,6 +318,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     // hipStreamWaitValue64() and hipStreamWaitValue32() support
     *pi = g_devices[device]->devices()[0]->info().aqlBarrierValue_;
     break;
+  case hipDeviceAttributeImageSupport:
+    *pi = static_cast<int>(g_devices[device]->devices()[0]->info().imageSupport_);
+    break;
   default:
     HIP_RETURN(hipErrorInvalidValue);
   }

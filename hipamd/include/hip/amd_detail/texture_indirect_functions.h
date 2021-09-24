@@ -64,7 +64,7 @@ struct __hip_is_itex_channel_type<HIP_vector_type<T, rank>>
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1Dfetch(hipTextureObject_t textureObject, int x)
+static __device__ __hip_img_chk__ T tex1Dfetch(hipTextureObject_t textureObject, int x)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_load_1Db(i, x);
@@ -74,7 +74,7 @@ static __device__ T tex1Dfetch(hipTextureObject_t textureObject, int x)
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1Dfetch(T *ptr, hipTextureObject_t textureObject, int x)
+static __device__ __hip_img_chk__ void tex1Dfetch(T *ptr, hipTextureObject_t textureObject, int x)
 {
     *ptr = tex1Dfetch<T>(textureObject, x);
 }
@@ -82,7 +82,7 @@ static __device__ void tex1Dfetch(T *ptr, hipTextureObject_t textureObject, int 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1D(hipTextureObject_t textureObject, float x)
+static __device__ __hip_img_chk__ T tex1D(hipTextureObject_t textureObject, float x)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1D(i, s, x);
@@ -92,7 +92,7 @@ static __device__ T tex1D(hipTextureObject_t textureObject, float x)
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1D(T *ptr, hipTextureObject_t textureObject, float x)
+static __device__ __hip_img_chk__ void tex1D(T *ptr, hipTextureObject_t textureObject, float x)
 {
     *ptr = tex1D<T>(textureObject, x);
 }
@@ -100,7 +100,7 @@ static __device__ void tex1D(T *ptr, hipTextureObject_t textureObject, float x)
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2D(hipTextureObject_t textureObject, float x, float y)
+static __device__ __hip_img_chk__ T tex2D(hipTextureObject_t textureObject, float x, float y)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2D(i, s, float2(x, y).data);
@@ -110,7 +110,7 @@ static __device__ T tex2D(hipTextureObject_t textureObject, float x, float y)
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2D(T *ptr, hipTextureObject_t textureObject, float x, float y)
+static __device__ __hip_img_chk__ void tex2D(T *ptr, hipTextureObject_t textureObject, float x, float y)
 {
     *ptr = tex2D<T>(textureObject, x, y);
 }
@@ -118,7 +118,7 @@ static __device__ void tex2D(T *ptr, hipTextureObject_t textureObject, float x, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex3D(hipTextureObject_t textureObject, float x, float y, float z)
+static __device__ __hip_img_chk__ T tex3D(hipTextureObject_t textureObject, float x, float y, float z)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_3D(i, s, float4(x, y, z, 0.0f).data);
@@ -128,7 +128,7 @@ static __device__ T tex3D(hipTextureObject_t textureObject, float x, float y, fl
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex3D(T *ptr, hipTextureObject_t textureObject, float x, float y, float z)
+static __device__ __hip_img_chk__ void tex3D(T *ptr, hipTextureObject_t textureObject, float x, float y, float z)
 {
     *ptr = tex3D<T>(textureObject, x, y, z);
 }
@@ -136,7 +136,7 @@ static __device__ void tex3D(T *ptr, hipTextureObject_t textureObject, float x, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1DLayered(hipTextureObject_t textureObject, float x, int layer)
+static __device__ __hip_img_chk__ T tex1DLayered(hipTextureObject_t textureObject, float x, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
@@ -146,7 +146,7 @@ static __device__ T tex1DLayered(hipTextureObject_t textureObject, float x, int 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1DLayered(T *ptr, hipTextureObject_t textureObject, float x, int layer)
+static __device__ __hip_img_chk__ void tex1DLayered(T *ptr, hipTextureObject_t textureObject, float x, int layer)
 {
     *ptr = tex1DLayered<T>(textureObject, x, layer);
 }
@@ -154,7 +154,7 @@ static __device__ void tex1DLayered(T *ptr, hipTextureObject_t textureObject, fl
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2DLayered(hipTextureObject_t textureObject, float x, float y, int layer)
+static __device__ __hip_img_chk__ T tex2DLayered(hipTextureObject_t textureObject, float x, float y, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
@@ -164,7 +164,7 @@ static __device__ T tex2DLayered(hipTextureObject_t textureObject, float x, floa
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2DLayered(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer)
+static __device__ __hip_img_chk__ void tex2DLayered(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer)
 {
     *ptr = tex1DLayered<T>(textureObject, x, y, layer);
 }
@@ -172,7 +172,7 @@ static __device__ void tex2DLayered(T *ptr, hipTextureObject_t textureObject, fl
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__  T texCubemap(hipTextureObject_t textureObject, float x, float y, float z)
+static __device__ __hip_img_chk__  T texCubemap(hipTextureObject_t textureObject, float x, float y, float z)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_CM(i, s, float4(x, y, z, 0.0f).data);
@@ -182,7 +182,7 @@ static __device__  T texCubemap(hipTextureObject_t textureObject, float x, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemap(T *ptr, hipTextureObject_t textureObject, float x, float y, float z)
+static __device__ __hip_img_chk__ void texCubemap(T *ptr, hipTextureObject_t textureObject, float x, float y, float z)
 {
     *ptr = texCubemap<T>(textureObject, x, y, z);
 }
@@ -190,7 +190,7 @@ static __device__ void texCubemap(T *ptr, hipTextureObject_t textureObject, floa
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T texCubemapLayered(hipTextureObject_t textureObject, float x, float y, float z, int layer)
+static __device__ __hip_img_chk__ T texCubemapLayered(hipTextureObject_t textureObject, float x, float y, float z, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_CMa(i, s, float4(x, y, z, layer).data);
@@ -200,7 +200,7 @@ static __device__ T texCubemapLayered(hipTextureObject_t textureObject, float x,
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemapLayered(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer)
+static __device__ __hip_img_chk__ void texCubemapLayered(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer)
 {
     *ptr = texCubemapLayered<T>(textureObject, x, y, z, layer);
 }
@@ -208,7 +208,7 @@ static __device__ void texCubemapLayered(T *ptr, hipTextureObject_t textureObjec
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2Dgather(hipTextureObject_t textureObject, float x, float y, int comp = 0)
+static __device__ __hip_img_chk__ T tex2Dgather(hipTextureObject_t textureObject, float x, float y, int comp = 0)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     switch (comp) {
@@ -239,7 +239,7 @@ static __device__ T tex2Dgather(hipTextureObject_t textureObject, float x, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2Dgather(T *ptr, hipTextureObject_t textureObject, float x, float y, int comp = 0)
+static __device__ __hip_img_chk__ void tex2Dgather(T *ptr, hipTextureObject_t textureObject, float x, float y, int comp = 0)
 {
     *ptr = texCubemapLayered<T>(textureObject, x, y, comp);
 }
@@ -247,7 +247,7 @@ static __device__ void tex2Dgather(T *ptr, hipTextureObject_t textureObject, flo
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1DLod(hipTextureObject_t textureObject, float x, float level)
+static __device__ __hip_img_chk__ T tex1DLod(hipTextureObject_t textureObject, float x, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_1D(i, s, x, level);
@@ -257,7 +257,7 @@ static __device__ T tex1DLod(hipTextureObject_t textureObject, float x, float le
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1DLod(T *ptr, hipTextureObject_t textureObject, float x, float level)
+static __device__ __hip_img_chk__ void tex1DLod(T *ptr, hipTextureObject_t textureObject, float x, float level)
 {
     *ptr = tex1DLod<T>(textureObject, x, level);
 }
@@ -265,7 +265,7 @@ static __device__ void tex1DLod(T *ptr, hipTextureObject_t textureObject, float 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2DLod(hipTextureObject_t textureObject, float x, float y, float level)
+static __device__ __hip_img_chk__ T tex2DLod(hipTextureObject_t textureObject, float x, float y, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_2D(i, s, float2(x, y).data, level);
@@ -275,7 +275,7 @@ static __device__ T tex2DLod(hipTextureObject_t textureObject, float x, float y,
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2DLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float level)
+static __device__ __hip_img_chk__ void tex2DLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float level)
 {
     *ptr = tex2DLod<T>(textureObject, x, y, level);
 }
@@ -283,7 +283,7 @@ static __device__ void tex2DLod(T *ptr, hipTextureObject_t textureObject, float 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex3DLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
+static __device__ __hip_img_chk__ T tex3DLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_3D(i, s, float4(x, y, z, 0.0f).data, level);
@@ -293,7 +293,7 @@ static __device__ T tex3DLod(hipTextureObject_t textureObject, float x, float y,
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex3DLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float level)
+static __device__ __hip_img_chk__ void tex3DLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     *ptr = tex3DLod<T>(textureObject, x, y, z, level);
 }
@@ -301,7 +301,7 @@ static __device__ void tex3DLod(T *ptr, hipTextureObject_t textureObject, float 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1DLayeredLod(hipTextureObject_t textureObject, float x, int layer, float level)
+static __device__ __hip_img_chk__ T tex1DLayeredLod(hipTextureObject_t textureObject, float x, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
@@ -311,7 +311,7 @@ static __device__ T tex1DLayeredLod(hipTextureObject_t textureObject, float x, i
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1DLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, int layer, float level)
+static __device__ __hip_img_chk__ void tex1DLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, int layer, float level)
 {
     *ptr = tex1DLayeredLod<T>(textureObject, x, layer, level);
 }
@@ -319,7 +319,7 @@ static __device__ void tex1DLayeredLod(T *ptr, hipTextureObject_t textureObject,
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__  T tex2DLayeredLod(hipTextureObject_t textureObject, float x, float y, int layer, float level)
+static __device__ __hip_img_chk__  T tex2DLayeredLod(hipTextureObject_t textureObject, float x, float y, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
@@ -329,7 +329,7 @@ static __device__  T tex2DLayeredLod(hipTextureObject_t textureObject, float x, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2DLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer, float level)
+static __device__ __hip_img_chk__ void tex2DLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer, float level)
 {
     *ptr = tex2DLayeredLod<T>(textureObject, x, y, layer, level);
 }
@@ -337,7 +337,7 @@ static __device__ void tex2DLayeredLod(T *ptr, hipTextureObject_t textureObject,
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T texCubemapLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
+static __device__ __hip_img_chk__ T texCubemapLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_CM(i, s, float4(x, y, z, 0.0f).data, level);
@@ -347,7 +347,7 @@ static __device__ T texCubemapLod(hipTextureObject_t textureObject, float x, flo
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemapLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float level)
+static __device__ __hip_img_chk__ void texCubemapLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     *ptr = texCubemapLod<T>(textureObject, x, y, z, level);
 }
@@ -355,7 +355,7 @@ static __device__ void texCubemapLod(T *ptr, hipTextureObject_t textureObject, f
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T texCubemapGrad(hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__ T texCubemapGrad(hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
@@ -367,7 +367,7 @@ static __device__ T texCubemapGrad(hipTextureObject_t textureObject, float x, fl
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemapGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__ void texCubemapGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     *ptr = texCubemapGrad<T>(textureObject, x, y, z, dPdx, dPdy);
 }
@@ -375,7 +375,7 @@ static __device__ void texCubemapGrad(T *ptr, hipTextureObject_t textureObject, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T texCubemapLayeredLod(hipTextureObject_t textureObject, float x, float y, float z, int layer, float level)
+static __device__ __hip_img_chk__ T texCubemapLayeredLod(hipTextureObject_t textureObject, float x, float y, float z, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_CMa(i, s, float4(x, y, z, layer).data, level);
@@ -385,7 +385,7 @@ static __device__ T texCubemapLayeredLod(hipTextureObject_t textureObject, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemapLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer, float level)
+static __device__ __hip_img_chk__ void texCubemapLayeredLod(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer, float level)
 {
     *ptr = texCubemapLayeredLod<T>(textureObject, x, y, z, layer, level);
 }
@@ -393,7 +393,7 @@ static __device__ void texCubemapLayeredLod(T *ptr, hipTextureObject_t textureOb
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1DGrad(hipTextureObject_t textureObject, float x, float dPdx, float dPdy)
+static __device__ __hip_img_chk__ T tex1DGrad(hipTextureObject_t textureObject, float x, float dPdx, float dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_1D(i, s, x, dPdx, dPdy);
@@ -403,7 +403,7 @@ static __device__ T tex1DGrad(hipTextureObject_t textureObject, float x, float d
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1DGrad(T *ptr, hipTextureObject_t textureObject, float x, float dPdx, float dPdy)
+static __device__ __hip_img_chk__ void tex1DGrad(T *ptr, hipTextureObject_t textureObject, float x, float dPdx, float dPdy)
 {
     *ptr = tex1DGrad<T>(textureObject, x, dPdx, dPdy);
 }
@@ -411,7 +411,7 @@ static __device__ void tex1DGrad(T *ptr, hipTextureObject_t textureObject, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2DGrad(hipTextureObject_t textureObject, float x, float y, float2 dPdx, float2 dPdy)
+static __device__ __hip_img_chk__ T tex2DGrad(hipTextureObject_t textureObject, float x, float y, float2 dPdx, float2 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_2D(i, s, float2(x, y).data, float2(dPdx.x, dPdx.y).data,  float2(dPdy.x, dPdy.y).data);
@@ -421,7 +421,7 @@ static __device__ T tex2DGrad(hipTextureObject_t textureObject, float x, float y
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2DGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float2 dPdx, float2 dPdy)
+static __device__ __hip_img_chk__ void tex2DGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float2 dPdx, float2 dPdy)
 {
     *ptr = tex2DGrad<T>(textureObject, x, y, dPdx, dPdy);
 }
@@ -429,7 +429,7 @@ static __device__ void tex2DGrad(T *ptr, hipTextureObject_t textureObject, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex3DGrad(hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__ T tex3DGrad(hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_3D(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
@@ -439,7 +439,7 @@ static __device__ T tex3DGrad(hipTextureObject_t textureObject, float x, float y
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex3DGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__ void tex3DGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     *ptr = tex3DGrad<T>(textureObject, x, y, z, dPdx, dPdy);
 }
@@ -447,7 +447,7 @@ static __device__ void tex3DGrad(T *ptr, hipTextureObject_t textureObject, float
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex1DLayeredGrad(hipTextureObject_t textureObject, float x, int layer, float dPdx, float dPdy)
+static __device__ __hip_img_chk__ T tex1DLayeredGrad(hipTextureObject_t textureObject, float x, int layer, float dPdx, float dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_1Da(i, s, float2(x, layer).data, dPdx, dPdy);
@@ -457,7 +457,7 @@ static __device__ T tex1DLayeredGrad(hipTextureObject_t textureObject, float x, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex1DLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, int layer, float dPdx, float dPdy)
+static __device__ __hip_img_chk__ void tex1DLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, int layer, float dPdx, float dPdy)
 {
     *ptr = tex1DLayeredGrad<T>(textureObject, x, layer, dPdx, dPdy);
 }
@@ -465,7 +465,7 @@ static __device__ void tex1DLayeredGrad(T *ptr, hipTextureObject_t textureObject
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ T tex2DLayeredGrad(hipTextureObject_t textureObject, float x, float y, int layer, float2 dPdx, float2 dPdy)
+static __device__ __hip_img_chk__ T tex2DLayeredGrad(hipTextureObject_t textureObject, float x, float y, int layer, float2 dPdx, float2 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_2Da(i, s, float4(x, y, layer, 0.0f).data, float2(dPdx.x, dPdx.y).data, float2(dPdy.x, dPdy.y).data);
@@ -475,7 +475,7 @@ static __device__ T tex2DLayeredGrad(hipTextureObject_t textureObject, float x, 
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void tex2DLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer, float2 dPdx, float2 dPdy)
+static __device__ __hip_img_chk__ void tex2DLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, int layer, float2 dPdx, float2 dPdy)
 {
     *ptr = tex2DLayeredGrad<T>(textureObject, x, y, layer, dPdx, dPdy);
 }
@@ -483,7 +483,7 @@ static __device__ void tex2DLayeredGrad(T *ptr, hipTextureObject_t textureObject
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__  T texCubemapLayeredGrad(hipTextureObject_t textureObject, float x, float y, float z, int layer, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__  T texCubemapLayeredGrad(hipTextureObject_t textureObject, float x, float y, float z, int layer, float4 dPdx, float4 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
@@ -495,7 +495,7 @@ static __device__  T texCubemapLayeredGrad(hipTextureObject_t textureObject, flo
 template <
     typename T,
     typename std::enable_if<__hip_is_itex_channel_type<T>::value>::type* = nullptr>
-static __device__ void texCubemapLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer, float4 dPdx, float4 dPdy)
+static __device__ __hip_img_chk__ void texCubemapLayeredGrad(T *ptr, hipTextureObject_t textureObject, float x, float y, float z, int layer, float4 dPdx, float4 dPdy)
 {
     *ptr = texCubemapLayeredGrad<T>(textureObject, x, y, z, layer, dPdx, dPdy);
 }
