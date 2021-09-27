@@ -226,12 +226,12 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
   // allocation in the device driver
   *ptr = amd::SvmBuffer::malloc(ctx, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR,
                                 size, (align == 0) ? dev.info().memBaseAddrAlign_ : align);
-  size_t offset = 0; //this is ignored
-  amd::Memory* memObj = getMemoryObject(*ptr, offset);
 
   if (*ptr == nullptr) {
     return hipErrorMemoryAllocation;
   }
+  size_t offset = 0; //this is ignored
+  amd::Memory* memObj = getMemoryObject(*ptr, offset);
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
