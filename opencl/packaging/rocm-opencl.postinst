@@ -6,7 +6,7 @@ INSTALL_PATH=@CPACK_PACKAGING_INSTALL_PREFIX@
 ROCM_LIBPATH=@ROCM_PATH@/lib
 
 do_ldconfig() {
-  echo ${ROCM_LIBPATH} > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
+  echo ${INSTALL_PATH}/lib > /etc/ld.so.conf.d/x86_64-rocm-opencl.conf && ldconfig
   mkdir -p /etc/OpenCL/vendors && (echo libamdocl64.so > /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@)
 }
 
