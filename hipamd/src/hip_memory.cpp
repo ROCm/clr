@@ -2652,6 +2652,214 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
 }
 
 // ================================================================================================
+hipError_t ihipPointerGetAttributes(void** data, int* attributes,
+                                    int numAttributes, hipDeviceptr_t ptr) {
+
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(ptr, offset);
+  constexpr uint32_t kManagedAlloc = (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR);
+
+  hipError_t status = hipSuccess;
+
+  uint32_t idx = 0;
+  for (int i = 0; i < numAttributes; i++) {
+    switch (attributes[i]) {
+      case HIP_POINTER_ATTRIBUTE_CONTEXT : {
+        status = hipErrorNotSupported;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_MEMORY_TYPE : {
+        if (memObj) { // checks for host type or device type
+          *reinterpret_cast<uint32_t*>(data[idx]) =
+          ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
+        } else { // checks for array type
+          cl_mem dstMemObj = reinterpret_cast<cl_mem>((static_cast<hipArray*>(ptr))->data);
+          if (!is_valid(dstMemObj)) {
+            return hipErrorInvalidValue;
+          }
+          amd::Image* dstImage = as_amd(dstMemObj)->asImage();
+          if (dstImage){
+            *reinterpret_cast<uint32_t*>(data[idx]) = hipMemoryTypeArray;
+          } else {
+            return hipErrorInvalidValue;
+          }
+        }
+       break;
+      }
+      case HIP_POINTER_ATTRIBUTE_DEVICE_POINTER : {
+        if (memObj) {
+          device::Memory* devMem = memObj->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
+
+          //getDeviceMemory can fail, hence validate the sanity of the mem obtained
+          if (nullptr == devMem) {
+            DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
+            return hipErrorMemoryAllocation;
+          }
+          *reinterpret_cast<hipDeviceptr_t*>(data[idx]) =
+            reinterpret_cast<hipDeviceptr_t*>(devMem->virtualAddress() + offset);
+        } else {
+          return hipErrorInvalidValue;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_HOST_POINTER : {
+        if (memObj) {
+          if ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) & memObj->getMemFlags()) {
+            if (memObj->getHostMem() != nullptr) {
+              // Registered memory
+              *reinterpret_cast<char**>(data[idx]) =
+                static_cast<char*>(memObj->getHostMem()) + offset;
+            } else {
+              // Prepinned memory
+              *reinterpret_cast<char**>(data[idx]) =
+                static_cast<char*>(memObj->getSvmPtr()) + offset;
+            }
+          } else {
+            *reinterpret_cast<char**>(data[idx]) = nullptr;
+          }
+        } else { // Host Memory
+          *reinterpret_cast<char**>(data[idx]) = static_cast<char*>(ptr);
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_P2P_TOKENS : {
+        // Currently not supported, deprecated in cuda as well
+        status = hipErrorNotSupported;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS : {
+        // This attribute is ideally used in hipPointerSetAttribute, defaults to true
+        *reinterpret_cast<bool*>(data[idx]) = true;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_BUFFER_ID : {
+        if (memObj) {
+          *reinterpret_cast<uint32_t*>(data[idx]) = memObj->getUniqueId();
+        } else { // ptr passed must be allocated using HIP memory allocation API
+          return hipErrorInvalidValue;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_IS_MANAGED : {
+        if (memObj) {
+          *reinterpret_cast<bool*>(data[idx]) =
+               ((memObj->getMemFlags() & kManagedAlloc) == kManagedAlloc) ? true : false;
+        } else {
+          return hipErrorInvalidValue;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_DEVICE_ORDINAL : {
+        if (memObj) {
+          *reinterpret_cast<int*>(data[idx]) = memObj->getUserData().deviceId;
+        } else {
+          // for host memory, 100 is returned by default similar to cuda
+          *reinterpret_cast<int*>(data[idx]) = 100;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_IS_LEGACY_HIP_IPC_CAPABLE : {
+        // TODO: Unclear what to be done for this attribute
+        status = hipErrorNotSupported;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_RANGE_START_ADDR : {
+        if (memObj) {
+          if (memObj->getHostMem() != nullptr) {
+            *reinterpret_cast<hipDeviceptr_t*>(data[idx]) =
+              static_cast<char*>(memObj->getHostMem());
+          } else {
+            device::Memory* devMem =
+              memObj->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
+
+            //getDeviceMemory can fail, hence validate the sanity of the mem obtained
+            if (nullptr == devMem) {
+              DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
+              return hipErrorMemoryAllocation;
+            }
+            *reinterpret_cast<hipDeviceptr_t*>(data[idx]) =
+                 reinterpret_cast<char*>(devMem->virtualAddress());
+          }
+        } else { // Host Memory
+          *reinterpret_cast<char**>(data[idx]) = static_cast<char*>(ptr);
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_RANGE_SIZE : {
+        if (memObj) {
+          *reinterpret_cast<uint32_t*>(data[idx]) = memObj->getSize();
+        } else {
+          // for host memory, 10 is returned by default similar to cuda
+          *reinterpret_cast<uint32_t*>(data[idx]) = 10;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_MAPPED : {
+        *reinterpret_cast<bool*>(data[idx]) = (memObj) ? true : false;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES : {
+        // hipMemAllocationHandleType is not yet supported
+        status = hipErrorNotSupported;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE : {
+        // GPUDirect RDMA API is not yet supported, hence returning 0
+        LogPrintfWarning("attribute %d is not supported, defaults to 0", attributes[i]);
+        *reinterpret_cast<bool*>(data[idx]) = 0;
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS : {
+        if (memObj) {
+          *reinterpret_cast<uint32_t*>(data[idx]) = memObj->getMemFlags() >> 16;
+        } else {
+          *reinterpret_cast<uint32_t*>(data[idx]) = 0;
+        }
+        break;
+      }
+      case HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE : {
+        // allocations from mempool are not yet supported, hence returning 0
+        LogPrintfWarning("attribute %d is not supported, defaults to 0", attributes[i]);
+        *reinterpret_cast<bool*>(data[idx]) = 0;
+        break;
+      }
+      default: {
+        LogPrintfError("Invalid attribute: %d ", attributes[i]);
+        status = hipErrorInvalidValue;
+        break;
+      }
+    }
+  ++idx;
+  }
+  return status;
+}
+
+// ================================================================================================
+hipError_t hipPointerGetAttribute(void* data, hipPointer_attribute attribute, hipDeviceptr_t ptr) {
+  HIP_INIT_API(hipPointerGetAttribute, data, attribute, ptr);
+
+  if (ptr == nullptr || data == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(ihipPointerGetAttributes(&data, reinterpret_cast<int*>(&attribute), 1, ptr));
+}
+
+// ================================================================================================
+hipError_t hipDrvPointerGetAttributes(unsigned int numAttributes, hipPointer_attribute* attributes,
+                                      void** data, hipDeviceptr_t ptr) {
+   HIP_INIT_API(hipDrvPointerGetAttributes, numAttributes, attributes, data, ptr);
+
+   if (numAttributes == 0 || attributes == nullptr || data == nullptr || ptr == nullptr) {
+     HIP_RETURN(hipErrorInvalidValue);
+   }
+
+   HIP_RETURN(ihipPointerGetAttributes(data, reinterpret_cast<int*>(attributes),
+                                       numAttributes, ptr));
+}
+
+// ================================================================================================
 hipError_t hipArrayDestroy(hipArray* array) {
   HIP_INIT_API(hipArrayDestroy, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();

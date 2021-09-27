@@ -362,6 +362,7 @@ typedef struct cudaArray* hipArray_const_t;
 typedef struct cudaFuncAttributes hipFuncAttributes;
 typedef struct cudaLaunchParams hipLaunchParams;
 #define hipFunction_attribute CUfunction_attribute
+#define hipPointer_attribute CUpointer_attribute
 #define hip_Memcpy2D CUDA_MEMCPY2D
 #define HIP_MEMCPY3D CUDA_MEMCPY3D
 #define hipMemcpy3DParms cudaMemcpy3DParms
@@ -420,6 +421,25 @@ typedef struct cudaResourceViewDesc hipResourceViewDesc;
 #define HIP_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES CU_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES
 #define HIP_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT CU_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT
 #define HIP_FUNC_ATTRIBUTE_MAX CU_FUNC_ATTRIBUTE_MAX
+
+//Pointer Attributes
+#define HIP_POINTER_ATTRIBUTE_CONTEXT           CU_POINTER_ATTRIBUTE_CONTEXT
+#define HIP_POINTER_ATTRIBUTE_MEMORY_TYPE       CU_POINTER_ATTRIBUTE_MEMORY_TYPE
+#define HIP_POINTER_ATTRIBUTE_DEVICE_POINTER    CU_POINTER_ATTRIBUTE_DEVICE_POINTER
+#define HIP_POINTER_ATTRIBUTE_HOST_POINTER      CU_POINTER_ATTRIBUTE_HOST_POINTER
+#define HIP_POINTER_ATTRIBUTE_P2P_TOKENS        CU_POINTER_ATTRIBUTE_P2P_TOKENS
+#define HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS       CU_POINTER_ATTRIBUTE_SYNC_MEMOPS
+#define HIP_POINTER_ATTRIBUTE_BUFFER_ID         CU_POINTER_ATTRIBUTE_BUFFER_ID
+#define HIP_POINTER_ATTRIBUTE_IS_MANAGED        CU_POINTER_ATTRIBUTE_IS_MANAGED
+#define HIP_POINTER_ATTRIBUTE_DEVICE_ORDINAL    CU_POINTER_ATTRIBUTE_DEVICE_ORDINAL
+#define HIP_POINTER_ATTRIBUTE_IS_LEGACY_HIP_IPC_CAPABLE  CU_POINTER_ATTRIBUTE_IS_LEGACY_CUDA_IPC_CAPABLE
+#define HIP_POINTER_ATTRIBUTE_RANGE_START_ADDR  CU_POINTER_ATTRIBUTE_RANGE_START_ADDR
+#define HIP_POINTER_ATTRIBUTE_RANGE_SIZE        CU_POINTER_ATTRIBUTE_RANGE_SIZE
+#define HIP_POINTER_ATTRIBUTE_MAPPED            CU_POINTER_ATTRIBUTE_MAPPED
+#define HIP_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES CU_POINTER_ATTRIBUTE_ALLOWED_HANDLE_TYPES
+#define HIP_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE CU_POINTER_ATTRIBUTE_IS_GPU_DIRECT_RDMA_CAPABLE
+#define HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS      CU_POINTER_ATTRIBUTE_ACCESS_FLAGS
+#define HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE    CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE
 
 #if CUDA_VERSION >= 9000
 #define __shfl(...)      __shfl_sync(0xffffffff, __VA_ARGS__)
@@ -1729,6 +1749,17 @@ inline static hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attribut
         attributes->allocationFlags = 0;
     }
     return err;
+}
+
+inline static hipError_t hipPointerGetAttribute(void* data, hipPointer_attribute attribute,
+                                                hipDeviceptr_t ptr) {
+    return hipCUResultTohipError(cuPointerGetAttribute(data, attribute, ptr));
+}
+
+inline static hipError_t hipDrvPointerGetAttributes(unsigned int numAttributes,
+                                                    hipPointer_attribute* attributes,
+                                                    void** data, hipDeviceptr_t ptr) {
+    return hipCUResultTohipError(cuPointerGetAttributes(numAttributes, attributes, data, ptr));
 }
 
 inline static hipError_t hipMemGetInfo(size_t* free, size_t* total) {
