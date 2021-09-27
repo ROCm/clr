@@ -129,7 +129,7 @@ uint64_t Signal::Wait(uint64_t value, device::Signal::Condition c, uint64_t time
     float timeoutInSec = timeout / (1000 * 1000);
     result = event_.Wait(timeoutInSec);
 
-    if (result != Pal::Result::Success) {
+    if ((result != Pal::Result::Success) && (result != Pal::Result::Timeout)) {
       return -1;
     }
 
@@ -142,7 +142,7 @@ uint64_t Signal::Wait(uint64_t value, device::Signal::Condition c, uint64_t time
       auto end = amd::Os::timeNanos();
       auto duration = 1000 * (end - start); // convert to us
       if (duration >= timeout) {
-        return -1;
+        return amdSignal_->value;
       }
 
       if (!cmp(amdSignal_->value, value)) {

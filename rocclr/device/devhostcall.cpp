@@ -286,10 +286,12 @@ void HostcallListener::consumePackets() {
       return;
     }
 
-    amd::ScopedLock lock{listenerLock};
+    if (!idle()) {
+      amd::ScopedLock lock{listenerLock};
 
-    for (auto ii : buffers_) {
-      ii->processPackets(messages_);
+      for (auto ii : buffers_) {
+        ii->processPackets(messages_);
+      }
     }
   }
 
@@ -389,14 +391,15 @@ bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
 }
 
 void disableHostcalls(void* bfr) {
-  amd::ScopedLock lock(listenerLock);
-  if (!hostcallListener) {
-    return;
+  {
+    amd::ScopedLock lock(listenerLock);
+    if (!hostcallListener) {
+      return;
+    }
+    assert(bfr && "expected a hostcall buffer");
+    auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
+    hostcallListener->removeBuffer(buffer);
   }
-  assert(bfr && "expected a hostcall buffer");
-  auto buffer = reinterpret_cast<HostcallBuffer*>(bfr);
-  hostcallListener->removeBuffer(buffer);
-
   if (hostcallListener->idle()) {
     hostcallListener->terminate();
     delete hostcallListener;
