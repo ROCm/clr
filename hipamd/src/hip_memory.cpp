@@ -280,8 +280,6 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 
   *ptr = amd::SvmBuffer::malloc(*amdContext, flags, sizeBytes, amdContext->devices()[0]->info().memBaseAddrAlign_,
               useHostDevice ? curDevContext->svmDevices()[0] : nullptr);
-  size_t offset = 0; //this is ignored
-  amd::Memory* memObj = getMemoryObject(*ptr, offset);
 
   if (*ptr == nullptr) {
     size_t free = 0, total =0;
@@ -289,6 +287,8 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
     LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n", sizeBytes, free, total);
     return hipErrorOutOfMemory;
   }
+  size_t offset = 0; //this is ignored
+  amd::Memory* memObj = getMemoryObject(*ptr, offset);
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   return hipSuccess;
@@ -653,12 +653,12 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 
   *ptr = amd::SvmBuffer::malloc(*hip::getCurrentDevice()->asContext(), 0, sizeBytes,
                                 device->info().memBaseAddrAlign_);
-  size_t offset = 0; //this is ignored
-  amd::Memory* memObj = getMemoryObject(*ptr, offset);
 
   if (*ptr == nullptr) {
     return hipErrorOutOfMemory;
   }
+  size_t offset = 0; //this is ignored
+  amd::Memory* memObj = getMemoryObject(*ptr, offset);
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
@@ -990,6 +990,9 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
     }
 
     amd::MemObjMap::AddMemObj(hostPtr, mem);
+    if (mem != nullptr) {
+      mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
+    }
     HIP_RETURN(hipSuccess);
   } else {
     HIP_RETURN_DURATION(ihipMalloc(&hostPtr, sizeBytes, flags), hostPtr);
