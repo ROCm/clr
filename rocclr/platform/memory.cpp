@@ -28,6 +28,9 @@
 
 #include <atomic>
 
+// Stores the no. of memory allocations
+std::atomic<uint32_t> numAllocs = 0;
+
 namespace amd {
 
 bool BufferRect::create(const size_t* bufferOrigin, const size_t* region, size_t bufferRowPitch,
@@ -309,6 +312,8 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
     }
   }
 
+  // Store the unique id for each memory allocation
+  uniqueId_ = ++numAllocs;
   return true;
 }
 
