@@ -2978,6 +2978,10 @@ typedef struct hip_api_data_s {
 };
 // hipDrvPointerGetAttributes[('unsigned int', 'numAttributes'), ('hipPointer_attribute*', 'attributes'), ('void**', 'data'), ('hipDeviceptr_t', 'ptr')]
 #define INIT_hipDrvPointerGetAttributes_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDrvPointerGetAttributes.numAttributes = (unsigned int)numAttributes; \
+  cb_data.args.hipDrvPointerGetAttributes.attributes = (hipPointer_attribute*)attributes; \
+  cb_data.args.hipDrvPointerGetAttributes.data = (void**)data; \
+  cb_data.args.hipDrvPointerGetAttributes.ptr = (hipDeviceptr_t)ptr; \
 };
 // hipEventCreate[('hipEvent_t*', 'event')]
 #define INIT_hipEventCreate_CB_ARGS_DATA(cb_data) { \
@@ -4249,6 +4253,9 @@ typedef struct hip_api_data_s {
 };
 // hipPointerGetAttribute[('void*', 'data'), ('hipPointer_attribute', 'attribute'), ('hipDeviceptr_t', 'ptr')]
 #define INIT_hipPointerGetAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipPointerGetAttribute.data = (void*)data; \
+  cb_data.args.hipPointerGetAttribute.attribute = (hipPointer_attribute)attribute; \
+  cb_data.args.hipPointerGetAttribute.ptr = (hipDeviceptr_t)ptr; \
 };
 // hipPointerGetAttributes[('hipPointerAttribute_t*', 'attributes'), ('const void*', 'ptr')]
 #define INIT_hipPointerGetAttributes_CB_ARGS_DATA(cb_data) { \

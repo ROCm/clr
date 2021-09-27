@@ -226,7 +226,7 @@ hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
 }
 
 hipError_t hipIpcOpenEventHandle(hipEvent_t* event, hipIpcEventHandle_t handle) {
-  HIP_INIT_API(NONE, event, handle);
+  HIP_INIT_API(hipIpcOpenEventHandle, event, handle);
 #if !defined(_MSC_VER)
   hipError_t hip_err = hipSuccess;
   if (event == nullptr) {

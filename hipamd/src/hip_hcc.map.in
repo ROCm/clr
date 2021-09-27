@@ -387,3 +387,11 @@ global:
 local:
     *;
 } hip_4.4;
+
+hip_5.0 {
+global:
+    hipPointerGetAttribute;
+    hipDrvPointerGetAttributes;
+local:
+    *;
+} hip_4.5;

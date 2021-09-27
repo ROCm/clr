@@ -288,6 +288,8 @@ hipStreamIsCapturing
 hipStreamBeginCapture
 hipStreamEndCapture
 hipGraphExecDestroy
+hipPointerGetAttribute
+hipDrvPointerGetAttributes
 hipImportExternalSemaphore
 hipSignalExternalSemaphoresAsync
 hipWaitExternalSemaphoresAsync
