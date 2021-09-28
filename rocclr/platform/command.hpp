@@ -507,6 +507,46 @@ class ReadMemoryCommand : public OneMemoryArgCommand {
   //! Return the host rectangle information
   const BufferRect& hostRect() const { return hostRect_; }
 
+  //! Updates the host memory to read from
+  void setSource(Memory& memory) { memory_ = &memory; }
+  //! Updates the host memory to write to
+  void setDestination(void* hostPtr) { hostPtr_ = hostPtr; }
+
+  //! Updates the origin of the region to read
+  void setOrigin(const Coord3D& origin) { origin_ = origin; }
+  //! Updates the size of the region to read
+  void setSize(const Coord3D& size) { size_ = size; }
+  //! Updates the row pitch
+  void setRowPitch(const size_t rowPitch) { rowPitch_ = rowPitch; }
+  //! Updates the slice pitch
+  void setSlicePitch(const size_t slicePitch) { slicePitch_ = slicePitch; }
+
+  //! Updates the buffer rectangle information
+  void setBufRect(const BufferRect& bufRect) { bufRect_ = bufRect; }
+  //! Updates the host rectangle information
+  void setHostRect(const BufferRect& hostRect) { hostRect_ = hostRect; }
+
+  //! Updates command parameters
+  void setParams(Memory& memory, Coord3D origin, Coord3D size, void* hostPtr,
+                 const BufferRect& bufRect, const BufferRect& hostRect) {
+    memory_ = &memory;
+    origin_ = origin;
+    size_ = size;
+    hostPtr_ = hostPtr;
+    bufRect_ = bufRect;
+    hostRect_ = hostRect;
+  }
+  //! Updates command parameters
+  void setParams(Memory& memory, Coord3D origin, Coord3D size, void* hostPtr,
+                 size_t rowPitch = 0, size_t slicePitch = 0) {
+    memory_ = &memory;
+    origin_ = origin;
+    size_ = size;
+    hostPtr_ = hostPtr;
+    rowPitch_ = rowPitch;
+    slicePitch_ = slicePitch;
+  }
+
   //! Return true if the entire memory object is read.
   bool isEntireMemory() const;
 };
@@ -582,6 +622,46 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
   //! Return the host rectangle information
   const BufferRect& hostRect() const { return hostRect_; }
 
+  //! Updates the host memory to read from
+  void setSource(const void* hostPtr) { hostPtr_ = hostPtr; }
+  //! Updates the host memory to write to
+  void setDestination(Memory& memory) { memory_ = &memory; }
+
+  //! Updates the origin of the region to read
+  void setOrigin(const Coord3D& origin) { origin_ = origin; }
+  //! Updates the size of the region to read
+  void setSize(const Coord3D& size) { size_ = size; }
+  //! Updates the row pitch
+  void setRowPitch(const size_t rowPitch) { rowPitch_ = rowPitch; }
+  //! Updates the slice pitch
+  void setSlicePitch(const size_t slicePitch) { slicePitch_ = slicePitch; }
+
+  //! Updates the buffer rectangle information
+  void setBufRect(const BufferRect& bufRect) { bufRect_ = bufRect; }
+  //! Updates the host rectangle information
+  void setHostRect(const BufferRect& hostRect) { hostRect_ = hostRect; }
+
+  //! Updates command parameters
+  void setParams(Memory& memory, Coord3D origin, Coord3D size, const void* hostPtr,
+                 const BufferRect& bufRect, const BufferRect& hostRect) {
+    memory_ = &memory;
+    origin_ = origin;
+    size_ = size;
+    hostPtr_ = hostPtr;
+    bufRect_ = bufRect;
+    hostRect_ = hostRect;
+  }
+  //! Updates command parameters
+  void setParams(Memory& memory, Coord3D origin, Coord3D size, const void* hostPtr,
+                 size_t rowPitch = 0, size_t slicePitch = 0) {
+    memory_ = &memory;
+    origin_ = origin;
+    size_ = size;
+    hostPtr_ = hostPtr;
+    rowPitch_ = rowPitch;
+    slicePitch_ = slicePitch;
+  }
+
   //! Return true if the entire memory object is written.
   bool isEntireMemory() const;
 };
@@ -636,6 +716,36 @@ class FillMemoryCommand : public OneMemoryArgCommand {
 
   //! Return the surface
   const Coord3D& surface() const { return surface_; }
+
+  //! Updates the pattern memory to fill with and pattern size
+  void* setPattern(const void* pattern, const size_t patternSize) {
+    assert(pattern != NULL && "pattern cannot be null");
+    memcpy(pattern_, pattern, patternSize);
+    patternSize_ = patternSize;
+  }
+
+  //! Updates the memory object to write to.
+  void setMemory(Memory& memory) { memory_ = &memory; }
+
+  //! Updates the region origin
+  void setOrigin(const Coord3D& origin) { origin_ = origin; }
+  //! Updates the region size
+  void setSize(const Coord3D& size) { size_ = size; }
+
+  //! Updates the surface
+  void setSurface(const Coord3D& surface) { surface_ = surface; }
+
+  //! Updates command parameters
+  void setParams(Memory& memory, const void* pattern, size_t patternSize, const Coord3D& origin,
+                 const Coord3D& size, const Coord3D& surface) {
+    memory_ = &memory;
+    assert(pattern != NULL && "pattern cannot be null");
+    assert(size.c[0] > 0 && "invalid");
+    memcpy(pattern_, pattern, patternSize);
+    origin_ = origin;
+    size_ = size;
+    surface_ = surface;
+  }
 
   //! Return true if the entire memory object is written.
   bool isEntireMemory() const;
@@ -754,6 +864,44 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
   const BufferRect& srcRect() const { return srcRect_; }
   //! Return the destination buffer rectangle information
   const BufferRect& dstRect() const { return dstRect_; }
+
+  //! Updates the host memory to read from
+  void setSource(Memory& srcMemory) { memory1_ = &srcMemory; }
+  //! Updates the memory object to write to.
+  void setDestination(Memory& dstMemory) { memory2_ = &dstMemory; }
+
+  //! Updates the source origin
+  void setSrcOrigin(const Coord3D srcOrigin) { srcOrigin_ = srcOrigin; }
+  //! Updates the offset in bytes in the destination.
+  void setDstOrigin(const Coord3D dstOrigin) { dstOrigin_ = dstOrigin; }
+  //! Updates the number of bytes to copy.
+  void setSize(const Coord3D size) { size_ = size; }
+
+  //! Updates the source buffer rectangle information
+  void setSrcRect(const BufferRect srcRect) { srcRect_ = srcRect; }
+  //! Updates the destination buffer rectangle information
+  void setDstRect(const BufferRect dstRect) { dstRect_ = dstRect; }
+
+  //! Updates command parameters
+  void setParams(Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
+                 Coord3D size) {
+    memory1_ = &srcMemory;
+    memory2_ = &dstMemory;
+    srcOrigin_ = srcOrigin;
+    dstOrigin_ = dstOrigin;
+    size_ = size;
+  }
+  //! Updates command parameters
+  void setParams(Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
+                 Coord3D size, const BufferRect& srcRect, const BufferRect& dstRect) {
+    memory1_ = &srcMemory;
+    memory2_ = &dstMemory;
+    srcOrigin_ = srcOrigin;
+    dstOrigin_ = dstOrigin;
+    size_ = size;
+    srcRect_ = srcRect;
+    dstRect_ = dstRect;
+  }
 
   //! Return true if the both memories are is read/written in their entirety.
   bool isEntireMemory() const;
