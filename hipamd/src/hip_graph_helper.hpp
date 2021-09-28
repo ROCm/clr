@@ -1,3 +1,5 @@
+#include "hip_conversions.hpp"
+
 hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
@@ -33,3 +35,54 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
 
 hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedPtr pitchedDevPtr,
                                int value, hipExtent extent, amd::HostQueue* queue);
+
+hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset,
+                                     size_t& sym_size, hipDeviceptr_t& device_ptr);
+
+hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D srcOrigin,
+                                  amd::Coord3D dstOrigin, amd::Coord3D copyRegion,
+                                  size_t dstRowPitch, size_t dstSlicePitch, amd::Memory*& dstMemory,
+                                  amd::Image*& srcImage, amd::BufferRect& srcRect,
+                                  amd::BufferRect& dstRect);
+
+hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t srcRowPitch, size_t srcSlicePitch, amd::Image*& dstImage,
+                                  amd::Memory*& srcMemory, amd::BufferRect& dstRect,
+                                  amd::BufferRect& srcRect);
+
+hipError_t ihipMemcpyDtoDValidate(void* srcDevice, void* dstDevice, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t srcRowPitch, size_t srcSlicePitch, size_t dstRowPitch,
+                                  size_t dstSlicePitch, amd::Memory*& srcMemory,
+                                  amd::Memory*& dstMemory, amd::BufferRect& srcRect,
+                                  amd::BufferRect& dstRect);
+
+
+hipError_t ihipMemcpyDtoHValidate(void* srcDevice, void* dstHost, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t srcRowPitch, size_t srcSlicePitch, size_t dstRowPitch,
+                                  size_t dstSlicePitch, amd::Memory*& srcMemory,
+                                  amd::BufferRect& srcRect, amd::BufferRect& dstRect);
+
+hipError_t ihipMemcpyHtoDValidate(const void* srcHost, void* dstDevice, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t srcRowPitch, size_t srcSlicePitch, size_t dstRowPitch,
+                                  size_t dstSlicePitch, amd::Memory*& dstMemory,
+                                  amd::BufferRect& srcRect, amd::BufferRect& dstRect);
+
+
+hipError_t ihipMemcpyAtoAValidate(hipArray* srcArray, hipArray* dstArray, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  amd::Image*& srcImage, amd::Image*& dstImage);
+
+
+hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t srcRowPitch, size_t srcSlicePitch, amd::Image*& dstImage,
+                                  amd::BufferRect& srcRect);
+
+hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t dstRowPitch, size_t dstSlicePitch, amd::Image*& srcImage,
+                                  amd::BufferRect& dstRect);

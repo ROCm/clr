@@ -347,6 +347,15 @@ global:
     hipGraphAddChildGraphNode;
     hipGraphChildGraphNodeGetGraph;
     hipGraphExecChildGraphNodeSetParams;
+    hipGraphAddMemcpyNodeFromSymbol;
+    hipGraphMemcpyNodeSetParamsFromSymbol;
+    hipGraphExecMemcpyNodeSetParamsFromSymbol;
+    hipGraphAddMemcpyNodeToSymbol;
+    hipGraphMemcpyNodeSetParamsToSymbol;
+    hipGraphExecMemcpyNodeSetParamsToSymbol;
+    hipGraphExecMemcpyNodeSetParams;
+    hipGraphMemcpyNodeSetParams1D;
+    hipGraphExecMemcpyNodeSetParams1D;
 local:
     *;
 } hip_4.4;

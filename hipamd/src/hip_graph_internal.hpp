@@ -391,25 +391,28 @@ class hipGraphMemcpyNode : public hipGraphNode {
   void SetParams(const hipMemcpy3DParms* params) {
     std::memcpy(pCopyParams_, params, sizeof(hipMemcpy3DParms));
   }
+  hipError_t SetCommandParams(const hipMemcpy3DParms* pNodeParams);
 };
 
 class hipGraphMemcpyNode1D : public hipGraphNode {
+ protected:
   void* dst_;
   const void* src_;
   size_t count_;
   hipMemcpyKind kind_;
 
  public:
-  hipGraphMemcpyNode1D(void* dst, const void* src, size_t count, hipMemcpyKind kind)
-      : hipGraphNode(hipGraphNodeTypeMemcpy1D), dst_(dst), src_(src), count_(count), kind_(kind) {}
+  hipGraphMemcpyNode1D(void* dst, const void* src, size_t count, hipMemcpyKind kind,
+                       hipGraphNodeType type = hipGraphNodeTypeMemcpy1D)
+      : hipGraphNode(type), dst_(dst), src_(src), count_(count), kind_(kind) {}
 
   ~hipGraphMemcpyNode1D() {}
 
   hipGraphNode* clone() const {
     return new hipGraphMemcpyNode1D(static_cast<hipGraphMemcpyNode1D const&>(*this));
   }
-
-  hipError_t CreateCommand(amd::HostQueue* queue) {
+  
+  virtual hipError_t CreateCommand(amd::HostQueue* queue) {
     commands_.reserve(1);
     amd::Command* command = nullptr;
     hipError_t status = ihipMemcpyCommand(command, dst_, src_, count_, kind_, *queue);
@@ -423,24 +426,21 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
     count_ = count;
     kind_ = kind;
   }
+
+  hipError_t SetCommandParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
 };
 
-template <class T> class hipGraphMemcpyNodeFromSymbol : public hipGraphNode {
-  void* dst_;
-  const T& symbol_;
-  size_t count_;
+class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
+  const void* symbol_;
   size_t offset_;
-  hipMemcpyKind kind_;
 
  public:
   hipGraphMemcpyNodeFromSymbol(void* dst, const void* symbol, size_t count, size_t offset,
                                hipMemcpyKind kind)
-      : hipGraphNode(hipGraphNodeTypeMemcpyFromSymbol),
-        dst_(dst),
+      : hipGraphMemcpyNode1D(dst, nullptr, count, kind, hipGraphNodeTypeMemcpyFromSymbol),
         symbol_(symbol),
-        count_(count),
-        offset_(offset),
-        kind_(kind) {}
+        offset_(offset) {}
+
   ~hipGraphMemcpyNodeFromSymbol() {}
 
   hipGraphNode* clone() const {
@@ -448,7 +448,23 @@ template <class T> class hipGraphMemcpyNodeFromSymbol : public hipGraphNode {
         static_cast<hipGraphMemcpyNodeFromSymbol const&>(*this));
   }
 
-  hipError_t CreateCommand(amd::HostQueue* queue);
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    commands_.reserve(1);
+    amd::Command* command = nullptr;
+    size_t sym_size = 0;
+    hipDeviceptr_t device_ptr = nullptr;
+
+    hipError_t status = ihipMemcpySymbol_validate(symbol_, count_, offset_, sym_size, device_ptr);
+    if (status != hipSuccess) {
+      return status;
+    }
+    status = ihipMemcpyCommand(command, dst_, device_ptr, count_, kind_, *queue);
+    if (status != hipSuccess) {
+      return status;
+    }
+    commands_.emplace_back(command);
+    return status;
+  }
 
   void SetParams(void* dst, const void* symbol, size_t count, size_t offset, hipMemcpyKind kind) {
     dst_ = dst;
@@ -457,38 +473,73 @@ template <class T> class hipGraphMemcpyNodeFromSymbol : public hipGraphNode {
     offset_ = offset;
     kind_ = kind;
   }
-};
 
-template <class T> class hipGraphMemcpyNodeToSymbol : public hipGraphNode {
-  const T& symbol_;
-  const void* src_;
-  size_t count_;
+  hipError_t SetCommandParams(void* dst, const void* symbol, size_t count, size_t offset,
+                              hipMemcpyKind kind) {
+    size_t sym_size = 0;
+    hipDeviceptr_t device_ptr = nullptr;
+
+    hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+    if (status != hipSuccess) {
+      return status;
+    }
+    return hipGraphMemcpyNode1D::SetCommandParams(dst, device_ptr, count, kind);
+  }
+};
+class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
+  const void* symbol_;
   size_t offset_;
-  hipMemcpyKind kind_;
 
  public:
-  hipGraphMemcpyNodeToSymbol(const T& symbol, void* src, size_t count, size_t offset,
+  hipGraphMemcpyNodeToSymbol(const void* symbol, const void* src, size_t count, size_t offset,
                              hipMemcpyKind kind)
-      : hipGraphNode(hipGraphNodeTypeMemcpyToSymbol),
+      : hipGraphMemcpyNode1D(nullptr, src, count, kind, hipGraphNodeTypeMemcpyToSymbol),
         symbol_(symbol),
-        src_(src),
-        count_(count),
-        offset_(offset),
-        kind_(kind) {}
+        offset_(offset) {}
+
   ~hipGraphMemcpyNodeToSymbol() {}
 
   hipGraphNode* clone() const {
     return new hipGraphMemcpyNodeToSymbol(static_cast<hipGraphMemcpyNodeToSymbol const&>(*this));
   }
 
-  hipError_t CreateCommand(amd::HostQueue* queue);
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    commands_.reserve(1);
+    amd::Command* command = nullptr;
+    size_t sym_size = 0;
+    hipDeviceptr_t device_ptr = nullptr;
 
-  void SetParams(const T& symbol, void* src, size_t count, size_t offset, hipMemcpyKind kind) {
+    hipError_t status = ihipMemcpySymbol_validate(symbol_, count_, offset_, sym_size, device_ptr);
+    if (status != hipSuccess) {
+      return status;
+    }
+    status = ihipMemcpyCommand(command, device_ptr, src_, count_, kind_, *queue);
+    if (status != hipSuccess) {
+      return status;
+    }
+    commands_.emplace_back(command);
+    return status;
+  }
+
+  void SetParams(const void* symbol, const void* src, size_t count, size_t offset,
+                 hipMemcpyKind kind) {
     symbol_ = symbol;
     src_ = src;
     count_ = count;
     offset_ = offset;
     kind_ = kind;
+  }
+
+  hipError_t SetCommandParams(const void* symbol, const void* src, size_t count, size_t offset,
+                              hipMemcpyKind kind) {
+    size_t sym_size = 0;
+    hipDeviceptr_t device_ptr = nullptr;
+
+    hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+    if (status != hipSuccess) {
+      return status;
+    }
+    return hipGraphMemcpyNode1D::SetCommandParams(device_ptr, src, count, kind);
   }
 };
 
