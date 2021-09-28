@@ -85,7 +85,7 @@ bool Comgr::LoadLib() {
   GET_COMGR_SYMBOL(amd_comgr_iterate_symbols)
   GET_COMGR_SYMBOL(amd_comgr_symbol_lookup)
   GET_COMGR_SYMBOL(amd_comgr_symbol_get_info)
-  GET_COMGR_SYMBOL(amd_comgr_demangle_symbol_name)
+  GET_COMGR_OPTIONAL_SYMBOL(amd_comgr_demangle_symbol_name)
   is_ready_ = true;
   return true;
 }

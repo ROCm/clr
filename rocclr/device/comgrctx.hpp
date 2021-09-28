@@ -128,9 +128,12 @@ struct ComgrEntryPoints {
 #define GET_COMGR_SYMBOL(NAME) cep_.NAME = \
   reinterpret_cast<t_##NAME>(Os::getSymbol(cep_.handle, #NAME)); \
   if (nullptr == cep_.NAME) { return false; }
+#define GET_COMGR_OPTIONAL_SYMBOL(NAME) cep_.NAME = \
+  reinterpret_cast<t_##NAME>(Os::getSymbol(cep_.handle, #NAME));
 #else
 #define COMGR_DYN(NAME) NAME
 #define GET_COMGR_SYMBOL(NAME)
+#define GET_COMGR_OPTIONAL_SYMBOL(NAME)
 #endif
 
 class Comgr : public amd::AllStatic {
@@ -278,6 +281,13 @@ public:
   }
   static amd_comgr_status_t demangle_symbol_name(amd_comgr_data_t MangledSymbolName,
                                                  amd_comgr_data_t* DemangledSymbolName) {
+#if defined(COMGR_DYN_DLL)
+    if (cep_.amd_comgr_demangle_symbol_name == nullptr) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+              "Failed to load COMGR function amd_comgr_demangle_symbol_name");
+      return AMD_COMGR_STATUS_ERROR;
+    }
+#endif
     return COMGR_DYN(amd_comgr_demangle_symbol_name)(MangledSymbolName, DemangledSymbolName);
   }
 
