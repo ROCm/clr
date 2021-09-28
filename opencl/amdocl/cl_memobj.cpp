@@ -4233,6 +4233,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer,
 
   amd::Coord3D fillOffset(offset, 0, 0);
   amd::Coord3D fillSize(size, 1, 1);
+  // surface takes [pitch, width, height]
+  amd::Coord3D surface(size, size, 1);
   if (!fillBuffer->validateRegion(fillOffset, fillSize)) {
     return CL_INVALID_VALUE;
   }
@@ -4246,7 +4248,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer,
 
   amd::FillMemoryCommand* command =
       new amd::FillMemoryCommand(hostQueue, CL_COMMAND_FILL_BUFFER, eventWaitList, *fillBuffer,
-                                 pattern, pattern_size, fillOffset, fillSize);
+                                 pattern, pattern_size, fillOffset, fillSize, surface);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -4392,6 +4394,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillImage,
 
   amd::Coord3D fillOrigin(origin[0], origin[1], origin[2]);
   amd::Coord3D fillRegion(region[0], region[1], region[2]);
+  // surface takes [pitch, width, height]
+  amd::Coord3D surface(region[0], region[0], region[2]);
 
   ImageViewRef mip;
   if (fillImage->getMipLevels() > 1) {
@@ -4422,7 +4426,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillImage,
   amd::FillMemoryCommand* command = new amd::FillMemoryCommand(
       hostQueue, CL_COMMAND_FILL_IMAGE, eventWaitList, *fillImage, fill_color,
       sizeof(cl_float4),  // @note color size is always 16 bytes value
-      fillOrigin, fillRegion);
+      fillOrigin, fillRegion, surface);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
