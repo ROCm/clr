@@ -79,7 +79,8 @@ constexpr char hsaIsaNamePrefix[] = "amdgcn-amd-amdhsa--";
 } // namespace
 
 namespace device {
-extern const char* BlitSourceCode;
+extern const char* BlitLinearSourceCode;
+extern const char* BlitImageSourceCode;
 
 bool VirtualDevice::ActiveWait() const {
   return device_().ActiveWait();
@@ -359,7 +360,12 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
                                  const char* extraOptions) {
   std::vector<amd::Device*> devices;
   devices.push_back(device);
-  std::string kernels(device::BlitSourceCode);
+  std::string kernels(device::BlitLinearSourceCode);
+  std::string image_kernels(device::BlitImageSourceCode);
+
+  if (device->info().imageSupport_) {
+    kernels += image_kernels;
+  }
 
   if (extraKernels != nullptr) {
     kernels += extraKernels;

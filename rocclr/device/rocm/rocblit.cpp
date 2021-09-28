@@ -786,7 +786,7 @@ KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
 }
 
 KernelBlitManager::~KernelBlitManager() {
-  for (uint i = 0; i < BlitTotal; ++i) {
+  for (uint i = 0; i < NumBlitKernels(); ++i) {
     if (nullptr != kernels_[i]) {
       kernels_[i]->release();
     }
@@ -835,7 +835,7 @@ bool KernelBlitManager::createProgram(Device& device) {
   bool result = false;
   do {
     // Create kernel objects for all blits
-    for (uint i = 0; i < BlitTotal; ++i) {
+    for (uint i = 0; i < NumBlitKernels(); ++i) {
       const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
       if (symbol == nullptr) {
         break;
@@ -896,6 +896,9 @@ bool KernelBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Mem
                                           const amd::Coord3D& srcOrigin,
                                           const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
                                           bool entire, size_t rowPitch, size_t slicePitch) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   static const bool CopyRect = false;
@@ -967,6 +970,9 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
                                                 const amd::Coord3D& dstOrigin,
                                                 const amd::Coord3D& size, bool entire,
                                                 size_t rowPitch, size_t slicePitch) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   bool rejected = false;
   Memory* dstView = &gpuMem(dstMemory);
   bool releaseView = false;
@@ -1111,6 +1117,9 @@ bool KernelBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Mem
                                           const amd::Coord3D& srcOrigin,
                                           const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
                                           bool entire, size_t rowPitch, size_t slicePitch) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   static const bool CopyRect = false;
@@ -1160,6 +1169,9 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
                                                 const amd::Coord3D& dstOrigin,
                                                 const amd::Coord3D& size, bool entire,
                                                 size_t rowPitch, size_t slicePitch) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   bool rejected = false;
   Memory* srcView = &gpuMem(srcMemory);
   bool releaseView = false;
@@ -1308,6 +1320,9 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
 bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMemory,
                                   const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                   const amd::Coord3D& size, bool entire) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool rejected = false;
   Memory* srcView = &gpuMem(srcMemory);
@@ -1469,6 +1484,9 @@ void FindPinSize(size_t& pinSize, const amd::Coord3D& size, size_t& rowPitch, si
 bool KernelBlitManager::readImage(device::Memory& srcMemory, void* dstHost,
                                   const amd::Coord3D& origin, const amd::Coord3D& size,
                                   size_t rowPitch, size_t slicePitch, bool entire) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -1516,6 +1534,9 @@ bool KernelBlitManager::readImage(device::Memory& srcMemory, void* dstHost,
 bool KernelBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
                                    const amd::Coord3D& origin, const amd::Coord3D& size,
                                    size_t rowPitch, size_t slicePitch, bool entire) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -2109,6 +2130,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
                                   const amd::Coord3D& origin, const amd::Coord3D& size,
                                   bool entire) const {
+
+  guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
+
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
