@@ -413,6 +413,21 @@ hipError_t hipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                                dst, src, count, kind));
 }
 
+hipError_t hipGraphMemcpyNodeSetParams1D(hipGraphNode_t node, void* dst, const void* src,
+                                         size_t count, hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphMemcpyNodeSetParams1D, node, dst, src, count, kind);
+  reinterpret_cast<hipGraphMemcpyNode1D*>(node)->SetParams(dst, src, count, kind);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecMemcpyNodeSetParams1D(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                             void* dst, const void* src, size_t count,
+                                             hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphExecMemcpyNodeSetParams1D, hGraphExec, node, dst, src, count, kind);
+  HIP_RETURN(
+      reinterpret_cast<hipGraphMemcpyNode1D*>(node)->SetCommandParams(dst, src, count, kind));
+}
+
 hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
                                  const hipMemsetParams* pMemsetParams) {
@@ -570,6 +585,12 @@ hipError_t hipGraphMemcpyNodeSetParams(hipGraphNode_t node, const hipMemcpy3DPar
   }
   reinterpret_cast<hipGraphMemcpyNode*>(node)->SetParams(pNodeParams);
   HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                           hipMemcpy3DParms* pNodeParams) {
+  HIP_INIT_API(hipGraphExecMemcpyNodeSetParams, hGraphExec, node, pNodeParams);
+  HIP_RETURN(reinterpret_cast<hipGraphMemcpyNode*>(node)->SetCommandParams(pNodeParams));
 }
 
 hipError_t hipGraphMemsetNodeGetParams(hipGraphNode_t node, hipMemsetParams* pNodeParams) {
@@ -831,4 +852,76 @@ hipError_t hipGraphNodeFindInClone(hipGraphNode_t* pNode, hipGraphNode_t origina
     }
   }
   HIP_RETURN(hipErrorInvalidValue);
+}
+
+hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                           const hipGraphNode_t* pDependencies,
+                                           size_t numDependencies, void* dst, const void* symbol,
+                                           size_t count, size_t offset, hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphAddMemcpyNodeFromSymbol, pGraphNode, graph, pDependencies, numDependencies,
+               dst, symbol, count, offset, kind);
+  size_t sym_size = 0;
+  hipDeviceptr_t device_ptr = nullptr;
+
+  hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+  if (status != hipSuccess) {
+    return status;
+  }
+  *pGraphNode = new hipGraphMemcpyNodeFromSymbol(dst, symbol, count, offset, kind);
+  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphMemcpyNodeSetParamsFromSymbol(hipGraphNode_t node, void* dst, const void* symbol,
+                                                 size_t count, size_t offset, hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphMemcpyNodeSetParamsFromSymbol, node, dst, symbol, count, offset, kind);
+  reinterpret_cast<hipGraphMemcpyNodeFromSymbol*>(node)->SetParams(dst, symbol, count, offset,
+                                                                   kind);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecMemcpyNodeSetParamsFromSymbol(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                                     void* dst, const void* symbol, size_t count,
+                                                     size_t offset, hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphExecMemcpyNodeSetParamsFromSymbol, hGraphExec, node, dst, symbol, count,
+               offset, kind);
+  HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeFromSymbol*>(node)->SetCommandParams(
+      dst, symbol, count, offset, kind));
+}
+
+hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                         const hipGraphNode_t* pDependencies,
+                                         size_t numDependencies, const void* symbol,
+                                         const void* src, size_t count, size_t offset,
+                                         hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphAddMemcpyNodeToSymbol, pGraphNode, graph, pDependencies, numDependencies,
+               symbol, src, count, offset, kind);
+  size_t sym_size = 0;
+  hipDeviceptr_t device_ptr = nullptr;
+  hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+  if (status != hipSuccess) {
+    return status;
+  }
+  *pGraphNode = new hipGraphMemcpyNodeToSymbol(symbol, src, count, offset, kind);
+  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphMemcpyNodeSetParamsToSymbol(hipGraphNode_t node, const void* symbol,
+                                               const void* src, size_t count, size_t offset,
+                                               hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphMemcpyNodeSetParamsToSymbol, symbol, src, count, offset, kind);
+  reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(node)->SetParams(symbol, src, count, offset, kind);
+  HIP_RETURN(hipSuccess);
+}
+
+
+hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                                   const void* symbol, const void* src,
+                                                   size_t count, size_t offset,
+                                                   hipMemcpyKind kind) {
+  HIP_INIT_API(hipGraphExecMemcpyNodeSetParamsToSymbol, hGraphExec, node, symbol, src, count,
+               offset, kind);
+  HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(node)->SetCommandParams(
+      symbol, src, count, offset, kind));
 }
