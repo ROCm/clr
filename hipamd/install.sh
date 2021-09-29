@@ -115,7 +115,7 @@ function buildHIP()
     if [ "$OS_NAME" == "Ubuntu" ]
     then
       cp hip-*.deb $WORKING_DIR
-      sudo dpkg -i -B hip-devel*.deb hip-runtime-amd*.deb hip-sample*.deb hip-doc*.deb
+      sudo dpkg -i -B hip-dev*.deb hip-runtime-amd*.deb hip-sample*.deb hip-doc*.deb
     elif [ "$OS_NAME" == "CentOS" ]
     then
       cp hip-*.rpm $WORKING_DIR
