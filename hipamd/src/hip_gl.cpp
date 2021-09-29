@@ -26,198 +26,28 @@
 #include <GL/gl.h>
 #include <GL/glext.h>
 
-#ifndef _WIN32
-#include <GL/glx.h>
-#endif
 
 namespace amd {
 static std::once_flag interopOnce;
 }
-
-#ifdef _WIN32
-// Creates Device and GL Contexts to be associated with hip Context.
-// Refer to bool OCLGLCommon::initializeGLContext(OCLGLHandle& hGL) in OCLGLCommonWindows.cpp
-static inline bool getDeviceGLContext(HDC& dc, HGLRC& glrc) {
-  BOOL glErr = FALSE;
-  DISPLAY_DEVICE dispDevice;
-  DWORD deviceNum;
-  int pfmt;
-  PIXELFORMATDESCRIPTOR pfd;
-  pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-  pfd.nVersion = 1;
-  pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-  pfd.iPixelType = PFD_TYPE_RGBA;
-  pfd.cColorBits = 24;
-  pfd.cRedBits = 8;
-  pfd.cRedShift = 0;
-  pfd.cGreenBits = 8;
-  pfd.cGreenShift = 0;
-  pfd.cBlueBits = 8;
-  pfd.cBlueShift = 0;
-  pfd.cAlphaBits = 8;
-  pfd.cAlphaShift = 0;
-  pfd.cAccumBits = 0;
-  pfd.cAccumRedBits = 0;
-  pfd.cAccumGreenBits = 0;
-  pfd.cAccumBlueBits = 0;
-  pfd.cAccumAlphaBits = 0;
-  pfd.cDepthBits = 24;
-  pfd.cStencilBits = 8;
-  pfd.cAuxBuffers = 0;
-  pfd.iLayerType = PFD_MAIN_PLANE;
-  pfd.bReserved = 0;
-  pfd.dwLayerMask = 0;
-  pfd.dwVisibleMask = 0;
-  pfd.dwDamageMask = 0;
-
-  dispDevice.cb = sizeof(DISPLAY_DEVICE);
-  for (deviceNum = 0; EnumDisplayDevices(nullptr, deviceNum, &dispDevice, 0); deviceNum++) {
-    if (dispDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER) {
-      continue;
-    }
-
-    dc = CreateDC(nullptr, dispDevice.DeviceName, nullptr, nullptr);
-    if (!dc) {
-      continue;
-    }
-
-    pfmt = ChoosePixelFormat(dc, &pfd);
-    if (pfmt == 0) {
-      LogError("Failed choosing the requested PixelFormat.\n");
-      return false;
-    }
-
-    glErr = SetPixelFormat(dc, pfmt, &pfd);
-    if (glErr == FALSE) {
-      LogError("Failed to set the requested PixelFormat.\n");
-      return false;
-    }
-
-    DWORD err = GetLastError();
-
-    glrc = wglCreateContext(dc);
-    if (nullptr == glrc) {
-      err = GetLastError();
-      LogPrintfError("\n wglCreateContext() failed error: 0x%x\n", err);
-      return false;
-    }
-
-    glErr = wglMakeCurrent(dc, glrc);
-    if (FALSE == glErr) {
-      LogError("\n wglMakeCurrent() failed\n");
-      return false;
-    }
-
-    return true;
-  }
-  return false;
-}
-#else
-struct OCLGLHandle_ {
-  static Display* display;
-  static XVisualInfo* vInfo;
-  static int referenceCount;
-  GLXContext context;
-  Window window;
-  Colormap cmap;
-};
-
-
-#define DEFAULT_OPENGL  "libGL.so"
-Display* OCLGLHandle_::display = nullptr;
-XVisualInfo* OCLGLHandle_::vInfo = nullptr;
-int OCLGLHandle_::referenceCount = 0;
-
-static inline bool getDeviceGLContext(OCLGLHandle_* hGL) {
-
-  amd::GLFunctions* glenv_;
-  void* h = amd::Os::loadLibrary(DEFAULT_OPENGL);
-
-  if (h && (glenv_ = new amd::GLFunctions(h, false))) {
-    LogError("\n couldn't load opengl\n");
-    return false;
-  }
-
-
-  hGL->display = XOpenDisplay(nullptr);
-  if (hGL->display == nullptr) {
-    printf("XOpenDisplay() failed\n");
-    return false;
-  }
-
-  if (hGL->vInfo == nullptr) {
-    int dblBuf[] = {GLX_RGBA, GLX_RED_SIZE,   1,  GLX_GREEN_SIZE,   1,   GLX_BLUE_SIZE,
-                  1,        GLX_DEPTH_SIZE, 12, GLX_DOUBLEBUFFER, None};
-
-    hGL->vInfo = glenv_->glXChooseVisual_(hGL->display, DefaultScreen(hGL->display), dblBuf);
-    if (hGL->vInfo == nullptr) {
-      printf("glXChooseVisual() failed\n");
-      return false;
-    }
-  }
-  hGL->referenceCount++;
-
-  hGL->context = glenv_->glXCreateContext_(hGL->display, hGL->vInfo, None, True);
-  if (hGL->context == nullptr) {
-    printf("glXCreateContext() failed\n");
-    return false;
-  }
-
-  return true;
-}
-#endif
-
 // Sets up GL context association with amd context.
 // NOTE: Refer to Context setup code in OCLTestImp.cpp
 void setupGLInteropOnce() {
   amd::Context* amdContext = hip::getCurrentDevice()->asContext();
 
+//current context will be read in amdContext->create
+  cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
+                                        (cl_context_properties)AMD_PLATFORM,
+                                        ROCCLR_HIP_GL_CONTEXT_KHR,
+                                        (cl_context_properties) nullptr,
 #ifdef _WIN32
-  HDC dc;
-  HGLRC glrc;
-
-  dc = wglGetCurrentDC();
-  glrc = wglGetCurrentContext();
-
-/*
-  if (!getDeviceGLContext(dc, glrc)) {
-    LogError(" Context setup failed \n");
-    return;
-  }
-*/
-  cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
-                                        (cl_context_properties)AMD_PLATFORM,
-                                        CL_GL_CONTEXT_KHR,
-                                        (cl_context_properties)glrc,
-                                        CL_WGL_HDC_KHR,
-                                        (cl_context_properties)dc,
-                                        0};
-
-
-
+                                        ROCCLR_HIP_WGL_HDC_KHR,
+                                        (cl_context_properties) nullptr,
 #else
-  OCLGLHandle_* hGL = new OCLGLHandle_;
-
-  hGL->context = nullptr;
-  hGL->window = 0;
-  hGL->cmap = 0;
-  hGL->context = glXGetCurrentContext();
-  hGL->display = glXGetCurrentDisplay();
-/*
-  if (!getDeviceGLContext(hGL)) {
-    LogError(" Context setup failed \n");
-    return;
-  }
-*/
-
-  cl_context_properties properties[] = {CL_CONTEXT_PLATFORM,
-                                        (cl_context_properties)AMD_PLATFORM,
-                                        CL_GL_CONTEXT_KHR,
-                                        (cl_context_properties)hGL->context,
-                                        CL_GLX_DISPLAY_KHR,
-                                        (cl_context_properties)hGL->display,
-                                        0};
+                                        ROCCLR_HIP_GLX_DISPLAY_KHR,
+                                        (cl_context_properties) nullptr,
 #endif
+                                        0};
 
   amd::Context::Info info;
   if (CL_SUCCESS != amd::Context::checkProperties(properties, &info)) {

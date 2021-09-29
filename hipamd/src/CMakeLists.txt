@@ -136,7 +136,6 @@ target_include_directories(amdhip64
     ${PROJECT_BINARY_DIR}/include)
 
 target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
-find_package(OpenGL REQUIRED)
 target_link_libraries(amdhip64 PRIVATE ${OPENGL_LIBRARIES})
 target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
 # Additional dependencies for hipRTC
