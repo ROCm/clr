@@ -386,8 +386,6 @@ install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
 #############################
 # hip-config
 #############################
-# Packaging invokes UNIX commands, which are not available on Windows.
-if(NOT WIN32)
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
@@ -409,7 +407,8 @@ install(
     DESTINATION
     ${CONFIG_PACKAGE_INSTALL_DIR}
     )
-
+# Packaging invokes UNIX commands, which are not available on Windows.
+if(NOT WIN32)
 #############################
 # Packaging steps
 #############################
