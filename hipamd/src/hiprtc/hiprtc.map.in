@@ -1,0 +1,16 @@
+{
+global:
+    hiprtcCompileProgram;
+    hiprtcCreateProgram;
+    hiprtcDestroyProgram;
+    hiprtcGetLoweredName;
+    hiprtcGetProgramLog;
+    hiprtcGetProgramLogSize;
+    hiprtcGetCode;
+    hiprtcGetCodeSize;
+    hiprtcGetErrorString;
+    hiprtcAddNameExpression;
+    hiprtcVersion;
+local:
+    *;
+};

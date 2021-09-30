@@ -1,4 +1,4 @@
-# Copyright (c) 2020 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2020 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -110,7 +110,6 @@ target_sources(amdhip64 PRIVATE
   hip_peer.cpp
   hip_platform.cpp
   hip_profile.cpp
-  hip_rtc.cpp
   hip_stream_ops.cpp
   hip_stream.cpp
   hip_surface.cpp
@@ -147,10 +146,6 @@ target_include_directories(amdhip64
 target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
 target_link_libraries(amdhip64 PRIVATE ${OPENGL_LIBRARIES})
 target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
-# Additional dependencies for hipRTC
-if(WIN32)
-  target_link_libraries(amdhip64 PRIVATE Dbghelp.lib)
-endif()
 
 # Note in static case we cannot link against rocclr.
 # If we would, we'd also have to export rocclr and have hipcc pass it to the linker.
@@ -185,80 +180,20 @@ if(__HIP_ENABLE_PCH)
   target_sources(amdhip64 PRIVATE ${CMAKE_BINARY_DIR}/hip_pch.o)
 endif()
 
-# Enable preprocessed hiprtc-builtins library
-if(__HIP_ENABLE_RTC)
-  message(STATUS "HIP RTC enabled.")
-  include(HIPRTC RESULT_VARIABLE HIPRTC_CMAKE)
-  # Requires clang and llvm-mc to create this library.
-  find_package(LLVM REQUIRED CONFIG PATHS ${ROCM_PATH}/llvm)
-  find_package(Clang REQUIRED CONFIG PATHS ${ROCM_PATH}/llvm)
-  set(HIPRTC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/hip_rtc_gen")
-  set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
-  set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
-  set(HIPRTC_GEN_PREPROCESSED "${HIPRTC_GEN_DIR}/hipRTC")
-  set(HIPRTC_GEN_OBJ "${HIPRTC_GEN_DIR}/hipRTC_header${CMAKE_CXX_OUTPUT_EXTENSION}")
+set(HIPRTC_OBJECTS)
+# Add hiprtc
+add_subdirectory(hiprtc)
 
-  # Generate required HIPRTC files.
-  FILE(MAKE_DIRECTORY ${HIPRTC_GEN_DIR})
-  generate_hiprtc_header("${HIPRTC_GEN_HEADER}")
-  generate_hiprtc_mcin("${HIPRTC_GEN_MCIN}" "${HIPRTC_GEN_PREPROCESSED}")
-
-  # Generate HIPRTC Builtins Preprocessed Object.
-  # Note: second command appends define macros at build time.
-  # FIXME: --hip-version forced to 3.6 to use clang headers, until Windows versioning is fixed.
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_PREPROCESSED}
-    COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=3.6 -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -x hip ${HIPRTC_GEN_HEADER} -E -o ${HIPRTC_GEN_PREPROCESSED}
-    COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
-    DEPENDS clang ${HIPRTC_GEN_HEADER})
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_OBJ}
-    COMMAND $<TARGET_FILE:llvm-mc> -o ${HIPRTC_GEN_OBJ} ${HIPRTC_GEN_MCIN} --filetype=obj
-    DEPENDS llvm-mc ${HIPRTC_GEN_PREPROCESSED} ${HIPRTC_GEN_MCIN})
-
-  # Create hiprtc-builtins library.
-  add_library(hiprtc-builtins ${HIPRTC_GEN_OBJ})
-  set_target_properties(hiprtc-builtins PROPERTIES
-    CXX_STANDARD 14
-    CXX_STANDARD_REQUIRED ON
-    CXX_EXTENSIONS OFF
-    POSITION_INDEPENDENT_CODE ON
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    LINKER_LANGUAGE CXX
-    VERSION ${HIP_LIB_VERSION_STRING})
-
-  # Windows and Linux have different naming conventions.
-  if(WIN32)
-    # Windows uses DEF file to determine which symbols to expose.
-    target_sources(hiprtc-builtins PRIVATE hiprtc-builtins.def)
-    set_target_properties(hiprtc-builtins PROPERTIES
-      OUTPUT_NAME "hiprtc-builtins64_${HIP_LIB_VERSION_MAJOR}${HIP_LIB_VERSION_MINOR}")
-    # Since ${HIPRTC_GEN_OBJ} was manually generated with llvm-mc, /MT did not embed
-    # libcmt.lib inside of the obj. So we need to manually set it as defaultlib.
-    target_link_options(hiprtc-builtins PRIVATE "LINKER:/DEFAULTLIB:libcmt")
-  else()
-    # SOVERSION is only supported on Linux.
-    set_target_properties(hiprtc-builtins PROPERTIES
-      OUTPUT_NAME "hiprtc-builtins"
-      SOVERSION ${HIP_LIB_VERSION_MAJOR})
+if(NOT WIN32)
+  if(BUILD_SHARED_LIBS)
+    target_link_libraries(amdhip64 PRIVATE ${HIPRTC_OBJECTS})
+    target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
+    add_dependencies(amdhip64 hiprtc-builtins)
+    INSTALL(TARGETS hiprtc-builtins
+      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+      LIBRARY DESTINATION lib
+      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
   endif()
-
-  # Test the header file works with simple compilation.
-  add_custom_command(
-    OUTPUT ${HIPRTC_GEN_DIR}/tmp.bc
-    COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
-    DEPENDS clang ${HIPRTC_GEN_PREPROCESSED})
-
-  # FIXME: As a workaround, add hiprtc object into amdhip64, until we can
-  # figure out how to link hiprtc-builtins into amdhip64. CMake approach is not working:
-  # target_link_libraries(amdhip64 PUBLIC hiprtc-builtins)
-  target_link_libraries(amdhip64 PRIVATE ${HIPRTC_GEN_OBJ})
-  target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
-  add_dependencies(amdhip64 hiprtc-builtins)
-  install(TARGETS hiprtc-builtins
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 #############################

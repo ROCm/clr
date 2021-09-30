@@ -47,7 +47,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #############################
 option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
-option(__HIP_ENABLE_RTC "Enable/Disable pre-processed hiprtc shared lib" ON)
 option(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS "Enable/Disable FP Atomics version" OFF)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
 set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")

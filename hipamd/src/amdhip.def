@@ -239,16 +239,6 @@ hipDestroySurfaceObject
 hipInitActivityCallback
 hipEnableActivityCallback
 hipGetCmdName
-hiprtcAddNameExpression
-hiprtcCompileProgram
-hiprtcCreateProgram
-hiprtcDestroyProgram
-hiprtcGetLoweredName
-hiprtcGetProgramLog
-hiprtcGetProgramLogSize
-hiprtcGetCode
-hiprtcGetCodeSize
-hiprtcGetErrorString
 hipMipmappedArrayCreate
 hipMallocMipmappedArray
 hipMipmappedArrayDestroy
