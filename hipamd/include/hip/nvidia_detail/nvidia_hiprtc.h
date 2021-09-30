@@ -76,6 +76,8 @@ inline static nvrtcResult hiprtcResultTonvrtcResult(hiprtcResult result) {
       return NVRTC_ERROR_NAME_EXPRESSION_NOT_VALID;
     case HIPRTC_ERROR_INTERNAL_ERROR:
       return NVRTC_ERROR_INTERNAL_ERROR;
+    default:
+      return NVRTC_ERROR_INTERNAL_ERROR;
   }
 }
 
@@ -104,6 +106,8 @@ inline static hiprtcResult nvrtcResultTohiprtcResult(nvrtcResult result) {
     case NVRTC_ERROR_NAME_EXPRESSION_NOT_VALID:
       return HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID;
     case NVRTC_ERROR_INTERNAL_ERROR:
+      return HIPRTC_ERROR_INTERNAL_ERROR;
+    default:
       return HIPRTC_ERROR_INTERNAL_ERROR;
   }
 }
