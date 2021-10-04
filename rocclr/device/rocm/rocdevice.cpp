@@ -200,7 +200,7 @@ void Device::setupCpuAgent() {
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
   system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
-          "coarse=0x%zx, kern_arg=0x%zx) for gpu agent=0x%zx", index, cpu_agent_.handle,
+          "coarse=0x%zx) for gpu agent=0x%zx", index, cpu_agent_.handle,
           system_segment_.handle, system_coarse_segment_.handle, _bkendDevice.handle);
 }
 
