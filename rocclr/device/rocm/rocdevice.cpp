@@ -1444,15 +1444,13 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   if (settings().checkExtension(ClAmdDeviceAttributeQuery)) {
-    info_.simdPerCU_ = settings().enableWgpMode_
-                       ? (2 * isa().simdPerCU())
-                       : isa().simdPerCU();
     info_.simdWidth_ = isa().simdWidth();
     info_.simdInstructionWidth_ = isa().simdInstructionWidth();
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WAVEFRONT_SIZE, &info_.wavefrontWidth_)) {
       return false;
     }
+
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
@@ -1460,12 +1458,24 @@ bool Device::populateOCLDeviceConstants() {
       return false;
     }
 
-    uint32_t max_waves_per_cu;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(_bkendDevice,
+                           static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_NUM_SIMDS_PER_CU),
+                           &info_.simdPerCU_)) {
+      return false;
+    }
+
+    uint32_t max_waves_per_cu = 0;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(_bkendDevice,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU),
                            &max_waves_per_cu)) {
       return false;
+    }
+
+    if (settings().enableWgpMode_) {
+      info_.simdPerCU_ *= 2;
+      max_waves_per_cu *= 2;
     }
 
     info_.maxThreadsPerCU_ = info_.wavefrontWidth_ * max_waves_per_cu;
