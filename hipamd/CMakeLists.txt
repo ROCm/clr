@@ -21,17 +21,18 @@ cmake_minimum_required(VERSION 3.16.8)
 project(hip)
 
 # sample command for hip-rocclr runtime, you'll need to have rocclr built
+# ROCM_PATH is the path where ROCM is installed
 #  For shared lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #  For static lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
-#  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "/opt/rocm/hip".
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "<ROCM_PATH>/hip".
 #  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
 list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
@@ -229,9 +230,14 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
+if (NOT DEFINED ROCM_PATH )
+     set ( ROCM_PATH "/opt/rocm"  CACHE STRING "Default ROCM installation directory." )
+endif ()
+message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
+
 # Determine HIP install path
 if (UNIX)
-    set(HIP_DEFAULT_INSTALL_PREFIX "/opt/rocm/hip")
+    set(HIP_DEFAULT_INSTALL_PREFIX "${ROCM_PATH}/hip")
 endif()
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for HIP" FORCE)
@@ -241,7 +247,7 @@ if(DEV_LOG_ENABLE MATCHES "yes")
   add_definitions(-DDEV_LOG_ENABLE)
 endif()
 
-# Set default install path as "/opt/rocm/hip", can override the path from cmake build.
+# Set default install path as "${ROCM_PATH}/hip", can override the path from cmake build.
 set(CPACK_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Package Installation path for HIP")
 
 if(IS_ABSOLUTE ${CMAKE_INSTALL_PREFIX})
@@ -250,15 +256,10 @@ else()
     message(FATAL_ERROR "Don't know where to install HIP. Please specify absolute path using -DCMAKE_INSTALL_PREFIX")
 endif()
 
-if (NOT DEFINED ROCM_PATH )
-     set ( ROCM_PATH "/opt/rocm"  CACHE STRING "Default ROCM installation directory." )
-endif ()
-message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
-
 # set the installation path for the installer package
 set(CPACK_SET_DESTDIR ON CACHE BOOL "Installer package will install hip to CMAKE_INSTALL_PREFIX instead of CPACK_PACKAGING_INSTALL_PREFIX")
 if (NOT CPACK_SET_DESTDIR)
-  set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/hip" CACHE PATH "Default installation path of hcc installer package")
+  set(CPACK_PACKAGING_INSTALL_PREFIX "${ROCM_PATH}/hip" CACHE PATH "Default installation path of hcc installer package")
 endif (NOT CPACK_SET_DESTDIR)
 
 #############################
@@ -464,16 +465,6 @@ endif()
 endif()
 
 #############################
-# Code analysis
-#############################
-# Target: cppcheck
-find_program(CPPCHECK_EXE cppcheck)
-if(CPPCHECK_EXE)
-    add_custom_target(cppcheck COMMAND ${CPPCHECK_EXE} --force --quiet --enable=warning,performance,portability,information,missingInclude src include -I /opt/rocm/include/hcc -I /opt/rocm/include --suppress=*:/opt/rocm/include/hcc/hc.hpp
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endif()
-
-#############################
 # Code formatting
 #############################
 # Target: clangformat
@@ -519,7 +510,7 @@ endif()
 # Target: clang
 if(HIP_HIPCC_EXECUTABLE)
     add_custom_target(analyze
-        COMMAND ${HIP_HIPCC_EXECUTABLE} -fvisibility=hidden -fvisibility-inlines-hidden --analyze --analyzer-outputtext  -isystem /opt/rocm/include -Wno-unused-command-line-argument -I/opt/rocm/include -c  src/*.cpp -Iinclude/ -I./
+        COMMAND ${HIP_HIPCC_EXECUTABLE} -fvisibility=hidden -fvisibility-inlines-hidden --analyze --analyzer-outputtext  -isystem ${ROCM_PATH}/include -Wno-unused-command-line-argument -I${ROCM_PATH}/include -c  src/*.cpp -Iinclude/ -I./
     WORKING_DIRECTORY ${HIP_SRC_PATH})
     if(CPPCHECK_EXE)
         add_dependencies(analyze cppcheck)
