@@ -97,22 +97,16 @@ typedef struct ihipIpcEventHandle_st {
   HIP_INIT()                                                 \
   HIP_CB_SPAWNER_OBJECT(cid);
 
-#define HIP_RETURN_DURATION(ret, ...)             \
-  hipError_t _lastError = (ret);                  \
-  if (_lastError != hipSuccess) {                 \
-    hip::g_lastError = _lastError;                \
-  }                                               \
+#define HIP_RETURN_DURATION(ret, ...)                      \
+  hip::g_lastError = ret;                         \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s",  \
-          __func__, hipGetErrorName(_lastError), ToString( __VA_ARGS__ ).c_str());     \
-  return _lastError;
+          __func__, hipGetErrorName(hip::g_lastError), ToString( __VA_ARGS__ ).c_str()); \
+  return hip::g_lastError;
 
 #define HIP_RETURN(ret, ...)                      \
-  hipError_t _lastError = (ret);                  \
-  if (_lastError != hipSuccess) {                 \
-    hip::g_lastError = _lastError;                \
-  }                                               \
-  HIP_ERROR_PRINT(_lastError, __VA_ARGS__)        \
-  return _lastError;
+  hip::g_lastError = ret;                         \
+  HIP_ERROR_PRINT(hip::g_lastError, __VA_ARGS__)  \
+  return hip::g_lastError;
 
 #define HIP_RETURN_ONFAIL(func)          \
   do {                                   \
