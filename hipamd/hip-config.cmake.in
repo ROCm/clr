@@ -188,7 +188,7 @@ if(NOT WIN32)
   find_path(HSA_HEADER hsa/hsa.h
     PATHS
       "${_IMPORT_PREFIX}/../include"
-      /opt/rocm/include
+      ${ROCM_PATH}/include
   )
 
   if (HSA_HEADER-NOTFOUND)

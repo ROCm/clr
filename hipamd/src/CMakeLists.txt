@@ -162,7 +162,7 @@ endif()
 if(__HIP_ENABLE_PCH)
   find_package(LLVM REQUIRED CONFIG
     PATHS
-      /opt/rocm/llvm)
+      ${ROCM_PATH}/llvm)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
   if(NOT DEFINED HIP_LLVM_ROOT)
     set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
@@ -182,8 +182,8 @@ if(__HIP_ENABLE_RTC)
   message(STATUS "HIP RTC enabled.")
   include(HIPRTC RESULT_VARIABLE HIPRTC_CMAKE)
   # Requires clang and llvm-mc to create this library.
-  find_package(LLVM REQUIRED CONFIG PATHS /opt/rocm/llvm)
-  find_package(Clang REQUIRED CONFIG PATHS /opt/rocm/llvm)
+  find_package(LLVM REQUIRED CONFIG PATHS ${ROCM_PATH}/llvm)
+  find_package(Clang REQUIRED CONFIG PATHS ${ROCM_PATH}/llvm)
   set(HIPRTC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/hip_rtc_gen")
   set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
   set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
@@ -309,7 +309,7 @@ target_link_libraries(host INTERFACE amdhip64)
 add_library(device INTERFACE)
 target_link_libraries(device INTERFACE host)
 
-# Current packaging assumes that HIP runtime will always be installed in /opt/rocm/lib
+# Current packaging assumes that HIP runtime will always be installed in ${ROCM_PATH}/lib
 # This is false to assume, because some distros like CentOS will use the lib64 directory instead of lib
 # Relying on CMake to choose the library directory for us will default in that case to lib64
 # Hence there will be a mismatch between where HIP is installed and where CMake thinks it is

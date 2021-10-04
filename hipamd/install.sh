@@ -71,6 +71,7 @@ SRC_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 WORKING_DIR=$PWD
 DASH_JAY="-j $(getconf _NPROCESSORS_ONLN)"
 OS_NAME="$(cat /etc/os-release | awk -F '=' '/^NAME/{print $2}' | awk '{print $1}' | tr -d '"')"
+[[ -z "$ROCM_PATH" ]] && ROCM_PATH=/opt/rocm
 
 err() {
     echo "${1-Died}." >&2
@@ -109,7 +110,7 @@ function buildHIP()
     HIP_BUILD_DIR="$BUILD_ROOT/hip_build"
     mkdir $HIP_BUILD_DIR
     pushd $HIP_BUILD_DIR
-    cmake $SRC_ROOT -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="/opt/rocm" -DCMAKE_BUILD_TYPE=Release
+    cmake $SRC_ROOT -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="$ROCM_PATH" -DCMAKE_BUILD_TYPE=Release
     make $DASH_JAY
     make package
     if [ "$OS_NAME" == "Ubuntu" ]
