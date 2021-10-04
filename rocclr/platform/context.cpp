@@ -169,21 +169,25 @@ int Context::checkProperties(const cl_context_properties* properties, Context::I
 #if defined(__linux__)
       case CL_GLX_DISPLAY_KHR:
 #endif  // linux
+        if (p->ptr == NULL) {
+          return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
+        }
+      case ROCCLR_HIP_GLX_DISPLAY_KHR:
+      case ROCCLR_HIP_WGL_HDC_KHR:
         info->hDev_[GLDeviceKhrIdx] = p->ptr;
-
+        break;
 #if defined(__APPLE__) || defined(__MACOSX)
       case CL_CGL_SHAREGROUP_KHR:
         Unimplemented();
         break;
 #endif  //__APPLE__ || MACOS
-
       case CL_GL_CONTEXT_KHR:
         if (p->ptr == NULL) {
           return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
         }
-        if (p->name == CL_GL_CONTEXT_KHR) {
-          info->hCtx_ = p->ptr;
-        }
+        //skip the null case in the case of hip-gl, it will be initialized in create
+      case ROCCLR_HIP_GL_CONTEXT_KHR:
+        info->hCtx_ = p->ptr;
         info->flags_ |= GLDeviceKhr;
         break;
       case CL_CONTEXT_PLATFORM:
@@ -223,6 +227,49 @@ int Context::create(const intptr_t* properties) {
     ::memcpy(properties_, properties, info().propertiesSize_);
   }
 
+  // if the context passed in is null, it's the GL interop case and we need to get the current context
+  if (info_.hCtx_ == nullptr) {
+    if (info_.flags_ & GLDeviceKhr) {
+      // Init context for GL interop
+      if (glenv_ == NULL) {
+        HMODULE h = (HMODULE)Os::loadLibrary(
+#ifdef _WIN32
+            "OpenGL32.dll"
+#else  //!_WIN32
+            "libGL.so.1"
+#endif  //!_WIN32
+        );
+        if (h && (glenv_ = new GLFunctions(h, (info_.flags_ & Flags::EGLDeviceKhr) != 0))) {
+#ifdef _WIN32
+          info_.hCtx_ = (void*)glenv_->wglGetCurrentContext_();
+          info_.hDev_[GLDeviceKhrIdx] = (void*)glenv_->wglGetCurrentDC_();
+
+#else
+          info_.hCtx_ = (void*)glenv_->glXGetCurrentContext_();
+          info_.hDev_[GLDeviceKhrIdx] = (void*)glenv_->glXGetCurrentDisplay_();
+#endif
+        }
+      }
+
+      struct Element {
+        intptr_t name;
+        void* ptr;
+      }* p = reinterpret_cast<Element*>(properties_);
+      while (p->name != 0) {
+        switch (p->name) {
+          case ROCCLR_HIP_GLX_DISPLAY_KHR:
+          case ROCCLR_HIP_WGL_HDC_KHR:
+            p->ptr = info_.hDev_[GLDeviceKhrIdx];
+            break;
+          case ROCCLR_HIP_GL_CONTEXT_KHR:
+            p->ptr = info_.hCtx_;
+            break;
+        }
+        p++;
+      }
+    }
+  }
+
   // Check if OCL context can be associated with any external device
   if (info_.flags_ & (D3D10DeviceKhr | D3D11DeviceKhr | GLDeviceKhr | D3D9DeviceKhr |
                       D3D9DeviceEXKhr | D3D9DeviceVAKhr)) {
@@ -247,24 +294,11 @@ int Context::create(const intptr_t* properties) {
     }
   } else {
     if (info_.flags_ & GLDeviceKhr) {
-      // Init context for GL interop
-      if (glenv_ == NULL) {
-        HMODULE h = (HMODULE)Os::loadLibrary(
-#ifdef _WIN32
-            "OpenGL32.dll"
-#else   //!_WIN32
-            "libGL.so.1"
-#endif  //!_WIN32
-            );
-
-        if (h && (glenv_ = new GLFunctions(h, (info_.flags_ & Flags::EGLDeviceKhr) != 0))) {
-          if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_[GLDeviceKhrIdx]),
-                            reinterpret_cast<intptr_t>(info_.hCtx_))) {
-            delete glenv_;
-            glenv_ = NULL;
-            result = CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
-          }
-        }
+      if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_[GLDeviceKhrIdx]),
+                        reinterpret_cast<intptr_t>(info_.hCtx_))) {
+        delete glenv_;
+        glenv_ = NULL;
+        result = CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
       }
     }
   }
