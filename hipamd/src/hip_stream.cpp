@@ -402,7 +402,9 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   if (stream == nullptr) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
-
+  if (stream == hipStreamPerThread) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
