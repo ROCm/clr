@@ -177,11 +177,13 @@ namespace hip {
     hipStream_t parentStream_;
     /// Last graph node captured in the stream
     std::vector<hipGraphNode_t> lastCapturedNodes_;
+    /// dependencies removed via API hipStreamUpdateCaptureDependencies
+    std::vector<hipGraphNode_t> removedDependencies_;
     /// Derived streams/Paralell branches from the origin stream
     std::vector<hipStream_t> parallelCaptureStreams_;
     /// Capture events
     std::vector<hipEvent_t> captureEvents_;
-
+    unsigned long long captureID_;
   public:
     Stream(Device* dev, Priority p = Priority::Normal, unsigned int f = 0, bool null_stream = false,
            const std::vector<uint32_t>& cuMask = {},
@@ -231,8 +233,19 @@ namespace hip {
       lastCapturedNodes_.clear();
       lastCapturedNodes_.push_back(graphNode);
     }
+    /// returns updated dependencies removed
+    const std::vector<hipGraphNode_t>& GetRemovedDependencies() {
+      return removedDependencies_;
+    }
     /// Append captured node via the wait event cross stream
-    void AddCrossCapturedNode(std::vector<hipGraphNode_t> graphNodes) {
+    void AddCrossCapturedNode(std::vector<hipGraphNode_t> graphNodes, bool replace = false) {
+      // replace dependencies as per flag hipStreamSetCaptureDependencies
+      if (replace == true) {
+        for (auto node : lastCapturedNodes_) {
+          removedDependencies_.push_back(node);
+        }
+        lastCapturedNodes_.clear();
+      }
       for (auto node : graphNodes) {
         lastCapturedNodes_.push_back(node);
       }
@@ -241,6 +254,8 @@ namespace hip {
     void SetCaptureGraph(hipGraph_t pGraph) {
       pCaptureGraph_ = pGraph;
       captureStatus_ = hipStreamCaptureStatusActive;
+      // ID is generated in Begin Capture i.e.. when capture status is active
+      captureID_ = GenerateCaptureID();
     }
     /// reset capture parameters
     hipError_t EndCapture();
@@ -252,6 +267,13 @@ namespace hip {
     void SetParentStream(hipStream_t parentStream) { parentStream_ = parentStream; }
     /// Get parent stream
     hipStream_t GetParentStream() { return parentStream_; }
+    /// Generate ID for stream capture unique over the lifetime of the process
+    static int GenerateCaptureID() {
+      static std::atomic<unsigned long long> uid(0);
+      return ++uid;
+    }
+    /// Get Capture ID
+    int GetCaptureID() { return captureID_; }
   };
 
   /// HIP Device class

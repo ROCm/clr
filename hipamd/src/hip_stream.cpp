@@ -41,7 +41,8 @@ Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
       null_(null_stream),
       cuMask_(cuMask),
       captureStatus_(captureStatus),
-      originStream_(false) {}
+      originStream_(false),
+      captureID_(0) {}
 
 // ================================================================================================
 Stream::~Stream() {

@@ -45,49 +45,24 @@ const char* GetGraphNodeTypeString(uint32_t op) {
   return case_string;
 };
 
-hipError_t ihipGraph::AddNode(const Node& node) {
+int hipGraphNode::nextID = 0;
+
+void ihipGraph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
-  nodeOutDegree_[node] = 0;
-  nodeInDegree_[node] = 0;
-  node->SetLevel(0);
   ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)\n",
           GetGraphNodeTypeString(node->GetType()), node);
-  return hipSuccess;
+  node->SetParentGraph(this);
 }
 
-hipError_t ihipGraph::AddEdge(const Node& parentNode, const Node& childNode) {
-  // if vertice doesn't exist, add it to the graph
-  if (std::find(vertices_.begin(), vertices_.end(), parentNode) == vertices_.end()) {
-    AddNode(parentNode);
-  }
-  if (std::find(vertices_.begin(), vertices_.end(), childNode) == vertices_.end()) {
-    AddNode(childNode);
-  }
-  // Check if edge already exists
-  auto connectedEdges = edges_.find(parentNode);
-  if (connectedEdges != edges_.end()) {
-    if (std::find(connectedEdges->second.begin(), connectedEdges->second.end(), childNode) !=
-        connectedEdges->second.end()) {
-      return hipSuccess;
-    }
-    connectedEdges->second.emplace_back(childNode);
-  } else {
-    edges_[parentNode] = {childNode};
-  }
-  nodeOutDegree_[parentNode]++;
-  nodeInDegree_[childNode]++;
-  childNode->SetLevel(std::max(childNode->GetLevel(), parentNode->GetLevel() + 1));
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add edge btwn %s(%p) - %s(%p)\n",
-          GetGraphNodeTypeString(parentNode->GetType()), parentNode,
-          GetGraphNodeTypeString(childNode->GetType()), childNode);
-  return hipSuccess;
+void ihipGraph::RemoveNode(const Node& node) {
+  vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), node), vertices_.end());
 }
 
 // root nodes are all vertices with 0 in-degrees
 std::vector<Node> ihipGraph::GetRootNodes() const {
   std::vector<Node> roots;
   for (auto entry : vertices_) {
-    if (nodeInDegree_.at(entry) == 0) {
+    if (entry->GetInDegree() == 0) {
       roots.push_back(entry);
       ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] root node: %s(%p)\n",
               GetGraphNodeTypeString(entry->GetType()), entry);
@@ -101,7 +76,7 @@ std::vector<Node> ihipGraph::GetRootNodes() const {
 std::vector<Node> ihipGraph::GetLeafNodes() const {
   std::vector<Node> leafNodes;
   for (auto entry : vertices_) {
-    if (nodeOutDegree_.at(entry) == 0) {
+    if (entry->GetOutDegree() == 0) {
       leafNodes.push_back(entry);
     }
   }
@@ -111,7 +86,7 @@ std::vector<Node> ihipGraph::GetLeafNodes() const {
 size_t ihipGraph::GetLeafNodeCount() const {
   int numLeafNodes = 0;
   for (auto entry : vertices_) {
-    if (nodeOutDegree_.at(entry) == 0) {
+    if (entry->GetOutDegree() == 0) {
       numLeafNodes++;
     }
   }
@@ -120,23 +95,23 @@ size_t ihipGraph::GetLeafNodeCount() const {
 
 std::vector<std::pair<Node, Node>> ihipGraph::GetEdges() const {
   std::vector<std::pair<Node, Node>> edges;
-  for (const auto& i : edges_) {
-    for (const auto& j : i.second) {
-      edges.push_back(std::make_pair(i.first, j));
+  for (const auto& i : vertices_) {
+    for (const auto& j : i->GetEdges()) {
+      edges.push_back(std::make_pair(i, j));
     }
   }
   return edges;
 }
 
 void ihipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
-                              std::vector<Node>& singleList,
-                              std::vector<std::vector<Node>>& parallelLists,
-                              std::unordered_map<Node, std::vector<Node>>& dependencies) {
+                               std::vector<Node>& singleList,
+                               std::vector<std::vector<Node>>& parallelLists,
+                               std::unordered_map<Node, std::vector<Node>>& dependencies) {
   // Mark the current node as visited.
   visited[v] = true;
   singleList.push_back(v);
   // Recurse for all the vertices adjacent to this vertex
-  for (auto& adjNode : edges_[v]) {
+  for (auto& adjNode : v->GetEdges()) {
     if (!visited[adjNode]) {
       // For the parallel list nodes add parent as the dependency
       if (singleList.empty()) {
@@ -175,7 +150,7 @@ void ihipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
 // The function to do Topological Sort.
 // It uses recursive GetRunListUtil()
 void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
-                          std::unordered_map<Node, std::vector<Node>>& dependencies) {
+                           std::unordered_map<Node, std::vector<Node>>& dependencies) {
   std::vector<Node> singleList;
 
   // Mark all the vertices as not visited
@@ -184,6 +159,8 @@ void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
 
   // Call the recursive helper function for all vertices one by one
   for (auto node : vertices_) {
+    // If the node has embedded child graph
+    node->GetRunList(parallelLists, dependencies);
     if (visited[node] == false) {
       GetRunListUtil(node, visited, singleList, parallelLists, dependencies);
     }
@@ -196,7 +173,7 @@ void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
 }
 
-hipError_t ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
+void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
   std::vector<Node> roots = GetRootNodes();
   std::unordered_map<Node, bool> visited;
   std::queue<Node> q;
@@ -209,7 +186,7 @@ hipError_t ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
     Node& node = q.front();
     q.pop();
     levelOrder.push_back(node);
-    for (const auto& i : edges_[node]) {
+    for (const auto& i : node->GetEdges()) {
       if (visited.find(i) == visited.end() && i->GetLevel() == (node->GetLevel() + 1)) {
         q.push(i);
         ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] %s(%p) level:%d \n",
@@ -218,7 +195,36 @@ hipError_t ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
       }
     }
   }
-  return hipSuccess;
+}
+
+ihipGraph* ihipGraph::clone() const {
+  ihipGraph* newGraph = new ihipGraph();
+  std::unordered_map<Node, Node> clonedNodes;
+  for (auto entry : vertices_) {
+    hipGraphNode* node = entry->clone();
+    newGraph->vertices_.push_back(node);
+    clonedNodes[entry] = node;
+  }
+  std::vector<Node> dependancies;
+  std::vector<Node> clonedEdges;
+  std::vector<Node> clonedDependencies;
+  for (auto node : vertices_) {
+    const std::vector<Node>& edges = node->GetEdges();
+    clonedEdges.clear();
+    for (auto edge : edges) {
+      clonedEdges.push_back(clonedNodes[edge]);
+    }
+    clonedNodes[node]->SetEdges(clonedEdges);
+  }
+  for (auto node : vertices_) {
+    const std::vector<Node>& dependencies = node->GetDependencies();
+    clonedDependencies.clear();
+    for (auto dep : dependencies) {
+      clonedDependencies.push_back(clonedNodes[dep]);
+    }
+    clonedNodes[node]->SetDependencies(clonedDependencies);
+  }
+  return newGraph;
 }
 
 hipError_t hipGraphExec::CreateQueues() {
@@ -253,24 +259,30 @@ hipError_t hipGraphExec::FillCommands() {
     }
     i++;
   }
+
+  i = 0;
+  // For nodes that has embedded child graph
+  for (const auto& list : parallelLists_) {
+    for (auto& node : list) {
+      node->UpdateEventWaitLists();
+    }
+    i++;
+  }
+
   // Add waitlists for all the commands
-  for (auto& node : levelOrder_) {
-    auto nodeWaitList = nodeWaitLists_.find(node);
-    if (nodeWaitList != nodeWaitLists_.end()) {
-      amd::Command::EventWaitList waitList;
-      for (auto depNode : nodeWaitList->second) {
-        for (auto command : depNode->GetCommands()) {
-          waitList.push_back(command);
-        }
+  for (auto entry : nodeWaitLists_) {
+    amd::Command::EventWaitList waitList;
+    for (auto depNode : entry.second) {
+      for (auto command : depNode->GetCommands()) {
+        waitList.push_back(command);
       }
-      for (auto command : nodeWaitList->first->GetCommands()) {
-        command->updateEventWaitList(waitList);
-      }
+    }
+    for (auto command : entry.first->GetCommands()) {
+      command->updateEventWaitList(waitList);
     }
   }
   return status;
 }
-
 
 hipError_t hipGraphExec::Init() {
   hipError_t status;
@@ -297,9 +309,7 @@ void hipGraphExec::ResetGraph(cl_event event, cl_int command_exec_status, void* 
       hipGraphExec::activeGraphExec_[reinterpret_cast<amd::Command*>(user_data)];
   if (graphExec != nullptr) {
     for (auto& node : graphExec->levelOrder_) {
-      for (auto& command : node->GetCommands()) {
-        command->resetStatus(CL_INT_MAX);
-      }
+      node->ResetStatus();
     }
     graphExec->rootCommand_->resetStatus(CL_INT_MAX);
     graphExec->bExecPending_.store(false);
@@ -308,7 +318,7 @@ void hipGraphExec::ResetGraph(cl_event event, cl_int command_exec_status, void* 
   }
 }
 
-hipError_t hipGraphExec::UpdateGraphToWaitOnRoot() {
+void hipGraphExec::UpdateGraphToWaitOnRoot() {
   for (auto& singleList : parallelLists_) {
     amd::Command::EventWaitList waitList;
     waitList.push_back(rootCommand_);
@@ -319,7 +329,6 @@ hipError_t hipGraphExec::UpdateGraphToWaitOnRoot() {
       }
     }
   }
-  return hipSuccess;
 }
 
 hipError_t hipGraphExec::Run(hipStream_t stream) {
@@ -342,9 +351,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   }
   rootCommand_->enqueue();
   for (auto& node : levelOrder_) {
-    for (auto& command : node->GetCommands()) {
-      command->enqueue();
-    }
+    node->EnqueueCommands();
   }
 
   amd::Command* command = new amd::Marker(*queue, false, graphLastCmdWaitList_);
@@ -362,7 +369,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   command->enqueue();
 
   // Add the new barrier to stall the stream, until the callback is done
-  amd::Command::EventWaitList eventWaitList;;
+  amd::Command::EventWaitList eventWaitList;
   eventWaitList.push_back(command);
   amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
   if (block_command == nullptr) {
