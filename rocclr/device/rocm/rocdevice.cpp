@@ -2227,9 +2227,6 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
   }
   if (info().hmmSupported_) {
     std::vector<hsa_amd_svm_attribute_pair_t> attr;
-    if (first_alloc) {
-      attr.push_back({HSA_AMD_SVM_ATTRIB_GLOBAL_FLAG, HSA_AMD_SVM_GLOBAL_FLAG_COARSE_GRAINED});
-    }
 
     switch (advice) {
       case amd::MemoryAdvice::SetReadMostly:
