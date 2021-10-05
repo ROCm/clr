@@ -28,7 +28,7 @@ thread_local std::vector<hipStream_t> g_captureStreams;
 std::unordered_map<amd::Command*, hipGraphExec_t> hipGraphExec::activeGraphExec_;
 
 inline void ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
-                            const hipGraphNode_t* pDependencies, size_t numDependencies) {
+                             const hipGraphNode_t* pDependencies, size_t numDependencies) {
   graph->AddNode(graphNode);
   for (size_t i = 0; i < numDependencies; i++) {
     pDependencies[i]->AddEdge(graphNode);
@@ -924,4 +924,83 @@ hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hi
                offset, kind);
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(node)->SetCommandParams(
       symbol, src, count, offset, kind));
+}
+
+hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                      const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                      hipEvent_t event) {
+  HIP_INIT_API(hipGraphAddEventRecordNode, pGraphNode, graph, pDependencies, numDependencies,
+               event);
+  if (graph == nullptr || (numDependencies > 0 && pDependencies == nullptr) || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  *pGraphNode = new hipGraphEventRecordNode(event);
+  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphEventRecordNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_out) {
+  HIP_INIT_API(hipGraphEventRecordNodeGetEvent, node, event_out);
+  if (node == nullptr || event_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphEventRecordNode*>(node)->GetParams(event_out);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphEventRecordNodeSetEvent(hipGraphNode_t node, hipEvent_t event) {
+  HIP_INIT_API(hipGraphEventRecordNodeSetEvent, node, event);
+  if (node == nullptr || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphEventRecordNode*>(node)->SetParams(event);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecEventRecordNodeSetEvent(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                               hipEvent_t event) {
+  HIP_INIT_API(hipGraphExecEventRecordNodeSetEvent, hGraphExec, hNode, event);
+  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphEventRecordNode*>(hNode)->SetExecParams(event));
+}
+
+hipError_t hipGraphAddEventWaitNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                    const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                    hipEvent_t event) {
+  HIP_INIT_API(hipGraphAddEventWaitNode, pGraphNode, graph, pDependencies, numDependencies, event);
+  if (graph == nullptr || (numDependencies > 0 && pDependencies == nullptr) || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  *pGraphNode = new hipGraphEventWaitNode(event);
+  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphEventWaitNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_out) {
+  HIP_INIT_API(hipGraphEventWaitNodeGetEvent, node, event_out);
+  if (node == nullptr || *event_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphEventWaitNode*>(node)->GetParams(event_out);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphEventWaitNodeSetEvent(hipGraphNode_t node, hipEvent_t event) {
+  HIP_INIT_API(hipGraphEventWaitNodeSetEvent, node, event);
+  if (node == nullptr || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphEventWaitNode*>(node)->SetParams(event);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecEventWaitNodeSetEvent(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                             hipEvent_t event) {
+  HIP_INIT_API(hipGraphExecEventWaitNodeSetEvent, hGraphExec, hNode, event);
+  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphEventRecordNode*>(hNode)->SetExecParams(event));
 }

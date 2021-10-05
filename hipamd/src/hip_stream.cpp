@@ -415,18 +415,13 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   HIP_RETURN(hipSuccess);
 }
 
-struct CallbackData {
-    int previous_read_index;
-    hip::ihipIpcEventShmem_t *shmem;
-};
-
-void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data){
-    CallbackData *data = (CallbackData *)user_data;
-    int offset = data->previous_read_index % IPC_SIGNALS_PER_EVENT;
-    while (data->shmem->read_index < data->previous_read_index+IPC_SIGNALS_PER_EVENT
-                    && data->shmem->signal[offset] != 0) {
-    }
-    delete data;
+void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data) {
+  CallbackData* data = (CallbackData*)user_data;
+  int offset = data->previous_read_index % IPC_SIGNALS_PER_EVENT;
+  while (data->shmem->read_index < data->previous_read_index + IPC_SIGNALS_PER_EVENT &&
+         data->shmem->signal[offset] != 0) {
+  }
+  delete data;
 }
 
 // ================================================================================================
@@ -443,24 +438,8 @@ hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
-  amd::HostQueue* queue = hip::getQueue(stream);
-
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  if (e->flags & hipEventInterprocess) {
-    amd::Command* command = new amd::Marker(*queue, false);
-    auto t{new CallbackData{e->ipc_evt_.ipc_shmem_->read_index, e->ipc_evt_.ipc_shmem_}};
-    StreamCallback* cbo = new StreamCallback(stream,
-                    reinterpret_cast<hipStreamCallback_t> (WaitThenDecrementSignal), t, command);
-    if (!command->setCallback(CL_COMPLETE, ihipStreamCallback,cbo)) {
-      command->release();
-      return hipErrorInvalidHandle;
-    }
-    command->enqueue();
-    command->awaitCompletion();
-    HIP_RETURN(hipSuccess);
-  } else {
-    HIP_RETURN(e->streamWait(queue, flags));
-  }
+  HIP_RETURN(e->streamWait(stream, flags));
 }
 
 // ================================================================================================

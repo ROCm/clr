@@ -30,6 +30,7 @@
 #include "hip/hip_runtime.h"
 #include "hip_internal.hpp"
 #include "hip_graph_helper.hpp"
+#include "hip_event.hpp"
 
 typedef hipGraphNode* Node;
 hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams);
@@ -50,15 +51,14 @@ struct hipGraphNode {
   struct ihipGraph* parentGraph_;
 
  public:
-  hipGraphNode(hipGraphNodeType type) {
-    type_ = type;
-    level_ = 0;
-    visited_ = false;
-    inDegree_ = 0;
-    outDegree_ = 0;
-    id_ = nextID++;
-    parentGraph_ = nullptr;
-  }
+  hipGraphNode(hipGraphNodeType type)
+      : type_(type),
+        level_(0),
+        visited_(false),
+        inDegree_(0),
+        outDegree_(0),
+        id_(nextID++),
+        parentGraph_(nullptr) {}
   /// Copy Constructor
   hipGraphNode(const hipGraphNode& node) {
     level_ = node.level_;
@@ -160,7 +160,7 @@ struct hipGraphNode {
   /// Update waitlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual void UpdateEventWaitLists() {}
   /// Enqueue commands part of the node
-  virtual void EnqueueCommands() {
+  virtual void EnqueueCommands(hipStream_t stream) {
     for (auto& command : commands_) {
       command->enqueue();
     }
@@ -285,13 +285,13 @@ struct hipChildGraphNode : public hipGraphNode {
 
   void LevelOrder(std::vector<Node>& levelOrder) { childGraph_->LevelOrder(levelOrder); }
 
-  void EnqueueCommands() {
+  void EnqueueCommands(hipStream_t stream) {
     if (commands_.size() == 2) {
       // enqueue child graph start command
       commands_[0]->enqueue();
       // enqueue nodes in child graph in level order
       for (auto& node : childGraphlevelOrder_) {
-        node->EnqueueCommands();
+        node->EnqueueCommands(stream);
       }
       // enqueue child graph end command
       commands_[1]->enqueue();
@@ -595,10 +595,40 @@ class hipGraphEventRecordNode : public hipGraphNode {
     return new hipGraphEventRecordNode(static_cast<hipGraphEventRecordNode const&>(*this));
   }
 
-  hipError_t CreateCommand(amd::HostQueue* queue);
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    hip::Event* e = reinterpret_cast<hip::Event*>(event_);
+    commands_.reserve(1);
+    amd::Command* command;
+    hipError_t status = e->recordCommand(command, queue);
+    commands_.emplace_back(command);
+    return status;
+  }
+
+  void EnqueueCommands(hipStream_t stream) {
+    if (!commands_.empty()) {
+      hip::Event* e = reinterpret_cast<hip::Event*>(event_);
+      hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
+      if (status != hipSuccess) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+                "[hipGraph] enqueue event record command failed for node %p - status %d\n", this,
+                status);
+      }
+    }
+  }
 
   void GetParams(hipEvent_t* event) { *event = event_; }
+
   void SetParams(hipEvent_t event) { event_ = event; }
+
+  hipError_t SetExecParams(hipEvent_t event) {
+    amd::HostQueue* queue;
+    if (!commands_.empty()) {
+      queue = commands_[0]->queue();
+      commands_[0]->release();
+    }
+    commands_.clear();
+    return CreateCommand(queue);
+  }
 };
 
 class hipGraphEventWaitNode : public hipGraphNode {
@@ -613,10 +643,40 @@ class hipGraphEventWaitNode : public hipGraphNode {
     return new hipGraphEventWaitNode(static_cast<hipGraphEventWaitNode const&>(*this));
   }
 
-  hipError_t CreateCommand(amd::HostQueue* queue);
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    hip::Event* e = reinterpret_cast<hip::Event*>(event_);
+    commands_.reserve(1);
+    amd::Command* command;
+    hipError_t status = e->streamWaitCommand(command, queue);
+    commands_.emplace_back(command);
+    return status;
+  }
+
+  void EnqueueCommands(hipStream_t stream) {
+    if (!commands_.empty()) {
+      hip::Event* e = reinterpret_cast<hip::Event*>(event_);
+      hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
+      if (status != hipSuccess) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+                "[hipGraph] enqueue stream wait command failed for node %p - status %d\n", this,
+                status);
+      }
+    }
+  }
 
   void GetParams(hipEvent_t* event) { *event = event_; }
+
   void SetParams(hipEvent_t event) { event_ = event; }
+
+  hipError_t SetExecParams(hipEvent_t event) {
+    amd::HostQueue* queue;
+    if (!commands_.empty()) {
+      queue = commands_[0]->queue();
+      commands_[0]->release();
+    }
+    commands_.clear();
+    return CreateCommand(queue);
+  }
 };
 
 class hipGraphHostNode : public hipGraphNode {

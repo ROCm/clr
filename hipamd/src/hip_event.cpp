@@ -32,6 +32,37 @@ void ipcEventCallback(hipStream_t stream, hipError_t status, void* user_data)
   return;
 }
 
+// ================================================================================================
+bool createIpcEventShmemIfNeeded(hip::Event::ihipIpcEvent_t& ipc_evt) {
+#if !defined(_MSC_VER)
+  if (ipc_evt.ipc_shmem_) {
+    // ipc_shmem_ already created, no need to create it again
+    return true;
+  }
+  char name_template[] = "/tmp/eventXXXXXX";
+  int temp_fd = mkstemp(name_template);
+
+  ipc_evt.ipc_name_ = name_template;
+  ipc_evt.ipc_name_.replace(0, 5, "/hip_");
+  if (!amd::Os::MemoryMapFileTruncated(ipc_evt.ipc_name_.c_str(),
+      const_cast<const void**> (reinterpret_cast<void**>(&(ipc_evt.ipc_shmem_))),
+      sizeof(hip::ihipIpcEventShmem_t))) {
+    return false;
+  }
+  ipc_evt.ipc_shmem_->owners = 1;
+  ipc_evt.ipc_shmem_->read_index = -1;
+  ipc_evt.ipc_shmem_->write_index = 0;
+  for (uint32_t sig_idx = 0; sig_idx < IPC_SIGNALS_PER_EVENT; ++sig_idx) {
+    ipc_evt.ipc_shmem_->signal[sig_idx] = 0;
+  }
+
+  close(temp_fd);
+  return true;
+#else
+  return false;
+#endif
+}
+
 namespace hip {
 
 bool Event::ready() {
@@ -135,52 +166,134 @@ int64_t Event::time() const {
   }
 }
 
-hipError_t Event::streamWait(amd::HostQueue* hostQueue, uint flags) {
-  if ((event_ == nullptr) || (event_->command().queue() == hostQueue)) {
-    return hipSuccess;
+hipError_t Event::streamWaitCommand(amd::Command*& command, amd::HostQueue* queue) {
+  if (flags & hipEventInterprocess) {
+    command = new amd::Marker(*queue, false);
+  } else {
+    amd::Command::EventWaitList eventWaitList;
+    eventWaitList.push_back(event_);
+    command = new amd::Marker(*queue, kMarkerDisableFlush, eventWaitList);
   }
-
-  amd::ScopedLock lock(lock_);
-  bool retain = false;
-
-  if (!event_->notifyCmdQueue()) {
-    return hipErrorLaunchOutOfResources;
-  }
-  amd::Command::EventWaitList eventWaitList;
-  eventWaitList.push_back(event_);
-
-  amd::Command* command = new amd::Marker(*hostQueue, kMarkerDisableFlush, eventWaitList);
   if (command == NULL) {
     return hipErrorOutOfMemory;
   }
-  command->enqueue();
-  command->release();
-
   return hipSuccess;
 }
 
-void Event::addMarker(amd::HostQueue* queue, amd::Command* command, bool record) {
-  // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
-  amd::ScopedLock lock(lock_);
+hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
+  if (flags & hipEventInterprocess) {
+    auto t{new CallbackData{ipc_evt_.ipc_shmem_->read_index, ipc_evt_.ipc_shmem_}};
+    StreamCallback* cbo = new StreamCallback(
+        stream, reinterpret_cast<hipStreamCallback_t>(WaitThenDecrementSignal), t, command);
+    if (!command->setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
+      command->release();
+      return hipErrorInvalidHandle;
+    }
+    command->enqueue();
+    command->awaitCompletion();
+    return hipSuccess;
+  } else {
+    command->enqueue();
+  }
+}
 
-  if (command == nullptr) {
+hipError_t Event::streamWait(hipStream_t stream, uint flags) {
+  amd::HostQueue* queue = hip::getQueue(stream);
+  if ((event_ == nullptr) || (event_->command().queue() == queue)) {
+    return hipSuccess;
+  }
+  amd::ScopedLock lock(lock_);
+  if (!this->flags & hipEventInterprocess) {
+    if (!event_->notifyCmdQueue()) {
+      return hipErrorLaunchOutOfResources;
+    }
+  }
+  amd::Command* command;
+  streamWaitCommand(command, queue);
+  enqueueStreamWaitCommand(stream, command);
+  if (!this->flags & hipEventInterprocess) {
+    command->release();
+  }
+  return hipSuccess;
+}
+
+hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue) {
+  bool recorded = isRecorded();
+  if ((flags & hipEventInterprocess) && !recorded) {
+    command = new amd::Marker(*queue, kMarkerDisableFlush);
+  } else if (command == nullptr) {
     static constexpr bool kRecordExplicitGpuTs = true;
     // Always submit a EventMarker.
     command = new hip::EventMarker(*queue, !kMarkerDisableFlush, kRecordExplicitGpuTs);
+  }
+  return hipSuccess;
+}
+
+hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
+  amd::HostQueue* queue = hip::getQueue(stream);
+  bool recorded = isRecorded();
+  if ((flags & hipEventInterprocess) && !recorded) {
+    amd::Event& tEvent = command->event();
+    createIpcEventShmemIfNeeded(ipc_evt_);
+    int write_index = ipc_evt_.ipc_shmem_->write_index++;
+    int offset = write_index % IPC_SIGNALS_PER_EVENT;
+    while (ipc_evt_.ipc_shmem_->signal[offset] != 0) {
+      amd::Os::sleep(1);
+    }
+    // Lock signal.
+    ipc_evt_.ipc_shmem_->signal[offset] = 1;
+    ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
+
+    std::atomic<int>* signal = &ipc_evt_.ipc_shmem_->signal[offset];
+    StreamCallback* cbo = new StreamCallback(
+        stream, reinterpret_cast<hipStreamCallback_t>(ipcEventCallback), signal, command);
+    if (!tEvent.setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
+      command->release();
+      return hipErrorInvalidHandle;
+    }
     command->enqueue();
+    tEvent.notifyCmdQueue();
+
+    // Add the new barrier to stall the stream, until the callback is done
+    amd::Command::EventWaitList eventWaitList;
+    eventWaitList.push_back(command);
+    amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
+    if (block_command == nullptr) {
+      return hipErrorInvalidValue;
+    }
+    block_command->enqueue();
+    block_command->release();
+
+    // Update read index to indicate new signal.
+    int expected = write_index - 1;
+    while (!ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
+      amd::Os::sleep(1);
+    }
+  } else {
+    command->enqueue();
+    if (event_ == &command->event()) return hipSuccess;
+    if (event_ != nullptr) {
+      event_->release();
+    }
+    event_ = &command->event();
+    recorded_ = record;
   }
-
-  if (event_ == &command->event()) return;
-
-  if (event_ != nullptr) {
-    event_->release();
-  }
-
-  event_ = &command->event();
-  recorded_ = record;
+  return hipSuccess;
 }
 
+hipError_t Event::addMarker(hipStream_t stream, amd::Command* command, bool record) {
+  amd::HostQueue* queue = hip::getQueue(stream);
+  // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
+  amd::ScopedLock lock(lock_);
+  hipError_t status = recordCommand(command, queue);
+  if (status != hipSuccess) {
+    return hipSuccess;
+  }
+  status = enqueueRecordCommand(stream, command, record);
+  return status;
 }
+
+}  // namespace hip
 
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   if (event == nullptr) {
@@ -281,37 +394,6 @@ hipError_t hipEventElapsedTime(float *ms, hipEvent_t start, hipEvent_t stop) {
 }
 
 // ================================================================================================
-bool createIpcEventShmemIfNeeded(hip::Event::ihipIpcEvent_t& ipc_evt) {
-#if !defined(_MSC_VER)
-  if (ipc_evt.ipc_shmem_) {
-    // ipc_shmem_ already created, no need to create it again
-    return true;
-  }
-  char name_template[] = "/tmp/eventXXXXXX";
-  int temp_fd = mkstemp(name_template);
-
-  ipc_evt.ipc_name_ = name_template;
-  ipc_evt.ipc_name_.replace(0, 5, "/hip_");
-  if (!amd::Os::MemoryMapFileTruncated(ipc_evt.ipc_name_.c_str(),
-      const_cast<const void**> (reinterpret_cast<void**>(&(ipc_evt.ipc_shmem_))),
-      sizeof(hip::ihipIpcEventShmem_t))) {
-    return false;
-  }
-  ipc_evt.ipc_shmem_->owners = 1;
-  ipc_evt.ipc_shmem_->read_index = -1;
-  ipc_evt.ipc_shmem_->write_index = 0;
-  for (uint32_t sig_idx = 0; sig_idx < IPC_SIGNALS_PER_EVENT; ++sig_idx) {
-    ipc_evt.ipc_shmem_->signal[sig_idx] = 0;
-  }
-
-  close(temp_fd);
-  return true;
-#else
-  return false;
-#endif
-}
-
-// ================================================================================================
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
 
@@ -329,49 +411,7 @@ hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
 
-  bool isRecorded = e->isRecorded();
-  if ((e->flags & hipEventInterprocess) && !isRecorded) {
-    amd::Command* command = new amd::Marker(*queue, kMarkerDisableFlush);
-    amd::Event& tEvent = command->event();
-    createIpcEventShmemIfNeeded(e->ipc_evt_);
-    int write_index = e->ipc_evt_.ipc_shmem_->write_index++;
-    int offset = write_index % IPC_SIGNALS_PER_EVENT;
-    while (e->ipc_evt_.ipc_shmem_->signal[offset] != 0) {
-      amd::Os::sleep(1);
-    }
-    // Lock signal.
-    e->ipc_evt_.ipc_shmem_->signal[offset] = 1;
-    e->ipc_evt_.ipc_shmem_->owners_device_id = e->deviceId();
-
-    std::atomic<int> *signal = &e->ipc_evt_.ipc_shmem_->signal[offset];
-    StreamCallback* cbo = new StreamCallback(stream,
-                    reinterpret_cast<hipStreamCallback_t> (ipcEventCallback), signal, command);
-    if (!tEvent.setCallback(CL_COMPLETE, ihipStreamCallback,cbo)) {
-      command->release();
-      return hipErrorInvalidHandle;
-    }
-    command->enqueue();
-    tEvent.notifyCmdQueue();
-
-    // Add the new barrier to stall the stream, until the callback is done
-    amd::Command::EventWaitList eventWaitList;;
-    eventWaitList.push_back(command);
-    amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
-    if (block_command == nullptr) {
-      return hipErrorInvalidValue;
-    }
-    block_command->enqueue();
-    block_command->release();
-
-    // Update read index to indicate new signal.
-    int expected = write_index - 1;
-    while (!e->ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
-      amd::Os::sleep(1);
-    }
-  } else {
-    e->addMarker(queue, nullptr, true);
-  }
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(e->addMarker(stream, nullptr, true));
 }
 
 // ================================================================================================
