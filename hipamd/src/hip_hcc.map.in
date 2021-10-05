@@ -356,6 +356,14 @@ global:
     hipGraphExecMemcpyNodeSetParams;
     hipGraphMemcpyNodeSetParams1D;
     hipGraphExecMemcpyNodeSetParams1D;
+    hipGraphAddEventRecordNode;
+    hipGraphEventRecordNodeGetEvent;
+    hipGraphEventRecordNodeSetEvent;
+    hipGraphExecEventRecordNodeSetEvent;
+    hipGraphAddEventWaitNode;
+    hipGraphEventWaitNodeGetEvent;
+    hipGraphEventWaitNodeSetEvent;
+    hipGraphExecEventWaitNodeSetEvent;
 local:
     *;
 } hip_4.4;

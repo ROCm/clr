@@ -90,9 +90,15 @@ class Event {
   hipError_t query();
   hipError_t synchronize();
   hipError_t elapsedTime(Event& stop, float& ms);
-  hipError_t streamWait(amd::HostQueue* queue, uint flags);
 
-  void addMarker(amd::HostQueue* queue, amd::Command* command, bool record);
+  hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
+  hipError_t streamWait(hipStream_t stream, uint flags);
+
+  hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
+  hipError_t addMarker(hipStream_t stream, amd::Command* command, bool record);
+
   bool isRecorded() { return recorded_; }
   amd::Monitor& lock() { return lock_; }
   const int deviceId() { return device_id_; }
@@ -147,6 +153,11 @@ private:
   int64_t time() const;
 };
 
+};
+
+struct CallbackData {
+  int previous_read_index;
+  hip::ihipIpcEventShmem_t* shmem;
 };
 
 #endif // HIP_EVEMT_H

@@ -26,7 +26,6 @@
 #include "trace_helper.h"
 #include "utils/debug.hpp"
 #include "hip_formatting.hpp"
-
 #include "hip_graph_capture.hpp"
 
 #include <unordered_set>
@@ -145,10 +144,8 @@ namespace hc {
 class accelerator;
 class accelerator_view;
 };
-
 namespace hip {
   class Device;
-
   class Stream {
   public:
     enum Priority : int { High = -1, Normal = 0, Low = 1 };
@@ -353,6 +350,7 @@ namespace hip {
   extern bool isValid(hipStream_t& stream);
 };
 
+extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
 struct ihipExec_t {
   dim3 gridDim_;
   dim3 blockDim_;

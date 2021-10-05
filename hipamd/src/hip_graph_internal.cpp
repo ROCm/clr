@@ -578,7 +578,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   }
   rootCommand_->enqueue();
   for (auto& node : levelOrder_) {
-    node->EnqueueCommands();
+    node->EnqueueCommands(stream);
   }
 
   amd::Command* command = new amd::Marker(*queue, false, graphLastCmdWaitList_);
