@@ -335,8 +335,6 @@ local:
 
 hip_4.5 {
 global:
-    hipStreamGetCaptureInfo;
-    hipStreamGetCaptureInfo_v2;
     hipStreamUpdateCaptureDependencies;
     hipGraphRemoveDependencies;
     hipGraphGetEdges;
@@ -344,35 +342,11 @@ global:
     hipGraphNodeGetDependentNodes;
     hipGraphNodeGetType;
     hipGraphDestroyNode;
-    hipGraphInstantiateWithFlags;
-    hipGraphExecUpdate;
     hipGraphClone;
     hipGraphNodeFindInClone;
-    hipGraphAddEventRecordNode;
-    hipGraphEventRecordNodeGetEvent;
-    hipGraphEventRecordNodeSetEvent;
-    hipGraphExecEventRecordNodeSetEvent;
-    hipGraphAddEventWaitNode;
-    hipGraphEventWaitNodeGetEvent;
-    hipGraphEventWaitNodeSetEvent;
-    hipGraphExecEventWaitNodeSetEvent;
-    hipGraphAddHostNode;
-    hipGraphHostNodeGetParams;
-    hipGraphHostNodeSetParams;
-    hipGraphExecHostNodeSetParams;
-    hipGraphAddMemcpyNodeFromSymbol;
-    hipGraphMemcpyNodeSetParamsFromSymbol;
-    hipGraphExecMemcpyNodeSetParamsFromSymbol;
-    hipGraphAddMemcpyNodeToSymbol;
-    hipGraphMemcpyNodeSetParamsToSymbol;
-    hipGraphExecMemcpyNodeSetParamsToSymbol;
     hipGraphAddChildGraphNode;
     hipGraphChildGraphNodeGetGraph;
     hipGraphExecChildGraphNodeSetParams;
-    hipGraphExecMemcpyNodeSetParams;
-    hipGraphMemcpyNodeSetParams1D;
-    hipGraphExecMemcpyNodeSetParams1D;
-    hipGraphExecMemsetNodeSetParams;
 local:
     *;
 } hip_4.4;
