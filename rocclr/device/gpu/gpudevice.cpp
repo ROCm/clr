@@ -493,7 +493,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
 
   // Image support fields
   if (settings().imageSupport_) {
-    info_.imageSupport_ = CL_TRUE;
+    info_.imageSupport_ = true;
     info_.maxSamplers_ = MaxSamplers;
     info_.maxReadImageArgs_ = MaxReadImage;
     info_.maxWriteImageArgs_ = MaxWriteImage;
@@ -506,21 +506,21 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
     info_.imagePitchAlignment_ = 256;        // XXX: 256 pixel pitch alignment for now
     info_.imageBaseAddressAlignment_ = 256;  // XXX: 256 byte base address alignment for now
 
-    info_.bufferFromImageSupport_ = CL_TRUE;
+    info_.bufferFromImageSupport_ = true;
   }
 
-  info_.errorCorrectionSupport_ = CL_FALSE;
+  info_.errorCorrectionSupport_ = false;
 
   if (settings().apuSystem_) {
-    info_.hostUnifiedMemory_ = CL_TRUE;
+    info_.hostUnifiedMemory_ = true;
   }
 
   info_.profilingTimerResolution_ = 1;
   info_.profilingTimerOffset_ = amd::Os::offsetToEpochNanos();
-  info_.littleEndian_ = CL_TRUE;
-  info_.available_ = CL_TRUE;
-  info_.compilerAvailable_ = CL_TRUE;
-  info_.linkerAvailable_ = CL_TRUE;
+  info_.littleEndian_ = true;
+  info_.available_ = true;
+  info_.compilerAvailable_ = true;
+  info_.linkerAvailable_ = true;
 
   info_.executionCapabilities_ = CL_EXEC_KERNEL;
   info_.preferredPlatformAtomicAlignment_ = 0;
