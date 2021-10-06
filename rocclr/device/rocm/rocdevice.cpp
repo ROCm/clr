@@ -1254,7 +1254,7 @@ bool Device::populateOCLDeviceConstants() {
 
   if (agent_profile_ == HSA_PROFILE_FULL) {  // full-profile = participating in coherent memory,
                                              // base-profile = NUMA based non-coherent memory
-    info_.hostUnifiedMemory_ = CL_TRUE;
+    info_.hostUnifiedMemory_ = true;
   }
   info_.memBaseAddrAlign_ =
       8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
@@ -1276,7 +1276,7 @@ bool Device::populateOCLDeviceConstants() {
 
   info_.addressBits_ = LP64_SWITCH(32, 64);
   info_.maxSamplers_ = 16;
-  info_.bufferFromImageSupport_ = CL_FALSE;
+  info_.bufferFromImageSupport_ = false;
   info_.oclcVersion_ = "OpenCL C " OPENCL_C_VERSION_STR " ";
   info_.spirVersions_ = "";
 
@@ -1413,9 +1413,9 @@ bool Device::populateOCLDeviceConstants() {
 
     info_.imageBaseAddressAlignment_ = 256;
 
-    info_.bufferFromImageSupport_ = CL_FALSE;
+    info_.bufferFromImageSupport_ = false;
 
-    info_.imageSupport_ = (info_.maxReadWriteImageArgs_ > 0) ? CL_TRUE : CL_FALSE;
+    info_.imageSupport_ = (info_.maxReadWriteImageArgs_ > 0) ? true : false;
   }
 
   // Enable SVM Capabilities of Hsa device. Ensure

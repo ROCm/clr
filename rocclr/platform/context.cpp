@@ -117,7 +117,7 @@ int Context::checkProperties(const cl_context_properties* properties, Context::I
   while (p->name != 0) {
     switch (p->name) {
       case CL_CONTEXT_INTEROP_USER_SYNC:
-        if (p->ptr == reinterpret_cast<void*>(CL_TRUE)) {
+        if (p->ptr == reinterpret_cast<void*>(true)) {
           info->flags_ |= InteropUserSync;
         }
         break;
