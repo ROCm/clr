@@ -2056,8 +2056,15 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   bool p2p = (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev());
+  bool asan = false;
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  asan = true;
+#endif
+#endif
   if (setup_.disableHwlCopyBuffer_ ||
-      (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() && !p2p)) {
+      (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
+       !(p2p || asan))) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
