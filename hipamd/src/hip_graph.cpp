@@ -371,6 +371,9 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
 
 hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags) {
   HIP_INIT_API(hipGraphCreate, pGraph, flags);
+  if ((pGraph == nullptr) || (flags != 0)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   *pGraph = new ihipGraph();
   HIP_RETURN(hipSuccess);
 }
