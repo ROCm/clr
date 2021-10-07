@@ -195,6 +195,7 @@ hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* com
   } else {
     command->enqueue();
   }
+  return hipSuccess;
 }
 
 hipError_t Event::streamWait(hipStream_t stream, uint flags) {
