@@ -842,12 +842,42 @@ class hipGraphHostNode : public hipGraphNode {
     return new hipGraphHostNode(static_cast<hipGraphHostNode const&>(*this));
   }
 
-  hipError_t CreateCommand(amd::HostQueue* queue);
+  hipError_t CreateCommand(amd::HostQueue* queue) {
+    amd::Command::EventWaitList waitList;
+    commands_.reserve(1);
+    amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
+    commands_.emplace_back(command);
+    return hipSuccess;
+  }
+
+  static void Callback(cl_event event, cl_int command_exec_status, void* user_data) {
+    hipHostNodeParams* pNodeParams = reinterpret_cast<hipHostNodeParams*>(user_data);
+    pNodeParams->fn(pNodeParams->userData);
+  }
+
+  void EnqueueCommands(hipStream_t stream) {
+    if (!commands_.empty()) {
+      if (!commands_[0]->setCallback(CL_COMPLETE, hipGraphHostNode::Callback, pNodeParams_)) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during setCallback");
+      }
+      commands_[0]->enqueue();
+      // Add the new barrier to stall the stream, until the callback is done
+      amd::Command::EventWaitList eventWaitList;
+      eventWaitList.push_back(commands_[0]);
+      amd::Command* block_command =
+          new amd::Marker(*commands_[0]->queue(), !kMarkerDisableFlush, eventWaitList);
+      if (block_command == nullptr) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during block command creation");
+      }
+      block_command->enqueue();
+      block_command->release();
+    }
+  }
 
   void GetParams(hipHostNodeParams* params) {
     std::memcpy(params, pNodeParams_, sizeof(hipHostNodeParams));
   }
-  hipError_t SetParams(hipHostNodeParams* params) {
+  hipError_t SetParams(const hipHostNodeParams* params) {
     std::memcpy(pNodeParams_, params, sizeof(hipHostNodeParams));
     return hipSuccess;
   }
