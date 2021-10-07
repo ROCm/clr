@@ -94,6 +94,7 @@ hipError_t hipGraphMemcpyNode1D::SetCommandParams(void* dst, const void* src, si
     amd::CopyMemoryCommand* command = reinterpret_cast<amd::CopyMemoryCommand*>(commands_[0]);
     command->setParams(*srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, count);
   }
+  return hipSuccess;
 }
 
 hipError_t hipGraphMemcpyNode::SetCommandParams(const hipMemcpy3DParms* pNodeParams) {
