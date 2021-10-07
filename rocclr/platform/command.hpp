@@ -718,7 +718,7 @@ class FillMemoryCommand : public OneMemoryArgCommand {
   const Coord3D& surface() const { return surface_; }
 
   //! Updates the pattern memory to fill with and pattern size
-  void* setPattern(const void* pattern, const size_t patternSize) {
+  void setPattern(const void* pattern, const size_t patternSize) {
     assert(pattern != NULL && "pattern cannot be null");
     memcpy(pattern_, pattern, patternSize);
     patternSize_ = patternSize;
