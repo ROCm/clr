@@ -2212,21 +2212,28 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(cmd);
-  size_t width  = cmd.size().c[0];
-  size_t height = cmd.size().c[1];
-  size_t depth  = cmd.size().c[2];
-  size_t pitch  = cmd.surface().c[0];
-  amd::Coord3D origin = cmd.origin();
-  amd::Coord3D region{cmd.surface().c[1], cmd.surface().c[2], depth};
-  amd::BufferRect rect;
-  rect.create(static_cast<size_t*>(origin), static_cast<size_t*>(region),
-      pitch, 0);
-  for (size_t slice = 0; slice < depth; slice++) {
-    for (size_t row = 0; row < height; row++) {
-      const size_t rowOffset = rect.offset(0, row, slice);
-      if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
-          amd::Coord3D{rowOffset, 0, 0}, amd::Coord3D{width, 1, 1})) {
-        cmd.setStatus(CL_INVALID_OPERATION);
+  if (cmd.type() == CL_COMMAND_FILL_IMAGE) {
+    if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
+        cmd.origin(), cmd.size())) {
+      cmd.setStatus(CL_INVALID_OPERATION);
+    }
+  } else {
+    size_t width  = cmd.size().c[0];
+    size_t height = cmd.size().c[1];
+    size_t depth  = cmd.size().c[2];
+    size_t pitch  = cmd.surface().c[0];
+    amd::Coord3D origin = cmd.origin();
+    amd::Coord3D region{cmd.surface().c[1], cmd.surface().c[2], depth};
+    amd::BufferRect rect;
+    rect.create(static_cast<size_t*>(origin), static_cast<size_t*>(region),
+        pitch, 0);
+    for (size_t slice = 0; slice < depth; slice++) {
+      for (size_t row = 0; row < height; row++) {
+        const size_t rowOffset = rect.offset(0, row, slice);
+        if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
+            amd::Coord3D{rowOffset, 0, 0}, amd::Coord3D{width, 1, 1})) {
+          cmd.setStatus(CL_INVALID_OPERATION);
+        }
       }
     }
   }
