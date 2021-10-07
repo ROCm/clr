@@ -203,7 +203,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
     return hipSuccess;
   }
   amd::ScopedLock lock(lock_);
-  if (!this->flags & hipEventInterprocess) {
+  if (!(this->flags & hipEventInterprocess)) {
     if (!event_->notifyCmdQueue()) {
       return hipErrorLaunchOutOfResources;
     }
@@ -211,7 +211,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   amd::Command* command;
   streamWaitCommand(command, queue);
   enqueueStreamWaitCommand(stream, command);
-  if (!this->flags & hipEventInterprocess) {
+  if (!(this->flags & hipEventInterprocess)) {
     command->release();
   }
   return hipSuccess;
