@@ -308,6 +308,12 @@ global:
     hipMemcpy2DToArrayAsync;
     hipDrvMemcpy2DUnaligned;
     hipArrayDestroy;
+    hipGLGetDevices;
+    hipGraphicsGLRegisterBuffer;
+    hipGraphicsMapResources;
+    hipGraphicsResourceGetMappedPointer;
+    hipGraphicsUnmapResources;
+    hipGraphicsUnregisterResource;
 local:
     *;
 } hip_4.2;
