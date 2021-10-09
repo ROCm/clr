@@ -722,7 +722,8 @@ bool KernelBlitManager::createProgram(Device& device) {
     for (uint i = 0; i < BlitTotal; ++i) {
       const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
       if (symbol == NULL) {
-        break;
+        // Not all blit kernels are needed in some setup, so continue with the rest
+        continue;
       }
       kernels_[i] = new amd::Kernel(*program_, *symbol, BlitName[i]);
       if (kernels_[i] == NULL) {
@@ -736,7 +737,6 @@ bool KernelBlitManager::createProgram(Device& device) {
 
     result = true;
   } while (!result);
-
 
   if (dev().settings().xferBufSize_ > 0) {
     xferBufferSize_ = dev().settings().xferBufSize_;
