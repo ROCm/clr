@@ -838,7 +838,8 @@ bool KernelBlitManager::createProgram(Device& device) {
     for (uint i = 0; i < NumBlitKernels(); ++i) {
       const amd::Symbol* symbol = program_->findSymbol(BlitName[i]);
       if (symbol == nullptr) {
-        break;
+        // Not all blit kernels are needed in some setup, so continue with the rest
+        continue;
       }
       kernels_[i] = new amd::Kernel(*program_, *symbol, BlitName[i]);
       if (kernels_[i] == nullptr) {
