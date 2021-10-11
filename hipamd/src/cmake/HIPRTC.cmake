@@ -32,6 +32,7 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define __global__ __attribute__((global))\n\
 #define __constant__ __attribute__((constant))\n\
 #define __shared__ __attribute__((shared))\n\
+#define __align__(x) __attribute__((aligned(x)))\n\
 
 #define launch_bounds_impl0(requiredMaxThreadsPerBlock)                                       \\\n\
     __attribute__((amdgpu_flat_work_group_size(1, requiredMaxThreadsPerBlock)))\n\
