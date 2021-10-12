@@ -294,6 +294,18 @@ int Context::create(const intptr_t* properties) {
     }
   } else {
     if (info_.flags_ & GLDeviceKhr) {
+      if (glenv_ == NULL) {
+        HMODULE h = (HMODULE)Os::loadLibrary(
+#ifdef _WIN32
+          "OpenGL32.dll"
+#else  //!_WIN32
+          "libGL.so.1"
+#endif  //!_WIN32
+        );
+        if (!h || !(glenv_ = new GLFunctions(h, (info_.flags_ & Flags::EGLDeviceKhr) != 0))) {
+          return CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR;
+        }
+      }
       if (!glenv_->init(reinterpret_cast<intptr_t>(info_.hDev_[GLDeviceKhrIdx]),
                         reinterpret_cast<intptr_t>(info_.hCtx_))) {
         delete glenv_;
