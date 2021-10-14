@@ -746,7 +746,7 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   FillBufferInfo fill_info;
   if (head_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
-    guarantee((head_size % pattern_size) == 0);
+    guarantee((head_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
     fill_info.fill_size_ = head_size;
     packed_info.push_back(fill_info);
@@ -755,7 +755,7 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   fill_info.clearInfo();
   if (aligned_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
-    guarantee((aligned_size % pattern_size) == 0);
+    guarantee((aligned_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
     if (pattern_size < sizeof(size_t)) {
       if (!ExpandPattern64(pattern, pattern_size, fill_info.expanded_pattern_)) {
@@ -772,7 +772,7 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
 
   if (tail_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
-    guarantee((tail_size % pattern_size) == 0);
+    guarantee((tail_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
     fill_info.fill_size_ = tail_size;
     packed_info.push_back(fill_info);
