@@ -700,7 +700,9 @@ hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   // capture cannot be initiated on legacy stream
   // It can be initiated if the stream is not already in capture mode
-  if (stream == nullptr || s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+  if (stream == nullptr ||
+      (mode < hipStreamCaptureModeGlobal || mode > hipStreamCaptureModeRelaxed) ||
+      s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   s->SetCaptureGraph(new ihipGraph());
