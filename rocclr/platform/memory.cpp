@@ -457,11 +457,12 @@ bool Memory::setDestructorCallback(DestructorCallBackFunction callback, void* da
 }
 
 void Memory::signalWrite(const Device* writer) {
-  // The potential race condition below doesn't matter, no critical section needed
-  ++version_;
-  lastWriter_ = writer;
-  // Keep subbuffers tracking only for multiple devices and it's not system memory
-  if ((numDevices() > 1) && (nullptr == getHostMem())) {
+  // Disable cache coherency layer for HIP
+  if (!amd::IS_HIP) {
+    // (the potential race condition below doesn't matter, no critical
+    // section needed)
+    ++version_;
+    lastWriter_ = writer;
     // Update all subbuffers for this object
     for (auto buf : subBuffers_) {
       buf->signalWrite(writer);
