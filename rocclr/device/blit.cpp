@@ -678,15 +678,15 @@ uint32_t HostBlitManager::sRGBmap(float fc) const {
   return (uint32_t)(c * 255.0 + 0.5);
 }
 
-bool HostBlitManager::FillBufferInfo::ExpandPattern64(size_t pattern, size_t pattern_size,
-                                                      size_t& pattern64) {
+bool HostBlitManager::FillBufferInfo::ExpandPattern64(uint64_t pattern, size_t pattern_size,
+                                                      uint64_t& pattern64) {
 
   bool retval = true;
 
   do {
 
     // If the pattern is 0 or if the pattern_size is same as max size.
-    if (pattern == 0 ||  pattern_size == sizeof(size_t)) {
+    if (pattern == 0 ||  pattern_size == sizeof(uint64_t)) {
       pattern64 = pattern;
       break;
     }
@@ -696,7 +696,7 @@ bool HostBlitManager::FillBufferInfo::ExpandPattern64(size_t pattern, size_t pat
     pattern64 = 0;
 
     if (pattern_size == sizeof(uint8_t)) {
-      pattern64 = pattern & 0xff;
+      pattern = pattern & 0xff;
       pattern64 = ((pattern << 56) | (pattern << 48) | (pattern << 40) | (pattern << 32)
                     | (pattern << 24) | (pattern << 16) | (pattern << 8) | (pattern));
     } else if (pattern_size == sizeof(uint16_t)) {
@@ -737,8 +737,8 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   size_t tail_size = (fill_size - head_size) % sizeof(size_t);
 
   // 4. Clear unwanted bytes from the pattern if the pattern size is < sizeof(size_t).
-  size_t pattern = *(reinterpret_cast<size_t*>(const_cast<void*>(pattern_ptr)));
-  if (pattern_size < sizeof(size_t)) {
+  uint64_t pattern = *(reinterpret_cast<uint64_t*>(const_cast<void*>(pattern_ptr)));
+  if (pattern_size < sizeof(uint64_t)) {
     ClearBits64(pattern, (pattern_size * 8));
   }
 
@@ -757,7 +757,7 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
     guarantee((aligned_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
-    if (pattern_size < sizeof(size_t)) {
+    if (pattern_size < sizeof(uint64_t)) {
       if (!ExpandPattern64(pattern, pattern_size, fill_info.expanded_pattern_)) {
         DevLogPrintfError("Failed Expanding the pattern for pattern:%u, pattern_size: %u",
                           pattern, pattern_size);

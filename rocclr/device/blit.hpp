@@ -361,10 +361,10 @@ class HostBlitManager : public device::BlitManager {
                   std::vector<FillBufferInfo>& packed_info);
 
   private:
-    static bool ExpandPattern64(size_t pattern, size_t pattern_size, size_t& pattern64);
+    static bool ExpandPattern64(uint64_t pattern, size_t pattern_size, uint64_t& pattern64);
 
-    static inline void ClearBits64(size_t& pattern, size_t num_bits) {
-      pattern &= ~(~(static_cast<size_t>(0)) << num_bits);
+    static inline void ClearBits64(uint64_t& pattern, uint64_t num_bits) {
+      pattern &= ~(~(static_cast<uint64_t>(0)) << num_bits);
 
     }
 
@@ -376,7 +376,7 @@ class HostBlitManager : public device::BlitManager {
 
   public:
     size_t fill_size_;          // Fill size for this command
-    size_t expanded_pattern_;   // Pattern for this command
+    uint64_t expanded_pattern_; // Pattern for this command
     bool pattern_expanded_;     // Boolean to check if pattern is expanded
   };
 
