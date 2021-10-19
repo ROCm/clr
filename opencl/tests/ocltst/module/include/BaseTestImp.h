@@ -34,6 +34,7 @@
 #define KERNEL(...) #__VA_ARGS__
 
 #ifdef _MSC_VER
+#define NOMINMAX
 #define snprintf sprintf_s
 #endif
 

@@ -90,8 +90,8 @@ set_target_properties(oclperf PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
-    EXCLUDE_FROM_ALL TRUE)
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
 
 target_compile_definitions(oclperf
     PRIVATE
@@ -139,3 +139,7 @@ foreach(TEST ${TESTS})
             ${CMAKE_BINARY_DIR}/tests/ocltst
         USES_TERMINAL)
 endforeach()
+
+INSTALL(TARGETS oclperf DESTINATION tests/ocltst)
+INSTALL(FILES oclperf.exclude DESTINATION tests/ocltst)
+

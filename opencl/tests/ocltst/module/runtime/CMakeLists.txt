@@ -58,8 +58,8 @@ set_target_properties(oclruntime PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
-    EXCLUDE_FROM_ALL TRUE)
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
 
 target_compile_definitions(oclruntime
     PRIVATE
@@ -107,3 +107,7 @@ foreach(TEST ${TESTS})
             ${CMAKE_BINARY_DIR}/tests/ocltst
         USES_TERMINAL)
 endforeach()
+
+INSTALL(TARGETS oclruntime DESTINATION tests/ocltst)
+INSTALL(FILES oclruntime.exclude DESTINATION tests/ocltst)
+
