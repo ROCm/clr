@@ -117,8 +117,8 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
   if ((cpuAccess_ == nullptr) && zero && !prog.isInternal()) {
     uint64_t pattern = 0;
     size_t patternSize = ((size % sizeof(pattern)) == 0) ? sizeof(pattern) : 1;
-    prog.palDevice().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize, amd::Coord3D(0),
-                                          amd::Coord3D(size));
+    prog.palDevice().xferMgr().fillBuffer(*gpuAccess_, &pattern, patternSize, amd::Coord3D(size),
+                                          amd::Coord3D(0), amd::Coord3D(size));
   }
 
   switch (segment) {

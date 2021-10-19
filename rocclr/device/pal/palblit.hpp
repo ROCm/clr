@@ -344,6 +344,7 @@ class KernelBlitManager : public DmaBlitManager {
   virtual bool fillBuffer(device::Memory& memory,      //!< Memory object to fill with pattern
                           const void* pattern,         //!< Pattern data
                           size_t patternSize,          //!< Pattern size
+                          const amd::Coord3D& surface, //!< Whole Surface of mem object.
                           const amd::Coord3D& origin,  //!< Destination origin
                           const amd::Coord3D& size,    //!< Size of the fill region
                           bool entire = false,         //!< Entire buffer will be updated

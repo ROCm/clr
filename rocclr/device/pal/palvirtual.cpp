@@ -810,7 +810,8 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   uint64_t pattern = 0;
   amd::Coord3D origin(0, 0, 0);
   amd::Coord3D region(virtualQueue_->size(), 0, 0);
-  if (!dev().xferMgr().fillBuffer(*virtualQueue_, &pattern, sizeof(pattern), origin, region)) {
+  if (!dev().xferMgr().fillBuffer(*virtualQueue_, &pattern, sizeof(pattern), region, origin,
+                                  region)) {
     return false;
   }
 
@@ -1826,7 +1827,7 @@ bool VirtualGPU::fillMemory(cl_command_type type, amd::Memory* amdMemory, const 
         pattern = fillValue;
         patternSize = elemSize;
       }
-      result = blitMgr().fillBuffer(*memory, pattern, patternSize, realOrigin, realSize,
+      result = blitMgr().fillBuffer(*memory, pattern, patternSize, realSize, realOrigin, realSize,
                                     amdMemory->isEntirelyCovered(origin, size), forceBlit);
       if (nullptr != bufferFromImage) {
         bufferFromImage->release();

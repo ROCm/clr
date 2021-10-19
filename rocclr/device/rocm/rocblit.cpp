@@ -1941,8 +1941,35 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
 
 // ================================================================================================
 bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, size_t patternSize,
-                                   const amd::Coord3D& origin, const amd::Coord3D& size,
-                                   bool entire, bool forceBlit) const {
+                                   const amd::Coord3D& surface, const amd::Coord3D& origin,
+                                   const amd::Coord3D& size, bool entire, bool forceBlit) const {
+
+  guarantee(size[0] > 0 && size[1] > 0 && size[2] > 0, "Dimension cannot be 0");
+
+  if (size[1] == 1 && size[2] == 1) {
+    return fillBuffer1D(memory, pattern, patternSize, surface, origin, size, entire, forceBlit);
+  } else if (size[2] == 1) {
+    return fillBuffer2D(memory, pattern, patternSize, surface, origin, size, entire, forceBlit);
+  } else {
+    bool ret_val = true;
+    amd::Coord3D my_origin(origin);
+    amd::Coord3D my_region{surface[1], surface[2], size[2]};
+    amd::BufferRect rect;
+    rect.create(static_cast<size_t*>(my_origin), static_cast<size_t*>(my_region), surface[0], 0);
+    for (size_t slice = 0; slice < size[2]; ++slice) {
+      const size_t row_offset = rect.offset(0, 0, slice);
+      amd::Coord3D new_origin(row_offset, origin[1], origin[2]);
+      ret_val |= fillBuffer2D(memory, pattern, patternSize, surface, new_origin, size, entire,
+                              forceBlit);
+    }
+    return ret_val;
+  }
+}
+
+// ================================================================================================
+bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern, size_t patternSize,
+                                     const amd::Coord3D& surface, const amd::Coord3D& origin,
+                                     const amd::Coord3D& size, bool entire, bool forceBlit) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -1950,7 +1977,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
-    result = HostBlitManager::fillBuffer(memory, pattern, patternSize, origin, size, entire);
+    result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);
     synchronize();
     return result;
   } else {
@@ -2044,6 +2071,112 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   return result;
 }
 
+// ================================================================================================
+bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern,
+                                     size_t patternSize, const amd::Coord3D& surface,
+                                     const amd::Coord3D& origin, const amd::Coord3D& size,
+                                     bool entire, bool forceBlit) const {
+
+  amd::ScopedLock k(lockXferOps_);
+  bool result = false;
+
+    // Use host fill if memory has direct access
+  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
+    // Stall GPU before CPU access
+    gpu().releaseGpuMemoryFence();
+    result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);
+    synchronize();
+    return result;
+  } else {
+    uint fillType = FillBufferAligned2D;
+    uint64_t fillSizeX = size[0]/patternSize;
+    uint64_t fillSizeY = size[1]/patternSize;
+
+    size_t globalWorkOffset[3] = {0, 0, 0};
+    size_t globalWorkSize[3] = {amd::alignUp(fillSizeX, 16),
+                                amd::alignUp(fillSizeY, 16), 1};
+    size_t localWorkSize [3] = {16, 16, 1};
+
+    uint32_t alignment = (patternSize & 0x7) == 0 ?
+                          sizeof(uint64_t) :
+                          (patternSize & 0x3) == 0 ?
+                          sizeof(uint32_t) :
+                          (patternSize & 0x1) == 0 ?
+                          sizeof(uint16_t) : sizeof(uint8_t);
+
+    cl_mem mem = as_cl<amd::Memory>(memory.owner());
+     if (alignment == sizeof(uint64_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
+    } else if (alignment == sizeof(uint32_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+    } else if (alignment == sizeof(uint16_t)) {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+    } else {
+      setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
+      setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
+      setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+    }
+
+    Memory* gpuCB = dev().getRocMemory(constantBuffer_);
+    if (gpuCB == nullptr) {
+      return false;
+    }
+
+    // Find offset in the current constant buffer to allow multipel fills
+    uint32_t  constBufOffset = ConstantBufferOffset();
+    auto constBuf = reinterpret_cast<address>(constantBuffer_->getHostMem()) + constBufOffset;
+    memcpy(constBuf, pattern, patternSize);
+
+    mem = as_cl<amd::Memory>(gpuCB->owner());
+    setArgument(kernels_[fillType], 4, sizeof(cl_mem), &mem, constBufOffset);
+
+    uint64_t mem_origin = static_cast<uint64_t>(origin[0]);
+    uint64_t width = static_cast<uint64_t>(size[0]);
+    uint64_t height = static_cast<uint64_t>(size[1]);
+    uint64_t pitch = static_cast<uint64_t>(surface[0]);
+
+    patternSize/= alignment;
+    mem_origin /= alignment;
+
+    setArgument(kernels_[fillType], 5, sizeof(uint32_t), &patternSize);
+    setArgument(kernels_[fillType], 6, sizeof(mem_origin), &mem_origin);
+    setArgument(kernels_[fillType], 7, sizeof(width), &width);
+    setArgument(kernels_[fillType], 8, sizeof(height), &height);
+    setArgument(kernels_[fillType], 9, sizeof(pitch), &pitch);
+
+
+    // Create ND range object for the kernel's execution
+    amd::NDRangeContainer ndrange(2, globalWorkOffset, globalWorkSize, localWorkSize);
+
+    // Execute the blit
+    address parameters = captureArguments(kernels_[fillType]);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
+    releaseArguments(parameters);
+  }
+
+  synchronize();
+
+  return result;
+}
+
+// ================================================================================================
+bool KernelBlitManager::fillBuffer3D(device::Memory& memory, const void* pattern,
+                                     size_t patternSize, const amd::Coord3D& surface,
+                                     const amd::Coord3D& origin, const amd::Coord3D& size,
+                                     bool entire, bool forceBlit) const {
+  ShouldNotReachHere();
+  return false;
+}
 // ================================================================================================
 bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                    const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
