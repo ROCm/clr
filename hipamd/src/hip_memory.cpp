@@ -2405,7 +2405,10 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   }
   amd::HostQueue* queue = hip::getQueue(stream);
   std::vector<amd::Command*> commands;
-  ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, queue);
+  status = ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, queue);
+  if (status != hipSuccess) {
+    return status;
+  }
   for (auto& command : commands) {
     command->enqueue();
     if (!isAsync) {
