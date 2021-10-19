@@ -293,6 +293,7 @@ class Command : public Event {
   //! Update with the list of events this command needs to wait on before dispatch
   void updateEventWaitList(const EventWaitList& waitList) {
     for (auto event : waitList) {
+      event->retain();
       eventWaitList_.push_back(event);
     }
   }
