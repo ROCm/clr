@@ -1,4 +1,6 @@
-add_executable(ocltst
+add_executable(ocltst)
+
+target_sources(ocltst PRIVATE
     ${OCLTST_DIR}/env/oclsysinfo.cpp
     ${OCLTST_DIR}/env/ocltst.cpp
     ${OCLTST_DIR}/env/pfm.cpp
@@ -8,12 +10,20 @@ add_executable(ocltst
     ${OCLTST_DIR}/module/common/OCLThread.cpp
     ${OCLTST_DIR}/module/common/OCLWrapper.cpp)
 
+# Windows compatibilty logic
+if (WIN32)
+    target_sources(ocltst PRIVATE
+        ${OCLTST_DIR}/env/getopt.cpp
+        ${OCLTST_DIR}/env/ServiceCode.cpp
+        ${OCLTST_DIR}/env/window.cpp)
+endif()
+
+
 set_target_properties(ocltst PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst
-    EXCLUDE_FROM_ALL TRUE)
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tests/ocltst)
 
 target_compile_definitions(ocltst
     PRIVATE
@@ -27,3 +37,6 @@ target_link_libraries(ocltst
     PRIVATE
         OpenCL
         TestLog)
+
+INSTALL(TARGETS ocltst DESTINATION tests/ocltst)
+
