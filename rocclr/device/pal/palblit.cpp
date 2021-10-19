@@ -2101,8 +2101,8 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
 }
 
 bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, size_t patternSize,
-                                   const amd::Coord3D& origin, const amd::Coord3D& size,
-                                   bool entire, bool forceBlit) const {
+                                   const amd::Coord3D& surface, const amd::Coord3D& origin,
+                                   const amd::Coord3D& size, bool entire, bool forceBlit) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -2110,7 +2110,8 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
   if (setup_.disableFillBuffer_ || (!forceBlit && gpuMem(memory).isHostMemDirectAccess())) {
     gpu().releaseGpuMemoryFence();
 
-    result = HostBlitManager::fillBuffer(memory, pattern, patternSize, origin, size, entire);
+    result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size,
+                                         entire);
     synchronize();
     return result;
   } else {

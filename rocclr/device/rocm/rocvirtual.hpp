@@ -436,6 +436,7 @@ class VirtualGPU : public device::VirtualDevice {
                   amd::Memory* amdMemory,      //!< memory object to fill
                   const void* pattern,         //!< pattern to fill the memory
                   size_t patternSize,          //!< pattern size
+                  const amd::Coord3D& surface, //!< Whole Surface of mem object.
                   const amd::Coord3D& origin,  //!< memory origin
                   const amd::Coord3D& size,    //!< memory size for filling
                   bool forceBlit = false       //!< force shader blit path

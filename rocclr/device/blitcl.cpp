@@ -27,6 +27,10 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
   extern void __amd_fillBufferAligned(__global uchar*, __global ushort*, __global uint*,
                                       __global ulong*, __constant uchar*, uint, ulong, ulong);
 
+  extern void __amd_fillBufferAligned2D(__global uchar*, __global ushort*, __global uint*,
+                                        __global ulong*, __constant uchar*, uint, ulong, ulong,
+                                        ulong, ulong);
+
   extern void __amd_copyBuffer(__global uchar*, __global uchar*, ulong, ulong, ulong, uint);
 
   extern void __amd_copyBufferAligned(__global uint*, __global uint*, ulong, ulong, ulong, uint);
@@ -45,6 +49,21 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
                                                ulong size) {
     __amd_fillBufferAligned(bufUChar, bufUShort, bufUInt, bufULong,
                             pattern, patternSize, offset, size);
+  }
+
+  __kernel void __amd_rocclr_fillBufferAligned2D(__global uchar* bufUChar,
+                                                 __global ushort* bufUShort,
+                                                 __global uint* bufUInt,
+                                                 __global ulong* bufULong,
+                                                 __constant uchar* pattern,
+                                                 uint patternSize,
+                                                 ulong offset,
+                                                 ulong width,
+                                                 ulong height,
+                                                 ulong pitch) {
+    __amd_fillBufferAligned2D(bufUChar, bufUShort, bufUInt, bufULong,
+                              pattern, patternSize, offset, width, height,
+                              pitch);
   }
 
   __kernel void __amd_rocclr_copyBuffer(__global uchar* srcI, __global uchar* dstI,
