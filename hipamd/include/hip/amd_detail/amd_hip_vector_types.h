@@ -52,11 +52,25 @@ THE SOFTWARE.
 namespace std {
 using ::size_t;
 
+template <class _Tp, _Tp __v> struct integral_constant {
+  static constexpr const _Tp value = __v;
+  typedef _Tp value_type;
+  typedef integral_constant type;
+  constexpr operator value_type() const { return value; }
+  constexpr value_type operator()() const { return value; }
+};
+template <class _Tp, _Tp __v> constexpr const _Tp integral_constant<_Tp, __v>::value;
+
+typedef integral_constant<bool, true> true_type;
+typedef integral_constant<bool, false> false_type;
+
+template <bool B> using bool_constant = integral_constant<bool, B>;
+typedef bool_constant<true> true_type;
+typedef bool_constant<false> false_type;
+
 template <bool __B, class __T = void> struct enable_if {};
 template <class __T> struct enable_if<true, __T> { typedef __T type; };
 
-struct true_type { static const __constant__ bool value = true; };
-struct false_type { static const __constant__ bool value = false; };
 template<bool _B> struct true_or_false_type : public false_type {};
 template<> struct true_or_false_type<true> : public true_type {};
 
