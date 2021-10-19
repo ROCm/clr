@@ -388,22 +388,19 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
     return status;
   }
 
-  hip::Event* eStart = reinterpret_cast<hip::Event*>(startEvent);
-  hip::Event* eStop = reinterpret_cast<hip::Event*>(stopEvent);
-  command->enqueue();
   if (startEvent != nullptr) {
-    status = eStart->addMarker(hStream, command, false);
-    command->retain();
+    hip::Event* eStart = reinterpret_cast<hip::Event*>(startEvent);
+    status = eStart->addMarker(hStream, nullptr, false);
+    if (status != hipSuccess) {
+      return status;
+    }
   }
-  if (status != hipSuccess) {
-    return status;
-  }
+
+  command->enqueue();
+
   if (stopEvent != nullptr) {
-    status = eStop->addMarker(hStream, command, true);
-    command->retain();
-  }
-  if (status != hipSuccess) {
-    return status;
+    hip::Event* eStop = reinterpret_cast<hip::Event*>(stopEvent);
+    eStop->BindCommand(*command);
   }
   command->release();
 
