@@ -274,7 +274,7 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
     return hipErrorOutOfMemory;
   }
 
-  if (amdContext->devices()[0]->info().maxMemAllocSize_ < sizeBytes) {
+  if (!useHostDevice && (amdContext->devices()[0]->info().maxMemAllocSize_ < sizeBytes)) {
     return hipErrorOutOfMemory;
   }
 
@@ -282,9 +282,15 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
               useHostDevice ? curDevContext->svmDevices()[0] : nullptr);
 
   if (*ptr == nullptr) {
-    size_t free = 0, total =0;
-    hipMemGetInfo(&free, &total);
-    LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n", sizeBytes, free, total);
+    if (!useHostDevice) {
+      size_t free = 0, total =0;
+      hipError_t err = hipMemGetInfo(&free, &total);
+      if (err == hipSuccess) {
+        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n", sizeBytes, free, total);
+      }
+    } else {
+      LogPrintfError("Allocation failed : Pinned Memory, size :%zu \n", sizeBytes);
+    }
     return hipErrorOutOfMemory;
   }
   size_t offset = 0; //this is ignored
