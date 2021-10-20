@@ -39,8 +39,8 @@ hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedP
 hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset,
                                      size_t& sym_size, hipDeviceptr_t& device_ptr);
 
-hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D srcOrigin,
-                                  amd::Coord3D dstOrigin, amd::Coord3D copyRegion,
+hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch, amd::Memory*& dstMemory,
                                   amd::Image*& srcImage, amd::BufferRect& srcRect,
                                   amd::BufferRect& dstRect);

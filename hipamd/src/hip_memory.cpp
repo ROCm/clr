@@ -1189,11 +1189,11 @@ hipError_t hipMemcpyDtoHAsync(void* dstHost,
   HIP_RETURN_DURATION(ihipMemcpy(dstHost, srcDevice, ByteCount, hipMemcpyDeviceToHost, *hip::getQueue(stream), true));
 }
 
-hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D srcOrigin,
-                                  amd::Coord3D dstOrigin, amd::Coord3D copyRegion,
-                                  size_t dstRowPitch, size_t dstSlicePitch, amd::Memory*& dstMemory,
-                                  amd::Image*& srcImage, amd::BufferRect& srcRect,
-                                  amd::BufferRect& dstRect) {
+hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
+                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
+                                  size_t dstRowPitch, size_t dstSlicePitch,
+                                  amd::Memory*& dstMemory, amd::Image*& srcImage,
+                                  amd::BufferRect& srcRect, amd::BufferRect& dstRect) {
   size_t dstOffset = 0;
   dstMemory = getMemoryObject(dstDevice, dstOffset);
   if (srcArray == nullptr || (dstMemory == nullptr)) {
@@ -1608,9 +1608,10 @@ hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hip
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray, amd::Coord3D& srcOrigin,
-                                  amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
-                                  size_t srcRowPitch, size_t srcSlicePitch, amd::Image*& dstImage,
+hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
+                                  amd::Coord3D& srcOrigin, amd::Coord3D& dstOrigin,
+                                  amd::Coord3D& copyRegion, size_t srcRowPitch,
+                                  size_t srcSlicePitch, amd::Image*& dstImage,
                                   amd::BufferRect& srcRect) {
   if ((srcHost == nullptr) || dstArray == nullptr) {
     return hipErrorInvalidValue;
