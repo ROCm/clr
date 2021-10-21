@@ -1069,7 +1069,7 @@ inline static hipError_t hipMallocManaged(void** ptr, size_t size, unsigned int 
 }
 
 inline static hipError_t hipMallocArray(hipArray** array, const hipChannelFormatDesc* desc,
-                                        size_t width, size_t height,
+                                        size_t width, size_t height __dparm(0),
                                         unsigned int flags __dparm(hipArrayDefault)) {
     return hipCUDAErrorTohipError(cudaMallocArray(array, desc, width, height, flags));
 }

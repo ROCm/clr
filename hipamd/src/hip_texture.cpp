@@ -133,10 +133,6 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   if (pResDesc->resType == hipResourceTypeMipmappedArray) {
     return hipErrorNotSupported;
   }
-  // We don't program the border_color_ptr field in the HW sampler SRD.
-  if (pTexDesc->addressMode[0] == hipAddressModeBorder) {
-    return hipErrorNotSupported;
-  }
   // We don't program the max_ansio_ratio field in the the HW sampler SRD.
   if (pTexDesc->maxAnisotropy != 0) {
     return hipErrorNotSupported;
@@ -172,17 +168,13 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
 #define CL_FILTER_NONE 0x1142
 #endif
   cl_filter_mode filterMode = CL_FILTER_NONE;
+  cl_filter_mode mipFilterMode = CL_FILTER_NONE;
 #undef CL_FILTER_NONE
   // hipTextureDesc::filterMode is ignored if hipResourceDesc::resType is hipResourceTypeLinear.
   if (pResDesc->resType != hipResourceTypeLinear) {
     filterMode = hip::getCLFilterMode(pTexDesc->filterMode);
   }
 
-#ifndef CL_FILTER_NONE
-#define CL_FILTER_NONE 0x1142
-#endif
-  cl_filter_mode mipFilterMode = CL_FILTER_NONE;
-#undef CL_FILTER_NONE
   if (pResDesc->resType == hipResourceTypeMipmappedArray) {
     mipFilterMode = hip::getCLFilterMode(pTexDesc->mipmapFilterMode);
   }
