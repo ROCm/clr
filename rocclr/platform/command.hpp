@@ -781,10 +781,10 @@ class StreamOperationCommand : public OneMemoryArgCommand {
         offset_(offset),
         sizeBytes_(sizeBytes) {
     // Sanity check
-    assert((cmdType == ROCCLR_COMMAND_STREAM_WRITE_VALUE) ||
-           (cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE) ||
-           ((cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE) && (GPU_STREAMOPS_CP_WAIT) &&
-           ((memory_->getMemFlags()) & (ROCCLR_MEM_HSA_SIGNAL_MEMORY))) &&
+    assert(((cmdType == ROCCLR_COMMAND_STREAM_WRITE_VALUE) ||
+            (cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE) ||
+            ((cmdType == ROCCLR_COMMAND_STREAM_WAIT_VALUE) && GPU_STREAMOPS_CP_WAIT &&
+             (memory_->getMemFlags() & ROCCLR_MEM_HSA_SIGNAL_MEMORY))) &&
            "Invalid Stream Operation");
   }
 
