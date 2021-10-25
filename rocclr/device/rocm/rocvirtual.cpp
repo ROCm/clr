@@ -846,8 +846,10 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   // Wait on signal ?
   if (blocking) {
+    LogInfo("Runtime reachead the AQL queue limit. SW is much ahead of HW. Blocking AQL queue!");
     if (!Barriers().WaitCurrent()) {
-      LogPrintfError("Failed blocking queue wait with signal [0x%lx]", packet->completion_signal.handle);
+      LogPrintfError("Failed blocking queue wait with signal [0x%lx]",
+                     packet->completion_signal.handle);
       return false;
     }
   }
@@ -914,7 +916,8 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
 }
 
 // ================================================================================================
-void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
+void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
+                                       hsa_signal_t signal) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
 
@@ -934,7 +937,6 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
 
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
-  barrier_packet_.completion_signal.handle = 0;
 
   if (!skipSignal) {
     // Pool size must grow to the size of pending AQL packets
@@ -943,6 +945,9 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal) {
     // Get active signal for current dispatch if profiling is necessary
     barrier_packet_.completion_signal =
       Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, pool_size);
+  } else {
+    // Attach external signal to the packet
+    barrier_packet_.completion_signal = signal;
   }
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
@@ -1022,6 +1027,7 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       schedulerQueue_(nullptr),
       schedulerSignal_({0}),
       barriers_(*this),
+      kernarg_pool_signal_(KernelArgPoolNumSignal),
       cuMask_(cuMask),
       priority_(priority),
       copy_command_type_(0)
@@ -1175,16 +1181,29 @@ bool VirtualGPU::create() {
 // ================================================================================================
 bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
-  kernarg_pool_base_ = reinterpret_cast<char*>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
-                                               Device::MemorySegment::kKernArg));
+  kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
+  active_chunk_ = 0;
+  kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
+                                                 Device::MemorySegment::kKernArg));
   if (kernarg_pool_base_ == nullptr) {
     return false;
+  }
+  hsa_agent_t agent = gpu_device();
+  for (auto& it : kernarg_pool_signal_) {
+    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 1, &agent, &it)) {
+      return false;
+    }
   }
   return true;
 }
 
 // ================================================================================================
 void VirtualGPU::destroyPool() {
+  for (auto& it : kernarg_pool_signal_) {
+    if (it.handle != 0) {
+      hsa_signal_destroy(it);
+    }
+  }
   if (kernarg_pool_base_ != nullptr) {
     roc_device_.hostFree(kernarg_pool_base_, kernarg_pool_size_);
   }
@@ -1192,27 +1211,32 @@ void VirtualGPU::destroyPool() {
 
 // ================================================================================================
 void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
-  char* result = nullptr;
+  address result = nullptr;
   do {
     result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
     const size_t pool_new_usage = (result + size) - kernarg_pool_base_;
-    if (pool_new_usage <= kernarg_pool_size_) {
+    if (pool_new_usage <= kernarg_pool_chunk_end_) {
       kernarg_pool_cur_offset_ = pool_new_usage;
       return result;
     } else {
       //! We run out of the arguments space!
       //! That means the app didn't call clFlush/clFinish for very long time.
-      //! We can issue a barrier to avoid expensive extra memory allocations.
-
-      // Dispatch barrier packet into the queue and wait till it finishes.
-      dispatchBarrierPacket(kBarrierPacketHeader);
-      if (!Barriers().WaitCurrent()) {
-        LogError("Kernel arguments reset failed");
-      }
-      resetKernArgPool();
+      // Reset the signal for the barrier packet
+      hsa_signal_silent_store_relaxed(kernarg_pool_signal_[active_chunk_], kInitSignalValueOne);
+      // Dispatch a barrier packet into the queue
+      dispatchBarrierPacket(kBarrierPacketHeader, true, kernarg_pool_signal_[active_chunk_]);
+      // Get the next chunk
+      active_chunk_ = ++active_chunk_ % KernelArgPoolNumSignal;
+      // Make sure the new active chunk is free
+      bool test = WaitForSignal(kernarg_pool_signal_[active_chunk_], ActiveWait());
+      assert(test && "Runtime can't fail a wait for chunk!");
+      // Make sure the current offset matches the new chunk to avoid possible overlaps
+      // between chunks and issues during recycle
+      kernarg_pool_cur_offset_ = (active_chunk_ == 0) ? 0 : kernarg_pool_chunk_end_;
+      kernarg_pool_chunk_end_ = kernarg_pool_cur_offset_ +
+                                kernarg_pool_size_ / KernelArgPoolNumSignal;
     }
   } while (true);
-
   return result;
 }
 

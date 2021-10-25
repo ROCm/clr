@@ -388,7 +388,8 @@ class VirtualGPU : public device::VirtualDevice {
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               size_t size = 1);
-  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false);
+  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
+                             hsa_signal_t signal = hsa_signal_t{0});
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
   void dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t* packet,
@@ -475,9 +476,14 @@ class VirtualGPU : public device::VirtualDevice {
 
   HwQueueTracker  barriers_;      //!< Tracks active barriers in ROCr
 
-  char* kernarg_pool_base_;
-  size_t kernarg_pool_size_;
-  uint kernarg_pool_cur_offset_;
+  //!< The number of chunks the kernel arg pool will be divided
+  static constexpr uint32_t KernelArgPoolNumSignal = 8;
+  address   kernarg_pool_base_;
+  uint32_t  kernarg_pool_size_;
+  uint32_t  kernarg_pool_chunk_end_;    //!< The end offset of the current chunck
+  uint32_t  active_chunk_;              //!< The index of the current active chunk
+  uint32_t  kernarg_pool_cur_offset_;
+  std::vector<hsa_signal_t> kernarg_pool_signal_; //!< Pool of HSA signals to manage multiple chunks
 
   friend class Timestamp;
 
