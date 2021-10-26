@@ -390,7 +390,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 
   if (startEvent != nullptr) {
     hip::Event* eStart = reinterpret_cast<hip::Event*>(startEvent);
-    status = eStart->addMarker(hStream, nullptr, false);
+    status = eStart->addMarker(hStream, nullptr, true);
     if (status != hipSuccess) {
       return status;
     }
@@ -400,7 +400,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 
   if (stopEvent != nullptr) {
     hip::Event* eStop = reinterpret_cast<hip::Event*>(stopEvent);
-    eStop->BindCommand(*command);
+    eStop->BindCommand(*command, true);
   }
   command->release();
 
