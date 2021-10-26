@@ -98,12 +98,13 @@ class Event {
   hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
   hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
   hipError_t addMarker(hipStream_t stream, amd::Command* command, bool record);
-  void BindCommand(amd::Command& command) {
+  void BindCommand(amd::Command& command, bool record) {
     amd::ScopedLock lock(lock_);
     if (event_ != nullptr) {
       event_->release();
     }
     event_ = &command.event();
+    recorded_ = record;
     command.retain();
   }
 
