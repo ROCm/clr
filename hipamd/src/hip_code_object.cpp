@@ -509,6 +509,9 @@ hipError_t DynCO::loadCodeObject(const char* fname, const void* image) {
   // Define Global functions
   IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
 
+  // Resets the file info such as desc, size and name
+  // as they are not necessary once the code object is loaded
+  fb_info_->ResetFileInfo();
   return hipSuccess;
 }
 
