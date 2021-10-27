@@ -84,7 +84,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   if (!createInfo.flags.sdiExternal) {
     // Update free memory size counters
-    dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
+    dev.updateAllocedMemory(memRef->gpuMem_->Desc().heaps[0], memRef->gpuMem_->Desc().size, false);
   }
   return memRef;
 }
@@ -111,7 +111,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
+  dev.updateAllocedMemory(memRef->gpuMem_->Desc().heaps[0], memRef->gpuMem_->Desc().size, false);
   return memRef;
 }
 
@@ -136,7 +136,7 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
     }
   }
   // Update free memory size counters
-  dev.updateAllocedMemory(memRef->gpuMem_->Desc().preferredHeap, memRef->gpuMem_->Desc().size, false);
+  dev.updateAllocedMemory(memRef->gpuMem_->Desc().heaps[0], memRef->gpuMem_->Desc().size, false);
   return memRef;
 }
 
@@ -251,7 +251,7 @@ GpuMemoryReference::~GpuMemoryReference() {
   if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
         iMem()->Desc().flags.isExternPhys)) {
     // Update free memory size counters
-    device_.updateAllocedMemory(iMem()->Desc().preferredHeap, iMem()->Desc().size, true);
+    device_.updateAllocedMemory(iMem()->Desc().heaps[0], iMem()->Desc().size, true);
   }
   iMem()->Destroy();
   gpuMem_ = nullptr;
