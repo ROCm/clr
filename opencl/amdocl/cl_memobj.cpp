@@ -3518,13 +3518,24 @@ RUNTIME_ENTRY(cl_int, clEnqueueUnmapMemObject,
     return CL_MEM_OBJECT_ALLOCATION_FAILURE;
   }
 
+  device::Memory* mem = amdMemory->getDeviceMemory(hostQueue.device());
+  bool blocking = false;
+  if (mem->isPersistentMapped()) {
+    blocking = true;
+  }
+
+  amdMemory->decMapCount();
   command->enqueue();
+
+  if (blocking) {
+    LogInfo("blocking wait in unmapping function");
+    command->awaitCompletion();
+  }
 
   *not_null(event) = as_cl(&command->event());
   if (event == NULL) {
     command->release();
   }
-  amdMemory->decMapCount();
   return CL_SUCCESS;
 }
 RUNTIME_EXIT
