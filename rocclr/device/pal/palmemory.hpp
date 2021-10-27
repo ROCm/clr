@@ -97,16 +97,6 @@ class Memory : public device::Memory, public Resource {
                                size_t* slicePitch = NULL    //!< Slice for the mapped memory
   );
 
-  virtual bool isPersistentMapped() const { return (flags_ & PersistentMap) ? true : false; }
-  virtual void setPersistentMapFlag(bool persistentMapped) {
-    if (persistentMapped == true) {
-      flags_ |= PersistentMap;
-    }
-    else {
-      flags_ &= ~PersistentMap;
-    }
-  }
-
   //! Pins system memory associated with this memory object
   virtual bool pinSystemMemory(void* hostPtr,  //!< System memory address
                                size_t size     //!< Size of allocated system memory
