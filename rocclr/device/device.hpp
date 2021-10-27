@@ -734,6 +734,16 @@ class Memory : public amd::HeapObject {
     return NULL;
   }
 
+  bool isPersistentMapped() const { return (flags_ & PersistentMap) ? true : false; }
+  void setPersistentMapFlag(bool persistentMapped) {
+    if (persistentMapped == true) {
+      flags_ |= PersistentMap;
+    }
+    else {
+      flags_ &= ~PersistentMap;
+    }
+  }
+
   virtual bool pinSystemMemory(void* hostPtr,  //!< System memory address
                                size_t size     //!< Size of allocated system memory
   ) {
