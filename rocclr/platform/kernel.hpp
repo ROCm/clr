@@ -137,10 +137,11 @@ class KernelParameters : protected HeapObject {
   uint32_t  totalSize_;             //!< The total size of all captured parameters
 
   struct {
-    uint32_t validated_ : 1;     //!< True if all parameters are defined.
-    uint32_t execNewVcop_ : 1;   //!< special new VCOP for kernel execution
-    uint32_t execPfpaVcop_ : 1;  //!< special PFPA VCOP for kernel execution
-    uint32_t unused : 29;        //!< unused
+    uint32_t validated_ : 1;        //!< True if all parameters are defined.
+    uint32_t execNewVcop_ : 1;      //!< special new VCOP for kernel execution
+    uint32_t execPfpaVcop_ : 1;     //!< special PFPA VCOP for kernel execution
+    uint32_t deviceKernelArgs_:1;   //!< Kernel arguments allocated on device
+    uint32_t unused : 28;           //!< unused
   };
 
  public:
@@ -154,7 +155,8 @@ class KernelParameters : protected HeapObject {
         queueObjects_(nullptr),
         validated_(0),
         execNewVcop_(0),
-        execPfpaVcop_(0) {
+        execPfpaVcop_(0),
+        deviceKernelArgs_(false) {
     totalSize_ = signature.paramsSize() + (signature.numMemories() +
         signature.numSamplers() + signature.numQueues()) * sizeof(void*);
     values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
@@ -179,7 +181,8 @@ class KernelParameters : protected HeapObject {
         totalSize_(rhs.totalSize_),
         validated_(rhs.validated_),
         execNewVcop_(rhs.execNewVcop_),
-        execPfpaVcop_(rhs.execPfpaVcop_) {
+        execPfpaVcop_(rhs.execPfpaVcop_),
+        deviceKernelArgs_(false) {
     values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
     memoryObjOffset_ = signature_.paramsSize();
     memoryObjects_ = reinterpret_cast<amd::Memory**>(values_ + memoryObjOffset_);
@@ -210,7 +213,7 @@ class KernelParameters : protected HeapObject {
   size_t localMemSize(size_t minDataTypeAlignment) const;
 
   //! Capture the state of the parameters and return the stack base pointer.
-  address capture(const Device& device, uint64_t lclMemSize, int32_t* error);
+  address capture(device::VirtualDevice& vDev, uint64_t lclMemSize, int32_t* error);
   //! Release the captured state of the parameters.
   void release(address parameters, const amd::Device& device) const;
 
@@ -278,6 +281,9 @@ class KernelParameters : protected HeapObject {
 
   //! get the PFPA VCOP in the execInfo container
   bool getExecPfpaVcop() const { return (execPfpaVcop_ == 1); }
+
+  //! Returns true if arguemnts were allocated on device
+  bool deviceKernelArgs() const { return (deviceKernelArgs_ == 1); }
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values

@@ -322,6 +322,9 @@ class VirtualGPU : public device::VirtualDevice {
   void submitThreadTrace(amd::ThreadTraceCommand& vcmd) {}
 
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd){}
+
+  virtual address allocKernelArguments(size_t size, size_t alignment) final;
+
   /**
    * @brief Waits on an outstanding kernel without regard to how
    * it was dispatched - with or without a signal

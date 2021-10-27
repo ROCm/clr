@@ -154,14 +154,21 @@ void KernelParameters::set(size_t index, size_t size, const void* value, bool sv
   desc.info_.defined_ = true;
 }
 
-address KernelParameters::capture(const Device& device, uint64_t lclMemSize, int32_t* error) {
+address KernelParameters::capture(device::VirtualDevice& vDev, uint64_t lclMemSize, int32_t* error) {
+  const Device& device = vDev.device();
   *error = CL_SUCCESS;
+
   //! Information about which arguments are SVM pointers is stored after
   // the actual parameters, but only if the device has any SVM capability
   const size_t execInfoSize = getNumberOfSvmPtr() * sizeof(void*);
 
-  address mem = reinterpret_cast<address>(AlignedMemory::allocate(
-    totalSize_ + execInfoSize, PARAMETERS_MIN_ALIGNMENT));
+  address mem = vDev.allocKernelArguments(totalSize_ + execInfoSize, 128);
+  if (mem == nullptr) {
+    mem = reinterpret_cast<address>(AlignedMemory::allocate(totalSize_ + execInfoSize,
+                                                            PARAMETERS_MIN_ALIGNMENT));
+  } else {
+    deviceKernelArgs_ = true;
+  }
 
   if (mem != nullptr) {
     ::memcpy(mem, values_, totalSize_);
@@ -278,7 +285,9 @@ void KernelParameters::release(address mem, const amd::Device& device) const {
     }
   }
 
-  AlignedMemory::deallocate(mem);
+  if (!deviceKernelArgs()) {
+    AlignedMemory::deallocate(mem);
+  }
 }
 
 KernelSignature::KernelSignature(const std::vector<KernelParameterDescriptor>& params,
