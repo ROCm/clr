@@ -733,10 +733,6 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
       const_address srcArgPtr = params + desc.offset_;
       if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::ReferenceObject) {
         void* mem = allocKernArg(desc.size_, 128);
-        if (mem == nullptr) {
-          LogError("Out of memory");
-          return false;
-        }
         memcpy(mem, srcArgPtr, desc.size_);
         const auto it = hsaKernel.patch().find(desc.offset_);
         WriteAqlArgAt(const_cast<address>(params), &mem, sizeof(void*), it->second);
@@ -1238,6 +1234,17 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
     }
   } while (true);
   return result;
+}
+
+// ================================================================================================
+address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
+  if (ROCR_SKIP_KERNEL_ARG_COPY) {
+    // Make sure VirtualGPU has an exclusive access to the resources
+    amd::ScopedLock lock(execution());
+    return reinterpret_cast<address>(allocKernArg(size, alignment));
+  } else {
+    return nullptr;
+  }
 }
 
 // ================================================================================================
@@ -2703,17 +2710,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       }
     }
 
-    // Find all parameters for the current kernel
-
-    // Allocate buffer to hold kernel arguments
-    address argBuffer = (address)allocKernArg(gpuKernel.KernargSegmentByteSize(),
-                                              gpuKernel.KernargSegmentAlignment());
-
-    if (argBuffer == nullptr) {
-      LogError("Out of memory");
-      return false;
-    }
-
     ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s", gpuKernel.name().c_str());
 
     // Check if runtime has to setup hidden arguments
@@ -2817,8 +2813,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       }
     }
 
-    // Load all kernel arguments
-    WriteAqlArgAt(argBuffer, parameters, gpuKernel.KernargSegmentByteSize(), 0);
+    address argBuffer = const_cast<address>(parameters);
+    // Find all parameters for the current kernel
+    if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
+      // Allocate buffer to hold kernel arguments
+      argBuffer = reinterpret_cast<address>(allocKernArg(gpuKernel.KernargSegmentByteSize(),
+                                            gpuKernel.KernargSegmentAlignment()));
+      // Load all kernel arguments
+      WriteAqlArgAt(argBuffer, parameters, gpuKernel.KernargSegmentByteSize(), 0);
+    }
+
     // Note: In a case of structs the size won't match,
     // since HSAIL compiler expects a reference...
     assert(gpuKernel.KernargSegmentByteSize() <= signature.paramsSize() &&

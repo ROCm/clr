@@ -266,6 +266,8 @@ release(bool, ROC_USE_FGS_KERNARG, true,                                      \
         "Use fine grain kernel args segment for supported asics")             \
 release(uint, ROC_AQL_QUEUE_SIZE, 4096,                                       \
         "AQL queue size in AQL packets")                                      \
+release(bool, ROCR_SKIP_KERNEL_ARG_COPY, false,                               \
+        "If true, then runtime can skip kernel arg copy")                     \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
         "Force the stream wait memory operation to wait on CP.")
 

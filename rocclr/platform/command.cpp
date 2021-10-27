@@ -633,7 +633,8 @@ int32_t NDRangeKernelCommand::captureAndValidate() {
 
   int32_t error;
   uint64_t lclMemSize = kernel().getDeviceKernel(device)->workGroupInfo()->localMemSize_;
-  parameters_ = kernel().parameters().capture(device, sharedMemBytes_ + lclMemSize, &error);
+  parameters_ = kernel().parameters().capture(*queue()->vdev(),
+                                              sharedMemBytes_ + lclMemSize, &error);
   return error;
 }
 
