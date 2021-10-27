@@ -527,7 +527,7 @@ void VirtualGPU::Queue::DumpMemoryReferences() const {
       dump << (it.first)->iMem()->Desc().gpuVirtAddr << ", "
            << (it.first)->iMem()->Desc().gpuVirtAddr + (it.first)->iMem()->Desc().size;
       dump.setf(std::ios::dec);
-      dump << "] CbId:" << it.second << ", Heap: " << (it.first)->iMem()->Desc().preferredHeap
+      dump << "] CbId:" << it.second << ", Heap: " << (it.first)->iMem()->Desc().heaps[0]
            << "\n";
       idx++;
     }
