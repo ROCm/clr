@@ -401,7 +401,11 @@ class VirtualGPU : public device::VirtualDevice {
   void destroyPool();
 
   void* allocKernArg(size_t size, size_t alignment);
-  void resetKernArgPool() { kernarg_pool_cur_offset_ = 0; }
+  void resetKernArgPool() {
+    kernarg_pool_cur_offset_ = 0;
+    kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
+    active_chunk_ = 0;
+  }
 
   uint64_t getVQVirtualAddress();
 
