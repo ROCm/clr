@@ -786,8 +786,8 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
     mapAddress = reinterpret_cast<address>(owner()->getHostMem());
   }
   // If resource is a persistent allocation, we can use it directly
-  else if ((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
-           isPersistentMapped()) {
+  else if (((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
+           isPersistentMapped()) && (owner()->getSvmPtr() == nullptr)) {
     if (nullptr == map(nullptr)) {
       LogError("Could not map target persistent resource");
       decIndMapCount();
