@@ -23,10 +23,49 @@
 hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
                                   dim3& blockDim, void**& args, size_t& sharedMemBytes);
 
+hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
+                                   const void*& src, size_t& spitch, size_t& width, size_t& height,
+                                   hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*& pCopy);
+
+hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
+                                            hipArray_const_t& src, size_t& wOffsetSrc,
+                                            size_t& hOffsetSrc, size_t& width, size_t& height,
+                                            hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyFromArrayAsync(hipStream_t& stream, void*& dst, hipArray_const_t& src,
+                                          size_t& wOffsetSrc, size_t& hOffsetSrc, size_t& count,
+                                          hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
+                                          size_t& hOffset, const void*& src, size_t& spitch,
+                                          size_t& width, size_t& height, hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
+                                        size_t& hOffset, const void*& src, size_t& count,
+                                        hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray*& srcArray,
+                                     size_t& srcOffset, size_t& ByteCount);
+
+hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, size_t& dstOffset,
+                                     const void*& srcHost, size_t& ByteCount);
+
 hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*& p);
 
 hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& src,
                                  size_t& sizeBytes, hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice, void*& srcHost,
+                                     size_t& ByteCount, hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyDtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice,
+                                     hipDeviceptr_t& srcDevice, size_t& ByteCount,
+                                     hipMemcpyKind& kind);
+
+hipError_t capturehipMemcpyDtoHAsync(hipStream_t& stream, void*& dstHost, hipDeviceptr_t& srcDevice,
+                                     size_t& ByteCount, hipMemcpyKind& kind);
 
 hipError_t capturehipMemcpyFromSymbolAsync(hipStream_t& stream, void*& dst, const void*& symbol,
                                            size_t& sizeBytes, size_t& offset, hipMemcpyKind& kind);
