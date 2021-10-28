@@ -178,10 +178,272 @@ hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*&
   return hipSuccess;
 }
 
-hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& src,
-                                 size_t& sizeBytes, hipMemcpyKind& kind) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy1D on stream : %p",
+hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
+                                   const void*& src, size_t& spitch, size_t& width, size_t& height,
+                                   hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy2D on stream : %p",
           stream);
+  if (dst == nullptr || src == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.kind = kind;
+  p.srcPtr.ptr = const_cast<void*>(src);
+  p.srcPtr.pitch = spitch;
+  p.srcArray = nullptr;  // Ignored.
+
+  p.dstPtr.ptr = const_cast<void*>(dst);
+  p.dstPtr.pitch = dpitch;
+  p.dstArray = nullptr;  // Ignored.
+
+  p.extent = {width, height, 1};
+
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
+                                            hipArray_const_t& src, size_t& wOffsetSrc,
+                                            size_t& hOffsetSrc, size_t& width, size_t& height,
+                                            hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
+  if (src == nullptr || dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.srcPos = {wOffsetSrc, hOffsetSrc, 0};
+  p.kind = kind;
+  p.srcPtr.ptr = nullptr;
+  p.srcArray = const_cast<hipArray*>(src);  // Ignored.
+
+  p.kind = kind;
+  p.dstPtr.ptr = dst;
+  p.dstArray = nullptr;  // Ignored.
+  p.dstPtr.pitch = dpitch;
+  p.extent = {width / hip::getElementSize(p.srcArray), height, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpyFromArrayAsync(hipStream_t& stream, void*& dst, hipArray_const_t& src,
+                                          size_t& wOffsetSrc, size_t& hOffsetSrc, size_t& count,
+                                          hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
+  if (src == nullptr || dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.srcPos = {wOffsetSrc, hOffsetSrc, 0};
+  p.kind = kind;
+  p.srcPtr.ptr = nullptr;
+  p.srcArray = const_cast<hipArray*>(src);
+
+  p.kind = kind;
+  p.dstPtr.ptr = dst;
+  p.dstArray = nullptr;  // Ignored.
+  p.dstPtr.pitch = 0;
+  const size_t arrayHeight = (src->height != 0) ? src->height : 1;
+  const size_t widthInBytes = count / arrayHeight;
+  const size_t height = (count / src->width) / hip::getElementSize(src);
+  p.extent = {widthInBytes / hip::getElementSize(p.srcArray), height, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
+                                          size_t& hOffset, const void*& src, size_t& spitch,
+                                          size_t& width, size_t& height, hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
+  if (src == nullptr || dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.dstPos = {wOffset, hOffset, 0};
+  p.kind = kind;
+  p.dstPtr.ptr = nullptr;
+  p.dstArray = dst;  // Ignored.
+
+  p.kind = kind;
+  p.srcPtr.ptr = const_cast<void*>(src);
+  p.srcArray = nullptr;  // Ignored.
+  p.srcPtr.pitch = spitch;
+  p.extent = {width / hip::getElementSize(p.dstArray), height, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpyToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
+                                        size_t& hOffset, const void*& src, size_t& count,
+                                        hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
+  if (src == nullptr || dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.dstPos = {wOffset, hOffset, 0};
+  p.kind = kind;
+  p.dstPtr.ptr = nullptr;
+  p.dstArray = dst;  // Ignored.
+
+  p.kind = kind;
+  p.srcPtr.ptr = const_cast<void*>(src);
+  p.srcArray = nullptr;  // Ignored.
+  p.srcPtr.pitch = 0;
+  const size_t arrayHeight = (dst->height != 0) ? dst->height : 1;
+  const size_t widthInBytes = count / arrayHeight;
+  const size_t height = (count / dst->width) / hip::getElementSize(dst);
+  p.extent = {widthInBytes / hip::getElementSize(p.dstArray), height, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*& pCopy) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.srcArray = pCopy->srcArray;
+  p.srcPos = {pCopy->srcXInBytes, pCopy->srcY, 0};
+  p.srcPtr.pitch = pCopy->srcPitch;
+  if (pCopy->srcDevice != nullptr) {
+    p.srcPtr.ptr = pCopy->srcDevice;
+  }
+  if (pCopy->srcHost != nullptr) {
+    p.srcPtr.ptr = const_cast<void*>(pCopy->srcHost);
+  }
+  p.dstArray = pCopy->dstArray;
+  p.dstPos = {pCopy->dstXInBytes, pCopy->dstY, 0};
+  p.dstPtr.pitch = pCopy->srcPitch;
+  if (pCopy->dstDevice != nullptr) {
+    p.dstPtr.ptr = pCopy->dstDevice;
+  }
+  if (pCopy->dstHost != nullptr) {
+    p.dstPtr.ptr = const_cast<void*>(pCopy->dstHost);
+  }
+  p.extent = {pCopy->WidthInBytes, pCopy->Height, 1};
+  if (pCopy->srcMemoryType == hipMemoryTypeHost && pCopy->dstMemoryType == hipMemoryTypeDevice) {
+    p.kind = hipMemcpyHostToDevice;
+  } else if (pCopy->srcMemoryType == hipMemoryTypeDevice &&
+             pCopy->dstMemoryType == hipMemoryTypeHost) {
+    p.kind = hipMemcpyDeviceToHost;
+  } else if (pCopy->srcMemoryType == hipMemoryTypeDevice &&
+             pCopy->dstMemoryType == hipMemoryTypeDevice) {
+    p.kind = hipMemcpyDeviceToDevice;
+  }
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray*& srcArray,
+                                     size_t& srcOffset, size_t& ByteCount) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
+  if (srcArray == nullptr || dstHost == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.srcArray = srcArray;
+  p.srcPos = {srcOffset, 0, 0};
+  p.dstPtr.ptr = dstHost;
+  p.extent = {ByteCount / hip::getElementSize(p.srcArray), 1, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, size_t& dstOffset,
+                                     const void*& srcHost, size_t& ByteCount) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
+  if (dstArray == nullptr || srcHost == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode;
+  hipMemcpy3DParms p = {};
+  memset(&p, 0, sizeof(p));
+  p.dstArray = dstArray;
+  p.dstPos = {dstOffset, 0, 0};
+  p.srcPtr.ptr = const_cast<void*>(srcHost);
+  p.extent = {ByteCount / hip::getElementSize(p.dstArray), 1, 1};
+  hipError_t status =
+      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &p);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipMemcpy(hipStream_t stream, void* dst, const void* src, size_t sizeBytes,
+                            hipMemcpyKind kind) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraph_t graph = nullptr;
   std::vector<hipGraphNode_t> pDependencies = s->GetLastCapturedNodes();
@@ -197,10 +459,52 @@ hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& s
   return hipSuccess;
 }
 
+hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& src,
+                                 size_t& sizeBytes, hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy1D on stream : %p",
+          stream);
+  return capturehipMemcpy(stream, dst, src, sizeBytes, kind);
+}
+
+hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice, void*& srcHost,
+                                     size_t& ByteCount, hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node MemcpyHtoD on stream : %p",
+          stream);
+  return capturehipMemcpy(stream, dstDevice, srcHost, ByteCount, kind);
+}
+
+hipError_t capturehipMemcpyDtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice,
+                                     hipDeviceptr_t& srcDevice, size_t& ByteCount,
+                                     hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node hipMemcpyDtoD on stream : %p", stream);
+  return capturehipMemcpy(stream, dstDevice, srcDevice, ByteCount, kind);
+}
+
+hipError_t capturehipMemcpyDtoHAsync(hipStream_t& stream, void*& dstHost, hipDeviceptr_t& srcDevice,
+                                     size_t& ByteCount, hipMemcpyKind& kind) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node hipMemcpyDtoH on stream : %p", stream);
+  return capturehipMemcpy(stream, dstHost, srcDevice, ByteCount, kind);
+}
+
 hipError_t capturehipMemcpyFromSymbolAsync(hipStream_t& stream, void*& dst, const void*& symbol,
                                            size_t& sizeBytes, size_t& offset, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyFromSymbolNode on stream : %p", stream);
+  size_t sym_size = 0;
+  hipDeviceptr_t device_ptr = nullptr;
+
+  hipError_t status = ihipMemcpySymbol_validate(symbol, sizeBytes, offset, sym_size, device_ptr);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode =
+      new hipGraphMemcpyNodeFromSymbol(dst, symbol, sizeBytes, offset, kind);
+  ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                   s->GetLastCapturedNodes().size());
+  s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
 
@@ -208,6 +512,17 @@ hipError_t capturehipMemcpyToSymbolAsync(hipStream_t& stream, const void*& symbo
                                          size_t& sizeBytes, size_t& offset, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyToSymbolNode on stream : %p", stream);
+  size_t sym_size = 0;
+  hipDeviceptr_t device_ptr = nullptr;
+  hipError_t status = ihipMemcpySymbol_validate(symbol, sizeBytes, offset, sym_size, device_ptr);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipGraphNode_t pGraphNode = new hipGraphMemcpyNodeToSymbol(symbol, src, sizeBytes, offset, kind);
+  ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                   s->GetLastCapturedNodes().size());
+  s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
 
@@ -364,6 +679,7 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
     }
   }
   *pGraph = s->GetCaptureGraph();
+  g_captureStreams.clear();
   // end capture on all streams/events part of graph capture
   HIP_RETURN_DURATION(s->EndCapture());
 }

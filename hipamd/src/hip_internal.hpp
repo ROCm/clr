@@ -125,6 +125,21 @@ typedef struct ihipIpcEventHandle_st {
     }                                    \
   } while (0);
 
+extern thread_local std::vector<hipStream_t> g_captureStreams;
+
+#define CHECK_STREAM_CAPTURE_SUPPORTED()                                                           \
+  for (auto stream : g_captureStreams) {                                                           \
+    if (reinterpret_cast<hip::Stream*>(stream)->GetCaptureMode() != hipStreamCaptureModeRelaxed) { \
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
+    }                                                                                              \
+  }
+
+// Sync APIs cannot be called when stream capture is active
+#define CHECK_STREAM_CAPTURING()                                                                   \
+  if (!g_captureStreams.empty()) {                                                                 \
+    HIP_RETURN(hipErrorStreamCaptureImplicit);                                                     \
+  }
+
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
   getStreamPerThread(stream);                                                                      \
   if (stream != nullptr &&                                                                         \

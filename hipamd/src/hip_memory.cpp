@@ -486,13 +486,13 @@ hipError_t hipExtMallocWithFlags(void** ptr, size_t sizeBytes, unsigned int flag
 
 hipError_t hipMalloc(void** ptr, size_t sizeBytes) {
   HIP_INIT_API(hipMalloc, ptr, sizeBytes);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN_DURATION(ihipMalloc(ptr, sizeBytes, 0), (ptr != nullptr)? *ptr : nullptr);
 }
 
 hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostMalloc, ptr, sizeBytes, flags);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -525,13 +525,13 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
 
 hipError_t hipFree(void* ptr) {
   HIP_INIT_API(hipFree, ptr);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipFree(ptr));
 }
 
 hipError_t hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy, dst, src, sizeBytes, kind);
-
+  CHECK_STREAM_CAPTURING();
   amd::HostQueue* queue = hip::getNullStream();
   HIP_RETURN_DURATION(ihipMemcpy(dst, src, sizeBytes, kind, *queue));
 }
@@ -539,7 +539,7 @@ hipError_t hipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind
 hipError_t hipMemcpyWithStream(void* dst, const void* src, size_t sizeBytes,
                                hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpyWithStream, dst, src, sizeBytes, kind, stream);
-
+  STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
   amd::HostQueue* queue = hip::getQueue(stream);
 
   HIP_RETURN_DURATION(ihipMemcpy(dst, src, sizeBytes, kind, *queue, false));
@@ -562,7 +562,7 @@ hipError_t hipMemPtrGetInfo(void *ptr, size_t *size) {
 
 hipError_t hipHostFree(void* ptr) {
   HIP_INIT_API(hipHostFree, ptr);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipFree(ptr));
 }
 
@@ -587,7 +587,7 @@ hipError_t ihipArrayDestroy(hipArray* array) {
 
 hipError_t hipFreeArray(hipArray* array) {
   HIP_INIT_API(hipFreeArray, array);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
 }
 
@@ -674,14 +674,14 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 
 hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height) {
   HIP_INIT_API(hipMallocPitch, ptr, pitch, width, height);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   const cl_image_format image_format = { CL_R, CL_UNSIGNED_INT8 };
   HIP_RETURN(ihipMallocPitch(ptr, pitch, width, height, 1, CL_MEM_OBJECT_IMAGE2D, &image_format), (ptr != nullptr)? *ptr : nullptr);
 }
 
 hipError_t hipMalloc3D(hipPitchedPtr* pitchedDevPtr, hipExtent extent) {
   HIP_INIT_API(hipMalloc3D, pitchedDevPtr, extent);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   size_t pitch = 0;
 
   if (pitchedDevPtr == nullptr) {
@@ -903,7 +903,7 @@ hipError_t ihipArrayCreate(hipArray** array,
 hipError_t hipArrayCreate(hipArray** array,
                           const HIP_ARRAY_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArrayCreate, array, pAllocateArray);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR desc = {pAllocateArray->Width,
                                  pAllocateArray->Height,
                                  0, /* Depth */
@@ -921,7 +921,7 @@ hipError_t hipMallocArray(hipArray** array,
                           size_t height,
                           unsigned int flags) {
   HIP_INIT_API(hipMallocArray, array, desc, width, height, flags);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR allocateArray = {width,
                                           height,
                                           0, /* Depth */
@@ -935,7 +935,7 @@ hipError_t hipMallocArray(hipArray** array,
 hipError_t hipArray3DCreate(hipArray** array,
                             const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArray3DCreate, array, pAllocateArray);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayCreate(array, pAllocateArray, 0 /* numMipLevels */));
 }
 
@@ -944,7 +944,7 @@ hipError_t hipMalloc3DArray(hipArray_t* array,
                             hipExtent extent,
                             unsigned int flags) {
   HIP_INIT_API(hipMalloc3DArray, array, desc, extent, flags);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR allocateArray = {extent.width,
                                           extent.height,
                                           extent.depth,
@@ -976,6 +976,7 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 
 hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostRegister, hostPtr, sizeBytes, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   if(hostPtr != nullptr) {
     amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(), CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
 
@@ -1007,7 +1008,7 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
 
 hipError_t hipHostUnregister(void* hostPtr) {
   HIP_INIT_API(hipHostUnregister, hostPtr);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   for (auto& dev : g_devices) {
     dev->NullStream()->finish();
   }
@@ -1042,7 +1043,7 @@ hipError_t hipHostUnregister(void* hostPtr) {
 // Deprecated function:
 hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostAlloc, ptr, sizeBytes, flags);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipMalloc(ptr, sizeBytes, flags), (ptr != nullptr)? *ptr : nullptr);
 };
 
@@ -1063,7 +1064,7 @@ inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes
 hipError_t hipMemcpyToSymbol(const void* symbol, const void* src, size_t sizeBytes,
                              size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyToSymbol, symbol, src, sizeBytes, offset, kind);
-
+  CHECK_STREAM_CAPTURING();
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
 
@@ -1079,7 +1080,7 @@ hipError_t hipMemcpyToSymbol(const void* symbol, const void* src, size_t sizeByt
 hipError_t hipMemcpyFromSymbol(void* dst, const void* symbol, size_t sizeBytes,
                                size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyFromSymbol, symbol, dst, sizeBytes, offset, kind);
-
+  CHECK_STREAM_CAPTURING();
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
 
@@ -1131,7 +1132,7 @@ hipError_t hipMemcpyHtoD(hipDeviceptr_t dstDevice,
                          void* srcHost,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyHtoD, dstDevice, srcHost, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy(dstDevice, srcHost, ByteCount, hipMemcpyHostToDevice, *hip::getQueue(nullptr)));
 }
 
@@ -1139,7 +1140,7 @@ hipError_t hipMemcpyDtoH(void* dstHost,
                          hipDeviceptr_t srcDevice,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyDtoH, dstHost, srcDevice, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy(dstHost, srcDevice, ByteCount, hipMemcpyDeviceToHost, *hip::getQueue(nullptr)));
 }
 
@@ -1147,7 +1148,7 @@ hipError_t hipMemcpyDtoD(hipDeviceptr_t dstDevice,
                          hipDeviceptr_t srcDevice,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyDtoD, dstDevice, srcDevice, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy(dstDevice, srcDevice, ByteCount, hipMemcpyDeviceToDevice, *hip::getQueue(nullptr)));
 }
 
@@ -1162,31 +1163,31 @@ hipError_t hipMemcpyAsync(void* dst, const void* src, size_t sizeBytes,
   HIP_RETURN_DURATION(ihipMemcpy(dst, src, sizeBytes, kind, *queue, true));
 }
 
-hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice,
-                              void* srcHost,
-                              size_t ByteCount,
+hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice, void* srcHost, size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyHtoDAsync, dstDevice, srcHost, ByteCount, stream);
-
-  HIP_RETURN_DURATION(ihipMemcpy(dstDevice, srcHost, ByteCount, hipMemcpyHostToDevice, *hip::getQueue(stream), true));
+  hipMemcpyKind kind = hipMemcpyHostToDevice;
+  STREAM_CAPTURE(hipMemcpyHtoDAsync, stream, dstDevice, srcHost, ByteCount, kind);
+  HIP_RETURN_DURATION(
+      ihipMemcpy(dstDevice, srcHost, ByteCount, kind, *hip::getQueue(stream), true));
 }
 
-hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dstDevice,
-                              hipDeviceptr_t srcDevice,
-                              size_t ByteCount,
+hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dstDevice, hipDeviceptr_t srcDevice, size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyDtoDAsync, dstDevice, srcDevice, ByteCount, stream);
-
-  HIP_RETURN_DURATION(ihipMemcpy(dstDevice, srcDevice, ByteCount, hipMemcpyDeviceToDevice, *hip::getQueue(stream), true));
+  hipMemcpyKind kind = hipMemcpyDeviceToDevice;
+  STREAM_CAPTURE(hipMemcpyDtoDAsync, stream, dstDevice, srcDevice, ByteCount, kind);
+  HIP_RETURN_DURATION(
+      ihipMemcpy(dstDevice, srcDevice, ByteCount, kind, *hip::getQueue(stream), true));
 }
 
-hipError_t hipMemcpyDtoHAsync(void* dstHost,
-                              hipDeviceptr_t srcDevice,
-                              size_t ByteCount,
+hipError_t hipMemcpyDtoHAsync(void* dstHost, hipDeviceptr_t srcDevice, size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyDtoHAsync, dstHost, srcDevice, ByteCount, stream);
-
-  HIP_RETURN_DURATION(ihipMemcpy(dstHost, srcDevice, ByteCount, hipMemcpyDeviceToHost, *hip::getQueue(stream), true));
+  hipMemcpyKind kind = hipMemcpyDeviceToHost;
+  STREAM_CAPTURE(hipMemcpyDtoHAsync, stream, dstHost, srcDevice, ByteCount, kind);
+  HIP_RETURN_DURATION(
+      ihipMemcpy(dstHost, srcDevice, ByteCount, kind, *hip::getQueue(stream), true));
 }
 
 hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
@@ -1916,21 +1917,21 @@ hipError_t ihipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch
 
 hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy) {
   HIP_INIT_API(hipMemcpyParam2D, pCopy);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyParam2D(pCopy, nullptr));
 }
 
 hipError_t hipMemcpy2D(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                        size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2D, dst, dpitch, src, spitch, width, height, kind);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy2D(dst, dpitch, src, spitch, width, height, kind, nullptr));
 }
 
 hipError_t hipMemcpy2DAsync(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                             size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DAsync, dst, dpitch, src, spitch, width, height, kind, stream);
-
+  STREAM_CAPTURE(hipMemcpy2DAsync, stream, dst, dpitch, src, spitch, width, height, kind);
   HIP_RETURN_DURATION(ihipMemcpy2D(dst, dpitch, src, spitch, width, height, kind, stream, true));
 }
 
@@ -1965,7 +1966,7 @@ hipError_t ihipMemcpy2DToArray(hipArray_t dst, size_t wOffset, size_t hOffset, c
 
 hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DToArray, dst, wOffset, hOffset, src, spitch, width, height, kind);
-
+  CHECK_STREAM_CAPTURING();
   if (spitch == 0) {
     HIP_RETURN(hipErrorInvalidPitchValue);
   }
@@ -1975,7 +1976,7 @@ hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, con
 
 hipError_t hipMemcpyToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyToArray, dst, wOffset, hOffset, src, count, kind);
-
+  CHECK_STREAM_CAPTURING();
   if (dst == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -2019,7 +2020,7 @@ hipError_t ihipMemcpy2DFromArray(void* dst, size_t dpitch, hipArray_const_t src,
 
 hipError_t hipMemcpyFromArray(void* dst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffset, size_t count, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyFromArray, dst, src, wOffsetSrc, hOffset, count, kind);
-
+  CHECK_STREAM_CAPTURING();
   if (src == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -2120,7 +2121,7 @@ hipError_t hipMemcpyHtoA(hipArray* dstArray,
                          const void* srcHost,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyHtoA, dstArray, dstOffset, srcHost, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyHtoA(srcHost, dstArray, {0, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, 0, 0, nullptr));
 }
 
@@ -2129,7 +2130,7 @@ hipError_t hipMemcpyAtoH(void* dstHost,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoH, dstHost, srcArray, srcOffset, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyAtoH(srcArray, dstHost, {srcOffset, 0, 0}, {0, 0, 0}, {ByteCount, 1, 1}, 0, 0, nullptr));
 }
 
@@ -2169,7 +2170,7 @@ hipError_t ihipMemcpy3D(const hipMemcpy3DParms* p, hipStream_t stream, bool isAs
 
 hipError_t hipMemcpy3D(const hipMemcpy3DParms* p) {
   HIP_INIT_API(hipMemcpy3D, p);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy3D(p, nullptr));
 }
 
@@ -2183,7 +2184,7 @@ hipError_t hipMemcpy3DAsync(const hipMemcpy3DParms* p, hipStream_t stream) {
 
 hipError_t hipDrvMemcpy3D(const HIP_MEMCPY3D* pCopy) {
   HIP_INIT_API(hipDrvMemcpy3D, pCopy);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyParam3D(pCopy, nullptr));
 }
 
@@ -2287,7 +2288,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
 
 hipError_t hipMemset(void* dst, int value, size_t sizeBytes) {
   HIP_INIT_API(hipMemset, dst, value, sizeBytes);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), sizeBytes, nullptr));
 }
 
@@ -2295,47 +2296,55 @@ hipError_t hipMemsetAsync(void* dst, int value, size_t sizeBytes, hipStream_t st
   HIP_INIT_API(hipMemsetAsync, dst, value, sizeBytes, stream);
   size_t valueSize = sizeof(int8_t);
   STREAM_CAPTURE(hipMemsetAsync, stream, dst, value, valueSize, sizeBytes);
-
   HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), sizeBytes, stream, true));
 }
 
 hipError_t hipMemsetD8(hipDeviceptr_t dst, unsigned char value, size_t count) {
   HIP_INIT_API(hipMemsetD8, dst, value, count);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), count * sizeof(int8_t), nullptr));
 }
 
 hipError_t hipMemsetD8Async(hipDeviceptr_t dst, unsigned char value, size_t count,
                             hipStream_t stream) {
   HIP_INIT_API(hipMemsetD8Async, dst, value, count, stream);
-
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), count * sizeof(int8_t), stream, true));
+  int iValue = value;
+  size_t valueSize = sizeof(int8_t);
+  size_t sizeBytes = count * sizeof(int8_t);
+  STREAM_CAPTURE(hipMemsetAsync, stream, dst, iValue, valueSize, sizeBytes);
+  HIP_RETURN(ihipMemset(dst, value, valueSize, sizeBytes, stream, true));
 }
 
 hipError_t hipMemsetD16(hipDeviceptr_t dst, unsigned short value, size_t count) {
   HIP_INIT_API(hipMemsetD16, dst, value, count);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset(dst, value, sizeof(int16_t), count * sizeof(int16_t), nullptr));
 }
 
 hipError_t hipMemsetD16Async(hipDeviceptr_t dst, unsigned short value, size_t count,
                              hipStream_t stream) {
   HIP_INIT_API(hipMemsetD16Async, dst, value, count, stream);
-
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int16_t), count * sizeof(int16_t), stream, true));
+  int iValue = value;
+  size_t valueSize = sizeof(int16_t);
+  size_t sizeBytes = count * sizeof(int16_t);
+  STREAM_CAPTURE(hipMemsetAsync, stream, dst, iValue, valueSize, sizeBytes);
+  HIP_RETURN(ihipMemset(dst, value, valueSize, sizeBytes, stream, true));
 }
 
 hipError_t hipMemsetD32(hipDeviceptr_t dst, int value, size_t count) {
   HIP_INIT_API(hipMemsetD32, dst, value, count);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset(dst, value, sizeof(int32_t), count * sizeof(int32_t), nullptr));
 }
 
 hipError_t hipMemsetD32Async(hipDeviceptr_t dst, int value, size_t count,
                              hipStream_t stream) {
   HIP_INIT_API(hipMemsetD32Async, dst, value, count, stream);
-
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int32_t), count * sizeof(int32_t), stream, true));
+  int iValue = value;
+  size_t valueSize = sizeof(int32_t);
+  size_t sizeBytes = count * sizeof(int32_t);
+  STREAM_CAPTURE(hipMemsetAsync, stream, dst, iValue, valueSize, sizeBytes);
+  HIP_RETURN(ihipMemset(dst, value, valueSize, sizeBytes, stream, true));
 }
 
 hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent,
@@ -2409,7 +2418,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
 
 hipError_t hipMemset2D(void* dst, size_t pitch, int value, size_t width, size_t height) {
   HIP_INIT_API(hipMemset2D, dst, pitch, value, width, height);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, nullptr));
 }
 
@@ -2424,7 +2433,7 @@ hipError_t hipMemset2DAsync(void* dst, size_t pitch, int value,
 
 hipError_t hipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent) {
   HIP_INIT_API(hipMemset3D, pitchedDevPtr, value, extent);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN(ihipMemset3D(pitchedDevPtr, value, extent, nullptr));
 }
 
@@ -2439,13 +2448,13 @@ hipError_t hipMemset3DAsync(hipPitchedPtr pitchedDevPtr, int value, hipExtent ex
 hipError_t hipMemAllocPitch(hipDeviceptr_t* dptr, size_t* pitch, size_t widthInBytes,
                             size_t height, unsigned int elementSizeBytes) {
   HIP_INIT_API(hipMemAllocPitch, dptr, pitch, widthInBytes, height, elementSizeBytes);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(hipMallocPitch(dptr, pitch, widthInBytes, height));
 }
 
 hipError_t hipMemAllocHost(void** ptr, size_t size) {
   HIP_INIT_API(hipMemAllocHost, ptr, size);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN_DURATION(hipHostMalloc(ptr, size, 0));
 }
 
@@ -2587,7 +2596,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
 // ================================================================================================
 hipError_t hipArrayDestroy(hipArray* array) {
   HIP_INIT_API(hipArrayDestroy, array);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
 }
 
@@ -2612,7 +2621,7 @@ hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
 hipError_t hipMemcpyParam2DAsync(const hip_Memcpy2D* pCopy,
                                  hipStream_t stream) {
   HIP_INIT_API(hipMemcpyParam2DAsync, pCopy);
-
+  STREAM_CAPTURE(hipMemcpyParam2DAsync, stream, pCopy);
   HIP_RETURN(ihipMemcpyParam2D(pCopy, stream, true));
 }
 
@@ -2643,19 +2652,19 @@ hipError_t ihipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hO
 
 hipError_t hipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DArrayToArray, dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy2DArrayToArray(dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind, nullptr));
 }
 
 hipError_t hipMemcpyArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyArrayToArray, dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpy2DArrayToArray(dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind, nullptr));
 }
 
 hipError_t hipMemcpy2DFromArray(void* dst, size_t dpitch, hipArray_const_t src, size_t wOffsetSrc, size_t hOffset, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DFromArray, dst, dpitch, src, wOffsetSrc, hOffset, width, height, kind);
-
+  CHECK_STREAM_CAPTURING();
   if (dpitch == 0) {
     HIP_RETURN(hipErrorInvalidPitchValue);
   }
@@ -2665,6 +2674,8 @@ hipError_t hipMemcpy2DFromArray(void* dst, size_t dpitch, hipArray_const_t src, 
 
 hipError_t hipMemcpy2DFromArrayAsync(void* dst, size_t dpitch, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DFromArrayAsync, dst, dpitch, src, wOffsetSrc, hOffsetSrc, width, height, kind, stream);
+  STREAM_CAPTURE(hipMemcpy2DFromArrayAsync, stream, dst, dpitch, src, wOffsetSrc, hOffsetSrc, width,
+                 height, kind);
 
   if (dpitch == 0) {
     HIP_RETURN(hipErrorInvalidPitchValue);
@@ -2675,6 +2686,7 @@ hipError_t hipMemcpy2DFromArrayAsync(void* dst, size_t dpitch, hipArray_const_t 
 
 hipError_t hipMemcpyFromArrayAsync(void* dst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t count, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpyFromArrayAsync, dst, src, wOffsetSrc, hOffsetSrc, count, kind, stream);
+  STREAM_CAPTURE(hipMemcpyFromArrayAsync, stream, dst, src, wOffsetSrc, hOffsetSrc, count, kind);
 
   if (src == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -2690,7 +2702,8 @@ hipError_t hipMemcpyFromArrayAsync(void* dst, hipArray_const_t src, size_t wOffs
 
 hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind);
-
+  STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
+                 kind);
   if (spitch == 0) {
     HIP_RETURN(hipErrorInvalidPitchValue);
   }
@@ -2700,6 +2713,7 @@ hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset
 
 hipError_t hipMemcpyToArrayAsync(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpyToArrayAsync, dst, wOffset, hOffset, src, count, kind);
+  STREAM_CAPTURE(hipMemcpyToArrayAsync, stream, dst, wOffset, hOffset, src, count, kind);
 
   if (dst == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -2719,7 +2733,7 @@ hipError_t hipMemcpyAtoA(hipArray* dstArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoA, dstArray, dstOffset, srcArray, srcOffset, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyAtoA(srcArray, dstArray, {srcOffset, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, nullptr));
 }
 
@@ -2738,7 +2752,7 @@ hipError_t hipMemcpyAtoHAsync(void* dstHost,
                               size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyAtoHAsync, dstHost, srcArray, srcOffset, ByteCount, stream);
-
+  STREAM_CAPTURE(hipMemcpyAtoHAsync, stream, dstHost, srcArray, srcOffset, ByteCount);
   HIP_RETURN_DURATION(ihipMemcpyAtoH(srcArray, dstHost, {srcOffset, 0, 0}, {0, 0, 0}, {ByteCount, 1, 1}, 0, 0, stream, true));
 }
 
@@ -2747,7 +2761,7 @@ hipError_t hipMemcpyDtoA(hipArray* dstArray,
                         hipDeviceptr_t srcDevice,
                         size_t ByteCount) {
   HIP_INIT_API(hipMemcpyDtoA, dstArray, dstOffset, srcDevice, ByteCount);
-
+  CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(ihipMemcpyDtoA(srcDevice, dstArray, {0, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, 0, 0, nullptr));
 }
 
@@ -2757,20 +2771,20 @@ hipError_t hipMemcpyHtoAAsync(hipArray* dstArray,
                               size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyHtoAAsync, dstArray, dstOffset, srcHost, ByteCount, stream);
-
+  STREAM_CAPTURE(hipMemcpyHtoAAsync, stream, dstArray, dstOffset, srcHost, ByteCount);
   HIP_RETURN_DURATION(ihipMemcpyHtoA(srcHost, dstArray, {0, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, 0, 0, stream, true));
 }
 
 hipError_t hipMallocHost(void** ptr,
                          size_t size) {
   HIP_INIT_API(hipMallocHost, ptr, size);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN_DURATION(ihipMalloc(ptr, size, CL_MEM_SVM_FINE_GRAIN_BUFFER), (ptr != nullptr)? *ptr : nullptr);
 }
 
 hipError_t hipFreeHost(void *ptr) {
   HIP_INIT_API(hipFreeHost, ptr);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipFree(ptr));
 }
 
@@ -2788,13 +2802,13 @@ hipError_t hipMallocMipmappedArray(hipMipmappedArray_t *mipmappedArray,
                                    unsigned int numLevels,
                                    unsigned int flags) {
   HIP_INIT_API(hipMallocMipmappedArray, mipmappedArray, desc, extent, numLevels, flags);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipFreeMipmappedArray(hipMipmappedArray_t mipmappedArray) {
   HIP_INIT_API(hipFreeMipmappedArray, mipmappedArray);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(hipErrorNotSupported);
 }
 
@@ -2933,14 +2947,14 @@ hipError_t hipMipmappedArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                    unsigned int num_mipmap_levels) {
   HIP_INIT_API(hipMipmappedArrayCreate, mipmapped_array_pptr, mipmapped_array_desc_ptr,
                num_mipmap_levels);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipMipmapArrayCreate(mipmapped_array_pptr, mipmapped_array_desc_ptr,
                                    num_mipmap_levels));
 }
 
 hipError_t hipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
   HIP_INIT_API(hipMipmappedArrayDestroy, mipmapped_array_ptr);
-
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipMipmappedArrayDestroy(mipmapped_array_ptr));
 }
 
