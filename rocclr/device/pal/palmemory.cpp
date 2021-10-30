@@ -109,7 +109,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     // Assume that allocations will be placed into visible heap when ReBar is enabled
     // Only enable this assumption for small size local buffers
     constexpr size_t kLargeAlloc = (1ull << 27);
-    if ((memType == Local) && desc().buffer_ && (size() < kLargeAlloc) && dev().info().largeBar_) {
+    if (!amd::IS_HIP && (memType == Local) && desc().buffer_ && (size() < kLargeAlloc) && dev().info().largeBar_) {
       memType = Persistent;
     }
     // Create a resource in PAL
