@@ -200,10 +200,12 @@ hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* com
 
 hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   amd::HostQueue* queue = hip::getQueue(stream);
-  if ((event_ == nullptr) || (event_->command().queue() == queue)) {
+  // Access to event_ object must be lock protected
+  amd::ScopedLock lock(lock_);
+  if ((event_ == nullptr) || (event_->command().queue() == queue) || ready()) {
     return hipSuccess;
   }
-  amd::ScopedLock lock(lock_);
+
   if (!(this->flags & hipEventInterprocess)) {
     if (!event_->notifyCmdQueue()) {
       return hipErrorLaunchOutOfResources;
