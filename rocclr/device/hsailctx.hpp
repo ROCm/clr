@@ -266,6 +266,11 @@ public:
     return HSAIL_DYN(aclGetDeviceBinary)(cl, bin, kernel, size, error_code);
   }
   static const bool ValidateBinaryImage(const void* binary, size_t length, unsigned type) {
+#if defined(HSAIL_DYN_DLL)
+    if (cep_.aclValidateBinaryImage == nullptr) {
+      return false;
+    }
+#endif // defined(HSAIL_DYN_DLL)
     return HSAIL_DYN(aclValidateBinaryImage)(binary, length, type);
   }
   static aclJITObjectImage JITObjectImageCreate(aclCompiler *cl, const void* buffer, size_t length, aclBinary* bin, acl_error* error_code) {
