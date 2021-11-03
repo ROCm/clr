@@ -200,6 +200,9 @@ class HSAILProgram : public device::Program {
     return executable_->GetSymbol(symbol_name, agent);
   }
 
+  //! Returns API hash value of the program for RGP thread trace
+  uint64_t ApiHash() const { return apiHash_; }
+
  protected:
   bool saveBinaryAndSetType(type_t type);
 
@@ -246,6 +249,7 @@ class HSAILProgram : public device::Program {
                                        //!< in the program by individual kernel
   uint maxVgprs_;                      //!< Maximum number of VGPR(s) used
                                        //!< in the program by individual kernel
+  uint64_t apiHash_ = 0;               //!< API hash value for RGP thread trace
 
   std::list<Sampler*> staticSamplers_;  //!< List od internal static samplers
 

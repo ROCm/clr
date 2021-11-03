@@ -68,6 +68,7 @@ class ICmdBuffer;
 class IFence;
 class IQueueSemaphore;
 struct PalPublicSettings;
+class IGPuMemory;
 }  // namespace Pal
 
 // GPUOpen forward declarations
@@ -91,22 +92,22 @@ namespace pal {
 // ================================================================================================
 // RgpSqttMarkerIdentifier - Identifiers for RGP SQ thread-tracing markers (Table 1)
 enum RgpSqttMarkerIdentifier : uint32_t {
-  RgpSqttMarkerIdentifierEvent = 0x0,
-  RgpSqttMarkerIdentifierCbStart = 0x1,
-  RgpSqttMarkerIdentifierCbEnd = 0x2,
-  RgpSqttMarkerIdentifierBarrierStart = 0x3,
-  RgpSqttMarkerIdentifierBarrierEnd = 0x4,
-  RgpSqttMarkerIdentifierUserEvent = 0x5,
-  RgpSqttMarkerIdentifierGeneralApi = 0x6,
-  RgpSqttMarkerIdentifierSync = 0x7,
-  RgpSqttMarkerIdentifierPresent = 0x8,
-  RgpSqttMarkerIdentifierLayoutTransition = 0x9,
-  RgpSqttMarkerIdentifierRenderPass = 0xA,
-  RgpSqttMarkerIdentifierReserved2 = 0xB,
-  RgpSqttMarkerIdentifierReserved3 = 0xC,
-  RgpSqttMarkerIdentifierReserved4 = 0xD,
-  RgpSqttMarkerIdentifierReserved5 = 0xE,
-  RgpSqttMarkerIdentifierReserved6 = 0xF
+  RgpSqttMarkerIdentifierEvent               = 0x0,
+  RgpSqttMarkerIdentifierCbStart             = 0x1,
+  RgpSqttMarkerIdentifierCbEnd               = 0x2,
+  RgpSqttMarkerIdentifierBarrierStart        = 0x3,
+  RgpSqttMarkerIdentifierBarrierEnd          = 0x4,
+  RgpSqttMarkerIdentifierUserEvent           = 0x5,
+  RgpSqttMarkerIdentifierGeneralApi          = 0x6,
+  RgpSqttMarkerIdentifierSync                = 0x7,
+  RgpSqttMarkerIdentifierPresent             = 0x8,
+  RgpSqttMarkerIdentifierLayoutTransition    = 0x9,
+  RgpSqttMarkerIdentifierRenderPass          = 0xA,
+  RgpSqttMarkerIdentifierReserved2           = 0xB,
+  RgpSqttMarkerIdentifierBindPipeline        = 0xC,
+  RgpSqttMarkerIdentifierReserved4           = 0xD,
+  RgpSqttMarkerIdentifierReserved5           = 0xE,
+  RgpSqttMarkerIdentifierReserved6           = 0xF
 };
 
 // ================================================================================================
@@ -238,6 +239,33 @@ struct RgpSqttMarkerBarrierEnd {
   };
 };
 
+// ================================================================================================
+// RgpSqttMarkerPipelineBind - RGP SQ thread-tracing marker written whenever a pipeline is bound (Table 12).
+struct RgpSqttMarkerPipelineBind {
+  union  {
+    struct {
+      uint32_t identifier : 4;  // Identifier for this marker
+      uint32_t extDwords  : 3;  // Number of extra dwords following this marker
+      uint32_t bindPoint  : 1;  // The bind point of the pipeline within a queue
+                                // 0 = graphics bind point
+                                // 1 = compute bind point
+      uint32_t cbID       : 20; // A command buffer ID encoded as per Table 13.
+      uint32_t reserved   : 4;  // Reserved
+    };
+
+    uint32_t     dword01;       // The first dword
+  };
+
+  union {
+    uint32_t apiPsoHash[2];     // The API PSO hash of the pipeline being bound
+    struct {
+      uint32_t dword02;         // The second dword
+      uint32_t dword03;         // The third dword
+    };
+  };
+};
+
+
 // RGP SQTT Instrumentation Specification version (API-independent)
 constexpr uint32_t RgpSqttInstrumentationSpecVersion = 1;
 
@@ -312,7 +340,8 @@ class RgpCaptureMgr {
   Pal::Result TimedQueueSubmit(Pal::IQueue* queue, uint64_t cmdId,
                                const Pal::SubmitInfo& submitInfo) const;
   bool Update(Pal::IPlatform* platform);
-
+  uint64_t AddElfBinary(const void* exe_binary, size_t exe_binary_size, const void* elf_binary,
+                    size_t elf_binary_size, Pal::IGpuMemory* pGpuMemory, size_t offset);
  private:
   // Steps that an RGP trace goes through
   enum class TraceStatus {
@@ -360,6 +389,7 @@ class RgpCaptureMgr {
                                 uint32_t y, uint32_t z) const;
   void WriteUserEventMarker(const VirtualGPU* gpu, RgpSqttMarkerUserEventType eventType,
                             const std::string& name) const;
+  void WriteComputeBindMarker(const VirtualGPU* gpu, uint64_t api_hash) const;
 
   const Device& device_;
   DevDriver::DevDriverServer* dev_driver_server_;
@@ -411,8 +441,14 @@ class RgpCaptureMgr {
   void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size_t x, size_t y, size_t z) {}
   void PostDispatch(VirtualGPU* gpu) {}
   void FinishRGPTrace(VirtualGPU* gpu, bool aborted) {}
-  bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const { return true; }
+  bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const {
+    return true;
+  }
   bool Update(Pal::IPlatform* platform) const { return true; }
+  bool AddElfBinary(const void* exe_binary, size_t exe_binary_size, const void* elf_binary,
+                    size_t elf_binary_size, Pal::IGpuMemory* pGpuMemory, size_t offset) {
+    return true;
+  }
 };
 }  // namespace pal
 #endif // PAL_GPUOPEN_OCL
