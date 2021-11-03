@@ -77,6 +77,28 @@ RgpCaptureMgr* RgpCaptureMgr::Create(Pal::IPlatform* platform, const Device& dev
 }
 
 // ================================================================================================
+uint64_t RgpCaptureMgr::AddElfBinary(const void* exe_binary, size_t exe_binary_size,
+                                     const void* elf_binary, size_t elf_binary_size,
+                                     Pal::IGpuMemory* pGpuMemory, size_t offset) {
+  GpuUtil::ElfBinaryInfo elfBinaryInfo = {};
+  elfBinaryInfo.pBinary = exe_binary;
+  elfBinaryInfo.binarySize = exe_binary_size;  ///< FAT Elf binary size.
+  elfBinaryInfo.pGpuMemory = pGpuMemory;       ///< GPU Memory where the compiled ISA resides.
+  elfBinaryInfo.offset = static_cast<Pal::gpusize>(offset);
+
+  elfBinaryInfo.originalHash = DevDriver::MetroHash::MetroHash64(
+      reinterpret_cast<const DevDriver::uint8*>(elf_binary), elf_binary_size);
+
+  elfBinaryInfo.compiledHash = DevDriver::MetroHash::MetroHash64(
+      reinterpret_cast<const DevDriver::uint8*>(exe_binary), exe_binary_size);
+
+  assert(trace_.gpa_session_ != nullptr);
+
+  trace_.gpa_session_->RegisterElfBinary(elfBinaryInfo);
+  return elfBinaryInfo.originalHash;
+}
+
+// ================================================================================================
 bool RgpCaptureMgr::Init(Pal::IPlatform* platform) {
   if (dev_driver_server_ == nullptr) {
     return false;
@@ -413,6 +435,9 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size
           }
         }
       }
+      // Write the hash value
+      WriteComputeBindMarker(gpu, kernel.prog().ApiHash());
+
       WriteUserEventMarker(gpu, RgpSqttMarkerUserEventObjectName, kernel.name());
       // Write disaptch marker
       WriteEventWithDimsMarker(gpu, apiEvent, static_cast<uint32_t>(x), static_cast<uint32_t>(y),
@@ -891,6 +916,19 @@ void RgpCaptureMgr::WriteUserEventMarker(const VirtualGPU* gpu,
   }
 
   WriteMarker(gpu, user_event_, markerSize);
+}
+
+// ================================================================================================
+// Inserts a compute bind marker
+void RgpCaptureMgr::WriteComputeBindMarker(const VirtualGPU* gpu, uint64_t api_hash) const {
+  RgpSqttMarkerPipelineBind marker = {};
+
+  marker.identifier = RgpSqttMarkerIdentifierBindPipeline;
+  marker.cbID = gpu->queue(MainEngine).cmdBufId();;
+  marker.bindPoint = 1;
+
+  memcpy(marker.apiPsoHash, &api_hash, sizeof(api_hash));
+  WriteMarker(gpu, &marker, sizeof(marker));
 }
 
 }  // namespace pal

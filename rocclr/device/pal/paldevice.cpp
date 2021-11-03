@@ -1125,6 +1125,14 @@ bool Device::initializeHeapResources() {
       }
     }
 
+    // Update RGP capture manager
+    if (rgpCaptureMgr_ != nullptr) {
+      if (!rgpCaptureMgr_->Update(platform_)) {
+        delete rgpCaptureMgr_;
+        rgpCaptureMgr_ = nullptr;
+      }
+    }
+
     // Create a synchronized transfer queue
     xferQueue_ = new VirtualGPU(*this);
     if (!(xferQueue_ && xferQueue_->create(false))) {
@@ -1136,14 +1144,6 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
-
-    // Update RGP capture manager
-    if (rgpCaptureMgr_ != nullptr) {
-      if (!rgpCaptureMgr_->Update(platform_)) {
-        delete rgpCaptureMgr_;
-        rgpCaptureMgr_ = nullptr;
-      }
-    }
   }
   return true;
 }

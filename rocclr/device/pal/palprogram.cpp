@@ -802,6 +802,12 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
     return true;
   }
 
+  // Collect the information about compiled binary
+  if (palDevice().rgpCaptureMgr() != nullptr) {
+    apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(binary, binSize, binary, binSize,
+                                                         codeSegGpu_->iMem(), codeSegGpu_->offset());
+  }
+
   for (auto& kit : kernels()) {
     LightningKernel* kernel = static_cast<LightningKernel*>(kit.second);
     if (!kernel->postLoad()) {
