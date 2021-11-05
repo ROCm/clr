@@ -2582,6 +2582,9 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
   // Add mask array for AmdAqlWrap slots
   allocSize += amd::alignUp(numSlots, DeviceQueueMaskSize) / 8;
 
+  // Make sure the allocation size aligns with DWORD.
+  allocSize = amd::alignUp(allocSize, sizeof(uint64_t));
+
   // CL_MEM_ALLOC_HOST_PTR/CL_MEM_READ_WRITE
   virtualQueue_ = new (dev().context()) amd::Buffer(dev().context(), CL_MEM_READ_WRITE, allocSize);
 
