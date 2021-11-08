@@ -309,7 +309,6 @@ hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject,
   HIP_RETURN(ihipCreateTextureObject(pTexObject, pResDesc, pTexDesc, pResViewDesc));
 }
 
-
 hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
   if (texObject == nullptr) {
     return hipSuccess;
@@ -330,6 +329,28 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
 
   // TODO Should call ihipFree() to not polute the api trace.
   return hipFree(texObject);
+}
+
+hipError_t ihipUnbindTexture(textureReference* texRef) {
+
+  hipError_t hip_error = hipSuccess;
+
+  do {
+    if (texRef == nullptr) {
+      hip_error = hipErrorInvalidValue;
+      break;
+    }
+
+    hip_error = ihipDestroyTextureObject(texRef->textureObject);
+    if (hip_error != hipSuccess) {
+      break;
+    }
+
+    const_cast<textureReference*>(texRef)->textureObject = nullptr;
+
+  } while (0);
+
+  return hip_error;
 }
 
 hipError_t hipDestroyTextureObject(hipTextureObject_t texObject) {
@@ -593,14 +614,7 @@ hipError_t hipBindTextureToMipmappedArray(const textureReference* texref,
 hipError_t hipUnbindTexture(const textureReference* texref) {
   HIP_INIT_API(hipUnbindTexture, texref);
 
-  if (texref == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  const hipTextureObject_t textureObject = texref->textureObject;
-  const_cast<textureReference*>(texref)->textureObject = nullptr;
-
-  HIP_RETURN(ihipDestroyTextureObject(textureObject));
+  HIP_RETURN(ihipUnbindTexture(const_cast<textureReference*>(texref)));
 }
 
 hipError_t hipBindTexture(size_t* offset,

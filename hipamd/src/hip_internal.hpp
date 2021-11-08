@@ -371,6 +371,7 @@ extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
 extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset);
 extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size);
 extern void getStreamPerThread(hipStream_t& stream);
+extern hipError_t ihipUnbindTexture(textureReference* texRef);
 
 constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;
