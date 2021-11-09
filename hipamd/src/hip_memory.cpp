@@ -2255,23 +2255,33 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
 hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeBytes,
                       hipStream_t stream, bool isAsync = false) {
   hipError_t hip_error = hipSuccess;
-  hip_error = ihipMemset_validate(dst, value, valueSize, sizeBytes);
-  if (hip_error != hipSuccess) {
-    return hip_error;
-  }
-  std::vector<amd::Command*> commands;
-  amd::HostQueue* queue = hip::getQueue(stream);
-  hip_error = ihipMemsetCommand(commands, dst, value, valueSize, sizeBytes, queue);
-  if (hip_error != hipSuccess) {
-    return hip_error;
-  }
-  for (auto command : commands) {
-    command->enqueue();
-    if (!isAsync) {
-      command->awaitCompletion();
+  do {
+    // Nothing to do, fill size is 0. Returns hipSuccess.
+    if (sizeBytes == 0) {
+      break;
     }
-    command->release();
-  }
+
+    // In case of validation failure stop processing. Returns hip_error.
+    hip_error = ihipMemset_validate(dst, value, valueSize, sizeBytes);
+    if (hip_error != hipSuccess) {
+      break;
+    }
+
+    std::vector<amd::Command*> commands;
+    amd::HostQueue* queue = hip::getQueue(stream);
+    hip_error = ihipMemsetCommand(commands, dst, value, valueSize, sizeBytes, queue);
+    if (hip_error != hipSuccess) {
+      break;
+    }
+
+    for (auto command : commands) {
+      command->enqueue();
+      if (!isAsync) {
+        command->awaitCompletion();
+      }
+      command->release();
+    }
+  } while (0);
   return hip_error;
 }
 
