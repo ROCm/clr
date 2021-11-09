@@ -534,6 +534,8 @@ class Device : public NullDevice {
 
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset);
 
+  const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
+
  private:
   bool create();
 
@@ -555,6 +557,7 @@ class Device : public NullDevice {
   static std::vector<AgentInfo> cpu_agents_;
 
   hsa_agent_t cpu_agent_;
+  uint32_t preferred_numa_node_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls

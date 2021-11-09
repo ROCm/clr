@@ -222,6 +222,9 @@ class Os : AllStatic {
   //! Platform-specific optimized memcpy()
   static void* fastMemcpy(void* dest, const void* src, size_t n);
 
+  //! NUMA related settings
+  static void setPreferredNumaNode(uint32_t node);
+
   // File/Path helper routines:
   //
 
