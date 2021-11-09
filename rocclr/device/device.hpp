@@ -1730,6 +1730,8 @@ class Device : public RuntimeObject {
       ) const {
     return false;
   };
+
+  virtual const uint32_t getPreferredNumaNode() const { return 0; }
   virtual void ReleaseGlobalSignal(void* signal) const {}
 
   //! Returns TRUE if the device is available for computations

@@ -170,7 +170,8 @@ Device::Device(hsa_agent_t bkendDevice)
     , queuePool_(QueuePriority::Total)
     , coopHostcallBuffer_(nullptr)
     , queueWithCUMaskPool_(QueuePriority::Total)
-    , numOfVgpus_(0) {
+    , numOfVgpus_(0)
+    , preferred_numa_node_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
@@ -194,7 +195,7 @@ void Device::setupCpuAgent() {
       }
     }
   }
-
+  preferred_numa_node_ = index;
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;

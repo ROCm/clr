@@ -48,6 +48,10 @@
 #define DT_GNU_HASH 0x6ffffef5
 #endif  // DT_GNU_HASH
 
+#ifdef ROCCLR_SUPPORT_NUMA_POLICY
+#include <numa.h>
+#endif // ROCCLR_SUPPORT_NUMA_POLICY
+
 #include <atomic>
 #include <vector>
 #include <string>
@@ -59,7 +63,6 @@
 #include <memory>
 #include <algorithm>
 #include <mutex>
-
 
 namespace amd {
 
@@ -120,7 +123,6 @@ static void divisionErrorHandler(int sig, siginfo_t* info, void* ptr) {
   if (callOldSignalHandler(sig, info, ptr)) {
     return;
   }
-
 
   std::cerr << "Unhandled signal in divisionErrorHandler()" << std::endl;
   ::abort();
@@ -306,6 +308,20 @@ void Os::currentStackInfo(address* base, size_t* size) {
 
 void Os::setCurrentThreadName(const char* name) { ::prctl(PR_SET_NAME, name); }
 
+void Os::setPreferredNumaNode(uint32_t node) {
+  if (AMD_CPU_AFFINITY) {
+    // Set preferred node affinity mask
+    int num_cpus = numa_num_configured_cpus();
+    bitmask* bm = numa_bitmask_alloc(num_cpus);
+
+    numa_node_to_cpus(node, bm);
+    if (numa_sched_setaffinity(0, bm) < 0) {
+      assert(0 && "failed to set affinity");
+    }
+
+    numa_free_cpumask(bm);
+  }
+}
 
 void* Thread::entry(Thread* thread) {
   sigset_t set;
