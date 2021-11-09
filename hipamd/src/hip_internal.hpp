@@ -73,17 +73,19 @@ typedef struct ihipIpcEventHandle_st {
 #endif
 
 #define HIP_INIT() \
-  std::call_once(hip::g_ihipInitialized, hip::init);       \
-  if (hip::g_device == nullptr && g_devices.size() > 0) {  \
-    hip::g_device = g_devices[0];                          \
+  std::call_once(hip::g_ihipInitialized, hip::init);                                    \
+  if (hip::g_device == nullptr && g_devices.size() > 0) {                               \
+    hip::g_device = g_devices[0];                                                       \
+    amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
   }
 
-#define HIP_API_PRINT(...)                                 \
-  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s%s ( %s )%s", KGRN,    \
+#define HIP_API_PRINT(...)                                                         \
+  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API,           \
+                                            &startTimeUs, "%s%s ( %s )%s", KGRN,   \
           __func__, ToString( __VA_ARGS__ ).c_str(),KNRM);
 
-#define HIP_ERROR_PRINT(err, ...)                             \
-  ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",  \
+#define HIP_ERROR_PRINT(err, ...)                                                  \
+  ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",                     \
           __func__, hipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
 // This macro should be called at the beginning of every HIP API.
@@ -96,10 +98,12 @@ typedef struct ihipIpcEventHandle_st {
   HIP_INIT()                                                 \
   HIP_CB_SPAWNER_OBJECT(cid);
 
-#define HIP_RETURN_DURATION(ret, ...)                      \
-  hip::g_lastError = ret;                         \
-  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s",  \
-          __func__, hipGetErrorName(hip::g_lastError), ToString( __VA_ARGS__ ).c_str()); \
+#define HIP_RETURN_DURATION(ret, ...)                        \
+  hip::g_lastError = ret;                                    \
+  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,                      \
+                   "%s: Returned %s : %s",                                         \
+                   __func__, hipGetErrorName(hip::g_lastError),                    \
+                   ToString( __VA_ARGS__ ).c_str());                               \
   return hip::g_lastError;
 
 #define HIP_RETURN(ret, ...)                      \

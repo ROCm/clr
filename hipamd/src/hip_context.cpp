@@ -84,6 +84,8 @@ Device* getCurrentDevice() {
 void setCurrentDevice(unsigned int index) {
   assert(index<g_devices.size());
   g_device = g_devices[index];
+  uint32_t preferredNumaNode = g_device->devices()[0]->getPreferredNumaNode();
+  amd::Os::setPreferredNumaNode(preferredNumaNode);
 }
 
 amd::HostQueue* getQueue(hipStream_t stream) {
