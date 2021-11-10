@@ -41,7 +41,8 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
                    amdgpu_waves_per_eu(minBlocksPerMultiprocessor)))\n\
 #define select_impl_(_1, _2, impl_, ...) impl_\n\
 #define __launch_bounds__(...)                                                                \\\n\
-    select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)"
+    select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)           \n\
+#define HIP_INCLUDE_HIP_HIP_RUNTIME_H"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
 
