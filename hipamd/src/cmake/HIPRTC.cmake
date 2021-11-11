@@ -27,7 +27,9 @@
 
 function(get_hiprtc_macros HIPRTC_DEFINES)
   set(${HIPRTC_DEFINES}
-"#define __device__ __attribute__((device))\n\
+"#pragma clang diagnostic push\n\
+#pragma clang diagnostic ignored \"-Wreserved-id-macro\"\n\
+#define __device__ __attribute__((device))\n\
 #define __host__ __attribute__((host))\n\
 #define __global__ __attribute__((global))\n\
 #define __constant__ __attribute__((constant))\n\
@@ -42,6 +44,7 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define select_impl_(_1, _2, impl_, ...) impl_\n\
 #define __launch_bounds__(...)                                                                \\\n\
     select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)           \n\
+#pragma clang diagnostic pop\n\
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_H"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
