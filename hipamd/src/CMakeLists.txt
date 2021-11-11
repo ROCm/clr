@@ -22,6 +22,9 @@ cmake_minimum_required(VERSION 3.5.1)
 
 include(GNUInstallDirs)
 
+set(VERSION_MAJOR_AMDHIP ${HIP_VERSION_MAJOR})
+set(VERSION_MINOR_AMDHIP ${HIP_VERSION_MINOR})
+
 if(ADDRESS_SANITIZER)
   set(ASAN_LINKER_FLAGS "-fsanitize=address")
   set(ASAN_COMPILER_FLAGS "-fno-omit-frame-pointer -fsanitize=address")
@@ -127,6 +130,11 @@ if(BUILD_SHARED_LIBS)
     target_link_libraries(amdhip64 PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/hip_hcc.map.in")
     set_target_properties(amdhip64 PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/hip_hcc.map.in")
   endif()
+endif()
+
+if(WIN32)
+  configure_file(hip_hcc_in.rc.in hip_hcc_info.rc @ONLY)
+  target_sources(amdhip64 PRIVATE hip_hcc_info.rc)
 endif()
 
 target_include_directories(amdhip64
