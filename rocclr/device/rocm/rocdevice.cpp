@@ -518,6 +518,7 @@ bool Device::init() {
 
 extern const char* SchedulerSourceCode;
 extern const char* GwsInitSourceCode;
+extern const char* rocBlitLinearSourceCode;
 
 void Device::tearDown() {
   NullDevice::tearDown();
@@ -832,21 +833,28 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
 
 bool Device::createBlitProgram() {
   bool result = true;
-  const char* scheduler = nullptr;
+  const char* extraKernel = nullptr;
 
 #if defined(USE_COMGR_LIBRARY)
-  std::string sch = SchedulerSourceCode;
+  std::string rocKernel;
   if (settings().useLightning_) {
-    if (info().cooperativeGroups_) {
-      sch.append(GwsInitSourceCode);
+    if (amd::IS_HIP) {
+      rocKernel = rocBlitLinearSourceCode;
+      if (info().cooperativeGroups_) {
+        rocKernel.append(GwsInitSourceCode);
+      } 
     }
-    scheduler = sch.c_str();
+    else {
+      rocKernel = SchedulerSourceCode;
+    }
+  
+    extraKernel = rocKernel.c_str();
   }
 #endif  // USE_COMGR_LIBRARY
 
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, scheduler)) {
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraKernel)) {
     delete blitProgram_;
     blitProgram_ = nullptr;
     LogError("Couldn't create blit kernels!");
