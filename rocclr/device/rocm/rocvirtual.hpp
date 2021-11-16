@@ -50,7 +50,8 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
     uint64_t timeout = kTimeout100us;
     if (active_wait) {
       timeout = kUnlimitedWait;
-    } else if (active_wait_timeout) {
+    }
+    if (active_wait_timeout) {
       timeout = ROC_ACTIVE_WAIT_TIMEOUT * K;
       if (timeout == 0) {
         return false;
