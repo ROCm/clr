@@ -36,6 +36,7 @@
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "amdocl/cl_gl_amd.hpp"
+#include "amdocl/cl_vk_amd.hpp"
 #ifdef WITH_AMDGPU_PRO
 #include "pro/prodriver.hpp"
 #endif
@@ -205,6 +206,29 @@ void Memory::cpuUnmap(device::VirtualDevice& vDev) {
   decIndMapCount();
 }
 
+hsa_status_t Memory::interopMapBuffer(int fd) {
+  hsa_agent_t agent = dev().getBackendDevice();
+  size_t size;
+  size_t metadata_size = 0;
+  void* metadata;
+  hsa_status_t status = hsa_amd_interop_map_buffer(
+      1, &agent, fd, 0, &size, &interop_deviceMemory_,
+      &metadata_size, (const void**)&metadata);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Map Interop memory %p, size 0x%zx",
+          interop_deviceMemory_, size);
+  deviceMemory_ = static_cast<char*>(interop_deviceMemory_);// + out.buf_offset;
+  if (status != HSA_STATUS_SUCCESS) return status;
+  // if map_buffer wrote a legitimate SRD, copy it to amdImageDesc_
+  if ((metadata_size != 0) &&
+      (reinterpret_cast<hsa_amd_image_descriptor_t*>(metadata)->deviceID ==
+       amdImageDesc_->deviceID)) {
+    memcpy(amdImageDesc_, metadata, metadata_size);
+  }
+  kind_ = MEMORY_KIND_INTEROP;
+  assert(deviceMemory_ != nullptr && "Interop map failed to produce a pointer!");
+  return status;
+}
+
 // Setup an interop buffer (dmabuf handle) as an OpenCL buffer
 bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 #if defined(_WIN32)
@@ -255,29 +279,10 @@ bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
       return false;
   }
 
-  size_t size;
-  size_t metadata_size = 0;
-  void* metadata;
-  hsa_status_t status = hsa_amd_interop_map_buffer(
-      1, &agent, out.dmabuf_fd, 0, &size, &interop_deviceMemory_,
-      &metadata_size, (const void**)&metadata);
+  if (interopMapBuffer(out.dmabuf_fd) != HSA_STATUS_SUCCESS) return false;
+
   close(out.dmabuf_fd);
-
-  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Map GL memory %p, size 0x%zx, offset=0x%llx",
-          interop_deviceMemory_, size, out.buf_offset);
   deviceMemory_ = static_cast<char*>(interop_deviceMemory_) + out.buf_offset;
-
-  if (status != HSA_STATUS_SUCCESS) return false;
-
-  // if map_buffer wrote a legitimate SRD, copy it to amdImageDesc_
-  if ((metadata_size != 0) &&
-      (reinterpret_cast<hsa_amd_image_descriptor_t*>(metadata)->deviceID ==
-       amdImageDesc_->deviceID)) {
-    memcpy(amdImageDesc_, metadata, metadata_size);
-  }
-
-  kind_ = MEMORY_KIND_INTEROP;
-  assert(deviceMemory_ != nullptr && "Interop map failed to produce a pointer!");
 
   return true;
 #endif
@@ -794,8 +799,18 @@ bool Buffer::create() {
   }
 
   // Interop buffer
-  if (owner()->isInterop()) return createInteropBuffer(GL_ARRAY_BUFFER, 0);
-
+  if (owner()->isInterop()) {
+    amd::InteropObject* interop = owner()->getInteropObj();
+    amd::VkObject* vkObject = interop->asVkObject();
+    amd::GLObject* glObject = interop->asGLObject();
+    if (vkObject != nullptr) {
+      hsa_status_t status = interopMapBuffer(vkObject->getVkSharedHandle());
+      if (status != HSA_STATUS_SUCCESS) return false;
+      return true;
+    } else if (glObject != nullptr) {
+      return createInteropBuffer(GL_ARRAY_BUFFER,0);
+    }
+  }
   if (nullptr != owner()->parent()) {
     amd::Memory& parent = *owner()->parent();
     // Sub-Buffer creation.
