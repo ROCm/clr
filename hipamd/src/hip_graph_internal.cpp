@@ -46,6 +46,40 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 };
 
 int hipGraphNode::nextID = 0;
+hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
+                                                hipMemcpyKind kind) {
+  hipError_t status = ihipMemcpy_validate(dst, src, count, kind);
+  if (status != hipSuccess) {
+    return status;
+  }
+  size_t sOffsetOrig = 0;
+  amd::Memory* origSrcMemory = getMemoryObject(src, sOffsetOrig);
+  size_t dOffsetOrig = 0;
+  amd::Memory* origDstMemory = getMemoryObject(dst, dOffsetOrig);
+
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(src, sOffset);
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+
+  if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
+    if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
+      return hipErrorInvalidValue;
+    }
+  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
+    if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
+      return hipErrorInvalidValue;
+    }
+  } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
+    if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
+      return hipErrorInvalidValue;
+    }
+    if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
+      return hipErrorInvalidValue;
+    }
+  }
+  return hipSuccess;
+}
 
 hipError_t hipGraphMemcpyNode1D::SetCommandParams(void* dst, const void* src, size_t count,
                                                   hipMemcpyKind kind) {
@@ -54,9 +88,9 @@ hipError_t hipGraphMemcpyNode1D::SetCommandParams(void* dst, const void* src, si
     return status;
   }
   size_t sOffsetOrig = 0;
-  amd::Memory* origSrcMemory = getMemoryObject(src_, sOffsetOrig);
+  amd::Memory* origSrcMemory = getMemoryObject(src, sOffsetOrig);
   size_t dOffsetOrig = 0;
-  amd::Memory* origDstMemory = getMemoryObject(dst_, dOffsetOrig);
+  amd::Memory* origDstMemory = getMemoryObject(dst, dOffsetOrig);
 
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
@@ -93,6 +127,155 @@ hipError_t hipGraphMemcpyNode1D::SetCommandParams(void* dst, const void* src, si
   } else {
     amd::CopyMemoryCommand* command = reinterpret_cast<amd::CopyMemoryCommand*>(commands_[0]);
     command->setParams(*srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, count);
+  }
+  return hipSuccess;
+}
+
+hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) {
+  hipError_t status = ihipMemcpy3D_validate(pNodeParams);
+  if (status != hipSuccess) {
+    return status;
+  }
+  const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pNodeParams);
+  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
+  // (unified virtual address space) base address of the source data and the bytes per row to apply.
+  // {src/dst}Array is ignored.
+  hipMemoryType srcMemoryType = pCopy.srcMemoryType;
+  if (srcMemoryType == hipMemoryTypeUnified) {
+    srcMemoryType =
+        amd::MemObjMap::FindMemObj(pCopy.srcDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    if (srcMemoryType == hipMemoryTypeHost) {
+      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
+      // memory.
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcHost = pCopy.srcDevice;
+    }
+  }
+  hipMemoryType dstMemoryType = pCopy.dstMemoryType;
+  if (dstMemoryType == hipMemoryTypeUnified) {
+    dstMemoryType =
+        amd::MemObjMap::FindMemObj(pCopy.dstDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    if (srcMemoryType == hipMemoryTypeHost) {
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstHost = pCopy.dstDevice;
+    }
+  }
+
+  // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
+  // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
+  if (srcMemoryType == hipMemoryTypeHost) {
+    amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.srcHost);
+    srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    if (srcMemoryType == hipMemoryTypeDevice) {
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
+    }
+  }
+  if (dstMemoryType == hipMemoryTypeHost) {
+    amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.dstHost);
+    dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    if (dstMemoryType == hipMemoryTypeDevice) {
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
+    }
+  }
+
+  amd::Coord3D srcOrigin = {pCopy.srcXInBytes, pCopy.srcY, pCopy.srcZ};
+  amd::Coord3D dstOrigin = {pCopy.dstXInBytes, pCopy.dstY, pCopy.dstZ};
+  amd::Coord3D copyRegion = {pCopy.WidthInBytes, pCopy.Height, pCopy.Depth};
+
+  if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Host to Device.
+
+    amd::Memory* dstMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+
+    status =
+        ihipMemcpyHtoDValidate(pCopy.srcHost, pCopy.dstDevice, srcOrigin, dstOrigin, copyRegion,
+                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
+                               pCopy.dstPitch * pCopy.dstHeight, dstMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeHost)) {
+    // Device to Host.
+    amd::Memory* srcMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+    status =
+        ihipMemcpyDtoHValidate(pCopy.srcDevice, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
+                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
+                               pCopy.dstPitch * pCopy.dstHeight, srcMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Device to Device.
+    amd::Memory* srcMemory;
+    amd::Memory* dstMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+
+    status = ihipMemcpyDtoDValidate(pCopy.srcDevice, pCopy.dstDevice, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
+                                    pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcMemory,
+                                    dstMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
+    amd::Image* dstImage;
+    amd::BufferRect srcRect;
+
+    status =
+        ihipMemcpyHtoAValidate(pCopy.srcHost, pCopy.dstArray, srcOrigin, dstOrigin, copyRegion,
+                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, dstImage, srcRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
+    // Image to Host.
+    amd::Image* srcImage;
+    amd::BufferRect dstRect;
+
+    status =
+        ihipMemcpyAtoHValidate(pCopy.srcArray, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
+                               pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcImage, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeArray)) {
+    // Device to Image.
+    amd::Image* dstImage;
+    amd::Memory* srcMemory;
+    amd::BufferRect dstRect;
+    amd::BufferRect srcRect;
+    status = ihipMemcpyDtoAValidate(pCopy.srcDevice, pCopy.dstArray, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
+                                    dstImage, srcMemory, dstRect, srcRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Image to Device.
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+    amd::Memory* dstMemory;
+    amd::Image* srcImage;
+    status = ihipMemcpyAtoDValidate(pCopy.srcArray, pCopy.dstDevice, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight,
+                                    dstMemory, srcImage, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeArray)) {
+    amd::Image* srcImage;
+    amd::Image* dstImage;
+
+    status = ihipMemcpyAtoAValidate(pCopy.srcArray, pCopy.dstArray, srcOrigin, dstOrigin,
+                                    copyRegion, srcImage, dstImage);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else {
+    ShouldNotReachHere();
   }
   return hipSuccess;
 }
@@ -425,9 +608,8 @@ void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
   }
 }
 
-ihipGraph* ihipGraph::clone() const {
+ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
   ihipGraph* newGraph = new ihipGraph();
-  std::unordered_map<Node, Node> clonedNodes;
   for (auto entry : vertices_) {
     hipGraphNode* node = entry->clone();
     newGraph->vertices_.push_back(node);
@@ -455,9 +637,14 @@ ihipGraph* ihipGraph::clone() const {
   return newGraph;
 }
 
-hipError_t hipGraphExec::CreateQueues() {
-  parallelQueues_.reserve(parallelLists_.size());
-  for (size_t i = 0; i < parallelLists_.size(); i++) {
+ihipGraph* ihipGraph::clone() const {
+  std::unordered_map<Node, Node> clonedNodes;
+  return clone(clonedNodes);
+}
+
+hipError_t hipGraphExec::CreateQueues(size_t numQueues) {
+  parallelQueues_.reserve(numQueues);
+  for (size_t i = 0; i < numQueues; i++) {
     amd::HostQueue* queue;
     cl_command_queue_properties properties =
         (callbacks_table.is_enabled() || HIP_FORCE_QUEUE_PROFILING) ? CL_QUEUE_PROFILING_ENABLE : 0;
@@ -476,80 +663,44 @@ hipError_t hipGraphExec::CreateQueues() {
   return hipSuccess;
 }
 
-hipError_t hipGraphExec::FillCommands() {
-  // Create commands
-  int i = 0;
+hipError_t hipGraphExec::Init() {
   hipError_t status;
-  for (const auto& list : parallelLists_) {
-    for (auto& node : list) {
-      status = node->CreateCommand(parallelQueues_[i]);
-      if (status != hipSuccess) return status;
-    }
-    i++;
+  size_t reqNumQueues = 0;
+  for (auto& node : levelOrder_) {
+    reqNumQueues += node->GetNumParallelQueues();
   }
+  status = CreateQueues(parallelLists_.size() - 1 + reqNumQueues);
+  return status;
+}
 
-  i = 0;
-  // For nodes that has embedded child graph
-  for (const auto& list : parallelLists_) {
-    for (auto& node : list) {
-      node->UpdateEventWaitLists();
-    }
-    i++;
-  }
-
-  // Add waitlists for all the commands
-  for (auto entry : nodeWaitLists_) {
+hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
+                        std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
+                        std::vector<Node>& levelOrder, amd::Command*& rootCommand,
+                        amd::Command*& endCommand, amd::HostQueue* queue) {
+  hipError_t status;
+  for (auto& node : levelOrder) {
+    // TODO: clone commands from next launch
+    status = node->CreateCommand(node->GetQueue());
+    if (status != hipSuccess) return status;
     amd::Command::EventWaitList waitList;
-    for (auto depNode : entry.second) {
+    for (auto depNode : nodeWaitLists[node]) {
       for (auto command : depNode->GetCommands()) {
         waitList.push_back(command);
       }
     }
-    for (auto command : entry.first->GetCommands()) {
-      command->updateEventWaitList(waitList);
+    node->UpdateEventWaitLists(waitList);
+  }
+  // rootCommand ensures graph is started (all parallel branches) after all the previous work is
+  // finished
+  bool first = true;
+  for (auto& singleList : parallelLists) {
+    if (first) {
+      first = false;
+      continue;
     }
-  }
-  return status;
-}
-
-hipError_t hipGraphExec::Init() {
-  hipError_t status;
-  status = CreateQueues();
-  if (status != hipSuccess) {
-    return status;
-  }
-  status = FillCommands();
-  if (status != hipSuccess) {
-    return status;
-  }
-  rootCommand_ = nullptr;
-  /// stream should execute next command after graph finishes
-  /// Add marker to the stream that waits for all the last commands in parallel queues of graph
-  for (auto& singleList : parallelLists_) {
-    graphLastCmdWaitList_.push_back(singleList.back()->GetCommands().back());
-  }
-  return status;
-}
-
-void hipGraphExec::ResetGraph(cl_event event, cl_int command_exec_status, void* user_data) {
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Inside resetGraph!\n");
-  hipGraphExec_t graphExec =
-      hipGraphExec::activeGraphExec_[reinterpret_cast<amd::Command*>(user_data)];
-  if (graphExec != nullptr) {
-    for (auto& node : graphExec->levelOrder_) {
-      node->ResetStatus();
-    }
-    graphExec->rootCommand_->resetStatus(CL_INT_MAX);
-    graphExec->bExecPending_.store(false);
-  } else {
-    ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] graphExec is nullptr during resetGraph!\n");
-  }
-}
-
-void hipGraphExec::UpdateGraphToWaitOnRoot() {
-  for (auto& singleList : parallelLists_) {
+    rootCommand = new amd::Marker(*queue, false, {});
     amd::Command::EventWaitList waitList;
-    waitList.push_back(rootCommand_);
+    waitList.push_back(rootCommand);
     if (!singleList.empty()) {
       auto commands = singleList[0]->GetCommands();
       if (!commands.empty()) {
@@ -557,56 +708,70 @@ void hipGraphExec::UpdateGraphToWaitOnRoot() {
       }
     }
   }
+  // endCommand ensures next enqueued ones start after graph is finished (all parallel branches)
+  amd::Command::EventWaitList graphLastCmdWaitList;
+  first = true;
+  for (auto& singleList : parallelLists) {
+    if (first) {
+      first = false;
+      continue;
+    }
+    graphLastCmdWaitList.push_back(singleList.back()->GetCommands().back());
+  }
+  if (!graphLastCmdWaitList.empty()) {
+    endCommand = new amd::Marker(*queue, false, graphLastCmdWaitList);
+    if (endCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+  }
+  return hipSuccess;
+}
+
+void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
+                 hipGraphExec* ptr) {
+  int i = 0;
+  for (const auto& list : parallelLists) {
+    // first parallel list will be launched on the same queue as parent
+    if (i == 0) {
+      for (auto& node : list) {
+        node->SetQueue(queue, ptr);
+      }
+    } else {  // New queue for parallel branches
+      amd::HostQueue* paralleQueue = ptr->GetAvailableQueue();
+      for (auto& node : list) {
+        node->SetQueue(paralleQueue, ptr);
+      }
+    }
+    i++;
+  }
 }
 
 hipError_t hipGraphExec::Run(hipStream_t stream) {
-  if (bExecPending_.load() == true) {
-    ClPrint(
-        amd::LOG_INFO, amd::LOG_CODE,
-        "[hipGraph] Same graph launched while previous one is active, wait for it to finish!\n");
-    lastEnqueuedGraphCmd_->awaitCompletion();
-  }
+  hipError_t status;
   amd::HostQueue* queue = hip::getQueue(stream);
   if (queue == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
-  if (rootCommand_ == nullptr || rootCommand_->queue() != queue) {
-    if (rootCommand_ != nullptr) {
-      rootCommand_->release();
-    }
-    rootCommand_ = new amd::Marker(*queue, false, {});
-    UpdateGraphToWaitOnRoot();
+  UpdateQueue(parallelLists_, queue, this);
+  amd::Command* rootCommand = nullptr;
+  amd::Command* endCommand = nullptr;
+  status =
+      FillCommands(parallelLists_, nodeWaitLists_, levelOrder_, rootCommand, endCommand, queue);
+  if (status != hipSuccess) {
+    return status;
   }
-  rootCommand_->enqueue();
+
+  if (rootCommand != nullptr) {
+    rootCommand->enqueue();
+    rootCommand->release();
+  }
   for (auto& node : levelOrder_) {
     node->EnqueueCommands(stream);
   }
-
-  amd::Command* command = new amd::Marker(*queue, false, graphLastCmdWaitList_);
-  if (command == nullptr) {
-    return hipErrorOutOfMemory;
+  if (endCommand != nullptr) {
+    endCommand->enqueue();
+    endCommand->release();
   }
-  amd::Event& event = command->event();
-  if (!event.setCallback(CL_COMPLETE, hipGraphExec::ResetGraph, command)) {
-    return hipErrorInvalidHandle;
-  }
-
-  hipGraphExec::activeGraphExec_[command] = this;
-  lastEnqueuedGraphCmd_ = command;
-  bExecPending_.store(true);
-  command->enqueue();
-
-  // Add the new barrier to stall the stream, until the callback is done
-  amd::Command::EventWaitList eventWaitList;
-  eventWaitList.push_back(command);
-  amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
-  if (block_command == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  block_command->enqueue();
-  block_command->release();
-
-  command->release();
-
+  ResetQueueIndex();
   return hipSuccess;
 }
