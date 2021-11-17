@@ -2345,7 +2345,7 @@ bool Device::createBlitProgram() {
   bool result = true;
 
   // Delayed compilation due to brig_loader memory allocation
-  const char* blits = nullptr;
+  std::string blits;
   const char* ocl20 = nullptr;
 
   std::string sch = SchedulerSourceCode;
@@ -2364,7 +2364,7 @@ bool Device::createBlitProgram() {
         sch.append(GwsInitSourceCode);
       }
     }
-    blits = sch.c_str();
+    blits = sch;
     ocl20 = "-cl-std=CL2.0";
   }
 

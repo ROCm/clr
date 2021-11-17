@@ -356,7 +356,7 @@ Device::BlitProgram::~BlitProgram() {
   }
 }
 
-bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
+bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKernels,
                                  const char* extraOptions) {
   std::vector<amd::Device*> devices;
   devices.push_back(device);
@@ -367,7 +367,7 @@ bool Device::BlitProgram::create(amd::Device* device, const char* extraKernels,
     kernels += image_kernels;
   }
 
-  if (extraKernels != nullptr) {
+  if (!extraKernels.empty()) {
     kernels += extraKernels;
   }
 

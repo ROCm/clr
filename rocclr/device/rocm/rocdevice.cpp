@@ -834,22 +834,20 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
 
 bool Device::createBlitProgram() {
   bool result = true;
-  const char* extraKernel = nullptr;
+  std::string extraKernel;
 
 #if defined(USE_COMGR_LIBRARY)
-  std::string rocKernel;
   if (settings().useLightning_) {
     if (amd::IS_HIP) {
-      rocKernel = rocBlitLinearSourceCode;
+      extraKernel = rocBlitLinearSourceCode;
       if (info().cooperativeGroups_) {
-        rocKernel.append(GwsInitSourceCode);
-      } 
+        extraKernel.append(GwsInitSourceCode);
+      }
     }
     else {
-      rocKernel = SchedulerSourceCode;
+      extraKernel = SchedulerSourceCode;
     }
-  
-    extraKernel = rocKernel.c_str();
+
   }
 #endif  // USE_COMGR_LIBRARY
 
