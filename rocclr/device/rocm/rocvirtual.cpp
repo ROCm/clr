@@ -775,8 +775,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
-  // @note: Reserve extra slot for HW processing. There is unknown race condition in some apps.
-  const uint32_t sw_queue_size = queueMask - 1;
+  const uint32_t sw_queue_size = queueMask;
 
   // Check for queue full and wait if needed.
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, size);
@@ -794,8 +793,10 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     amd::Os::yield();
   }
 
-  // Add blocking command if the original value of read index was behind of the queue size
-  if (blocking || (index - read) >= sw_queue_size) {
+  // Add blocking command if the original value of read index was behind of the queue size.
+  // Note: direct dispatch relies on the slot stall above to keep the forward progress
+  // of the app if a dispatched kernel requires some CPU input for completion
+  if (blocking || (!AMD_DIRECT_DISPATCH && (index - read) >= sw_queue_size)) {
     if (packet->completion_signal.handle == 0) {
       packet->completion_signal = Barriers().ActiveSignal();
     }
