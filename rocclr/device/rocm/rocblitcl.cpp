@@ -39,7 +39,24 @@ const char* rocBlitLinearSourceCode = BLIT_KERNEL(
                                            ulong value, ulong flags, ulong mask) {
     __amd_streamOpsWait(ptrInt, ptrUlong, value, flags, mask);
   }
+);
 
+const char* SchedulerSourceCode = BLIT_KERNEL(
+
+  extern void __amd_scheduler_rocm(__global void*);
+
+  __kernel void __amd_rocclr_scheduler(__global void* params) {
+    __amd_scheduler_rocm(params);
+  }
+);
+
+const char* GwsInitSourceCode = BLIT_KERNEL(
+
+  extern void __ockl_gws_init(uint nwm1, uint rid);
+
+  __kernel void __amd_rocclr_gwsInit(uint value) {
+    __ockl_gws_init(value, 0);
+  }
 );
 
 }  // namespace roc

@@ -1117,7 +1117,7 @@ bool Device::initializeHeapResources() {
 
     // Delay compilation due to brig_loader memory allocation
     if (settings().ciPlus_) {
-      const char* CL20extraBlits = NULL;
+      std::string CL20extraBlits;
       const char* ocl20 = NULL;
       if (settings().oclVersion_ >= OpenCL20) {
         CL20extraBlits = SchedulerSourceCode;

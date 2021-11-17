@@ -1529,7 +1529,7 @@ class Device : public RuntimeObject {
 
     //! Creates blit program for this device
     bool create(Device* device,                  //!< Device object
-                const char* extraKernel = NULL,  //!< Extra kernels from the device layer
+                const std::string& extraKernel,  //!< Extra kernels from the device layer
                 const char* extraOptions = NULL  //!< Extra compilation options
     );
   };
