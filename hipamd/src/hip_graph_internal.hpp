@@ -31,6 +31,7 @@
 #include "hip_internal.hpp"
 #include "hip_graph_helper.hpp"
 #include "hip_event.hpp"
+#include "hip_platform.hpp"
 
 typedef hipGraphNode* Node;
 hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams);
@@ -400,7 +401,6 @@ class hipGraphKernelNode : public hipGraphNode {
     commands_.emplace_back(command);
     return status;
   }
-
   void GetParams(hipKernelNodeParams* params) {
     std::memcpy(params, pKernelParams_, sizeof(hipKernelNodeParams));
   }
@@ -410,12 +410,27 @@ class hipGraphKernelNode : public hipGraphNode {
     if (hipSuccess != status) {
       return status;
     }
+    if (params->func != pKernelParams_->func) {
+      hipFunction_t func = nullptr;
+      hipError_t status =
+          PlatformState::instance().getStatFunc(&func, params->func, ihipGetDevice());
+      if ((status != hipSuccess) || (func == nullptr)) {
+        return hipErrorInvalidDeviceFunction;
+      }
+      func_ = func;
+    }
     std::memcpy(pKernelParams_, params, sizeof(hipKernelNodeParams));
-    return hipSuccess;
+    return status;
   }
   hipError_t SetCommandParams(const hipKernelNodeParams* params) {
     if (params->func != pKernelParams_->func) {
-      return hipErrorInvalidValue;
+      hipFunction_t func = nullptr;
+      hipError_t status =
+          PlatformState::instance().getStatFunc(&func, params->func, ihipGetDevice());
+      if ((status != hipSuccess) || (func == nullptr)) {
+        return hipErrorInvalidDeviceFunction;
+      }
+      func_ = func;
     }
     // updates kernel params
     hipError_t status = ihipValidateKernelParams(params);
