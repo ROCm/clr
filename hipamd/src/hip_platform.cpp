@@ -104,7 +104,7 @@ extern "C" void __hipRegisterFunction(
   PlatformState::instance().registerStatFunction(hostFunction, func);
 
   if (!enable_deferred_loading) {
-    HIP_INIT();
+    HIP_INIT_VOID();
     hipFunction_t hfunc = nullptr;
     hipError_t hip_error = hipSuccess;
     for (size_t dev_idx = 0; dev_idx < g_devices.size(); ++dev_idx) {
@@ -149,7 +149,7 @@ extern "C" void __hipRegisterManagedVar(void *hipModule,   // Pointer to hip mod
                                         const char *name,  // Name of the variable in code object
                                         size_t size,
                                         unsigned align) {
-  HIP_INIT();
+  HIP_INIT_VOID();
   hipError_t status = ihipMallocManaged(pointer, size, align);
   if( status == hipSuccess) {
     amd::HostQueue* queue = hip::getNullStream();
@@ -597,7 +597,7 @@ void hipLaunchKernelGGLImpl(
   hipStream_t stream,
   void** kernarg)
 {
-  HIP_INIT();
+  HIP_INIT_VOID();
 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   int deviceId = (s != nullptr)? s->DeviceId() : ihipGetDevice();
@@ -625,7 +625,7 @@ void hipLaunchCooperativeKernelGGLImpl(
   hipStream_t stream,
   void** kernarg)
 {
-  HIP_INIT();
+  HIP_INIT_VOID();
 
   hipLaunchCooperativeKernel(reinterpret_cast<void*>(function_address),
     numBlocks, dimBlocks, kernarg, sharedMemBytes, stream);

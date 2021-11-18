@@ -72,16 +72,34 @@ typedef struct ihipIpcEventHandle_st {
   inline int getpid() { return _getpid(); }
 #endif
 
-#define HIP_INIT() \
-  std::call_once(hip::g_ihipInitialized, hip::init);                                    \
-  if (hip::g_device == nullptr && g_devices.size() > 0) {                               \
-    hip::g_device = g_devices[0];                                                       \
-    amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
+static  amd::Monitor g_hipInitlock{"hipInit lock"};
+#define HIP_INIT() {\
+    amd::ScopedLock lock(g_hipInitlock);                     \
+    if (!amd::Runtime::initialized()) {                      \
+      if (!hip::init()) {                                    \
+        HIP_RETURN(hipErrorInvalidDevice);                   \
+      }                                                      \
+    }                                                        \
+    if (hip::g_device == nullptr && g_devices.size() > 0) {  \
+      hip::g_device = g_devices[0];                          \
+      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
+    }                                                        \
   }
 
-#define HIP_API_PRINT(...)                                                         \
-  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API,           \
-                                            &startTimeUs, "%s%s ( %s )%s", KGRN,   \
+#define HIP_INIT_VOID() {\
+    amd::ScopedLock lock(g_hipInitlock);                     \
+    if (!amd::Runtime::initialized()) {                      \
+      if (hip::init()) {}                                    \
+    }                                                        \
+    if (hip::g_device == nullptr && g_devices.size() > 0) {  \
+      hip::g_device = g_devices[0];                          \
+      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
+    }                                                        \
+  }
+
+
+#define HIP_API_PRINT(...)                                 \
+  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s%s ( %s )%s", KGRN,    \
           __func__, ToString( __VA_ARGS__ ).c_str(),KNRM);
 
 #define HIP_ERROR_PRINT(err, ...)                                                  \
@@ -342,14 +360,13 @@ namespace hip {
     amd::HostQueue* NullStream(bool skip_alloc = false);
   };
 
-  extern std::once_flag g_ihipInitialized;
   /// Current thread's device
   extern thread_local Device* g_device;
   extern thread_local hipError_t g_lastError;
   /// Device representing the host - for pinned memory
   extern Device* host_device;
 
-  extern void init();
+  extern bool init();
 
   extern Device* getCurrentDevice();
 
