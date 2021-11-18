@@ -354,7 +354,7 @@ class HostBlitManager : public device::BlitManager {
   // Packed Fill Buffer
   class FillBufferInfo {
   public:
-    FillBufferInfo(): fill_size_(0), expanded_pattern_(0), pattern_expanded_(false) {}
+    FillBufferInfo(): fill_size_(0), expanded_pattern_(0), pattern_aligned_(false) {}
 
     static bool PackInfo(const device::Memory& memory, size_t fill_size,
                   size_t fill_origin, const void* pattern, size_t pattern_size,
@@ -371,13 +371,13 @@ class HostBlitManager : public device::BlitManager {
     void clearInfo () {
       fill_size_ = 0;
       expanded_pattern_ = 0;
-      pattern_expanded_ = false;
+      pattern_aligned_ = false;
     }
 
   public:
     size_t fill_size_;          // Fill size for this command
     uint64_t expanded_pattern_; // Pattern for this command
-    bool pattern_expanded_;     // Boolean to check if pattern is expanded
+    bool pattern_aligned_;     // Boolean to check if pattern is expanded
   };
 
 
