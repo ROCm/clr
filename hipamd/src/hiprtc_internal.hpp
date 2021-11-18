@@ -53,7 +53,7 @@ extern "C" char * __cxa_demangle(const char *mangled_name, char *output_buffer,
   if (!VDI_CHECK_THREAD(thread)) {                           \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);              \
   }                                                          \
-  HIP_INIT();
+  HIP_INIT_VOID();
 
 #define HIPRTC_RETURN(ret)             \
   hiprtc::g_lastRtcError = ret;        \
