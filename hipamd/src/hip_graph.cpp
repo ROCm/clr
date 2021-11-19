@@ -678,10 +678,14 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
 
 hipError_t hipStreamIsCapturing(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus) {
   HIP_INIT_API(hipStreamIsCapturing, stream, pCaptureStatus);
-  if (stream == nullptr || !hip::isValid(stream)) {
+  if (pCaptureStatus == nullptr || !hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  *pCaptureStatus = reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus();
+  if (stream == nullptr) {
+    *pCaptureStatus = hipStreamCaptureStatusNone;
+  } else {
+    *pCaptureStatus = reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus();
+  }
   HIP_RETURN(hipSuccess);
 }
 
