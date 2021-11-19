@@ -375,6 +375,8 @@ global:
     hipGraphHostNodeSetParams;
     hipGraphExecHostNodeSetParams;
     hipGraphExecUpdate;
+    hipGraphInstantiateWithFlags;
+    hipGraphExecMemsetNodeSetParams;
 local:
     *;
 } hip_4.4;
