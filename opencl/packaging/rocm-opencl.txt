@@ -6,6 +6,7 @@ install(FILES @PROJECT_BINARY_DIR@/amdocl/libamdocl64.so DESTINATION lib)
 install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so DESTINATION lib)
 install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@ DESTINATION lib)
 install(FILES @PROJECT_BINARY_DIR@/khronos/icd/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@ DESTINATION lib)
+install(FILES @opencl_SOURCE_DIR@/LICENSE.txt DESTINATION share/doc/rocm-opencl)
 
 #############################
 # Packaging steps
@@ -44,6 +45,7 @@ else()
   set(CPACK_RPM_PACKAGE_RELEASE "local")
 endif()
 message("Using CPACK_RPM_PACKAGE_RELEASE ${CPACK_RPM_PACKAGE_RELEASE}")
+set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 
 ## 'dist' breaks manual builds on debian systems due to empty Provides
 execute_process(COMMAND rpm --eval %{?dist}
