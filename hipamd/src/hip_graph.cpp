@@ -904,16 +904,19 @@ hipError_t hipGraphGetNodes(hipGraph_t graph, hipGraphNode_t* nodes, size_t* num
   if (nodes == nullptr) {
     *numNodes = graphNodes.size();
     HIP_RETURN(hipSuccess);
-  } else if (*numNodes < graphNodes.size()) {
-    HIP_RETURN(hipErrorInvalidValue);
+  } else if (*numNodes <= graphNodes.size()) {
+    for (int i = 0; i < *numNodes; i++) {
+      nodes[i] = graphNodes[i];
+    }
+  } else {
+    for (int i = 0; i < graphNodes.size(); i++) {
+      nodes[i] = graphNodes[i];
+    }
+    for (int i = graphNodes.size(); i < *numNodes; i++) {
+      nodes[i] = nullptr;
+    }
+    *numNodes = graphNodes.size();
   }
-  for (int i = 0; i < graphNodes.size(); i++) {
-    nodes[i] = graphNodes[i];
-  }
-  for (int i = graphNodes.size(); i < *numNodes; i++) {
-    nodes[i] = nullptr;
-  }
-  *numNodes = graphNodes.size();
   HIP_RETURN(hipSuccess);
 }
 
@@ -928,16 +931,19 @@ hipError_t hipGraphGetRootNodes(hipGraph_t graph, hipGraphNode_t* pRootNodes,
   if (pRootNodes == nullptr) {
     *pNumRootNodes = nodes.size();
     HIP_RETURN(hipSuccess);
-  } else if (*pNumRootNodes < nodes.size()) {
-    HIP_RETURN(hipErrorInvalidValue);
+  } else if (*pNumRootNodes <= nodes.size()) {
+    for (int i = 0; i < *pNumRootNodes; i++) {
+      pRootNodes[i] = nodes[i];
+    }
+  } else {
+    for (int i = 0; i < nodes.size(); i++) {
+      pRootNodes[i] = nodes[i];
+    }
+    for (int i = nodes.size(); i < *pNumRootNodes; i++) {
+      pRootNodes[i] = nullptr;
+    }
+    *pNumRootNodes = nodes.size();
   }
-  for (int i = 0; i < nodes.size(); i++) {
-    pRootNodes[i] = nodes[i];
-  }
-  for (int i = nodes.size(); i < *pNumRootNodes; i++) {
-    pRootNodes[i] = nullptr;
-  }
-  *pNumRootNodes = nodes.size();
   HIP_RETURN(hipSuccess);
 }
 
@@ -1144,19 +1150,24 @@ hipError_t hipGraphGetEdges(hipGraph_t graph, hipGraphNode_t* from, hipGraphNode
   if (from == nullptr && to == nullptr) {
     *numEdges = edges.size();
     HIP_RETURN(hipSuccess);
-  } else if (*numEdges < edges.size()) {
-    HIP_RETURN(hipErrorInvalidValue);
+  } else if (*numEdges <= edges.size()) {
+    for (int i = 0; i < *numEdges; i++) {
+      from[i] = edges[i].first;
+      to[i] = edges[i].second;
+    }
+  } else {
+    for (int i = 0; i < edges.size(); i++) {
+      from[i] = edges[i].first;
+      to[i] = edges[i].second;
+    }
+    // If numEdges > actual number of edges, the remaining entries in from and to will be set to NULL
+    for (int i = edges.size(); i < *numEdges; i++) {
+      from[i] = nullptr;
+      to[i] = nullptr;
+    }
+    *numEdges = edges.size();
   }
-  for (int i = 0; i < edges.size(); i++) {
-    from[i] = edges[i].first;
-    to[i] = edges[i].second;
-  }
-  // If numEdges > actual number of edges, the remaining entries in from and to will be set to NULL
-  for (int i = edges.size(); i < *numEdges; i++) {
-    from[i] = nullptr;
-    to[i] = nullptr;
-  }
-  *numEdges = edges.size();
+
   HIP_RETURN(hipSuccess);
 }
 
@@ -1170,19 +1181,21 @@ hipError_t hipGraphNodeGetDependencies(hipGraphNode_t node, hipGraphNode_t* pDep
   if (pDependencies == NULL) {
     *pNumDependencies = dependencies.size();
     HIP_RETURN(hipSuccess);
-  } else if (*pNumDependencies < dependencies.size()) {
-    HIP_RETURN(hipErrorInvalidValue);
+  } else if (*pNumDependencies <= dependencies.size()) {
+    for (int i = 0; i < *pNumDependencies; i++) {
+      pDependencies[i] = dependencies[i];
+    }
+  } else {
+    for (int i = 0; i < dependencies.size(); i++) {
+      pDependencies[i] = dependencies[i];
+    }
+    // pNumDependencies > actual number of dependencies, the remaining entries in pDependencies will
+    // be set to NULL
+    for (int i = dependencies.size(); i < *pNumDependencies; i++) {
+      pDependencies[i] = nullptr;
+    }
+    *pNumDependencies = dependencies.size();
   }
-
-  for (int i = 0; i < dependencies.size(); i++) {
-    pDependencies[i] = dependencies[i];
-  }
-  // pNumDependencies > actual number of dependencies, the remaining entries in pDependencies will
-  // be set to NULL
-  for (int i = dependencies.size(); i < *pNumDependencies; i++) {
-    pDependencies[i] = nullptr;
-  }
-  *pNumDependencies = dependencies.size();
   HIP_RETURN(hipSuccess);
 }
 
@@ -1196,19 +1209,21 @@ hipError_t hipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pD
   if (pDependentNodes == NULL) {
     *pNumDependentNodes = dependents.size();
     HIP_RETURN(hipSuccess);
-  } else if (*pNumDependentNodes < dependents.size()) {
-    HIP_RETURN(hipErrorInvalidValue);
+  } else if (*pNumDependentNodes <= dependents.size()) {
+    for (int i = 0; i < *pNumDependentNodes; i++) {
+      pDependentNodes[i] = dependents[i];
+    }
+  } else {
+    for (int i = 0; i < dependents.size(); i++) {
+      pDependentNodes[i] = dependents[i];
+    }
+    // pNumDependentNodes > actual number of dependents, the remaining entries in pDependentNodes will
+    // be set to NULL
+    for (int i = dependents.size(); i < *pNumDependentNodes; i++) {
+      pDependentNodes[i] = nullptr;
+    }
+    *pNumDependentNodes = dependents.size();
   }
-
-  for (int i = 0; i < dependents.size(); i++) {
-    pDependentNodes[i] = dependents[i];
-  }
-  // pNumDependentNodes > actual number of dependents, the remaining entries in pDependentNodes will
-  // be set to NULL
-  for (int i = dependents.size(); i < *pNumDependentNodes; i++) {
-    pDependentNodes[i] = nullptr;
-  }
-  *pNumDependentNodes = dependents.size();
   HIP_RETURN(hipSuccess);
 }
 
