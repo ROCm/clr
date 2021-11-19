@@ -342,3 +342,4 @@ hipGraphAddHostNode
 hipGraphHostNodeGetParams
 hipGraphHostNodeSetParams
 hipGraphExecHostNodeSetParams
+hipGraphExecUpdate
