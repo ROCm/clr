@@ -345,3 +345,5 @@ hipGraphHostNodeGetParams
 hipGraphHostNodeSetParams
 hipGraphExecHostNodeSetParams
 hipGraphExecUpdate
+hipGraphInstantiateWithFlags
+hipGraphExecMemsetNodeSetParams

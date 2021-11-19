@@ -848,8 +848,7 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
-                                hipGraphNode_t* pErrorNode, char* pLogBuffer, size_t bufferSize) {
+hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph) {
   std::unordered_map<Node, Node> clonedNodes;
   hipGraph_t clonedGraph = graph->clone(clonedNodes);
   std::vector<std::vector<Node>> parallelLists;
@@ -868,7 +867,17 @@ hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
 hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                hipGraphNode_t* pErrorNode, char* pLogBuffer, size_t bufferSize) {
   HIP_INIT_API(hipGraphInstantiate, pGraphExec, graph);
-  HIP_RETURN_DURATION(ihipGraphInstantiate(pGraphExec, graph, pErrorNode, pLogBuffer, bufferSize));
+  HIP_RETURN_DURATION(ihipGraphInstantiate(pGraphExec, graph));
+}
+
+hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                        unsigned long long flags) {
+  HIP_INIT_API(hipGraphInstantiateWithFlags, pGraphExec, graph, flags);
+  // enable when change is merged to hip
+  // if (flags == hipGraphInstantiateFlagAutoFreeOnLaunch) {
+  // Free any unfreed memory allocations before the graph is relaunched
+  //}
+  HIP_RETURN_DURATION(ihipGraphInstantiate(pGraphExec, graph));
 }
 
 hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
@@ -1007,6 +1016,19 @@ hipError_t hipGraphMemsetNodeSetParams(hipGraphNode_t node, const hipMemsetParam
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hipGraphMemsetNode*>(node)->SetParams(pNodeParams));
+}
+
+hipError_t hipGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                           const hipMemsetParams* pNodeParams) {
+  HIP_INIT_API(hipGraphExecMemsetNodeSetParams, hGraphExec, node, pNodeParams);
+  if (hGraphExec == nullptr || node == nullptr || pNodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphMemsetNode*>(clonedNode)->SetParams(pNodeParams));
 }
 
 hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
