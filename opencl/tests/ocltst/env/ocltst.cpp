@@ -89,7 +89,7 @@ int findAdapters(unsigned int platformIdx, bool useCPU, cl_platform_id*);
 class App {
  public:
   static bool m_reRunFailed;
-  static bool m_svcMsg;
+  static const char* m_svcMsg;
   //! Constructor for App
   App(unsigned int platform)
       : m_list(false),
@@ -609,8 +609,8 @@ void report(Worker* w, const char* testname, int testnum, unsigned int crc,
       *ptr = '\0';
 
       oclTestLog(OCLTEST_LOG_ALWAYS,
-                 "##teamcity[testFailed name='%s.%s.%d' message='FAILED' "
-                 "details='%s']\n",
+                 "##%s[testFailed name='%s.%s.%d' message='FAILED' "
+                 "details='%s']\n", App::m_svcMsg,
                  w->getModule()->get_libname(), testname, testnum, escaped);
     }
   }
@@ -661,8 +661,8 @@ RERUN_TEST:
   pt->resetDescString();
   if (App::m_svcMsg) {
     oclTestLog(OCLTEST_LOG_ALWAYS,
-               "##teamcity[testStarted name='%s.%s.%d' "
-               "captureStandardOutput='true']\n",
+               "##%s[testStarted name='%s.%s.%d' "
+               "captureStandardOutput='true']\n", App::m_svcMsg,
                m->get_libname(), subtestName.c_str(), test);
   }
   // setting the type to CPU.
@@ -716,7 +716,7 @@ RERUN_TEST:
     }
   }
   if (App::m_svcMsg) {
-    oclTestLog(OCLTEST_LOG_ALWAYS, "##teamcity[testFinished name='%s.%s.%d']\n",
+    oclTestLog(OCLTEST_LOG_ALWAYS, "##%s[testFinished name='%s.%s.%d']\n", App::m_svcMsg,
                m->get_libname(), subtestName.c_str(), test);
   }
 
@@ -764,10 +764,6 @@ void App::RunAllTests() {
   unsigned int num_passes = 0;
   unsigned int num_failures = 0;
 
-  if (App::m_svcMsg) {
-    oclTestLog(OCLTEST_LOG_ALWAYS,
-               "##teamcity[testSuiteStarted name='ocltst']\n");
-  }
 
   //
   //  Run each test
@@ -778,7 +774,12 @@ void App::RunAllTests() {
     oclTestLog(OCLTEST_LOG_ALWAYS,
                "The OpenCL Testing Module %s Version = %d \n",
                m_modules[i].get_libname(), m_modules[i].get_version());
-    oclTestLog(OCLTEST_LOG_ALWAYS, "------------------------------\n");
+    oclTestLog(OCLTEST_LOG_ALWAYS, "-------------------------------------------------\n");
+
+    if (App::m_svcMsg) {
+        oclTestLog(OCLTEST_LOG_ALWAYS, "##%s[testSuiteStarted name='ocltst %s']\n",
+                   App::m_svcMsg, m_modules[i].get_libname());
+    }
 
     // array to keep track of order of test execution.
     int test_count = m_modules[i].get_count();
@@ -858,7 +859,7 @@ void App::RunAllTests() {
         if (App::m_svcMsg) {
           for (unsigned int j = 0; j < erasedIndices.size(); j++) {
             oclTestLog(OCLTEST_LOG_ALWAYS,
-                       "##teamcity[testIgnored name='%s.%s.%d']\n",
+                       "##%s[testIgnored name='%s.%s.%d']\n", App::m_svcMsg,
                        m_modules[i].get_libname(), name, erasedIndices[j]);
           }
         }
@@ -875,6 +876,11 @@ void App::RunAllTests() {
       }
     }
 
+    if (App::m_svcMsg) {
+        oclTestLog(OCLTEST_LOG_ALWAYS, "##%s[testSuiteFinished name='ocltst %s']\n",
+                   App::m_svcMsg, m_modules[i].get_libname());
+    }
+
     // print the order in which the test are executed if they are
     // randomized.
     if (m_rndOrder) {
@@ -882,11 +888,6 @@ void App::RunAllTests() {
     }
     // deleting the test order
     delete[] mp_testOrder;
-  }
-
-  if (App::m_svcMsg) {
-    oclTestLog(OCLTEST_LOG_ALWAYS,
-               "##teamcity[testSuiteFinished name='ocltst']\n");
   }
 
 #ifdef _WIN32
@@ -948,12 +949,12 @@ void App::LoadList(StringList& strlist, const char* filename) {
 
 static void Help(const char* name) {
   oclTestLog(OCLTEST_LOG_ALWAYS,
-             "%s (-w | -v | -m | -M | -l | -t | -T | -p | -d | -x | -y | -g| "
+             "%s (-w | -V | -m | -M | -l | -t | -T | -p | -d | -x | -y | -g| "
              "-o | -n )\n",
              name);
   oclTestLog(OCLTEST_LOG_ALWAYS, "   -w            : enable window mode\n");
-  oclTestLog(OCLTEST_LOG_ALWAYS,
-             "   -v            : enable TeamCity service messages\n");
+  oclTestLog(OCLTEST_LOG_ALWAYS, "   -V            : enable TeamCity service messages\n");
+  oclTestLog(OCLTEST_LOG_ALWAYS, "   -J            : enable Jenkins service messages\n");
   oclTestLog(
       OCLTEST_LOG_ALWAYS,
       "   -d            : dump test output to portable float map (pfm)\n");
@@ -1064,11 +1065,13 @@ unsigned int getPlatformID(const char* str) {
   return platform;
 }
 
+static const char* supported_options = "dg:lm:M:o:Ps:t:T:a:A:p:v:wxy:in:rcRVJ";
+
 unsigned int parseCommandLineForPlatform(unsigned int argc, char** argv) {
   int c;
   unsigned int platform = 0;
 
-  while ((c = getopt(argc, argv, "dg:lm:M:o:Ps:t:T:a:A:p:v:wxy:in:rcRV")) !=
+  while ((c = getopt(argc, argv, supported_options)) !=
          -1) {
     switch (c) {
       case 'p':
@@ -1090,7 +1093,7 @@ void App::CommandLine(unsigned int argc, char** argv) {
   m_deviceId = 0;
   int tmp;
 
-  while ((c = getopt(argc, argv, "dg:lm:M:o:Ps:t:T:a:A:p:v:wxy:in:rcRV")) !=
+  while ((c = getopt(argc, argv, supported_options)) !=
          -1) {
     switch (c) {
       case 'c':
@@ -1106,7 +1109,11 @@ void App::CommandLine(unsigned int argc, char** argv) {
         break;
 
       case 'V':
-        m_svcMsg = true;
+        m_svcMsg = "teamcity";
+        break;
+
+      case 'J':
+        m_svcMsg = "jenkins";
         break;
 
       case 'd':
@@ -1454,7 +1461,8 @@ void App::CleanUp() {
 extern int optind;
 /////////////////////////////////////////////////////////////////////////////
 bool App::m_reRunFailed = false;
-bool App::m_svcMsg = false;
+const char* App::m_svcMsg = nullptr;
+
 int main(int argc, char** argv) {
   unsigned int platform = 0;
   platform = parseCommandLineForPlatform(argc, argv);
