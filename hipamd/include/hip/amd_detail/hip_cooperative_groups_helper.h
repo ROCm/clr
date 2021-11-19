@@ -33,7 +33,7 @@ THE SOFTWARE.
 
 #if __cplusplus
 #include <hip/amd_detail/amd_device_functions.h>
-
+#include <bitset>
 #if !defined(__align__)
 #define __align__(x) __attribute__((aligned(x)))
 #endif
@@ -53,8 +53,10 @@ THE SOFTWARE.
 #if !defined(WAVEFRONT_SIZE)
 #if __gfx1010__ || __gfx1011__ || __gfx1012__ || __gfx1030__ || __gfx1031__
 #define WAVEFRONT_SIZE 32
+using lane_mask = unsigned int;
 #else
 #define WAVEFRONT_SIZE 64
+using lane_mask = unsigned long long int;
 #endif
 
 namespace cooperative_groups {
@@ -83,7 +85,8 @@ typedef enum {
   cg_multi_grid,
   cg_grid,
   cg_workgroup,
-  cg_tiled_group
+  cg_tiled_group,
+  cg_coalesced_group
 } group_type;
 
 /**
@@ -176,6 +179,30 @@ namespace tiled_group {
 __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "agent"); }
 
 }  // namespace tiled_group
+
+namespace coalesced_group {
+
+// enforce ordering for memory intructions
+__CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "agent"); }
+
+// Masked bit count
+//
+// For each thread, this function returns the number of active threads which
+// have i-th bit of x set and come before the current thread.
+__device__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
+  int counter=0;
+    #if WAVEFRONT_SIZE == 32
+      counter = __builtin_amdgcn_mbcnt_lo(x, add);
+    #else
+      counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
+      counter = __builtin_amdgcn_mbcnt_hi(static_cast<lane_mask>(x >> 32), counter);
+    #endif
+
+    return counter;
+}
+
+}  // namespace coalesced_group
+
 
 }  // namespace internal
 
