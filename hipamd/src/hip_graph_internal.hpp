@@ -190,6 +190,7 @@ struct hipGraphNode {
   }
   ihipGraph* GetParentGraph() { return parentGraph_; }
   void SetParentGraph(ihipGraph* graph) { parentGraph_ = graph; }
+  virtual hipError_t SetParams(hipGraphNode* node) { return hipSuccess; }
 };
 
 struct ihipGraph {
@@ -266,6 +267,8 @@ struct hipGraphExec {
     }
     return clonedNode;
   }
+
+  std::vector<Node>& GetNodes() { return levelOrder_; }
 
   amd::HostQueue* GetAvailableQueue() { return parallelQueues_[currentQueueIndex_++]; }
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
@@ -364,6 +367,23 @@ struct hipChildGraphNode : public hipGraphNode {
       commands_[1]->enqueue();
     }
   }
+
+  hipError_t SetParams(const ihipGraph* childGraph) {
+    const std::vector<Node>& newNodes = childGraph->GetNodes();
+    const std::vector<Node>& oldNodes = childGraph_->GetNodes();
+    for (std::vector<Node>::size_type i = 0; i != newNodes.size(); i++) {
+      hipError_t status = oldNodes[i]->SetParams(newNodes[i]);
+      if (status != hipSuccess) {
+        return status;
+      }
+    }
+    return hipSuccess;
+  }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipChildGraphNode* childGraphNode = static_cast<hipChildGraphNode const*>(node);
+    return SetParams(childGraphNode->childGraph_);
+  }
 };
 
 class hipGraphKernelNode : public hipGraphNode {
@@ -422,6 +442,7 @@ class hipGraphKernelNode : public hipGraphNode {
     std::memcpy(pKernelParams_, params, sizeof(hipKernelNodeParams));
     return status;
   }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(const hipKernelNodeParams* params) {
     if (params->func != pKernelParams_->func) {
       hipFunction_t func = nullptr;
@@ -445,6 +466,11 @@ class hipGraphKernelNode : public hipGraphNode {
     reinterpret_cast<amd::NDRangeKernelCommand*>(commands_[0])
         ->setSharedMemBytes(params->sharedMemBytes);
     return hipSuccess;
+  }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphKernelNode* kernelNode = static_cast<hipGraphKernelNode const*>(node);
+    return SetParams(kernelNode->pKernelParams_);
   }
 };
 
@@ -488,6 +514,11 @@ class hipGraphMemcpyNode : public hipGraphNode {
     std::memcpy(pCopyParams_, params, sizeof(hipMemcpy3DParms));
     return hipSuccess;
   }
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphMemcpyNode* memcpyNode = static_cast<hipGraphMemcpyNode const*>(node);
+    return SetParams(memcpyNode->pCopyParams_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(const hipMemcpy3DParms* pNodeParams);
   hipError_t ValidateParams(const hipMemcpy3DParms* pNodeParams);
 };
@@ -542,6 +573,12 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
     return hipSuccess;
   }
 
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphMemcpyNode1D* memcpy1DNode = static_cast<hipGraphMemcpyNode1D const*>(node);
+    return SetParams(memcpy1DNode->dst_, memcpy1DNode->src_, memcpy1DNode->count_,
+                     memcpy1DNode->kind_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
   hipError_t ValidateParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
 };
@@ -603,6 +640,13 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
     return hipSuccess;
   }
 
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphMemcpyNodeFromSymbol* memcpyNode =
+        static_cast<hipGraphMemcpyNodeFromSymbol const*>(node);
+    return SetParams(memcpyNode->dst_, memcpyNode->symbol_, memcpyNode->count_, memcpyNode->offset_,
+                     memcpyNode->kind_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(void* dst, const void* symbol, size_t count, size_t offset,
                               hipMemcpyKind kind) {
     size_t sym_size = 0;
@@ -671,6 +715,13 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
     return hipSuccess;
   }
 
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphMemcpyNodeToSymbol* memcpyNode =
+        static_cast<hipGraphMemcpyNodeToSymbol const*>(node);
+    return SetParams(memcpyNode->src_, memcpyNode->symbol_, memcpyNode->count_, memcpyNode->offset_,
+                     memcpyNode->kind_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(const void* symbol, const void* src, size_t count, size_t offset,
                               hipMemcpyKind kind) {
     size_t sym_size = 0;
@@ -733,6 +784,11 @@ class hipGraphMemsetNode : public hipGraphNode {
     std::memcpy(pMemsetParams_, params, sizeof(hipMemsetParams));
     return hipSuccess;
   }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphMemsetNode* memsetNode = static_cast<hipGraphMemsetNode const*>(node);
+    return SetParams(memsetNode->pMemsetParams_);
+  }
 };
 
 class hipGraphEventRecordNode : public hipGraphNode {
@@ -778,6 +834,22 @@ class hipGraphEventRecordNode : public hipGraphNode {
     event_ = event;
     return hipSuccess;
   }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphEventRecordNode* eventRecordNode =
+        static_cast<hipGraphEventRecordNode const*>(node);
+    return SetParams(eventRecordNode->event_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
+  hipError_t SetCommandParams(hipEvent_t event) {
+    amd::HostQueue* queue;
+    if (!commands_.empty()) {
+      queue = commands_[0]->queue();
+      commands_[0]->release();
+    }
+    commands_.clear();
+    return CreateCommand(queue);
+  }
 };
 
 class hipGraphEventWaitNode : public hipGraphNode {
@@ -822,6 +894,21 @@ class hipGraphEventWaitNode : public hipGraphNode {
   hipError_t SetParams(hipEvent_t event) {
     event_ = event;
     return hipSuccess;
+  }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphEventWaitNode* eventWaitNode = static_cast<hipGraphEventWaitNode const*>(node);
+    return SetParams(eventWaitNode->event_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
+  hipError_t SetCommandParams(hipEvent_t event) {
+    amd::HostQueue* queue;
+    if (!commands_.empty()) {
+      queue = commands_[0]->queue();
+      commands_[0]->release();
+    }
+    commands_.clear();
+    return CreateCommand(queue);
   }
 };
 
@@ -881,6 +968,13 @@ class hipGraphHostNode : public hipGraphNode {
     std::memcpy(pNodeParams_, params, sizeof(hipHostNodeParams));
     return hipSuccess;
   }
+
+  hipError_t SetParams(hipGraphNode* node) {
+    const hipGraphHostNode* hostNode = static_cast<hipGraphHostNode const*>(node);
+    return SetParams(hostNode->pNodeParams_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
+  hipError_t SetCommandParams(const hipHostNodeParams* params);
 };
 
 class hipGraphEmptyNode : public hipGraphNode {

@@ -1408,3 +1408,38 @@ hipError_t hipGraphExecHostNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode
   }
   HIP_RETURN(reinterpret_cast<hipGraphHostNode*>(clonedNode)->SetParams(pNodeParams));
 }
+
+hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
+                              hipGraphNode_t* hErrorNode_out,
+                              hipGraphExecUpdateResult* updateResult_out) {
+  HIP_INIT_API(hipGraphExecUpdate, hGraphExec, hGraph, hErrorNode_out, updateResult_out);
+  std::vector<Node> newGraphNodes;
+  hGraph->LevelOrder(newGraphNodes);
+  std::vector<Node>& oldGraphExecNodes = hGraphExec->GetNodes();
+  if (newGraphNodes.size() != oldGraphExecNodes.size()) {
+    *updateResult_out = hipGraphExecUpdateErrorTopologyChanged;
+    HIP_RETURN(hipErrorGraphExecUpdateFailure);
+  }
+  for (std::vector<Node>::size_type i = 0; i != newGraphNodes.size(); i++) {
+    if (newGraphNodes[i]->GetType() == oldGraphExecNodes[i]->GetType()) {
+      hipError_t status = oldGraphExecNodes[i]->SetParams(newGraphNodes[i]);
+      if (status != hipSuccess) {
+        *hErrorNode_out = newGraphNodes[i];
+        if (status == hipErrorInvalidDeviceFunction) {
+          *updateResult_out = hipGraphExecUpdateErrorUnsupportedFunctionChange;
+        } else if (status == hipErrorInvalidValue || status == hipErrorInvalidDevicePointer) {
+          *updateResult_out = hipGraphExecUpdateErrorParametersChanged;
+        } else {
+          *updateResult_out = hipGraphExecUpdateErrorNotSupported;
+        }
+        HIP_RETURN(hipErrorGraphExecUpdateFailure);
+      }
+    } else {
+      *hErrorNode_out = newGraphNodes[i];
+      *updateResult_out = hipGraphExecUpdateErrorNodeTypeChanged;
+      HIP_RETURN(hipErrorGraphExecUpdateFailure);
+    }
+  }
+  *updateResult_out = hipGraphExecUpdateSuccess;
+  HIP_RETURN(hipSuccess);
+}
