@@ -54,7 +54,7 @@ class thread_group {
   // only when the group is supposed to contain only the calling the thread
   // (throurh the API - `this_thread()`), and in all other cases, this thread
   // group object is a sub-object of some other derived thread group object
-  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size,
+  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size = (uint64_t)0,
                                 uint64_t mask = (uint64_t)0) {
     _type = type;
     _size = size;
@@ -64,7 +64,13 @@ class thread_group {
   struct _tiled_info {
     bool is_tiled;
     unsigned int size;
-  } tiled_info;
+  };
+
+  struct _coalesced_info {
+    lane_mask member_mask;
+    unsigned int size;
+    struct _tiled_info tiled_info;
+  } coalesced_info;
 
   friend __CG_QUALIFIER__ thread_group tiled_partition(const thread_group& parent,
                                                        unsigned int tile_size);
@@ -182,8 +188,8 @@ class thread_block : public thread_group {
     }
 
     thread_group tiledGroup = thread_group(internal::cg_tiled_group, tile_size);
-    tiledGroup.tiled_info.size = tile_size;
-    tiledGroup.tiled_info.is_tiled = true;
+    tiledGroup.coalesced_info.tiled_info.size = tile_size;
+    tiledGroup.coalesced_info.tiled_info.is_tiled = true;
     return tiledGroup;
   }
 
@@ -229,32 +235,186 @@ class tiled_group : public thread_group {
     }
 
     if (size() <= tile_size) {
-      return (*this);
+      return *this;
     }
 
     tiled_group tiledGroup = tiled_group(tile_size);
-    tiledGroup.tiled_info.is_tiled = true;
+    tiledGroup.coalesced_info.tiled_info.is_tiled = true;
     return tiledGroup;
   }
 
  protected:
   explicit __CG_QUALIFIER__ tiled_group(unsigned int tileSize)
       : thread_group(internal::cg_tiled_group, tileSize) {
-    tiled_info.size = tileSize;
-    tiled_info.is_tiled = true;
+    coalesced_info.tiled_info.size = tileSize;
+    coalesced_info.tiled_info.is_tiled = true;
   }
 
  public:
-  __CG_QUALIFIER__ unsigned int size() const { return (tiled_info.size); }
+  __CG_QUALIFIER__ unsigned int size() const { return (coalesced_info.tiled_info.size); }
 
   __CG_QUALIFIER__ unsigned int thread_rank() const {
-    return (internal::workgroup::thread_rank() & (tiled_info.size - 1));
+    return (internal::workgroup::thread_rank() & (coalesced_info.tiled_info.size - 1));
   }
 
   __CG_QUALIFIER__ void sync() const {
     internal::tiled_group::sync();
   }
 };
+
+/** \brief   The coalesced_group cooperative group type
+ *
+ *  \details Represents a active thread group in a wavefront.
+ *           This group type also supports sub-wave level intrinsics.
+ */
+
+class coalesced_group : public thread_group {
+ private:
+  friend __CG_QUALIFIER__ coalesced_group coalesced_threads();
+  friend __CG_QUALIFIER__ thread_group tiled_partition(const thread_group& parent, unsigned int tile_size);
+  friend __CG_QUALIFIER__ coalesced_group tiled_partition(const coalesced_group& parent, unsigned int tile_size);
+
+  __CG_QUALIFIER__ coalesced_group new_tiled_group(unsigned int tile_size) const {
+    const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
+
+    if (!tile_size || (tile_size > size()) || !pow2) {
+      return coalesced_group(0);
+    }
+
+    // If a tiled group is passed to be partitioned further into a coalesced_group.
+    // prepare a mask for further partitioning it so that it stays coalesced.
+    if (coalesced_info.tiled_info.is_tiled) {
+      unsigned int base_offset = (thread_rank() & (~(tile_size - 1)));
+      unsigned int masklength = min((unsigned int)size() - base_offset, tile_size);
+      lane_mask member_mask = (lane_mask)(-1) >> (WAVEFRONT_SIZE - masklength);
+
+      member_mask <<= (__lane_id() & ~(tile_size - 1));
+      coalesced_group coalesced_tile = coalesced_group(member_mask);
+      coalesced_tile.coalesced_info.tiled_info.is_tiled = true;
+      return coalesced_tile;
+    }
+    // Here the parent coalesced_group is not partitioned.
+    else {
+      lane_mask member_mask = 0;
+      unsigned int tile_rank = 0;
+      int lanes_to_skip = ((thread_rank()) / tile_size) * tile_size;
+
+      for (unsigned int i = 0; i < WAVEFRONT_SIZE; i++) {
+        lane_mask active = coalesced_info.member_mask & (1 << i);
+        // Make sure the lane is active
+        if (active) {
+          if (lanes_to_skip <= 0 && tile_rank < tile_size) {
+             // Prepare a member_mask that is appropriate for a tile
+            member_mask |= active;
+            tile_rank++;
+          }
+          lanes_to_skip--;
+        }
+      }
+      coalesced_group coalesced_tile = coalesced_group(member_mask);
+      return coalesced_tile;
+    }
+     return coalesced_group(0);
+  }
+
+ protected:
+ // Constructor
+  explicit __CG_QUALIFIER__ coalesced_group(lane_mask member_mask)
+      : thread_group(internal::cg_coalesced_group) {
+    coalesced_info.member_mask = member_mask; // Which threads are active
+    coalesced_info.size = __popcll(coalesced_info.member_mask); // How many threads are active
+    coalesced_info.tiled_info.is_tiled = false; // Not a partitioned group
+  }
+
+ public:
+   __CG_QUALIFIER__ unsigned int size() const {
+     return coalesced_info.size;
+   }
+
+   __CG_QUALIFIER__ unsigned int thread_rank() const {
+     return internal::coalesced_group::masked_bit_count(coalesced_info.member_mask);
+    }
+
+   __CG_QUALIFIER__ void sync() const {
+       internal::coalesced_group::sync();
+    }
+
+  template <class T>
+  __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
+    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
+
+    srcRank = srcRank % size();
+
+    int lane = (size() == WAVEFRONT_SIZE) ? srcRank
+             : (WAVEFRONT_SIZE == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
+                                          : __fns32(coalesced_info.member_mask, 0, (srcRank + 1));
+
+    return __shfl(var, lane, WAVEFRONT_SIZE);
+  }
+
+  template <class T>
+  __CG_QUALIFIER__ T shfl_down(T var, unsigned int lane_delta) const {
+    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
+
+    // Note: The cuda implementation appears to use the remainder of lane_delta
+    // and WARP_SIZE as the shift value rather than lane_delta itself.
+    // This is not described in the documentation and is not done here.
+
+    if (size() == WAVEFRONT_SIZE) {
+      return __shfl_down(var, lane_delta, WAVEFRONT_SIZE);
+    }
+
+    int lane;
+    if (WAVEFRONT_SIZE == 64) {
+      lane = __fns64(coalesced_info.member_mask, __lane_id(), lane_delta + 1);
+    }
+    else {
+      lane = __fns32(coalesced_info.member_mask, __lane_id(), lane_delta + 1);
+    }
+
+    if (lane == -1) {
+      lane = __lane_id();
+    }
+
+    return __shfl(var, lane, WAVEFRONT_SIZE);
+  }
+
+  template <class T>
+  __CG_QUALIFIER__ T shfl_up(T var, unsigned int lane_delta) const {
+    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
+
+    // Note: The cuda implementation appears to use the remainder of lane_delta
+    // and WARP_SIZE as the shift value rather than lane_delta itself.
+    // This is not described in the documentation and is not done here.
+
+    if (size() == WAVEFRONT_SIZE) {
+      return __shfl_up(var, lane_delta, WAVEFRONT_SIZE);
+    }
+
+    int lane;
+    if (WAVEFRONT_SIZE == 64) {
+      lane = __fns64(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
+    }
+    else if (WAVEFRONT_SIZE == 32) {
+      lane = __fns32(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
+    }
+
+    if (lane == -1) {
+      lane = __lane_id();
+    }
+
+    return __shfl(var, lane, WAVEFRONT_SIZE);
+  }
+};
+
+/** \brief   User exposed API to create coalesced groups.
+ *
+ *  \details A collective operation that groups  all active lanes into a new thread group.
+ */
+
+__CG_QUALIFIER__ coalesced_group coalesced_threads() {
+    return cooperative_groups::coalesced_group(__builtin_amdgcn_read_exec());
+}
 
 /**
  *  Implemenation of all publicly exposed base class APIs
@@ -272,6 +432,9 @@ __CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
     }
     case internal::cg_tiled_group: {
       return (static_cast<const tiled_group*>(this)->thread_rank());
+    }
+    case internal::cg_coalesced_group: {
+      return (static_cast<const coalesced_group*>(this)->thread_rank());
     }
     default: {
       assert(false && "invalid cooperative group type");
@@ -293,6 +456,9 @@ __CG_QUALIFIER__ bool thread_group::is_valid() const {
     }
     case internal::cg_tiled_group: {
       return (static_cast<const tiled_group*>(this)->is_valid());
+    }
+    case internal::cg_coalesced_group: {
+      return (static_cast<const coalesced_group*>(this)->is_valid());
     }
     default: {
       assert(false && "invalid cooperative group type");
@@ -317,6 +483,10 @@ __CG_QUALIFIER__ void thread_group::sync() const {
     }
     case internal::cg_tiled_group: {
       static_cast<const tiled_group*>(this)->sync();
+      break;
+    }
+    case internal::cg_coalesced_group: {
+      static_cast<const coalesced_group*>(this)->sync();
       break;
     }
     default: {
@@ -399,8 +569,8 @@ class thread_block_tile_type : public thread_block_tile_base<tileSize>, public t
 
  protected:
   __CG_QUALIFIER__ thread_block_tile_type() : tiled_group(numThreads) {
-    tiled_info.size = numThreads;
-    tiled_info.is_tiled = true;
+    coalesced_info.tiled_info.size = numThreads;
+    coalesced_info.tiled_info.is_tiled = true;
   }
 
  public:
@@ -420,7 +590,12 @@ __CG_QUALIFIER__ thread_group tiled_partition(const thread_group& parent, unsign
   if (parent.cg_type() == internal::cg_tiled_group) {
     const tiled_group* cg = static_cast<const tiled_group*>(&parent);
     return cg->new_tiled_group(tile_size);
-  } else {
+  }
+  else if(parent.cg_type() == internal::cg_coalesced_group) {
+    const coalesced_group* cg = static_cast<const coalesced_group*>(&parent);
+    return cg->new_tiled_group(tile_size);
+  }
+  else {
     const thread_block* tb = static_cast<const thread_block*>(&parent);
     return tb->new_tiled_group(tile_size);
   }
@@ -431,9 +606,13 @@ __CG_QUALIFIER__ thread_group tiled_partition(const thread_block& parent, unsign
   return (parent.new_tiled_group(tile_size));
 }
 
-// Coalesced group type overload
 __CG_QUALIFIER__ tiled_group tiled_partition(const tiled_group& parent, unsigned int tile_size) {
   return (parent.new_tiled_group(tile_size));
+}
+
+// If a coalesced group is passed to be partitioned, it should remain coalesced
+__CG_QUALIFIER__ coalesced_group tiled_partition(const coalesced_group& parent, unsigned int tile_size) {
+    return (parent.new_tiled_group(tile_size));
 }
 
 template <unsigned int size, class ParentCGTy> class thread_block_tile;
