@@ -391,6 +391,7 @@ typedef cudaSurfaceObject_t hipSurfaceObject_t;
 #define hipInvalidDeviceId cudaInvalidDeviceId
 typedef struct cudaExtent hipExtent;
 typedef struct cudaPitchedPtr hipPitchedPtr;
+typedef struct cudaPos hipPos;
 #define make_hipExtent make_cudaExtent
 #define make_hipPos make_cudaPos
 #define make_hipPitchedPtr make_cudaPitchedPtr
