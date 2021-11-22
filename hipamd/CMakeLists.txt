@@ -439,6 +439,17 @@ add_custom_target(pkg_hip_doc  COMMAND ${CMAKE_COMMAND} .
     COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
     WORKING_DIRECTORY ${BUILD_DIR})
 
+# Package: hip_catch_tests
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip_catch_tests)
+configure_file(packaging/hip-tests.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
+add_custom_target(pkg_hip_catch_tests COMMAND ${CMAKE_COMMAND} .
+    COMMAND rm -rf *.deb *.rpm *.tar.gz
+    COMMAND make package
+    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
+    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
+    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
+    WORKING_DIRECTORY ${BUILD_DIR})
+
 # Package: hip_samples
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip_samples)
 configure_file(packaging/hip-samples.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
@@ -457,9 +468,13 @@ if(POLICY CMP0037)
 endif()
 
 if(HIP_RUNTIME STREQUAL "rocclr")
+    set(package_list pkg_hip_base hip_on_rocclr pkg_hip_nvcc pkg_hip_doc pkg_hip_samples)
+    if(HIP_CATCH_TEST EQUAL "1")
+      set(package_list ${package_list} pkg_hip_catch_tests)
+    endif()
     add_custom_target(package
     WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-    DEPENDS pkg_hip_base hip_on_rocclr pkg_hip_nvcc pkg_hip_doc pkg_hip_samples)
+    DEPENDS ${package_list})
 endif()
 
 if(POLICY CMP0037)
