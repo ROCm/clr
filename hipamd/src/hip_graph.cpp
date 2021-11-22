@@ -1055,7 +1055,8 @@ hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
 hipError_t hipGraphExecKernelNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                            const hipKernelNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphExecKernelNodeSetParams, hGraphExec, node, pNodeParams);
-  if (hGraphExec == nullptr || node == nullptr || pNodeParams == nullptr) {
+  if (hGraphExec == nullptr || node == nullptr || pNodeParams == nullptr ||
+      pNodeParams->func == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
