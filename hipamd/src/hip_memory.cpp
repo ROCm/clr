@@ -274,11 +274,14 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
     return hipErrorOutOfMemory;
   }
 
-  if (!useHostDevice && (amdContext->devices()[0]->info().maxMemAllocSize_ < sizeBytes)) {
+  const auto& dev_info = amdContext->devices()[0]->info();
+
+  if ((!useHostDevice && (dev_info.maxMemAllocSize_ < sizeBytes)) ||
+      (useHostDevice && (dev_info.maxPhysicalMemAllocSize_ < sizeBytes))) {
     return hipErrorOutOfMemory;
   }
 
-  *ptr = amd::SvmBuffer::malloc(*amdContext, flags, sizeBytes, amdContext->devices()[0]->info().memBaseAddrAlign_,
+  *ptr = amd::SvmBuffer::malloc(*amdContext, flags, sizeBytes, dev_info.memBaseAddrAlign_,
               useHostDevice ? curDevContext->svmDevices()[0] : nullptr);
 
   if (*ptr == nullptr) {
