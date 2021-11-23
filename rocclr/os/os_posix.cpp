@@ -309,6 +309,7 @@ void Os::currentStackInfo(address* base, size_t* size) {
 void Os::setCurrentThreadName(const char* name) { ::prctl(PR_SET_NAME, name); }
 
 void Os::setPreferredNumaNode(uint32_t node) {
+#ifdef ROCCLR_SUPPORT_NUMA_POLICY
   if (AMD_CPU_AFFINITY) {
     // Set preferred node affinity mask
     int num_cpus = numa_num_configured_cpus();
@@ -321,6 +322,7 @@ void Os::setPreferredNumaNode(uint32_t node) {
 
     numa_free_cpumask(bm);
   }
+#endif //ROCCLR_SUPPORT_NUMA_POLICY
 }
 
 void* Thread::entry(Thread* thread) {
