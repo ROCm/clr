@@ -424,6 +424,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   // reduced by default
   info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
 
+  // Maximum system memory allocation size allowed
+  info_.maxPhysicalMemAllocSize_ = amd::Os::getPhysicalMemSize();
+
   // We need to verify that we are not reporting more global memory
   // that 4x single alloc
   info_.globalMemSize_ = std::min(4 * info_.maxMemAllocSize_, info_.globalMemSize_);

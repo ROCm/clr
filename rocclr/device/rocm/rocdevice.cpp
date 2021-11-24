@@ -1227,6 +1227,9 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxMemAllocSize_ = std::min(info_.maxMemAllocSize_, info_.globalMemSize_);
   info_.maxMemAllocSize_ = amd::alignDown(info_.maxMemAllocSize_, sizeof(uint64_t));
 
+  // Maximum system memory allocation size allowed
+  info_.maxPhysicalMemAllocSize_ = amd::Os::getPhysicalMemSize();
+
   // make sure we don't run anything over 8 params for now
   info_.maxParameterSize_ = 1024;
 
