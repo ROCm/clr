@@ -309,6 +309,9 @@ struct Info : public amd::EmbeddedObject {
   //! Max size of memory object allocation in bytes.
   uint64_t maxMemAllocSize_;
 
+  //! Max size of system memory allocation in bytes.
+  size_t maxPhysicalMemAllocSize_;
+
   //! Max width of 2D image in pixels.
   size_t image2DMaxWidth_;
 
