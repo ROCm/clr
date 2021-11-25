@@ -25,8 +25,11 @@
 #include <string.h>
 
 #include "CL/cl.h"
-
+#if EMU_ENV
+static const cl_uint TotalElements = 1;
+#else
 static const cl_uint TotalElements = 128;
+#endif  // EMU_ENV
 static cl_uint hostArray[TotalElements];
 
 #define KERNEL_CODE(...) #__VA_ARGS__
@@ -144,8 +147,11 @@ void OCLDynamic::open(unsigned int test, char* units, double& conversion,
       &hostArray, &error_);
   CHECK_RESULT((error_ != CL_SUCCESS), "clCreateBuffer() failed");
   buffers_.push_back(buffer);
+#if EMU_ENV
+  cl_uint queueSize = 1;
+#else
   cl_uint queueSize = (test == 0) ? 1 : 257 * 1024;
-
+#endif  // EMU_ENV
 #if defined(CL_VERSION_2_0)
   const cl_queue_properties cprops[] = {
       CL_QUEUE_PROPERTIES,
@@ -194,7 +200,11 @@ void OCLDynamic::run(void) {
   CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueMapBuffer() failed");
 
   error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 1,
+#if EMU_ENV
+                                            NULL, gws, NULL, 0, NULL, NULL);
+#else
                                             NULL, gws, lws, 0, NULL, NULL);
+#endif  // EMU_ENV
   CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
 
   _wrapper->clFinish(cmdQueues_[_deviceId]);

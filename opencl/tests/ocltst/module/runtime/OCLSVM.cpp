@@ -441,7 +441,12 @@ void OCLSVM::runSvmArgumentsAreRecognized() {
 }
 
 void OCLSVM::runSvmCommandsExecutedInOrder() {
+#if EMU_ENV
+  // Small number is enough to verify functionality in Emu environment
+  const int numElements = 5000;
+#else
   const int numElements = 100000;
+#endif // EMU_ENV
   size_t size = numElements * sizeof(int);
   // allocate SVM memory
   int* data = (int*)clSVMAlloc(context_, CL_MEM_READ_WRITE, size, 0);

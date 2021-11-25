@@ -58,6 +58,9 @@ void OCLCreateBuffer::open(unsigned int test, char *units, double &conversion,
     maxSize_ = MaxSizeLimit;
   }
 #endif
+#if EMU_ENV
+  maxSize_ = 1000;
+#endif // EMU_ENV
   cl_mem buf = NULL;
   buf = _wrapper->clCreateBuffer(context_, CL_MEM_READ_WRITE, maxSize_, NULL,
                                  &error_);

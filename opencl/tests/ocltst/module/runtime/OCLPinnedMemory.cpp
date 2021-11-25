@@ -87,6 +87,11 @@ void OCLPinnedMemory::open(unsigned int test, char* units, double& conversion,
     return;
   }
   row_size_ *= ratio_;
+#if EMU_ENV
+  if (row_size_ > 5000) {
+    row_size_ = 5000;
+  }
+#endif
   row_size_ = floor(sqrt(row_size_));
   row_size_ = (row_size_ + row_data_size_ - 1) & ~(row_data_size_ - 1);
 

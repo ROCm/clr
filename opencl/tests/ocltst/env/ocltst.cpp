@@ -1464,6 +1464,9 @@ bool App::m_reRunFailed = false;
 const char* App::m_svcMsg = nullptr;
 
 int main(int argc, char** argv) {
+#if EMU_ENV
+  printf("Built for Emulation Environment\n");
+#endif  // EMU_ENV
   unsigned int platform = 0;
   platform = parseCommandLineForPlatform(argc, argv);
   // reset optind as we really didn't parse the full command line

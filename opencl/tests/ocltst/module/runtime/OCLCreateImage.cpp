@@ -177,6 +177,9 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
         ImageSizeY = max3DHeight;
       }
       ImageSizeZ = maxSize_ / (ImageSizeX * ImageSizeY * 16);
+#if EMU_ENV
+      ImageSizeX = ImageSizeY = ImageSizeZ = 4;
+#endif // EMU_ENV
     } else {
       ImageSizeX = 4;
       ImageSizeY = 4;
@@ -207,6 +210,9 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
         ImageSizeY /= 2;
       }
 #endif
+#if EMU_ENV
+      ImageSizeX = ImageSizeY = 4;
+#endif  // EMU_ENV
     } else {
       ImageSizeX = 4;
       ImageSizeY = 4;

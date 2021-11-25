@@ -26,6 +26,12 @@ target_compile_definitions(Common
     PUBLIC
         CL_TARGET_OPENCL_VERSION=220)
 
+if(EMU_ENV)
+    target_compile_definitions(Common
+        PUBLIC
+            EMU_ENV=1)
+endif()
+
 if(OPENGL_FOUND AND GLEW_FOUND)
     target_compile_definitions(Common
         PUBLIC
