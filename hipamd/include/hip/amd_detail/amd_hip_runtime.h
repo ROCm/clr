@@ -31,6 +31,42 @@ THE SOFTWARE.
 
 #include <hip/amd_detail/amd_hip_common.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @brief Query the installed library build name.
+ *
+ * This function can be used even when the library is not initialized.
+ *
+ * @returns Returns a string describing the build version of the library.  The
+ * string is owned by the library.
+ */
+const char* amd_dbgapi_get_build_name();
+
+/**
+ * @brief Query the installed library git hash.
+ *
+ * This function can be used even when the library is not initialized.
+ *
+ * @returns Returns git hash of the library.
+ */
+const char* amd_dbgapi_get_git_hash();
+
+/**
+ * @brief Query the installed library build ID.
+ *
+ * This function can be used even when the library is not initialized.
+ *
+ * @returns Returns build ID of the library.
+ */
+size_t amd_dbgapi_get_build_id();
+
+#ifdef __cplusplus
+} /* extern "c" */
+#endif
+
 //---
 // Top part of file can be compiled with any compiler
 
