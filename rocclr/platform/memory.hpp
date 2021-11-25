@@ -294,6 +294,9 @@ class Memory : public amd::RuntimeObject {
                                   bool alloc = true   //!< Allocates memory
   );
 
+  //! Get origianl device memory
+  device::Memory* getOriginalDeviceMemory() const { return deviceMemories_[0].value_; };
+
   //! Allocate host memory (as required)
   bool allocHostMemory(void* initFrom,         //!< Host memory provided by the application
                        bool allocHostMem,      //!< Force system memory allocation
