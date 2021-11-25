@@ -1247,13 +1247,20 @@ hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray* srcArray, voi
   if (status != hipSuccess) {
     return status;
   }
-  command = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_IMAGE_TO_BUFFER,
+
+  amd::CopyMemoryCommand* cpyMemCmd = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_IMAGE_TO_BUFFER,
                                        amd::Command::EventWaitList{}, *srcImage, *dstMemory,
                                        srcOrigin, dstOrigin, copyRegion, srcRect, dstRect);
 
-  if (command == nullptr) {
+  if (cpyMemCmd == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!cpyMemCmd->validatePeerMemory()) {
+    delete cpyMemCmd;
+    return hipErrorInvalidValue;
+  }
+  command = cpyMemCmd;
   return hipSuccess;
 }
 
@@ -1314,13 +1321,19 @@ hipError_t ihipMemcpyDtoACommand(amd::Command*& command, void* srcDevice, hipArr
   if (status != hipSuccess) {
     return status;
   }
-  command = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_BUFFER_TO_IMAGE,
+  amd::CopyMemoryCommand* cpyMemCmd = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_BUFFER_TO_IMAGE,
                                        amd::Command::EventWaitList{}, *srcMemory, *dstImage,
                                        srcOrigin, dstOrigin, copyRegion, srcRect, dstRect);
 
-  if (command == nullptr) {
+  if (cpyMemCmd == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!cpyMemCmd->validatePeerMemory()) {
+    delete cpyMemCmd;
+    return hipErrorInvalidValue;
+  }
+  command = cpyMemCmd;
   return hipSuccess;
 }
 
@@ -1600,12 +1613,19 @@ hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hip
     return status;
   }
 
-  command = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_IMAGE, amd::Command::EventWaitList{},
-                                       *srcImage, *dstImage, srcOrigin, dstOrigin, copyRegion);
+  amd::CopyMemoryCommand* cpyMemCmd = new amd::CopyMemoryCommand(*queue, CL_COMMAND_COPY_IMAGE,
+                                       amd::Command::EventWaitList{}, *srcImage, *dstImage,
+                                       srcOrigin, dstOrigin, copyRegion);
 
-  if (command == nullptr) {
+  if (cpyMemCmd == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!cpyMemCmd->validatePeerMemory()) {
+    delete cpyMemCmd;
+    return hipErrorInvalidValue;
+  }
+  command = cpyMemCmd;
   return hipSuccess;
 }
 
@@ -1652,13 +1672,19 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
     return status;
   }
 
-  command = new amd::WriteMemoryCommand(
+  amd::WriteMemoryCommand* writeMemCmd = new amd::WriteMemoryCommand(
       *queue, CL_COMMAND_WRITE_IMAGE, amd::Command::EventWaitList{}, *dstImage, dstOrigin,
       copyRegion, static_cast<const char*>(srcHost) + srcRect.start_, srcRowPitch, srcSlicePitch);
 
-  if (command == nullptr) {
+  if (writeMemCmd == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!writeMemCmd->validatePeerMemory()) {
+    delete writeMemCmd;
+    return hipErrorInvalidValue;
+  }
+  command = writeMemCmd;
   return hipSuccess;
 }
 
@@ -1705,13 +1731,19 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray* srcArray, voi
     return status;
   }
 
-  command = new amd::ReadMemoryCommand(
+  amd::ReadMemoryCommand* readMemCmd = new amd::ReadMemoryCommand(
       *queue, CL_COMMAND_READ_IMAGE, amd::Command::EventWaitList{}, *srcImage, srcOrigin,
       copyRegion, static_cast<char*>(dstHost) + dstRect.start_, dstRowPitch, dstSlicePitch);
 
-  if (command == nullptr) {
+  if (readMemCmd == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!readMemCmd->validatePeerMemory()) {
+    delete readMemCmd;
+    return hipErrorInvalidValue;
+  }
+  command = readMemCmd;
   return hipSuccess;
 }
 
