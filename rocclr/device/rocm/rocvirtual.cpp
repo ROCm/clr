@@ -1614,7 +1614,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     // Initiate a prefetch command
     hsa_status_t status = hsa_amd_svm_prefetch_async(
         const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent,
-        wait_events.size(), &wait_events[0], active);
+        wait_events.size(), wait_events.data(), active);
 
     // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution
     if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
