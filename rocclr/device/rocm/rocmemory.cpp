@@ -1137,6 +1137,19 @@ bool Image::create() {
     return createInteropImage();
   }
 
+  // Checking if original device memory can be accessed by peer devices
+  device::Memory* orgDevMem = owner()->getOriginalDeviceMemory();
+  if (amd::IS_HIP &&
+    orgDevMem != nullptr && orgDevMem->getAllowedPeerAccess()) {
+    roc::Image* orgImage = static_cast<roc::Image*>(orgDevMem);
+    // fill all required values
+    deviceImageInfo_ = orgImage->deviceImageInfo_;
+    permission_      = orgImage->permission_;
+    deviceMemory_    = orgImage->deviceMemory_;
+    hsaImageObject_  = orgImage->hsaImageObject_;
+    return true;
+  }
+
   // Get memory size requirement for device specific image.
   hsa_status_t status = hsa_ext_image_data_get_info(dev().getBackendDevice(), &imageDescriptor_,
                                                     permission_, &deviceImageInfo_);
