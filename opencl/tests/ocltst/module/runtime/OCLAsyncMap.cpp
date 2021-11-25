@@ -27,8 +27,14 @@
 
 #include "CL/cl.h"
 
+#if EMU_ENV
+static const size_t BufSize = 0x800;
+static const size_t MapRegion = 0x100;
+#else
 static const size_t BufSize = 0x800000;
 static const size_t MapRegion = 0x100000;
+#endif // EMU_ENV
+
 static const unsigned int NumMaps = BufSize / MapRegion;
 
 OCLAsyncMap::OCLAsyncMap() { _numSubTests = 1; }

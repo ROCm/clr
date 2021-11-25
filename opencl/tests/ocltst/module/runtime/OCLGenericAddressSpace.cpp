@@ -41,7 +41,11 @@ void OCLGenericAddressSpace::open(unsigned int test, char* units,
   program_ = 0;
   kernel_ = 0;
   char* strVersion = 0;
+#if EMU_ENV
+  arrSize = 10;
+#else
   arrSize = 1000;
+#endif  // EMU_ENV
   error_ = _wrapper->clGetDeviceInfo(
       devices_[_deviceId], CL_DEVICE_OPENCL_C_VERSION, 0, 0, &param_size);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetPlatformInfo failed");

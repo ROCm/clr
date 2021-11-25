@@ -25,8 +25,11 @@
 #include <string.h>
 
 #include "CL/cl.h"
-
+#if EMU_ENV
+static const cl_uint TotalElements = 8 * 32 * 256;
+#else
 static const cl_uint TotalElements = 256 * 1024 * 1024;
+#endif
 static const cl_uint ArraySize = 256;
 static cl_uint hostArray[ArraySize];
 
@@ -45,9 +48,10 @@ const static char* strKernel[] = {
                                 memory_scope_device);
     }
     \n),
+#if EMU_ENV
     KERNEL_CODE(
     \n __kernel void atomic_test1(__global uint* res) {
-      for (uint i = 0; i < 256 * 1024; ++i) {
+      for (uint i = 0; i < 8 * 32; ++i) {
         for (uint j = 0; j < 256; ++j) {
           __global atomic_uint* inc = (__global atomic_uint*)&res[j];
           uint val = atomic_load_explicit(inc, memory_order_acquire,
@@ -61,7 +65,7 @@ const static char* strKernel[] = {
       }
     }
     \n __kernel void atomic_test2(__global uint* res) {
-      if (get_global_id(0) == 64 * 1000 * 1000) {
+      if (get_global_id(0) == 8 * 20 * 100) {
         __global atomic_uint* inc = (__global atomic_uint*)res;
         // atomic_fetch_add_explicit(inc, 1, memory_order_acq_rel,
         // memory_scope_device);
@@ -69,7 +73,33 @@ const static char* strKernel[] = {
                               memory_scope_device);
       }
     }
-    \n)};
+    \n)
+#else
+    KERNEL_CODE(
+    \n __kernel void atomic_test1(__global uint* res) {
+      for (uint i = 0; i < 256 * 1024; ++i) {
+        for (uint j = 0; j < 256; ++j) {
+          __global atomic_uint* inc = (__global atomic_uint*)&res[j];
+          uint val = atomic_load_explicit(inc, memory_order_acquire, memory_scope_device);
+          if (0 != val) {
+            res[1] = get_global_id(0);
+            res[2] = i;
+            return;
+          }
+        }
+      }
+    }
+    \n __kernel void atomic_test2(__global uint* res) {
+      if (get_global_id(0) == 64 * 1000 * 1000) {
+        __global atomic_uint* inc = (__global atomic_uint*)res;
+        // atomic_fetch_add_explicit(inc, 1, memory_order_acq_rel,
+        // memory_scope_device);
+        atomic_store_explicit(inc, get_global_id(0), memory_order_release, memory_scope_device);
+      }
+    }
+    \n)
+#endif
+};
 
 OCLDeviceAtomic::OCLDeviceAtomic()
     : hostQueue_(NULL), failed_(false), kernel2_(NULL) {

@@ -27,17 +27,28 @@
 
 #include "CL/cl.h"
 
+#if EMU_ENV
+static const size_t Iterations = 1;
+static const size_t IterationDivider = 1;
+static const size_t BufSize = 10;
+#else
 static const size_t Iterations = 0x100;
 static const size_t IterationDivider = 2;
-static const size_t MaxBuffers = IterationDivider;
 static const size_t BufSize = 0x800000;
+#endif // EMU_ENV
+
+static const size_t MaxBuffers = IterationDivider;
 
 const static char* strKernel =
     "__kernel void factorial(__global uint* out)                        \n"
     "{                                                                  \n"
     "   uint id = get_global_id(0);                                     \n"
     "   uint factorial = 1;                                             \n"
+#if EMU_ENV
+    "   for (uint i = 1; i < id; ++i)                                   \n"
+#else
     "   for (uint i = 1; i < (id / 0x10000); ++i)                       \n"
+#endif // EMU_ENV
     "   {                                                               \n"
     "       factorial *= i;                                             \n"
     "   }                                                               \n"

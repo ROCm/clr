@@ -30,12 +30,17 @@
 #include <CL/cl.h>
 
 typedef unsigned int uint32_t;
-
+#if EMU_ENV
+#define LDS_SIZE 1024
+#define A_SIZE 1024
+#else
 #define LDS_SIZE 32768
+#define A_SIZE (8 * 1024 * 1024)
+#endif  // EMU_ENV
+
 #define LOCAL_WORK_SIZE 64
 
 // We'll do a 64MB transaction
-#define A_SIZE (8 * 1024 * 1024)
 #define B_SIZE A_SIZE
 #define C_SIZE A_SIZE
 #define D_SIZE A_SIZE
@@ -46,6 +51,36 @@ typedef unsigned int uint32_t;
 
 // 32K has 8192 elements
 // 64 threads each handle 8192/64=128 values
+#if EMU_ENV
+static const char program_source[] = KERNEL(
+    __kernel void the_kernel(__global const uint *a, __global const uint *b,
+                             __global const uint *c, __global uint *d,
+                             __global uint *e) {
+  // Reduce size for the emulator
+  __local uint lds[256];
+  uint gid = get_global_id(0);
+  __global const uint* ta = a + 4 * gid;
+  __global const uint* tb = b + 4 * gid;
+  __global const uint* tc = c + 4 * gid;
+  __global uint* td = d + 4 * gid;
+  uint i;
+
+  for (i = 0; i < 4; ++i) lds[ta[i]] = tc[i];
+
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  for (i = 0; i < 4; ++i) td[i] = lds[tb[i]];
+} __kernel void the_kernel2(__global uint* d) {
+      __local uint lds[8192];
+      uint i;
+      uint gid = get_global_id(0);
+
+      for (i = 0; i < 128; ++i) lds[i] = d[gid];
+      barrier(CLK_LOCAL_MEM_FENCE);
+
+      for (i = 0; i < 128; ++i) d[gid] = lds[i];
+    });
+#else
 static const char program_source[] = KERNEL(
     __kernel void the_kernel(__global const uint *a, __global const uint *b,
                              __global const uint *c, __global uint *d,
@@ -73,6 +108,7 @@ static const char program_source[] = KERNEL(
 
       for (i = 0; i < 128; ++i) d[gid] = lds[i];
     });
+#endif  // EMU_ENV
 
 static void fill(uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d,
                  uint32_t *e) {

@@ -83,8 +83,11 @@ void OCLMemoryInfo::run(void) {
   if (failed_) {
     return;
   }
-
+#if EMU_ENV
+  size_t BufSize = 0x10000;
+#else
   size_t BufSize = 0x1000000;
+#endif  // EMU_ENV
   bool succeed = false;
   bool done = false;
   if (test_ == 0) {
@@ -166,12 +169,19 @@ void OCLMemoryInfo::run(void) {
         _wrapper->clGetDeviceInfo(devices_[_deviceId],
                                   CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
                                   2 * sizeof(size_t), memoryInfo2, NULL);
+#if EMU_ENV
+        // For testing on emulator with 2G RAM and buffer size of x10000
+        if (memoryInfo2[0] < (0x3e000 + (BufSize * sizeof(cl_int4) / 1024))) {
+#else
         if (memoryInfo2[0] < (0x50000 + (BufSize * sizeof(cl_int4) / 1024))) {
+#endif  // EMU_ENV
           break;
         }
         size_t dif = memoryInfo[0] - memoryInfo2[0];
         // extra memory could be allocated/destroyed in the driver
-        if ((dif / sizeAll) == 1 || (sizeAll / dif) == 1) {
+        if (dif == 0) {
+          // the buffer memory may come from the cached memory pool
+        } else if ((dif / sizeAll) == 1 || (sizeAll / dif) == 1) {
           succeed = true;
         } else {
           succeed = false;

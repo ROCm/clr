@@ -28,7 +28,12 @@
 
 const static unsigned int IOThreadTrace = 3;  // number of input/oputput buffers
 static size_t SeNum = 1;                      // number of SEs
-const static unsigned int ttBufSize = 30000;  // size of thread trace buffer
+// size of thread trace buffer
+#if EMU_ENV
+const static unsigned int ttBufSize = 5000;
+#else
+const static unsigned int ttBufSize = 30000;
+#endif
 const static unsigned int InputElements = 2048;  // elements in each vector
 
 const static char* strKernel =
