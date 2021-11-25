@@ -1966,17 +1966,16 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     FillBufferInfo::PackInfo(memory, size[0], origin[0], pattern, patternSize, packed_vector);
 
     size_t overall_offset = origin[0];
-    uint fillType = FillBufferAligned;
     for (auto& packed_obj: packed_vector) {
+      uint fillType = FillBufferAligned;
+      size_t globalWorkOffset[3] = {0, 0, 0};
+      size_t globalWorkSize = amd::alignUp(packed_obj.fill_size_, 256);
+      size_t localWorkSize = 256;
 
-      uint32_t kpattern_size32 = (packed_obj.pattern_aligned_) ? sizeof(size_t) : patternSize;
+      uint32_t kpattern_size32 = (packed_obj.pattern_expanded_) ? sizeof(size_t) : patternSize;
       size_t kfill_size = packed_obj.fill_size_/kpattern_size32;
       size_t koffset = overall_offset;
       overall_offset += packed_obj.fill_size_;
-
-      size_t globalWorkOffset[3] = {0, 0, 0};
-      size_t globalWorkSize = amd::alignUp(kfill_size, 256);
-      size_t localWorkSize = 256;
 
       uint32_t alignment = (kpattern_size32 & 0x7) == 0 ?
                             sizeof(uint64_t) :
@@ -2019,7 +2018,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
       auto constBuf = reinterpret_cast<address>(constantBuffer_->getHostMem()) + constBufOffset;
 
       // If pattern has been expanded, use the expanded pattern, otherwise use the default pattern.
-      if (packed_obj.pattern_aligned_) {
+      if (packed_obj.pattern_expanded_) {
         memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size32);
       } else {
         memcpy(constBuf, pattern, kpattern_size32);
@@ -2028,8 +2027,8 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
       mem = as_cl<amd::Memory>(gpuCB->owner());
       setArgument(kernels_[fillType], 4, sizeof(cl_mem), &mem, constBufOffset);
 
-      kpattern_size32 /= alignment;
       koffset /= alignment;
+      kpattern_size32 /= alignment;
 
       setArgument(kernels_[fillType], 5, sizeof(uint32_t), &kpattern_size32);
       setArgument(kernels_[fillType], 6, sizeof(koffset), &koffset);
