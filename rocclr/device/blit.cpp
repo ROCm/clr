@@ -763,8 +763,8 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
                           pattern, pattern_size);
         return false;
       }
+      fill_info.pattern_expanded_ = true;
     }
-    fill_info.pattern_aligned_ = true;
     fill_info.fill_size_ = aligned_size;
     packed_info.push_back(fill_info);
   }
