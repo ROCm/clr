@@ -1968,14 +1968,15 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
     size_t overall_offset = origin[0];
     for (auto& packed_obj: packed_vector) {
       uint fillType = FillBufferAligned;
-      size_t globalWorkOffset[3] = {0, 0, 0};
-      size_t globalWorkSize = amd::alignUp(packed_obj.fill_size_, 256);
-      size_t localWorkSize = 256;
 
       uint32_t kpattern_size32 = (packed_obj.pattern_expanded_) ? sizeof(size_t) : patternSize;
       size_t kfill_size = packed_obj.fill_size_/kpattern_size32;
       size_t koffset = overall_offset;
       overall_offset += packed_obj.fill_size_;
+
+      size_t globalWorkOffset[3] = {0, 0, 0};
+      size_t globalWorkSize = amd::alignUp(kfill_size, 256);
+      size_t localWorkSize = 256;
 
       uint32_t alignment = (kpattern_size32 & 0x7) == 0 ?
                             sizeof(uint64_t) :
