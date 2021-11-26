@@ -347,6 +347,7 @@ bool VirtualGPU::HwQueueTracker::Create() {
 // ================================================================================================
 hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     hsa_signal_value_t init_val, Timestamp* ts, uint32_t queue_size) {
+  bool new_signal = false;
   // If queue size grows, then add more signals to avoid more frequent stalls
   if (queue_size > signal_list_.size()) {
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
@@ -357,19 +358,28 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
       uint32_t num_agents = (settings.system_scope_signal_) ? 0 : 1;
 
       if (HSA_STATUS_SUCCESS == hsa_signal_create(0, num_agents, agents, &signal->signal_)) {
-        signal_list_.push_back(signal.release());
+        // Find valid new index
+        ++current_id_ %= signal_list_.size();
+        // Insert the new signal into the current slot and ignore any wait
+        signal_list_.insert(signal_list_.begin() + current_id_, signal.release());
+        new_signal = true;
       }
     }
   }
-  // Find valid index
-  ++current_id_ %= signal_list_.size();
 
-  // Make sure the previous operation on the current signal is done
-  WaitCurrent();
+  // If it's the new signal, then the wait can be avoided.
+  // That will allow to grow the list of signals without stalls
+  if (!new_signal) {
+    // Find valid index
+    ++current_id_ %= signal_list_.size();
 
-  // Have to wait the next signal in the queue to avoid a race condition between
-  // a GPU waiter(which may be not triggered yet) and CPU signal reset below
-  WaitNext();
+    // Make sure the previous operation on the current signal is done
+    WaitCurrent();
+
+    // Have to wait the next signal in the queue to avoid a race condition between
+    // a GPU waiter(which may be not triggered yet) and CPU signal reset below
+    WaitNext();
+  }
 
   if (signal_list_[current_id_]->referenceCount() > 1) {
     // The signal was assigned to the global marker's event, hence runtime can't reuse it
