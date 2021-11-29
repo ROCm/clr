@@ -624,7 +624,6 @@ hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
 hipError_t DynCO::populateDynGlobalVars() {
   amd::ScopedLock lock(dclock_);
   std::vector<std::string> var_names;
-  std::vector<std::string> undef_var_names;
   std::string managedVarExt = ".managed";
   // For Dynamic Modules there is only one hipFatBinaryDevInfo_
   device::Program* dev_program = fb_info_->GetProgram(ihipGetDevice())
@@ -730,7 +729,7 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
     if ((*it)->moduleInfo() == module) {
       ihipFree((*it)->getManagedVarPtr());
       delete *it;
-      managedVars_.erase(it);
+      it = managedVars_.erase(it);
     } else {
       ++it;
     }

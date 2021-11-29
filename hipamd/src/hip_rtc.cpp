@@ -127,7 +127,6 @@ static std::string getValueOf(const std::string& option) {
 }
 
 static void transformOptions(std::vector<std::string>& options, amd::Program* program) {
-  std::vector<const char*> t_option;
   for (auto& i : options) {
     // This functionality is no longer supported - just consume at the moment and remove this in
     // couple of releases

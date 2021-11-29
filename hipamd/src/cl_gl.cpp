@@ -214,7 +214,6 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture,
 
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
-  bool sizePass = false;
   for (const auto& it : devices) {
     if (it->info().imageSupport_) {
       supportPass = true;
@@ -299,7 +298,6 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture2D,
 
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
-  bool sizePass = false;
   for (const auto& it : devices) {
     if (it->info().imageSupport_) {
       supportPass = true;
@@ -379,7 +377,6 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromGLTexture3D,
 
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
-  bool sizePass = false;
   for (const auto& it : devices) {
     if (it->info().imageSupport_) {
       supportPass = true;

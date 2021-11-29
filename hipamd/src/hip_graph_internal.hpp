@@ -235,9 +235,9 @@ struct ihipGraph {
   /// returns all the edges in the graph
   std::vector<std::pair<Node, Node>> GetEdges() const;
   void GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
-                      std::vector<Node>& singleList, std::vector<std::vector<Node>>& parallelList,
+                      std::vector<Node>& singleList, std::vector<std::vector<Node>>& parallelLists,
                       std::unordered_map<Node, std::vector<Node>>& dependencies);
-  void GetRunList(std::vector<std::vector<Node>>& parallelList,
+  void GetRunList(std::vector<std::vector<Node>>& parallelLists,
                   std::unordered_map<Node, std::vector<Node>>& dependencies);
   void LevelOrder(std::vector<Node>& levelOrder);
   ihipGraph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
@@ -877,7 +877,7 @@ class hipGraphEventRecordNode : public hipGraphNode {
     }
   }
 
-  void GetParams(hipEvent_t* event) { *event = event_; }
+  void GetParams(hipEvent_t* event) const { *event = event_; }
 
   hipError_t SetParams(hipEvent_t event) {
     event_ = event;
@@ -938,7 +938,7 @@ class hipGraphEventWaitNode : public hipGraphNode {
     }
   }
 
-  void GetParams(hipEvent_t* event) { *event = event_; }
+  void GetParams(hipEvent_t* event) const { *event = event_; }
 
   hipError_t SetParams(hipEvent_t event) {
     event_ = event;

@@ -324,10 +324,9 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
   size_t localWorkSize[3] = {blockDimX, blockDimY, blockDimZ};
   amd::NDRangeContainer ndrange(3, globalWorkOffset, globalWorkSize, localWorkSize);
   amd::Command::EventWaitList waitList;
-  bool profileNDRange = false;
   address kernargs = nullptr;
 
-  profileNDRange = (startEvent != nullptr || stopEvent != nullptr);
+  bool profileNDRange = (startEvent != nullptr || stopEvent != nullptr);
 
   // Flag set to 1 signifies that kernel can be launched in anyorder
   if (flags & hipExtAnyOrderLaunch) {
@@ -553,10 +552,10 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
 
   hipError_t result = hipErrorUnknown;
   uint64_t allGridSize = 0;
-  uint32_t blockDims = 0;
   std::vector<const amd::Device*> mgpu_list(numDevices);
 
   for (int i = 0; i < numDevices; ++i) {
+    uint32_t blockDims = 0;
     const hipLaunchParams& launch = launchParamsList[i];
     blockDims = launch.blockDim.x * launch.blockDim.y * launch.blockDim.z;
     allGridSize += launch.gridDim.x * launch.gridDim.y * launch.gridDim.z *

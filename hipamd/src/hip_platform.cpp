@@ -292,12 +292,9 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
 {
   HIP_INIT();
 
-  amd::Program* program = nullptr;
-  device::Program* dev_program = nullptr;
-
   /* Get Device Program pointer*/
-  program = as_amd(reinterpret_cast<cl_program>(hmod));
-  dev_program = program->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
+  amd::Program* program = as_amd(reinterpret_cast<cl_program>(hmod));
+  device::Program* dev_program = program->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
 
   if (dev_program == nullptr) {
     LogPrintfError("Cannot get Device Function for module: 0x%x \n", hmod);
@@ -761,6 +758,7 @@ hipError_t PlatformState::loadModule(hipModule_t *module, const char* fname, con
   assert(*module != nullptr);
 
   if (dynCO_map_.find(*module) != dynCO_map_.end()) {
+    delete dynCo;
     return hipErrorAlreadyMapped;
   }
   dynCO_map_.insert(std::make_pair(*module, dynCo));

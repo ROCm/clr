@@ -426,7 +426,7 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
 }
 
 void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data) {
-  CallbackData* data = (CallbackData*)user_data;
+  CallbackData* data =  reinterpret_cast<CallbackData*>(user_data);
   int offset = data->previous_read_index % IPC_SIGNALS_PER_EVENT;
   while (data->shmem->read_index < data->previous_read_index + IPC_SIGNALS_PER_EVENT &&
          data->shmem->signal[offset] != 0) {

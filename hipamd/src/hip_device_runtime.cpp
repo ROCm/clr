@@ -340,7 +340,9 @@ hipError_t hipDeviceGetByPCIBusId(int* device, const char*pciBusIdstr) {
   int pciDeviceID = -1;
   int pciDomainID = -1;
   bool found = false;
-  if (sscanf (pciBusIdstr, "%04x:%02x:%02x", &pciDomainID, &pciBusID, &pciDeviceID) == 0x3) {
+  if (sscanf (pciBusIdstr, "%04x:%02x:%02x", reinterpret_cast<unsigned int*>(&pciDomainID),
+              reinterpret_cast<unsigned int*>(&pciBusID),
+              reinterpret_cast<unsigned int*>(&pciDeviceID)) == 0x3) {
     int count = 0;
     ihipDeviceGetCount(&count);
     for (cl_int i = 0; i < count; i++) {

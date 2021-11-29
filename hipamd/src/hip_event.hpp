@@ -71,8 +71,8 @@ class Event {
   std::vector<hipGraphNode_t> nodesPrevToRecorded_;
 
  public:
-  Event(unsigned int flags)
-      : flags(flags), lock_("hipEvent_t", true), event_(nullptr), recorded_(false) {
+  Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
+                              event_(nullptr), recorded_(false), stream_(nullptr) {
     // No need to init event_ here as addMarker does that
     onCapture_ = false;
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
@@ -87,7 +87,7 @@ class Event {
 
   virtual hipError_t query();
   virtual hipError_t synchronize();
-  hipError_t elapsedTime(Event& stop, float& ms);
+  hipError_t elapsedTime(Event& eStop, float& ms);
 
   virtual hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
   virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
@@ -107,9 +107,9 @@ class Event {
     command.retain();
   }
 
-  bool isRecorded() { return recorded_; }
+  bool isRecorded() const { return recorded_; }
   amd::Monitor& lock() { return lock_; }
-  const int deviceId() { return device_id_; }
+  const int deviceId() const { return device_id_; }
   void setDeviceId(int id) { device_id_ = id; }
 
   /// End capture on this event
@@ -123,9 +123,9 @@ class Event {
     captureStream_ = stream;
   }
   /// Get capture status of the graph
-  bool GetCaptureStatus() { return onCapture_; }
+  bool GetCaptureStatus() const { return onCapture_; }
   /// Get capture stream where event is recorded
-  hipStream_t GetCaptureStream() { return captureStream_; }
+  hipStream_t GetCaptureStream() const { return captureStream_; }
   /// Set capture stream where event is recorded
   void SetCaptureStream(hipStream_t stream) { captureStream_ = stream; }
   /// Returns previous captured nodes before event record
