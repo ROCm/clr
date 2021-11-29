@@ -462,10 +462,9 @@ hipError_t capturehipMemcpy(hipStream_t stream, void* dst, const void* src, size
     return hipErrorInvalidValue;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hipGraph_t graph = nullptr;
   std::vector<hipGraphNode_t> pDependencies = s->GetLastCapturedNodes();
   size_t numDependencies = s->GetLastCapturedNodes().size();
-  graph = s->GetCaptureGraph();
+  hipGraph_t graph = s->GetCaptureGraph();
   hipError_t status = ihipMemcpy_validate(dst, src, sizeBytes, kind);
   if (status != hipSuccess) {
     return status;

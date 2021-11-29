@@ -57,7 +57,7 @@ private:
 //Abstract Structures
 class Function {
 public:
-  Function(std::string name, FatBinaryInfo** modules=nullptr);
+  Function(const std::string& name, FatBinaryInfo** modules=nullptr);
   ~Function();
 
   //Return DeviceFunc for this this dynamically loaded module
@@ -85,10 +85,10 @@ public:
     DVK_Managed
   };
 
-  Var(std::string name, DeviceVarKind dVarKind, size_t size, int type, int norm,
+  Var(const std::string& name, DeviceVarKind dVarKind, size_t size, int type, int norm,
       FatBinaryInfo** modules = nullptr);
 
-  Var(std::string name, DeviceVarKind dVarKind, void *pointer, size_t size, unsigned align,
+  Var(const std::string& name, DeviceVarKind dVarKind, void *pointer, size_t size, unsigned align,
       FatBinaryInfo** modules = nullptr);
 
   ~Var();

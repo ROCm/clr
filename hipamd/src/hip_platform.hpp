@@ -28,7 +28,7 @@ namespace hip_impl {
 
 hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     int* maxBlocksPerCU, int* numBlocksPerGrid, int* bestBlockSize,
-    const amd::Device& device, hipFunction_t func, int  blockSize,
+    const amd::Device& device, hipFunction_t func, int inputBlockSize,
     size_t dynamicSMemSize, bool bCalcPotentialBlkSz);
 } /* namespace hip_impl*/
 

@@ -309,7 +309,6 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImageFromD3D11Resource,
   // Check for image support
   const std::vector<amd::Device*>& devices = as_amd(context)->devices();
   bool supportPass = false;
-  bool sizePass = false;
   for (const auto& it : devices) {
     if (it->info().imageSupport_) {
       supportPass = true;

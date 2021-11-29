@@ -96,7 +96,7 @@ DeviceFunc::~DeviceFunc() {
 }
 
 //Abstract functions
-Function::Function(std::string name, FatBinaryInfo** modules)
+Function::Function(const std::string& name, FatBinaryInfo** modules)
                    : name_(name), modules_(modules) {
   dFunc_.resize(g_devices.size());
 }
@@ -167,15 +167,16 @@ hipError_t Function::getStatFuncAttr(hipFuncAttributes* func_attr, int deviceId)
 }
 
 //Abstract Vars
-Var::Var(std::string name, DeviceVarKind dVarKind, size_t size, int type, int norm,
+Var::Var(const std::string& name, DeviceVarKind dVarKind, size_t size, int type, int norm,
          FatBinaryInfo** modules) : name_(name), dVarKind_(dVarKind), size_(size),
-         type_(type), norm_(norm), modules_(modules) {
+         type_(type), norm_(norm), modules_(modules), managedVarPtr_(nullptr), align_(0) {
   dVar_.resize(g_devices.size());
 }
 
-Var::Var(std::string name, DeviceVarKind dVarKind, void *pointer, size_t size,
+Var::Var(const std::string& name, DeviceVarKind dVarKind, void *pointer, size_t size,
          unsigned align, FatBinaryInfo** modules) : name_(name), dVarKind_(dVarKind),
-         size_(size), modules_(modules), managedVarPtr_(pointer), align_(align) {
+         size_(size), modules_(modules), managedVarPtr_(pointer), align_(align),
+         type_(0), norm_(0) {
   dVar_.resize(g_devices.size());
 }
 

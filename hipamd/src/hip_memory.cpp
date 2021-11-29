@@ -194,7 +194,6 @@ hipError_t hipSignalExternalSemaphoresAsync(
     HIP_RETURN(hipErrorInvalidValue);
   }
   amd::HostQueue* queue = hip::getQueue(stream);
-  const amd::Device& device = queue->vdev()->device();
 
   for (unsigned int i = 0; i < numExtSems; i++) {
     if (extSemArray[i] != nullptr) {
@@ -224,7 +223,6 @@ hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemAr
     HIP_RETURN(hipErrorInvalidValue);
   }
   amd::HostQueue* queue = hip::getQueue(stream);
-  const amd::Device& device = queue->vdev()->device();
 
   for (unsigned int i = 0; i < numExtSems; i++) {
     if (extSemArray[i] != nullptr) {
@@ -692,9 +690,8 @@ hipError_t hipMalloc3D(hipPitchedPtr* pitchedDevPtr, hipExtent extent) {
   }
 
   const cl_image_format image_format = { CL_R, CL_UNSIGNED_INT8 };
-  hipError_t status = hipSuccess;
-  status = ihipMallocPitch(&pitchedDevPtr->ptr, &pitch, extent.width, extent.height, extent.depth,
-                           CL_MEM_OBJECT_IMAGE3D, &image_format);
+  hipError_t status = ihipMallocPitch(&pitchedDevPtr->ptr, &pitch, extent.width, extent.height,
+                                      extent.depth, CL_MEM_OBJECT_IMAGE3D, &image_format);
 
   if (status == hipSuccess) {
         pitchedDevPtr->pitch = pitch;
@@ -1857,7 +1854,6 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
 }
 
 hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool isAsync = false) {
-  amd::Command* command;
   hipError_t status;
   if (pCopy == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidValue;
@@ -1904,6 +1900,7 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
                           pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight, pCopy->dstPitch,
                           pCopy->dstPitch * pCopy->dstHeight);
   } else {
+    amd::Command* command;
     status = ihipGetMemcpyParam3DCommand(command, pCopy, hip::getQueue(stream));
     if (status != hipSuccess) return status;
     return ihipMemcpyCmdEnqueue(command, isAsync);
@@ -2298,7 +2295,6 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
   amd::Memory* memory = getMemoryObject(dst, offset);
   size_t n_head_bytes = 0;
   size_t n_tail_bytes = 0;
-  int64_t value64 = 0;
   amd::Command* command;
 
   hip_error = packFillMemoryCommand(command, memory, offset, value, valueSize, sizeBytes,
@@ -2569,7 +2565,6 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
 hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
   HIP_INIT_API(hipIpcCloseMemHandle, dev_ptr);
 
-  size_t offset = 0;
   amd::Device* device = nullptr;
   amd::Memory* amd_mem_obj = nullptr;
 

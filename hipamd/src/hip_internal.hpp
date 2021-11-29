@@ -306,7 +306,7 @@ namespace hip {
     /// Set parent stream
     void SetParentStream(hipStream_t parentStream) { parentStream_ = parentStream; }
     /// Get parent stream
-    hipStream_t GetParentStream() { return parentStream_; }
+    hipStream_t GetParentStream() const { return parentStream_; }
     /// Generate ID for stream capture unique over the lifetime of the process
     static int GenerateCaptureID() {
       static std::atomic<unsigned long long> uid(0);
@@ -408,7 +408,7 @@ namespace hip {
   /// Get ROCclr queue associated with hipStream
   /// Note: This follows the CUDA spec to sync with default streams
   ///       and Blocking streams
-  extern amd::HostQueue* getQueue(hipStream_t s);
+  extern amd::HostQueue* getQueue(hipStream_t stream);
   /// Get default stream associated with the ROCclr context
   extern amd::HostQueue* getNullStream(amd::Context&);
   /// Get default stream of the thread
