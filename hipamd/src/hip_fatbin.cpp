@@ -6,6 +6,7 @@ namespace hip {
 
 FatBinaryDeviceInfo::~FatBinaryDeviceInfo() {
   if (program_ != nullptr) {
+    program_->unload();
     program_->release();
     program_ = nullptr;
   }
