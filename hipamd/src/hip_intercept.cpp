@@ -32,6 +32,9 @@ extern const std::string& FunctionName(const hipFunction_t f);
 const char* hipKernelNameRef(const hipFunction_t f) { return FunctionName(f).c_str(); }
 
 int hipGetStreamDeviceId(hipStream_t stream) {
+  if (!hip::isValid(stream)) {
+    return -1;
+  }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   return (s != nullptr)? s->DeviceId() : ihipGetDevice();
 }
