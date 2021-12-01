@@ -23,12 +23,21 @@ namespace pal {
 #define BLIT_KERNEL(...) #__VA_ARGS__
 
 const char* SchedulerSourceCode = BLIT_KERNEL(
-%s
 \n
 extern void __amd_scheduler(__global void*, __global void*, uint);
 \n
 __kernel void __amd_rocclr_scheduler(__global void* queue, __global void* params, uint paramIdx) {
   __amd_scheduler(queue, params, paramIdx);
+}
+\n);
+
+const char* SchedulerSourceCode20 = BLIT_KERNEL(
+\n
+extern void __amd_scheduler_pal(__global void*, __global void*, uint);
+\n
+ __kernel void __amd_rocclr_scheduler(__global void* queue, __global void* params,
+                                         uint paramIdx) {
+  __amd_scheduler_pal(queue, params, paramIdx);
 }
 \n);
 
