@@ -1093,7 +1093,7 @@ parseAllOptions(std::string& options, Options& Opts, bool linkOptsOnly, bool isL
         bool isPrefix_mno = false;
         bool isPrefix_option = false;
 
-        std::string name, value;
+        std::string value;
         size_t sPos  = pos;
         int option_ndx
             = getOptionDesc(options, sPos, isShortName, OFA_NORMAL, pos, value);

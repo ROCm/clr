@@ -539,13 +539,12 @@ bool Device::create(const Isa &isa) {
 void Device::registerDevice() {
   assert(Runtime::singleThreaded() && "this is not thread-safe");
 
-  static bool defaultIsAssigned = false;
-
   if (devices_ == nullptr) {
     devices_ = new std::vector<Device*>;
   }
 
   if (info_.available_) {
+    static bool defaultIsAssigned = false;
     if (!defaultIsAssigned && online_) {
       defaultIsAssigned = true;
       info_.type_ |= CL_DEVICE_TYPE_DEFAULT;
@@ -796,7 +795,6 @@ bool ClBinary::setElfTarget() {
   assert(((0xFFFF8000 & Target) == 0) && "ASIC target ID >= 2^15");
   uint16_t elf_target = static_cast<uint16_t>(0x7FFF & Target);
   return elfOut()->setTarget(elf_target, amd::Elf::CAL_PLATFORM);
-  return true;
 }
 
 #if defined(WITH_COMPILER_LIB)

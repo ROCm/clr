@@ -709,10 +709,9 @@ Device::XferBuffers::~XferBuffers() {
 }
 
 bool Device::XferBuffers::create() {
-  Memory* xferBuf = NULL;
   bool result = false;
   // Create a buffer object
-  xferBuf = new Memory(dev(), bufSize_);
+  Memory* xferBuf = new Memory(dev(), bufSize_);
 
   // Try to allocate memory for the transfer buffer
   if ((NULL == xferBuf) || !xferBuf->create(type_)) {
@@ -1150,11 +1149,11 @@ bool Device::initializeHeapResources() {
 
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   bool profiling = false;
-  bool interopQueue = false;
   uint rtCUs = amd::CommandQueue::RealTimeDisabled;
   uint deviceQueueSize = 0;
 
   if (queue != NULL) {
+    bool interopQueue = false;
     profiling = queue->properties().test(CL_QUEUE_PROFILING_ENABLE);
     if (queue->asHostQueue() != NULL) {
       interopQueue = (0 != (queue->context().info().flags_ &
@@ -1196,11 +1195,10 @@ typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
 static void parseRequestedDeviceList(requestedDevices_t& requestedDevices) {
-  char* pch = NULL;
   int requestedDeviceCount = 0;
   const char* requestedDeviceList = GPU_DEVICE_ORDINAL;
 
-  pch = strtok(const_cast<char*>(requestedDeviceList), ",");
+  char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != NULL) {
     bool deviceIdValid = true;
     int currentDeviceIndex = atoi(pch);
@@ -1318,10 +1316,9 @@ amd::Image::Format Device::getOclFormat(const CalFormat& format) const {
 
 // Create buffer without an owner (merge common code with createBuffer() ?)
 gpu::Memory* Device::createScratchBuffer(size_t size) const {
-  Memory* gpuMemory = NULL;
 
   // Create a memory object
-  gpuMemory = new gpu::Memory(*this, size);
+  Memory* gpuMemory = new gpu::Memory(*this, size);
   if (NULL == gpuMemory || !gpuMemory->create(Resource::Local)) {
     delete gpuMemory;
     gpuMemory = NULL;
@@ -1501,7 +1498,6 @@ gpu::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
 }
 
 gpu::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
-  size_t size = owner.getSize();
   amd::Image& image = *owner.asImage();
   gpu::Memory* gpuImage = NULL;
   CalFormat format = getCalFormat(image.getImageFormat());
@@ -1645,19 +1641,16 @@ bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler)
 }
 
 device::Memory* Device::createView(amd::Memory& owner, const device::Memory& parent) const {
-  size_t size = owner.getSize();
   assert((owner.asImage() != NULL) && "View supports images only");
   const amd::Image& image = *owner.asImage();
-  gpu::Memory* gpuImage = NULL;
   CalFormat format = getCalFormat(image.getImageFormat());
 
-  gpuImage =
+  gpu::Memory* gpuImage =
       new gpu::Image(*this, owner, image.getWidth(), image.getHeight(), image.getDepth(),
                      format.type_, format.channelOrder_, image.getType(), image.getMipLevels());
 
   // Create resource
   if (NULL != gpuImage) {
-    bool result = false;
     Resource::ImageViewParams params;
     const gpu::Memory& gpuMem = static_cast<const gpu::Memory&>(parent);
 
@@ -1669,7 +1662,7 @@ device::Memory* Device::createView(amd::Memory& owner, const device::Memory& par
     params.memory_ = &gpuMem;
 
     // Create memory object
-    result = gpuImage->create(Resource::ImageView, &params);
+    bool result = gpuImage->create(Resource::ImageView, &params);
     if (!result) {
       delete gpuImage;
       return NULL;
@@ -2136,8 +2129,7 @@ void Device::svmFree(void* ptr) const {
   if (isFineGrainedSystem()) {
     amd::Os::alignedFree(ptr);
   } else {
-    amd::Memory* svmMem = NULL;
-    svmMem = amd::MemObjMap::FindMemObj(ptr);
+    amd::Memory* svmMem = amd::MemObjMap::FindMemObj(ptr);
     if (NULL != svmMem) {
       svmMem->release();
       amd::MemObjMap::RemoveMemObj(ptr);
@@ -2258,12 +2250,11 @@ int32_t Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStora
 }
 
 bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput, cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
-  bool result = true;
   static const bool bValidate = true;
   PerformAdapterInitialization(bValidate);
   GSLClockModeInfo clockModeInfo = {};
   clockModeInfo.clockmode = static_cast<GSLClockMode>(setClockModeInput.clock_mode);
-  result = gslSetClockMode(&clockModeInfo);
+  bool result = gslSetClockMode(&clockModeInfo);
   CloseInitializedAdapter(bValidate);
   return result;
 }

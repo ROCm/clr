@@ -120,13 +120,13 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 
 void VirtualGPU::MemoryDependency::clear(bool all) {
   if (numMemObjectsInQueue_ > 0) {
-    size_t i, j;
     if (all) {
       endMemObjectsInQueue_ = numMemObjectsInQueue_;
     }
 
     // If the current launch didn't start from the beginning, then move the data
     if (0 != endMemObjectsInQueue_) {
+      size_t i, j;
       // Preserve all objects from the current kernel
       for (i = 0, j = endMemObjectsInQueue_; j < numMemObjectsInQueue_; i++, j++) {
         memObjectsInQueue_[i].start_ = memObjectsInQueue_[j].start_;
@@ -1096,7 +1096,6 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
           vcmd.setStatus(CL_MAP_FAILURE);
         }
       } else if ((vcmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
-        amd::Memory* bufferFromImage = NULL;
         Memory* memoryBuf = memory;
         amd::Coord3D origin(vcmd.origin()[0]);
         amd::Coord3D size(vcmd.size()[0]);
@@ -1104,7 +1103,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
         origin.c[0] *= elemSize;
         size.c[0] *= elemSize;
 
-        bufferFromImage = createBufferFromImage(vcmd.memory());
+        amd::Memory* bufferFromImage = createBufferFromImage(vcmd.memory());
         if (NULL == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
@@ -1195,7 +1194,6 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
           vcmd.setStatus(CL_OUT_OF_RESOURCES);
         }
       } else if ((vcmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER)) {
-        amd::Memory* bufferFromImage = NULL;
         Memory* memoryBuf = memory;
         amd::Coord3D origin(writeMapInfo->origin_[0]);
         amd::Coord3D size(writeMapInfo->region_[0]);
@@ -1203,7 +1201,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
         origin.c[0] *= elemSize;
         size.c[0] *= elemSize;
 
-        bufferFromImage = createBufferFromImage(vcmd.memory());
+        amd::Memory* bufferFromImage = createBufferFromImage(vcmd.memory());
         if (NULL == bufferFromImage) {
           LogError("We should not fail buffer creation from image_buffer!");
         } else {
@@ -3071,7 +3069,6 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     const HSAILKernel::Argument* arg = hsaKernel.argument(i);
     Memory* gpuMem = nullptr;
-    bool readOnly = false;
     amd::Memory* mem = nullptr;
 
     // Find if current argument is a buffer
@@ -3098,6 +3095,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         memoryDependency().clear(!All);
         continue;
       } else if (gpuMem != nullptr) {
+        bool readOnly = false;
         // Check image
         readOnly = (desc.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
         // Check buffer
@@ -3156,8 +3154,7 @@ void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispat
     kernelInfo.scratchBufferSizeInBytes = scratchBuf->size();
 
     // Get the address of the scratch buffer and its size for CPU access
-    address scratchRingAddr = NULL;
-    scratchRingAddr = static_cast<address>(scratchBuf->map(NULL, 0));
+    address scratchRingAddr = static_cast<address>(scratchBuf->map(NULL, 0));
     dbgManager->setScratchRing(scratchRingAddr, scratchBuf->size());
     scratchBuf->unmap(NULL);
   } else {

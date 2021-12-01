@@ -105,8 +105,8 @@ class HwDebugManager {
   virtual ~HwDebugManager();
 
   //!  Setup the call back function pointer
-  void setCallBackFunctions(cl_PreDispatchCallBackFunctionAMD preDispatchFn,
-                            cl_PostDispatchCallBackFunctionAMD postDispatchFn);
+  void setCallBackFunctions(cl_PreDispatchCallBackFunctionAMD preDispatchFuncion,
+                            cl_PostDispatchCallBackFunctionAMD postDispatchFunction);
 
   //!  Setup the call back argument pointers
   void setCallBackArguments(void* preDispatchArgs, void* postDispatchArgs);
@@ -146,10 +146,10 @@ class HwDebugManager {
   device::Memory* runtimeTMA() const { return runtimeTMA_; }
 
   //!  Set exception policy
-  void setExceptionPolicy(void* policy);
+  void setExceptionPolicy(void* exceptionPolicy);
 
   //!  Get exception policy
-  void getExceptionPolicy(void* policy) const;
+  void getExceptionPolicy(void* exceptionPolicy) const;
 
   //!  Set the kernel execution mode
   void setKernelExecutionMode(void* mode);

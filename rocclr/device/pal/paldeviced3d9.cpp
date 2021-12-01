@@ -22,7 +22,7 @@
 
 #if defined(ATI_OS_LINUX)
 namespace pal {
-bool Device::associateD3D9Device(void* d3dDevice) { return false; }
+bool Device::associateD3D9Device(void* d3d9Device) { return false; }
 }  // namespace pal
 #else  // !ATI_OS_LINUX
 

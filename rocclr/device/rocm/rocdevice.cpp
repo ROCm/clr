@@ -434,10 +434,11 @@ bool Device::init() {
                          HIP_VISIBLE_DEVICES : CUDA_VISIBLE_DEVICES)
                          : GPU_DEVICE_ORDINAL;
   if (ordinals[0] != '\0') {
-    size_t end, pos = 0;
+    size_t pos = 0;
     std::vector<hsa_agent_t> valid_agents;
     std::set<size_t> valid_indexes;
     do {
+      size_t end;
       bool deviceIdValid = true;
       end = ordinals.find_first_of(',', pos);
       if (end == std::string::npos) {
@@ -2102,13 +2103,13 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
 bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
                        unsigned int flags, void** dev_ptr) const {
   amd::Memory* amd_mem_obj = nullptr;
-  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
   void* orig_dev_ptr = nullptr;
 
   // Retrieve the devPtr from the handle
-  hsa_status = hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
-                                         mem_size, (1 + p2p_agents_.size()), p2p_agents_list_,
-                                         &orig_dev_ptr);
+  hsa_status_t hsa_status = 
+      hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
+                                mem_size, (1 + p2p_agents_.size()), p2p_agents_list_,
+                                &orig_dev_ptr);
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
@@ -2537,8 +2538,7 @@ bool Device::SvmAllocInit(void* memory, size_t size) const {
 
 // ================================================================================================
 void Device::svmFree(void* ptr) const {
-  amd::Memory* svmMem = nullptr;
-  svmMem = amd::MemObjMap::FindMemObj(ptr);
+  amd::Memory* svmMem = amd::MemObjMap::FindMemObj(ptr);
   if (nullptr != svmMem) {
     amd::MemObjMap::RemoveMemObj(svmMem->getSvmPtr());
     svmMem->release();
@@ -2684,8 +2684,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
 
   // default priority is normal so no need to set it again
   if (queue_priority != HSA_AMD_QUEUE_PRIORITY_NORMAL) {
-    hsa_status_t st = HSA_STATUS_SUCCESS;
-    st = hsa_amd_queue_set_priority(queue, queue_priority);
+    hsa_status_t st =  hsa_amd_queue_set_priority(queue, queue_priority);
     if (st != HSA_STATUS_SUCCESS) {
       DevLogError("Device::acquireQueue: hsa_amd_queue_set_priority failed!");
       hsa_queue_destroy(queue);
@@ -2733,8 +2732,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue);
 
-    hsa_status_t status = HSA_STATUS_SUCCESS;
-    status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
+    hsa_status_t status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
     if (status != HSA_STATUS_SUCCESS) {
       DevLogError("Device::acquireQueue: hsa_amd_queue_cu_set_mask failed!");
       hsa_queue_destroy(queue);

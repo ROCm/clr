@@ -61,8 +61,8 @@ class Program : public device::Program {
     return hsaExecutable_;
   }
 
-  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** dptr,
-                                  size_t* bytes, const char* globalName) const;
+  virtual bool createGlobalVarObj(amd::Memory** amd_mem_obj, void** device_pptr,
+                                  size_t* bytes, const char* global_name) const;
 
  protected:
   /*! \brief Compiles LLVM binary to HSAIL code (compiler backend: link+opt+codegen)

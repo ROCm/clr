@@ -185,8 +185,8 @@ class Program : public amd::HeapObject {
     amd::option::Options* options);
 
   //! Link the device program.
-  int32_t link(const std::vector<Program*>& inputPrograms, const char* origOptions,
-    amd::option::Options* options);
+  int32_t link(const std::vector<Program*>& inputPrograms, const char* origLinkOptions,
+    amd::option::Options* linkOptions);
 
   //! Build the device program.
   int32_t build(const std::string& sourceCode, const char* origOptions,
@@ -436,7 +436,7 @@ class Program : public amd::HeapObject {
     char* outBinary[] = nullptr, size_t* outSize = nullptr);
 
   //! Set the OCL language
-  void setLanguage(const char* clStd, amd_comgr_language_t* oclver);
+  void setLanguage(const char* clStd, amd_comgr_language_t* langver);
 
   //! Create code object and add it into the data set
   amd_comgr_status_t addCodeObjData(const char *source,
@@ -448,7 +448,7 @@ class Program : public amd::HeapObject {
                                           const std::vector<std::string>& preCompiledHeaders);
 
   //! Create action for the specified language, target and options
-  amd_comgr_status_t createAction(const amd_comgr_language_t oclvar,
+  amd_comgr_status_t createAction(const amd_comgr_language_t oclver,
     const std::vector<std::string>& options, amd_comgr_action_info_t* action,
     bool* hasAction);
 
@@ -456,12 +456,12 @@ class Program : public amd::HeapObject {
   bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     const std::vector<std::string>& options, const bool requiredDump,
     amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
-    char* binary[] = nullptr, size_t* binarySize = nullptr);
+    char* binaryData[] = nullptr, size_t* binarySize = nullptr);
 
   //! Create the bitcode of the compiled input dataset
-  bool compileToLLVMBitcode(const amd_comgr_data_set_t inputs,
+  bool compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
     const std::vector<std::string>& options, amd::option::Options* amdOptions,
-    char* binary[], size_t* binarySize);
+    char* binaryData[], size_t* binarySize);
 
   //! Compile and create the excutable of the input dataset
   bool compileAndLinkExecutable(const amd_comgr_data_set_t inputs,

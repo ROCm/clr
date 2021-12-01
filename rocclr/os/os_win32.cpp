@@ -862,9 +862,7 @@ bool Os::MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const v
     return false;
   }
 
-  HANDLE map_handle = INVALID_HANDLE_VALUE;
-
-  map_handle = CreateFileMappingA(fdesc, NULL, PAGE_READONLY, 0, 0, NULL);
+  HANDLE map_handle = CreateFileMappingA(fdesc, NULL, PAGE_READONLY, 0, 0, NULL);
   if (map_handle == INVALID_HANDLE_VALUE) {
     CloseHandle(map_handle);
     return false;
@@ -888,16 +886,13 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
     return false;
   }
 
-  HANDLE map_handle = INVALID_HANDLE_VALUE;
-  HANDLE file_handle = INVALID_HANDLE_VALUE;
-
-  file_handle = CreateFileA(fname, GENERIC_READ, 0, NULL, OPEN_EXISTING,
-                            FILE_ATTRIBUTE_READONLY, NULL);
+  HANDLE file_handle = CreateFileA(fname, GENERIC_READ, 0, NULL, OPEN_EXISTING,
+                                   FILE_ATTRIBUTE_READONLY, NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     return false;
   }
 
-  map_handle = CreateFileMappingA(file_handle, NULL, PAGE_READONLY, 0, 0, NULL);
+  HANDLE map_handle = CreateFileMappingA(file_handle, NULL, PAGE_READONLY, 0, 0, NULL);
   if (map_handle == INVALID_HANDLE_VALUE) {
     CloseHandle(file_handle);
     return false;

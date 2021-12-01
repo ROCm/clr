@@ -363,11 +363,11 @@ CALGSLContext::copyPartial(GpuEvent&      event,
     uint32      mode = GSL_SYNCUPLOAD_IGNORE_ELEMENTSIZE;
     EngineType  engineId = MainEngine;
     assert(m_cs != 0);
-    CopyType    type = USE_NONE;
     uint64  linearBytePitch = 0;
     intp bpp = 0;
 
-    type = dev()->GetCopyType(srcMem, destMem, srcOffset, destOffset, m_allowDMA, flags, size[0], enableRectCopy);
+    CopyType type = dev()->GetCopyType(srcMem, destMem, srcOffset, destOffset, m_allowDMA,
+                                       flags, size[0], enableRectCopy);
 
     if(type == USE_NONE)
     {

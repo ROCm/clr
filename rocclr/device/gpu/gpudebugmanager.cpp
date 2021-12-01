@@ -249,7 +249,7 @@ void GpuDebugManager::wavefrontControl(uint32_t waveAction, uint32_t waveMode, u
 }
 
 void GpuDebugManager::setAddressWatch(uint32_t numWatchPoints, void** watchAddress,
-                                      uint64_t* watchMask, uint64_t* watchMode, DebugEvent* event) {
+                                      uint64_t* watchMask, uint64_t* watchMode, DebugEvent* pEvent) {
   size_t requiredSize = numWatchPoints * sizeof(HwDbgAddressWatch);
 
   //  previously allocated size is not big enough, allocate new memory

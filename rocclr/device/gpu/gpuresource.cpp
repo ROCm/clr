@@ -1149,7 +1149,7 @@ void Resource::wait(VirtualGPU& gpu, bool waitOnBusyEngine) const {
   // Check if we have to wait unconditionally
   if (!waitOnBusyEngine ||
       // or we have to wait only if another engine was used on this resource
-      (waitOnBusyEngine && (gpuEvent->engineId_ != gpu.engineID_))) {
+       (gpuEvent->engineId_ != gpu.engineID_)) {
     gpu.waitForEvent(gpuEvent);
   }
 

@@ -34,7 +34,7 @@ void*      ProDevice::lib_drm_handle_ = nullptr;
 bool       ProDevice::initialized_ = false;
 drm::Funcs ProDevice::funcs_;
 
-IProDevice* IProDevice::Init(uint32_t bus, uint32_t dev, uint32_t func)
+IProDevice* IProDevice::Init(uint32_t bus, uint32_t device, uint32_t func)
 {
   // Make sure DRM lib is initialized
   if (!ProDevice::DrmInit()) {

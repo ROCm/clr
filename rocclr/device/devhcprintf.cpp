@@ -32,6 +32,7 @@ static void checkPrintf(FILE* stream, int* outCount, const char* fmt, ...) {
   va_start(args, fmt);
   int retval = vfprintf(stream, fmt, args);
   *outCount = retval < 0 ? retval : *outCount + retval;
+  va_end(args);
 }
 
 static int countStars(const std::string& spec) {

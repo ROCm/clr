@@ -182,7 +182,7 @@ IniSection::IniSection()
 IniSection::IniSection(const IniSection& s)
 {
     name = s.name;
-    for(EntryDBIterator iter = s.entryDB.begin() ; iter != s.entryDB.end(); iter++)
+    for(EntryDBIterator iter = s.entryDB.begin() ; iter != s.entryDB.end(); ++iter)
     {
         entryDB[iter->first] = iter->second;
     }
@@ -196,7 +196,7 @@ IniSection::IniSection(cmString n)
 
 IniSection::~IniSection()
 {
-    for(EntryDBIterator iter = entryDB.begin() ; iter != entryDB.end(); iter++)
+    for(EntryDBIterator iter = entryDB.begin() ; iter != entryDB.end(); ++iter)
     {
         delete iter->second;
     }
@@ -267,7 +267,7 @@ IniFile::~IniFile()
     sectionDB.clear();
 }
 
-const cmString IniSection::getName()
+const cmString IniSection::getName () const
 {
     return name;
 }
@@ -376,7 +376,7 @@ void IniValueFloat::printAST()
 
 void IniSection::printAST()
 {
-    for(EntryDBIterator iter = entryDB.begin() ; iter != entryDB.end(); iter++)
+    for(EntryDBIterator iter = entryDB.begin() ; iter != entryDB.end(); ++iter)
     {
         cmString name = iter->first;
         IniValue *v = iter->second;
@@ -389,7 +389,7 @@ void IniSection::printAST()
 
 void IniFile::printAST()
 {
-    for(SectionDBIterator iter = sectionDB.begin() ; iter != sectionDB.end(); iter++)
+    for(SectionDBIterator iter = sectionDB.begin() ; iter != sectionDB.end(); ++iter)
     {
         IniSection* s = iter->second;
         std::cerr << "[" << s->getName().c_str() << "]\n";

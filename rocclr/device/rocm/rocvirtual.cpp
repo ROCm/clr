@@ -283,7 +283,6 @@ void VirtualGPU::MemoryDependency::validate(VirtualGPU& gpu, const Memory* memor
 // ================================================================================================
 void VirtualGPU::MemoryDependency::clear(bool all) {
   if (numMemObjectsInQueue_ > 0) {
-    size_t i, j;
     if (all) {
       endMemObjectsInQueue_ = numMemObjectsInQueue_;
     }
@@ -291,6 +290,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
     // If the current launch didn't start from the beginning, then move the data
     if (0 != endMemObjectsInQueue_) {
       // Preserve all objects from the current kernel
+      size_t i, j;
       for (i = 0, j = endMemObjectsInQueue_; j < numMemObjectsInQueue_; i++, j++) {
         memObjectsInQueue_[i].start_ = memObjectsInQueue_[j].start_;
         memObjectsInQueue_[i].end_ = memObjectsInQueue_[j].end_;

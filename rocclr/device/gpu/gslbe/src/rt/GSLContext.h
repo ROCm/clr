@@ -75,7 +75,7 @@ public:
     }
 
     bool             copyPartial(GpuEvent& event, gslMemObject srcMem, size_t* srcOffset,
-                        gslMemObject destMem, size_t* destOffset, size_t* size, CALmemcopyflags flags, bool enableCopyRect, uint32 bytesPerElement);
+                        gslMemObject destMem, size_t* destOffset, size_t* size, CALmemcopyflags flags, bool enableRectCopy, uint32 bytesPerElement);
 
     void             setSamplerParameter(uint32 sampler, gslTexParameterPname param, CALvoid* vals);
 

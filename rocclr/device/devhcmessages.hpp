@@ -85,7 +85,7 @@ class MessageHandler {
   std::vector<Message*> messageSlots_;
 
   Message* newMessage();
-  Message* getMessage(uint64_t desc);
+  Message* getMessage(uint64_t messageId);
   void discardMessage(Message* message);
 
  public:

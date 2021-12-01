@@ -258,7 +258,6 @@ public:
         int r = option_ndx/32;
         int c = option_ndx%32;
         const uint32_t *p = &flags[r];
-        uint32_t b = (1 << c);
         return 1 & ((*p) >> c);
     }
 
@@ -266,7 +265,7 @@ public:
         return (getFlag(option_ndx) == FLAG_SEEN);
     }
 
-    int    getLLVMArgc() { return llvmargc; }
+    int    getLLVMArgc() const { return llvmargc; }
     char** getLLVMArgv() { return llvmargv; }
     void   setLLVMArgs (int argc, char** argv) {
         llvmargc = argc;
@@ -290,7 +289,7 @@ public:
     bool isCStrOptionsEqual(const char *cs1, const char* cs2) const;
 
 
-    bool useDefaultWGS() { return UseDefaultWGS; }
+    bool useDefaultWGS() const { return UseDefaultWGS; }
     void setDefaultWGS(bool V) { UseDefaultWGS = V; }
 
     std::string& optionsLog() { return OptionsLog; }
@@ -328,7 +327,7 @@ private:
 
     bool UseDefaultWGS;
 
-    bool dumpEncrypt(DumpFlags f) {
+    bool dumpEncrypt(DumpFlags f) const {
         return ((encryptCode == 0) ||   // return true if not encrypted
                 (f & DUMP_ENCRYPT));
     }
