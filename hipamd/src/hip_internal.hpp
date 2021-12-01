@@ -325,9 +325,17 @@ namespace hip {
     /// Maintain list of user enabled peers
     std::list<int> userEnabledPeers;
 
+    /// True if this device is active
+    bool isActive_;
+
+    std::vector<amd::HostQueue*> queues_;
+
   public:
-    Device(amd::Context* ctx, int devId):
-      context_(ctx), deviceId_(devId), null_stream_(this, Stream::Priority::Normal, 0, true), flags_(hipDeviceScheduleSpin)
+    Device(amd::Context* ctx, int devId): context_(ctx),
+         deviceId_(devId),
+         null_stream_(this, Stream::Priority::Normal, 0, true),
+         flags_(hipDeviceScheduleSpin),
+         isActive_(false)
         { assert(ctx != nullptr); }
     ~Device() {}
 
@@ -358,6 +366,23 @@ namespace hip {
     unsigned int getFlags() const { return flags_; }
     void setFlags(unsigned int flags) { flags_ = flags; }
     amd::HostQueue* NullStream(bool skip_alloc = false);
+
+    void SaveQueue(amd::HostQueue* queue) {
+      amd::ScopedLock lock(lock_);
+      queues_.push_back(queue);
+    }
+
+    bool GetActiveStatus() {
+      amd::ScopedLock lock(lock_);
+      if (isActive_) return true;
+      for (int i = 0; i < queues_.size(); i++) {
+        if (queues_[i]->GetQueueStatus()) {
+          isActive_ = true;
+          return true;
+        }
+      }
+      return false;
+    }
   };
 
   /// Current thread's device

@@ -349,7 +349,7 @@ hipError_t hipDevicePrimaryCtxGetState(hipDevice_t dev, unsigned int* flags, int
   }
 
   if (active != nullptr) {
-    *active = (g_devices[dev] == hip::getCurrentDevice())? 1 : 0;
+    *active = g_devices[dev]->GetActiveStatus() ? 1 : 0;
   }
 
   HIP_RETURN(hipSuccess);

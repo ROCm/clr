@@ -107,6 +107,7 @@ bool Stream::Create() {
     streamSet.insert(this);
     queue_ = queue;
     queue->vdev()->profilerAttach(isProfilerAttached);
+    device_->SaveQueue(queue);
   } else if (queue != nullptr) {
     queue->release();
   }
