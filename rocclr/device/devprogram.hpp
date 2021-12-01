@@ -116,6 +116,9 @@ class Program : public amd::HeapObject {
   kernels_t kernels_; //!< The kernel entry points this binary.
   type_t type_;       //!< type of this program
 
+  typedef enum { InitKernel = 0, FiniKernel } kernel_kind_t;  //!< Kernel kind
+  bool runInitFiniKernel(kernel_kind_t) const;
+
  protected:
    union {
      struct {
@@ -158,6 +161,8 @@ class Program : public amd::HeapObject {
   uint32_t codeObjectVer_;                  //!< version of code object
   std::map<std::string, amd_comgr_metadata_node_t> kernelMetadataMap_; //!< Map of kernel metadata
 #endif
+  //! Sanitizer lock - lock when launching init/fini kernels
+  static amd::Monitor initFiniLock_;
 
  public:
   //! Construct a section.
@@ -290,6 +295,12 @@ class Program : public amd::HeapObject {
     return false;
   }
 
+  //! Run kernels marked with "init" kind metadata
+  bool runInitKernels();
+
+  //! Run kernels marked with "fini" kind metadata
+  bool runFiniKernels();
+
  protected:
   //! pre-compile setup
   bool initBuild(amd::option::Options* options);
@@ -385,6 +396,7 @@ class Program : public amd::HeapObject {
   bool defineUndefinedVars();
 
  private:
+
   //! Compile the device program with LC path
   bool compileImplLC(const std::string& sourceCode, const std::vector<const std::string*>& headers,
                      const char** headerIncludeNames, amd::option::Options* options,

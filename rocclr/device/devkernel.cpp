@@ -573,6 +573,9 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
     case KernelField::SymbolName:
       kernel->SetSymbolName(buf);
       break;
+    case KernelField::Kind:
+      kernel->SetKernelKind(buf);
+      break;
     default:
       return AMD_COMGR_STATUS_ERROR;
   }
@@ -1634,5 +1637,4 @@ void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
   }
 }
 #endif // defined(WITH_COMPILER_LIB)
-
 }

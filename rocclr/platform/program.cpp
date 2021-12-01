@@ -89,6 +89,15 @@ Program::~Program() {
   //! @todo Make sure we have destroyed all CPU specific objects
 }
 
+void Program::unload() {
+  for (const auto& it : devicePrograms_) {
+    device::Program& devProgram = *(it.second);
+    if (!devProgram.runFiniKernels()) {
+      LogError("Error running fini kernels for devprogram");
+    }
+  }
+}
+
 const Symbol* Program::findSymbol(const char* kernelName) const {
   // avoid seg. fault if the program has not built yet
   if (symbolTable_ == NULL) {
@@ -619,6 +628,11 @@ bool Program::load(const std::vector<Device*>& devices) {
     }
 
     if (!devProgram.load()) {
+      return false;
+    }
+
+    // Run kernels marked with init
+    if (!devProgram.runInitKernels()) {
       return false;
     }
   }
