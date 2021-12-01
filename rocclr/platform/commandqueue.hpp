@@ -278,9 +278,18 @@ class HostQueue : public CommandQueue {
   //! Reset the command batch list
   void ResetSubmissionBatch() { head_ = nullptr; }
 
+  //! Set queue status
+  void SetQueueStatus() { isActive_ = true; }
+
+  //! Get queue status
+  bool GetQueueStatus() { return isActive_; }
+
 private:
   Command* head_;   //!< Head of the batch list
   Command* tail_;   //!< Tail of the batch list
+
+  //! True if this command queue is active
+  bool isActive_;
 };
 
 

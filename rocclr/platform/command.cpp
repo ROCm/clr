@@ -377,6 +377,9 @@ void Command::enqueue() {
       ((commandWaitBits_ & 0x2) != 0)) {
     awaitCompletion();
   }
+
+  // set this queue status is active
+  queue_->SetQueueStatus();
 }
 
 // ================================================================================================

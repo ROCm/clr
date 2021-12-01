@@ -39,7 +39,8 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
                    priority, cuMask),
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
-      tail_(nullptr) {
+      tail_(nullptr),
+      isActive_(false) {
   if (AMD_DIRECT_DISPATCH) {
     // Initialize the queue
     thread_.Init(this);
