@@ -802,6 +802,7 @@ Device::~Device() {
 }
 
 extern const char* SchedulerSourceCode;
+extern const char* SchedulerSourceCode20;
 extern const char* GwsInitSourceCode;
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
@@ -2348,32 +2349,32 @@ bool Device::createBlitProgram() {
   bool result = true;
 
   // Delayed compilation due to brig_loader memory allocation
-  std::string blits;
-  const char* ocl20 = nullptr;
-
-  std::string sch = SchedulerSourceCode;
-  if (settings().oclVersion_ >= OpenCL20) {
-    size_t loc = sch.find("%s");
-    sch.replace(loc, 2, iDev()->GetDispatchKernelSource());
-    if (settings().useLightning_) {
-      // For LC, replace "amd_scheduler" with "amd_scheduler_pal"
-      static const char AmdScheduler[] = "amd_scheduler";
-      static const char AmdSchedulerPal[] = "amd_scheduler_pal";
-      loc = sch.find(AmdScheduler);
-      sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
-      loc = sch.find(AmdScheduler, (loc + sizeof(AmdSchedulerPal) - 1));
-      sch.replace(loc, sizeof(AmdScheduler) - 1, AmdSchedulerPal);
-      if (info().cooperativeGroups_) {
-        sch.append(GwsInitSourceCode);
-      }
+  std::string extraBlits;
+  std::string ocl20;
+  if (amd::IS_HIP) {
+    if (info().cooperativeGroups_) { 
+      extraBlits = GwsInitSourceCode;
     }
-    blits = sch;
-    ocl20 = "-cl-std=CL2.0";
+  }
+  else {
+    if (settings().oclVersion_ >= OpenCL20) {
+      extraBlits = iDev()->GetDispatchKernelSource();
+      if (settings().useLightning_) {
+        extraBlits.append(SchedulerSourceCode20);
+      }
+      else {
+        extraBlits.append(SchedulerSourceCode);
+      }
+      ocl20 = "-cl-std=CL2.0";
+    }
+    else {
+      extraBlits = SchedulerSourceCode;
+    }
   }
 
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, blits, ocl20)) {
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraBlits, ocl20)) {
     delete blitProgram_;
     blitProgram_ = nullptr;
     LogError("Couldn't create blit kernels!");

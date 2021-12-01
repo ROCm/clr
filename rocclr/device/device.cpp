@@ -357,7 +357,7 @@ Device::BlitProgram::~BlitProgram() {
 }
 
 bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKernels,
-                                 const char* extraOptions) {
+                                 const std::string& extraOptions) {
   std::vector<amd::Device*> devices;
   devices.push_back(device);
   std::string kernels(device::BlitLinearSourceCode);
@@ -383,7 +383,7 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
     opt += "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
   }
 
-  if (extraOptions != nullptr) {
+  if (!extraOptions.empty()) {
     opt += extraOptions;
   }
   if (!GPU_DUMP_BLIT_KERNELS) {

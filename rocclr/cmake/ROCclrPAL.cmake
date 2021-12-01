@@ -65,7 +65,7 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/pal/palprintf.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palprogram.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palresource.cpp
-  ${ROCCLR_SRC_DIR}/device/pal/palschedcl.cpp
+  ${ROCCLR_SRC_DIR}/device/pal/palblitcl.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palsettings.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palsignal.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palthreadtrace.cpp

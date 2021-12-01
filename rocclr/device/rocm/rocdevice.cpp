@@ -853,7 +853,7 @@ bool Device::createBlitProgram() {
 
   blitProgram_ = new BlitProgram(context_);
   // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraKernel)) {
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraKernel, "")) {
     delete blitProgram_;
     blitProgram_ = nullptr;
     LogError("Couldn't create blit kernels!");
