@@ -41,7 +41,6 @@ bool Device::associateD3D10Device(void* d3d10Device) { return false; }
 namespace pal {
 
 static bool queryD3D10DeviceGPUMask(ID3D10Device* pd3d10Device, UINT* pd3d10DeviceGPUMask) {
-  HMODULE hDLL = nullptr;
   IAmdDxExt* pExt = nullptr;
   IAmdDxExtCLInterop* pCLExt = nullptr;
   PFNAmdDxExtCreate AmdDxExtCreate;
@@ -54,7 +53,7 @@ static bool queryD3D10DeviceGPUMask(ID3D10Device* pd3d10Device, UINT* pd3d10Devi
   static constexpr CHAR dxxModuleName[13] = "atidxx32.dll";
 #endif
 
-  hDLL = GetModuleHandle(dxxModuleName);
+  HMODULE hDLL = GetModuleHandle(dxxModuleName);
 
   if (hDLL == nullptr) {
     hr = E_FAIL;

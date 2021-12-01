@@ -101,10 +101,10 @@ bool Program::defineGlobalVar(const char* name, void* dptr) {
     return false;
   }
 
-  hsa_status_t status = HSA_STATUS_SUCCESS;
   hsa_agent_t hsa_device = rocDevice().getBackendDevice();
 
-  status = hsa_executable_agent_global_variable_define(hsaExecutable_, hsa_device, name, dptr);
+  hsa_status_t status = hsa_executable_agent_global_variable_define(hsaExecutable_,
+                                                                    hsa_device, name, dptr);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: Could not define global variable : ";
     buildLog_ += hsa_strerror(status);

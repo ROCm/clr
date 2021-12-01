@@ -144,10 +144,10 @@ void HwDebugManager::assignKernelParamMem(uint32_t paramIdx, amd::Memory* mem) {
   paramMemory_[paramIdx] = mem;
 }
 
-void HwDebugManager::installTrap(cl_dbg_trap_type_amd trapType, amd::Memory* trapHandler,
-                                 amd::Memory* trapBuffer) {
-  rtTrapInfo_[trapType << 2] = trapHandler;
-  rtTrapInfo_[(trapType << 2) + 1] = trapBuffer;
+void HwDebugManager::installTrap(cl_dbg_trap_type_amd trapType, amd::Memory* pTrapHandler,
+                                 amd::Memory* pTrapBuffer) {
+  rtTrapInfo_[trapType << 2] = pTrapHandler;
+  rtTrapInfo_[(trapType << 2) + 1] = pTrapBuffer;
 }
 
 

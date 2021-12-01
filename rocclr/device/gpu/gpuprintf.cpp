@@ -405,7 +405,6 @@ void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* 
     if (posStart != std::string::npos) {
       bool printFloat = false;
       int vectorSize = 0;
-      size_t length;
       size_t idPos = 0;
 
       // Search for PrintfDbg specifier in the format string.
@@ -442,7 +441,7 @@ void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* 
 
       // Is it a scalar value?
       if (vectorSize == 0) {
-        length = outputArgument(fmt, printFloat, info.arguments_[j], &s[i]);
+        size_t length = outputArgument(fmt, printFloat, info.arguments_[j], &s[i]);
         if (0 == length) {
           return;
         }

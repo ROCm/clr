@@ -1178,10 +1178,9 @@ bool Image::Format::isSupported(const Context& context, cl_mem_object_type image
 // ================================================================================================
 Image* Image::createView(const Context& context, const Format& format, device::VirtualDevice* vDev,
                          uint baseMipLevel, cl_mem_flags flags) {
-  Image* view = nullptr;
 
   // Find the image dimensions and create a corresponding object
-  view = new (context) Image(format, *this, baseMipLevel, flags);
+  Image* view = new (context) Image(format, *this, baseMipLevel, flags);
 
   if (view != nullptr) {
     // Set GPU virtual device for this view
@@ -1234,12 +1233,11 @@ bool Image::isRowSliceValid(size_t rowPitch, size_t slice, size_t width, size_t 
 }
 
 void Image::copyToBackingStore(void* initFrom) {
-  char* src;
   char* dst = reinterpret_cast<char*>(getHostMem());
   size_t cpySize = getWidth() * getImageFormat().getElementSize();
 
   for (uint z = 0; z < getDepth(); ++z) {
-    src = reinterpret_cast<char*>(initFrom) + z * getSlicePitch();
+    char* src = reinterpret_cast<char*>(initFrom) + z * getSlicePitch();
     for (uint y = 0; y < getHeight(); ++y) {
       memcpy(dst, src, cpySize);
       dst += cpySize;

@@ -2402,12 +2402,11 @@ int32_t Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStora
 
 bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                           cl_set_device_clock_mode_output_amd* pSetClockModeOutput) {
-  bool result = false;
   Pal::SetClockModeInput setClockMode = {};
   Pal::DeviceClockMode palClockMode =
       static_cast<Pal::DeviceClockMode>(setClockModeInput.clock_mode);
   setClockMode.clockMode = palClockMode;
-  result = (Pal::Result::Success ==
+  bool result = (Pal::Result::Success ==
             (iDev()->SetClockMode(setClockMode,
                                   reinterpret_cast<Pal::SetClockModeOutput*>(pSetClockModeOutput))))
       ? true

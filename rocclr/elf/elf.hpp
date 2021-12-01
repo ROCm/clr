@@ -253,7 +253,7 @@ public:
      * if dumpImage() succeeds.
      */
     bool dumpImage(char** buff, size_t* len);
-    bool dumpImage(std::istream& is, char** buff, size_t* len);
+    bool dumpImage(std::istream& is, char** buff, size_t* len) const;
 
     /*
      * If the session doesn't exist, create a new ELF section with data <d_buf, d_size>;
@@ -320,11 +320,11 @@ public:
     bool setTarget(uint16_t machine, ElfPlatform platform);
 
     /* Get/set elf type field from header */
-    bool getType(uint16_t &type);
+    bool getType(uint16_t &type) const;
     bool setType(uint16_t  type);
 
     /* Get/set elf flag field from header */
-    bool getFlags(uint32_t &flag);
+    bool getFlags(uint32_t &flag) const;
     bool setFlags(uint32_t  flag);
 
     /*
@@ -333,9 +333,9 @@ public:
      */
     bool Clear();
 
-    unsigned char  getELFClass() { return _eclass; }
+    unsigned char  getELFClass() const { return _eclass; }
 
-    bool isSuccessful() { return _successful; }
+    bool isSuccessful() const { return _successful; }
 
     bool isHsaCo() const { return _elfio.get_machine() == EM_AMDGPU; }
 
@@ -343,7 +343,7 @@ public:
     unsigned int getSegmentNum() const;
 
     /* Return segment at index */
-    bool getSegment(const unsigned int index, segment*& seg);
+    bool getSegment(const unsigned int index, segment*& seg) const;
 
     /* Return size of elf file */
     static uint64_t getElfSize(const void *emi);
@@ -369,7 +369,7 @@ private:
         ElfSections id,
         section*    section,
         Elf64_Word  shlink = 0
-        );
+        ) const ;
 
     /*
      * Create a new data into an existing section.

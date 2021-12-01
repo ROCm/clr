@@ -819,7 +819,6 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
       if (memory == NULL) {
         // for map target of svm buffer , we need use svm host ptr
         memory = new (dev().context()) amd::Buffer(dev().context(), flag, owner()->getSize());
-        Memory* gpuMemory;
 
         do {
           if ((memory == NULL) || !memory->create(initHostPtr, SysMem)) {
@@ -828,7 +827,7 @@ void* Memory::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& reg
           }
           memory->setCacheStatus(canBeCached);
 
-          gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
+          Memory* gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
 
           // Create, Map and get the base pointer for the resource
           if ((gpuMemory == NULL) || (NULL == gpuMemory->map(NULL))) {
@@ -1082,14 +1081,13 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
             amd::Buffer(dev().context(), 0, cal()->width_ * height * depth * elementSize());
         memory->setVirtualDevice(owner()->getVirtualDevice());
 
-        Memory* gpuMemory;
         do {
           if ((memory == NULL) || !memory->create(NULL, SysMem)) {
             failed = true;
             break;
           }
 
-          gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
+          Memory* gpuMemory = reinterpret_cast<Memory*>(memory->getDeviceMemory(dev()));
 
           // Create, Map and get the base pointer for the resource
           if ((gpuMemory == NULL) || (NULL == gpuMemory->map(NULL))) {

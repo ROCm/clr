@@ -54,8 +54,7 @@ Settings::Settings() {
   // operates or is programmed to be in Coherent mode.
   // Users can turn it off for hardware that does not
   // support this feature naturally
-  char* nonCoherentMode = nullptr;
-  nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
+  char* nonCoherentMode = getenv("OPENCL_USE_NC_MEMORY_POLICY");
   enableNCMode_ = (nonCoherentMode) ? true : false;
 
   // Disable image DMA by default (ROCM runtime doesn't support it)

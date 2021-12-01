@@ -241,12 +241,11 @@ bool NullProgram::linkImpl(amd::option::Options* options) {
     if ((dbgSize > 0) && options->isDumpFlagSet(amd::option::DUMP_DEBUGIL)) {
       std::string debugilWithLine;
       size_t b = 1;
-      size_t e;
       int linenum = 0;
       char cstr[9];
       cstr[8] = 0;
       while (b != std::string::npos) {
-        e = debugILStr.find_first_of("\n", b);
+        size_t e = debugILStr.find_first_of("\n", b);
         if (e != std::string::npos) {
           ++e;
         }
@@ -582,12 +581,11 @@ bool NullProgram::linkImpl(const std::vector<device::Program*>& inputPrograms,
     if ((dbgSize > 0) && options->isDumpFlagSet(amd::option::DUMP_DEBUGIL)) {
       std::string debugilWithLine;
       size_t b = 1;
-      size_t e;
       int linenum = 0;
       char cstr[9];
       cstr[8] = 0;
       while (b != std::string::npos) {
-        e = debugILStr.find_first_of("\n", b);
+        size_t e = debugILStr.find_first_of("\n", b);
         if (e != std::string::npos) {
           ++e;
         }
@@ -1978,7 +1976,6 @@ bool ORCAHSALoaderContext::GpuMemCopy(void* dst, size_t offset, const void* src,
   gpu::Memory* mem = reinterpret_cast<gpu::Memory*>(dst);
   return program_->gpuDevice().xferMgr().writeBuffer(src, *mem, amd::Coord3D(offset), amd::Coord3D(size),
                                                true);
-  return true;
 }
 
 void ORCAHSALoaderContext::GpuMemFree(void* ptr, size_t size) {

@@ -276,7 +276,6 @@ DeviceQueue::~DeviceQueue() {
 }
 
 bool DeviceQueue::create() {
-  static const bool InteropQueue = true;
   const bool defaultDeviceQueue = properties().test(CL_QUEUE_ON_DEVICE_DEFAULT);
   bool result = false;
 

@@ -88,12 +88,12 @@ public:
     void close();
 
     gslMemObject     resAlloc(const CALresourceDesc* desc) const;
-    void*            resMapLocal(size_t& pitch, gslMemObject res, gslMapAccessType flags);
-    void             resUnmapLocal(gslMemObject res);
+    void*            resMapLocal(size_t& pitch, gslMemObject mem, gslMapAccessType flags);
+    void             resUnmapLocal(gslMemObject mem);
 
     void             resFree(gslMemObject mem) const;
-    void*            resMapRemote(size_t& pitch, gslMemObject res, gslMapAccessType flags) const;
-    void             resUnmapRemote(gslMemObject res) const;
+    void*            resMapRemote(size_t& pitch, gslMemObject mem, gslMapAccessType flags) const;
+    void             resUnmapRemote(gslMemObject mem) const;
 
     gslMemObject     resGetHeap(size_t size) const;
     gslMemObject     resAllocView(gslMemObject res, gslResource3D size,

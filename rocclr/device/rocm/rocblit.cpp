@@ -902,9 +902,6 @@ bool KernelBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Mem
 
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-  static const bool CopyRect = false;
-  // Flush DMA for ASYNC copy
-  static const bool FlushDMA = true;
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
   size_t imgRowPitch = size[0] * dstImage->getImageFormat().getElementSize();
   size_t imgSlicePitch = imgRowPitch * size[1];
@@ -1123,9 +1120,6 @@ bool KernelBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Mem
 
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-  static const bool CopyRect = false;
-  // Flush DMA for ASYNC copy
-  static const bool FlushDMA = true;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   size_t imgRowPitch = size[0] * srcImage->getImageFormat().getElementSize();
   size_t imgSlicePitch = imgRowPitch * size[1];
@@ -1609,9 +1603,9 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
 
   const static uint CopyRectAlignment[3] = {16, 4, 1};
 
-  bool aligned;
   uint i;
   for (i = 0; i < sizeof(CopyRectAlignment) / sizeof(uint); i++) {
+    bool aligned;
     // Check source alignments
     aligned = ((srcRectIn.rowPitch_ % CopyRectAlignment[i]) == 0);
     aligned &= ((srcRectIn.slicePitch_ % CopyRectAlignment[i]) == 0);
@@ -2077,9 +2071,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     const static uint CopyBuffAlignment[3] = {1 /*16*/, 1 /*4*/, 1};
     amd::Coord3D size(sizeIn[0], sizeIn[1], sizeIn[2]);
 
-    bool aligned = false;
     uint i;
     for (i = 0; i < sizeof(CopyBuffAlignment) / sizeof(uint); i++) {
+      bool aligned = false;
       // Check source alignments
       aligned = ((srcOrigin[0] % CopyBuffAlignment[i]) == 0);
       // Check destination alignments

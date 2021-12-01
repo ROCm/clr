@@ -69,7 +69,7 @@ CALGSLDevice::associateD3D9Device(void* d3d9Device)
 #else // !ATI_OS_WIN
 
 bool
-CALGSLDevice::associateD3D9Device(void* d3dDevice)
+CALGSLDevice::associateD3D9Device(void* d3d9Device)
 {
     return false;
 }

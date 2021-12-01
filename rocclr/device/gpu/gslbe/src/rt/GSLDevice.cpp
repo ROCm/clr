@@ -265,7 +265,7 @@ static uint32 parse4TupleValues(const char* element, uint32*& values)
     return numTuples;
 }
 
-void
+static void
 CALGSLDevice::parsePowerParam(const char* element, gslRuntimeConfigUint32Value& pwrCount, gslRuntimeConfigUint32pValue& pwrPointer)
 {
     uint32  count = 0;
@@ -843,7 +843,7 @@ Wait(gsl::gsCtx* cs, gslQueryTarget target, gslQueryObject object)
     assert(param == 1);
 }
 
-bool
+static bool
 CALGSLDevice::ResolveAperture(const gslMemObjectAttribTiling tiling) const
 {
     // Don't ask for aperture if the tiling is linear.
@@ -1163,7 +1163,7 @@ CALGSLDevice::resMapLocal(size_t&           pitch,
     else
     {
         // Allocate map structure for the unmap call
-        GSLDeviceMemMap* memMap = (GSLDeviceMemMap*)malloc(sizeof(GSLDeviceMemMap));
+        GSLDeviceMemMap* memMap = static_cast<GSLDeviceMemMap*>(malloc(sizeof(GSLDeviceMemMap)));
 
         if (memMap == NULL)
         {
@@ -1270,7 +1270,7 @@ CALGSLDevice::resUnmapLocal(gslMemObject mem)
         return;
     }
 
-    GSLDeviceMemMap* memMap = (GSLDeviceMemMap*)iter->second;
+    GSLDeviceMemMap* memMap = static_cast<GSLDeviceMemMap*>(iter->second);
     m_hack.erase(iter);
 
     memMap->mem->unmap(m_cs);
@@ -1500,7 +1500,7 @@ CALGSLDevice::calcScratchBufferSize(uint32 regNum) const
     return scratchBufferSizes[target];
 }
 
-void
+static void
 CALGSLDevice::convertInputChannelOrder(intp*channelOrder) const
 {
     // set default to indicate that we don't want to override the channel order.

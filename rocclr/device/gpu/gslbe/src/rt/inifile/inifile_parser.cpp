@@ -158,7 +158,7 @@ public:
     bool is_float;
 };
 
-int cmp_nocase(const std::string s1, const std::string s2)
+int cmp_nocase(const std::string& s1, const std::string& s2)
 {
     std::string::const_iterator p1 = s1.begin();
     std::string::const_iterator p2 = s2.begin();
@@ -175,7 +175,7 @@ int cmp_nocase(const std::string s1, const std::string s2)
     return static_cast<int>(s2.size()-s1.size());
 }
 
-IniValue* IniFileParser::parseValue(std::string value ) {
+IniValue* IniFileParser::parseValue(std::string& value ) {
     std::string trimmed = trim(value);
 
     std::stringstream ss(trimmed);

@@ -131,12 +131,11 @@ bool HSAILKernel::init() {
   workgroupGroupSegmentByteSize_ = workGroupInfo_.usedLDSSize_;
   kernargSegmentByteSize_ = akc->kernarg_segment_byte_size;
 
-  acl_error error = ACL_SUCCESS;
-
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
-  error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_ARGUMENT_ARRAY,
-                                openClKernelName.c_str(), nullptr, &sizeOfArgList);
+  acl_error error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(),
+                                          RT_ARGUMENT_ARRAY, openClKernelName.c_str(),
+                                          nullptr, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }

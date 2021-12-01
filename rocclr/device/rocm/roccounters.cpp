@@ -525,9 +525,6 @@ PerfCounter::~PerfCounter() {
 
 bool PerfCounterProfile::initialize() {
 
-  uint32_t  cmd_buf_size;
-  uint32_t  out_buf_size;
-
   // save the current command and output buffer information
   hsa_ven_amd_aqlprofile_descriptor_t cmd_buf = profile_.command_buffer;
   hsa_ven_amd_aqlprofile_descriptor_t out_buf = profile_.output_buffer;

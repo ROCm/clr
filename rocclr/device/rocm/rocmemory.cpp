@@ -1381,7 +1381,6 @@ bool Image::ValidateMemory() {
   if (dev().settings().imageBufferWar_ && linearLayout && (owner() != nullptr) &&
       ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
        owner()->asImage()->getRowPitch())) {
-    constexpr bool ForceLinear = true;
     amd::Image* img = owner()->asImage();
     // Create a native image without pitch for validation
     copyImageBuffer_ =

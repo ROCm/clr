@@ -395,7 +395,7 @@ bool Elf::setupShdr (
     ElfSections id,
     section* section,
     Elf64_Word shlink
-    )
+    ) const
 {
   section->set_addr_align(ElfSecDesc[id].d_align);
   section->set_type(ElfSecDesc[id].sh_type);
@@ -469,7 +469,7 @@ bool Elf::setTarget(uint16_t machine, ElfPlatform platform)
   return true;
 }
 
-bool Elf::getType(uint16_t &type) {
+bool Elf::getType(uint16_t &type) const {
   type = _elfio.get_type();
   return true;
 }
@@ -479,7 +479,7 @@ bool Elf::setType(uint16_t  type) {
   return true;
 }
 
-bool Elf::getFlags(uint32_t &flag) {
+bool Elf::getFlags(uint32_t &flag) const {
   flag = _elfio.get_flags();
   return true;
 }
@@ -523,7 +523,7 @@ unsigned int Elf::getSegmentNum() const {
   return _elfio.segments.size();
 }
 
-bool Elf::getSegment(const unsigned int index, segment*& seg) {
+bool Elf::getSegment(const unsigned int index, segment*& seg) const {
   bool ret = false;
   if (index < _elfio.segments.size()) {
     seg = _elfio.segments[index];
@@ -946,7 +946,7 @@ bool Elf::dumpImage(char** buff, size_t* len)
   return ret;
 }
 
-bool Elf::dumpImage(std::istream &is, char **buff, size_t *len) {
+bool Elf::dumpImage(std::istream &is, char **buff, size_t *len) const {
   if (buff == nullptr || len == nullptr) {
     return false;
   }
@@ -1068,7 +1068,7 @@ void* Elf::calloc(size_t sz)
   void
 Elf::elfMemoryRelease()
 {
-  for(EMemory::iterator it = _elfMemory.begin(); it != _elfMemory.end(); it++) {
+  for(EMemory::iterator it = _elfMemory.begin(); it != _elfMemory.end(); ++it) {
     free(it->first);
   }
   _elfMemory.clear();
