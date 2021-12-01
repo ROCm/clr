@@ -235,6 +235,9 @@ class Program : public RuntimeObject {
   void setVarInfoCallBack(VarInfoCallback callback) {
     varcallback = callback;
   }
+
+  //! Actions to perform during program unload
+  void unload();
 };
 
 /*! @}

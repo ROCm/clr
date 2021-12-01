@@ -225,7 +225,8 @@ enum class KernelField : uint8_t {
   NumVGPRs                = 11,
   MaxFlatWorkGroupSize    = 12,
   NumSpilledSGPRs         = 13,
-  NumSpilledVGPRs         = 14
+  NumSpilledVGPRs         = 14,
+  Kind                    = 15
 };
 
 static const std::map<std::string,ArgField> ArgFieldMapV3 =
@@ -296,7 +297,8 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
   {".vgpr_count",                 KernelField::NumVGPRs},
   {".max_flat_workgroup_size",    KernelField::MaxFlatWorkGroupSize},
   {".sgpr_spill_count",           KernelField::NumSpilledSGPRs},
-  {".vgpr_spill_count",           KernelField::NumSpilledVGPRs}
+  {".vgpr_spill_count",           KernelField::NumSpilledVGPRs},
+  {".kind",                       KernelField::Kind}
 };
 
 #endif  // defined(USE_COMGR_LIBRARY)
@@ -476,6 +478,14 @@ class Kernel : public amd::HeapObject {
 
   void SetSymbolName(const std::string& name) { symbolName_ = name; }
 
+  void SetKernelKind(const std::string& kind) {
+    kind_ = (kind == "init") ? Init : ((kind == "fini") ? Fini : Normal);
+  }
+
+  bool isInitKernel() const { return kind_ == Init; }
+
+  bool isFiniKernel() const { return kind_ == Fini; }
+
  protected:
   //! Initializes the abstraction layer kernel parameters
 #if defined(USE_COMGR_LIBRARY)
@@ -547,6 +557,14 @@ class Kernel : public amd::HeapObject {
   Kernel& operator=(const Kernel&);
 
   std::unordered_map<size_t, size_t> patchReferences_;  //!< Patch table for references
+
+  enum KernelKind{
+    Normal = 0,
+    Init   = 1,
+    Fini   = 2
+  };
+
+  KernelKind kind_{Normal};  //!< Kernel kind, is normal unless specified otherwise
 };
 
 #if defined(USE_COMGR_LIBRARY)
