@@ -24,35 +24,22 @@
 #include "hip_internal.hpp"
 #include "thread/monitor.hpp"
 
+
 // Internal structure for stream callback handler
 class StreamCallback {
-   public:
-    StreamCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
-                  amd::Command* command)
-        : stream_(stream), callBack_(callback),
-          userData_(userData), command_(command) {
-        };
-    hipStream_t stream_;
-    hipStreamCallback_t callBack_;
-    void* userData_;
-    amd::Command* command_;
+ public:
+  StreamCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                 amd::Command* command)
+      : stream_(stream), callBack_(callback), userData_(userData), command_(command){};
+  hipStream_t stream_;
+  hipStreamCallback_t callBack_;
+  void* userData_;
+  amd::Command* command_;
 };
 
 void CL_CALLBACK ihipStreamCallback(cl_event event, cl_int command_exec_status, void* user_data);
 
-
 namespace hip {
-
-class EventMarker: public amd::Marker {
-public:
-  EventMarker(amd::HostQueue& queue, bool disableFlush, bool markerTs = false)
-  : amd::Marker(queue, disableFlush) {
-    profilingInfo_.enabled_ = true;
-    profilingInfo_.callback_ = nullptr;
-    profilingInfo_.marker_ts_ = markerTs;
-    profilingInfo_.clear();
-  }
-};
 
 #define IPC_SIGNALS_PER_EVENT 32
 typedef struct ihipIpcEventShmem_s {
@@ -64,6 +51,17 @@ typedef struct ihipIpcEventShmem_s {
   std::atomic<int> signal[IPC_SIGNALS_PER_EVENT];
 } ihipIpcEventShmem_t;
 
+class EventMarker : public amd::Marker {
+ public:
+  EventMarker(amd::HostQueue& queue, bool disableFlush, bool markerTs = false)
+      : amd::Marker(queue, disableFlush) {
+    profilingInfo_.enabled_ = true;
+    profilingInfo_.callback_ = nullptr;
+    profilingInfo_.marker_ts_ = markerTs;
+    profilingInfo_.clear();
+  }
+};
+
 class Event {
   /// event recorded on stream where capture is active
   bool onCapture_;
@@ -73,31 +71,32 @@ class Event {
   std::vector<hipGraphNode_t> nodesPrevToRecorded_;
 
  public:
-  Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
-                              event_(nullptr), recorded_(false) {
+  Event(unsigned int flags)
+      : flags(flags), lock_("hipEvent_t", true), event_(nullptr), recorded_(false) {
     // No need to init event_ here as addMarker does that
     onCapture_ = false;
-    device_id_ = hip::getCurrentDevice()->deviceId(); // Created in current device ctx
+    device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
   }
 
-  ~Event() {
+  virtual ~Event() {
     if (event_ != nullptr) {
       event_->release();
     }
   }
   unsigned int flags;
 
-  hipError_t query();
-  hipError_t synchronize();
+  virtual hipError_t query();
+  virtual hipError_t synchronize();
   hipError_t elapsedTime(Event& stop, float& ms);
 
-  hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
-  hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
-  hipError_t streamWait(hipStream_t stream, uint flags);
+  virtual hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
+  virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
+  virtual hipError_t streamWait(hipStream_t stream, uint flags);
 
-  hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
-  hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
+  virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
+  virtual hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
   hipError_t addMarker(hipStream_t stream, amd::Command* command, bool record);
+
   void BindCommand(amd::Command& command, bool record) {
     amd::ScopedLock lock(lock_);
     if (event_ != nullptr) {
@@ -135,20 +134,14 @@ class Event {
   void SetNodesPrevToRecorded(std::vector<hipGraphNode_t>& graphNode) {
     nodesPrevToRecorded_ = graphNode;
   }
+  virtual hipError_t GetHandle(ihipIpcEventHandle_t* handle) {
+    return hipErrorInvalidConfiguration;
+  }
+  virtual hipError_t OpenHandle(ihipIpcEventHandle_t* handle) {
+    return hipErrorInvalidConfiguration;
+  }
 
-  // IPC Events
-  struct ihipIpcEvent_t {
-    std::string ipc_name_;
-    int ipc_fd_;
-    ihipIpcEventShmem_t* ipc_shmem_;
-    ihipIpcEvent_t(): ipc_name_("dummy"), ipc_fd_(0), ipc_shmem_(nullptr) {
-    }
-    void setipcname(const char* name) {
-      ipc_name_ = std::string(name);
-    }
-  };
-  ihipIpcEvent_t ipc_evt_;
-private:
+ protected:
   amd::Monitor lock_;
   amd::HostQueue* stream_;
   amd::Event* event_;
@@ -162,11 +155,48 @@ private:
   int64_t time() const;
 };
 
+class IPCEvent : public Event {
+  // IPC Events
+  struct ihipIpcEvent_t {
+    std::string ipc_name_;
+    int ipc_fd_;
+    ihipIpcEventShmem_t* ipc_shmem_;
+    ihipIpcEvent_t() : ipc_name_("dummy"), ipc_fd_(0), ipc_shmem_(nullptr) {}
+    void setipcname(const char* name) { ipc_name_ = std::string(name); }
+  };
+  ihipIpcEvent_t ipc_evt_;
+
+ public:
+  ~IPCEvent() {
+    if (ipc_evt_.ipc_shmem_) {
+      int owners = --ipc_evt_.ipc_shmem_->owners;
+      // Make sure event is synchronized
+      hipError_t status = synchronize();
+      if (!amd::Os::MemoryUnmapFile(ipc_evt_.ipc_shmem_, sizeof(hip::ihipIpcEventShmem_t))) {
+        // print hipErrorInvalidHandle;
+      }
+    }
+  }
+  IPCEvent() : Event(hipEventInterprocess) {}
+  bool createIpcEventShmemIfNeeded();
+  hipError_t GetHandle(ihipIpcEventHandle_t* handle);
+  hipError_t OpenHandle(ihipIpcEventHandle_t* handle);
+  hipError_t synchronize();
+  hipError_t query();
+
+  hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
+  hipError_t streamWait(hipStream_t stream, uint flags);
+
+  hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
 };
+
+};  // namespace hip
 
 struct CallbackData {
   int previous_read_index;
   hip::ihipIpcEventShmem_t* shmem;
 };
 
-#endif // HIP_EVEMT_H
+#endif  // HIP_EVEMT_H
