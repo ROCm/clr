@@ -98,6 +98,7 @@ target_sources(amdhip64 PRIVATE
   hip_device.cpp
   hip_error.cpp
   hip_event.cpp
+  hip_event_ipc.cpp
   hip_fatbin.cpp
   hip_global.cpp
   hip_graph_internal.cpp
