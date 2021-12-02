@@ -115,6 +115,25 @@ bool Stream::Create() {
 }
 
 // ================================================================================================
+bool isValid(hipStream_t& stream) {
+  // NULL stream is always valid
+  if (stream == nullptr) {
+    return true;
+  }
+
+  if (hipStreamPerThread == stream) {
+    getStreamPerThread(stream);
+  }
+
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  amd::ScopedLock lock(streamSetLock);
+  if (streamSet.find(s) == streamSet.end()) {
+    return false;
+  }
+  return true;
+}
+
+// ================================================================================================
 amd::HostQueue* Stream::asHostQueue(bool skip_alloc) {
   if (queue_ != nullptr) {
     return queue_;
@@ -143,6 +162,12 @@ int Stream::DeviceId() const {
 }
 
 int Stream::DeviceId(const hipStream_t hStream) {
+  // Copying locally into non-const variable just to get const away
+  hipStream_t inputStream = hStream;
+  if (!hip::isValid(inputStream)) {
+    //return invalid device id
+    return -1;
+  }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
   int deviceId = (s != nullptr)? s->DeviceId() : ihipGetDevice();
   assert(deviceId >= 0 && deviceId < static_cast<int>(g_devices.size()));
@@ -173,25 +198,6 @@ void Stream::destroyAllStreams(int deviceId) {
   for (auto& it : toBeDeleted) {
     delete it;
   }
-}
-
-// ================================================================================================
-bool isValid(hipStream_t& stream) {
-  // NULL stream is always valid
-  if (stream == nullptr) {
-    return true;
-  }
-
-  if (hipStreamPerThread == stream) {
-    getStreamPerThread(stream);
-  }
-
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  amd::ScopedLock lock(streamSetLock);
-  if (streamSet.find(s) == streamSet.end()) {
-    return false;
-  }
-  return true;
 }
 
 };// hip namespace
