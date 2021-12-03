@@ -412,25 +412,73 @@ unsigned long long atomicMin_system(unsigned long long* address, unsigned long l
 __device__
 inline
 float atomicMin(float* address, float val) {
-  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
+  #else
+    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  float value = __uint_as_float(tmp);
+
+  while (val < value) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 float atomicMin_system(float* address, float val) {
-  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
+  #else
+    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  float value = __uint_as_float(tmp);
+
+  while (val < value) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 double atomicMin(double* address, double val) {
-  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
+  #else
+    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  double value = __longlong_as_double(tmp);
+
+  while (val < value) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 double atomicMin_system(double* address, double val) {
-  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
+  #else
+    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  double value = __longlong_as_double(tmp);
+
+  while (val < value) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
@@ -484,25 +532,73 @@ unsigned long long atomicMax_system(unsigned long long* address, unsigned long l
 __device__
 inline
 float atomicMax(float* address, float val) {
-  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
+  #else
+    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  float value = __uint_as_float(tmp);
+
+  while (value < val) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 float atomicMax_system(float* address, float val) {
-  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
+  #else
+    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  float value = __uint_as_float(tmp);
+
+  while (value < val) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 double atomicMax(double* address, double val) {
-  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
+  #else
+    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  double value = __longlong_as_double(tmp);
+
+  while (value < val) {
+    value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
 inline
 double atomicMax_system(double* address, double val) {
-  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
+  #if __has_builtin(__hip_atomic_load)
+    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
+  #else
+    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
+  #endif
+  double value = __longlong_as_double(tmp);
+
+  while (value < val) {
+      value = atomicCAS(address, value, val);
+  }
+
+  return value;
 }
 
 __device__
