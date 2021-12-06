@@ -308,6 +308,8 @@ namespace hip {
     }
     /// Get Capture ID
     int GetCaptureID() { return captureID_; }
+    void SetCaptureEvent(hipEvent_t e) { captureEvents_.push_back(e); }
+    void SetParallelCaptureStream(hipStream_t s) { parallelCaptureStreams_.push_back(s); }
   };
 
   /// HIP Device class
