@@ -1249,7 +1249,7 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
 
 // ================================================================================================
 address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
-  if (ROCR_SKIP_KERNEL_ARG_COPY) {
+  if (ROC_SKIP_KERNEL_ARG_COPY) {
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
     return reinterpret_cast<address>(allocKernArg(size, alignment));
