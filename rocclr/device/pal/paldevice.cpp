@@ -596,7 +596,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.numAsyncQueues_ = numComputeRings;
 
     info_.numRTQueues_ = numExclusiveComputeRings;
-    info_.numRTCUs_ = palProp.engineProperties[Pal::EngineTypeCompute].maxNumDedicatedCu;
+
+    const auto& engineProp = palProp.engineProperties[Pal::EngineTypeCompute];
+    info_.numRTCUs_ = engineProp.maxNumDedicatedCu;
+    info_.granularityRTCUs_ = engineProp.dedicatedCuGranularity;
 
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
 
