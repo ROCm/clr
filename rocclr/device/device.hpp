@@ -521,6 +521,8 @@ struct Info : public amd::EmbeddedObject {
   uint32_t numRTQueues_;
   //! Number of available real time compute units
   uint32_t numRTCUs_;
+  //! The granularity at which compute units can be dedicated to a queue
+  uint32_t granularityRTCUs_;
   //! Thread trace enable
   uint32_t threadTraceEnable_;
 
