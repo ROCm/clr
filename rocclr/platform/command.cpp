@@ -507,14 +507,14 @@ bool TwoMemoryArgsCommand::validatePeerMemory(){
     // explicit allow access is needed for P2P access
     device::Memory* mem1 = memory1_->getDeviceMemory(*srcDevices[0]);
     if (!mem1->getAllowedPeerAccess() && srcDevices.size() == 1) {
-      void* src = reinterpret_cast<void*>(mem1->virtualAddress());
+      void* src = reinterpret_cast<void*>(mem1->originalDeviceAddress());
       accessAllowed = srcDevices[0]->deviceAllowAccess(src);
       mem1->setAllowedPeerAccess(true);
     }
 
     device::Memory* mem2 = memory2_->getDeviceMemory(*dstDevices[0]);
     if (!mem2->getAllowedPeerAccess() && dstDevices.size() == 1) {
-      void* dst = reinterpret_cast<void*>(mem2->virtualAddress());
+      void* dst = reinterpret_cast<void*>(mem2->originalDeviceAddress());
       accessAllowed &= dstDevices[0]->deviceAllowAccess(dst);
       mem2->setAllowedPeerAccess(true);
     }

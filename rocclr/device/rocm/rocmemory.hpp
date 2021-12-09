@@ -102,6 +102,8 @@ class Memory : public device::Memory {
 
   virtual uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
 
+  virtual uint64_t originalDeviceAddress() const { return virtualAddress(); }
+
   // Accessors for indirect map memory object
   amd::Memory* mapMemory() const { return mapMemory_; }
 
@@ -219,6 +221,7 @@ class Image : public roc::Memory {
 
   amd::Image* CopyImageBuffer() const { return copyImageBuffer_; }
 
+  virtual uint64_t originalDeviceAddress() const { return reinterpret_cast<uint64_t>(originalDeviceMemory_); }
  private:
   //! Disable copy constructor
   Image(const Buffer&);
