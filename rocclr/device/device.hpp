@@ -834,6 +834,8 @@ class Memory : public amd::HeapObject {
 
   virtual uint64_t virtualAddress() const { return 0; }
 
+  virtual uint64_t originalDeviceAddress() const { return 0; }
+
   //! Returns CPU pointer to HW state
   virtual const address cpuSrd() const { return nullptr; }
 
