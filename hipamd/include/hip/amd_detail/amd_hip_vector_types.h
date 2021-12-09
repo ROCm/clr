@@ -1532,9 +1532,35 @@ typedef union { __m128i data; } ushort8;
 typedef union { __m128i data[2]; } ushort16;
 
 typedef union { int data; } int1;
-typedef union { __m64 data; } int2;
-typedef union { __m128i data; } int4;
-typedef union { int4 data; } int3;
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
+typedef union {
+  struct {
+    int x;
+    int y;
+  };
+  __m64 data;
+} int2;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  __m128i data;
+} int4;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int4 data;
+} int3;
 typedef union { __m128i data[2]; } int8;
 typedef union { __m128i data[4];} int16;
 
@@ -1590,9 +1616,35 @@ typedef union { __m128i data[4]; } ulonglong8;
 typedef union { __m128i data[8]; } ulonglong16;
 
 typedef union { float data; } float1;
-typedef union { __m64 data; } float2;
-typedef union { __m128 data; } float4;
-typedef union { float4 data; } float3;
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
+typedef union {
+  struct {
+    float x;
+    float y;
+  };
+  __m64 data;
+} float2;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  __m128 data;
+} float4;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float4 data;
+} float3;
 typedef union { __m256 data; } float8;
 typedef union { __m256 data[2]; } float16;
 
@@ -1634,11 +1686,37 @@ typedef union { unsigned short data[16]; } ushort16;
 typedef union { ushort4 data; } ushort3;
 
 typedef union { int data; } int1;
-typedef union { int data[2]; } int2;
-typedef union { int data[4]; } int4;
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
+typedef union {
+  struct {
+    int x;
+    int y;
+  };
+  int data[2];
+} int2;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int data[4];
+} int4;
 typedef union { int data[8]; } int8;
 typedef union { int data[16]; } int16;
-typedef union { int4 data; } int3;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int4 data;
+} int3;
 
 typedef union { unsigned int data; } uint1;
 typedef union { unsigned int data[2]; } uint2;
@@ -1676,11 +1754,37 @@ typedef union { unsigned long long data[16]; } ulonglong16;
 typedef union { ulonglong4 data; } ulonglong3;
 
 typedef union { float data; } float1;
-typedef union { float data[2]; } float2;
-typedef union { float data[4]; } float4;
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
+typedef union {
+  struct {
+    float x;
+    float y;
+  };
+  float data[2];
+} float2;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float data[4];
+} float4;
 typedef union { float data[8]; } float8;
 typedef union { float data[16]; } float16;
-typedef union { float4 data; } float3;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float4 data;
+} float3;
 
 typedef union { double data; } double1;
 typedef union { double data[2]; } double2;
