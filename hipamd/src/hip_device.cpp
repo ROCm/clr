@@ -37,17 +37,19 @@ amd::HostQueue* Device::NullStream(bool skip_alloc) {
 
 }
 
-hipError_t hipDeviceGet(hipDevice_t *device, int deviceId) {
-  HIP_INIT_API(hipDeviceGet, device, deviceId);
-
-  if (deviceId < 0 ||
-      static_cast<size_t>(deviceId) >= g_devices.size() ||
-      device == nullptr) {
-    HIP_RETURN(hipErrorInvalidDevice);
+hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId) {
+  if (deviceId < 0 || static_cast<size_t>(deviceId) >= g_devices.size() || device == nullptr) {
+    return hipErrorInvalidDevice;
   }
   *device = deviceId;
-  HIP_RETURN(hipSuccess);
-};
+  return hipSuccess;
+}
+
+hipError_t hipDeviceGet(hipDevice_t* device, int deviceId) {
+  HIP_INIT_API(hipDeviceGet, device, deviceId);
+
+  HIP_RETURN(ihipDeviceGet(device, deviceId));
+}
 
 hipError_t hipDeviceTotalMem (size_t *bytes, hipDevice_t device) {
 
@@ -137,15 +139,13 @@ hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipGetDeviceProperties ( hipDeviceProp_t* props, hipDevice_t device ) {
-  HIP_INIT_API(hipGetDeviceProperties, props, device);
-
+hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   if (props == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   if (unsigned(device) >= g_devices.size()) {
-    HIP_RETURN(hipErrorInvalidDevice);
+    return hipErrorInvalidDevice;
   }
   auto* deviceHandle = g_devices[device]->devices()[0];
 
@@ -176,30 +176,30 @@ hipError_t hipGetDeviceProperties ( hipDeviceProp_t* props, hipDevice_t device )
   deviceProps.maxThreadsPerMultiProcessor = info.maxThreadsPerCU_;
   deviceProps.computeMode = 0;
   deviceProps.clockInstructionRate = info.timeStampFrequency_;
-  deviceProps.arch.hasGlobalInt32Atomics       = 1;
-  deviceProps.arch.hasGlobalFloatAtomicExch    = 1;
-  deviceProps.arch.hasSharedInt32Atomics       = 1;
-  deviceProps.arch.hasSharedFloatAtomicExch    = 1;
-  deviceProps.arch.hasFloatAtomicAdd           = 1;
-  deviceProps.arch.hasGlobalInt64Atomics       = 1;
-  deviceProps.arch.hasSharedInt64Atomics       = 1;
-  deviceProps.arch.hasDoubles                  = 1;
-  deviceProps.arch.hasWarpVote                 = 1;
-  deviceProps.arch.hasWarpBallot               = 1;
-  deviceProps.arch.hasWarpShuffle              = 1;
-  deviceProps.arch.hasFunnelShift              = 0;
-  deviceProps.arch.hasThreadFenceSystem        = 1;
-  deviceProps.arch.hasSyncThreadsExt           = 0;
-  deviceProps.arch.hasSurfaceFuncs             = 0;
-  deviceProps.arch.has3dGrid                   = 1;
-  deviceProps.arch.hasDynamicParallelism       = 0;
+  deviceProps.arch.hasGlobalInt32Atomics = 1;
+  deviceProps.arch.hasGlobalFloatAtomicExch = 1;
+  deviceProps.arch.hasSharedInt32Atomics = 1;
+  deviceProps.arch.hasSharedFloatAtomicExch = 1;
+  deviceProps.arch.hasFloatAtomicAdd = 1;
+  deviceProps.arch.hasGlobalInt64Atomics = 1;
+  deviceProps.arch.hasSharedInt64Atomics = 1;
+  deviceProps.arch.hasDoubles = 1;
+  deviceProps.arch.hasWarpVote = 1;
+  deviceProps.arch.hasWarpBallot = 1;
+  deviceProps.arch.hasWarpShuffle = 1;
+  deviceProps.arch.hasFunnelShift = 0;
+  deviceProps.arch.hasThreadFenceSystem = 1;
+  deviceProps.arch.hasSyncThreadsExt = 0;
+  deviceProps.arch.hasSurfaceFuncs = 0;
+  deviceProps.arch.has3dGrid = 1;
+  deviceProps.arch.hasDynamicParallelism = 0;
   deviceProps.concurrentKernels = 1;
   deviceProps.pciDomainID = info.pciDomainID;
   deviceProps.pciBusID = info.deviceTopology_.pcie.bus;
   deviceProps.pciDeviceID = info.deviceTopology_.pcie.device;
   deviceProps.maxSharedMemoryPerMultiProcessor = info.localMemSizePerCU_;
   deviceProps.canMapHostMemory = 1;
-  //FIXME: This should be removed, targets can have character names as well.
+  // FIXME: This should be removed, targets can have character names as well.
   deviceProps.gcnArch = isa.versionMajor() * 100 + isa.versionMinor() * 10 + isa.versionStepping();
   sprintf(deviceProps.gcnArchName, "%s", isa.targetId());
   deviceProps.cooperativeLaunch = info.cooperativeGroups_;
@@ -210,7 +210,7 @@ hipError_t hipGetDeviceProperties ( hipDeviceProp_t* props, hipDevice_t device )
   deviceProps.cooperativeMultiDeviceUnmatchedBlockDim = info.cooperativeMultiDeviceGroups_;
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
-  deviceProps.maxTexture1DLinear = 16 * info.imageMaxBufferSize_; // Max pixel size is 16 bytes
+  deviceProps.maxTexture1DLinear = 16 * info.imageMaxBufferSize_;  // Max pixel size is 16 bytes
   deviceProps.maxTexture1D = info.image1DMaxWidth_;
   deviceProps.maxTexture2D[0] = info.image2DMaxWidth_;
   deviceProps.maxTexture2D[1] = info.image2DMaxHeight_;
@@ -224,17 +224,23 @@ hipError_t hipGetDeviceProperties ( hipDeviceProp_t* props, hipDevice_t device )
   deviceProps.textureAlignment = info.imageBaseAddressAlignment_;
   deviceProps.texturePitchAlignment = info.imagePitchAlignment_;
   deviceProps.kernelExecTimeoutEnabled = 0;
-  deviceProps.ECCEnabled = info.errorCorrectionSupport_? 1:0;
+  deviceProps.ECCEnabled = info.errorCorrectionSupport_ ? 1 : 0;
   deviceProps.isLargeBar = info.largeBar_ ? 1 : 0;
   deviceProps.asicRevision = info.asicRevision_;
 
   // HMM capabilities
   deviceProps.managedMemory = info.hmmSupported_;
-  deviceProps.concurrentManagedAccess =  info.hmmSupported_;
+  deviceProps.concurrentManagedAccess = info.hmmSupported_;
   deviceProps.directManagedMemAccessFromHost = info.hmmDirectHostAccess_;
   deviceProps.pageableMemoryAccess = info.hmmCpuMemoryAccessible_;
   deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
 
   *props = deviceProps;
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
+
+hipError_t hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
+  HIP_INIT_API(hipGetDeviceProperties, props, device);
+
+  HIP_RETURN(ihipGetDeviceProperties(props, device));
 }
