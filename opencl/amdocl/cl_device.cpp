@@ -421,8 +421,10 @@ RUNTIME_ENTRY(cl_int, clGetDeviceInfo,
         CASE(CL_DEVICE_AVAILABLE_ASYNC_QUEUES_AMD, numAsyncQueues_);
 #define CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD 0x404D
 #define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD 0x404E
+#define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_GRANULARITY_AMD 0x403A
         CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD, numRTQueues_);
         CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD, numRTCUs_);
+        CASE(CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_GRANULARITY_AMD, granularityRTCUs_);
       case CL_DEVICE_NUM_P2P_DEVICES_AMD: {
         cl_uint num_p2p_devices = as_amd(device)->p2pDevices_.size();
         return amd::clGetInfo(num_p2p_devices, param_value_size, param_value, param_value_size_ret);
