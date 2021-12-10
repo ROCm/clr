@@ -434,6 +434,10 @@ extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size
 extern void getStreamPerThread(hipStream_t& stream);
 extern hipError_t ihipUnbindTexture(textureReference* texRef);
 
+extern hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device);
+
+extern hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId);
+
 constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;
 
