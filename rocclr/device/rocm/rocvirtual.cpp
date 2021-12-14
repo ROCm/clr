@@ -504,6 +504,7 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
     }
     external_signals_.clear();
   }
+
   // Return the array of waiting HSA signals
   return waiting_signals_;
 }
@@ -1003,7 +1004,7 @@ void VirtualGPU::ResetQueueStates() {
 
 // ================================================================================================
 bool VirtualGPU::releaseGpuMemoryFence(bool skip_cpu_wait) {
-  if (hasPendingDispatch_) {
+  if (hasPendingDispatch_ || !Barriers().IsExternalSignalListEmpty()) {
     // Dispatch barrier packet into the queue
     dispatchBarrierPacket(kBarrierPacketHeader);
     hasPendingDispatch_ = false;
@@ -1276,6 +1277,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
   }
 
   if (AMD_DIRECT_DISPATCH) {
+    Barriers().ClearExternalSignals();
     for (auto it = command.eventWaitList().begin(); it < command.eventWaitList().end(); ++it) {
       void* hw_event = ((*it)->NotifyEvent() != nullptr) ?
         (*it)->NotifyEvent()->HwEvent() : (*it)->HwEvent();
@@ -1302,6 +1304,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
     if (!timestamp_->HwProfiling()) {
       timestamp_->end();
     }
+    assert(Barriers().IsExternalSignalListEmpty());
     command.setData(timestamp_);
     timestamp_ = nullptr;
   }

@@ -243,6 +243,12 @@ class VirtualGPU : public device::VirtualDevice {
     //! Get the last active signal on the queue
     ProfilingSignal* GetLastSignal() const { return signal_list_[current_id_]; }
 
+    //! Clear external signals
+    void ClearExternalSignals() { external_signals_.clear(); }
+
+    //! Empty check for external signals
+    bool IsExternalSignalListEmpty() const { return external_signals_.empty(); }
+
   private:
     //! Wait for the next active signal
     void WaitNext() {
