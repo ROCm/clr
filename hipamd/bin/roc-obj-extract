@@ -48,18 +48,23 @@ sub usage {
   print("<executable_name>-[pid<number>]-offset<number>-size<number>.co\n\n");
   print("Options:\n");
   print("  -o <path> \tPath for output. If \"-\" specified, code object is printed to STDOUT.\n");
-  print("  -v        \tVerbose output to STDOUT (includes Entry ID).\n");
+  print("  -v        \tVerbose output to STDOUT.\n");
   print("  -h        \tShow this help message.\n");
   print("\nURI syntax:\n");
   print("\tcode_object_uri ::== file_uri | memory_uri\n");
   print("\tfile_uri        ::== \"file://\" extract_file [ range_specifier ]\n");
   print("\tmemory_uri      ::== \"memory://\" process_id range_specifier\n");
-  print("\trange_specifier ::== [ \"#\" | \"?\" ] \"offset=\" number \"&\" \"size=\" number\n");
+  print("\trange_specifier ::== range_delimiter range_attribute [\"&\" range_attribute]\n");
+  print("\trange_delimiter ::== \"#\" | \"?\"\n");
+  print("\trange_attribute ::== [\"offset=\" number | \"size=\" number ]\n");
   print("\textract_file    ::== URI_ENCODED_OS_FILE_PATH\n");
   print("\tprocess_id      ::== DECIMAL_NUMBER\n");
   print("\tnumber          ::== HEX_NUMBER \| DECIMAL_NUMBER \| OCTAL_NUMBER\n\n");
   print("\tExample: file://dir1/dir2/hello_world#offset=133&size=14472 \n");
   print("\t         memory://1234#offset=0x20000&size=3000\n\n");
+  print("  NOTES:\n\n");
+  print("\tWhen specifying a URI in a shell command you will need to escape the \'&\' character in the range_specifier.\n");
+  print("\tIf \"size=\" is not specified, the default is the remainder of the file from the given offset.\n\n");
 
   exit($error);
 }
@@ -101,22 +106,10 @@ my $dd_cmd = which("dd");
 foreach my $uri_str(@ARGV) {
   chomp $uri_str;
 
-  # we expect the URI to follow this BNF syntax:
-  #
-  #   code_object_uri ::== file_uri | memory_uri
-  #   file_uri        ::== "file://" extract_file [ range_specifier ]
-  #   memory_uri      ::== "memory://" process_id range_specifier
-  #     range_specifier  ::== [ "#" | "?" ] "offset=" number "&" "size=" number
-  #     extract_file        ::== URI_ENCODED_OS_FILE_PATH
-  #     process_id       ::== DECIMAL_NUMBER
-  #     number           ::== HEX_NUMBER | DECIMAL_NUMBER | OCTAL_NUMBER
-
-  # Example: file://dir1/dir2/hello_world#offset=133&size=14472
-  #          memory://1234#offset=0x20000&size=3000
-
   my ($uri_protocol, $specs) = split(/:\/\//,$uri_str);
   my $obj_uri_encode = URI::Encode->new();
   my $decoded_extract_file;
+  my $file_size;
 
   if (lc($uri_protocol) eq "file") {
     # expect file path
@@ -160,10 +153,9 @@ foreach my $uri_str(@ARGV) {
 
     # for extracting from a pid, make the output file in the current dir/path with the pid value as a name.
     $output_file = "pid${extract_pid}";
-    
+
     # need to set $decoded_extract_file, because later we use this for other checks.
     $decoded_extract_file = $extract_file;
-
   } else {
     # error, unrecognized Code Object URI
     print(STDERR "Error: \'$uri_protocol\' is not recognized as a supported code object URI.\n"); $error++;
@@ -172,9 +164,28 @@ foreach my $uri_str(@ARGV) {
 
   # it is valid to not give a range specifier in a URI, in which case the entire code object will be extracted.
   if ($extract_range_specifier ne "") {
-    ($extract_offset, $extract_size) = split(/[&]/,$extract_range_specifier);
-    (undef, $extract_offset) = split(/=/,$extract_offset);
-    (undef, $extract_size) = split(/=/,$extract_size);
+    my @tokens;
+    my $str;
+    my $value;
+    my $size_specified = 0;
+
+    @tokens = split(/[&]/,$extract_range_specifier);
+    foreach (@tokens) {
+      ($str,$value) = split(/=/,$_);
+      if ($str eq "size") {
+        $extract_size=$value;
+        $size_specified = 1;
+      } elsif ($str eq "offset") {
+        $extract_offset=$value;
+      }
+    }
+
+    if ($size_specified != 1) {
+      # "size" not specified.  default to rest of file (total size - offset)
+      $extract_size = -s $decoded_extract_file;
+      $extract_size -= $extract_offset;
+    }
+
   } else {
     # Error if URI is a memory request, and we have no range_specifier.
     if ($pid_running) {
