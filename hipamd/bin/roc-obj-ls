@@ -109,6 +109,7 @@ foreach my $executable_file(@ARGV) {
     my $read_bytes = read(INPUT_FP, $magic_str, 24);
     if (($read_bytes != 24) || ($magic_str ne "__CLANG_OFFLOAD_BUNDLE__")) {
       print(STDERR "Error: Offload bundle magic string not detected\n") if ($debug);
+      last;
     }
 
     # read number of bundle entries, which are code objects.
