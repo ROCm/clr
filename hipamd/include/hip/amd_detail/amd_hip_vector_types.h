@@ -1396,44 +1396,1069 @@ __MAKE_VECTOR_TYPE__(longlong, long long);
 __MAKE_VECTOR_TYPE__(float, float);
 __MAKE_VECTOR_TYPE__(double, double);
 
+#else // !defined(__has_attribute)
+
+#if defined(_MSC_VER)
+#include <mmintrin.h>
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <immintrin.h>
+
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
+typedef union {
+  struct {
+    char x;
+  };
+  char data;
+} char1;
+typedef union {
+  struct {
+    char x;
+    char y;
+  };
+  char data[2];
+} char2;
+typedef union {
+  struct {
+    char x;
+    char y;
+    char z;
+    char w;
+  };
+  char data[4];
+} char4;
+typedef union {
+  struct {
+    char x;
+    char y;
+    char z;
+    char w;
+  };
+  char4 data;
+} char3;
+typedef union {
+  __m64 data;
+} char8;
+typedef union {
+  __m128i data;
+} char16;
+
+typedef union {
+  struct {
+    unsigned char x;
+  };
+  unsigned char data;
+} uchar1;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+  };
+  unsigned char data[2];
+} uchar2;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+    unsigned char z;
+    unsigned char w;
+  };
+  unsigned char data[4];
+} uchar4;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+    unsigned char z;
+    unsigned char w;
+  };
+  uchar4 data;
+} uchar3;
+typedef union {
+  __m64 data;
+} uchar8;
+typedef union {
+  __m128i data;
+} uchar16;
+
+typedef union {
+  struct {
+    short x;
+  };
+  short data;
+} short1;
+typedef union {
+  struct {
+    short x;
+    short y;
+  };
+  short data[2];
+} short2;
+typedef union {
+  struct {
+    short x;
+    short y;
+    short z;
+    short w;
+  };
+  __m64 data;
+} short4;
+typedef union {
+  struct {
+    short x;
+    short y;
+    short z;
+    short w;
+  };
+  short4 data;
+} short3;
+typedef union {
+  __m128i data;
+} short8;
+typedef union {
+  __m128i data[2];
+} short16;
+
+typedef union {
+  struct {
+    unsigned short x;
+  };
+  unsigned short data;
+} ushort1;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+  };
+  unsigned short data[2];
+} ushort2;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+    unsigned short z;
+    unsigned short w;
+  };
+  __m64 data;
+} ushort4;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+    unsigned short z;
+    unsigned short w;
+  };
+  ushort4 data;
+} ushort3;
+typedef union {
+  __m128i data;
+} ushort8;
+typedef union {
+  __m128i data[2];
+} ushort16;
+
+typedef union {
+  struct {
+    int x;
+  };
+  int data;
+} int1;
+typedef union {
+  struct {
+    int x;
+    int y;
+  };
+  __m64 data;
+} int2;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  __m128i data;
+} int4;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int4 data;
+} int3;
+typedef union {
+  __m128i data[2];
+} int8;
+typedef union {
+  __m128i data[4];
+} int16;
+
+typedef union {
+  struct {
+    unsigned int x;
+  };
+  unsigned int data;
+} uint1;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+  };
+  __m64 data;
+} uint2;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  __m128i data;
+} uint4;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  uint4 data;
+} uint3;
+typedef union {
+  __m128i data[2];
+} uint8;
+typedef union {
+  __m128i data[4];
+} uint16;
+
+#if !defined(_WIN64)
+typedef union {
+  struct {
+    int x;
+  };
+  int data;
+} long1;
+typedef union {
+  struct {
+    int x;
+    int y;
+  };
+  __m64 data;
+} long2;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  __m128i data;
+} long4;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  long4 data;
+} long3;
+typedef union {
+  __m128i data[2];
+} long8;
+typedef union {
+  __m128i data[4];
+} long16;
+
+typedef union {
+  struct {
+    unsigned int x;
+  };
+  unsigned int data;
+} ulong1;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+  };
+  __m64 data;
+} ulong2;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  __m128i data;
+} ulong4;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  ulong4 data;
+} ulong3;
+typedef union {
+  __m128i data[2];
+} ulong8;
+typedef union {
+  __m128i data[4];
+} ulong16;
+#else   // defined(_WIN64)
+typedef union {
+  struct {
+    __m64 x;
+  };
+  __m64 data;
+} long1;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+  };
+  __m128i data;
+} long2;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  __m128i data[2];
+} long4;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  long4 data;
+} long3;
+typedef union {
+  __m128i data[4];
+} long8;
+typedef union {
+  __m128i data[8];
+} long16;
+
+typedef union {
+  struct {
+    __m64 x;
+  };
+  __m64 data;
+} ulong1;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+  };
+  __m128i data;
+} ulong2;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  __m128i data[2];
+} ulong4;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  ulong4 data;
+} ulong3;
+typedef union {
+  __m128i data[4];
+} ulong8;
+typedef union {
+  __m128i data[8];
+} ulong16;
+#endif  // defined(_WIN64)
+
+typedef union {
+  struct {
+    long long x;
+  };
+  __m64 data;
+} longlong1;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+  };
+  __m128i data;
+} longlong2;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+    long long z;
+    long long w;
+  };
+  __m128i data[2];
+} longlong4;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+    long long z;
+    long long w;
+  };
+  longlong4 data;
+} longlong3;
+typedef union {
+  __m128i data[4];
+} longlong8;
+typedef union {
+  __m128i data[8];
+} longlong16;
+
+typedef union {
+  struct {
+    __m64 x;
+  };
+  __m64 data;
+} ulonglong1;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+  };
+  __m128i data;
+} ulonglong2;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  __m128i data[2];
+} ulonglong4;
+typedef union {
+  struct {
+    __m64 x;
+    __m64 y;
+    __m64 z;
+    __m64 w;
+  };
+  ulonglong4 data;
+} ulonglong3;
+typedef union {
+  __m128i data[4];
+} ulonglong8;
+typedef union {
+  __m128i data[8];
+} ulonglong16;
+
+typedef union {
+  struct {
+    float x;
+  };
+  float data;
+} float1;
+typedef union {
+  struct {
+    float x;
+    float y;
+  };
+  __m64 data;
+} float2;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  __m128 data;
+} float4;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float4 data;
+} float3;
+typedef union {
+  __m256 data;
+} float8;
+typedef union {
+  __m256 data[2];
+} float16;
+
+typedef union {
+  struct {
+    double x;
+  };
+  double data;
+} double1;
+typedef union {
+  struct {
+    double x;
+    double y;
+  };
+  __m128d data;
+} double2;
+typedef union {
+  struct {
+    double x;
+    double y;
+    double z;
+    double w;
+  };
+  __m256d data;
+} double4;
+typedef union {
+  struct {
+    double x;
+    double y;
+    double z;
+    double w;
+  };
+  double4 data;
+} double3;
+typedef union {
+  __m256d data[2];
+} double8;
+typedef union {
+  __m256d data[4];
+} double16;
+
+#else  // !defined(_MSC_VER)
+
+typedef union {
+  struct {
+    char x;
+  };
+  char data;
+} char1;
+typedef union {
+  struct {
+    char x;
+    char y;
+  };
+  char data[2];
+} char2;
+typedef union {
+  struct {
+    char x;
+    char y;
+    char z;
+    char w;
+  };
+  char data[4];
+} char4;
+typedef union {
+  char data[8];
+} char8;
+typedef union {
+  char data[16];
+} char16;
+typedef union {
+  struct {
+    char x;
+    char y;
+    char z;
+    char w;
+  };
+  char4 data;
+} char3;
+
+typedef union {
+  struct {
+    unsigned char x;
+  };
+  unsigned char data;
+} uchar1;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+  };
+  unsigned char data[2];
+} uchar2;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+    unsigned char z;
+    unsigned char w;
+  };
+  unsigned char data[4];
+} uchar4;
+typedef union {
+  unsigned char data[8];
+} uchar8;
+typedef union {
+  unsigned char data[16];
+} uchar16;
+typedef union {
+  struct {
+    unsigned char x;
+    unsigned char y;
+    unsigned char z;
+    unsigned char w;
+  };
+  uchar4 data;
+} uchar3;
+
+typedef union {
+  struct {
+    short x;
+  };
+  short data;
+} short1;
+typedef union {
+  struct {
+    short x;
+    short y;
+  };
+  short data[2];
+} short2;
+typedef union {
+  struct {
+    short x;
+    short y;
+    short z;
+    short w;
+  };
+  short data[4];
+} short4;
+typedef union {
+  short data[8];
+} short8;
+typedef union {
+  short data[16];
+} short16;
+typedef union {
+  struct {
+    short x;
+    short y;
+    short z;
+    short w;
+  };
+  short4 data;
+} short3;
+
+typedef union {
+  struct {
+    unsigned short x;
+  };
+  unsigned short data;
+} ushort1;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+  };
+  unsigned short data[2];
+} ushort2;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+    unsigned short z;
+    unsigned short w;
+  };
+  unsigned short data[4];
+} ushort4;
+typedef union {
+  unsigned short data[8];
+} ushort8;
+typedef union {
+  unsigned short data[16];
+} ushort16;
+typedef union {
+  struct {
+    unsigned short x;
+    unsigned short y;
+    unsigned short z;
+    unsigned short w;
+  };
+  ushort4 data;
+} ushort3;
+
+typedef union {
+  struct {
+    int x;
+  };
+  int data;
+} int1;
+typedef union {
+  struct {
+    int x;
+    int y;
+  };
+  int data[2];
+} int2;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int data[4];
+} int4;
+typedef union {
+  int data[8];
+} int8;
+typedef union {
+  int data[16];
+} int16;
+typedef union {
+  struct {
+    int x;
+    int y;
+    int z;
+    int w;
+  };
+  int4 data;
+} int3;
+
+typedef union {
+  struct {
+    unsigned int x;
+  };
+  unsigned int data;
+} uint1;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+  };
+  unsigned int data[2];
+} uint2;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  unsigned int data[4];
+} uint4;
+typedef union {
+  unsigned int data[8];
+} uint8;
+typedef union {
+  unsigned int data[16];
+} uint16;
+typedef union {
+  struct {
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
+    unsigned int w;
+  };
+  uint4 data;
+} uint3;
+
+typedef union {
+  struct {
+    long x;
+  };
+  long data;
+} long1;
+typedef union {
+  struct {
+    long x;
+    long y;
+  };
+  long data[2];
+} long2;
+typedef union {
+  struct {
+    long x;
+    long y;
+    long z;
+    long w;
+  };
+  long data[4];
+} long4;
+typedef union {
+  long data[8];
+} long8;
+typedef union {
+  long data[16];
+} long16;
+typedef union {
+  struct {
+    long x;
+    long y;
+    long z;
+    long w;
+  };
+  long4 data;
+} long3;
+
+typedef union {
+  struct {
+    unsigned long x;
+  };
+  unsigned long data;
+} ulong1;
+typedef union {
+  struct {
+    unsigned long x;
+    unsigned long y;
+  };
+  unsigned long data[2];
+} ulong2;
+typedef union {
+  struct {
+    unsigned long x;
+    unsigned long y;
+    unsigned long z;
+    unsigned long w;
+  };
+  unsigned long data[4];
+} ulong4;
+typedef union {
+  unsigned long data[8];
+} ulong8;
+typedef union {
+  unsigned long data[16];
+} ulong16;
+typedef union {
+  struct {
+    unsigned long x;
+    unsigned long y;
+    unsigned long z;
+    unsigned long w;
+  };
+  ulong4 data;
+} ulong3;
+
+typedef union {
+  sturct { long long x; }
+  long long data;
+} longlong1;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+  };
+  long long data[2];
+} longlong2;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+    long long z;
+    long long w;
+  };
+  long long data[4];
+} longlong4;
+typedef union {
+  long long data[8];
+} longlong8;
+typedef union {
+  long long data[16];
+} longlong16;
+typedef union {
+  struct {
+    long long x;
+    long long y;
+    long long z;
+    long long w;
+  };
+  longlong4 data;
+} longlong3;
+
+typedef union {
+  struct {
+    unsigned long long x;
+  };
+  unsigned long long data;
+} ulonglong1;
+typedef union {
+  struct {
+    unsigned long long x;
+    unsigned long long y;
+  };
+  unsigned long long data[2];
+} ulonglong2;
+typedef union {
+  struct {
+    unsigned long long x;
+    unsigned long long y;
+    unsigned long long z;
+    unsigned long long w;
+  };
+  unsigned long long data[4];
+} ulonglong4;
+typedef union {
+  unsigned long long data[8];
+} ulonglong8;
+typedef union {
+  unsigned long long data[16];
+} ulonglong16;
+typedef union {
+  struct {
+    unsigned long long x;
+    unsigned long long y;
+    unsigned long long z;
+    unsigned long long w;
+  };
+  ulonglong4 data;
+} ulonglong3;
+
+typedef union {
+  struct {
+    float x;
+  };
+  float data;
+} float1;
+typedef union {
+  struct {
+    float x;
+    float y;
+  };
+  float data[2];
+} float2;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float data[4];
+} float4;
+typedef union {
+  float data[8];
+} float8;
+typedef union {
+  float data[16];
+} float16;
+typedef union {
+  struct {
+    float x;
+    float y;
+    float z;
+    float w;
+  };
+  float4 data;
+} float3;
+
+typedef union {
+  struct {
+    double x;
+  };
+  double data;
+} double1;
+typedef union {
+  struct {
+    double x;
+    double y;
+  };
+  double data[2];
+} double2;
+typedef union {
+  struct {
+    double x;
+    double y;
+    double z;
+    double w;
+  };
+  double data[4];
+} double4;
+typedef union {
+  double data[8];
+} double8;
+typedef union {
+  double data[16];
+} double16;
+typedef union {
+  struct {
+    double x;
+    double y;
+    double z;
+    double w;
+  };
+  double4 data;
+} double3;
+
+#endif // defined(_MSC_VER)
+#endif // defined(__has_attribute)
+
 #ifdef __cplusplus
-#define DECLOP_MAKE_ONE_COMPONENT(comp, type) \
-    static inline __HOST_DEVICE__ \
-    type make_##type(comp x) { type r{x}; return r; }
+#define DECLOP_MAKE_ONE_COMPONENT(comp, type)                                                      \
+  static inline __HOST_DEVICE__ type make_##type(comp x) {                                         \
+    type r{x};                                                                                     \
+    return r;                                                                                      \
+  }
 
-#define DECLOP_MAKE_TWO_COMPONENT(comp, type) \
-    static inline __HOST_DEVICE__ \
-    type make_##type(comp x, comp y) { type r{x, y}; return r; }
+#define DECLOP_MAKE_TWO_COMPONENT(comp, type)                                                      \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y) {                                 \
+    type r{x, y};                                                                                  \
+    return r;                                                                                      \
+  }
 
-#define DECLOP_MAKE_THREE_COMPONENT(comp, type) \
-    static inline __HOST_DEVICE__ \
-    type make_##type(comp x, comp y, comp z) { type r{x, y, z}; return r; }
+#define DECLOP_MAKE_THREE_COMPONENT(comp, type)                                                    \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y, comp z) {                         \
+    type r{x, y, z};                                                                               \
+    return r;                                                                                      \
+  }
 
-#define DECLOP_MAKE_FOUR_COMPONENT(comp, type) \
-    static inline __HOST_DEVICE__ \
-    type make_##type(comp x, comp y, comp z, comp w) { \
-        type r{x, y, z, w}; \
-        return r; \
-    }
+#define DECLOP_MAKE_FOUR_COMPONENT(comp, type)                                                     \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y, comp z, comp w) {                 \
+    type r{x, y, z, w};                                                                            \
+    return r;                                                                                      \
+  }
 #else
- #define DECLOP_MAKE_ONE_COMPONENT(comp, type) \
-     static inline __HOST_DEVICE__ \
-     type make_##type(comp x) { type r; r.x =x; return r; }
+#define DECLOP_MAKE_ONE_COMPONENT(comp, type)                                                      \
+  static inline __HOST_DEVICE__ type make_##type(comp x) {                                         \
+    type r;                                                                                        \
+    r.x = x;                                                                                       \
+    return r;                                                                                      \
+  }
 
- #define DECLOP_MAKE_TWO_COMPONENT(comp, type) \
-     static inline __HOST_DEVICE__ \
-     type make_##type(comp x, comp y) { type r; r.x=x; r.y=y; return r; }
+#define DECLOP_MAKE_TWO_COMPONENT(comp, type)                                                      \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y) {                                 \
+    type r;                                                                                        \
+    r.x = x;                                                                                       \
+    r.y = y;                                                                                       \
+    return r;                                                                                      \
+  }
 
- #define DECLOP_MAKE_THREE_COMPONENT(comp, type) \
-     static inline __HOST_DEVICE__ \
-     type make_##type(comp x, comp y, comp z) { type r; r.x=x; r.y=y; r.z=z; return r; }
+#define DECLOP_MAKE_THREE_COMPONENT(comp, type)                                                    \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y, comp z) {                         \
+    type r;                                                                                        \
+    r.x = x;                                                                                       \
+    r.y = y;                                                                                       \
+    r.z = z;                                                                                       \
+    return r;                                                                                      \
+  }
 
- #define DECLOP_MAKE_FOUR_COMPONENT(comp, type) \
-     static inline __HOST_DEVICE__ \
-     type make_##type(comp x, comp y, comp z, comp w) { \
-         type r; r.x=x; r.y=y; r.z=z; r.w=w; \
-         return r; \
-     }
+#define DECLOP_MAKE_FOUR_COMPONENT(comp, type)                                                     \
+  static inline __HOST_DEVICE__ type make_##type(comp x, comp y, comp z, comp w) {                 \
+    type r;                                                                                        \
+    r.x = x;                                                                                       \
+    r.y = y;                                                                                       \
+    r.z = z;                                                                                       \
+    r.w = w;                                                                                       \
+    return r;                                                                                      \
+  }
 #endif
 
 DECLOP_MAKE_ONE_COMPONENT(unsigned char, uchar1);
@@ -1495,304 +2520,5 @@ DECLOP_MAKE_ONE_COMPONENT(signed long long, longlong1);
 DECLOP_MAKE_TWO_COMPONENT(signed long long, longlong2);
 DECLOP_MAKE_THREE_COMPONENT(signed long long, longlong3);
 DECLOP_MAKE_FOUR_COMPONENT(signed long long, longlong4);
-#else // !defined(__has_attribute)
 
-#if defined(_MSC_VER)
-#include <mmintrin.h>
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <immintrin.h>
-
-typedef union { char data; } char1;
-typedef union { char data[2]; } char2;
-typedef union { char data[4]; } char4;
-typedef union { char4 data; } char3;
-typedef union { __m64 data; } char8;
-typedef union { __m128i data; } char16;
-
-typedef union { unsigned char data; } uchar1;
-typedef union { unsigned char data[2]; } uchar2;
-typedef union { unsigned char data[4]; } uchar4;
-typedef union { uchar4 data; } uchar3;
-typedef union { __m64 data; } uchar8;
-typedef union { __m128i data; } uchar16;
-
-typedef union { short data; } short1;
-typedef union { short data[2]; } short2;
-typedef union { __m64 data; } short4;
-typedef union { short4 data; } short3;
-typedef union { __m128i data; } short8;
-typedef union { __m128i data[2]; } short16;
-
-typedef union { unsigned short data; } ushort1;
-typedef union { unsigned short data[2]; } ushort2;
-typedef union { __m64 data; } ushort4;
-typedef union { ushort4 data; } ushort3;
-typedef union { __m128i data; } ushort8;
-typedef union { __m128i data[2]; } ushort16;
-
-typedef union { int data; } int1;
-/*
-this is for compatibility with CUDA as CUDA allows accessing vector components
-in C++ program with MSVC
-*/
-typedef union {
-  struct {
-    int x;
-    int y;
-  };
-  __m64 data;
-} int2;
-typedef union {
-  struct {
-    int x;
-    int y;
-    int z;
-    int w;
-  };
-  __m128i data;
-} int4;
-typedef union {
-  struct {
-    int x;
-    int y;
-    int z;
-    int w;
-  };
-  int4 data;
-} int3;
-typedef union { __m128i data[2]; } int8;
-typedef union { __m128i data[4];} int16;
-
-typedef union { unsigned int data; } uint1;
-typedef union { __m64 data; } uint2;
-typedef union { __m128i data; } uint4;
-typedef union { uint4 data; } uint3;
-typedef union { __m128i data[2]; } uint8;
-typedef union { __m128i data[4]; } uint16;
-
-#if !defined(_WIN64)
-typedef union { int data; } long1;
-typedef union { __m64 data; } long2;
-typedef union { __m128i data; } long4;
-typedef union { long4 data; } long3;
-typedef union { __m128i data[2]; } long8;
-typedef union { __m128i data[4]; } long16;
-
-typedef union { unsigned int data; } ulong1;
-typedef union { __m64 data; } ulong2;
-typedef union { __m128i data; } ulong4;
-typedef union { ulong4 data; } ulong3;
-typedef union { __m128i data[2]; } ulong8;
-typedef union { __m128i data[4]; } ulong16;
-#else // defined(_WIN64)
-typedef union { __m64 data; } long1;
-typedef union { __m128i data; } long2;
-typedef union { __m128i data[2]; } long4;
-typedef union { long4 data; } long3;
-typedef union { __m128i data[4]; } long8;
-typedef union { __m128i data[8]; } long16;
-
-typedef union { __m64 data; } ulong1;
-typedef union { __m128i data; } ulong2;
-typedef union { __m128i data[2]; } ulong4;
-typedef union { ulong4 data; } ulong3;
-typedef union { __m128i data[4]; } ulong8;
-typedef union { __m128i data[8]; } ulong16;
-#endif // defined(_WIN64)
-
-typedef union { __m64 data; } longlong1;
-typedef union { __m128i data; } longlong2;
-typedef union { __m128i data[2]; } longlong4;
-typedef union { longlong4 data; } longlong3;
-typedef union { __m128i data[4]; } longlong8;
-typedef union { __m128i data[8]; } longlong16;
-
-typedef union { __m64 data; } ulonglong1;
-typedef union { __m128i data; } ulonglong2;
-typedef union { __m128i data[2]; } ulonglong4;
-typedef union { ulonglong4 data; } ulonglong3;
-typedef union { __m128i data[4]; } ulonglong8;
-typedef union { __m128i data[8]; } ulonglong16;
-
-typedef union { float data; } float1;
-/*
-this is for compatibility with CUDA as CUDA allows accessing vector components
-in C++ program with MSVC
-*/
-typedef union {
-  struct {
-    float x;
-    float y;
-  };
-  __m64 data;
-} float2;
-typedef union {
-  struct {
-    float x;
-    float y;
-    float z;
-    float w;
-  };
-  __m128 data;
-} float4;
-typedef union {
-  struct {
-    float x;
-    float y;
-    float z;
-    float w;
-  };
-  float4 data;
-} float3;
-typedef union { __m256 data; } float8;
-typedef union { __m256 data[2]; } float16;
-
-typedef union { double data; } double1;
-typedef union { __m128d data; } double2;
-typedef union { __m256d data; } double4;
-typedef union { double4 data; } double3;
-typedef union { __m256d data[2]; } double8;
-typedef union { __m256d data[4]; } double16;
-
-#else // !defined(_MSC_VER)
-
-typedef union { char data; } char1;
-typedef union { char data[2]; } char2;
-typedef union { char data[4]; } char4;
-typedef union { char data[8]; } char8;
-typedef union { char data[16]; } char16;
-typedef union { char4 data; } char3;
-
-typedef union { unsigned char data; } uchar1;
-typedef union { unsigned char data[2]; } uchar2;
-typedef union { unsigned char data[4]; } uchar4;
-typedef union { unsigned char data[8]; } uchar8;
-typedef union { unsigned char data[16]; } uchar16;
-typedef union { uchar4 data; } uchar3;
-
-typedef union { short data; } short1;
-typedef union { short data[2]; } short2;
-typedef union { short data[4]; } short4;
-typedef union { short data[8]; } short8;
-typedef union { short data[16]; } short16;
-typedef union { short4 data; } short3;
-
-typedef union { unsigned short data; } ushort1;
-typedef union { unsigned short data[2]; } ushort2;
-typedef union { unsigned short data[4]; } ushort4;
-typedef union { unsigned short data[8]; } ushort8;
-typedef union { unsigned short data[16]; } ushort16;
-typedef union { ushort4 data; } ushort3;
-
-typedef union { int data; } int1;
-/*
-this is for compatibility with CUDA as CUDA allows accessing vector components
-in C++ program with MSVC
-*/
-typedef union {
-  struct {
-    int x;
-    int y;
-  };
-  int data[2];
-} int2;
-typedef union {
-  struct {
-    int x;
-    int y;
-    int z;
-    int w;
-  };
-  int data[4];
-} int4;
-typedef union { int data[8]; } int8;
-typedef union { int data[16]; } int16;
-typedef union {
-  struct {
-    int x;
-    int y;
-    int z;
-    int w;
-  };
-  int4 data;
-} int3;
-
-typedef union { unsigned int data; } uint1;
-typedef union { unsigned int data[2]; } uint2;
-typedef union { unsigned int data[4]; } uint4;
-typedef union { unsigned int data[8]; } uint8;
-typedef union { unsigned int data[16]; } uint16;
-typedef union { uint4 data; } uint3;
-
-typedef union { long data; } long1;
-typedef union { long data[2]; } long2;
-typedef union { long data[4]; } long4;
-typedef union { long data[8]; } long8;
-typedef union { long data[16]; } long16;
-typedef union { long4 data; } long3;
-
-typedef union { unsigned long data; } ulong1;
-typedef union { unsigned long data[2]; } ulong2;
-typedef union { unsigned long data[4]; } ulong4;
-typedef union { unsigned long data[8]; } ulong8;
-typedef union { unsigned long data[16]; } ulong16;
-typedef union { ulong4 data; } ulong3;
-
-typedef union { long long data; } longlong1;
-typedef union { long long data[2]; } longlong2;
-typedef union { long long data[4]; } longlong4;
-typedef union { long long data[8]; } longlong8;
-typedef union { long long data[16]; } longlong16;
-typedef union { longlong4 data; } longlong3;
-
-typedef union { unsigned long long data; } ulonglong1;
-typedef union { unsigned long long data[2]; } ulonglong2;
-typedef union { unsigned long long data[4]; } ulonglong4;
-typedef union { unsigned long long data[8]; } ulonglong8;
-typedef union { unsigned long long data[16]; } ulonglong16;
-typedef union { ulonglong4 data; } ulonglong3;
-
-typedef union { float data; } float1;
-/*
-this is for compatibility with CUDA as CUDA allows accessing vector components
-in C++ program with MSVC
-*/
-typedef union {
-  struct {
-    float x;
-    float y;
-  };
-  float data[2];
-} float2;
-typedef union {
-  struct {
-    float x;
-    float y;
-    float z;
-    float w;
-  };
-  float data[4];
-} float4;
-typedef union { float data[8]; } float8;
-typedef union { float data[16]; } float16;
-typedef union {
-  struct {
-    float x;
-    float y;
-    float z;
-    float w;
-  };
-  float4 data;
-} float3;
-
-typedef union { double data; } double1;
-typedef union { double data[2]; } double2;
-typedef union { double data[4]; } double4;
-typedef union { double data[8]; } double8;
-typedef union { double data[16]; } double16;
-typedef union { double4 data; } double3;
-
-#endif // defined(_MSC_VER)
-#endif // defined(__has_attribute)
 #endif
