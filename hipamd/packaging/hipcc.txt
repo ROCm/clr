@@ -1,0 +1,63 @@
+cmake_minimum_required(VERSION 3.6.3)
+project(hipcc)
+
+install(PROGRAMS @HIPCC_BIN_DIR@/hipcc.bin DESTINATION bin )
+install(PROGRAMS @HIPCC_BIN_DIR@/hipconfig.bin DESTINATION bin )
+
+# hipcc.txt is processed to produce CMakeList.txt,
+# pass down value from parent
+set(ROCM_DEP_ROCMCORE "@ROCM_DEP_ROCMCORE@")
+
+#############################
+# Packaging steps
+#############################
+set(CPACK_PACKAGE_NAME "hipcc")
+set(CPACK_PACKAGE_VENDOR "Advanced Micro Devices, Inc.")
+set(CPACK_PACKAGE_VERSION_MAJOR @HIP_VERSION_MAJOR@)
+set(CPACK_PACKAGE_VERSION_MINOR @HIP_VERSION_MINOR@)
+set(CPACK_PACKAGE_VERSION_PATCH @HIP_PACKAGING_VERSION_PATCH@)
+set(CPACK_PACKAGE_CONTACT "HIP Support <hip.support@amd.com>")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HIP compiler driver (hipcc)")
+set(CPACK_PACKAGE_DESCRIPTION "hipcc is a compiler driver utility that will call clang or nvcc,
+      depending on target, and pass the appropriate include and library options
+      for the target compiler and HIP infrastructure.")
+set(CPACK_SET_DESTDIR TRUE)
+set(CPACK_INSTALL_PREFIX @CPACK_INSTALL_PREFIX@ )
+set(CPACK_GENERATOR "TGZ;DEB;RPM")
+
+#Debian package specific variables
+set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${CPACK_DEBIAN_PACKAGE_HOMEPAGE} CACHE STRING "https://github.com/RadeonOpenCompute/ROCm")
+if(ROCM_DEP_ROCMCORE)
+  set(CPACK_DEBIAN_PACKAGE_DEPENDS "rocm-core")
+endif()
+if (DEFINED ENV{CPACK_DEBIAN_PACKAGE_RELEASE})
+   set(CPACK_DEBIAN_PACKAGE_RELEASE $ENV{CPACK_DEBIAN_PACKAGE_RELEASE})
+else()
+   set(CPACK_DEBIAN_PACKAGE_RELEASE "local")
+endif()
+
+#RPM package specific variables
+set(CPACK_RPM_PACKAGE_AUTOREQPROV "NO")
+set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION "/opt" "${ROCM_PATH}" "@CPACK_PACKAGING_INSTALL_PREFIX@" "@CPACK_PACKAGING_INSTALL_PREFIX@/bin")
+if(ROCM_DEP_ROCMCORE)
+  set(CPACK_RPM_PACKAGE_REQUIRES "rocm-core")
+endif()
+if(DEFINED ENV{CPACK_RPM_PACKAGE_RELEASE})
+  set(CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE})
+else()
+  set(CPACK_RPM_PACKAGE_RELEASE "local")
+endif()
+
+#Set rpm distro
+if(CPACK_RPM_PACKAGE_RELEASE)
+  set(CPACK_RPM_PACKAGE_RELEASE_DIST ON)
+endif()
+
+#Prepare final version for the CAPACK use
+set(CPACK_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH}.${ROCM_VERSION_FOR_PACKAGE}")
+
+#Set the names now using CPACK utility
+set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
+set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
+
+include(CPack)
