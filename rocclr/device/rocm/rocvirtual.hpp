@@ -458,12 +458,13 @@ class VirtualGPU : public device::VirtualDevice {
   //! Queue state flags
   union {
     struct {
-      uint32_t hasPendingDispatch_ : 1; //!< A kernel dispatch is outstanding
-      uint32_t profiling_          : 1; //!< Profiling is enabled
-      uint32_t cooperative_        : 1; //!< Cooperative launch is enabled
-      uint32_t addSystemScope_     : 1; //!< Insert a system scope to the next aql
-      uint32_t tracking_created_   : 1; //!< Enabled if tracking object was properly initialized
-      uint32_t profilerAttached_   : 1; //!< Indicates if profiler is attached
+      uint32_t hasPendingDispatch_    : 1; //!< A kernel dispatch is outstanding
+      uint32_t profiling_             : 1; //!< Profiling is enabled
+      uint32_t cooperative_           : 1; //!< Cooperative launch is enabled
+      uint32_t addSystemScope_        : 1; //!< Insert a system scope to the next aql
+      uint32_t tracking_created_      : 1; //!< Enabled if tracking object was properly initialized
+      uint32_t profilerAttached_      : 1; //!< Indicates if profiler is attached
+      uint32_t retainExternalSignals_ : 1; //!< Indicate to retain external signal array
     };
     uint32_t  state_;
   };
