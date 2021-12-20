@@ -2258,12 +2258,18 @@ hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, si
   amd::Coord3D fillSize(sizeBytes, 1, 1);
   // surface=[pitch, width, height]
   amd::Coord3D surface(sizeBytes, sizeBytes, 1);
-  command =
+  amd::FillMemoryCommand* fillMemCommand =
       new amd::FillMemoryCommand(*queue, CL_COMMAND_FILL_BUFFER, waitList, *memory->asBuffer(),
                                  &value, valueSize, fillOffset, fillSize, surface);
-  if (command == nullptr) {
+  if (fillMemCommand == nullptr) {
     return hipErrorOutOfMemory;
   }
+
+  if (!fillMemCommand->validatePeerMemory()) {
+    delete fillMemCommand;
+    return hipErrorInvalidValue;
+  }
+  command = fillMemCommand;
   return hipSuccess;
 }
 
