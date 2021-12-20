@@ -2249,7 +2249,9 @@ typedef union {
 } ulong3;
 
 typedef union {
-  sturct { long long x; }
+  struct {
+    long long x;
+  };
   long long data;
 } longlong1;
 typedef union {
