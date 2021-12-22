@@ -69,7 +69,7 @@ configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
 configure_file(packaging/rocm-ocl-icd.prerm ${BUILD_DIR}/prerm @ONLY)
 configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
 configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
-add_custom_target(pkg_rocm_ocl_icd COMMAND ${CMAKE_COMMAND} .
+add_custom_target(pkg_rocm_ocl_icd COMMAND ${CMAKE_COMMAND} -DROCM_DEP_ROCMCORE=${ROCM_DEP_ROCMCORE} .
   COMMAND rm -rf *.deb *.rpm *.tar.gz
   COMMAND make package
   COMMAND cp *.deb ${PROJECT_BINARY_DIR}
@@ -80,7 +80,7 @@ add_custom_target(pkg_rocm_ocl_icd COMMAND ${CMAKE_COMMAND} .
 # Package: rocm-opencl
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-opencl)
 configure_file(packaging/rocm-opencl.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(pkg_rocm_opencl COMMAND ${CMAKE_COMMAND} .
+add_custom_target(pkg_rocm_opencl COMMAND ${CMAKE_COMMAND} -DROCM_DEP_ROCMCORE=${ROCM_DEP_ROCMCORE} .
   COMMAND rm -rf *.deb *.rpm *.tar.gz
   COMMAND make package
   COMMAND cp *.deb ${PROJECT_BINARY_DIR}
@@ -91,7 +91,7 @@ add_custom_target(pkg_rocm_opencl COMMAND ${CMAKE_COMMAND} .
 # Package: rocm-opencl-dev
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-opencl-dev)
 configure_file(packaging/rocm-opencl-dev.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(pkg_rocm_opencl_dev  COMMAND ${CMAKE_COMMAND} .
+add_custom_target(pkg_rocm_opencl_dev  COMMAND ${CMAKE_COMMAND} -DROCM_DEP_ROCMCORE=${ROCM_DEP_ROCMCORE} .
   COMMAND rm -rf *.deb *.rpm *.tar.gz
   COMMAND make package
   COMMAND cp *.deb ${PROJECT_BINARY_DIR}
