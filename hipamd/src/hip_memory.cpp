@@ -357,6 +357,23 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
     if ((srcMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) &&
         ((srcMemory->getContext().devices().size() == 1) &&
          (dstMemory->getContext().devices().size() == 1))) {
+      amd::HostQueue* currNullStream = hip::getNullStream();
+      if (currNullStream == &queue) {
+        if (queueDevice != srcMemory->getContext().devices()[0]) {
+          amd::HostQueue* pQueue = hip::getNullStream(srcMemory->getContext());
+          amd::Command* cmd = pQueue->getLastQueuedCommand(true);
+          if (cmd != nullptr) {
+            waitList.push_back(cmd);
+          }
+        }
+        if (queueDevice != dstMemory->getContext().devices()[0]) {
+          amd::HostQueue* pQueue = hip::getNullStream(dstMemory->getContext());
+          amd::Command* cmd = pQueue->getLastQueuedCommand(true);
+          if (cmd != nullptr) {
+            waitList.push_back(cmd);
+          }
+        }
+      }
       command = new amd::CopyMemoryP2PCommand(queue, CL_COMMAND_COPY_BUFFER, waitList,
           *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, sizeBytes);
       if (command == nullptr) {
