@@ -30,7 +30,20 @@ FatBinaryInfo::~FatBinaryInfo() {
     delete fbd;
   }
 
-  ResetFileInfo();
+  if (fdesc_ > 0) {
+    if (fsize_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
+      guarantee(false, "Cannot unmap file");
+    }
+    if (!amd::Os::CloseFileHandle(fdesc_)) {
+      guarantee(false, "Cannot close file");
+    }
+  }
+
+  fname_ = std::string();
+  fdesc_ = amd::Os::FDescInit();
+  fsize_ = 0;
+  image_ = nullptr;
+  uri_ = std::string();
 }
 
 hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devices) {
