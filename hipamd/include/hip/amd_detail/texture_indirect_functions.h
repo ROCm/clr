@@ -68,7 +68,7 @@ static __device__ __hip_img_chk__ T tex1Dfetch(hipTextureObject_t textureObject,
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_load_1Db(i, x);
-    return *reinterpret_cast<T*>(&tmp);
+    return mapFrom<T>(tmp);
 }
 
 template <
