@@ -142,7 +142,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_load_1Db(i, x);
-    return *reinterpret_cast<__hip_tex_ret_t<T, readMode>*>(&tmp);
+    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
