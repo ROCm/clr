@@ -196,23 +196,33 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   enableXNACK_ = enableXNACK;
   hsailExplicitXnack_ = enableXNACK;
+  bool useWavefront64 = false;
+
+  std::string appName = {};
+  std::string appPathAndName = {};
+  amd::Os::getAppPathAndFileName(appName, appPathAndName);
 
   switch (palProp.revision) {
     case Pal::AsicRevision::Rembrandt:
-    case Pal::AsicRevision::Navi14:
-    case Pal::AsicRevision::Navi12:
-    case Pal::AsicRevision::Navi10:
-    case Pal::AsicRevision::Navi10_A0:
     case Pal::AsicRevision::Navi24:
     case Pal::AsicRevision::Navi23:
     case Pal::AsicRevision::Navi22:
     case Pal::AsicRevision::Navi21:
+      // set wavefront 64 for Geekbench 5
+      {
+        if (appName == "Geekbench 5.exe" ||
+            appName == "geekbench_x86_64.exe" ||
+            appName == "geekbench5.exe") {
+          useWavefront64 = true;
+        }
+      }
+    case Pal::AsicRevision::Navi14:
+    case Pal::AsicRevision::Navi12:
+    case Pal::AsicRevision::Navi10:
+    case Pal::AsicRevision::Navi10_A0:
       gfx10Plus_ = true;
       // Force luxmark to use HSAIL
       {
-        std::string appName = {};
-        std::string appPathAndName = {};
-        amd::Os::getAppPathAndFileName(appName, appPathAndName);
         if ((appName == "luxmark.exe") ||
             (appName == "luxmark")) {
           useLightning_ = flagIsDefault(GPU_ENABLE_LC) ? false : GPU_ENABLE_LC;
@@ -227,6 +237,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       }
       if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
         enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
+      }
+      if (useWavefront64) {
+        enableWave32Mode_ = 0;
       }
       lcWavefrontSize64_ = !enableWave32Mode_;
       if (palProp.gfxLevel == Pal::GfxIpLevel::GfxIp10_1) {
