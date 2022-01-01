@@ -125,9 +125,9 @@ void WLAlgorithmSmooth::outputTrace() {
   traceStream_ << "[WaveLimiter] " << manager_->name() << " state=" << state_ <<
     " waves=" << waves_ << " bestWave=" << bestWave_ << " worstWave=" << worstWave_ << '\n';
   output(traceStream_, "\n adaptive measure = ", adpMeasure_);
-  output(traceStream_, "\n adaptive smaple count = ", adpSampleCnt_);
+  output(traceStream_, "\n adaptive sample count = ", adpSampleCnt_);
   output(traceStream_, "\n run measure = ", runMeasure_);
-  output(traceStream_, "\n run smaple count = ", runSampleCnt_);
+  output(traceStream_, "\n run sample count = ", runSampleCnt_);
   traceStream_ << "\n % time from the previous runs to the best wave: ";
   float min = static_cast<float>(adpMeasure_[bestWave_]) / adpSampleCnt_[bestWave_];
   for (uint i = 0; i < (MaxWave + 1); ++i) {

@@ -1073,7 +1073,7 @@ bool ClBinary::setElfOut(unsigned char eclass,
   if ((elfOut_ == nullptr) || !elfOut_->isSuccessful()) {
     delete elfOut_;
     elfOut_ = nullptr;
-    LogError("Creating ouput ELF object failed");
+    LogError("Creating output ELF object failed");
     return false;
   }
 
