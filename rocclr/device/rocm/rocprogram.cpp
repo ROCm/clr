@@ -246,7 +246,7 @@ bool LightningProgram::saveBinaryAndSetType(type_t type, void* rawBinary, size_t
   }
   else {  // handle LLVM binary
     if (llvmBinary_.empty()) {
-      buildLog_ += "ERROR: Tried to save emtpy LLVM binary \n";
+      buildLog_ += "ERROR: Tried to save empty LLVM binary \n";
       return false;
     }
     rawBinary = (void*)llvmBinary_.data();

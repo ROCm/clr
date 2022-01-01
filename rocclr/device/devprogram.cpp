@@ -351,7 +351,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
   amd_comgr_language_t langver;
   setLanguage(amdOptions->oVariables->CLStd, &langver);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
-    DevLogPrintfError("Cannot set Langauge version for %s \n",
+    DevLogPrintfError("Cannot set Language version for %s \n",
                       amdOptions->oVariables->CLStd);
     return false;
   }
@@ -409,7 +409,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
   amd_comgr_language_t langver;
   setLanguage(amdOptions->oVariables->CLStd, &langver);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
-    DevLogPrintfError("Cannot set Langauge version for %s \n",
+    DevLogPrintfError("Cannot set Language version for %s \n",
                       amdOptions->oVariables->CLStd);
     return false;
   }
