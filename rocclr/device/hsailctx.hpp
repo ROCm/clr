@@ -25,58 +25,66 @@
 #include "top.hpp"
 #include "acl.h"
 
+#ifndef ACL_API_ENTRY
+#if defined(_WIN32) || defined(__CYGWIN__)
+#define ACL_API_ENTRY __stdcall
+#else
+#define ACL_API_ENTRY
+#endif
+#endif
+
 namespace amd {
-typedef aclCompiler*      (*t_aclCompilerInit)(aclCompilerOptions *opts, acl_error *error_code);
-typedef acl_error         (*t_aclCompilerFini)(aclCompiler *cl);
-typedef aclCLVersion      (*t_aclCompilerVersion)(aclCompiler *cl, acl_error *error_code);
-typedef uint32_t          (*t_aclVersionSize)(aclCLVersion num, acl_error *error_code);
-typedef const char*       (*t_aclGetErrorString)(acl_error error_code);
-typedef acl_error         (*t_aclGetArchInfo)(const char** arch_names, size_t *arch_size);
-typedef acl_error         (*t_aclGetDeviceInfo)(const char* arch, const char **names, size_t *device_size);
-typedef aclTargetInfo     (*t_aclGetTargetInfo)(const char *arch, const char *device, acl_error *error_code);
-typedef aclTargetInfo     (*t_aclGetTargetInfoFromChipID)(const char *arch, const uint32_t chip_id, acl_error *error_code);
-typedef const char*       (*t_aclGetArchitecture)(const aclTargetInfo &target);
-typedef const uint64_t    (*t_aclGetChipOptions)(const aclTargetInfo &target);
-typedef const char*       (*t_aclGetFamily)(const aclTargetInfo &target);
-typedef const char*       (*t_aclGetChip)(const aclTargetInfo &target);
-typedef aclBinary*        (*t_aclBinaryInit)(size_t struct_version, const aclTargetInfo *target, const aclBinaryOptions *options, acl_error *error_code);
-typedef acl_error         (*t_aclBinaryFini)(aclBinary *bin);
-typedef aclBinary*        (*t_aclReadFromFile)(const char *str, acl_error *error_code);
-typedef aclBinary*        (*t_aclReadFromMem)(const void *mem, size_t size, acl_error *error_code);
-typedef acl_error         (*t_aclWriteToFile)(aclBinary *bin, const char *str);
-typedef acl_error         (*t_aclWriteToMem)(aclBinary *bin, void **mem, size_t *size);
-typedef aclBinary*        (*t_aclCreateFromBinary)(const aclBinary *binary, aclBIFVersion version);
-typedef aclBIFVersion     (*t_aclBinaryVersion)(const aclBinary *binary);
-typedef acl_error         (*t_aclInsertSection)(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id);
-typedef acl_error         (*t_aclInsertSymbol)(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id, const char *symbol);
-typedef const void*       (*t_aclExtractSection)(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, acl_error *error_code);
-typedef const void*       (*t_aclExtractSymbol)(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, const char *symbol, acl_error *error_code);
-typedef acl_error         (*t_aclRemoveSection)(aclCompiler *cl, aclBinary *binary, aclSections id);
-typedef acl_error         (*t_aclRemoveSymbol)(aclCompiler *cl, aclBinary *binary, aclSections id, const char *symbol);
-typedef acl_error         (*t_aclQueryInfo)(aclCompiler *cl, const aclBinary *binary, aclQueryType query, const char *kernel, void *data_ptr, size_t *ptr_size);
-typedef acl_error         (*t_aclDbgAddArgument)(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name, bool byVal);
-typedef acl_error         (*t_aclDbgRemoveArgument)(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name);
-typedef acl_error         (*t_aclCompile)(aclCompiler *cl, aclBinary *bin, const char *options, aclType from, aclType to, aclLogFunction compile_callback);
-typedef acl_error         (*t_aclLink)(aclCompiler *cl, aclBinary *src_bin, unsigned int num_libs, aclBinary **libs, aclType link_mode, const char *options, aclLogFunction link_callback);
-typedef const char*       (*t_aclGetCompilerLog)(aclCompiler *cl);
-typedef const void*       (*t_aclRetrieveType)(aclCompiler *cl, const aclBinary *bin, const char *name, size_t *data_size, aclType type, acl_error *error_code);
-typedef acl_error         (*t_aclSetType)(aclCompiler *cl, aclBinary *bin, const char *name, aclType type, const void *data, size_t size);
-typedef acl_error         (*t_aclConvertType)(aclCompiler *cl, aclBinary *bin, const char *name, aclType type);
-typedef acl_error         (*t_aclDisassemble)(aclCompiler *cl, aclBinary *bin, const char *kernel, aclLogFunction disasm_callback);
-typedef const void*       (*t_aclGetDeviceBinary)(aclCompiler *cl, const aclBinary *bin, const char *kernel, size_t *size, acl_error *error_code);
-typedef bool              (*t_aclValidateBinaryImage)(const void* binary, size_t length, unsigned type);
-typedef aclJITObjectImage (*t_aclJITObjectImageCreate)(aclCompiler *cl, const void* buffer, size_t length, aclBinary* bin, acl_error* error_code);
-typedef aclJITObjectImage (*t_aclJITObjectImageCopy)(aclCompiler *cl, const void* buffer, size_t length, acl_error* error_code);
-typedef acl_error         (*t_aclJITObjectImageDestroy)(aclCompiler *cl, aclJITObjectImage buffer);
-typedef acl_error         (*t_aclJITObjectImageFinalize)(aclCompiler *cl, aclJITObjectImage image);
-typedef size_t            (*t_aclJITObjectImageSize)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
-typedef const char*       (*t_aclJITObjectImageData)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
-typedef size_t            (*t_aclJITObjectImageGetGlobalsSize)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
-typedef acl_error         (*t_aclJITObjectImageIterateSymbols)(aclCompiler *cl, aclJITObjectImage image, aclJITSymbolCallback callback, void* data);
-typedef void              (*t_aclDumpBinary)(const aclBinary *bin);
-typedef void              (*t_aclGetKstatsSI)(const void* shader, aclKernelStats &kstats);
-typedef acl_error         (*t_aclInsertKernelStatistics)(aclCompiler *cl, aclBinary *bin);
-typedef acl_error         (*t_aclFreeMem)(aclBinary *bin, void *mem);
+typedef aclCompiler*      (ACL_API_ENTRY *t_aclCompilerInit)(aclCompilerOptions* opts, acl_error* error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclCompilerFini)(aclCompiler* cl);
+typedef aclCLVersion      (ACL_API_ENTRY *t_aclCompilerVersion)(aclCompiler* cl, acl_error* error_code);
+typedef uint32_t          (ACL_API_ENTRY *t_aclVersionSize)(aclCLVersion num, acl_error* error_code);
+typedef const char*       (ACL_API_ENTRY *t_aclGetErrorString)(acl_error error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclGetArchInfo)(const char** arch_names, size_t* arch_size);
+typedef acl_error         (ACL_API_ENTRY *t_aclGetDeviceInfo)(const char* arch, const char **names, size_t *device_size);
+typedef aclTargetInfo     (ACL_API_ENTRY *t_aclGetTargetInfo)(const char *arch, const char *device, acl_error *error_code);
+typedef aclTargetInfo     (ACL_API_ENTRY *t_aclGetTargetInfoFromChipID)(const char *arch, const uint32_t chip_id, acl_error *error_code);
+typedef const char*       (ACL_API_ENTRY *t_aclGetArchitecture)(const aclTargetInfo &target);
+typedef const uint64_t    (ACL_API_ENTRY *t_aclGetChipOptions)(const aclTargetInfo &target);
+typedef const char*       (ACL_API_ENTRY *t_aclGetFamily)(const aclTargetInfo &target);
+typedef const char*       (ACL_API_ENTRY *t_aclGetChip)(const aclTargetInfo &target);
+typedef aclBinary*        (ACL_API_ENTRY *t_aclBinaryInit)(size_t struct_version, const aclTargetInfo *target, const aclBinaryOptions *options, acl_error *error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclBinaryFini)(aclBinary *bin);
+typedef aclBinary*        (ACL_API_ENTRY *t_aclReadFromFile)(const char *str, acl_error *error_code);
+typedef aclBinary*        (ACL_API_ENTRY *t_aclReadFromMem)(const void *mem, size_t size, acl_error *error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclWriteToFile)(aclBinary *bin, const char *str);
+typedef acl_error         (ACL_API_ENTRY *t_aclWriteToMem)(aclBinary *bin, void **mem, size_t *size);
+typedef aclBinary*        (ACL_API_ENTRY *t_aclCreateFromBinary)(const aclBinary *binary, aclBIFVersion version);
+typedef aclBIFVersion     (ACL_API_ENTRY *t_aclBinaryVersion)(const aclBinary *binary);
+typedef acl_error         (ACL_API_ENTRY *t_aclInsertSection)(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id);
+typedef acl_error         (ACL_API_ENTRY *t_aclInsertSymbol)(aclCompiler *cl, aclBinary *binary, const void *data, size_t data_size, aclSections id, const char *symbol);
+typedef const void*       (ACL_API_ENTRY *t_aclExtractSection)(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, acl_error *error_code);
+typedef const void*       (ACL_API_ENTRY *t_aclExtractSymbol)(aclCompiler *cl, const aclBinary *binary, size_t *size, aclSections id, const char *symbol, acl_error *error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclRemoveSection)(aclCompiler *cl, aclBinary *binary, aclSections id);
+typedef acl_error         (ACL_API_ENTRY *t_aclRemoveSymbol)(aclCompiler *cl, aclBinary *binary, aclSections id, const char *symbol);
+typedef acl_error         (ACL_API_ENTRY *t_aclQueryInfo)(aclCompiler *cl, const aclBinary *binary, aclQueryType query, const char *kernel, void *data_ptr, size_t *ptr_size);
+typedef acl_error         (ACL_API_ENTRY *t_aclDbgAddArgument)(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name, bool byVal);
+typedef acl_error         (ACL_API_ENTRY *t_aclDbgRemoveArgument)(aclCompiler *cl, aclBinary *binary, const char* kernel, const char* name);
+typedef acl_error         (ACL_API_ENTRY *t_aclCompile)(aclCompiler *cl, aclBinary *bin, const char *options, aclType from, aclType to, aclLogFunction compile_callback);
+typedef acl_error         (ACL_API_ENTRY *t_aclLink)(aclCompiler *cl, aclBinary *src_bin, unsigned int num_libs, aclBinary **libs, aclType link_mode, const char *options, aclLogFunction link_callback);
+typedef const char*       (ACL_API_ENTRY *t_aclGetCompilerLog)(aclCompiler *cl);
+typedef const void*       (ACL_API_ENTRY *t_aclRetrieveType)(aclCompiler *cl, const aclBinary *bin, const char *name, size_t *data_size, aclType type, acl_error *error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclSetType)(aclCompiler *cl, aclBinary *bin, const char *name, aclType type, const void *data, size_t size);
+typedef acl_error         (ACL_API_ENTRY *t_aclConvertType)(aclCompiler *cl, aclBinary *bin, const char *name, aclType type);
+typedef acl_error         (ACL_API_ENTRY *t_aclDisassemble)(aclCompiler *cl, aclBinary *bin, const char *kernel, aclLogFunction disasm_callback);
+typedef const void*       (ACL_API_ENTRY *t_aclGetDeviceBinary)(aclCompiler *cl, const aclBinary *bin, const char *kernel, size_t *size, acl_error *error_code);
+typedef bool              (ACL_API_ENTRY *t_aclValidateBinaryImage)(const void* binary, size_t length, unsigned type);
+typedef aclJITObjectImage (ACL_API_ENTRY *t_aclJITObjectImageCreate)(aclCompiler *cl, const void* buffer, size_t length, aclBinary* bin, acl_error* error_code);
+typedef aclJITObjectImage (ACL_API_ENTRY *t_aclJITObjectImageCopy)(aclCompiler *cl, const void* buffer, size_t length, acl_error* error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclJITObjectImageDestroy)(aclCompiler *cl, aclJITObjectImage buffer);
+typedef acl_error         (ACL_API_ENTRY *t_aclJITObjectImageFinalize)(aclCompiler *cl, aclJITObjectImage image);
+typedef size_t            (ACL_API_ENTRY *t_aclJITObjectImageSize)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
+typedef const char*       (ACL_API_ENTRY *t_aclJITObjectImageData)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
+typedef size_t            (ACL_API_ENTRY *t_aclJITObjectImageGetGlobalsSize)(aclCompiler *cl, aclJITObjectImage image, acl_error* error_code);
+typedef acl_error         (ACL_API_ENTRY *t_aclJITObjectImageIterateSymbols)(aclCompiler *cl, aclJITObjectImage image, aclJITSymbolCallback callback, void* data);
+typedef void              (ACL_API_ENTRY *t_aclDumpBinary)(const aclBinary *bin);
+typedef void              (ACL_API_ENTRY *t_aclGetKstatsSI)(const void* shader, aclKernelStats &kstats);
+typedef acl_error         (ACL_API_ENTRY *t_aclInsertKernelStatistics)(aclCompiler *cl, aclBinary *bin);
+typedef acl_error         (ACL_API_ENTRY *t_aclFreeMem)(aclBinary *bin, void *mem);
 
 struct HsailEntryPoints {
   void* handle;
