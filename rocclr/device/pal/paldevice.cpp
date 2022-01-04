@@ -2355,7 +2355,7 @@ bool Device::createBlitProgram() {
   std::string extraBlits;
   std::string ocl20;
   if (amd::IS_HIP) {
-    if (info().cooperativeGroups_) { 
+    if (info().cooperativeGroups_) {
       extraBlits = GwsInitSourceCode;
     }
   }
@@ -2369,9 +2369,6 @@ bool Device::createBlitProgram() {
         extraBlits.append(SchedulerSourceCode);
       }
       ocl20 = "-cl-std=CL2.0";
-    }
-    else {
-      extraBlits = SchedulerSourceCode;
     }
   }
 
