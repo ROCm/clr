@@ -474,6 +474,8 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
             return hipErrorSharedObjectInitFailed;
         case cudaErrorOperatingSystem:
             return hipErrorOperatingSystem;
+        case cudaErrorIllegalState:
+            return hipErrorIllegalState;
         case cudaErrorSetOnActiveProcess:
             return hipErrorSetOnActiveProcess;
         case cudaErrorIllegalAddress:
@@ -502,6 +504,8 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
             return hipErrorInvalidDevice;
         case cudaErrorInvalidValue:
             return hipErrorInvalidValue;
+        case cudaErrorInvalidPitchValue:
+            return hipErrorInvalidPitchValue;
         case cudaErrorInvalidDevicePointer:
             return hipErrorInvalidDevicePointer;
         case cudaErrorInvalidMemcpyDirection:
@@ -516,6 +520,8 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
             return hipErrorPeerAccessAlreadyEnabled;
         case cudaErrorPeerAccessNotEnabled:
             return hipErrorPeerAccessNotEnabled;
+        case cudaErrorContextIsDestroyed:
+            return hipErrorContextIsDestroyed;
         case cudaErrorHostMemoryAlreadyRegistered:
             return hipErrorHostMemoryAlreadyRegistered;
         case cudaErrorHostMemoryNotRegistered:
@@ -566,6 +572,26 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
         case cudaErrorDeviceUninitialized:
             return hipErrorInvalidContext;
 #endif
+        case cudaErrorStreamCaptureUnsupported:
+            return hipErrorStreamCaptureUnsupported;
+        case cudaErrorStreamCaptureInvalidated:
+            return hipErrorStreamCaptureInvalidated;
+        case cudaErrorStreamCaptureMerge:
+            return hipErrorStreamCaptureMerge;
+        case cudaErrorStreamCaptureUnmatched:
+            return hipErrorStreamCaptureUnmatched;
+        case cudaErrorStreamCaptureUnjoined:
+            return hipErrorStreamCaptureUnjoined;
+        case cudaErrorStreamCaptureIsolation:
+            return hipErrorStreamCaptureIsolation;
+        case cudaErrorStreamCaptureImplicit:
+            return hipErrorStreamCaptureImplicit;
+        case cudaErrorCapturedEvent:
+            return hipErrorCapturedEvent;
+        case cudaErrorStreamCaptureWrongThread:
+            return hipErrorStreamCaptureWrongThread;
+        case cudaErrorGraphExecUpdateFailure:
+            return hipErrorGraphExecUpdateFailure;
         case cudaErrorUnknown:
         default:
             return hipErrorUnknown;  // Note - translated error.
@@ -644,6 +670,8 @@ inline static hipError_t hipCUResultTohipError(CUresult cuError) {
             return hipErrorSharedObjectInitFailed;
         case CUDA_ERROR_OPERATING_SYSTEM:
             return hipErrorOperatingSystem;
+        case CUDA_ERROR_ILLEGAL_STATE:
+            return hipErrorIllegalState;
         case CUDA_ERROR_NOT_FOUND:
             return hipErrorNotFound;
         case CUDA_ERROR_NOT_READY:
@@ -660,6 +688,8 @@ inline static hipError_t hipCUResultTohipError(CUresult cuError) {
             return hipErrorPeerAccessNotEnabled;
         case CUDA_ERROR_PRIMARY_CONTEXT_ACTIVE:
             return hipErrorSetOnActiveProcess;
+        case CUDA_ERROR_CONTEXT_IS_DESTROYED:
+            return hipErrorContextIsDestroyed;
         case CUDA_ERROR_ASSERT:
             return hipErrorAssert;
         case CUDA_ERROR_HOST_MEMORY_ALREADY_REGISTERED:
@@ -672,6 +702,26 @@ inline static hipError_t hipCUResultTohipError(CUresult cuError) {
             return hipErrorCooperativeLaunchTooLarge;
         case CUDA_ERROR_NOT_SUPPORTED:
             return hipErrorNotSupported;
+        case CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED:
+            return hipErrorStreamCaptureUnsupported;
+        case CUDA_ERROR_STREAM_CAPTURE_INVALIDATED:
+            return hipErrorStreamCaptureInvalidated;
+        case CUDA_ERROR_STREAM_CAPTURE_MERGE:
+            return hipErrorStreamCaptureMerge;
+        case CUDA_ERROR_STREAM_CAPTURE_UNMATCHED:
+            return hipErrorStreamCaptureUnmatched;
+        case CUDA_ERROR_STREAM_CAPTURE_UNJOINED:
+            return hipErrorStreamCaptureUnjoined;
+        case CUDA_ERROR_STREAM_CAPTURE_ISOLATION:
+            return hipErrorStreamCaptureIsolation;
+        case CUDA_ERROR_STREAM_CAPTURE_IMPLICIT:
+            return hipErrorStreamCaptureImplicit;
+        case CUDA_ERROR_CAPTURED_EVENT:
+            return hipErrorCapturedEvent;
+        case CUDA_ERROR_STREAM_CAPTURE_WRONG_THREAD:
+            return hipErrorStreamCaptureWrongThread;
+        case CUDA_ERROR_GRAPH_EXEC_UPDATE_FAILURE:
+            return hipErrorGraphExecUpdateFailure;
         case CUDA_ERROR_UNKNOWN:
         default:
             return hipErrorUnknown;  // Note - translated error.
@@ -698,6 +748,8 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
             return cudaErrorLaunchOutOfResources;
         case hipErrorInvalidValue:
             return cudaErrorInvalidValue;
+        case hipErrorInvalidPitchValue:
+            return cudaErrorInvalidPitchValue;
         case hipErrorInvalidHandle:
             return cudaErrorInvalidResourceHandle;
         case hipErrorInvalidDevice:
@@ -812,6 +864,8 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
             return cudaErrorSharedObjectInitFailed;
         case hipErrorOperatingSystem:
             return cudaErrorOperatingSystem;
+        case hipErrorIllegalState:
+            return cudaErrorIllegalState;
         case hipErrorNotFound:
 #if CUDA_VERSION >= 10010
             return cudaErrorSymbolNotFound;
@@ -824,10 +878,34 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
             return cudaErrorLaunchTimeout;
         case hipErrorSetOnActiveProcess:
             return cudaErrorSetOnActiveProcess;
+        case hipErrorContextIsDestroyed:
+            return cudaErrorContextIsDestroyed;
+        case hipErrorAssert:
+            return cudaErrorAssert;
         case hipErrorLaunchFailure:
             return cudaErrorLaunchFailure;
         case hipErrorCooperativeLaunchTooLarge:
             return cudaErrorCooperativeLaunchTooLarge;
+        case hipErrorStreamCaptureUnsupported:
+            return cudaErrorStreamCaptureUnsupported;
+        case hipErrorStreamCaptureInvalidated:
+            return cudaErrorStreamCaptureInvalidated;
+        case hipErrorStreamCaptureMerge:
+            return cudaErrorStreamCaptureMerge;
+        case hipErrorStreamCaptureUnmatched:
+            return cudaErrorStreamCaptureUnmatched;
+        case hipErrorStreamCaptureUnjoined:
+            return cudaErrorStreamCaptureUnjoined;
+        case hipErrorStreamCaptureIsolation:
+            return cudaErrorStreamCaptureIsolation;
+        case hipErrorStreamCaptureImplicit:
+            return cudaErrorStreamCaptureImplicit;
+        case hipErrorCapturedEvent:
+            return cudaErrorCapturedEvent;
+        case hipErrorStreamCaptureWrongThread:
+            return cudaErrorStreamCaptureWrongThread;
+        case hipErrorGraphExecUpdateFailure:
+            return cudaErrorGraphExecUpdateFailure;
         case hipErrorNotSupported:
             return cudaErrorNotSupported;
         // HSA: does not exist in CUDA

@@ -128,6 +128,8 @@ const char *ihipGetErrorName(hipError_t hip_error)
         return "hipErrorOperatingSystem";
     case hipErrorInvalidHandle:
         return "hipErrorInvalidHandle";
+    case hipErrorIllegalState:
+        return "hipErrorIllegalState";
     case hipErrorNotFound:
         return "hipErrorNotFound";
     case hipErrorNotReady:
@@ -144,6 +146,8 @@ const char *ihipGetErrorName(hipError_t hip_error)
         return "hipErrorPeerAccessNotEnabled";
     case hipErrorSetOnActiveProcess:
         return "hipErrorSetOnActiveProcess";
+    case hipErrorContextIsDestroyed:
+        return "hipErrorContextIsDestroyed";
     case hipErrorAssert:
         return "hipErrorAssert";
     case hipErrorHostMemoryAlreadyRegistered:
@@ -162,6 +166,26 @@ const char *ihipGetErrorName(hipError_t hip_error)
         return "hipErrorRuntimeOther";
     case hipErrorCooperativeLaunchTooLarge:
         return "hipErrorCooperativeLaunchTooLarge";
+    case hipErrorStreamCaptureUnsupported:
+        return "hipErrorStreamCaptureUnsupported";
+    case hipErrorStreamCaptureInvalidated:
+        return "hipErrorStreamCaptureInvalidated";
+    case hipErrorStreamCaptureMerge:
+        return "hipErrorStreamCaptureMerge";
+    case hipErrorStreamCaptureUnmatched:
+        return "hipErrorStreamCaptureUnmatched";
+    case hipErrorStreamCaptureUnjoined:
+        return "hipErrorStreamCaptureUnjoined";
+    case hipErrorStreamCaptureIsolation:
+        return "hipErrorStreamCaptureIsolation";
+    case hipErrorStreamCaptureImplicit:
+        return "hipErrorStreamCaptureImplicit";
+    case hipErrorCapturedEvent:
+        return "hipErrorCapturedEvent";
+    case hipErrorStreamCaptureWrongThread:
+        return "hipErrorStreamCaptureWrongThread";
+    case hipErrorGraphExecUpdateFailure:
+        return "hipErrorGraphExecUpdateFailure";
     case hipErrorTbd:
         return "hipErrorTbd";
     default:
