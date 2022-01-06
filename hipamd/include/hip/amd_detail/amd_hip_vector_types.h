@@ -1435,9 +1435,8 @@ typedef union {
     char x;
     char y;
     char z;
-    char w;
   };
-  char4 data;
+  char data[3];
 } char3;
 typedef union {
   __m64 data;
@@ -1473,9 +1472,8 @@ typedef union {
     unsigned char x;
     unsigned char y;
     unsigned char z;
-    unsigned char w;
   };
-  uchar4 data;
+  unsigned char data[3];
 } uchar3;
 typedef union {
   __m64 data;
@@ -1511,9 +1509,8 @@ typedef union {
     short x;
     short y;
     short z;
-    short w;
   };
-  short4 data;
+  short data[3];
 } short3;
 typedef union {
   __m128i data;
@@ -1549,9 +1546,8 @@ typedef union {
     unsigned short x;
     unsigned short y;
     unsigned short z;
-    unsigned short w;
   };
-  ushort4 data;
+  unsigned short data[3];
 } ushort3;
 typedef union {
   __m128i data;
@@ -1587,9 +1583,8 @@ typedef union {
     int x;
     int y;
     int z;
-    int w;
   };
-  int4 data;
+  int data[3];
 } int3;
 typedef union {
   __m128i data[2];
@@ -1625,9 +1620,8 @@ typedef union {
     unsigned int x;
     unsigned int y;
     unsigned int z;
-    unsigned int w;
   };
-  uint4 data;
+  unsigned int data[3];
 } uint3;
 typedef union {
   __m128i data[2];
@@ -1636,7 +1630,6 @@ typedef union {
   __m128i data[4];
 } uint16;
 
-#if !defined(_WIN64)
 typedef union {
   struct {
     int x;
@@ -1664,9 +1657,8 @@ typedef union {
     int x;
     int y;
     int z;
-    int w;
   };
-  long4 data;
+  int data[3];
 } long3;
 typedef union {
   __m128i data[2];
@@ -1702,9 +1694,8 @@ typedef union {
     unsigned int x;
     unsigned int y;
     unsigned int z;
-    unsigned int w;
   };
-  ulong4 data;
+  unsigned int data[3];
 } ulong3;
 typedef union {
   __m128i data[2];
@@ -1712,83 +1703,6 @@ typedef union {
 typedef union {
   __m128i data[4];
 } ulong16;
-#else   // defined(_WIN64)
-typedef union {
-  struct {
-    __m64 x;
-  };
-  __m64 data;
-} long1;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-  };
-  __m128i data;
-} long2;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-    __m64 z;
-    __m64 w;
-  };
-  __m128i data[2];
-} long4;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-    __m64 z;
-    __m64 w;
-  };
-  long4 data;
-} long3;
-typedef union {
-  __m128i data[4];
-} long8;
-typedef union {
-  __m128i data[8];
-} long16;
-
-typedef union {
-  struct {
-    __m64 x;
-  };
-  __m64 data;
-} ulong1;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-  };
-  __m128i data;
-} ulong2;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-    __m64 z;
-    __m64 w;
-  };
-  __m128i data[2];
-} ulong4;
-typedef union {
-  struct {
-    __m64 x;
-    __m64 y;
-    __m64 z;
-    __m64 w;
-  };
-  ulong4 data;
-} ulong3;
-typedef union {
-  __m128i data[4];
-} ulong8;
-typedef union {
-  __m128i data[8];
-} ulong16;
-#endif  // defined(_WIN64)
 
 typedef union {
   struct {
@@ -1817,9 +1731,8 @@ typedef union {
     long long x;
     long long y;
     long long z;
-    long long w;
   };
-  longlong4 data;
+  __m64 data[3];
 } longlong3;
 typedef union {
   __m128i data[4];
@@ -1855,9 +1768,8 @@ typedef union {
     __m64 x;
     __m64 y;
     __m64 z;
-    __m64 w;
   };
-  ulonglong4 data;
+  __m64 data[3];
 } ulonglong3;
 typedef union {
   __m128i data[4];
@@ -1893,9 +1805,8 @@ typedef union {
     float x;
     float y;
     float z;
-    float w;
   };
-  float4 data;
+  float data[3];
 } float3;
 typedef union {
   __m256 data;
@@ -1931,9 +1842,8 @@ typedef union {
     double x;
     double y;
     double z;
-    double w;
   };
-  double4 data;
+  double data[3];
 } double3;
 typedef union {
   __m256d data[2];
@@ -1944,6 +1854,10 @@ typedef union {
 
 #else  // !defined(_MSC_VER)
 
+/*
+this is for compatibility with CUDA as CUDA allows accessing vector components
+in C++ program with MSVC
+*/
 typedef union {
   struct {
     char x;
@@ -1977,9 +1891,8 @@ typedef union {
     char x;
     char y;
     char z;
-    char w;
   };
-  char4 data;
+  char data[3];
 } char3;
 
 typedef union {
@@ -2015,9 +1928,8 @@ typedef union {
     unsigned char x;
     unsigned char y;
     unsigned char z;
-    unsigned char w;
   };
-  uchar4 data;
+  unsigned char data[3];
 } uchar3;
 
 typedef union {
@@ -2053,9 +1965,8 @@ typedef union {
     short x;
     short y;
     short z;
-    short w;
   };
-  short4 data;
+  short data[3];
 } short3;
 
 typedef union {
@@ -2091,9 +2002,8 @@ typedef union {
     unsigned short x;
     unsigned short y;
     unsigned short z;
-    unsigned short w;
   };
-  ushort4 data;
+  unsigned short data[3];
 } ushort3;
 
 typedef union {
@@ -2129,9 +2039,8 @@ typedef union {
     int x;
     int y;
     int z;
-    int w;
   };
-  int4 data;
+  int data[3];
 } int3;
 
 typedef union {
@@ -2167,9 +2076,8 @@ typedef union {
     unsigned int x;
     unsigned int y;
     unsigned int z;
-    unsigned int w;
   };
-  uint4 data;
+  unsigned int data[3];
 } uint3;
 
 typedef union {
@@ -2205,9 +2113,8 @@ typedef union {
     long x;
     long y;
     long z;
-    long w;
   };
-  long4 data;
+  long data[3];
 } long3;
 
 typedef union {
@@ -2243,9 +2150,8 @@ typedef union {
     unsigned long x;
     unsigned long y;
     unsigned long z;
-    unsigned long w;
   };
-  ulong4 data;
+  unsigned long data[3];
 } ulong3;
 
 typedef union {
@@ -2281,9 +2187,8 @@ typedef union {
     long long x;
     long long y;
     long long z;
-    long long w;
   };
-  longlong4 data;
+  long long data[3];
 } longlong3;
 
 typedef union {
@@ -2319,9 +2224,8 @@ typedef union {
     unsigned long long x;
     unsigned long long y;
     unsigned long long z;
-    unsigned long long w;
   };
-  ulonglong4 data;
+  unsigned long long data[3];
 } ulonglong3;
 
 typedef union {
@@ -2357,9 +2261,8 @@ typedef union {
     float x;
     float y;
     float z;
-    float w;
   };
-  float4 data;
+  float data[3];
 } float3;
 
 typedef union {
@@ -2395,9 +2298,8 @@ typedef union {
     double x;
     double y;
     double z;
-    double w;
   };
-  double4 data;
+  double data[3];
 } double3;
 
 #endif // defined(_MSC_VER)
