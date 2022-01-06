@@ -2316,6 +2316,11 @@ inline static hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGrap
         cudaGraphInstantiate(pGraphExec, graph, pErrorNode, pLogBuffer, bufferSize));
 }
 
+inline static hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                                      unsigned long long flags) {
+    return hipCUDAErrorTohipError(cudaGraphInstantiateWithFlags(pGraphExec, graph, flags));
+}
+
 inline static hipError_t hipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
     return hipCUDAErrorTohipError(cudaGraphLaunch(graphExec, stream));
 }
