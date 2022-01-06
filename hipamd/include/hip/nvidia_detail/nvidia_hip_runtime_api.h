@@ -2542,7 +2542,8 @@ inline static hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream,
                                                             hipGraphNode_t* dependencies,
                                                             size_t numDependencies,
                                                             unsigned int flags __dparm(0)) {
-    return hipCUDAErrorTohipError(cudaStreamUpdateCaptureDependencies(stream, dependencies, flags));
+    return hipCUDAErrorTohipError(cudaStreamUpdateCaptureDependencies(stream, dependencies,
+                                                                      numDependencies, flags));
 }
 
 inline static hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
