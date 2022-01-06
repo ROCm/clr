@@ -95,6 +95,10 @@ else()
   target_compile_definitions(rocclr PUBLIC ATI_OS_LINUX)
 endif()
 
+if(NOT CMAKE_CL_64)
+  target_compile_definitions(rocclr PUBLIC ATI_BITS_32)
+endif()
+
 target_compile_definitions(rocclr PUBLIC
   ATI_ARCH_X86
   LITTLEENDIAN_CPU
