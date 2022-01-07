@@ -518,6 +518,10 @@ hipError_t hipLaunchCooperativeKernel(const void* f,
   HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
                sharedMemBytes, hStream);
 
+  if (!hip::isValid(hStream)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   hipFunction_t func = nullptr;
   int deviceId = hip::Stream::DeviceId(hStream);
   HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&func, f, deviceId));
