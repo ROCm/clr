@@ -169,7 +169,7 @@ int Stream::DeviceId(const hipStream_t hStream) {
     //return invalid device id
     return -1;
   }
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(inputStream);
   int deviceId = (s != nullptr)? s->DeviceId() : ihipGetDevice();
   assert(deviceId >= 0 && deviceId < static_cast<int>(g_devices.size()));
   return deviceId;
