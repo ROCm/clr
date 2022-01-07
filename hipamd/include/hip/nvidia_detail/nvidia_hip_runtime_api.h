@@ -29,6 +29,12 @@ THE SOFTWARE.
 #include <cuda_fp16.h>
 #include <stdio.h>
 
+#define CUDA_9000 9000
+#define CUDA_10010 10010
+#define CUDA_10020 10020
+#define CUDA_11010 11010
+#define CUDA_11030 11030
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -441,12 +447,12 @@ typedef struct cudaResourceViewDesc hipResourceViewDesc;
 #define HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS      CU_POINTER_ATTRIBUTE_ACCESS_FLAGS
 #define HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE    CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE
 
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= CUDA_9000
 #define __shfl(...)      __shfl_sync(0xffffffff, __VA_ARGS__)
 #define __shfl_up(...)   __shfl_up_sync(0xffffffff, __VA_ARGS__)
 #define __shfl_down(...) __shfl_down_sync(0xffffffff, __VA_ARGS__)
 #define __shfl_xor(...)  __shfl_xor_sync(0xffffffff, __VA_ARGS__)
-#endif // CUDA_VERSION >= 9000
+#endif // CUDA_VERSION >= CUDA_9000
 
 inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
     switch (cuError) {
@@ -548,7 +554,7 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
             return hipErrorInvalidKernelFile;
         case cudaErrorLaunchTimeout:
             return hipErrorLaunchTimeOut;
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
         case cudaErrorInvalidSource:
             return hipErrorInvalidSource;
         case cudaErrorFileNotFound:
@@ -568,7 +574,7 @@ inline static hipError_t hipCUDAErrorTohipError(cudaError_t cuError) {
         case cudaErrorAlreadyMapped:
             return hipErrorAlreadyMapped;
 #endif
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= CUDA_10020
         case cudaErrorDeviceUninitialized:
             return hipErrorInvalidContext;
 #endif
@@ -787,7 +793,7 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
         case hipErrorInvalidImage:
             return cudaErrorInvalidKernelImage;
         case hipErrorInvalidContext:
-#if CUDA_VERSION >= 10020
+#if CUDA_VERSION >= CUDA_10020
             return cudaErrorDeviceUninitialized;
 #else
             return cudaErrorUnknown;
@@ -797,13 +803,13 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
         case hipErrorUnmapFailed:
             return cudaErrorUnmapBufferObjectFailed;
         case hipErrorArrayIsMapped:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorArrayIsMapped;
 #else
             return cudaErrorUnknown;
 #endif
         case hipErrorAlreadyMapped:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorAlreadyMapped;
 #else
             return cudaErrorUnknown;
@@ -811,25 +817,25 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
         case hipErrorNoBinaryForGpu:
             return cudaErrorNoKernelImageForDevice;
         case hipErrorAlreadyAcquired:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorAlreadyAcquired;
 #else
             return cudaErrorUnknown;
 #endif
         case hipErrorNotMapped:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorNotMapped;
 #else
             return cudaErrorUnknown;
 #endif
         case hipErrorNotMappedAsArray:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorNotMappedAsArray;
 #else
             return cudaErrorUnknown;
 #endif
         case hipErrorNotMappedAsPointer:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorNotMappedAsPointer;
 #else
             return cudaErrorUnknown;
@@ -847,13 +853,13 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
         case hipErrorInvalidGraphicsContext:
             return cudaErrorInvalidGraphicsContext;
         case hipErrorInvalidSource:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorInvalidSource;
 #else
             return cudaErrorUnknown;
 #endif
         case hipErrorFileNotFound:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorFileNotFound;
 #else
             return cudaErrorUnknown;
@@ -867,7 +873,7 @@ inline static cudaError_t hipErrorToCudaError(hipError_t hError) {
         case hipErrorIllegalState:
             return cudaErrorIllegalState;
         case hipErrorNotFound:
-#if CUDA_VERSION >= 10010
+#if CUDA_VERSION >= CUDA_10010
             return cudaErrorSymbolNotFound;
 #else
             return cudaErrorUnknown;
@@ -1073,9 +1079,11 @@ typedef enum cudaStreamCaptureStatus hipStreamCaptureStatus;
 #define hipStreamCaptureStatusActive cudaStreamCaptureStatusActive
 #define hipStreamCaptureStatusInvalidated cudaStreamCaptureStatusInvalidated
 
+#if CUDA_VERSION >= CUDA_11030
 typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDependenciesFlags;
 #define hipStreamAddCaptureDependencies cudaStreamAddCaptureDependencies
 #define hipStreamSetCaptureDependencies cudaStreamSetCaptureDependencies
+#endif
 
 /**
  * Stream CallBack struct
@@ -2419,12 +2427,14 @@ inline static hipError_t hipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGr
         cudaGraphAddMemcpyNode(pGraphNode, graph, pDependencies, numDependencies, pCopyParams));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                    const hipGraphNode_t* pDependencies, size_t numDependencies,
                                    void* dst, const void* src, size_t count, hipMemcpyKind kind) {
     return hipCUDAErrorTohipError(
         cudaGraphAddMemcpyNode1D(pGraphNode, graph, pDependencies, numDependencies, dst, src, count, kind));
 }
+#endif
 
 inline static hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                                const hipGraphNode_t* pDependencies,
@@ -2590,12 +2600,14 @@ inline static hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hip
     return hipCUDAErrorTohipError(cudaGraphChildGraphNodeGetGraph(node, pGraph));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec,
                                                              hipGraphNode_t node,
                                                              hipGraph_t childGraph) {
     return hipCUDAErrorTohipError(
         cudaGraphExecChildGraphNodeSetParams(hGraphExec, node, childGraph));
 }
+#endif
 
 inline static hipError_t hipStreamGetCaptureInfo(hipStream_t stream,
                                                  hipStreamCaptureStatus* pCaptureStatus,
@@ -2603,6 +2615,7 @@ inline static hipError_t hipStreamGetCaptureInfo(hipStream_t stream,
     return hipCUDAErrorTohipError(cudaStreamGetCaptureInfo(stream, pCaptureStatus, pId));
 }
 
+#if CUDA_VERSION >= CUDA_11030
 inline static hipError_t hipStreamGetCaptureInfo_v2(
     hipStream_t stream, hipStreamCaptureStatus* captureStatus_out,
     unsigned long long* id_out __dparm(0), hipGraph_t* graph_out __dparm(0),
@@ -2610,12 +2623,14 @@ inline static hipError_t hipStreamGetCaptureInfo_v2(
     return hipCUDAErrorTohipError(cudaStreamGetCaptureInfo_v2(
         stream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out));
 }
+#endif
 
 inline static hipError_t hipStreamIsCapturing(hipStream_t stream,
                                               hipStreamCaptureStatus* pCaptureStatus) {
     return hipCUDAErrorTohipError(cudaStreamIsCapturing(stream, pCaptureStatus));
 }
 
+#if CUDA_VERSION >= CUDA_11030
 inline static hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream,
                                                             hipGraphNode_t* dependencies,
                                                             size_t numDependencies,
@@ -2623,7 +2638,9 @@ inline static hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream,
     return hipCUDAErrorTohipError(cudaStreamUpdateCaptureDependencies(stream, dependencies,
                                                                       numDependencies, flags));
 }
+#endif
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                                     const hipGraphNode_t* pDependencies,
                                                     size_t numDependencies, hipEvent_t event) {
@@ -2637,6 +2654,7 @@ inline static hipError_t hipGraphAddEventWaitNode(hipGraphNode_t* pGraphNode, hi
     return hipCUDAErrorTohipError(
         cudaGraphAddEventWaitNode(pGraphNode, graph, pDependencies, numDependencies, event));
 }
+#endif
 
 inline static hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                              const hipGraphNode_t* pDependencies,
@@ -2646,6 +2664,7 @@ inline static hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGrap
         cudaGraphAddHostNode(pGraphNode, graph, pDependencies, numDependencies, pNodeParams));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode,
                                                          hipGraph_t graph,
                                                          const hipGraphNode_t* pDependencies,
@@ -2676,6 +2695,7 @@ inline static hipError_t hipGraphEventWaitNodeGetEvent(hipGraphNode_t node, hipE
 inline static hipError_t hipGraphEventWaitNodeSetEvent(hipGraphNode_t node, hipEvent_t event) {
     return hipCUDAErrorTohipError(cudaGraphEventWaitNodeSetEvent(node, event));
 }
+#endif
 
 inline static hipError_t hipGraphExecHostNodeSetParams(hipGraphExec_t hGraphExec,
                                                        hipGraphNode_t node,
@@ -2689,6 +2709,7 @@ inline static hipError_t hipGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphEx
     return hipCUDAErrorTohipError(cudaGraphExecMemcpyNodeSetParams(hGraphExec, node, pNodeParams));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphExecMemcpyNodeSetParams1D(hipGraphExec_t hGraphExec,
                                                            hipGraphNode_t node, void* dst,
                                                            const void* src, size_t count,
@@ -2712,6 +2733,7 @@ inline static hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(
     return hipCUDAErrorTohipError(cudaGraphExecMemcpyNodeSetParamsToSymbol(
         hGraphExec, node, symbol, src, count, offset, kind));
 }
+#endif
 
 inline static hipError_t hipGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec,
                                                          hipGraphNode_t node,
@@ -2726,6 +2748,7 @@ inline static hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_
         cudaGraphExecUpdate(hGraphExec, hGraph, hErrorNode_out, updateResult_out));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphMemcpyNodeSetParamsFromSymbol(hipGraphNode_t node, void* dst,
                                                                const void* symbol, size_t count,
                                                                size_t offset, hipMemcpyKind kind) {
@@ -2745,12 +2768,14 @@ inline static hipError_t hipGraphEventRecordNodeGetEvent(hipGraphNode_t node,
                                                          hipEvent_t* event_out) {
     return hipCUDAErrorTohipError(cudaGraphEventRecordNodeGetEvent(node, event_out));
 }
+#endif
 
 inline static hipError_t hipGraphHostNodeGetParams(hipGraphNode_t node,
                                                    hipHostNodeParams* pNodeParams) {
     return hipCUDAErrorTohipError(cudaGraphHostNodeGetParams(node, pNodeParams));
 }
 
+#if CUDA_VERSION >= CUDA_11010
 inline static hipError_t hipGraphMemcpyNodeSetParams1D(hipGraphNode_t node, void* dst,
                                                        const void* src, size_t count,
                                                        hipMemcpyKind kind) {
@@ -2767,6 +2792,7 @@ inline static hipError_t hipGraphExecEventWaitNodeSetEvent(hipGraphExec_t hGraph
                                                            hipGraphNode_t hNode, hipEvent_t event) {
     return hipCUDAErrorTohipError(cudaGraphExecEventWaitNodeSetEvent(hGraphExec, hNode, event));
 }
+#endif
 
 inline static hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node,
                                                    const hipHostNodeParams* pNodeParams) {
