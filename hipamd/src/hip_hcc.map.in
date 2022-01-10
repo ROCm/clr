@@ -398,6 +398,8 @@ global:
     hipPointerGetAttribute;
     hipDrvPointerGetAttributes;
     hipThreadExchangeStreamCaptureMode;
+    hipGraphKernelNodeSetAttribute;
+    hipGraphKernelNodeGetAttribute;
 local:
     *;
 } hip_4.5;

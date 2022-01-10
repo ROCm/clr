@@ -1131,6 +1131,10 @@ typedef enum cudaStreamCaptureStatus hipStreamCaptureStatus;
 #define hipStreamCaptureStatusActive cudaStreamCaptureStatusActive
 #define hipStreamCaptureStatusInvalidated cudaStreamCaptureStatusInvalidated
 
+typedef union cudaKernelNodeAttrValue hipKernelNodeAttrValue;
+typedef enum  cudaKernelNodeAttrID hipKernelNodeAttrID;
+
+
 #if CUDA_VERSION >= CUDA_11030
 typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDependenciesFlags;
 #define hipStreamAddCaptureDependencies cudaStreamAddCaptureDependencies
@@ -2675,6 +2679,16 @@ inline static hipError_t hipGraphKernelNodeGetParams(hipGraphNode_t node,
 inline static hipError_t hipGraphKernelNodeSetParams(hipGraphNode_t node,
                                                      const hipKernelNodeParams* pNodeParams) {
     return hipCUDAErrorTohipError(cudaGraphKernelNodeSetParams(node, pNodeParams));
+}
+
+inline static hipError_t hipGraphKernelNodeSetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
+                                                        const hipKernelNodeAttrValue* value) {
+    return hipCUDAErrorTohipError(cudaGraphKernelNodeSetAttribute(hNode, attr, value));
+}
+
+inline static hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
+                                                        hipKernelNodeAttrValue* value) {
+    return hipCUDAErrorTohipError(cudaGraphKernelNodeGetAttribute(hNode, attr, value));
 }
 
 inline static hipError_t hipGraphMemcpyNodeGetParams(hipGraphNode_t node,

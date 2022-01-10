@@ -1113,6 +1113,30 @@ hipError_t hipGraphMemcpyNodeGetParams(hipGraphNode_t node, hipMemcpy3DParms* pN
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipGraphKernelNodeSetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
+                                          const hipKernelNodeAttrValue* value) {
+  HIP_INIT_API(hipGraphKernelNodeSetAttribute, hNode, attr, value);
+  if (hNode == nullptr || value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (attr != hipKernelNodeAttributeAccessPolicyWindow && attr != hipKernelNodeAttributeCooperative ) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphKernelNode*>(hNode)->SetAttrParams(attr, value));
+}
+
+hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
+                                          hipKernelNodeAttrValue* value) {
+  HIP_INIT_API(hipGraphKernelNodeGetAttribute, hNode, attr, value);
+  if (hNode == nullptr || value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (attr != hipKernelNodeAttributeAccessPolicyWindow && attr != hipKernelNodeAttributeCooperative ) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphKernelNode*>(hNode)->GetAttrParams(attr, value));
+}
+
 hipError_t hipGraphMemcpyNodeSetParams(hipGraphNode_t node, const hipMemcpy3DParms* pNodeParams) {
   HIP_INIT_API(hipGraphMemcpyNodeSetParams, node, pNodeParams);
   if (node == nullptr || pNodeParams == nullptr) {

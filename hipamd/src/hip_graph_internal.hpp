@@ -60,6 +60,7 @@ struct hipGraphNode {
   struct ihipGraph* parentGraph_;
   static std::unordered_set<hipGraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
+  hipKernelNodeAttrValue kernelAttr_;
 
  public:
   hipGraphNode(hipGraphNodeType type)
@@ -72,6 +73,7 @@ struct hipGraphNode {
         parentGraph_(nullptr) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
+    memset(&kernelAttr_, 0, sizeof(kernelAttr_));
   }
   /// Copy Constructor
   hipGraphNode(const hipGraphNode& node) {
@@ -453,7 +455,6 @@ struct hipChildGraphNode : public hipGraphNode {
 class hipGraphKernelNode : public hipGraphNode {
   hipKernelNodeParams* pKernelParams_;
   hipFunction_t func_;
-
  public:
   static hipError_t getFunc(hipFunction_t* func, const hipKernelNodeParams& params, unsigned int device) {
     hipError_t status = PlatformState::instance().getStatFunc(func, params.func, device);
@@ -514,6 +515,40 @@ class hipGraphKernelNode : public hipGraphNode {
     }
     std::memcpy(pKernelParams_, params, sizeof(hipKernelNodeParams));
     return status;
+  }
+  hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
+    // updates kernel attr params
+    if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
+      if (params->accessPolicyWindow.base_ptr == NULL) {
+        return hipErrorInvalidResourceHandle;
+      }
+      kernelAttr_.accessPolicyWindow.base_ptr = params->accessPolicyWindow.base_ptr;
+      kernelAttr_.accessPolicyWindow.hitProp = params->accessPolicyWindow.hitProp;
+      kernelAttr_.accessPolicyWindow.hitRatio = params->accessPolicyWindow.hitRatio;
+      kernelAttr_.accessPolicyWindow.missProp = params->accessPolicyWindow.missProp;
+      kernelAttr_.accessPolicyWindow.num_bytes = params->accessPolicyWindow.num_bytes;
+    } else if (attr == hipKernelNodeAttributeCooperative)
+    {
+      kernelAttr_.cooperative = params->cooperative;
+    }
+    return hipSuccess;
+  }
+  hipError_t GetAttrParams(hipKernelNodeAttrID attr, hipKernelNodeAttrValue* params) {
+    // Get kernel attr params
+    if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
+      if (kernelAttr_.accessPolicyWindow.base_ptr == NULL) {
+        return hipErrorInvalidResourceHandle;
+      }
+      params->accessPolicyWindow.base_ptr = kernelAttr_.accessPolicyWindow.base_ptr;
+      params->accessPolicyWindow.hitProp = kernelAttr_.accessPolicyWindow.hitProp;
+      params->accessPolicyWindow.hitRatio = kernelAttr_.accessPolicyWindow.hitRatio;
+      params->accessPolicyWindow.missProp = kernelAttr_.accessPolicyWindow.missProp;
+      params->accessPolicyWindow.num_bytes = kernelAttr_.accessPolicyWindow.num_bytes;
+    } else if (attr == hipKernelNodeAttributeCooperative)
+    {
+      params->cooperative = kernelAttr_.cooperative;
+    }
+    return hipSuccess;
   }
   // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(const hipKernelNodeParams* params) {
