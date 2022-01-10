@@ -314,6 +314,8 @@ hipGraphGetNodes
 hipGraphGetRootNodes
 hipGraphKernelNodeGetParams
 hipGraphKernelNodeSetParams
+hipGraphKernelNodeSetAttribute
+hipGraphKernelNodeGetAttribute
 hipGraphMemcpyNodeGetParams
 hipGraphMemcpyNodeSetParams
 hipGraphMemsetNodeGetParams
