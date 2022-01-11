@@ -439,7 +439,7 @@ float atomicMin_system(float* address, float val) {
   float value = __uint_as_float(tmp);
 
   while (val < value) {
-    value = atomicCAS(address, value, val);
+    value = atomicCAS_system(address, value, val);
   }
 
   return value;
@@ -475,7 +475,7 @@ double atomicMin_system(double* address, double val) {
   double value = __longlong_as_double(tmp);
 
   while (val < value) {
-    value = atomicCAS(address, value, val);
+    value = atomicCAS_system(address, value, val);
   }
 
   return value;
@@ -559,7 +559,7 @@ float atomicMax_system(float* address, float val) {
   float value = __uint_as_float(tmp);
 
   while (value < val) {
-    value = atomicCAS(address, value, val);
+    value = atomicCAS_system(address, value, val);
   }
 
   return value;
@@ -595,7 +595,7 @@ double atomicMax_system(double* address, double val) {
   double value = __longlong_as_double(tmp);
 
   while (value < val) {
-      value = atomicCAS(address, value, val);
+      value = atomicCAS_system(address, value, val);
   }
 
   return value;
