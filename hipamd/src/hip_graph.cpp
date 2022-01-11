@@ -129,10 +129,16 @@ hipError_t ihipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph
 hipError_t ihipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                   const hipGraphNode_t* pDependencies, size_t numDependencies,
                                   const hipMemsetParams* pMemsetParams) {
-  if (pGraphNode == nullptr || graph == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr) || pMemsetParams == nullptr) {
+  if (pGraphNode == nullptr || graph == nullptr || pMemsetParams == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || pMemsetParams->height == 0) {
     return hipErrorInvalidValue;
   }
+  // The element size must be 1, 2, or 4 bytes
+  if (pMemsetParams->elementSize != sizeof(int8_t) && pMemsetParams->elementSize != sizeof(int16_t)
+      && pMemsetParams->elementSize != sizeof(int32_t)) {
+    return hipErrorInvalidValue;
+  }
+
   hipError_t status;
   status = ihipGraphMemsetParams_validate(pMemsetParams);
   if (status != hipSuccess) {

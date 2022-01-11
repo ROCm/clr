@@ -2168,11 +2168,16 @@ hipError_t hipMemcpyAtoH(void* dstHost,
 }
 
 hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
-  // The struct passed to hipMemcpy3D() must specify one of srcArray or srcPtr and one of dstArray
-  // or dstPtr. Passing more than one non-zero source or destination will cause hipMemcpy3D() to
+  // Passing more than one non-zero source or destination will cause hipMemcpy3D() to
   // return an error.
   if (p == nullptr || ((p->srcArray != nullptr) && (p->srcPtr.ptr != nullptr)) ||
       ((p->dstArray != nullptr) && (p->dstPtr.ptr != nullptr))) {
+    return hipErrorInvalidValue;
+  }
+  // The struct passed to hipMemcpy3D() must specify one of srcArray or srcPtr and one of dstArray
+  // or dstPtr.
+  if (((p->srcArray == nullptr) && (p->srcPtr.ptr == nullptr)) ||
+      ((p->dstArray == nullptr) && (p->dstPtr.ptr == nullptr))) {
     return hipErrorInvalidValue;
   }
 
