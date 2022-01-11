@@ -116,18 +116,18 @@ hipError_t IPCEvent::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* 
 
 hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
   amd::HostQueue* queue = hip::getQueue(stream);
-  // Access to event_ object must be lock protected
+
   amd::ScopedLock lock(lock_);
-  if ((event_ == nullptr) || (event_->command().queue() == queue) || ready()) {
-    return hipSuccess;
-  }
-  amd::Command* command;
-  hipError_t status = streamWaitCommand(command, queue);
-  if (status != hipSuccess) {
+  if(query() != hipSuccess) {
+    amd::Command* command;
+    hipError_t status = streamWaitCommand(command, queue);
+    if (status != hipSuccess) {
+      return status;
+    }
+    status = enqueueStreamWaitCommand(stream, command);
     return status;
   }
-  status = enqueueStreamWaitCommand(stream, command);
-  return status;
+  return hipSuccess;
 }
 
 hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue) {
@@ -163,17 +163,8 @@ hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* comm
       return hipErrorInvalidHandle;
     }
     command->enqueue();
-    tEvent.notifyCmdQueue();
-
-    // Add the new barrier to stall the stream, until the callback is done
-    amd::Command::EventWaitList eventWaitList;
-    eventWaitList.push_back(command);
-    amd::Command* block_command = new amd::Marker(*queue, !kMarkerDisableFlush, eventWaitList);
-    if (block_command == nullptr) {
-      return hipErrorInvalidValue;
-    }
-    block_command->enqueue();
-    block_command->release();
+    // waiting for the call back to be called
+    command->awaitCompletion();
 
     // Update read index to indicate new signal.
     int expected = write_index - 1;
