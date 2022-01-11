@@ -264,7 +264,8 @@ class HostcallListener {
   }
 
   void terminate();
-  bool initialize(const amd::Device &dev);
+  bool initSignal(const amd::Device &dev);
+  bool initDevice(const amd::Device &dev);
 };
 
 HostcallListener* hostcallListener = nullptr;
@@ -334,17 +335,9 @@ void HostcallListener::removeBuffer(HostcallBuffer* buffer) {
   buffers_.erase(buffer);
 }
 
-bool HostcallListener::initialize(const amd::Device &dev) {
+bool HostcallListener::initSignal(const amd::Device &dev) {
   doorbell_ = dev.createSignal();
-#if defined(WITH_PAL_DEVICE) && !defined(_WIN32)
-  auto ws = device::Signal::WaitState::Active;
-#else
-  auto ws = device::Signal::WaitState::Blocked;
-#endif
-  if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
-    return false;
-  }
-
+  initDevice(dev);
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
   urilocator = dev.createUriLocator();
@@ -361,9 +354,20 @@ bool HostcallListener::initialize(const amd::Device &dev) {
 #endif
     return false;
   }
-
   thread_.start(this);
   return true;
+}
+
+bool HostcallListener::initDevice(const amd::Device &dev) {
+#if defined(WITH_PAL_DEVICE) && !defined(_WIN32)
+  auto ws = device::Signal::WaitState::Active;
+#else
+  auto ws = device::Signal::WaitState::Blocked;
+#endif
+  if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
+    return false;
+  }
+return true;
 }
 
 bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
@@ -374,7 +378,7 @@ bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
   amd::ScopedLock lock(listenerLock);
   if (!hostcallListener) {
     hostcallListener = new HostcallListener();
-    if (!hostcallListener->initialize(dev)) {
+    if (!hostcallListener->initSignal(dev)) {
       ClPrint(amd::LOG_ERROR, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
               "Failed to launch hostcall listener");
       delete hostcallListener;
@@ -383,6 +387,10 @@ bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
     }
     ClPrint(amd::LOG_INFO, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
             "Launched hostcall listener at %p", hostcallListener);
+  } else if (!hostcallListener->initDevice(dev)) {
+    ClPrint(amd::LOG_INFO, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
+            "failed to initialize device for hostcall");
+    return false;
   }
   hostcallListener->addBuffer(buffer);
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Registered hostcall buffer %p with listener %p", buffer,
