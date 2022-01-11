@@ -332,7 +332,6 @@ endif()
 execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE INSTALL_SOURCE)
 if(NOT ${INSTALL_SOURCE} EQUAL 0)
-    # Exclude .bat files on Linux.
     if(WIN32)
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS)
       if (CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -347,6 +346,7 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
                                PATTERN "libamdhsacode" EXCLUDE)
       endif()
     else()
+      # Exclude .bat files on Linux.
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS
               PATTERN *.bat EXCLUDE)
     endif()

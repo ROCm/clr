@@ -430,6 +430,7 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
   int offset = data->previous_read_index % IPC_SIGNALS_PER_EVENT;
   while (data->shmem->read_index < data->previous_read_index + IPC_SIGNALS_PER_EVENT &&
          data->shmem->signal[offset] != 0) {
+    amd::Os::sleep(1);
   }
   delete data;
 }
