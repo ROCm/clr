@@ -68,9 +68,6 @@ void HSAILKernel::setWorkGroupInfo(const uint32_t privateSegmentSize,
 }
 
 bool HSAILKernel::setKernelCode(amd::hsa::loader::Symbol* sym, amd_kernel_code_t* akc) {
-  if (prog().isNull()) {
-    return false;
-  }
   if (!sym) {
     return false;
   }
@@ -134,8 +131,8 @@ bool HSAILKernel::init() {
   // Pull out metadata from the ELF
   size_t sizeOfArgList;
   acl_error error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(),
-                                          RT_ARGUMENT_ARRAY, openClKernelName.c_str(),
-                                          nullptr, &sizeOfArgList);
+                                         RT_ARGUMENT_ARRAY, openClKernelName.c_str(),
+                                         nullptr, &sizeOfArgList);
   if (error != ACL_SUCCESS) {
     return false;
   }
