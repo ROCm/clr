@@ -1515,7 +1515,8 @@ hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node, const hipHostNodeParam
 hipError_t hipGraphExecHostNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                          const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphExecHostNodeSetParams, hGraphExec, node, pNodeParams);
-  if (pNodeParams->fn == nullptr || pNodeParams->userData == nullptr) {
+  if (hGraphExec == nullptr || pNodeParams == nullptr ||
+      pNodeParams->fn == nullptr || pNodeParams->userData == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
