@@ -164,7 +164,6 @@ class HSAILProgram : public device::Program {
 
   //! Return a typecasted PAL device. The device must not be the NullDevice.
   pal::Device& palDevice() {
-    assert(!isNull());
     return const_cast<pal::Device&>(static_cast<const pal::Device&>(device()));
   }
 
@@ -191,7 +190,6 @@ class HSAILProgram : public device::Program {
 
   //! Returns CPU address for a kernel
   uint64_t findHostKernelAddress(uint64_t devAddr) const {
-    assert(!isNull());
     return loader_->FindHostAddress(devAddr);
   }
 

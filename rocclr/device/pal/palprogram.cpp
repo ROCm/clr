@@ -200,8 +200,7 @@ HSAILProgram::HSAILProgram(NullDevice& device, amd::Program& owner)
       loaderContext_(this) {
   assert(!device.isOnline());
   isNull_ = true;
-  // Cannot load onto a NullDevice.
-  loader_ = nullptr;
+  loader_ = amd::hsa::loader::Loader::Create(&loaderContext_);
 }
 
 HSAILProgram::~HSAILProgram() {
@@ -246,12 +245,6 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
 bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                  bool internalKernel) {
 #if defined(WITH_COMPILER_LIB)
-  // Stop compilation if it is an offline device - PAL runtime does not
-  // support ISA compiled offline
-  if (!device().isOnline()) {
-    return true;
-  }
-
   // ACL_TYPE_CG stage is not performed for offline compilation
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
@@ -539,10 +532,6 @@ bool PALHSALoaderContext::IsaSupportedByAgent(hsa_agent_t agent, hsa_isa_t isa) 
     // could not find it, or the PAL runtime does not support it.
     return false;
   }
-  if (program_->isNull()) {
-    // Cannot load code onto offline devices.
-    return false;
-  }
   return amd::Isa::isCompatible(*code_object_isa_p, program_->device().isa());
 }
 
@@ -742,13 +731,7 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
 bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                      bool internalKernel) {
 #if defined(USE_COMGR_LIBRARY)
-  // Stop compilation if it is an offline device - PAL runtime does not
-  // support ISA compiled offline
-  if (!device().isOnline()) {
-    return true;
-  }
-
-  // Find the size of global variables from the binary
+   // Find the size of global variables from the binary
   if (!FindGlobalVarSize(binary, binSize)) {
     buildLog_ += "Error: Cannot Find Global Var Sizes\n";
     return false;
@@ -798,12 +781,8 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
 bool LightningProgram::setKernels(void* binary, size_t binSize,
                                   amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
-  if (!device().isOnline()) {
-    return true;
-  }
-
   // Collect the information about compiled binary
-  if (palDevice().rgpCaptureMgr() != nullptr) {
+  if (!isNull() && (palDevice().rgpCaptureMgr() != nullptr)) {
     apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(binary, binSize, binary, binSize,
                                                          codeSegGpu_->iMem(), codeSegGpu_->offset());
   }

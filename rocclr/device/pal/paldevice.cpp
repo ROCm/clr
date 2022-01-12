@@ -72,13 +72,6 @@ struct PalDevice {
 
 static constexpr PalDevice supportedPalDevices[] = {
 // GFX Version PAL GFX IP Level            PAL Name         PAL ASIC Revision
-  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Kalindi",       Pal::AsicRevision::Kalindi},
-  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spectre",       Pal::AsicRevision::Spectre},
-  {7,  0,  0,  Pal::GfxIpLevel::GfxIp7,    "Spooky",        Pal::AsicRevision::Spooky},
-  {7,  0,  1,  Pal::GfxIpLevel::GfxIp7,    "Hawaii",        Pal::AsicRevision::HawaiiPro},
-  {7,  0,  2,  Pal::GfxIpLevel::GfxIp7,    "Hawaii",        Pal::AsicRevision::Hawaii},
-  {7,  0,  4,  Pal::GfxIpLevel::GfxIp7,    "Bonaire",       Pal::AsicRevision::Bonaire},
-  {7,  0,  5,  Pal::GfxIpLevel::GfxIp7,    "Mullins",       Pal::AsicRevision::Godavari}, // FIXME: Why is this compiled as Mullins yet reported as Godavari? Add gfx703 to support Mullins.
   {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Carrizo",       Pal::AsicRevision::Carrizo},
   {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Bristol Ridge", Pal::AsicRevision::Bristol},
   {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Iceland",       Pal::AsicRevision::Iceland},
@@ -94,7 +87,7 @@ static constexpr PalDevice supportedPalDevices[] = {
   {9,  0,  4,  Pal::GfxIpLevel::GfxIp9,    "gfx904",        Pal::AsicRevision::Vega12},
   {9,  0,  6,  Pal::GfxIpLevel::GfxIp9,    "gfx906",        Pal::AsicRevision::Vega20},
   {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven2},
-  {9,  0, 12,  Pal::GfxIpLevel::GfxIp9,    "gfx90c",        Pal::AsicRevision::Renoir},
+  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Renoir},
   {10, 1,  0,  Pal::GfxIpLevel::GfxIp10_1, "gfx1010",       Pal::AsicRevision::Navi10},
   {10, 1,  1,  Pal::GfxIpLevel::GfxIp10_1, "gfx1011",       Pal::AsicRevision::Navi12},
   {10, 1,  2,  Pal::GfxIpLevel::GfxIp10_1, "gfx1012",       Pal::AsicRevision::Navi14},
@@ -117,7 +110,8 @@ static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRe
       palDeviceIter->gfxipMajor_, palDeviceIter->gfxipMinor_, palDeviceIter->gfxipStepping_,
       sramecc ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled,
       xnack ? amd::Isa::Feature::Enabled : amd::Isa::Feature::Disabled);
-  return std::make_tuple(isa, palDeviceIter->palName_);
+  return std::make_tuple(
+    isa, (palDeviceIter->gfxipMajor_ > 8) ? isa->hsailName() : palDeviceIter->palName_);
 }
 
 static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint32_t gfxipMajor,
@@ -170,7 +164,8 @@ bool NullDevice::init() {
   // device. This allows code objects to be compiled for all supported ISAs.
   std::vector<Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, false);
   for (const amd::Isa *isa = amd::Isa::begin(); isa != amd::Isa::end(); isa++) {
-    if (!isa->runtimePalSupported()) {
+    if (!isa->runtimePalSupported() || (isa->sramecc() == amd::Isa::Feature::Any) ||
+        (isa->xnack() == amd::Isa::Feature::Any)) {
       continue;
     }
     bool isOnline = false;
@@ -242,6 +237,13 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
       !palSettings->create(properties, heaps, wscaps, isa.xnack() == amd::Isa::Feature::Enabled)) {
     LogPrintfError("Unable to create PAL setting for offline PAL device %s", isa.targetId());
     return false;
+  }
+  if (!settings().useLightning_) {
+    if ((isa.hsailName() != nullptr)) {
+      palName_ = isa.hsailName();
+    } else {
+      return false;
+    }
   }
 
   if (!ValidateComgr()) {
