@@ -571,7 +571,8 @@ struct Info : public amd::EmbeddedObject {
   uint32_t pcieRevisionId_;
   //! ASIC Revision
   uint32_t asicRevision_;
-
+  //! Returns the unique identifier for the device
+  char uuid_[16];
   //! Max numbers of threads per CU
   uint32_t maxThreadsPerCU_;
 
