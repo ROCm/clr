@@ -27,6 +27,7 @@ hipDeviceGetCacheConfig
 hipDeviceGetStreamPriorityRange
 hipDeviceGetLimit
 hipDeviceGetName
+hipDeviceGetUuid
 hipDeviceGetPCIBusId
 hipDeviceGetSharedMemConfig
 hipDeviceGetP2PAttribute

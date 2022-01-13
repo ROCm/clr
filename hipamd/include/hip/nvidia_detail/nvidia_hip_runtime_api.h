@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -2087,6 +2087,18 @@ inline static hipError_t hipDeviceComputeCapability(int* major, int* minor, hipD
 
 inline static hipError_t hipDeviceGetName(char* name, int len, hipDevice_t device) {
     return hipCUResultTohipError(cuDeviceGetName(name, len, device));
+}
+
+inline static hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device) {
+    if (uuid == NULL) {
+      return hipErrorInvalidValue;
+    }
+    struct CUuuid_st CUuid;
+    hipError_t err = hipCUResultTohipError(cuDeviceGetUuid(&CUuid, device));
+    if (err == hipSuccess) {
+      strncpy(uuid->bytes, CUuid.bytes, 16);
+    }
+    return err;
 }
 
 inline static hipError_t hipDeviceGetP2PAttribute(int* value, hipDeviceP2PAttr attr,
