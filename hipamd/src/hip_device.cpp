@@ -149,6 +149,25 @@ hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device) {
+  HIP_INIT_API(hipDeviceGetUuid, reinterpret_cast<void*>(uuid), device);
+
+  if (device < 0 || static_cast<size_t>(device) >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+
+  if (uuid == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  auto* deviceHandle = g_devices[device]->devices()[0];
+  const auto& info = deviceHandle->info();
+
+  ::strncpy(uuid->bytes, info.uuid_, 16);
+
+  HIP_RETURN(hipSuccess);
+}
+
 hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   if (props == nullptr) {
     return hipErrorInvalidValue;

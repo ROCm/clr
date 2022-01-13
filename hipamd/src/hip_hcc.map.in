@@ -396,3 +396,10 @@ global:
 local:
     *;
 } hip_4.5;
+
+hip_5.1 {
+global:
+    hipDeviceGetUuid;
+local:
+    *;
+} hip_5.0;

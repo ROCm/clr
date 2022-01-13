@@ -306,9 +306,14 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphicsGLRegisterImage = 293,
   HIP_API_ID_hipGraphicsSubResourceGetMappedArray = 294,
   HIP_API_ID_hipPointerGetAttribute = 295,
-  HIP_API_ID_hipTexRefSetArray = 296,
+  HIP_API_ID_RESERVED_296 = 296,
   HIP_API_ID_hipThreadExchangeStreamCaptureMode = 297,
-  HIP_API_ID_LAST = 297,
+  HIP_API_ID_hipDeviceGetUuid = 298,
+  HIP_API_ID_hipGetChannelDesc = 299,
+  HIP_API_ID_hipGraphKernelNodeGetAttribute = 300,
+  HIP_API_ID_hipGraphKernelNodeSetAttribute = 301,
+  HIP_API_ID_hipLaunchHostFunc = 302,
+  HIP_API_ID_LAST = 302,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -319,7 +324,6 @@ enum hip_api_id_t {
   HIP_API_ID_hipCreateTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDestroyTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDeviceGetCount = HIP_API_ID_NONE,
-  HIP_API_ID_hipGetChannelDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureAlignmentOffset = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
@@ -348,6 +352,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipTexRefGetMipmapFilterMode = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefGetMipmappedArray = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetAddressMode = HIP_API_ID_NONE,
+  HIP_API_ID_hipTexRefSetArray = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetFilterMode = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetFlags = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetMipmapFilterMode = HIP_API_ID_NONE,
@@ -400,6 +405,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceGetPCIBusId: return "hipDeviceGetPCIBusId";
     case HIP_API_ID_hipDeviceGetSharedMemConfig: return "hipDeviceGetSharedMemConfig";
     case HIP_API_ID_hipDeviceGetStreamPriorityRange: return "hipDeviceGetStreamPriorityRange";
+    case HIP_API_ID_hipDeviceGetUuid: return "hipDeviceGetUuid";
     case HIP_API_ID_hipDevicePrimaryCtxGetState: return "hipDevicePrimaryCtxGetState";
     case HIP_API_ID_hipDevicePrimaryCtxRelease: return "hipDevicePrimaryCtxRelease";
     case HIP_API_ID_hipDevicePrimaryCtxReset: return "hipDevicePrimaryCtxReset";
@@ -439,6 +445,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipFuncSetCacheConfig: return "hipFuncSetCacheConfig";
     case HIP_API_ID_hipFuncSetSharedMemConfig: return "hipFuncSetSharedMemConfig";
     case HIP_API_ID_hipGLGetDevices: return "hipGLGetDevices";
+    case HIP_API_ID_hipGetChannelDesc: return "hipGetChannelDesc";
     case HIP_API_ID_hipGetDevice: return "hipGetDevice";
     case HIP_API_ID_hipGetDeviceCount: return "hipGetDeviceCount";
     case HIP_API_ID_hipGetDeviceFlags: return "hipGetDeviceFlags";
@@ -488,7 +495,9 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphHostNodeSetParams: return "hipGraphHostNodeSetParams";
     case HIP_API_ID_hipGraphInstantiate: return "hipGraphInstantiate";
     case HIP_API_ID_hipGraphInstantiateWithFlags: return "hipGraphInstantiateWithFlags";
+    case HIP_API_ID_hipGraphKernelNodeGetAttribute: return "hipGraphKernelNodeGetAttribute";
     case HIP_API_ID_hipGraphKernelNodeGetParams: return "hipGraphKernelNodeGetParams";
+    case HIP_API_ID_hipGraphKernelNodeSetAttribute: return "hipGraphKernelNodeSetAttribute";
     case HIP_API_ID_hipGraphKernelNodeSetParams: return "hipGraphKernelNodeSetParams";
     case HIP_API_ID_hipGraphLaunch: return "hipGraphLaunch";
     case HIP_API_ID_hipGraphMemcpyNodeGetParams: return "hipGraphMemcpyNodeGetParams";
@@ -529,6 +538,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipLaunchByPtr: return "hipLaunchByPtr";
     case HIP_API_ID_hipLaunchCooperativeKernel: return "hipLaunchCooperativeKernel";
     case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice: return "hipLaunchCooperativeKernelMultiDevice";
+    case HIP_API_ID_hipLaunchHostFunc: return "hipLaunchHostFunc";
     case HIP_API_ID_hipLaunchKernel: return "hipLaunchKernel";
     case HIP_API_ID_hipMalloc: return "hipMalloc";
     case HIP_API_ID_hipMalloc3D: return "hipMalloc3D";
@@ -645,7 +655,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipTexRefGetMipmapLevelClamp: return "hipTexRefGetMipmapLevelClamp";
     case HIP_API_ID_hipTexRefSetAddress: return "hipTexRefSetAddress";
     case HIP_API_ID_hipTexRefSetAddress2D: return "hipTexRefSetAddress2D";
-    case HIP_API_ID_hipTexRefSetArray: return "hipTexRefSetArray";
     case HIP_API_ID_hipTexRefSetBorderColor: return "hipTexRefSetBorderColor";
     case HIP_API_ID_hipTexRefSetFormat: return "hipTexRefSetFormat";
     case HIP_API_ID_hipTexRefSetMaxAnisotropy: return "hipTexRefSetMaxAnisotropy";
@@ -701,6 +710,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceGetPCIBusId", name) == 0) return HIP_API_ID_hipDeviceGetPCIBusId;
   if (strcmp("hipDeviceGetSharedMemConfig", name) == 0) return HIP_API_ID_hipDeviceGetSharedMemConfig;
   if (strcmp("hipDeviceGetStreamPriorityRange", name) == 0) return HIP_API_ID_hipDeviceGetStreamPriorityRange;
+  if (strcmp("hipDeviceGetUuid", name) == 0) return HIP_API_ID_hipDeviceGetUuid;
   if (strcmp("hipDevicePrimaryCtxGetState", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxGetState;
   if (strcmp("hipDevicePrimaryCtxRelease", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxRelease;
   if (strcmp("hipDevicePrimaryCtxReset", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxReset;
@@ -740,6 +750,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipFuncSetCacheConfig", name) == 0) return HIP_API_ID_hipFuncSetCacheConfig;
   if (strcmp("hipFuncSetSharedMemConfig", name) == 0) return HIP_API_ID_hipFuncSetSharedMemConfig;
   if (strcmp("hipGLGetDevices", name) == 0) return HIP_API_ID_hipGLGetDevices;
+  if (strcmp("hipGetChannelDesc", name) == 0) return HIP_API_ID_hipGetChannelDesc;
   if (strcmp("hipGetDevice", name) == 0) return HIP_API_ID_hipGetDevice;
   if (strcmp("hipGetDeviceCount", name) == 0) return HIP_API_ID_hipGetDeviceCount;
   if (strcmp("hipGetDeviceFlags", name) == 0) return HIP_API_ID_hipGetDeviceFlags;
@@ -789,7 +800,9 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphHostNodeSetParams", name) == 0) return HIP_API_ID_hipGraphHostNodeSetParams;
   if (strcmp("hipGraphInstantiate", name) == 0) return HIP_API_ID_hipGraphInstantiate;
   if (strcmp("hipGraphInstantiateWithFlags", name) == 0) return HIP_API_ID_hipGraphInstantiateWithFlags;
+  if (strcmp("hipGraphKernelNodeGetAttribute", name) == 0) return HIP_API_ID_hipGraphKernelNodeGetAttribute;
   if (strcmp("hipGraphKernelNodeGetParams", name) == 0) return HIP_API_ID_hipGraphKernelNodeGetParams;
+  if (strcmp("hipGraphKernelNodeSetAttribute", name) == 0) return HIP_API_ID_hipGraphKernelNodeSetAttribute;
   if (strcmp("hipGraphKernelNodeSetParams", name) == 0) return HIP_API_ID_hipGraphKernelNodeSetParams;
   if (strcmp("hipGraphLaunch", name) == 0) return HIP_API_ID_hipGraphLaunch;
   if (strcmp("hipGraphMemcpyNodeGetParams", name) == 0) return HIP_API_ID_hipGraphMemcpyNodeGetParams;
@@ -830,6 +843,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipLaunchByPtr", name) == 0) return HIP_API_ID_hipLaunchByPtr;
   if (strcmp("hipLaunchCooperativeKernel", name) == 0) return HIP_API_ID_hipLaunchCooperativeKernel;
   if (strcmp("hipLaunchCooperativeKernelMultiDevice", name) == 0) return HIP_API_ID_hipLaunchCooperativeKernelMultiDevice;
+  if (strcmp("hipLaunchHostFunc", name) == 0) return HIP_API_ID_hipLaunchHostFunc;
   if (strcmp("hipLaunchKernel", name) == 0) return HIP_API_ID_hipLaunchKernel;
   if (strcmp("hipMalloc", name) == 0) return HIP_API_ID_hipMalloc;
   if (strcmp("hipMalloc3D", name) == 0) return HIP_API_ID_hipMalloc3D;
@@ -946,7 +960,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipTexRefGetMipmapLevelClamp", name) == 0) return HIP_API_ID_hipTexRefGetMipmapLevelClamp;
   if (strcmp("hipTexRefSetAddress", name) == 0) return HIP_API_ID_hipTexRefSetAddress;
   if (strcmp("hipTexRefSetAddress2D", name) == 0) return HIP_API_ID_hipTexRefSetAddress2D;
-  if (strcmp("hipTexRefSetArray", name) == 0) return HIP_API_ID_hipTexRefSetArray;
   if (strcmp("hipTexRefSetBorderColor", name) == 0) return HIP_API_ID_hipTexRefSetBorderColor;
   if (strcmp("hipTexRefSetFormat", name) == 0) return HIP_API_ID_hipTexRefSetFormat;
   if (strcmp("hipTexRefSetMaxAnisotropy", name) == 0) return HIP_API_ID_hipTexRefSetMaxAnisotropy;
@@ -1154,6 +1167,11 @@ typedef struct hip_api_data_s {
       int greatestPriority__val;
     } hipDeviceGetStreamPriorityRange;
     struct {
+      hipUUID* uuid;
+      hipUUID uuid__val;
+      hipDevice_t device;
+    } hipDeviceGetUuid;
+    struct {
       hipDevice_t dev;
       unsigned int* flags;
       unsigned int flags__val;
@@ -1350,6 +1368,11 @@ typedef struct hip_api_data_s {
       unsigned int hipDeviceCount;
       hipGLDeviceList deviceList;
     } hipGLGetDevices;
+    struct {
+      hipChannelFormatDesc* desc;
+      hipChannelFormatDesc desc__val;
+      hipArray_const_t array;
+    } hipGetChannelDesc;
     struct {
       int* deviceId;
       int deviceId__val;
@@ -1669,10 +1692,22 @@ typedef struct hip_api_data_s {
       unsigned long long flags;
     } hipGraphInstantiateWithFlags;
     struct {
+      hipGraphNode_t hNode;
+      hipKernelNodeAttrID attr;
+      hipKernelNodeAttrValue* value;
+      hipKernelNodeAttrValue value__val;
+    } hipGraphKernelNodeGetAttribute;
+    struct {
       hipGraphNode_t node;
       hipKernelNodeParams* pNodeParams;
       hipKernelNodeParams pNodeParams__val;
     } hipGraphKernelNodeGetParams;
+    struct {
+      hipGraphNode_t hNode;
+      hipKernelNodeAttrID attr;
+      const hipKernelNodeAttrValue* value;
+      hipKernelNodeAttrValue value__val;
+    } hipGraphKernelNodeSetAttribute;
     struct {
       hipGraphNode_t node;
       const hipKernelNodeParams* pNodeParams;
@@ -1908,6 +1943,11 @@ typedef struct hip_api_data_s {
       int numDevices;
       unsigned int flags;
     } hipLaunchCooperativeKernelMultiDevice;
+    struct {
+      hipStream_t stream;
+      hipHostFn_t fn;
+      void* userData;
+    } hipLaunchHostFunc;
     struct {
       const void* function_address;
       dim3 numBlocks;
@@ -2660,12 +2700,6 @@ typedef struct hip_api_data_s {
       size_t Pitch;
     } hipTexRefSetAddress2D;
     struct {
-      textureReference* tex;
-      textureReference tex__val;
-      hipArray_const_t array;
-      unsigned int flags;
-    } hipTexRefSetArray;
-    struct {
       textureReference* texRef;
       textureReference texRef__val;
       float* pBorderColor;
@@ -2909,6 +2943,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDeviceGetStreamPriorityRange.leastPriority = (int*)leastPriority; \
   cb_data.args.hipDeviceGetStreamPriorityRange.greatestPriority = (int*)greatestPriority; \
 };
+// hipDeviceGetUuid[('hipUUID*', 'uuid'), ('hipDevice_t', 'device')]
+#define INIT_hipDeviceGetUuid_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceGetUuid.uuid = (hipUUID*)uuid; \
+  cb_data.args.hipDeviceGetUuid.device = (hipDevice_t)device; \
+};
 // hipDevicePrimaryCtxGetState[('hipDevice_t', 'dev'), ('unsigned int*', 'flags'), ('int*', 'active')]
 #define INIT_hipDevicePrimaryCtxGetState_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDevicePrimaryCtxGetState.dev = (hipDevice_t)dev; \
@@ -3119,6 +3158,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGLGetDevices.pHipDevices = (int*)pHipDevices; \
   cb_data.args.hipGLGetDevices.hipDeviceCount = (unsigned int)hipDeviceCount; \
   cb_data.args.hipGLGetDevices.deviceList = (hipGLDeviceList)deviceList; \
+};
+// hipGetChannelDesc[('hipChannelFormatDesc*', 'desc'), ('hipArray_const_t', 'array')]
+#define INIT_hipGetChannelDesc_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetChannelDesc.desc = (hipChannelFormatDesc*)desc; \
+  cb_data.args.hipGetChannelDesc.array = (hipArray_const_t)array; \
 };
 // hipGetDevice[('int*', 'deviceId')]
 #define INIT_hipGetDevice_CB_ARGS_DATA(cb_data) { \
@@ -3432,10 +3476,16 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphInstantiateWithFlags.graph = (hipGraph_t)graph; \
   cb_data.args.hipGraphInstantiateWithFlags.flags = (unsigned long long)flags; \
 };
+// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
+#define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
+};
 // hipGraphKernelNodeGetParams[('hipGraphNode_t', 'node'), ('hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeGetParams_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphKernelNodeGetParams.node = (hipGraphNode_t)node; \
   cb_data.args.hipGraphKernelNodeGetParams.pNodeParams = (hipKernelNodeParams*)pNodeParams; \
+};
+// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('const hipKernelNodeAttrValue*', 'value')]
+#define INIT_hipGraphKernelNodeSetAttribute_CB_ARGS_DATA(cb_data) { \
 };
 // hipGraphKernelNodeSetParams[('hipGraphNode_t', 'node'), ('const hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeSetParams_CB_ARGS_DATA(cb_data) { \
@@ -3675,6 +3725,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipLaunchCooperativeKernelMultiDevice.launchParamsList = (hipLaunchParams*)launchParamsList; \
   cb_data.args.hipLaunchCooperativeKernelMultiDevice.numDevices = (int)numDevices; \
   cb_data.args.hipLaunchCooperativeKernelMultiDevice.flags = (unsigned int)flags; \
+};
+// hipLaunchHostFunc[('hipStream_t', 'stream'), ('hipHostFn_t', 'fn'), ('void*', 'userData')]
+#define INIT_hipLaunchHostFunc_CB_ARGS_DATA(cb_data) { \
 };
 // hipLaunchKernel[('const void*', 'function_address'), ('dim3', 'numBlocks'), ('dim3', 'dimBlocks'), ('void**', 'args'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'stream')]
 #define INIT_hipLaunchKernel_CB_ARGS_DATA(cb_data) { \
@@ -4448,12 +4501,6 @@ typedef struct hip_api_data_s {
   cb_data.args.hipTexRefSetAddress2D.dptr = (hipDeviceptr_t)dptr; \
   cb_data.args.hipTexRefSetAddress2D.Pitch = (size_t)Pitch; \
 };
-// hipTexRefSetArray[('textureReference*', 'tex'), ('hipArray_const_t', 'array'), ('unsigned int', 'flags')]
-#define INIT_hipTexRefSetArray_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipTexRefSetArray.tex = (textureReference*)texRef; \
-  cb_data.args.hipTexRefSetArray.array = (hipArray_const_t)array; \
-  cb_data.args.hipTexRefSetArray.flags = (unsigned int)flags; \
-};
 // hipTexRefSetBorderColor[('textureReference*', 'texRef'), ('float*', 'pBorderColor')]
 #define INIT_hipTexRefSetBorderColor_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipTexRefSetBorderColor.texRef = (textureReference*)texRef; \
@@ -4514,8 +4561,6 @@ typedef struct hip_api_data_s {
 #define INIT_hipDestroyTextureObject_CB_ARGS_DATA(cb_data) {};
 // hipDeviceGetCount()
 #define INIT_hipDeviceGetCount_CB_ARGS_DATA(cb_data) {};
-// hipGetChannelDesc()
-#define INIT_hipGetChannelDesc_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureAlignmentOffset()
 #define INIT_hipGetTextureAlignmentOffset_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureObjectResourceDesc()
@@ -4572,6 +4617,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipTexRefGetMipmappedArray_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetAddressMode()
 #define INIT_hipTexRefSetAddressMode_CB_ARGS_DATA(cb_data) {};
+// hipTexRefSetArray()
+#define INIT_hipTexRefSetArray_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetFilterMode()
 #define INIT_hipTexRefSetFilterMode_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetFlags()
@@ -4750,6 +4797,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipDeviceGetStreamPriorityRange.leastPriority) data->args.hipDeviceGetStreamPriorityRange.leastPriority__val = *(data->args.hipDeviceGetStreamPriorityRange.leastPriority);
       if (data->args.hipDeviceGetStreamPriorityRange.greatestPriority) data->args.hipDeviceGetStreamPriorityRange.greatestPriority__val = *(data->args.hipDeviceGetStreamPriorityRange.greatestPriority);
       break;
+// hipDeviceGetUuid[('hipUUID*', 'uuid'), ('hipDevice_t', 'device')]
+    case HIP_API_ID_hipDeviceGetUuid:
+      if (data->args.hipDeviceGetUuid.uuid) data->args.hipDeviceGetUuid.uuid__val = *(data->args.hipDeviceGetUuid.uuid);
+      break;
 // hipDevicePrimaryCtxGetState[('hipDevice_t', 'dev'), ('unsigned int*', 'flags'), ('int*', 'active')]
     case HIP_API_ID_hipDevicePrimaryCtxGetState:
       if (data->args.hipDevicePrimaryCtxGetState.flags) data->args.hipDevicePrimaryCtxGetState.flags__val = *(data->args.hipDevicePrimaryCtxGetState.flags);
@@ -4895,6 +4946,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGLGetDevices:
       if (data->args.hipGLGetDevices.pHipDeviceCount) data->args.hipGLGetDevices.pHipDeviceCount__val = *(data->args.hipGLGetDevices.pHipDeviceCount);
       if (data->args.hipGLGetDevices.pHipDevices) data->args.hipGLGetDevices.pHipDevices__val = *(data->args.hipGLGetDevices.pHipDevices);
+      break;
+// hipGetChannelDesc[('hipChannelFormatDesc*', 'desc'), ('hipArray_const_t', 'array')]
+    case HIP_API_ID_hipGetChannelDesc:
+      if (data->args.hipGetChannelDesc.desc) data->args.hipGetChannelDesc.desc__val = *(data->args.hipGetChannelDesc.desc);
       break;
 // hipGetDevice[('int*', 'deviceId')]
     case HIP_API_ID_hipGetDevice:
@@ -5102,9 +5157,17 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphInstantiateWithFlags:
       if (data->args.hipGraphInstantiateWithFlags.pGraphExec) data->args.hipGraphInstantiateWithFlags.pGraphExec__val = *(data->args.hipGraphInstantiateWithFlags.pGraphExec);
       break;
+// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
+    case HIP_API_ID_hipGraphKernelNodeGetAttribute:
+      if (data->args.hipGraphKernelNodeGetAttribute.value) data->args.hipGraphKernelNodeGetAttribute.value__val = *(data->args.hipGraphKernelNodeGetAttribute.value);
+      break;
 // hipGraphKernelNodeGetParams[('hipGraphNode_t', 'node'), ('hipKernelNodeParams*', 'pNodeParams')]
     case HIP_API_ID_hipGraphKernelNodeGetParams:
       if (data->args.hipGraphKernelNodeGetParams.pNodeParams) data->args.hipGraphKernelNodeGetParams.pNodeParams__val = *(data->args.hipGraphKernelNodeGetParams.pNodeParams);
+      break;
+// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('const hipKernelNodeAttrValue*', 'value')]
+    case HIP_API_ID_hipGraphKernelNodeSetAttribute:
+      if (data->args.hipGraphKernelNodeSetAttribute.value) data->args.hipGraphKernelNodeSetAttribute.value__val = *(data->args.hipGraphKernelNodeSetAttribute.value);
       break;
 // hipGraphKernelNodeSetParams[('hipGraphNode_t', 'node'), ('const hipKernelNodeParams*', 'pNodeParams')]
     case HIP_API_ID_hipGraphKernelNodeSetParams:
@@ -5261,6 +5324,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipLaunchCooperativeKernelMultiDevice[('hipLaunchParams*', 'launchParamsList'), ('int', 'numDevices'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
       if (data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList) data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val = *(data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList);
+      break;
+// hipLaunchHostFunc[('hipStream_t', 'stream'), ('hipHostFn_t', 'fn'), ('void*', 'userData')]
+    case HIP_API_ID_hipLaunchHostFunc:
       break;
 // hipLaunchKernel[('const void*', 'function_address'), ('dim3', 'numBlocks'), ('dim3', 'dimBlocks'), ('void**', 'args'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipLaunchKernel:
@@ -5709,10 +5775,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipTexRefSetAddress2D.texRef) data->args.hipTexRefSetAddress2D.texRef__val = *(data->args.hipTexRefSetAddress2D.texRef);
       if (data->args.hipTexRefSetAddress2D.desc) data->args.hipTexRefSetAddress2D.desc__val = *(data->args.hipTexRefSetAddress2D.desc);
       break;
-// hipTexRefSetArray[('textureReference*', 'tex'), ('hipArray_const_t', 'array'), ('unsigned int', 'flags')]
-    case HIP_API_ID_hipTexRefSetArray:
-      if (data->args.hipTexRefSetArray.tex) data->args.hipTexRefSetArray.tex__val = *(data->args.hipTexRefSetArray.tex);
-      break;
 // hipTexRefSetBorderColor[('textureReference*', 'texRef'), ('float*', 'pBorderColor')]
     case HIP_API_ID_hipTexRefSetBorderColor:
       if (data->args.hipTexRefSetBorderColor.texRef) data->args.hipTexRefSetBorderColor.texRef__val = *(data->args.hipTexRefSetBorderColor.texRef);
@@ -6029,6 +6091,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else oss << ", greatestPriority=" << data->args.hipDeviceGetStreamPriorityRange.greatestPriority__val;
       oss << ")";
     break;
+    case HIP_API_ID_hipDeviceGetUuid:
+      oss << "hipDeviceGetUuid(";
+      if (data->args.hipDeviceGetUuid.uuid == NULL) oss << "uuid=NULL";
+      else oss << "uuid=" << data->args.hipDeviceGetUuid.uuid__val;
+      oss << ", device=" << data->args.hipDeviceGetUuid.device;
+      oss << ")";
+    break;
     case HIP_API_ID_hipDevicePrimaryCtxGetState:
       oss << "hipDevicePrimaryCtxGetState(";
       oss << "dev=" << data->args.hipDevicePrimaryCtxGetState.dev;
@@ -6306,6 +6375,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else oss << ", pHipDevices=" << data->args.hipGLGetDevices.pHipDevices__val;
       oss << ", hipDeviceCount=" << data->args.hipGLGetDevices.hipDeviceCount;
       oss << ", deviceList=" << data->args.hipGLGetDevices.deviceList;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGetChannelDesc:
+      oss << "hipGetChannelDesc(";
+      if (data->args.hipGetChannelDesc.desc == NULL) oss << "desc=NULL";
+      else oss << "desc=" << data->args.hipGetChannelDesc.desc__val;
+      oss << ", array=" << data->args.hipGetChannelDesc.array;
       oss << ")";
     break;
     case HIP_API_ID_hipGetDevice:
@@ -6728,11 +6804,27 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", flags=" << data->args.hipGraphInstantiateWithFlags.flags;
       oss << ")";
     break;
+    case HIP_API_ID_hipGraphKernelNodeGetAttribute:
+      oss << "hipGraphKernelNodeGetAttribute(";
+      oss << "hNode=" << data->args.hipGraphKernelNodeGetAttribute.hNode;
+      oss << ", attr=" << data->args.hipGraphKernelNodeGetAttribute.attr;
+      if (data->args.hipGraphKernelNodeGetAttribute.value == NULL) oss << ", value=NULL";
+      else oss << ", value=" << data->args.hipGraphKernelNodeGetAttribute.value__val;
+      oss << ")";
+    break;
     case HIP_API_ID_hipGraphKernelNodeGetParams:
       oss << "hipGraphKernelNodeGetParams(";
       oss << "node=" << data->args.hipGraphKernelNodeGetParams.node;
       if (data->args.hipGraphKernelNodeGetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
       else oss << ", pNodeParams=" << data->args.hipGraphKernelNodeGetParams.pNodeParams__val;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGraphKernelNodeSetAttribute:
+      oss << "hipGraphKernelNodeSetAttribute(";
+      oss << "hNode=" << data->args.hipGraphKernelNodeSetAttribute.hNode;
+      oss << ", attr=" << data->args.hipGraphKernelNodeSetAttribute.attr;
+      if (data->args.hipGraphKernelNodeSetAttribute.value == NULL) oss << ", value=NULL";
+      else oss << ", value=" << data->args.hipGraphKernelNodeSetAttribute.value__val;
       oss << ")";
     break;
     case HIP_API_ID_hipGraphKernelNodeSetParams:
@@ -7048,6 +7140,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else oss << "launchParamsList=" << data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val;
       oss << ", numDevices=" << data->args.hipLaunchCooperativeKernelMultiDevice.numDevices;
       oss << ", flags=" << data->args.hipLaunchCooperativeKernelMultiDevice.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLaunchHostFunc:
+      oss << "hipLaunchHostFunc(";
+      oss << "stream=" << data->args.hipLaunchHostFunc.stream;
+      oss << ", fn=" << data->args.hipLaunchHostFunc.fn;
+      oss << ", userData=" << data->args.hipLaunchHostFunc.userData;
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchKernel:
@@ -8037,14 +8136,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else oss << ", desc=" << data->args.hipTexRefSetAddress2D.desc__val;
       oss << ", dptr=" << data->args.hipTexRefSetAddress2D.dptr;
       oss << ", Pitch=" << data->args.hipTexRefSetAddress2D.Pitch;
-      oss << ")";
-    break;
-    case HIP_API_ID_hipTexRefSetArray:
-      oss << "hipTexRefSetArray(";
-      if (data->args.hipTexRefSetArray.tex == NULL) oss << "tex=NULL";
-      else oss << "tex=" << data->args.hipTexRefSetArray.tex__val;
-      oss << ", array=" << data->args.hipTexRefSetArray.array;
-      oss << ", flags=" << data->args.hipTexRefSetArray.flags;
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetBorderColor:
