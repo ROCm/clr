@@ -1775,7 +1775,7 @@ typedef struct hip_api_data_s {
       hipGraphicsResource** resource;
       hipGraphicsResource* resource__val;
       GLuint image;
-      GLenum targes;
+      GLenum target;
       unsigned int flags;
     } hipGraphicsGLRegisterImage;
     struct {
@@ -3539,11 +3539,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphicsGLRegisterBuffer.buffer = (GLuint)buffer; \
   cb_data.args.hipGraphicsGLRegisterBuffer.flags = (unsigned int)flags; \
 };
-// hipGraphicsGLRegisterImage[('hipGraphicsResource**', 'resource'), ('GLuint', 'image'), ('GLenum', 'targes'), ('unsigned int', 'flags')]
+// hipGraphicsGLRegisterImage[('hipGraphicsResource**', 'resource'), ('GLuint', 'image'), ('GLenum', 'target'), ('unsigned int', 'flags')]
 #define INIT_hipGraphicsGLRegisterImage_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphicsGLRegisterImage.resource = (hipGraphicsResource**)resource; \
-  cb_data.args.hipGraphicsGLRegisterImage.image = (GLuint)imag; \
-  cb_data.args.hipGraphicsGLRegisterImage.targes = (GLenum)targes; \
+  cb_data.args.hipGraphicsGLRegisterImage.image = (GLuint)image; \
+  cb_data.args.hipGraphicsGLRegisterImage.target = (GLenum)target; \
   cb_data.args.hipGraphicsGLRegisterImage.flags = (unsigned int)flags; \
 };
 // hipGraphicsMapResources[('int', 'count'), ('hipGraphicsResource_t*', 'resources'), ('hipStream_t', 'stream')]
@@ -5179,7 +5179,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
       if (data->args.hipGraphicsGLRegisterBuffer.resource) data->args.hipGraphicsGLRegisterBuffer.resource__val = *(data->args.hipGraphicsGLRegisterBuffer.resource);
       break;
-// hipGraphicsGLRegisterImage[('hipGraphicsResource**', 'resource'), ('GLuint', 'image'), ('GLenum', 'targes'), ('unsigned int', 'flags')]
+// hipGraphicsGLRegisterImage[('hipGraphicsResource**', 'resource'), ('GLuint', 'image'), ('GLenum', 'target'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipGraphicsGLRegisterImage:
       if (data->args.hipGraphicsGLRegisterImage.resource) data->args.hipGraphicsGLRegisterImage.resource__val = *(data->args.hipGraphicsGLRegisterImage.resource);
       break;
@@ -6885,7 +6885,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipGraphicsGLRegisterImage.resource == NULL) oss << "resource=NULL";
       else oss << "resource=" << (void*)data->args.hipGraphicsGLRegisterImage.resource__val;
       oss << ", image=" << data->args.hipGraphicsGLRegisterImage.image;
-      oss << ", targes=" << data->args.hipGraphicsGLRegisterImage.targes;
+      oss << ", target=" << data->args.hipGraphicsGLRegisterImage.target;
       oss << ", flags=" << data->args.hipGraphicsGLRegisterImage.flags;
       oss << ")";
     break;

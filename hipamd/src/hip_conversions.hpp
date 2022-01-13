@@ -169,6 +169,29 @@ cl_mem_object_type getCLMemObjectType(const hipResourceType hipResType) {
 }
 
 inline
+hipArray_Format getCL2hipArrayFormat(const cl_channel_type type) {
+  switch (type) {
+    case CL_SNORM_INT8:
+    case CL_SIGNED_INT8:
+      return HIP_AD_FORMAT_SIGNED_INT8;
+
+    case CL_SIGNED_INT32:
+      return HIP_AD_FORMAT_SIGNED_INT32;
+
+    case CL_UNSIGNED_INT32:
+      return HIP_AD_FORMAT_UNSIGNED_INT32;
+
+    case CL_FLOAT:
+      return HIP_AD_FORMAT_FLOAT;
+
+    case CL_UNSIGNED_INT8:
+    case CL_UNORM_INT8:
+    case CL_UNORM_INT_101010:
+    default:
+      return HIP_AD_FORMAT_UNSIGNED_INT8;
+  }
+}
+inline
 size_t getElementSize(const hipArray_const_t array) {
   switch (array->Format) {
     case HIP_AD_FORMAT_UNSIGNED_INT8:
