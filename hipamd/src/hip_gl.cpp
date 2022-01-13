@@ -25,7 +25,7 @@
 #include "cl_common.hpp"
 #include <GL/gl.h>
 #include <GL/glext.h>
-
+#include "hip_conversions.hpp"
 
 namespace amd {
 static std::once_flag interopOnce;
@@ -166,6 +166,350 @@ static inline GLenum checkForGLError(const amd::Context& amdContext) {
   return glRetErr;
 }
 
+hipError_t hipGraphicsSubResourceGetMappedArray(hipArray_t* array, hipGraphicsResource_t resource,
+                                      unsigned int arrayIndex, unsigned int mipLevel) {
+  HIP_INIT_API(hipGraphicsSubResourceGetMappedArray, array, resource, arrayIndex, mipLevel);
+
+  amd::Context& amdContext = *(hip::getCurrentDevice()->asContext());
+  if (array == nullptr || resource == nullptr) {
+    LogError("invalid array/resource");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  amd::Image* image = (reinterpret_cast<amd::Memory*>(resource))->asImage();
+  if (image == nullptr) {
+    LogError("invalid resource/image");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // arrayIndex higher than zero not implmented
+  assert(arrayIndex == 0) ;
+  amd::Image * view = image->createView(amdContext, image->getImageFormat(), nullptr, mipLevel, 0);
+
+  hipArray* myarray = new hipArray();
+
+  myarray->data = as_cl<amd::Memory> (view);
+
+  myarray->width = view->getWidth();
+  myarray->height = view->getHeight();
+  myarray->depth = view->getDepth();
+
+  const cl_mem_object_type image_type = hip::getCLMemObjectType(myarray->width, myarray->height, myarray->depth, hipArrayDefault);
+  myarray->type = image_type;
+  amd::Image::Format f = image->getImageFormat();
+  myarray->Format = hip::getCL2hipArrayFormat(f.image_channel_data_type);
+  myarray->desc = hip::getChannelFormatDesc(f.getNumChannels(), myarray->Format);
+  myarray->NumChannels = hip::getNumChannels(myarray->desc);
+  myarray->isDrv = 0;
+  myarray->textureType = 0;
+  *array = myarray;
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint image, GLenum target,
+                                      unsigned int flags) {
+  HIP_INIT_API(hipGraphicsGLRegisterImage, resource, image, target, flags);
+
+    if (!((flags == hipGraphicsRegisterFlagsNone) || (flags == hipGraphicsRegisterFlagsReadOnly) ||
+        (flags == hipGraphicsRegisterFlagsWriteDiscard) ||
+        (flags == hipGraphicsRegisterFlagsSurfaceLoadStore) ||
+        (flags == hipGraphicsRegisterFlagsTextureGather))) {
+    LogError("invalid parameter \"flags\"");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (resource == nullptr) {
+    LogError("invalid resource");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  GLint miplevel = 0;
+  amd::Context& amdContext = *(hip::getCurrentDevice()->asContext());
+
+  amd::GLFunctions::SetIntEnv ie(amdContext.glenv());
+  if (!ie.isValid()) {
+    LogWarning("\"amdContext\" is not created from GL context or share list \n");
+    HIP_RETURN(hipErrorUnknown);
+  }
+
+  amd::ImageGL* pImageGL = NULL;
+  GLenum glErr;
+  GLenum glTarget = 0;
+  GLenum glInternalFormat;
+  cl_image_format clImageFormat;
+  uint dim = 1;
+  cl_mem_object_type clType;
+  cl_gl_object_type clGLType;
+  GLsizei numSamples = 1;
+
+  GLint gliTexWidth = 1;
+  GLint gliTexHeight = 1;
+  GLint gliTexDepth = 1;
+
+  // Verify GL texture object
+  clearGLErrors(amdContext);
+  if ((GL_FALSE == amdContext.glenv()->glIsTexture_(image)) ||
+      (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
+    LogWarning("\"texture\" is not a GL texture object");
+    HIP_RETURN(hipErrorUnknown);
+  }
+
+  bool isImage = true;
+
+  // Check target value validity
+  switch (target) {
+    case GL_TEXTURE_BUFFER:
+      glTarget = GL_TEXTURE_BUFFER;
+      dim = 1;
+      clType = CL_MEM_OBJECT_IMAGE1D_BUFFER;
+      clGLType = CL_GL_OBJECT_TEXTURE_BUFFER;
+      isImage = false;
+      break;
+
+    case GL_TEXTURE_1D:
+      glTarget = GL_TEXTURE_1D;
+      dim = 1;
+      clType = CL_MEM_OBJECT_IMAGE1D;
+      clGLType = CL_GL_OBJECT_TEXTURE1D;
+      break;
+
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_X:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_X:
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_Y:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Y:
+    case GL_TEXTURE_CUBE_MAP_POSITIVE_Z:
+    case GL_TEXTURE_CUBE_MAP_NEGATIVE_Z:
+      glTarget = GL_TEXTURE_CUBE_MAP;
+      dim = 2;
+      clType = CL_MEM_OBJECT_IMAGE2D;
+      clGLType = CL_GL_OBJECT_TEXTURE2D;
+      break;
+
+    case GL_TEXTURE_1D_ARRAY:
+      glTarget = GL_TEXTURE_1D_ARRAY;
+      dim = 2;
+      clType = CL_MEM_OBJECT_IMAGE1D_ARRAY;
+      clGLType = CL_GL_OBJECT_TEXTURE1D_ARRAY;
+      break;
+
+    case GL_TEXTURE_2D:
+      glTarget = GL_TEXTURE_2D;
+      dim = 2;
+      clType = CL_MEM_OBJECT_IMAGE2D;
+      clGLType = CL_GL_OBJECT_TEXTURE2D;
+      break;
+
+    case GL_TEXTURE_2D_MULTISAMPLE:
+      glTarget = GL_TEXTURE_2D_MULTISAMPLE;
+      dim = 2;
+      clType = CL_MEM_OBJECT_IMAGE2D;
+      clGLType = CL_GL_OBJECT_TEXTURE2D;
+      break;
+
+    case GL_TEXTURE_RECTANGLE_ARB:
+      glTarget = GL_TEXTURE_RECTANGLE_ARB;
+      dim = 2;
+      clType = CL_MEM_OBJECT_IMAGE2D;
+      clGLType = CL_GL_OBJECT_TEXTURE2D;
+      break;
+
+    case GL_TEXTURE_2D_ARRAY:
+      glTarget = GL_TEXTURE_2D_ARRAY;
+      dim = 3;
+      clType = CL_MEM_OBJECT_IMAGE2D_ARRAY;
+      clGLType = CL_GL_OBJECT_TEXTURE2D_ARRAY;
+      break;
+
+    case GL_TEXTURE_3D:
+      glTarget = GL_TEXTURE_3D;
+      dim = 3;
+      clType = CL_MEM_OBJECT_IMAGE3D;
+      clGLType = CL_GL_OBJECT_TEXTURE3D;
+      break;
+
+    default:
+      // wrong value
+      LogWarning("invalid \"target\" value");
+      HIP_RETURN(hipErrorInvalidValue);
+      break;
+  }
+  amdContext.glenv()->glBindTexture_(glTarget, image);
+
+  // Check if size is available - data store is created
+  if (isImage) {
+    // Check mipmap level for "texture" name
+    GLint gliTexBaseLevel;
+    GLint gliTexMaxLevel;
+
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_BASE_LEVEL, &gliTexBaseLevel);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get base mipmap level of a GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_MAX_LEVEL, &gliTexMaxLevel);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get max mipmap level of a GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    if ((gliTexBaseLevel > miplevel) || (miplevel > gliTexMaxLevel)) {
+      LogWarning("\"miplevel\" is not a valid mipmap level of the GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    // Get GL texture format and check if it's compatible with CL format
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_INTERNAL_FORMAT,
+                                                  (GLint*)&glInternalFormat);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_SAMPLES,
+                                                  (GLint*)&numSamples);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get  numbers of samples of GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    if (numSamples > 1) {
+      LogWarning("MSAA \"texture\" object is not suppoerted for the device");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    // Now get CL format from GL format and bytes per pixel
+    int iBytesPerPixel = 0;
+    if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+                            0)) { //clFlags)) {
+      LogWarning("\"texture\" format does not map to an appropriate CL image format");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    switch (dim) {
+      case 3:
+        clearGLErrors(amdContext);
+        amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_DEPTH,
+                                                      &gliTexDepth);
+        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+          LogWarning("Cannot get the depth of \"miplevel\" of GL \"texure\"");
+          HIP_RETURN(hipErrorInvalidValue);
+        }
+      // Fall trough to process other dimensions...
+      case 2:
+        clearGLErrors(amdContext);
+        amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_HEIGHT,
+                                                      &gliTexHeight);
+        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+          LogWarning("Cannot get the height of \"miplevel\" of GL \"texure\"");
+          HIP_RETURN(hipErrorInvalidValue);
+        }
+      // Fall trough to process other dimensions...
+      case 1:
+        clearGLErrors(amdContext);
+        amdContext.glenv()->glGetTexLevelParameteriv_(target, miplevel, GL_TEXTURE_WIDTH,
+                                                      &gliTexWidth);
+        if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+          LogWarning("Cannot get the width of \"miplevel\" of GL \"texure\"");
+          HIP_RETURN(hipErrorInvalidValue);
+        }
+        break;
+      default:
+        LogWarning("invalid \"target\" value");
+        HIP_RETURN(hipErrorInvalidValue);
+    }
+
+  } else {
+    GLint size;
+
+    // In case target is GL_TEXTURE_BUFFER
+    GLint backingBuffer;
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetTexLevelParameteriv_(
+        glTarget, 0, GL_TEXTURE_BUFFER_DATA_STORE_BINDING, &backingBuffer);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get backing buffer for GL \"texture buffer\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    amdContext.glenv()->glBindBuffer_(glTarget, backingBuffer);
+
+    // Get GL texture format and check if it's compatible with CL format
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetIntegerv_(GL_TEXTURE_BUFFER_FORMAT_EXT,
+                                        reinterpret_cast<GLint*>(&glInternalFormat));
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    // Now get CL format from GL format and bytes per pixel
+    int iBytesPerPixel = 0;
+    if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+                            flags)) {
+      LogWarning("\"texture\" format does not map to an appropriate CL image format");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    clearGLErrors(amdContext);
+    amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &size);
+    if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
+      LogWarning("Cannot get internal format of \"miplevel\" of GL \"texture\" object");
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    gliTexWidth = size / iBytesPerPixel;
+  }
+  size_t imageSize = (clType == CL_MEM_OBJECT_IMAGE1D_ARRAY) ? static_cast<size_t>(gliTexHeight)
+                                                              : static_cast<size_t>(gliTexDepth);
+
+  if (!amd::Image::validateDimensions(
+          amdContext.devices(), clType, static_cast<size_t>(gliTexWidth),
+          static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), imageSize)) {
+    LogWarning("The GL \"texture\" data store is not created or out of supported dimensions");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
+
+  pImageGL = new (amdContext)
+      amd::ImageGL(amdContext, clType, flags, clImageFormat, static_cast<size_t>(gliTexWidth),
+              static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
+              image, 0, glInternalFormat, clGLType, numSamples, target);
+
+  if (!pImageGL) {
+    LogWarning("Cannot create class ImageGL - out of memory?");
+    HIP_RETURN(hipErrorUnknown);
+  }
+
+  if (!pImageGL->create()) {
+    pImageGL->release();
+    HIP_RETURN(hipErrorUnknown);
+  }
+  // Create interop object
+  if (pImageGL->getInteropObj() == nullptr) {
+    LogWarning("cannot create object of class BufferGL");
+    pImageGL->release();
+    HIP_RETURN(hipErrorUnknown);
+  }
+  // Fixme: If more than one device is present in the context, we choose the first device.
+  // We should come up with a more elegant solution to handle this.
+  assert(amdContext.devices().size() == 1);
+
+  const amd::Device& dev = *(amdContext.devices()[0]);
+ 
+  device::Memory* mem = pImageGL->getDeviceMemory(dev);
+  if (nullptr == mem) {
+    LogPrintfError("Can't allocate memory size - 0x%08X bytes!", pImageGL->getSize());
+    pImageGL->release();
+    HIP_RETURN(hipErrorUnknown);
+  }
+  mem->processGLResource(device::Memory::GLDecompressResource);
+
+  *resource = reinterpret_cast<hipGraphicsResource*>(pImageGL);
+  HIP_RETURN(hipSuccess);
+
+}
+
 hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint buffer,
                                        unsigned int flags) {
   HIP_INIT_API(hipGraphicsGLRegisterBuffer, resource, buffer, flags);
@@ -175,6 +519,11 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
         (flags == hipGraphicsRegisterFlagsSurfaceLoadStore) ||
         (flags == hipGraphicsRegisterFlagsTextureGather))) {
     LogError("invalid parameter \"flags\"");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (resource == nullptr) {
+    LogError("invalid resource");
     HIP_RETURN(hipErrorInvalidValue);
   }
 

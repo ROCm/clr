@@ -382,6 +382,8 @@ global:
     amd_dbgapi_get_build_id;
     hipStreamGetCaptureInfo;
     hipStreamGetCaptureInfo_v2;
+    hipGraphicsGLRegisterImage;
+    hipGraphicsSubResourceGetMappedArray;
 local:
     *;
 } hip_4.4;
