@@ -1075,6 +1075,17 @@ bool Device::populateOCLDeviceConstants() {
     ::strncpy(info_.boardName_, device_name, sizeof(info_.boardName_) - 1);
   }
 
+  char unique_id[32] = {0};
+  if (HSA_STATUS_SUCCESS ==
+      hsa_agent_get_info(_bkendDevice, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_UUID),
+                         unique_id)) {
+    // ROCr gives the UUID info in the format GPU-XXXX with length 20 bytes
+    // Strip the first 4 bytes and store only the 16 bytes representing UUID
+    for (size_t i = 0; i < 16; i++) {
+     info_.uuid_[i] = unique_id[i+4];
+    }
+  }
+
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice,
                          (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT,
