@@ -804,10 +804,18 @@ bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const 
 */
 #ifdef ATI_OS_LINUX
   GLXContext ctx = (GLXContext)GLplatformContext;
-  return (glXEndCLInteropAMD(ctx, 0)) ? true : false;
+  if (glXEndCLInteropAMD == nullptr) {
+    return false;
+  } else {
+     return (glXEndCLInteropAMD(ctx, 0)) ? true : false;
+  }
 #else
   HGLRC hRC = (HGLRC)GLplatformContext;
-  return (wglEndCLInteropAMD(hRC, 0)) ? true : false;
+  if (wglEndCLInteropAMD == nullptr) {
+    return false;
+  } else {
+    return (wglEndCLInteropAMD(hRC, 0)) ? true : false;
+  }
 #endif
 }
 
