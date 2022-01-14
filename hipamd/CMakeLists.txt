@@ -335,6 +335,17 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
     # Exclude .bat files on Linux.
     if(WIN32)
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS)
+      if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/" DESTINATION bin
+                FILES_MATCHING PATTERN "*.pdb"
+                               PATTERN "*.ilk"
+                               PATTERN "CMakeFiles" EXCLUDE
+                               PATTERN "hip_rtc_gen" EXCLUDE
+                               PATTERN "libelf" EXCLUDE
+                               PATTERN "loader" EXCLUDE
+                               PATTERN "pal" EXCLUDE
+                               PATTERN "libamdhsacode" EXCLUDE)
+      endif()
     else()
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS
               PATTERN *.bat EXCLUDE)
