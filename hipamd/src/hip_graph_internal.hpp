@@ -146,12 +146,20 @@ struct hipGraphNode {
       edges_.push_back(entry);
     }
   }
+  /// Update level, for existing edges
+  void UpdateEdgeLevel() {
+    for (auto edge : edges_) {
+      edge->SetLevel(std::max(edge->GetLevel(), GetLevel() + 1));
+      edge->UpdateEdgeLevel();
+    }
+  }
   /// Add edge, update parent node outdegree, child node indegree, level and dependency
   void AddEdge(const Node& childNode) {
     edges_.push_back(childNode);
     outDegree_++;
     childNode->SetInDegree(childNode->GetInDegree() + 1);
     childNode->SetLevel(std::max(childNode->GetLevel(), GetLevel() + 1));
+    childNode->UpdateEdgeLevel();
     childNode->AddDependency(this);
   }
   /// Remove edge, update parent node outdegree, child node indegree, level and dependency
