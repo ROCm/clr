@@ -665,7 +665,8 @@ hipError_t hipGraphExec::CreateQueues(size_t numQueues) {
 
 hipError_t hipGraphExec::Init() {
   hipError_t status;
-  size_t reqNumQueues = 0;
+  size_t reqNumQueues = 1;
+
   for (auto& node : levelOrder_) {
     reqNumQueues += node->GetNumParallelQueues();
   }
