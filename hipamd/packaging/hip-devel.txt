@@ -27,6 +27,12 @@ else()
   install(DIRECTORY @HIP_COMMON_DIR@/bin DESTINATION . USE_SOURCE_PERMISSIONS
           PATTERN *.bat EXCLUDE)
 endif()
+
+if (NOT @HIPCC_BIN_DIR@ STREQUAL "")
+  install(PROGRAMS @HIPCC_BIN_DIR@/hipcc.bin DESTINATION bin)
+  install(PROGRAMS @HIPCC_BIN_DIR@/hipconfig.bin DESTINATION bin)
+endif()
+
 install(DIRECTORY @hip_SOURCE_DIR@/bin DESTINATION . USE_SOURCE_PERMISSIONS)
 install(DIRECTORY @HIP_COMMON_DIR@/include DESTINATION .)
 install(DIRECTORY @hip_SOURCE_DIR@/include/hip/amd_detail DESTINATION include/hip)

@@ -44,6 +44,7 @@ option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(__HIP_ENABLE_RTC "Enable/Disable pre-processed hiprtc shared lib" ON)
 option(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS "Enable/Disable FP Atomics version" OFF)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
+set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
 
 if(__HIP_ENABLE_PCH)
   set(_pchStatus 1)
@@ -55,7 +56,8 @@ if(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
   add_definitions(-D__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
 endif()
 
-message (STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}" )
+message(STATUS "HIPCC_BIN_DIR found at ${HIPCC_BIN_DIR}")
+message(STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}")
 set(HIP_COMMON_INCLUDE_DIR ${HIP_COMMON_DIR}/include)
 set(HIP_COMMON_BIN_DIR ${HIP_COMMON_DIR}/bin)
 set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
@@ -322,12 +324,6 @@ install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION lib)
 # Install .hipVersion
 install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION bin)
 
-# Install hipcc binaries
-if(HIPCC_BIN_DIR)
-    install(FILES ${HIPCC_BIN_DIR}/hipcc.bin DESTINATION bin)
-    install(FILES ${HIPCC_BIN_DIR}/hipconfig.bin DESTINATION bin)
-endif()
-
 # Install src, bin, include & cmake if necessary
 execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
     RESULT_VARIABLE INSTALL_SOURCE)
@@ -432,18 +428,6 @@ if(HIP_RUNTIME STREQUAL "rocclr")
         WORKING_DIRECTORY ${BUILD_DIR} )
 endif()
 
-# Package: hipcc (if HIPCC_BIN_DIR is available)
-message(STATUS "HIPCC_BIN_DIR found at ${HIPCC_BIN_DIR}" )
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hipcc)
-configure_file(packaging/hipcc.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(pkg_hipcc COMMAND ${CMAKE_COMMAND} .
-    COMMAND rm -rf *.deb *.rpm *.tar.gz
-    COMMAND make package
-    COMMAND cp *.deb ${PROJECT_BINARY_DIR}
-    COMMAND cp *.rpm ${PROJECT_BINARY_DIR}
-    COMMAND cp *.tar.gz ${PROJECT_BINARY_DIR}
-    WORKING_DIRECTORY ${BUILD_DIR})
-
 # Package: hip_runtime_nvidia
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/hip-runtime-nvidia)
 configure_file(packaging/hip-runtime-nvidia.txt ${BUILD_DIR}/CMakeLists.txt @ONLY)
@@ -498,9 +482,6 @@ endif()
 
 if(HIP_RUNTIME STREQUAL "rocclr")
     set(package_list pkg_hip_base hip_on_rocclr pkg_hip_nvcc pkg_hip_doc pkg_hip_samples)
-    if(HIPCC_BIN_DIR)
-      set(package_list ${package_list} pkg_hipcc)
-    endif()
     if(HIP_CATCH_TEST EQUAL "1")
       set(package_list ${package_list} pkg_hip_catch_tests)
     endif()
