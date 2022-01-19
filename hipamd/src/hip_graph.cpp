@@ -1177,7 +1177,9 @@ hipError_t hipGraphRemoveDependencies(hipGraph_t graph, const hipGraphNode_t* fr
     HIP_RETURN(hipErrorInvalidValue);
   }
   for (size_t i = 0; i < numDependencies; i++) {
-    from[i]->RemoveEdge(to[i]);
+    if (from[i]->RemoveEdge(to[i]) == false) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
   }
   HIP_RETURN(hipSuccess);
 }
