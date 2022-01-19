@@ -72,6 +72,8 @@ typedef struct ihipIpcEventHandle_st {
   inline int getpid() { return _getpid(); }
 #endif
 
+const char* ihipGetErrorName(hipError_t hip_error);
+
 static  amd::Monitor g_hipInitlock{"hipInit lock"};
 #define HIP_INIT() {\
     amd::ScopedLock lock(g_hipInitlock);                     \
@@ -104,7 +106,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
 
 #define HIP_ERROR_PRINT(err, ...)                                                  \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",                     \
-          __func__, hipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
+          __func__, ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
 // This macro should be called at the beginning of every HIP API.
 #define HIP_INIT_API(cid, ...)                               \
@@ -120,7 +122,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   hip::g_lastError = ret;                                    \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,                      \
                    "%s: Returned %s : %s",                                         \
-                   __func__, hipGetErrorName(hip::g_lastError),                    \
+                   __func__, ihipGetErrorName(hip::g_lastError),                    \
                    ToString( __VA_ARGS__ ).c_str());                               \
   return hip::g_lastError;
 

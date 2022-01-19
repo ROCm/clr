@@ -37,7 +37,7 @@ hipError_t hipPeekAtLastError()
   HIP_RETURN(err);
 }
 
-const char *hipGetErrorName(hipError_t hip_error)
+const char *ihipGetErrorName(hipError_t hip_error)
 {
   switch (hip_error) {
     case hipSuccess:
@@ -169,8 +169,13 @@ const char *hipGetErrorName(hipError_t hip_error)
     };
 }
 
+const char* hipGetErrorName(hipError_t hip_error) 
+{ 
+  return ihipGetErrorName(hip_error); 
+}
+
 const char *hipGetErrorString(hipError_t hip_error)
 {
-  return hipGetErrorName(hip_error);
+  return ihipGetErrorName(hip_error);
 }
 
