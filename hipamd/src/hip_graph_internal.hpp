@@ -163,8 +163,15 @@ struct hipGraphNode {
     childNode->AddDependency(this);
   }
   /// Remove edge, update parent node outdegree, child node indegree, level and dependency
-  void RemoveEdge(const Node& childNode) {
-    edges_.erase(std::remove(edges_.begin(), edges_.end(), childNode), edges_.end());
+  bool RemoveEdge(const Node& childNode) {
+    // std::remove changes the end() hence saving it before hand for validation
+    auto currEdgeEnd = edges_.end();
+    auto it = std::remove(edges_.begin(), edges_.end(), childNode);
+    if (it == currEdgeEnd) {
+      // Should come here if childNode is not present in the edge list
+      return false;
+    }
+    edges_.erase(it, edges_.end());
     outDegree_--;
     childNode->SetInDegree(childNode->GetInDegree() - 1);
     const std::vector<Node>& dependencies = childNode->GetDependencies();
@@ -176,6 +183,7 @@ struct hipGraphNode {
     }
     childNode->SetLevel(level);
     childNode->RemoveDependency(this);
+    return true;
   }
   /// Get Runlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual void GetRunList(std::vector<std::vector<Node>>& parallelList,
