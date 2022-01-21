@@ -2276,6 +2276,20 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
   return hipSuccess;
 }
 
+hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
+  if (pNodeParams == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  if (pNodeParams->elementSize != 1 && pNodeParams->elementSize != 2 && pNodeParams->elementSize != 4) {
+    return hipErrorInvalidValue;
+  }
+
+  if (pNodeParams->height <= 0) {
+    return hipErrorInvalidValue;
+  }
+  return hipSuccess;
+}
+
 hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, int64_t value,
                              size_t valueSize, size_t sizeBytes, amd::HostQueue* queue) {
   hipError_t hip_error = hipSuccess;

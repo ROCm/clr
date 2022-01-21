@@ -86,3 +86,5 @@ hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch, amd::Image*& srcImage,
                                   amd::BufferRect& dstRect);
+
+hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams);

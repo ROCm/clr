@@ -811,9 +811,22 @@ class hipGraphMemsetNode : public hipGraphNode {
     std::memcpy(params, pMemsetParams_, sizeof(hipMemsetParams));
   }
   hipError_t SetParams(const hipMemsetParams* params) {
+
     hipError_t hip_error = hipSuccess;
-    hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize,
-                                    params->width * params->elementSize);
+    hip_error = ihipGraphMemsetParams_validate(params);
+    if (hip_error != hipSuccess) {
+      return hip_error;
+    }
+    if (params->height == 1) {
+      hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize,
+                                      params->width * params->elementSize);
+    } else {
+      auto sizeBytes = params->width * params->height * 1;
+      hip_error = ihipMemset3D_validate(
+          {params->dst, params->pitch, params->width, params->height},
+          params->value, {params->width, params->height, 1}, sizeBytes);
+    }
+
     if (hip_error != hipSuccess) {
       return hip_error;
     }
