@@ -122,6 +122,10 @@ hipError_t ihipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return hipErrorInvalidValue;
   }
   hipError_t status;
+  status = ihipGraphMemsetParams_validate(pMemsetParams);
+  if (status != hipSuccess) {
+    return status;
+  }
   if (pMemsetParams->height == 1) {
     status =
         ihipMemset_validate(pMemsetParams->dst, pMemsetParams->value, pMemsetParams->elementSize,
