@@ -108,6 +108,15 @@ hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices,
     LogError("Failed : Invalid Shared Group Reference \n");
     HIP_RETURN(hipErrorInvalidValue);
   }
+  amd::GLFunctions* glenv = hip::getCurrentDevice()->asContext()->glenv();
+  if (glenv != nullptr) {
+#ifdef _WIN32
+    info.hCtx_ = glenv->wglGetCurrentContext_();
+#else
+    info.hCtx_ = glenv->glXGetCurrentContext_();
+#endif
+    hip::getCurrentDevice()->asContext()->setInfo(info);
+  }
 
   *pHipDeviceCount = 0;
   switch (deviceList) {
