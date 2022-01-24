@@ -1187,7 +1187,8 @@ hipError_t hipGraphRemoveDependencies(hipGraph_t graph, const hipGraphNode_t* fr
 hipError_t hipGraphGetEdges(hipGraph_t graph, hipGraphNode_t* from, hipGraphNode_t* to,
                             size_t* numEdges) {
   HIP_INIT_API(hipGraphGetEdges, graph, from, to, numEdges);
-  if (graph == nullptr || numEdges == nullptr) {
+  if (graph == nullptr || numEdges == nullptr ||
+      from == nullptr || to == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   const std::vector<std::pair<Node, Node>> edges = graph->GetEdges();
