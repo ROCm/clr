@@ -1199,6 +1199,7 @@ hipError_t hipStreamGetCaptureInfo_v2(hipStream_t stream, hipStreamCaptureStatus
       *graph_out = s->GetCaptureGraph();
     }
     if (dependencies_out != nullptr && numDependencies_out != nullptr) {
+      auto t= s->GetLastCapturedNodes().data();
       *dependencies_out = s->GetLastCapturedNodes().data();
       *numDependencies_out = s->GetLastCapturedNodes().size();
     }
@@ -1560,7 +1561,8 @@ hipError_t hipGraphEventWaitNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_
 
 hipError_t hipGraphEventWaitNodeSetEvent(hipGraphNode_t node, hipEvent_t event) {
   HIP_INIT_API(hipGraphEventWaitNodeSetEvent, node, event);
-  if (node == nullptr || event == nullptr) {
+  if (node == nullptr || event == nullptr ||
+    node->GetType() != hipGraphNodeTypeWaitEvent) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hipGraphEventWaitNode*>(node)->SetParams(event));
