@@ -28,6 +28,8 @@
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                       amd::HostQueue& queue, bool isAsync = false);
 
+hipError_t ihipFree(void* ptr);
+
 struct __hip_texture {
   uint32_t imageSRD[HIP_IMAGE_OBJECT_SIZE_DWORD];
   uint32_t samplerSRD[HIP_SAMPLER_OBJECT_SIZE_DWORD];
@@ -338,7 +340,7 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
   texObject->sampler->release();
 
   // TODO Should call ihipFree() to not polute the api trace.
-  return hipFree(texObject);
+  return ihipFree(texObject);
 }
 
 hipError_t ihipUnbindTexture(textureReference* texRef) {
@@ -376,24 +378,28 @@ hipError_t hipDestroyTextureObject(hipTextureObject_t texObject) {
   HIP_RETURN(ihipDestroyTextureObject(texObject));
 }
 
-
-hipError_t hipGetTextureObjectResourceDesc(hipResourceDesc* pResDesc,
-                                           hipTextureObject_t texObject) {
-  HIP_INIT_API(hipGetTextureObjectResourceDesc, pResDesc, texObject);
-
+hipError_t ihipGetTextureObjectResourceDesc(hipResourceDesc* pResDesc,
+                                            hipTextureObject_t texObject) {
   if ((pResDesc == nullptr) || (texObject == nullptr)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
   if (!info.imageSupport_) {
     LogPrintfError("Texture not supported on the device %s", info.name_);
-    HIP_RETURN(hipErrorNotSupported);
+    return hipErrorNotSupported;
   }
 
   *pResDesc = texObject->resDesc;
 
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
+
+hipError_t hipGetTextureObjectResourceDesc(hipResourceDesc* pResDesc,
+                                           hipTextureObject_t texObject) {
+  HIP_INIT_API(hipGetTextureObjectResourceDesc, pResDesc, texObject);
+
+  HIP_RETURN(ihipGetTextureObjectResourceDesc(pResDesc, texObject));
 }
 
 hipError_t hipGetTextureObjectResourceViewDesc(hipResourceViewDesc* pResViewDesc,
@@ -888,7 +894,7 @@ hipError_t hipTexRefGetArray(hipArray_t* pArray,
 
   hipResourceDesc resDesc = {};
   // TODO use ihipGetTextureObjectResourceDesc() to not pollute the API trace.
-  hipError_t error = hipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
+  hipError_t error = ihipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
   if (error != hipSuccess) {
     HIP_RETURN(error);
   }
@@ -963,10 +969,10 @@ hipError_t hipTexRefGetAddress(hipDeviceptr_t* dptr,
 
   hipResourceDesc resDesc = {};
   // TODO use ihipGetTextureObjectResourceDesc() to not pollute the API trace.
-  hipError_t error = hipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
+  hipError_t error = ihipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
   if (error != hipSuccess) {
     LogPrintfError("hipGetTextureObjectResourceDesc failed with error code: %s \n",
-                   hipGetErrorName(error));
+                   ihipGetErrorName(error));
     HIP_RETURN(error);
   }
 
@@ -1278,7 +1284,7 @@ hipError_t hipTexRefGetMipmappedArray(hipMipmappedArray_t* pArray,
 
   hipResourceDesc resDesc = {};
   // TODO use ihipGetTextureObjectResourceDesc() to not pollute the API trace.
-  hipError_t error = hipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
+  hipError_t error = ihipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
   if (error != hipSuccess) {
     HIP_RETURN(error);
   }
