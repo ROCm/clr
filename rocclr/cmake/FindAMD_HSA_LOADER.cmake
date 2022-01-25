@@ -51,6 +51,7 @@ set(USE_AMD_LIBELF "yes" CACHE FORCE "")
 # TODO compiler team requested supporting sp3 disassembly
 set(NO_SI_SP3 "yes" CACHE FORCE "")
 set(HSAIL_COMPILER_SOURCE_DIR "${AMD_LIBELF_INCLUDE_DIR}/../../../../..")
+set(HSAIL_ELFTOOLCHAIN_DIR ${HSAIL_COMPILER_SOURCE_DIR}/lib/loaders/elf/utils)
 add_subdirectory("${AMD_LIBELF_INCLUDE_DIR}" ${CMAKE_CURRENT_BINARY_DIR}/libelf)
 add_subdirectory("${AMD_HSAIL_INCLUDE_DIR}/../ext/libamdhsacode" ${CMAKE_CURRENT_BINARY_DIR}/libamdhsacode)
 add_subdirectory("${AMD_HSAIL_INCLUDE_DIR}/../ext/loader" ${CMAKE_CURRENT_BINARY_DIR}/loader)
