@@ -1385,6 +1385,13 @@ hipError_t hipGraphMemcpyNodeSetParamsToSymbol(hipGraphNode_t node, const void* 
                                                const void* src, size_t count, size_t offset,
                                                hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphMemcpyNodeSetParamsToSymbol, symbol, src, count, offset, kind);
+  if (node == nullptr || src == nullptr || count == 0 || symbol == src) {
+    return hipErrorInvalidValue;
+  }
+  if (symbol  == nullptr) {
+    return hipErrorInvalidSymbol;
+  }
+
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(node)->SetParams(symbol, src, count,
                                                                             offset, kind));
 }
