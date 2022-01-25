@@ -1363,6 +1363,10 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
                                          hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphAddMemcpyNodeToSymbol, pGraphNode, graph, pDependencies, numDependencies,
                symbol, src, count, offset, kind);
+  if (pGraphNode == nullptr || graph == nullptr || src == nullptr ||
+    (pDependencies == nullptr && numDependencies > 0)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
   hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
@@ -1370,6 +1374,9 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
     HIP_RETURN(status);
   }
   *pGraphNode = new hipGraphMemcpyNodeToSymbol(symbol, src, count, offset, kind);
+  if (*pGraphNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
   HIP_RETURN(hipSuccess);
 }
