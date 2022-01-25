@@ -716,6 +716,26 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
 
   hipError_t SetParams(const void* symbol, const void* src, size_t count, size_t offset,
                        hipMemcpyKind kind) {
+
+    size_t zeroOffset = 0;
+    amd::Memory* srcMemory = getMemoryObject(src, zeroOffset);
+    amd::Memory* dstMemory = getMemoryObject(symbol, zeroOffset);
+    hipMemoryType srcMemoryType =
+        amd::MemObjMap::FindMemObj(srcMemory) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    hipMemoryType dstMemoryType =
+        amd::MemObjMap::FindMemObj(dstMemory) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+
+    // Return error if sizeBytes passed to memcpy is more than the actual size allocated
+    if ((dstMemory && count > (dstMemory->getSize() - offset)) ||
+        (srcMemory && count > (srcMemory->getSize() - offset))) {
+      return hipErrorInvalidValue;
+    }
+    // check the kind with memory types
+    if (std::get<0>(hip::getMemoryType(kind)) != srcMemoryType)
+      return hipErrorInvalidValue;
+    if (std::get<1>(hip::getMemoryType(kind)) != dstMemoryType)
+        return hipErrorInvalidValue;
+
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
 
