@@ -122,7 +122,8 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx702",                 "gfx702",    true,  false, true,               7,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Hawaii (can execute Hawiipro code)
     {"gfx703",                 nullptr,     false, false, true,               7,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Mullins
     {"gfx704",                 "Bonaire",   false, false, true,               7,  0,  4,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx705",                 "Mullins",   false, false, true,               7,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Godavari    {"gfx801",                 nullptr,     true,  true,  true,               8,  0,  1,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx705",                 "Mullins",   false, false, true,               7,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Godavari
+    {"gfx801",                 nullptr,     true,  true,  true,               8,  0,  1,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx801:xnack-",          nullptr,     true,  false, true,               8,  0,  1,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx801:xnack+",          "Carrizo",   true,  true,  true,               8,  0,  1,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx802",                 "Tonga",     true,  true,  true,               8,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Iceland
