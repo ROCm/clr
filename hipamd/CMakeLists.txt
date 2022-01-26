@@ -36,6 +36,12 @@ project(hip)
 #  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
 list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
+
+# required to add the right link to libhsa-runtime in install/lib path
+# CMAKE_PREFIX_PATH is used as rpath to search for libs outside HIP
+set(CMAKE_INSTALL_RPATH "${CMAKE_PREFIX_PATH}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 #############################
 # Options
 #############################
