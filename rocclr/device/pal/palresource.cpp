@@ -150,6 +150,9 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
+  if (amd::IS_HIP) { //creating svm buffer in case of interop with HIP
+    createInfo.vaRange = Pal::VaRange::Svm;
+  }
   GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
   if (memRef != nullptr) {
     result = dev.iDev()->OpenExternalSharedGpuMemory(openInfo, &memRef[1], &createInfo,
