@@ -364,6 +364,7 @@ void NullDevice::fillDeviceInfo(const CALdeviceattribs& calAttr, const gslMemInf
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = 0x1002;
   info_.maxComputeUnits_ = calAttr.numberOfSIMD;
+  info_.maxBoostComputeUnits_ = calAttr.numberOfSIMD;
   info_.maxWorkItemDimensions_ = 3;
   info_.numberOfShaderEngines = calAttr.numberOfShaderEngines;
 

@@ -1076,7 +1076,8 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
+      hsa_agent_get_info(_bkendDevice,
+                         (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT,
                          &info_.maxComputeUnits_)) {
     return false;
   }
@@ -1085,6 +1086,17 @@ bool Device::populateOCLDeviceConstants() {
   info_.maxComputeUnits_ = settings().enableWgpMode_
       ? info_.maxComputeUnits_ / 2
       : info_.maxComputeUnits_;
+
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
+                         &info_.maxBoostComputeUnits_)) {
+    return false;
+  }
+  assert(info_.maxBoostComputeUnits_ > 0);
+
+  info_.maxBoostComputeUnits_ = settings().enableWgpMode_
+      ? info_.maxBoostComputeUnits_ / 2
+      : info_.maxBoostComputeUnits_;
 
   if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CACHELINE_SIZE,
@@ -2106,7 +2118,7 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
   void* orig_dev_ptr = nullptr;
 
   // Retrieve the devPtr from the handle
-  hsa_status_t hsa_status = 
+  hsa_status_t hsa_status =
       hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
                                 mem_size, (1 + p2p_agents_.size()), p2p_agents_list_,
                                 &orig_dev_ptr);
