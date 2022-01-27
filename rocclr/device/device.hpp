@@ -234,8 +234,11 @@ struct Info : public amd::EmbeddedObject {
   //! A unique device vendor identifier.
   uint32_t vendorId_;
 
-  //! The number of parallel compute cores on the compute device.
+  //! The available number of parallel compute cores on the compute device.
   uint32_t maxComputeUnits_;
+
+  //! The max number of parallel compute cores on the compute device.
+  uint32_t maxBoostComputeUnits_;
 
   //! Maximum dimensions that specify the global and local work-item IDs
   //  used by the data-parallel execution model.
