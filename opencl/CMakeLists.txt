@@ -7,6 +7,9 @@ endif()
 
 project(opencl)
 
+# Set default libdir to be "lib" for ROCm, distros will override this anyway:
+set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
+
 include(GNUInstallDirs)
 
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)

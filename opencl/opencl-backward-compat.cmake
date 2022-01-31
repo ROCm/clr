@@ -68,7 +68,7 @@ function(generate_wrapper_header)
     set(include_guard "${include_guard}OPENCL_WRAPPER_INCLUDE_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "${include_statements}#include \"../../../include/CL/${file_name}\"\n")
+    set(include_statements "${include_statements}#include \"../../../${CMAKE_INSTALL_INCLUDEDIR}/CL/${file_name}\"\n")
     configure_file(${OPENCL_WRAPPER_DIR}/header.hpp.in ${OPENCL_WRAPPER_INC_DIR}/${file_name})
     unset(include_guard)
     unset(include_statements)
@@ -83,7 +83,7 @@ function(create_binary_symlink)
   add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../bin/${file_name} ${OPENCL_WRAPPER_BIN_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${OPENCL_WRAPPER_BIN_DIR}/${file_name})
 endfunction()
 
 #function to create symlink to libraries
@@ -98,7 +98,7 @@ function(create_library_symlink)
      add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../lib/${file_name} ${OPENCL_WRAPPER_LIB_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_LIBDIR}/${file_name} ${OPENCL_WRAPPER_LIB_DIR}/${file_name})
   endforeach()
   if(BUILD_SHARED_LIBS)
     set(LIB_AMDDOC "libamdocl64.so")
@@ -109,7 +109,7 @@ function(create_library_symlink)
   add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../lib/${file_name} ${OPENCL_WRAPPER_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_LIBDIR}/${file_name} ${OPENCL_WRAPPER_DIR}/${file_name})
 endfunction()
 
 #Creater a template for header file

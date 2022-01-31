@@ -3,8 +3,8 @@
 set -e
 
 rm_ldconfig() {
-  rm -f /etc/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
-  rm -f /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
 }
 
 case "$1" in

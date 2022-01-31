@@ -1,8 +1,8 @@
 if [ $1 -le 1 ]; then
   # Below files will be removed during remove | upgrade operation
 
-  rm -f /etc/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
-  rm -f /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
 fi
 
 
