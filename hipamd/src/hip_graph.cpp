@@ -1034,7 +1034,11 @@ hipError_t hipGraphMemsetNodeSetParams(hipGraphNode_t node, const hipMemsetParam
 hipError_t hipGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                            const hipMemsetParams* pNodeParams) {
   HIP_INIT_API(hipGraphExecMemsetNodeSetParams, hGraphExec, node, pNodeParams);
-  if (hGraphExec == nullptr || node == nullptr || pNodeParams == nullptr) {
+  if (hGraphExec == nullptr || node == nullptr || pNodeParams == nullptr ||
+      pNodeParams->dst == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (ihipGraphMemsetParams_validate(pNodeParams) != hipSuccess) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
