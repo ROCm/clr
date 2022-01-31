@@ -1508,7 +1508,7 @@ hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                const hipGraphNode_t* pDependencies, size_t numDependencies,
                                const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphAddHostNode, pGraphNode, graph, pDependencies, numDependencies, pNodeParams);
-  if (pGraphNode == nullptr || graph == nullptr ||
+  if (pGraphNode == nullptr || graph == nullptr || pNodeParams == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
