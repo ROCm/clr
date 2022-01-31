@@ -108,6 +108,10 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",                     \
           __func__, ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
+#define HIP_INIT_API_NO_RETURN(cid, ...)		     \
+  HIP_API_PRINT(__VA_ARGS__)                                 \
+  HIP_INIT_VOID()
+
 // This macro should be called at the beginning of every HIP API.
 #define HIP_INIT_API(cid, ...)                               \
   HIP_API_PRINT(__VA_ARGS__)                                 \

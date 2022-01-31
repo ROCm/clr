@@ -196,7 +196,7 @@ hipError_t hipCtxGetSharedMemConfig(hipSharedMemConfig* pConfig) {
 }
 
 hipError_t hipRuntimeGetVersion(int *runtimeVersion) {
-  HIP_INIT_API(hipRuntimeGetVersion, runtimeVersion);
+  HIP_INIT_API_NO_RETURN(hipRuntimeGetVersion, runtimeVersion);
 
   if (!runtimeVersion) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -264,7 +264,7 @@ hipError_t hipCtxPushCurrent(hipCtx_t ctx) {
 }
 
 hipError_t hipDriverGetVersion(int* driverVersion) {
-  HIP_INIT_API(hipDriverGetVersion, driverVersion);
+  HIP_INIT_API_NO_RETURN(hipDriverGetVersion, driverVersion);
 
   if (!driverVersion) {
     HIP_RETURN(hipErrorInvalidValue);
