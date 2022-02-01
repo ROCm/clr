@@ -319,6 +319,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributeImageSupport:
     *pi = static_cast<int>(g_devices[device]->devices()[0]->info().imageSupport_);
     break;
+  case hipDeviceAttributePhysicalMultiProcessorCount:
+    *pi = g_devices[device]->devices()[0]->info().maxPhysicalComputeUnits_;
+    break;
   default:
     HIP_RETURN(hipErrorInvalidValue);
   }
