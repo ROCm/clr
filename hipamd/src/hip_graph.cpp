@@ -1156,8 +1156,11 @@ hipError_t hipStreamGetCaptureInfo_v2(hipStream_t stream, hipStreamCaptureStatus
                                       size_t* numDependencies_out) {
   HIP_INIT_API(hipStreamGetCaptureInfo_v2, stream, captureStatus_out, id_out, graph_out,
                dependencies_out, numDependencies_out);
+  if (captureStatus_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   if (stream == nullptr) {
-    HIP_RETURN(hipErrorStreamCaptureImplicit);
+    HIP_RETURN(hipErrorUnknown);
   }
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
