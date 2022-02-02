@@ -53,26 +53,15 @@ if(HIP_PLATFORM STREQUAL "amd" )
       install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.a DESTINATION lib COMPONENT binary)
    endif()#End BUILD_SHARED_LIBS
 
-#TODO:This do not belog in BINARY package.
+#TODO:This do not belong in BINARY package.
 #Keeping it as is for now
 install(FILES ${CMAKE_BINARY_DIR}/.hipInfo DESTINATION lib COMPONENT binary)
 install(FILES ${CMAKE_BINARY_DIR}/hip-config.cmake ${CMAKE_BINARY_DIR}/hip-config-version.cmake DESTINATION lib/cmake/hip COMPONENT binary)
-install(FILES ${CMAKE_BINARY_DIR}/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/src/hip-lang-config-version.cmake DESTINATION lib/cmake/hip-lang COMPONENT binary)
-## cmake generated target files contains IMPORTED_LOCATION_RELEASE etc. which
-## is installation path when building the project, which may be different from
-## the intallation path for packaging. These paths have to be replaced by
-## the package installation path, otherwise apps using pkg-config will fail.
-file(GLOB _target_files ${CONFIG_PACKAGE_INSTALL_DIR}/hip-targets*.cmake)
-foreach(_target_file ${_target_files})
-  execute_process(COMMAND sed -i s:${CMAKE_INSTALL_PREFIX}:${CPACK_INSTALL_PREFIX}:g ${_target_file})
-endforeach()
-install(FILES ${_target_files} DESTINATION lib/cmake/hip COMPONENT BINARY)
+install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION lib/cmake/hip  COMPONENT binary)
 
-file(GLOB _target_files ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/hip-lang-targets*.cmake)
-foreach(_target_file ${_target_files})
-  execute_process(COMMAND sed -i s:{CMAKE_INSTALL_PREFIX}:${CPACK_INSTALL_PREFIX}:g ${_target_file})
-endforeach()
-install(FILES ${_target_files} DESTINATION lib/cmake/hip-lang COMPONENT BINARY)
+install(FILES ${CMAKE_BINARY_DIR}/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/src/hip-lang-config-version.cmake DESTINATION lib/cmake/hip-lang COMPONENT binary)
+
+install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION lib/cmake/hip-lang  COMPONENT binary)
 
 endif()#End HIP_PLATFORM = "amd"
 #End bianry files install
