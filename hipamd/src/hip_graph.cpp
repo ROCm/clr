@@ -1632,6 +1632,12 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
                               hipGraphNode_t* hErrorNode_out,
                               hipGraphExecUpdateResult* updateResult_out) {
   HIP_INIT_API(hipGraphExecUpdate, hGraphExec, hGraph, hErrorNode_out, updateResult_out);
+  // parameter check
+  if (hGraphExec == nullptr || hGraph == nullptr || hErrorNode_out == nullptr ||
+    updateResult_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   std::vector<Node> newGraphNodes;
   hGraph->LevelOrder(newGraphNodes);
   std::vector<Node>& oldGraphExecNodes = hGraphExec->GetNodes();
