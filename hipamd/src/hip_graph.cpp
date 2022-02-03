@@ -934,6 +934,15 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
 hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                         unsigned long long flags) {
   HIP_INIT_API(hipGraphInstantiateWithFlags, pGraphExec, graph, flags);
+  if (pGraphExec == nullptr || graph == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  //invalid flag check
+  if (flags != hipGraphInstantiateFlagAutoFreeOnLaunch){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   // enable when change is merged to hip
   // if (flags == hipGraphInstantiateFlagAutoFreeOnLaunch) {
   // Free any unfreed memory allocations before the graph is relaunched
