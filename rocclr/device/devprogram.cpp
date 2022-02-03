@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -2667,6 +2667,9 @@ bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
       } else if (minor_version == '1') {
         ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V4.");
         codeObjectVer_ = 4;
+      } else if (minor_version == '2') {
+        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Using Code Object V5.");
+        codeObjectVer_ = 5;
       } else {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
           "Unknown code object metadata minor version [%s.%s].", major_version, minor_version);

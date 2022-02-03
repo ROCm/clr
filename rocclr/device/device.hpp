@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -219,6 +219,16 @@ static constexpr const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             NULL};
 
 static constexpr int AmdVendor = 0x1002;
+
+template <typename T>
+inline void WriteAqlArgAt(unsigned char* dst, //!< The write pointer to the buffer
+                          T src,              //!< The source pointer
+                          uint size,          //!< The size in bytes to copy
+                          size_t offset       //!< The alignment to follow while writing to the buffer
+) {
+  assert(sizeof(T) == size && "Argument's size mismatches ABI!");
+  *(reinterpret_cast<T*>(dst + offset)) = src;
+}
 
 namespace device {
 class ClBinary;

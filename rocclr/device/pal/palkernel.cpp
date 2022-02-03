@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -269,6 +269,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
                                                          const_address params,
                                                          size_t ldsAddress, uint64_t vmDefQueue,
                                                          uint64_t* vmParentWrap) const {
+  // Provide private and local heap addresses
+  static constexpr uint AddressShift = LP64_SWITCH(0, 32);
   const_address parameters = params;
   uint64_t argList;
   address aqlArgBuf = gpu.managedBuffer().reserve(
@@ -291,34 +293,36 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
 
   // If signatures don't match, then patch the parameters
   if (signature.version() != kernel.signature().version()) {
-    WriteAqlArgAt(aqlArgBuf, parameters, signature.paramsSize() - signature.at(0).offset_,
-                  signature.at(0).offset_);
+    memcpy(aqlArgBuf + signature.at(0).offset_, parameters,
+           signature.paramsSize() - signature.at(0).offset_);
     parameters = aqlArgBuf;
   }
 
+  amd::NDRange local(sizes.local());
+  const amd::NDRange& global = sizes.global();
+
+  // Check if runtime has to find local workgroup size
+  FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
+
+  address hidden_arguments = const_cast<address>(parameters);
+
   // Check if runtime has to setup hidden arguments
   for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
-    const auto it = signature.at(i);
-    size_t offset;
+    const auto& it = signature.at(i);
     switch (it.info_.oclObject_) {
       case amd::KernelParameterDescriptor::HiddenNone:
-        // void* zero = 0;
-        // WriteAqlArgAt(const_cast<address>(parameters), &zero, it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
-        offset = sizes.offset()[0];
-        WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+        WriteAqlArgAt(hidden_arguments, sizes.offset()[0], it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
         if (sizes.dimensions() >= 2) {
-          offset = sizes.offset()[1];
-          WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, sizes.offset()[1], it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
         if (sizes.dimensions() >= 3) {
-          offset = sizes.offset()[2];
-          WriteAqlArgAt(const_cast<address>(parameters), &offset, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, sizes.offset()[2], it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
@@ -328,38 +332,101 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
           // and set the fourth argument as the printf_buffer pointer
           size_t bufferPtr = static_cast<size_t>(gpu.printfDbgHSA().dbgBuffer()->vmAddress());
           gpu.addVmMemory(gpu.printfDbgHSA().dbgBuffer());
-          WriteAqlArgAt(const_cast<address>(parameters), &bufferPtr, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, bufferPtr, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenHostcallBuffer:
         if (amd::IS_HIP) {
-          auto buffer = gpu.getOrCreateHostcallBuffer();
+          uintptr_t buffer = reinterpret_cast<uintptr_t>(gpu.getOrCreateHostcallBuffer());
           if (!buffer) {
             ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
                     "Kernel expects a hostcall buffer, but none found");
           }
           assert(it.size_ == sizeof(buffer) && "check the sizes");
-          WriteAqlArgAt(const_cast<address>(parameters), &buffer, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, buffer, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenDefaultQueue:
         if (vmDefQueue != 0) {
-          WriteAqlArgAt(const_cast<address>(parameters), &vmDefQueue, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, vmDefQueue, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenCompletionAction:
         if (*vmParentWrap != 0) {
-          WriteAqlArgAt(const_cast<address>(parameters), vmParentWrap, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, *vmParentWrap, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenMultiGridSync:
+        break;
+      case amd::KernelParameterDescriptor::HiddenBlockCountX:
+        WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[0] / local[0]),
+                      it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenBlockCountY:
+        if (sizes.dimensions() >= 2) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[1] / local[1]),
+                        it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenBlockCountZ:
+        if (sizes.dimensions() >= 3) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[2] / local[2]),
+                        it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenGroupSizeX:
+        WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[0]), it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenGroupSizeY:
+        if (sizes.dimensions() >= 2) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[1]), it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenGroupSizeZ:
+        if (sizes.dimensions() >= 3) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[2]), it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenRemainderX:
+        WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(global[0] % local[0]), 
+                      it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenRemainderY:
+        if (sizes.dimensions() >= 2) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(global[1] % local[1]),
+                        it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenRemainderZ:
+        if (sizes.dimensions() >= 3) {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(global[2] % local[2]),
+                        it.size_, it.offset_);
+        }
+        break;
+      case amd::KernelParameterDescriptor::HiddenGridDims:
+        WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(sizes.dimensions()),
+                      it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenPrivateBase:
+        WriteAqlArgAt(hidden_arguments,
+                      (gpu.dev().properties().gpuMemoryProperties.privateApertureBase >> AddressShift),
+                      it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenSharedBase:
+        WriteAqlArgAt(hidden_arguments,
+                      (gpu.dev().properties().gpuMemoryProperties.sharedApertureBase >> AddressShift),
+                      it.size_, it.offset_);
+        break;
+      case amd::KernelParameterDescriptor::HiddenQueuePtr:
+        // @note: It's not a real AQL queue
+        WriteAqlArgAt(hidden_arguments, gpu.hsaQueueMem()->vmAddress(), it.size_, it.offset_);
         break;
     }
   }
 
   // Load all kernel arguments
   if (signature.version() == kernel.signature().version()) {
-    WriteAqlArgAt(aqlArgBuf, parameters, argsBufferSize(), 0);
+    memcpy(aqlArgBuf, parameters, argsBufferSize());
   }
 
   // Note: In a case of structs the size won't match,
@@ -370,12 +437,6 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
   // hsa_kernel_dispatch_packet_t disp;
   hsa_kernel_dispatch_packet_t* hsaDisp =
       reinterpret_cast<hsa_kernel_dispatch_packet_t*>(gpu.cb(0)->SysMemCopy());
-
-  amd::NDRange local(sizes.local());
-  const amd::NDRange& global = sizes.global();
-
-  // Check if runtime has to find local workgroup size
-  FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
   constexpr uint16_t kDispatchPacketHeader =
       (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |

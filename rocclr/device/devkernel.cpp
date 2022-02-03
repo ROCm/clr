@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -392,23 +392,13 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
           return AMD_COMGR_STATUS_ERROR;
         }
         lcArg->info_.oclObject_ = itValueKind->second;
-        switch (lcArg->info_.oclObject_) {
-          case amd::KernelParameterDescriptor::MemoryObject:
-            if (itValueKind->first.compare("dynamic_shared_pointer") == 0) {
-              lcArg->info_.shared_ = true;
-            }
-            break;
-          case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
-          case amd::KernelParameterDescriptor::HiddenGlobalOffsetY:
-          case amd::KernelParameterDescriptor::HiddenGlobalOffsetZ:
-          case amd::KernelParameterDescriptor::HiddenPrintfBuffer:
-          case amd::KernelParameterDescriptor::HiddenHostcallBuffer:
-          case amd::KernelParameterDescriptor::HiddenDefaultQueue:
-          case amd::KernelParameterDescriptor::HiddenCompletionAction:
-          case amd::KernelParameterDescriptor::HiddenMultiGridSync:
-          case amd::KernelParameterDescriptor::HiddenNone:
-            lcArg->info_.hidden_ = true;
-          break;
+        if (lcArg->info_.oclObject_ == amd::KernelParameterDescriptor::MemoryObject) {
+          if (itValueKind->first.compare("dynamic_shared_pointer") == 0) {
+            lcArg->info_.shared_ = true;
+          }
+        } else if ((lcArg->info_.oclObject_ >= amd::KernelParameterDescriptor::HiddenNone) &&
+                   (lcArg->info_.oclObject_ < amd::KernelParameterDescriptor::HiddenLast)) {
+          lcArg->info_.hidden_ = true;
         }
       }
       break;
@@ -1145,14 +1135,9 @@ bool Kernel::GetAttrCodePropMetadata() {
         }
       }
       break;
-    case 3:
-    case 4: {
-        status = amd::Comgr::iterate_map_metadata(kernelMetaNode, populateKernelMetaV3,
-                                                  static_cast<void*>(this));
-      }
-      break;
     default:
-      return false;
+      status = amd::Comgr::iterate_map_metadata(kernelMetaNode, populateKernelMetaV3,
+                                                static_cast<void*>(this));
   }
 
 
@@ -1294,7 +1279,7 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       if (codeObjectVer() == 2) {
         status = amd::Comgr::iterate_map_metadata(argsNode, populateArgs, data);
       }
-      else if ((codeObjectVer() == 3) || (codeObjectVer() == 4)) {
+      else if (codeObjectVer() >= 3) {
         status = amd::Comgr::iterate_map_metadata(argsNode, populateArgsV3, data);
       }
     }

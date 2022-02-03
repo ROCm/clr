@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -36,34 +36,48 @@ class NDRange;
 struct KernelParameterDescriptor {
   enum {
     Value = 0,
-    HiddenNone = 1,
-    HiddenGlobalOffsetX = 2,
-    HiddenGlobalOffsetY = 3,
-    HiddenGlobalOffsetZ = 4,
-    HiddenPrintfBuffer = 5,
-    HiddenDefaultQueue = 6,
-    HiddenCompletionAction = 7,
-    MemoryObject = 8,
-    ReferenceObject = 9,
-    ValueObject = 10,
-    ImageObject = 11,
-    SamplerObject = 12,
-    QueueObject = 13,
+    MemoryObject = 1,
+    ReferenceObject = 2,
+    ValueObject = 3,
+    ImageObject = 4,
+    SamplerObject = 5,
+    QueueObject = 6,
+    HiddenNone = 7,
+    HiddenGlobalOffsetX = 8,
+    HiddenGlobalOffsetY = 9,
+    HiddenGlobalOffsetZ = 10,
+    HiddenPrintfBuffer = 11,
+    HiddenDefaultQueue = 12,
+    HiddenCompletionAction = 13,
     HiddenMultiGridSync = 14,
     HiddenHostcallBuffer = 15,
+    HiddenBlockCountX = 16,
+    HiddenBlockCountY = 17,
+    HiddenBlockCountZ = 18,
+    HiddenGroupSizeX = 19,
+    HiddenGroupSizeY = 20,
+    HiddenGroupSizeZ = 21,
+    HiddenRemainderX = 22,
+    HiddenRemainderY = 23,
+    HiddenRemainderZ = 24,
+    HiddenGridDims = 25,
+    HiddenPrivateBase = 26,
+    HiddenSharedBase = 27,
+    HiddenQueuePtr = 28,
+    HiddenLast = 29
   };
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
   size_t size_;            //!< Its size in bytes
   union InfoData {
     struct {
-      uint32_t oclObject_ : 4;    //!< OCL object type
+      uint32_t oclObject_ : 6;    //!< OCL object type
       uint32_t readOnly_ : 1;     //!< OCL object is read only, applied to memory only
       uint32_t rawPointer_ : 1;   //!< Arguments have a raw GPU VA
       uint32_t defined_ : 1;      //!< The argument was defined by the app
       uint32_t hidden_ : 1;       //!< It's a hidden argument
       uint32_t shared_ : 1;       //!< Dynamic shared memory
-      uint32_t reserved_ : 3;     //!< Reserved
+      uint32_t reserved_ : 1;     //!< Reserved
       uint32_t arrayIndex_ : 20;  //!< Index in the objects array or LDS alignment
     };
     uint32_t allValues_;
@@ -262,7 +276,20 @@ static const std::map<std::string, uint32_t> ArgValueKindV3 = {
   {"hidden_default_queue",      amd::KernelParameterDescriptor::HiddenDefaultQueue},
   {"hidden_completion_action",  amd::KernelParameterDescriptor::HiddenCompletionAction},
   {"hidden_multigrid_sync_arg", amd::KernelParameterDescriptor::HiddenMultiGridSync},
-  {"hidden_hostcall_buffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer}
+  {"hidden_hostcall_buffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer},
+  {"hidden_block_count_x",      amd::KernelParameterDescriptor::HiddenBlockCountX},
+  {"hidden_block_count_y",      amd::KernelParameterDescriptor::HiddenBlockCountY},
+  {"hidden_block_count_z",      amd::KernelParameterDescriptor::HiddenBlockCountZ},
+  {"hidden_group_size_x",       amd::KernelParameterDescriptor::HiddenGroupSizeX},
+  {"hidden_group_size_y",       amd::KernelParameterDescriptor::HiddenGroupSizeY},
+  {"hidden_group_size_z",       amd::KernelParameterDescriptor::HiddenGroupSizeZ},
+  {"hidden_remainder_x",        amd::KernelParameterDescriptor::HiddenRemainderX},
+  {"hidden_remainder_y",        amd::KernelParameterDescriptor::HiddenRemainderY},
+  {"hidden_remainder_z",        amd::KernelParameterDescriptor::HiddenRemainderZ},
+  {"hidden_grid_dims",          amd::KernelParameterDescriptor::HiddenGridDims},
+  {"hidden_private_base",       amd::KernelParameterDescriptor::HiddenPrivateBase},
+  {"hidden_shared_base",        amd::KernelParameterDescriptor::HiddenSharedBase},
+  {"hidden_queue_ptr",          amd::KernelParameterDescriptor::HiddenQueuePtr}
 };
 
 static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQualV3 = {

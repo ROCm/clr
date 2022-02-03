@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2020 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -58,11 +58,11 @@ struct Message {
 };
 
 static uint64_t getField(uint64_t desc, uint8_t offset, uint8_t width) {
-  return (desc >> offset) & ((1UL << width) - 1);
+  return (desc >> offset) & ((1ULL << width) - 1);
 }
 
 static uint64_t setField(uint64_t desc, uint64_t value, uint8_t offset, uint8_t width) {
-  uint64_t resetMask = ~(((1UL << width) - 1) << offset);
+  uint64_t resetMask = ~(((1ULL << width) - 1) << offset);
   return (desc & resetMask) | (value << offset);
 }
 

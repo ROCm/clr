@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -519,34 +519,4 @@ class VirtualGPU : public device::VirtualDevice {
                                         //!< OCL doesn't distinguish diffrent copy types,
                                         //!< but ROC profiler expects D2H or H2D detection
 };
-
-template <typename T>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const T* src,         //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
-) {
-  memcpy(dst + offset, src, size);
-}
-
-template <>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const uint32_t* src,  //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
-) {
-  *(reinterpret_cast<uint32_t*>(dst + offset)) = *src;
-}
-
-template <>
-inline void WriteAqlArgAt(
-  unsigned char* dst,   //!< The write pointer to the buffer
-  const uint64_t* src,  //!< The source pointer
-  uint size,            //!< The size in bytes to copy
-  size_t offset         //!< The alignment to follow while writing to the buffer
-) {
-  *(reinterpret_cast<uint64_t*>(dst + offset)) = *src;
-}
 }

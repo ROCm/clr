@@ -2183,7 +2183,7 @@ void VirtualGPU::PrintChildren(const HSAILKernel& hsaKernel, VirtualGPU* gpuDefQ
         switch (it.info_.oclObject_) {
           case amd::KernelParameterDescriptor::HiddenNone:
             // void* zero = 0;
-            // WriteAqlArgAt(const_cast<address>(parameters), &zero, it.size_, it.offset_);
+            // WriteAqlArgAt(const_cast<address>(parameters), zero, it.size_, it.offset_);
             break;
           case amd::KernelParameterDescriptor::HiddenGlobalOffsetX:
             extraArgName = "Offset0: ";
@@ -3427,7 +3427,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           // Save the original LDS size
           uint64_t ldsSize = *reinterpret_cast<const uint64_t*>(params + desc.offset_);
           // Patch the LDS address in the original arguments with an LDS address(offset)
-          WriteAqlArgAt(const_cast<address>(params), &ldsAddress, desc.size_, desc.offset_);
+          WriteAqlArgAt(const_cast<address>(params), ldsAddress, desc.size_, desc.offset_);
           // Add the original size
           ldsAddress += ldsSize;
         } else {
@@ -3435,7 +3435,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           uint32_t ldsSize = *reinterpret_cast<const uint32_t*>(params + desc.offset_);
           // Patch the LDS address in the original arguments with an LDS address(offset)
           uint32_t ldsAddr = ldsAddress;
-          WriteAqlArgAt(const_cast<address>(params), &ldsAddr, desc.size_, desc.offset_);
+          WriteAqlArgAt(const_cast<address>(params), ldsAddr, desc.size_, desc.offset_);
           // Add the original size
           ldsAddress += ldsSize;
         }
@@ -3498,7 +3498,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
                 addBarrier(RgpSqqtBarrierReason::MemDependency);
                 // Use backing store SRD as the replacment
                 uint64_t srd = imageBuffer->CopyImageBuffer()->hwSrd();
-                WriteAqlArgAt(const_cast<address>(params), &srd, sizeof(srd), desc.offset_);
+                WriteAqlArgAt(const_cast<address>(params), srd, sizeof(srd), desc.offset_);
                 // Add backing store image to the list of memory handles
                 addVmMemory(imageBuffer->CopyImageBuffer());
                 // If it's not a read only resource, then runtime has to write back
@@ -3517,7 +3517,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
               uint64_t srd = cb(1)->UploadDataToHw(gpuMem->hwState(), HsaImageObjectSize);
               // Then use a pointer in aqlArgBuffer to CB1
               // Patch the GPU VA address in the original arguments
-              WriteAqlArgAt(const_cast<address>(params), &srd, sizeof(srd), desc.offset_);
+              WriteAqlArgAt(const_cast<address>(params), srd, sizeof(srd), desc.offset_);
               addVmMemory(cb(1)->ActiveMemory());
             } else {
               srdResource = true;
@@ -3537,7 +3537,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         // Then use a pointer in aqlArgBuffer to CB1
         const auto it = hsaKernel.patch().find(desc.offset_);
         // Patch the GPU VA address in the original arguments
-        WriteAqlArgAt(const_cast<address>(params), &gpuPtr, sizeof(size_t), it->second);
+        WriteAqlArgAt(const_cast<address>(params), gpuPtr, sizeof(size_t), it->second);
         addVmMemory(cb(1)->ActiveMemory());
       }
     } else if (desc.type_ == T_SAMPLER) {
@@ -3558,7 +3558,7 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
         vmQueue = vQueue()->vmAddress();
       }
       // Patch the GPU VA address in the original arguments
-      WriteAqlArgAt(const_cast<address>(params), &vmQueue, sizeof(vmQueue), desc.offset_);
+      WriteAqlArgAt(const_cast<address>(params), vmQueue, sizeof(vmQueue), desc.offset_);
       break;
     }
   }
