@@ -1144,7 +1144,9 @@ hipError_t hipStreamGetCaptureInfo(hipStream_t stream, hipStreamCaptureStatus* p
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   *pCaptureStatus = s->GetCaptureStatus();
-  *pId = s->GetCaptureID();
+  if (*pCaptureStatus == hipStreamCaptureStatusActive) {
+    *pId = s->GetCaptureID();
+  }
   HIP_RETURN(hipSuccess);
 }
 
