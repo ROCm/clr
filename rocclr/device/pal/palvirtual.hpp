@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -696,17 +696,14 @@ class VirtualGPU : public device::VirtualDevice {
 inline void VirtualGPU::logVmMemory(const std::string name, const Memory* memory) {
   if (PAL_EMBED_KERNEL_MD || (AMD_LOG_LEVEL >= amd::LOG_INFO)) {
     char buf[256];
-    sprintf(buf,
-            "%s = ptr:[%p-%p] obj:[%p-%p]",
-            name.c_str(),
+    sprintf(buf, "%s = ptr:[%p-%p] size:[%lld] heap[%d]", name.c_str(),
             reinterpret_cast<void*>(memory->vmAddress()),
             reinterpret_cast<void*>(memory->vmAddress() + memory->size()),
-            reinterpret_cast<void*>(memory->iMem()->Desc().gpuVirtAddr),
-            reinterpret_cast<void*>(memory->iMem()->Desc().gpuVirtAddr + memory->iMem()->Desc().size));
+            memory->iMem()->Desc().size, memory->iMem()->Desc().heaps[0]);
     if (PAL_EMBED_KERNEL_MD) {
       iCmd()->CmdCommentString(buf);
     }
-    LogPrintfInfo("%s threadId : %zx\n", buf, std::this_thread::get_id());
+    LogPrintfInfo("%s", buf);
   }
 }
 
@@ -735,31 +732,5 @@ template <bool avoidBarrierSubmit> uint VirtualGPU::Queue::submit(bool forceFlus
   return id;
 }
 
-template <typename T>
-inline void WriteAqlArgAt(unsigned char* dst,  //!< The write pointer to the buffer
-                          const T* src,        //!< The source pointer
-                          uint size,           //!< The size in bytes to copy
-                          size_t offset  //!< The alignment to follow while writing to the buffer
-) {
-  memcpy(dst + offset, src, size);
-}
-
-template <>
-inline void WriteAqlArgAt(unsigned char* dst,   //!< The write pointer to the buffer
-                          const uint32_t* src,  //!< The source pointer
-                          uint size,            //!< The size in bytes to copy
-                          size_t offset  //!< The alignment to follow while writing to the buffer
-) {
-  *(reinterpret_cast<uint32_t*>(dst + offset)) = *src;
-}
-
-template <>
-inline void WriteAqlArgAt(unsigned char* dst,   //!< The write pointer to the buffer
-                          const uint64_t* src,  //!< The source pointer
-                          uint size,            //!< The size in bytes to copy
-                          size_t offset  //!< The alignment to follow while writing to the buffer
-) {
-  *(reinterpret_cast<uint64_t*>(dst + offset)) = *src;
-}
 /*@}*/  // namespace pal
 }  // namespace pal
