@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2021 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -112,52 +112,52 @@ inline static hiprtcResult nvrtcResultTohiprtcResult(nvrtcResult result) {
   }
 }
 
-const char* hiprtcGetErrorString(hiprtcResult result) {
+inline static const char* hiprtcGetErrorString(hiprtcResult result) {
   return nvrtcGetErrorString(hiprtcResultTonvrtcResult(result));
 }
 
-hiprtcResult hiprtcVersion(int* major, int* minor) {
+inline static hiprtcResult hiprtcVersion(int* major, int* minor) {
   return nvrtcResultTohiprtcResult(nvrtcVersion(major, minor));
 }
 
 typedef nvrtcProgram hiprtcProgram;
 
-hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog, const char* name_expression) {
+inline static hiprtcResult hiprtcAddNameExpression(hiprtcProgram prog, const char* name_expression) {
   return nvrtcResultTohiprtcResult(nvrtcAddNameExpression(prog, name_expression));
 }
 
-hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char** options) {
+inline static hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char** options) {
   return nvrtcResultTohiprtcResult(nvrtcCompileProgram(prog, numOptions, options));
 }
 
-hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const char* name,
+inline static hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const char* name,
                                  int numHeaders, const char** headers, const char** includeNames) {
   return nvrtcResultTohiprtcResult(
       nvrtcCreateProgram(prog, src, name, numHeaders, headers, includeNames));
 }
 
-hiprtcResult hiprtcDestroyProgram(hiprtcProgram* prog) {
+inline static hiprtcResult hiprtcDestroyProgram(hiprtcProgram* prog) {
   return nvrtcResultTohiprtcResult(nvrtcDestroyProgram(prog));
 }
 
-hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expression,
+inline static hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expression,
                                   const char** lowered_name) {
   return nvrtcResultTohiprtcResult(nvrtcGetLoweredName(prog, name_expression, lowered_name));
 }
 
-hiprtcResult hiprtcGetProgramLog(hiprtcProgram prog, char* log) {
+inline static hiprtcResult hiprtcGetProgramLog(hiprtcProgram prog, char* log) {
   return nvrtcResultTohiprtcResult(nvrtcGetProgramLog(prog, log));
 }
 
-hiprtcResult hiprtcGetProgramLogSize(hiprtcProgram prog, size_t* logSizeRet) {
+inline static hiprtcResult hiprtcGetProgramLogSize(hiprtcProgram prog, size_t* logSizeRet) {
   return nvrtcResultTohiprtcResult(nvrtcGetProgramLogSize(prog, logSizeRet));
 }
 
-hiprtcResult hiprtcGetCode(hiprtcProgram prog, char* code) {
+inline static hiprtcResult hiprtcGetCode(hiprtcProgram prog, char* code) {
   return nvrtcResultTohiprtcResult(nvrtcGetPTX(prog, code));
 }
 
-hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t* codeSizeRet) {
+inline static hiprtcResult hiprtcGetCodeSize(hiprtcProgram prog, size_t* codeSizeRet) {
   return nvrtcResultTohiprtcResult(nvrtcGetPTXSize(prog, codeSizeRet));
 }
 
