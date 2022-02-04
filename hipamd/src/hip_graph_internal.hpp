@@ -41,6 +41,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         amd::Command*& endCommand, amd::HostQueue* queue);
 void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
                  hipGraphExec* ptr);
+
 struct hipGraphNode {
  protected:
   amd::HostQueue* queue_;
@@ -57,6 +58,8 @@ struct hipGraphNode {
   size_t outDegree_;
   static int nextID;
   struct ihipGraph* parentGraph_;
+  static std::unordered_set<hipGraphNode*> nodeSet_;
+  static amd::Monitor nodeSetLock_;
 
  public:
   hipGraphNode(hipGraphNodeType type)
@@ -66,7 +69,10 @@ struct hipGraphNode {
         inDegree_(0),
         outDegree_(0),
         id_(nextID++),
-        parentGraph_(nullptr) {}
+        parentGraph_(nullptr) {
+    amd::ScopedLock lock(nodeSetLock_);
+    nodeSet_.insert(this);
+  }
   /// Copy Constructor
   hipGraphNode(const hipGraphNode& node) {
     level_ = node.level_;
@@ -76,6 +82,8 @@ struct hipGraphNode {
     visited_ = false;
     id_ = node.id_;
     parentGraph_ = nullptr;
+    amd::ScopedLock lock(nodeSetLock_);
+    nodeSet_.insert(this);
   }
 
   virtual ~hipGraphNode() {
@@ -85,6 +93,17 @@ struct hipGraphNode {
     for (auto node : dependencies_) {
       node->RemoveEdge(this);
     }
+    amd::ScopedLock lock(nodeSetLock_);
+    nodeSet_.erase(this);
+  }
+
+  // check node validity
+  static bool isNodeValid(hipGraphNode* pGraphNode) {
+    amd::ScopedLock lock(nodeSetLock_);
+    if (nodeSet_.find(pGraphNode) == nodeSet_.end()) {
+      return false;
+    }
+    return true;
   }
 
   amd::HostQueue* GetQueue() { return queue_; }
@@ -211,14 +230,14 @@ struct hipGraphNode {
 
 struct ihipGraph {
   std::vector<Node> vertices_;
+  const ihipGraph* pOriginalGraph_ = nullptr;
 
  public:
-  ihipGraph() {}
-  ~ihipGraph() {
-    for (auto node : vertices_) {
-      delete node;
-    }
-  }
+ ihipGraph();
+ ~ihipGraph();
+  // check graphs validity
+  bool isGraphValid(ihipGraph* pGraph);
+
   /// add node to the graph
   void AddNode(const Node& node);
   void RemoveNode(const Node& node);
@@ -234,6 +253,11 @@ struct ihipGraph {
   const std::vector<Node>& GetNodes() const { return vertices_; }
   /// returns all the edges in the graph
   std::vector<std::pair<Node, Node>> GetEdges() const;
+  // returns the original graph ptr if cloned
+  const ihipGraph* getOriginalGraph() const;
+  // saves the original graph ptr if cloned
+  void setOriginalGraph(const ihipGraph* pOriginalGraph);
+
   void GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
                       std::vector<Node>& singleList, std::vector<std::vector<Node>>& parallelLists,
                       std::unordered_map<Node, std::vector<Node>>& dependencies);

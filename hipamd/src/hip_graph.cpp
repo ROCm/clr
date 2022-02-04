@@ -25,6 +25,21 @@
 #include "hip_event.hpp"
 
 thread_local std::vector<hipStream_t> g_captureStreams;
+static std::unordered_set<ihipGraph*> graphSet;
+static amd::Monitor graphSetLock{"Guards global graph set"};
+
+ihipGraph::ihipGraph() {
+  amd::ScopedLock lock(graphSetLock);
+  graphSet.insert(this);
+}
+
+ihipGraph::~ihipGraph() {
+  for (auto node : vertices_) {
+    delete node;
+  }
+  amd::ScopedLock lock(graphSetLock);
+  graphSet.erase(this);
+}
 
 inline void ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                              const hipGraphNode_t* pDependencies, size_t numDependencies) {
@@ -1374,7 +1389,7 @@ hipError_t hipGraphNodeGetType(hipGraphNode_t node, hipGraphNodeType* pType) {
 
 hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
   HIP_INIT_API(hipGraphDestroyNode, node);
-  if (node == nullptr) {
+  if (node == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   node->GetParentGraph()->RemoveNode(node);
@@ -1383,9 +1398,20 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
   HIP_RETURN(hipSuccess);
 }
 
+bool isGraphValid(ihipGraph* pGraph) {
+  amd::ScopedLock lock(graphSetLock);
+  if (graphSet.find(pGraph) == graphSet.end()) {
+    return false;
+  }
+  return true;
+}
+
 hipError_t hipGraphClone(hipGraph_t* pGraphClone, hipGraph_t originalGraph) {
   HIP_INIT_API(hipGraphClone, pGraphClone, originalGraph);
   if (originalGraph == nullptr || pGraphClone == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!isGraphValid(originalGraph)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphClone = originalGraph->clone();
@@ -1398,6 +1424,10 @@ hipError_t hipGraphNodeFindInClone(hipGraphNode_t* pNode, hipGraphNode_t origina
   if (pNode == nullptr || originalNode == nullptr || clonedGraph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (clonedGraph->getOriginalGraph() == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   for (auto node : clonedGraph->GetNodes()) {
     if (node->GetID() == originalNode->GetID()) {
       *pNode = node;
