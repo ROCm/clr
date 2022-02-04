@@ -46,6 +46,9 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 };
 
 int hipGraphNode::nextID = 0;
+std::unordered_set<hipGraphNode*> hipGraphNode::nodeSet_;
+amd::Monitor hipGraphNode::nodeSetLock_{"Guards global node set"};
+
 hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
   hipError_t status = ihipMemcpy_validate(dst, src, count, kind);
@@ -614,7 +617,15 @@ void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
   }
 }
 
-ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
+const ihipGraph* ihipGraph::getOriginalGraph() const {
+  return pOriginalGraph_;
+}
+
+void ihipGraph::setOriginalGraph(const ihipGraph* pOriginalGraph) {
+  pOriginalGraph_ = pOriginalGraph;
+}
+
+ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const{
   ihipGraph* newGraph = new ihipGraph();
   for (auto entry : vertices_) {
     hipGraphNode* node = entry->clone();
@@ -640,10 +651,11 @@ ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     }
     clonedNodes[node]->SetDependencies(clonedDependencies);
   }
+  newGraph->setOriginalGraph(this);
   return newGraph;
 }
 
-ihipGraph* ihipGraph::clone() const {
+ihipGraph* ihipGraph::clone() const{
   std::unordered_map<Node, Node> clonedNodes;
   return clone(clonedNodes);
 }
