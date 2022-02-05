@@ -2283,6 +2283,49 @@ GLFunctions::~GLFunctions() {
   }
 #endif  //!_WIN32
 }
+// in case of HIP GL interop we want to make sure we have the updated context
+bool GLFunctions::update(intptr_t hglrc) {
+#ifdef _WIN32
+  DWORD err;
+  if (hOrigGLRC_ == (HGLRC)hglrc) {
+    return true;
+  }
+  hOrigGLRC_ = (HGLRC)hglrc;
+  if (hIntGLRC_ != nullptr) {
+    wglDeleteContext_(hIntGLRC_);
+  }
+  if (!(hIntGLRC_ = wglCreateContext_(wglGetCurrentDC_()))) {
+    err = GetLastError();
+    return false;
+  }
+  if (!wglShareLists_(hOrigGLRC_, hIntGLRC_)) {
+    err = GetLastError();
+    return false;
+  }
+#else  //!_WIN32
+  Dpy_ = glXGetCurrentDisplay_();
+  Drawable_ = glXGetCurrentDrawable_();
+  if (origCtx_ == (GLXContext)hglrc) {
+    return true;
+  }
+
+  origCtx_ = (GLXContext)hglrc;
+  if (intCtx_ != nullptr) {
+    glXDestroyContext_(Dpy_,intCtx_);
+  }
+
+  int attribList[] = {GLX_RGBA, None};
+  XVisualInfo* vis;
+  int defaultScreen = DefaultScreen(intDpy_);
+  if (!(vis = glXChooseVisual_(intDpy_, defaultScreen, attribList))) {
+    return false;
+  }
+  if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
+    return false;
+  }
+#endif
+  return true;
+}
 
 bool GLFunctions::init(intptr_t hdc, intptr_t hglrc) {
   if (isEGL_) {

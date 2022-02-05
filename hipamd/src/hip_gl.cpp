@@ -116,8 +116,8 @@ hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices,
     info.hCtx_ = glenv->glXGetCurrentContext_();
 #endif
     hip::getCurrentDevice()->asContext()->setInfo(info);
+    glenv->update(reinterpret_cast<intptr_t>(info.hCtx_));
   }
-
   *pHipDeviceCount = 0;
   switch (deviceList) {
     case hipGLDeviceListCurrentFrame:
