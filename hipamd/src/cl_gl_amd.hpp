@@ -310,6 +310,7 @@ public:
     GLFunctions(HMODULE h, bool isEGL);
     ~GLFunctions();
 
+    bool update(intptr_t hglrc);
     bool IsCurrentGlContext(const amd::Context::Info& info) const {
       if (isEGL_) {
         return ((info.hCtx_ != nullptr) && (eglGetCurrentContext_ != nullptr) &&
