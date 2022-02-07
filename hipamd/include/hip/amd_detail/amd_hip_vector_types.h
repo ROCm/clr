@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -127,6 +127,8 @@ template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_is
 template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_ostream;
 typedef basic_istream<char> istream;
 typedef basic_ostream<char> ostream;
+
+template <typename __T> struct is_scalar : public integral_constant<bool, __is_scalar(__T)> {};
 } // Namespace std.
 #endif // defined(__HIPCC_RTC__)
 

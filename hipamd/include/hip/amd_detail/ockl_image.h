@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -131,5 +131,45 @@ __device__ float4::Native_vec_ __ockl_image_gather4g_2D(unsigned int ADDRESS_SPA
 __device__ float4::Native_vec_ __ockl_image_gather4b_2D(unsigned int ADDRESS_SPACE_CONSTANT*i, unsigned int ADDRESS_SPACE_CONSTANT*s, float2::Native_vec_ c);
 
 __device__ float4::Native_vec_ __ockl_image_gather4a_2D(unsigned int ADDRESS_SPACE_CONSTANT*i, unsigned int ADDRESS_SPACE_CONSTANT*s, float2::Native_vec_ c);
+
+__device__ int __ockl_image_channel_data_type_1D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_1Da(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_1Db(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_2D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_2Da(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_2Dad(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_2Dd(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_3D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_CM(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_data_type_CMa(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_1D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_1Da(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_1Db(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_2D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_2Da(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_2Dad(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_2Dd(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_3D(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_CM(unsigned int ADDRESS_SPACE_CONSTANT* i);
+
+__device__ int __ockl_image_channel_order_CMa(unsigned int ADDRESS_SPACE_CONSTANT* i);
 
 };
