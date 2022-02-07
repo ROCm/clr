@@ -235,6 +235,11 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
   GLint miplevel = 0;
   amd::Context& amdContext = *(hip::getCurrentDevice()->asContext());
 
+  if (amdContext.glenv() == nullptr) {
+    LogError("invalid context, gl interop not initialized");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   amd::GLFunctions::SetIntEnv ie(amdContext.glenv());
   if (!ie.isValid()) {
     LogWarning("\"amdContext\" is not created from GL context or share list \n");
@@ -543,6 +548,11 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
   GLint gliMapped = 0;
 
   amd::Context& amdContext = *(hip::getCurrentDevice()->asContext());
+
+  if (amdContext.glenv() == nullptr) {
+    LogError("invalid context, gl interop not initialized");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   // Add this scope to bound the scoped lock
   {
