@@ -499,18 +499,16 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
              settings().useLightning_ ? ",LC" : ",HSAIL", isOnline() ? "" : " [Offline]");
 
   info_.profile_ = "FULL_PROFILE";
+  info_.spirVersions_ = "";
   if (settings().oclVersion_ >= OpenCL20) {
     info_.version_ = "OpenCL 2.0 " AMD_PLATFORM_INFO;
     info_.oclcVersion_ = "OpenCL C 2.0 ";
-    info_.spirVersions_ = "1.2";
   } else if (settings().oclVersion_ == OpenCL12) {
     info_.version_ = "OpenCL 1.2 " AMD_PLATFORM_INFO;
     info_.oclcVersion_ = "OpenCL C 1.2 ";
-    info_.spirVersions_ = "1.2";
   } else {
     info_.version_ = "OpenCL 1.0 " AMD_PLATFORM_INFO;
     info_.oclcVersion_ = "OpenCL C 1.0 ";
-    info_.spirVersions_ = "";
     LogError("Unknown version for support");
   }
 
