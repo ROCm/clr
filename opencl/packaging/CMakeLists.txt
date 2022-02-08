@@ -5,11 +5,8 @@ set(CPACK_COMPONENTS_ALL binary dev icd)
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
-
-
-
-install(PROGRAMS ${CMAKE_BINARY_DIR}/tools/clinfo/clinfo DESTINATION bin COMPONENT binary)
-install(FILES ${CMAKE_BINARY_DIR}/amdocl/libamdocl64.so DESTINATION lib COMPONENT binary)
+install(TARGETS clinfo DESTINATION bin COMPONENT binary)
+install(TARGETS amdocl DESTINATION lib COMPONENT binary)
 install(FILES ${CMAKE_SOURCE_DIR}/LICENSE.txt DESTINATION share/doc/${CMAKE_PROJECT_NAME} COMPONENT binary)
 
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2/CL
@@ -20,9 +17,7 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2/CL
         PATTERN cl_dx9_media_sharing.h EXCLUDE
         PATTERN cl_egl.h EXCLUDE )
 
-install(FILES ${CMAKE_BINARY_DIR}/khronos/icd/libOpenCL.so DESTINATION lib COMPONENT icd )
-install(FILES ${CMAKE_BINARY_DIR}/khronos/icd/libOpenCL.so.${OPENCL_LIB_VERSION_MAJOR}  DESTINATION lib COMPONENT icd )
-install(FILES ${CMAKE_BINARY_DIR}/khronos/icd/libOpenCL.so.${OPENCL_LIB_VERSION_STRING} DESTINATION lib COMPONENT icd )
+install(TARGETS OpenCL DESTINATION lib COMPONENT icd )
 install(FILES ${CMAKE_SOURCE_DIR}/khronos/icd/LICENSE DESTINATION share/doc/rocm-ocl-icd COMPONENT icd)
 
 
