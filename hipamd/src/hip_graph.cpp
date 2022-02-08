@@ -1372,6 +1372,13 @@ hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode, hipGraph_
 hipError_t hipGraphMemcpyNodeSetParamsFromSymbol(hipGraphNode_t node, void* dst, const void* symbol,
                                                  size_t count, size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphMemcpyNodeSetParamsFromSymbol, node, dst, symbol, count, offset, kind);
+  if (symbol  == nullptr) {
+    HIP_RETURN(hipErrorInvalidSymbol);
+  }
+  if (node == nullptr || dst == nullptr || count == 0 || symbol == dst) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeFromSymbol*>(node)->SetParams(dst, symbol, count,
                                                                               offset, kind));
 }
@@ -1381,6 +1388,13 @@ hipError_t hipGraphExecMemcpyNodeSetParamsFromSymbol(hipGraphExec_t hGraphExec, 
                                                      size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphExecMemcpyNodeSetParamsFromSymbol, hGraphExec, node, dst, symbol, count,
                offset, kind);
+  if (symbol  == nullptr) {
+    HIP_RETURN(hipErrorInvalidSymbol);
+  }
+  if (hGraphExec == nullptr || node == nullptr || dst == nullptr || count == 0 || symbol == dst) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1418,11 +1432,11 @@ hipError_t hipGraphMemcpyNodeSetParamsToSymbol(hipGraphNode_t node, const void* 
                                                const void* src, size_t count, size_t offset,
                                                hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphMemcpyNodeSetParamsToSymbol, symbol, src, count, offset, kind);
-  if (node == nullptr || src == nullptr || count == 0 || symbol == src) {
-    return hipErrorInvalidValue;
-  }
   if (symbol  == nullptr) {
-    return hipErrorInvalidSymbol;
+    HIP_RETURN(hipErrorInvalidSymbol);
+  }
+  if (node == nullptr || src == nullptr || count == 0 || symbol == src) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(node)->SetParams(symbol, src, count,
@@ -1436,6 +1450,13 @@ hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hi
                                                    hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphExecMemcpyNodeSetParamsToSymbol, hGraphExec, node, symbol, src, count,
                offset, kind);
+  if (symbol  == nullptr) {
+    HIP_RETURN(hipErrorInvalidSymbol);
+  }
+  if (hGraphExec == nullptr || src == nullptr || node == nullptr || count == 0 || src == symbol) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
