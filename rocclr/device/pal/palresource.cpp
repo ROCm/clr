@@ -980,7 +980,7 @@ bool Resource::CreateInterop(CreateParams* params) {
 
     dev().iDev()->CreateImageViewSrds(1, &viewInfo, hwState_);
     //! It's a workaround for D24S8 format, since PAL doesn't support this format
-    //! and GSL decompresses 24bit DEPTH into D24S8 for OGL compatibility
+    //! and OGL decompresses 24bit DEPTH into D24S8 for OGL compatibility
     if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
         (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
       if (dev().settings().gfx10Plus_) {

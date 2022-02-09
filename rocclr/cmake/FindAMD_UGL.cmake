@@ -44,5 +44,5 @@ find_package_handle_standard_args(AMD_UGL
   AMD_UGL_INCLUDE_DIR)
 mark_as_advanced(AMD_UGL_INCLUDE_DIR)
 
-set(AMD_UGL_INCLUDE_DIRS ${AMD_UGL_INCLUDE_DIR} ${ROCCLR_SRC_DIR}/device/gpu/gslbe/src/rt)
+set(AMD_UGL_INCLUDE_DIRS ${AMD_UGL_INCLUDE_DIR})
 mark_as_advanced(AMD_UGL_INCLUDE_DIRS)

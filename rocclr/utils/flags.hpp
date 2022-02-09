@@ -143,7 +143,7 @@ release(bool, GPU_IFH_MODE, false,                                            \
 release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
 release(uint, GPU_ENABLE_PAL, 2,                                              \
-        "Enables PAL backend. 0 - GSL(default), 1 - PAL, 2 - GSL and PAL")    \
+        "Enables PAL backend. 0 - ROC, 1 - PAL, 2 - ROC or PAL")              \
 release(bool, DISABLE_DEFERRED_ALLOC, false,                                  \
         "Disables deferred memory allocation on device")                      \
 release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \

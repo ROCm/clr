@@ -491,7 +491,7 @@ class Device : public NullDevice {
   //! Initialize heap resources if uninitialized
   bool initializeHeapResources();
 
-  //! Set GSL sampler to the specified state
+  //! Set HW sampler to the specified state
   void fillHwSampler(uint32_t state,                       //!< Sampler's OpenCL state
                      void* hwState,                        //!< Sampler's HW state
                      uint32_t hwStateSize,                 //!< Size of sampler's HW state
