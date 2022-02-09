@@ -307,36 +307,7 @@ static constexpr MemoryFormat MemoryFormatMap[] = {
      Pal::ChNumFormat::X32Y32_Float,
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::Y, Pal::ChannelSwizzle::Zero,
       Pal::ChannelSwizzle::One}},
-    /*
-        // RA
-        { { CL_RA,                      CL_UNORM_INT8 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG8 } },
-        { { CL_RA,                      CL_UNORM_INT16 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG16 } },
 
-        { { CL_RA,                      CL_SNORM_INT8 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_sRG8 } },
-        { { CL_RA,                      CL_SNORM_INT16 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_sUV16 } },
-
-        { { CL_RA,                      CL_SIGNED_INT8 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_sRG8I } },
-        { { CL_RA,                      CL_SIGNED_INT16 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_sRG16I } },
-        { { CL_RA,                      CL_SIGNED_INT32},
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_sRG32I } },
-        { { CL_RA,                      CL_UNSIGNED_INT8 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG8I } },
-        { { CL_RA,                      CL_UNSIGNED_INT16 },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG16I } },
-        { { CL_RA,                      CL_UNSIGNED_INT32},
-          { GSL_CHANNEL_ORDER_RA ,      CM_SURF_FMT_RG32I } },
-
-        { { CL_RA,                      CL_HALF_FLOAT },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG16F } },
-        { { CL_RA,                      CL_FLOAT },
-          { GSL_CHANNEL_ORDER_RA,       CM_SURF_FMT_RG32F } },
-    */
     // RGB
     {{CL_RGB, CL_UNORM_INT_101010},
      Pal::ChNumFormat::X10Y10Z10W2_Unorm,

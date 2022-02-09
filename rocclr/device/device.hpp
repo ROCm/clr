@@ -1351,11 +1351,6 @@ class Isa {
     return runtimePalSupported_;
   }
 
-  /// @returns If the GSL runtime supports the ISA.
-  bool runtimeGslSupported() const {
-    return runtimeGslSupported_;
-  }
-
   /// @returns SRAM ECC feature status.
   const Feature &sramecc() const {
     return sramecc_;
@@ -1441,7 +1436,7 @@ class Isa {
  private:
 
   constexpr Isa(const char* targetId, const char* hsailId,
-                bool runtimeRocSupported, bool runtimePalSupported, bool runtimeGslSupported,
+                bool runtimeRocSupported, bool runtimePalSupported,
                 uint32_t versionMajor, uint32_t versionMinor, uint32_t versionStepping,
                 Feature sramecc, Feature xnack, uint32_t simdPerCU, uint32_t simdWidth,
                 uint32_t simdInstructionWidth, uint32_t memChannelBankWidth,
@@ -1450,7 +1445,6 @@ class Isa {
         hsailId_(hsailId),
         runtimeRocSupported_(runtimeRocSupported),
         runtimePalSupported_(runtimePalSupported),
-        runtimeGslSupported_(runtimeGslSupported),
         versionMajor_(versionMajor),
         versionMinor_(versionMinor),
         versionStepping_(versionStepping),
@@ -1477,7 +1471,6 @@ class Isa {
 
   bool runtimeRocSupported_;       //!< ROCm runtime is supported.
   bool runtimePalSupported_;       //!< PAL runtime is supported.
-  bool runtimeGslSupported_;       //!< GSL runtime is supported.
   uint32_t versionMajor_;          //!< Isa's major version.
   uint32_t versionMinor_;          //!< Isa's minor version.
   uint32_t versionStepping_;       //!< Isa's stepping version.

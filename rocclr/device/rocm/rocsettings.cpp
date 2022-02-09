@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifndef WITHOUT_GPU_BACKEND
+#ifndef WITHOUT_HSA_BACKEND
 
 #include "top.hpp"
 #include "os/os.hpp"
@@ -232,4 +232,4 @@ void Settings::override() {
 }
 }  // namespace roc
 
-#endif  // WITHOUT_GPU_BACKEND
+#endif  // WITHOUT_HSA_BACKEND

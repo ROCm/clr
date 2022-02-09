@@ -1755,14 +1755,14 @@ bool Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContex
 #ifdef _WIN32
   if (flags & amd::Context::Flags::D3D10DeviceKhr) {
     if (!associateD3D10Device(pDevice[amd::Context::DeviceFlagIdx::D3D10DeviceKhrIdx])) {
-      LogError("Failed gslD3D10Associate()");
+      LogError("Failed associateD3D10Device()");
       return false;
     }
   }
 
   if (flags & amd::Context::Flags::D3D11DeviceKhr) {
     if (!associateD3D11Device(pDevice[amd::Context::DeviceFlagIdx::D3D11DeviceKhrIdx])) {
-      LogError("Failed gslD3D11Associate()");
+      LogError("Failed associateD3D11Device()");
       return false;
     }
   }
@@ -1783,10 +1783,10 @@ bool Device::bindExternalDevice(uint flags, void* const pDevice[], void* pContex
 #endif  //_WIN32
 
   if (flags & amd::Context::Flags::GLDeviceKhr) {
-    // Attempt to associate GSL-OGL
+    // Attempt to associate PAL-OGL
     if (!glAssociate(pContext, pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx])) {
       if (!validateOnly) {
-        LogError("Failed gslGLAssociate()");
+        LogError("Failed glAssociate()");
       }
       return false;
     }
@@ -1803,10 +1803,10 @@ bool Device::unbindExternalDevice(uint flags, void* const pDevice[], void* pCont
 
   void* glDevice = pDevice[amd::Context::DeviceFlagIdx::GLDeviceKhrIdx];
   if (glDevice != nullptr) {
-    // Dissociate GSL-OGL
+    // Dissociate PAL-OGL
     if (!glDissociate(pContext, glDevice)) {
       if (validateOnly) {
-        LogWarning("Failed gslGLDiassociate()");
+        LogWarning("Failed glDissociate()");
       }
       return false;
     }
