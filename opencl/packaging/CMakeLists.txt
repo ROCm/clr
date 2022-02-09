@@ -27,7 +27,6 @@ set(CPACK_PACKAGE_CONTACT "ROCm OpenCL Support <rocm-opencl.support@amd.com>")
 set(CPACK_PACKAGE_VENDOR "Advanced Micro Devices, Inc.")
 set(CPACK_PACKAGE_DESCRIPTION "OpenCL: Open Computing Language on ROCclr")
 
-set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl" CACHE PATH "Package Installation path for OpenCL")
 
 
 
