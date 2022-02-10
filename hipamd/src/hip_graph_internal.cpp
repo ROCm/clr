@@ -48,6 +48,8 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 int hipGraphNode::nextID = 0;
 std::unordered_set<hipGraphNode*> hipGraphNode::nodeSet_;
 amd::Monitor hipGraphNode::nodeSetLock_{"Guards global node set"};
+std::unordered_set<ihipGraph*> ihipGraph::graphSet_;
+amd::Monitor ihipGraph::graphSetLock_{"Guards global graph set"};
 
 hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
@@ -466,6 +468,16 @@ hipError_t hipGraphMemcpyNode::SetCommandParams(const hipMemcpy3DParms* pNodePar
   }
   return hipSuccess;
 }
+
+
+bool ihipGraph::isGraphValid(ihipGraph* pGraph) {
+  amd::ScopedLock lock(graphSetLock_);
+  if (graphSet_.find(pGraph) == graphSet_.end()) {
+    return false;
+  }
+  return true;
+}
+
 
 void ihipGraph::AddNode(const Node& node) {
   vertices_.emplace_back(node);

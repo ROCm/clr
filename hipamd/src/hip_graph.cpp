@@ -25,31 +25,25 @@
 #include "hip_event.hpp"
 
 thread_local std::vector<hipStream_t> g_captureStreams;
-static std::unordered_set<ihipGraph*> graphSet;
-static amd::Monitor graphSetLock{"Guards global graph set"};
 
-ihipGraph::ihipGraph() {
-  amd::ScopedLock lock(graphSetLock);
-  graphSet.insert(this);
-}
-
-ihipGraph::~ihipGraph() {
-  for (auto node : vertices_) {
-    delete node;
-  }
-  amd::ScopedLock lock(graphSetLock);
-  graphSet.erase(this);
-}
-
-inline void ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
+inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                              const hipGraphNode_t* pDependencies, size_t numDependencies) {
   graph->AddNode(graphNode);
   for (size_t i = 0; i < numDependencies; i++) {
+    if (!hipGraphNode::isNodeValid(pDependencies[i])) {
+      return hipErrorInvalidValue;
+    }
     pDependencies[i]->AddEdge(graphNode);
   }
+  return hipSuccess;
 }
 
+
 hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams) {
+
+  if (pNodeParams->kernelParams == nullptr) {
+    return hipErrorInvalidValue;
+  }
   hipFunction_t func = nullptr;
   hipError_t status =
       PlatformState::instance().getStatFunc(&func, pNodeParams->func, ihipGetDevice());
@@ -83,6 +77,9 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       pNodeParams->func == nullptr) {
     return hipErrorInvalidValue;
   }
+  if (!ihipGraph::isGraphValid(graph)) {
+    return hipErrorInvalidValue;
+  }
   hipError_t status = ihipValidateKernelParams(pNodeParams);
   if (hipSuccess != status) {
     return status;
@@ -93,8 +90,8 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return hipErrorInvalidDeviceFunction;
   }
   *pGraphNode = new hipGraphKernelNode(pNodeParams, func);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  return hipSuccess;
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  return status;
 }
 
 hipError_t ihipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -811,6 +808,7 @@ hipError_t hipGraphDestroy(hipGraph_t graph) {
   HIP_RETURN(hipSuccess);
 }
 
+
 hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
                                  const hipKernelNodeParams* pNodeParams) {
@@ -820,7 +818,6 @@ hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       (numDependencies > 0 && pDependencies == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
   HIP_RETURN_DURATION(
       ihipGraphAddKernelNode(pGraphNode, graph, pDependencies, numDependencies, pNodeParams));
 }
@@ -1399,20 +1396,14 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
   HIP_RETURN(hipSuccess);
 }
 
-bool isGraphValid(ihipGraph* pGraph) {
-  amd::ScopedLock lock(graphSetLock);
-  if (graphSet.find(pGraph) == graphSet.end()) {
-    return false;
-  }
-  return true;
-}
+
 
 hipError_t hipGraphClone(hipGraph_t* pGraphClone, hipGraph_t originalGraph) {
   HIP_INIT_API(hipGraphClone, pGraphClone, originalGraph);
   if (originalGraph == nullptr || pGraphClone == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (!isGraphValid(originalGraph)) {
+  if (!ihipGraph::isGraphValid(originalGraph)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphClone = originalGraph->clone();
