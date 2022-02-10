@@ -81,7 +81,7 @@ __device__ static inline unsigned int __ffsll(long long int input) {
 // Given a 32/64-bit value exec mask and an integer value base (between 0 and WAVEFRONT_SIZE),
 // find the n-th (given by offset) set bit in the exec mask from the base bit, and return the bit position.
 // If not found, return -1.
-__device__  int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset) {
+__device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset) {
   uint64_t temp_mask = mask;
   int32_t temp_offset = offset;
 
@@ -117,7 +117,7 @@ __device__  int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset) {
     return total;
 }
 
-__device__ int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) {
+__device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) {
   uint64_t temp_mask = mask;
   int32_t temp_offset = offset;
   if (offset == 0) {
