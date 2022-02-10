@@ -231,12 +231,25 @@ struct hipGraphNode {
 struct ihipGraph {
   std::vector<Node> vertices_;
   const ihipGraph* pOriginalGraph_ = nullptr;
+  static std::unordered_set<ihipGraph*> graphSet_;
+  static amd::Monitor graphSetLock_ ;
 
  public:
- ihipGraph();
- ~ihipGraph();
+  ihipGraph() {
+    amd::ScopedLock lock(graphSetLock_);
+    graphSet_.insert(this);
+  };
+
+  ~ihipGraph() {
+    for (auto node : vertices_) {
+      delete node;
+    }
+    amd::ScopedLock lock(graphSetLock_);
+    graphSet_.erase(this);
+  };
+
   // check graphs validity
-  bool isGraphValid(ihipGraph* pGraph);
+  static bool isGraphValid(ihipGraph* pGraph);
 
   /// add node to the graph
   void AddNode(const Node& node);
