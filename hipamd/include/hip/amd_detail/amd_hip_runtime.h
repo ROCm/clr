@@ -93,11 +93,6 @@ using ::int64_t;
 }
 #endif // !defined(__HIPCC_RTC__)
 
-// __hip_malloc is not working. Disable it by default.
-#ifndef __HIP_ENABLE_DEVICE_MALLOC__
-#define __HIP_ENABLE_DEVICE_MALLOC__ 0
-#endif
-
 #if __HIP_CLANG_ONLY__
 
 #if !defined(__align__)
@@ -191,20 +186,6 @@ template <int dpp_ctrl, int row_mask, int bank_mask, bool bound_ctrl>
 __device__ int __hip_move_dpp_N(int src);
 
 #endif  //__HIP_ARCH_GFX803__ == 1
-
-#ifndef __OPENMP_AMDGCN__
-#if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
-#if __HIP_ENABLE_DEVICE_MALLOC__
-extern "C" __device__ void* __hip_malloc(size_t);
-extern "C" __device__ void* __hip_free(void* ptr);
-static inline __device__ void* malloc(size_t size) { return __hip_malloc(size); }
-static inline __device__ void* free(void* ptr) { return __hip_free(ptr); }
-#else
-static inline __device__ void* malloc(size_t size) { __builtin_trap(); return nullptr; }
-static inline __device__ void* free(void* ptr) { __builtin_trap(); return nullptr; }
-#endif
-#endif // !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
-#endif // !__OPENMP_AMDGCN__
 
 // End doxygen API:
 /**
@@ -458,7 +439,5 @@ hc_get_workitem_absolute_id(int dim)
 #endif // !defined(__HIPCC_RTC__)
 #endif // !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 #endif // __HIP_CLANG_ONLY__
-
-#include <hip/amd_detail/hip_memory.h>
 
 #endif  // HIP_AMD_DETAIL_RUNTIME_H
