@@ -308,12 +308,12 @@ namespace hip {
     /// Get parent stream
     hipStream_t GetParentStream() const { return parentStream_; }
     /// Generate ID for stream capture unique over the lifetime of the process
-    static int GenerateCaptureID() {
+    static unsigned long long GenerateCaptureID() {
       static std::atomic<unsigned long long> uid(0);
       return ++uid;
     }
     /// Get Capture ID
-    int GetCaptureID() { return captureID_; }
+    unsigned long long GetCaptureID() { return captureID_; }
     void SetCaptureEvent(hipEvent_t e) { captureEvents_.push_back(e); }
     void SetParallelCaptureStream(hipStream_t s) { parallelCaptureStreams_.push_back(s); }
   };

@@ -1160,16 +1160,16 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
 hipError_t hipStreamGetCaptureInfo(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus,
                                    unsigned long long* pId) {
   HIP_INIT_API(hipStreamGetCaptureInfo, stream, pCaptureStatus, pId);
-  if (pCaptureStatus == nullptr || pId == nullptr || !hip::isValid(stream)) {
+  if (pCaptureStatus == nullptr || !hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   if (stream == nullptr) {
-    HIP_RETURN(hipErrorStreamCaptureImplicit);
+    HIP_RETURN(hipErrorUnknown);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   *pCaptureStatus = s->GetCaptureStatus();
   if (*pCaptureStatus == hipStreamCaptureStatusActive) {
-    *pId = s->GetCaptureID();
+    pId = reinterpret_cast<unsigned long long*>(s->GetCaptureID());
   }
   HIP_RETURN(hipSuccess);
 }
