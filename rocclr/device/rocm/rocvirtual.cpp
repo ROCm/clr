@@ -1221,32 +1221,34 @@ void VirtualGPU::destroyPool() {
 
 // ================================================================================================
 void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
+  assert(alignment != 0);
   address result = nullptr;
-  do {
+  result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
+  const size_t pool_new_usage = (result + size) - kernarg_pool_base_;
+  if (pool_new_usage <= kernarg_pool_chunk_end_) {
+    kernarg_pool_cur_offset_ = pool_new_usage;
+    return result;
+  } else {
+    //! We run out of the arguments space!
+    //! That means the app didn't call clFlush/clFinish for very long time.
+    // Reset the signal for the barrier packet
+    hsa_signal_silent_store_relaxed(kernarg_pool_signal_[active_chunk_], kInitSignalValueOne);
+    // Dispatch a barrier packet into the queue
+    dispatchBarrierPacket(kBarrierPacketHeader, true, kernarg_pool_signal_[active_chunk_]);
+    // Get the next chunk
+    active_chunk_ = ++active_chunk_ % KernelArgPoolNumSignal;
+    // Make sure the new active chunk is free
+    bool test = WaitForSignal(kernarg_pool_signal_[active_chunk_], ActiveWait());
+    assert(test && "Runtime can't fail a wait for chunk!");
+    // Make sure the current offset matches the new chunk to avoid possible overlaps
+    // between chunks and issues during recycle
+    kernarg_pool_cur_offset_ = (active_chunk_ == 0) ? 0 : kernarg_pool_chunk_end_;
+    kernarg_pool_chunk_end_ = kernarg_pool_cur_offset_ +
+                              kernarg_pool_size_ / KernelArgPoolNumSignal;
     result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
-    const size_t pool_new_usage = (result + size) - kernarg_pool_base_;
-    if (pool_new_usage <= kernarg_pool_chunk_end_) {
-      kernarg_pool_cur_offset_ = pool_new_usage;
-      return result;
-    } else {
-      //! We run out of the arguments space!
-      //! That means the app didn't call clFlush/clFinish for very long time.
-      // Reset the signal for the barrier packet
-      hsa_signal_silent_store_relaxed(kernarg_pool_signal_[active_chunk_], kInitSignalValueOne);
-      // Dispatch a barrier packet into the queue
-      dispatchBarrierPacket(kBarrierPacketHeader, true, kernarg_pool_signal_[active_chunk_]);
-      // Get the next chunk
-      active_chunk_ = ++active_chunk_ % KernelArgPoolNumSignal;
-      // Make sure the new active chunk is free
-      bool test = WaitForSignal(kernarg_pool_signal_[active_chunk_], ActiveWait());
-      assert(test && "Runtime can't fail a wait for chunk!");
-      // Make sure the current offset matches the new chunk to avoid possible overlaps
-      // between chunks and issues during recycle
-      kernarg_pool_cur_offset_ = (active_chunk_ == 0) ? 0 : kernarg_pool_chunk_end_;
-      kernarg_pool_chunk_end_ = kernarg_pool_cur_offset_ +
-                                kernarg_pool_size_ / KernelArgPoolNumSignal;
-    }
-  } while (true);
+    kernarg_pool_cur_offset_ = (result + size) - kernarg_pool_base_;
+  }
+
   return result;
 }
 
@@ -2857,7 +2859,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           }
           break;
         case amd::KernelParameterDescriptor::HiddenRemainderX:
-          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(newGlobalSize[0] % local[0]), 
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(newGlobalSize[0] % local[0]),
                         it.size_, it.offset_);
           break;
         case amd::KernelParameterDescriptor::HiddenRemainderY:
