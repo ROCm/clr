@@ -62,12 +62,18 @@ hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
 
-  if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
+  if ((srcMemory == nullptr) && (dstMemory != nullptr)) { //host to device
     if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
       return hipErrorInvalidValue;
     }
-  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
+    if (kind != hipMemcpyHostToDevice) {
+      return hipErrorInvalidValue;
+    }
+  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) { //device to host
     if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
+      return hipErrorInvalidValue;
+    }
+    if (kind != hipMemcpyDeviceToHost) {
       return hipErrorInvalidValue;
     }
   } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
