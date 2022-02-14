@@ -1147,7 +1147,11 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
   if (hGraphExec == nullptr || node == nullptr || childGraph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(hipSuccess);
+  hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipChildGraphNode*>(clonedNode)->SetParams(childGraph));
 }
 
 hipError_t hipStreamGetCaptureInfo(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus,
