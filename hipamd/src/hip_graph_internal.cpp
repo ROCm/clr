@@ -29,14 +29,15 @@ const char* GetGraphNodeTypeString(uint32_t op) {
   const char* case_string;
   switch (static_cast<hipGraphNodeType>(op)) {
     CASE_STRING(hipGraphNodeTypeKernel, KernelNode)
-    CASE_STRING(hipGraphNodeTypeMemcpy, Memcpy3DNode)
+    CASE_STRING(hipGraphNodeTypeMemcpy, MemcpyNode)
     CASE_STRING(hipGraphNodeTypeMemset, MemsetNode)
     CASE_STRING(hipGraphNodeTypeHost, HostNode)
     CASE_STRING(hipGraphNodeTypeGraph, GraphNode)
     CASE_STRING(hipGraphNodeTypeEmpty, EmptyNode)
     CASE_STRING(hipGraphNodeTypeWaitEvent, WaitEventNode)
     CASE_STRING(hipGraphNodeTypeEventRecord, EventRecordNode)
-    CASE_STRING(hipGraphNodeTypeMemcpy1D, Memcpy1DNode)
+    CASE_STRING(hipGraphNodeTypeExtSemaphoreSignal, ExtSemaphoreSignalNode)
+    CASE_STRING(hipGraphNodeTypeExtSemaphoreWait,  ExtSemaphoreWaitNode)
     CASE_STRING(hipGraphNodeTypeMemcpyFromSymbol, MemcpyFromSymbolNode)
     CASE_STRING(hipGraphNodeTypeMemcpyToSymbol, MemcpyToSymbolNode)
     default:
