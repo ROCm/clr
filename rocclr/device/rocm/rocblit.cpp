@@ -2051,7 +2051,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   bool p2p = (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev()) &&
-             (sizeIn[0] > ROC_P2P_SDMA_SIZE * Ki);
+             ((sizeIn[0] > ROC_P2P_SDMA_SIZE * Ki) || !gpu().IsPendingDispatch());
   bool asan = false;
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)

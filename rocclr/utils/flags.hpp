@@ -267,7 +267,7 @@ release(bool, AMD_CPU_AFFINITY, false,                                        \
 release(bool, ROC_USE_FGS_KERNARG, true,                                      \
         "Use fine grain kernel args segment for supported asics")             \
 release(uint, ROC_P2P_SDMA_SIZE, 1024,                                        \
-        "The minimum size in MB for P2P transfer with SDMA")                  \
+        "The minimum size in KB for P2P transfer with SDMA")                  \
 release(uint, ROC_AQL_QUEUE_SIZE, 4096,                                       \
         "AQL queue size in AQL packets")                                      \
 release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \

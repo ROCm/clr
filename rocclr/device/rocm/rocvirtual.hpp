@@ -382,6 +382,7 @@ class VirtualGPU : public device::VirtualDevice {
   void enableSyncBlit() const;
 
   void hasPendingDispatch() { hasPendingDispatch_ = true; }
+  bool IsPendingDispatch() const { return (hasPendingDispatch_) ? true : false; }
   void addSystemScope() { addSystemScope_ = true; }
   void SetCopyCommandType(cl_command_type type) { copy_command_type_ = type; }
 
