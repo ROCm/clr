@@ -887,8 +887,14 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
 }
 
 hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph) {
+  if (pGraphExec == nullptr || graph == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   std::unordered_map<Node, Node> clonedNodes;
   hipGraph_t clonedGraph = graph->clone(clonedNodes);
+  if (clonedGraph == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   std::vector<std::vector<Node>> parallelLists;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists;
   clonedGraph->GetRunList(parallelLists, nodeWaitLists);
