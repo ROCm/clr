@@ -2104,9 +2104,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 
     // Program kernels arguments for the blit operation
     cl_mem mem = as_cl<amd::Memory>(srcMemory.owner());
-    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
     mem = as_cl<amd::Memory>(dstMemory.owner());
-    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
     // Program source origin
     uint64_t srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
     setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);

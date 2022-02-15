@@ -447,7 +447,8 @@ class KernelBlitManager : public DmaBlitManager {
   void releaseArguments(address args) const;
 
   inline void setArgument(amd::Kernel* kernel, size_t index,
-                          size_t size, const void* value, uint32_t offset = 0) const;
+                          size_t size, const void* value, uint32_t offset = 0,
+                          const device::Memory* dev_mem = nullptr) const;
 
   uint32_t ConstantBufferOffset() const {
     // Make sure it can fit at least 128 bytes for OCL memory fill of double16
@@ -490,7 +491,8 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
-                                          size_t size, const void* value, uint32_t offset) const {
+                                           size_t size, const void* value, uint32_t offset,
+                                           const device::Memory* dev_mem) const {
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
   void* param = kernel->parameters().values() + desc.offset_;
@@ -511,8 +513,13 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
       // convert cl_mem to amd::Memory*, return false if invalid.
       reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = mem;
-      LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
-        mem->getDeviceMemory(dev())->virtualAddress()) + offset;
+      if (dev_mem == nullptr) {
+        LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
+          mem->getDeviceMemory(dev())->virtualAddress()) + offset;
+      } else {
+        LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
+          dev_mem->virtualAddress()) + offset;
+      }
     }
   } else if (desc.type_ == T_SAMPLER) {
     assert(false && "No sampler support in blit manager! Use internal samplers!");
