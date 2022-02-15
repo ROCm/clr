@@ -1032,6 +1032,17 @@ hipError_t hipGraphMemcpyNodeSetParams(hipGraphNode_t node, const hipMemcpy3DPar
 hipError_t hipGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                            hipMemcpy3DParms* pNodeParams) {
   HIP_INIT_API(hipGraphExecMemcpyNodeSetParams, hGraphExec, node, pNodeParams);
+  if (hGraphExec == nullptr || node == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (ihipMemcpy3D_validate(pNodeParams) != hipSuccess) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // Check if pNodeParams passed is a empty struct
+  if (((pNodeParams->srcArray == 0) && (pNodeParams->srcPtr.ptr == nullptr)) ||
+      ((pNodeParams->dstArray == 0) && (pNodeParams->dstPtr.ptr == nullptr))) {
+    return hipErrorInvalidValue;
+  }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
