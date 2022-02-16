@@ -1054,7 +1054,7 @@ inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes
   if ((offset + sizeBytes) > sym_size) {
     LogPrintfError("Trying to access out of bounds, offset: %u sizeBytes: %u sym_size: %u \n",
                    offset, sizeBytes, sym_size);
-    HIP_RETURN(hipErrorInvalidDevicePointer);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   device_ptr = reinterpret_cast<address>(device_ptr) + offset;
