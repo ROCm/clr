@@ -100,7 +100,6 @@ if(NOT CMAKE_CL_64)
 endif()
 
 target_compile_definitions(rocclr PUBLIC
-  ATI_ARCH_X86
   LITTLEENDIAN_CPU
   WITH_LIQUID_FLASH=0
   ${AMD_OPENCL_DEFS})
