@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -126,8 +126,9 @@ class Memory : public device::Memory, public Resource {
 
   //! Updates the owner's host allocation from device memory
   virtual void syncHostFromCache(
+      device::VirtualDevice* vDev,
       //! Synchronization flags
-      device::Memory::SyncFlags syncFlags = device::Memory::SyncFlags());
+      device::Memory::SyncFlags syncFlags = device::Memory::SyncFlags()) override;
 
   //! Creates a view from current resource
   virtual Memory* createBufferView(
@@ -141,7 +142,7 @@ class Memory : public device::Memory, public Resource {
   }
 
   //! Allocates host memory for synchronization with MGPU context
-  void mgpuCacheWriteBack();
+  void mgpuCacheWriteBack(VirtualGPU& gpu);
 
   //! Accessors for indirect map memory object
   Memory* mapMemory() const;

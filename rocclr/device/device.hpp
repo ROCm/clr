@@ -741,7 +741,8 @@ class Memory : public amd::HeapObject {
 
   //! Immediate blocking write from device cache to owners's backing store.
   //! Marks owner as "current" by resetting the last writer to NULL.
-  virtual void syncHostFromCache(SyncFlags syncFlags = SyncFlags()) {}
+  virtual void syncHostFromCache(device::VirtualDevice* vDev,
+                                 SyncFlags syncFlags = SyncFlags()) {}
 
   //! Allocate memory for API-level maps
   virtual void* allocMapTarget(const amd::Coord3D& origin,  //!< The map location in memory

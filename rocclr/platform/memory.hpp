@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -329,7 +329,7 @@ class Memory : public amd::RuntimeObject {
   //! Signal that a write has occurred to a cached version
   void signalWrite(const Device* writer);
   //! Force an asynchronous writeback from the most-recent dirty cache to host
-  void cacheWriteBack(void);
+  void cacheWriteBack(device::VirtualDevice* vDev);
 
   //! Returns true if the specified area covers memory intirely
   virtual bool isEntirelyCovered(const Coord3D& origin,  //!< Origin location of the covered region

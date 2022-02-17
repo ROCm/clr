@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -1611,7 +1611,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
     }
 
     // Target is the backing store, so just ensure that owner is up-to-date
-    memory->owner()->cacheWriteBack();
+    memory->owner()->cacheWriteBack(this);
 
     // Add memory to VA cache, so rutnime can detect direct access to VA
     dev().addVACache(memory);
@@ -2002,7 +2002,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
       }
 
       // Target is the backing store, so just ensure that owner is up-to-date
-      memory->owner()->cacheWriteBack();
+      memory->owner()->cacheWriteBack(this);
     } else {
       LogError("Unhandled svm map!");
     }
@@ -2089,7 +2089,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
     pal::Memory* memory = dev().getGpuMemory(it);
 
     if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_HOST) {
-      memory->mgpuCacheWriteBack();
+      memory->mgpuCacheWriteBack(*this);
     } else if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) {
       // Synchronize memory from host if necessary.
       // The sync function will perform memory migration from
