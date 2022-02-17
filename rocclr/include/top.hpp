@@ -21,6 +21,16 @@
 #ifndef TOP_HPP_
 #define TOP_HPP_
 
+#if defined(__GNUC__)
+#if defined(__arm__) || defined(__aarch64__)
+#define ATI_ARCH_ARM
+#elif defined(__x86__) || defined(__x86_64__)
+#define ATI_ARCH_X86
+#endif
+#else /*!__GNUC__*/
+#define ATI_ARCH_X86
+#endif /*!__GNUC__*/
+
 #if defined(ATI_ARCH_ARM)
 #define __EXPORTED_HEADERS__ 1
 #endif /*ATI_ARCH_ARM*/
