@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -459,7 +459,7 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
   // If the last writer was another GPU, then make a writeback
   if (isChacheCoherencySync() && (owner()->getLastWriter() != nullptr) &&
       (&dev() != owner()->getLastWriter())) {
-    mgpuCacheWriteBack();
+    mgpuCacheWriteBack(gpu);
   }
 
   // If host memory doesn't have direct access, then we have to synchronize
@@ -571,7 +571,8 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
   }
 }
 
-void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
+void Memory::syncHostFromCache(device::VirtualDevice* vDev, device::Memory::SyncFlags syncFlags) {
+  VirtualGPU* gpu = (vDev != nullptr) ? reinterpret_cast<VirtualGPU*>(vDev) : dev().xferQueue();
   // Sanity checks
   assert(owner() != nullptr);
 
@@ -594,7 +595,7 @@ void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
       // If the app uses multiple subbuffers from multiple queues,
       // then the parent sync can be called from multiple threads
       amd::ScopedLock lock(owner()->parent()->lockMemoryOps());
-      m->syncHostFromCache(syncFlagsTmp);
+      m->syncHostFromCache(gpu, syncFlagsTmp);
       //! \note Don't do early exit here, since we still have to sync
       //! this view, if the parent sync operation was a NOP.
       //! If parent was synchronized, then this view sync will be a NOP
@@ -630,7 +631,7 @@ void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
         device::Memory* devSub = sub->getDeviceMemory(dev(), AllocSubBuffer);
         if (nullptr != devSub) {
           pal::Memory* gpuSub = reinterpret_cast<pal::Memory*>(devSub);
-          gpuSub->syncHostFromCache(syncFlagsTmp);
+          gpuSub->syncHostFromCache(gpu, syncFlagsTmp);
         }
       }
     }
@@ -650,17 +651,20 @@ void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
     bool result = false;
     static const bool Entire = true;
     amd::Coord3D origin(0, 0, 0);
+    // If device on the provided queue doesn't match the device memory was allocated,
+    // then use blit manager on device
+    const auto& bltMgr = (&gpu->dev() != &dev()) ? dev().xferMgr() : gpu->blitMgr();
 
     // If backing store was pinned then make a transfer
     if (flags_ & PinnedMemoryAlloced) {
       if (desc().buffer_) {
         amd::Coord3D region(owner()->getSize());
-        result = dev().xferMgr().copyBuffer(*this, *pinnedMemory_, origin, origin, region, Entire);
+        result = bltMgr.copyBuffer(*this, *pinnedMemory_, origin, origin, region, Entire);
       } else {
         amd::Image& image = static_cast<amd::Image&>(*owner());
-        result = dev().xferMgr().copyImageToBuffer(*this, *pinnedMemory_, origin, origin,
-                                                   image.getRegion(), Entire, image.getRowPitch(),
-                                                   image.getSlicePitch());
+        result = bltMgr.copyImageToBuffer(*this, *pinnedMemory_, origin, origin,
+                                          image.getRegion(), Entire, image.getRowPitch(),
+                                          image.getSlicePitch());
       }
     }
 
@@ -668,11 +672,11 @@ void Memory::syncHostFromCache(device::Memory::SyncFlags syncFlags) {
     if (!result) {
       if (desc().buffer_) {
         amd::Coord3D region(owner()->getSize());
-        result = dev().xferMgr().readBuffer(*this, owner()->getHostMem(), origin, region, Entire);
+        result = bltMgr.readBuffer(*this, owner()->getHostMem(), origin, region, Entire);
       } else {
         amd::Image& image = static_cast<amd::Image&>(*owner());
-        result = dev().xferMgr().readImage(*this, owner()->getHostMem(), origin, image.getRegion(),
-                                           image.getRowPitch(), image.getSlicePitch(), Entire);
+        result = bltMgr.readImage(*this, owner()->getHostMem(), origin, image.getRegion(),
+                                  image.getRowPitch(), image.getSlicePitch(), Entire);
       }
     }
 
@@ -958,7 +962,7 @@ Memory* Memory::mapMemory() const {
   return map;
 }
 
-void Memory::mgpuCacheWriteBack() {
+void Memory::mgpuCacheWriteBack(VirtualGPU& gpu) {
   // Lock memory object, so only one write back can occur
   amd::ScopedLock lock(owner()->lockMemoryOps());
 
@@ -977,7 +981,7 @@ void Memory::mgpuCacheWriteBack() {
   if (owner()->getHostMem() != nullptr) {
     //! \note Ignore pinning result
     bool ok = pinSystemMemory(owner()->getHostMem(), owner()->getSize());
-    owner()->cacheWriteBack();
+    owner()->cacheWriteBack(&gpu);
   }
 }
 

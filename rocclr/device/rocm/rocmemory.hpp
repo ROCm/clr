@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2016 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -74,10 +74,10 @@ class Memory : public device::Memory {
 
   // Immediate blocking write from device cache to owners's backing store.
   // Marks owner as "current" by resetting the last writer to nullptr.
-  void syncHostFromCache(SyncFlags syncFlags = SyncFlags()) override;
+  void syncHostFromCache(device::VirtualDevice* vDev, SyncFlags syncFlags = SyncFlags()) override;
 
   //! Allocates host memory for synchronization with MGPU context
-  void mgpuCacheWriteBack();
+  void mgpuCacheWriteBack(VirtualGPU& gpu);
 
   // Releases indirect map surface
   void releaseIndirectMap() override { decIndMapCount(); }

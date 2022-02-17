@@ -2044,7 +2044,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
       releaseGpuMemoryFence();
     }
     // Target is the backing store, so just ensure that owner is up-to-date
-    devMemory->owner()->cacheWriteBack();
+    devMemory->owner()->cacheWriteBack(this);
 
     if (devMemory->isHostMemDirectAccess()) {
       // Add memory to VA cache, so rutnime can detect direct access to VA
@@ -2464,7 +2464,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
         // Make sure GPU finished operation before synchronization with the backing store
         releaseGpuMemoryFence();
       }
-      memory->mgpuCacheWriteBack();
+      memory->mgpuCacheWriteBack(*this);
     } else if (vcmd.migrationFlags() & CL_MIGRATE_MEM_OBJECT_CONTENT_UNDEFINED) {
       // Synchronize memory from host if necessary.
       // The sync function will perform memory migration from

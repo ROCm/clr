@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -412,7 +412,7 @@ Memory::~Memory() {
   if (NULL != parent_) {
     // Update cache if runtime destroys a subbuffer
     if (NULL != parent_->getHostMem() && (vDev_ == NULL)) {
-      cacheWriteBack();
+      cacheWriteBack(nullptr);
     }
     parent_->removeSubBuffer(this);
   }
@@ -475,20 +475,20 @@ void Memory::signalWrite(const Device* writer) {
   }
 }
 
-void Memory::cacheWriteBack() {
+void Memory::cacheWriteBack(device::VirtualDevice* vDev) {
   if (NULL != lastWriter_) {
     device::Memory* dmem = getDeviceMemory(*lastWriter_);
     //! @note It's a special condition, when a subbuffer was created,
     //! but never used. Thus dev memory is still NULL and lastWriter_
     //! was passed from the parent.
     if (NULL != dmem) {
-      dmem->syncHostFromCache();
+      dmem->syncHostFromCache(vDev);
     }
   } else if (isParent()) {
     // On CPU parent can't be synchronized, because lastWriter_ could be NULL
     // and syncHostFromCache() won't be called.
     for (uint i = 0; i < numDevices_; ++i) {
-      deviceMemories_[i].value_->syncHostFromCache();
+      deviceMemories_[i].value_->syncHostFromCache(vDev);
     }
   }
 }
