@@ -2764,7 +2764,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         }
         case amd::KernelParameterDescriptor::HiddenPrintfBuffer: {
           uintptr_t bufferPtr = reinterpret_cast<uintptr_t>(printfDbg()->dbgBuffer());
-          if (printfEnabled && !bufferPtr) {
+          if (printfEnabled && bufferPtr) {
             WriteAqlArgAt(hidden_arguments, bufferPtr, it.size_, it.offset_);
           }
           break;
