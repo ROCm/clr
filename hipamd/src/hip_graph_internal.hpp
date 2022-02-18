@@ -859,7 +859,7 @@ class hipGraphEventRecordNode : public hipGraphNode {
     }
     hip::Event* e = reinterpret_cast<hip::Event*>(event_);
     commands_.reserve(1);
-    amd::Command* command;
+    amd::Command* command = nullptr;
     status = e->recordCommand(command, queue);
     commands_.emplace_back(command);
     return status;
