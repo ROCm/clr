@@ -57,6 +57,7 @@
 #include <iostream>
 #include <memory>
 #ifdef ROCCLR_SUPPORT_NUMA_POLICY
+#include <numa.h>
 #include <numaif.h>
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
 #include <sstream>
@@ -1946,18 +1947,18 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
                   ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
 #else
   int mode = MPOL_DEFAULT;
-  unsigned long nodeMask = 0;
+  int maxNodes = numa_num_possible_nodes();
+  bitmask* nodeMask = numa_bitmask_alloc(maxNodes);
   auto cpuCount = cpu_agents_.size();
 
-  constexpr unsigned long maxNode = sizeof(nodeMask) * 8;
-  long res = get_mempolicy(&mode, &nodeMask, maxNode, NULL, 0);
+  long res = get_mempolicy(&mode, nodeMask->maskp, nodeMask->size, NULL, 0);
   if (res) {
     LogPrintfError("get_mempolicy failed with error %ld", res);
     return ptr;
   }
   ClPrint(amd::LOG_INFO, amd::LOG_RESOURCE,
           "get_mempolicy() succeed with mode %d, nodeMask 0x%lx, cpuCount %zu",
-          mode, nodeMask, cpuCount);
+          mode, *nodeMask->maskp, cpuCount);
 
   switch (mode) {
     // For details, see "man get_mempolicy".
@@ -1965,7 +1966,7 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
     case MPOL_PREFERRED:
       // We only care about the first CPU node
       for (unsigned int i = 0; i < cpuCount; i++) {
-        if ((1u << i) & nodeMask) {
+        if ((1u << i) & *nodeMask->maskp) {
           ptr = hostAgentAlloc(size, cpu_agents_[i], atomics);
           break;
         }
@@ -1976,6 +1977,7 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
       ptr = hostAlloc(size, alignment, atomics
                       ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
   }
+  numa_free_cpumask(nodeMask);
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
   return ptr;
 }
