@@ -695,6 +695,23 @@ hipError_t hipStreamIsCapturing(hipStream_t stream, hipStreamCaptureStatus* pCap
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
+  HIP_INIT_API(hipThreadExchangeStreamCaptureMode, mode);
+
+  if (mode == nullptr ||
+      *mode < hipStreamCaptureModeGlobal ||
+      *mode > hipStreamCaptureModeRelaxed ||
+      g_captureStreams.size() == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hipStreamCaptureMode oldMode = reinterpret_cast<hip::Stream*>(g_captureStreams[0])->GetCaptureMode();
+  reinterpret_cast<hip::Stream*>(g_captureStreams[0])->SetCaptureMode(*mode);
+  *mode = oldMode;
+
+  HIP_RETURN_DURATION(hipSuccess);
+}
+
 hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) {
   HIP_INIT_API(hipStreamBeginCapture, stream, mode);
   if (!hip::isValid(stream)) {

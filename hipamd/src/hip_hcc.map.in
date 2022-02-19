@@ -392,6 +392,7 @@ hip_5.0 {
 global:
     hipPointerGetAttribute;
     hipDrvPointerGetAttributes;
+    hipThreadExchangeStreamCaptureMode;
 local:
     *;
 } hip_4.5;

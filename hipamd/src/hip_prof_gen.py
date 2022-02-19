@@ -81,7 +81,7 @@ def filtr_api_args(args_str):
   args_str = re.sub(r'\s*,\s*', r',', args_str);
   args_str = re.sub(r'\s+', r' ', args_str);
   args_str = re.sub(r'\s*(\*+)\s*', r'\1 ', args_str);
-  args_str = re.sub(r'(enum|struct) ', '', args_str);
+  args_str = re.sub(r'(\benum|struct) ', '', args_str);
   return args_str
 
 # Normalizing types
@@ -129,7 +129,9 @@ def pointer_ck(arg_type):
   m = re.match(r'(.*)\*$', arg_type)
   if m:
     ptr_type = m.group(1)
-    ptr_type = re.sub(r'const ', '', ptr_type)
+    n = re.match(r'(.*)\*\*$', arg_type)
+    if not n:
+      ptr_type = re.sub(r'const ', '', ptr_type)
     if ptr_type == 'void': ptr_type = ''
   return ptr_type
 #############################################################
@@ -613,7 +615,7 @@ if (len(sys.argv) < 4):
          "  -p - HIP_INIT_API macro patching mode\n" +
          "\n" +
          "  Example:\n" +
-         "  $ " + sys.argv[0] + " -v -p -t --priv ./include/hip/amd_detail/hip_runtime_api.h" +
+         "  $ " + sys.argv[0] + " -v -p -t --priv ../hip/include/hip/hip_runtime_api.h" +
          " ./src ./include/hip/amd_detail/hip_prof_str.h ./include/hip/amd_detail/hip_prof_str.h.new");
 
 # API header file given as an argument
