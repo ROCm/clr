@@ -352,3 +352,4 @@ amd_dbgapi_get_git_hash
 amd_dbgapi_get_build_id
 hipStreamGetCaptureInfo
 hipStreamGetCaptureInfo_v2
+hipThreadExchangeStreamCaptureMode

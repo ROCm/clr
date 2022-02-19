@@ -60,7 +60,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipDeviceSetSharedMemConfig = 47,
   HIP_API_ID_hipDeviceSynchronize = 48,
   HIP_API_ID_hipDeviceTotalMem = 49,
-  HIP_API_ID_hipDriverGetVersion = 50,
+  HIP_API_ID_RESERVED_50 = 50,
   HIP_API_ID_hipDrvMemcpy2DUnaligned = 51,
   HIP_API_ID_hipDrvMemcpy3D = 52,
   HIP_API_ID_hipDrvMemcpy3DAsync = 53,
@@ -92,7 +92,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipGetDeviceCount = 79,
   HIP_API_ID_hipGetDeviceFlags = 80,
   HIP_API_ID_hipGetDeviceProperties = 81,
-  HIP_API_ID_hipGetErrorName = 82,
+  HIP_API_ID_RESERVED_82 = 82,
   HIP_API_ID_hipGetErrorString = 83,
   HIP_API_ID_hipGetLastError = 84,
   HIP_API_ID_hipGetMipmappedArrayLevel = 85,
@@ -195,7 +195,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipPointerGetAttributes = 182,
   HIP_API_ID_hipProfilerStart = 183,
   HIP_API_ID_hipProfilerStop = 184,
-  HIP_API_ID_hipRuntimeGetVersion = 185,
+  HIP_API_ID_RESERVED_185 = 185,
   HIP_API_ID_hipSetDevice = 186,
   HIP_API_ID_hipSetDeviceFlags = 187,
   HIP_API_ID_hipSetupArgument = 188,
@@ -307,7 +307,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphicsSubResourceGetMappedArray = 294,
   HIP_API_ID_hipPointerGetAttribute = 295,
   HIP_API_ID_hipTexRefSetArray = 296,
-  HIP_API_ID_LAST = 296,
+  HIP_API_ID_hipThreadExchangeStreamCaptureMode = 297,
+  HIP_API_ID_LAST = 297,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -409,7 +410,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceSetSharedMemConfig: return "hipDeviceSetSharedMemConfig";
     case HIP_API_ID_hipDeviceSynchronize: return "hipDeviceSynchronize";
     case HIP_API_ID_hipDeviceTotalMem: return "hipDeviceTotalMem";
-    case HIP_API_ID_hipDriverGetVersion: return "hipDriverGetVersion";
     case HIP_API_ID_hipDrvMemcpy2DUnaligned: return "hipDrvMemcpy2DUnaligned";
     case HIP_API_ID_hipDrvMemcpy3D: return "hipDrvMemcpy3D";
     case HIP_API_ID_hipDrvMemcpy3DAsync: return "hipDrvMemcpy3DAsync";
@@ -443,7 +443,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGetDeviceCount: return "hipGetDeviceCount";
     case HIP_API_ID_hipGetDeviceFlags: return "hipGetDeviceFlags";
     case HIP_API_ID_hipGetDeviceProperties: return "hipGetDeviceProperties";
-    case HIP_API_ID_hipGetErrorName: return "hipGetErrorName";
     case HIP_API_ID_hipGetErrorString: return "hipGetErrorString";
     case HIP_API_ID_hipGetLastError: return "hipGetLastError";
     case HIP_API_ID_hipGetMipmappedArrayLevel: return "hipGetMipmappedArrayLevel";
@@ -612,7 +611,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipPointerGetAttributes: return "hipPointerGetAttributes";
     case HIP_API_ID_hipProfilerStart: return "hipProfilerStart";
     case HIP_API_ID_hipProfilerStop: return "hipProfilerStop";
-    case HIP_API_ID_hipRuntimeGetVersion: return "hipRuntimeGetVersion";
     case HIP_API_ID_hipSetDevice: return "hipSetDevice";
     case HIP_API_ID_hipSetDeviceFlags: return "hipSetDeviceFlags";
     case HIP_API_ID_hipSetupArgument: return "hipSetupArgument";
@@ -653,6 +651,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipTexRefSetMaxAnisotropy: return "hipTexRefSetMaxAnisotropy";
     case HIP_API_ID_hipTexRefSetMipmapLevelClamp: return "hipTexRefSetMipmapLevelClamp";
     case HIP_API_ID_hipTexRefSetMipmappedArray: return "hipTexRefSetMipmappedArray";
+    case HIP_API_ID_hipThreadExchangeStreamCaptureMode: return "hipThreadExchangeStreamCaptureMode";
     case HIP_API_ID_hipWaitExternalSemaphoresAsync: return "hipWaitExternalSemaphoresAsync";
   };
   return "unknown";
@@ -712,7 +711,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceSetSharedMemConfig", name) == 0) return HIP_API_ID_hipDeviceSetSharedMemConfig;
   if (strcmp("hipDeviceSynchronize", name) == 0) return HIP_API_ID_hipDeviceSynchronize;
   if (strcmp("hipDeviceTotalMem", name) == 0) return HIP_API_ID_hipDeviceTotalMem;
-  if (strcmp("hipDriverGetVersion", name) == 0) return HIP_API_ID_hipDriverGetVersion;
   if (strcmp("hipDrvMemcpy2DUnaligned", name) == 0) return HIP_API_ID_hipDrvMemcpy2DUnaligned;
   if (strcmp("hipDrvMemcpy3D", name) == 0) return HIP_API_ID_hipDrvMemcpy3D;
   if (strcmp("hipDrvMemcpy3DAsync", name) == 0) return HIP_API_ID_hipDrvMemcpy3DAsync;
@@ -746,7 +744,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGetDeviceCount", name) == 0) return HIP_API_ID_hipGetDeviceCount;
   if (strcmp("hipGetDeviceFlags", name) == 0) return HIP_API_ID_hipGetDeviceFlags;
   if (strcmp("hipGetDeviceProperties", name) == 0) return HIP_API_ID_hipGetDeviceProperties;
-  if (strcmp("hipGetErrorName", name) == 0) return HIP_API_ID_hipGetErrorName;
   if (strcmp("hipGetErrorString", name) == 0) return HIP_API_ID_hipGetErrorString;
   if (strcmp("hipGetLastError", name) == 0) return HIP_API_ID_hipGetLastError;
   if (strcmp("hipGetMipmappedArrayLevel", name) == 0) return HIP_API_ID_hipGetMipmappedArrayLevel;
@@ -915,7 +912,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipPointerGetAttributes", name) == 0) return HIP_API_ID_hipPointerGetAttributes;
   if (strcmp("hipProfilerStart", name) == 0) return HIP_API_ID_hipProfilerStart;
   if (strcmp("hipProfilerStop", name) == 0) return HIP_API_ID_hipProfilerStop;
-  if (strcmp("hipRuntimeGetVersion", name) == 0) return HIP_API_ID_hipRuntimeGetVersion;
   if (strcmp("hipSetDevice", name) == 0) return HIP_API_ID_hipSetDevice;
   if (strcmp("hipSetDeviceFlags", name) == 0) return HIP_API_ID_hipSetDeviceFlags;
   if (strcmp("hipSetupArgument", name) == 0) return HIP_API_ID_hipSetupArgument;
@@ -956,6 +952,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipTexRefSetMaxAnisotropy", name) == 0) return HIP_API_ID_hipTexRefSetMaxAnisotropy;
   if (strcmp("hipTexRefSetMipmapLevelClamp", name) == 0) return HIP_API_ID_hipTexRefSetMipmapLevelClamp;
   if (strcmp("hipTexRefSetMipmappedArray", name) == 0) return HIP_API_ID_hipTexRefSetMipmappedArray;
+  if (strcmp("hipThreadExchangeStreamCaptureMode", name) == 0) return HIP_API_ID_hipThreadExchangeStreamCaptureMode;
   if (strcmp("hipWaitExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipWaitExternalSemaphoresAsync;
   return HIP_API_ID_NONE;
 }
@@ -1189,10 +1186,6 @@ typedef struct hip_api_data_s {
       size_t bytes__val;
       hipDevice_t device;
     } hipDeviceTotalMem;
-    struct {
-      int* driverVersion;
-      int driverVersion__val;
-    } hipDriverGetVersion;
     struct {
       const hip_Memcpy2D* pCopy;
       hip_Memcpy2D pCopy__val;
@@ -2468,10 +2461,6 @@ typedef struct hip_api_data_s {
       const void* ptr;
     } hipPointerGetAttributes;
     struct {
-      int* runtimeVersion;
-      int runtimeVersion__val;
-    } hipRuntimeGetVersion;
-    struct {
       int deviceId;
     } hipSetDevice;
     struct {
@@ -2706,6 +2695,10 @@ typedef struct hip_api_data_s {
       hipMipmappedArray mipmappedArray__val;
       unsigned int Flags;
     } hipTexRefSetMipmappedArray;
+    struct {
+      hipStreamCaptureMode* mode;
+      hipStreamCaptureMode mode__val;
+    } hipThreadExchangeStreamCaptureMode;
     struct {
       const hipExternalSemaphore_t* extSemArray;
       hipExternalSemaphore_t extSemArray__val;
@@ -2959,10 +2952,6 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDeviceTotalMem.bytes = (size_t*)bytes; \
   cb_data.args.hipDeviceTotalMem.device = (hipDevice_t)device; \
 };
-// hipDriverGetVersion[('int*', 'driverVersion')]
-#define INIT_hipDriverGetVersion_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipDriverGetVersion.driverVersion = (int*)driverVersion; \
-};
 // hipDrvMemcpy2DUnaligned[('const hip_Memcpy2D*', 'pCopy')]
 #define INIT_hipDrvMemcpy2DUnaligned_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDrvMemcpy2DUnaligned.pCopy = (const hip_Memcpy2D*)pCopy; \
@@ -3147,9 +3136,6 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetDeviceProperties_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGetDeviceProperties.props = (hipDeviceProp_t*)props; \
   cb_data.args.hipGetDeviceProperties.device = (hipDevice_t)device; \
-};
-// hipGetErrorName[]
-#define INIT_hipGetErrorName_CB_ARGS_DATA(cb_data) { \
 };
 // hipGetErrorString[]
 #define INIT_hipGetErrorString_CB_ARGS_DATA(cb_data) { \
@@ -4268,10 +4254,6 @@ typedef struct hip_api_data_s {
 // hipProfilerStop[]
 #define INIT_hipProfilerStop_CB_ARGS_DATA(cb_data) { \
 };
-// hipRuntimeGetVersion[('int*', 'runtimeVersion')]
-#define INIT_hipRuntimeGetVersion_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipRuntimeGetVersion.runtimeVersion = (int*)runtimeVersion; \
-};
 // hipSetDevice[('int', 'deviceId')]
 #define INIT_hipSetDevice_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipSetDevice.deviceId = (int)device; \
@@ -4499,6 +4481,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipTexRefSetMipmappedArray.texRef = (textureReference*)texRef; \
   cb_data.args.hipTexRefSetMipmappedArray.mipmappedArray = (hipMipmappedArray*)mipmappedArray; \
   cb_data.args.hipTexRefSetMipmappedArray.Flags = (unsigned int)Flags; \
+};
+// hipThreadExchangeStreamCaptureMode[('hipStreamCaptureMode*', 'mode')]
+#define INIT_hipThreadExchangeStreamCaptureMode_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipThreadExchangeStreamCaptureMode.mode = (hipStreamCaptureMode*)mode; \
 };
 // hipWaitExternalSemaphoresAsync[('const hipExternalSemaphore_t*', 'extSemArray'), ('const hipExternalSemaphoreWaitParams*', 'paramsArray'), ('unsigned int', 'numExtSems'), ('hipStream_t', 'stream')]
 #define INIT_hipWaitExternalSemaphoresAsync_CB_ARGS_DATA(cb_data) { \
@@ -4798,10 +4784,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDeviceTotalMem:
       if (data->args.hipDeviceTotalMem.bytes) data->args.hipDeviceTotalMem.bytes__val = *(data->args.hipDeviceTotalMem.bytes);
       break;
-// hipDriverGetVersion[('int*', 'driverVersion')]
-    case HIP_API_ID_hipDriverGetVersion:
-      if (data->args.hipDriverGetVersion.driverVersion) data->args.hipDriverGetVersion.driverVersion__val = *(data->args.hipDriverGetVersion.driverVersion);
-      break;
 // hipDrvMemcpy2DUnaligned[('const hip_Memcpy2D*', 'pCopy')]
     case HIP_API_ID_hipDrvMemcpy2DUnaligned:
       if (data->args.hipDrvMemcpy2DUnaligned.pCopy) data->args.hipDrvMemcpy2DUnaligned.pCopy__val = *(data->args.hipDrvMemcpy2DUnaligned.pCopy);
@@ -4929,9 +4911,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipGetDeviceProperties[('hipDeviceProp_t*', 'props'), ('hipDevice_t', 'device')]
     case HIP_API_ID_hipGetDeviceProperties:
       if (data->args.hipGetDeviceProperties.props) data->args.hipGetDeviceProperties.props__val = *(data->args.hipGetDeviceProperties.props);
-      break;
-// hipGetErrorName[]
-    case HIP_API_ID_hipGetErrorName:
       break;
 // hipGetErrorString[]
     case HIP_API_ID_hipGetErrorString:
@@ -5591,10 +5570,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipProfilerStop[]
     case HIP_API_ID_hipProfilerStop:
       break;
-// hipRuntimeGetVersion[('int*', 'runtimeVersion')]
-    case HIP_API_ID_hipRuntimeGetVersion:
-      if (data->args.hipRuntimeGetVersion.runtimeVersion) data->args.hipRuntimeGetVersion.runtimeVersion__val = *(data->args.hipRuntimeGetVersion.runtimeVersion);
-      break;
 // hipSetDevice[('int', 'deviceId')]
     case HIP_API_ID_hipSetDevice:
       break;
@@ -5759,6 +5734,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipTexRefSetMipmappedArray:
       if (data->args.hipTexRefSetMipmappedArray.texRef) data->args.hipTexRefSetMipmappedArray.texRef__val = *(data->args.hipTexRefSetMipmappedArray.texRef);
       if (data->args.hipTexRefSetMipmappedArray.mipmappedArray) data->args.hipTexRefSetMipmappedArray.mipmappedArray__val = *(data->args.hipTexRefSetMipmappedArray.mipmappedArray);
+      break;
+// hipThreadExchangeStreamCaptureMode[('hipStreamCaptureMode*', 'mode')]
+    case HIP_API_ID_hipThreadExchangeStreamCaptureMode:
+      if (data->args.hipThreadExchangeStreamCaptureMode.mode) data->args.hipThreadExchangeStreamCaptureMode.mode__val = *(data->args.hipThreadExchangeStreamCaptureMode.mode);
       break;
 // hipWaitExternalSemaphoresAsync[('const hipExternalSemaphore_t*', 'extSemArray'), ('const hipExternalSemaphoreWaitParams*', 'paramsArray'), ('unsigned int', 'numExtSems'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipWaitExternalSemaphoresAsync:
@@ -6107,12 +6086,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", device=" << data->args.hipDeviceTotalMem.device;
       oss << ")";
     break;
-    case HIP_API_ID_hipDriverGetVersion:
-      oss << "hipDriverGetVersion(";
-      if (data->args.hipDriverGetVersion.driverVersion == NULL) oss << "driverVersion=NULL";
-      else oss << "driverVersion=" << data->args.hipDriverGetVersion.driverVersion__val;
-      oss << ")";
-    break;
     case HIP_API_ID_hipDrvMemcpy2DUnaligned:
       oss << "hipDrvMemcpy2DUnaligned(";
       if (data->args.hipDrvMemcpy2DUnaligned.pCopy == NULL) oss << "pCopy=NULL";
@@ -6358,10 +6331,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipGetDeviceProperties.props == NULL) oss << "props=NULL";
       else oss << "props=" << data->args.hipGetDeviceProperties.props__val;
       oss << ", device=" << data->args.hipGetDeviceProperties.device;
-      oss << ")";
-    break;
-    case HIP_API_ID_hipGetErrorName:
-      oss << "hipGetErrorName(";
       oss << ")";
     break;
     case HIP_API_ID_hipGetErrorString:
@@ -7803,12 +7772,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << "hipProfilerStop(";
       oss << ")";
     break;
-    case HIP_API_ID_hipRuntimeGetVersion:
-      oss << "hipRuntimeGetVersion(";
-      if (data->args.hipRuntimeGetVersion.runtimeVersion == NULL) oss << "runtimeVersion=NULL";
-      else oss << "runtimeVersion=" << data->args.hipRuntimeGetVersion.runtimeVersion__val;
-      oss << ")";
-    break;
     case HIP_API_ID_hipSetDevice:
       oss << "hipSetDevice(";
       oss << "deviceId=" << data->args.hipSetDevice.deviceId;
@@ -8122,6 +8085,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipTexRefSetMipmappedArray.mipmappedArray == NULL) oss << ", mipmappedArray=NULL";
       else oss << ", mipmappedArray=" << data->args.hipTexRefSetMipmappedArray.mipmappedArray__val;
       oss << ", Flags=" << data->args.hipTexRefSetMipmappedArray.Flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipThreadExchangeStreamCaptureMode:
+      oss << "hipThreadExchangeStreamCaptureMode(";
+      if (data->args.hipThreadExchangeStreamCaptureMode.mode == NULL) oss << "mode=NULL";
+      else oss << "mode=" << data->args.hipThreadExchangeStreamCaptureMode.mode__val;
       oss << ")";
     break;
     case HIP_API_ID_hipWaitExternalSemaphoresAsync:
