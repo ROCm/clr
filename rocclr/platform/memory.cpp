@@ -29,7 +29,7 @@
 #include <atomic>
 
 // Stores the no. of memory allocations
-std::atomic<uint32_t> numAllocs = 0;
+std::atomic<uint32_t> numAllocs = {0};
 
 namespace amd {
 
