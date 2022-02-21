@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -81,8 +81,6 @@ hipError_t hipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
 }
 
 hipError_t ihipDestroySurfaceObject(hipSurfaceObject_t surfaceObject) {
-  HIP_INIT_API(hipDestroySurfaceObject, surfaceObject);
-
   if (surfaceObject == nullptr) {
     return hipSuccess;
   }
