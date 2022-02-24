@@ -518,7 +518,7 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   }
 
   if (flags & hipHostMallocNumaUser) {
-    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
+    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY | CL_MEM_SVM_ATOMICS;
   }
 
   HIP_RETURN_DURATION(ihipMalloc(ptr, sizeBytes, ihipFlags), *ptr);
@@ -978,7 +978,8 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
   HIP_INIT_API(hipHostRegister, hostPtr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   if(hostPtr != nullptr) {
-    amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(), CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
+    amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
+                            CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
 
     constexpr bool sysMemAlloc = false;
     constexpr bool skipAlloc = false;
