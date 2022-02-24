@@ -2743,49 +2743,53 @@ bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
 
 bool Program::FindGlobalVarSize(void* binary, size_t binSize) {
 #if defined(USE_COMGR_LIBRARY)
-  size_t progvarsTotalSize = 0;
-  size_t dynamicSize = 0;
-  size_t progvarsWriteSize = 0;
+  // HIP doesn't need information about global variable size.
+  // Hence runtime can skip expensive Elf object creation for parsing
+  if (!amd::IS_HIP) {
+    size_t progvarsTotalSize = 0;
+    size_t dynamicSize = 0;
+    size_t progvarsWriteSize = 0;
 
-  amd::Elf elfIn(ELFCLASSNONE, reinterpret_cast<const char *>(binary), binSize,
-                    nullptr, amd::Elf::ELF_C_READ);
+    amd::Elf elfIn(ELFCLASSNONE, reinterpret_cast<const char *>(binary), binSize,
+                      nullptr, amd::Elf::ELF_C_READ);
 
-  if (!elfIn.isSuccessful()) {
-    buildLog_ += "Creating input amd::Elf object failed\n";
-    return false;
-  }
-
-  auto numpHdrs = elfIn.getSegmentNum();
-  for (unsigned int i = 0; i < numpHdrs; ++i) {
-    amd::ELFIO::segment* seg = nullptr;
-    if (!elfIn.getSegment(i, seg)) {
-      continue;
+    if (!elfIn.isSuccessful()) {
+      buildLog_ += "Creating input amd::Elf object failed\n";
+      return false;
     }
 
-    // Accumulate the size of R & !X loadable segments
-    if (seg->get_type() == PT_LOAD && !(seg->get_flags() & PF_X)) {
-      if (seg->get_flags() & PF_R) {
-        progvarsTotalSize += seg->get_memory_size();
+    auto numpHdrs = elfIn.getSegmentNum();
+    for (unsigned int i = 0; i < numpHdrs; ++i) {
+      amd::ELFIO::segment* seg = nullptr;
+      if (!elfIn.getSegment(i, seg)) {
+        continue;
       }
-      if (seg->get_flags() & PF_W) {
-        progvarsWriteSize += seg->get_memory_size();
+
+      // Accumulate the size of R & !X loadable segments
+      if (seg->get_type() == PT_LOAD && !(seg->get_flags() & PF_X)) {
+        if (seg->get_flags() & PF_R) {
+          progvarsTotalSize += seg->get_memory_size();
+        }
+        if (seg->get_flags() & PF_W) {
+          progvarsWriteSize += seg->get_memory_size();
+        }
+      }
+      else if (seg->get_type() == PT_DYNAMIC) {
+        dynamicSize += seg->get_memory_size();
       }
     }
-    else if (seg->get_type() == PT_DYNAMIC) {
-      dynamicSize += seg->get_memory_size();
+
+    progvarsTotalSize -= dynamicSize;
+    setGlobalVariableTotalSize(progvarsTotalSize);
+
+    if (progvarsWriteSize != dynamicSize) {
+      hasGlobalStores_ = true;
     }
   }
 
   if (!createKernelMetadataMap(binary, binSize)) {
     buildLog_ += "Error: create kernel metadata map using COMgr\n";
     return false;
-  }
-
-  progvarsTotalSize -= dynamicSize;
-  setGlobalVariableTotalSize(progvarsTotalSize);
-
-  if (progvarsWriteSize != dynamicSize) {
-    hasGlobalStores_ = true;
   }
 #endif // defined(USE_COMGR_LIBRARY)
   return true;
