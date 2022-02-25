@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -142,6 +142,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
 #endif  // DEBUG
       break;
     case DLL_PROCESS_DETACH:
+      amd::shutDown();
       break;
     case DLL_THREAD_DETACH: {
       amd::Thread* thread = amd::Thread::current();
