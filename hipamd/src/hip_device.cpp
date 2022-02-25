@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2018 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,16 @@ amd::HostQueue* Device::NullStream(bool skip_alloc) {
 }
 
 }
+
+namespace amd {
+
+void shutDown() {
+  for (auto deviceHandle : g_devices) {
+    delete deviceHandle;
+  }
+}
+
+}  // namespace amd
 
 hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId) {
   if (deviceId < 0 || static_cast<size_t>(deviceId) >= g_devices.size() || device == nullptr) {
