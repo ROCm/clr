@@ -510,15 +510,15 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER | (flags << 16);
-  if (flags == 0 ||
-      flags & (hipHostMallocCoherent | hipHostMallocMapped) ||
-     (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
-    ihipFlags |= CL_MEM_SVM_ATOMICS;
-  }
+  // Always choose finegrain memory for hipHostMalloc
+  unsigned int ihipFlags = CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER | (flags << 16);
 
   if (flags & hipHostMallocNumaUser) {
-    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY | CL_MEM_SVM_ATOMICS;
+    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
+  }
+
+  if (flags & hipHostMallocNonCoherent) {
+    ihipFlags &= ~CL_MEM_SVM_ATOMICS;
   }
 
   HIP_RETURN_DURATION(ihipMalloc(ptr, sizeBytes, ihipFlags), *ptr);
