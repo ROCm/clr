@@ -320,7 +320,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.maxComputeUnits_ = settings().enableWgpMode_
       ? palProp.gfxipProperties.shaderCore.numAvailableCus / 2
       : palProp.gfxipProperties.shaderCore.numAvailableCus;
-  info_.maxBoostComputeUnits_ = info_.maxComputeUnits_;
+  info_.maxPhysicalComputeUnits_ = info_.maxComputeUnits_;
   info_.numberOfShaderEngines = palProp.gfxipProperties.shaderCore.numShaderEngines;
 
   // SI parts are scalar.  Also, reads don't need to be 128-bits to get peak rates.

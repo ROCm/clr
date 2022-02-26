@@ -1101,14 +1101,14 @@ bool Device::populateOCLDeviceConstants() {
 
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
-                         &info_.maxBoostComputeUnits_)) {
+                         &info_.maxPhysicalComputeUnits_)) {
     return false;
   }
-  assert(info_.maxBoostComputeUnits_ > 0);
+  assert(info_.maxPhysicalComputeUnits_ > 0);
 
-  info_.maxBoostComputeUnits_ = settings().enableWgpMode_
-      ? info_.maxBoostComputeUnits_ / 2
-      : info_.maxBoostComputeUnits_;
+  info_.maxPhysicalComputeUnits_ = settings().enableWgpMode_
+      ? info_.maxPhysicalComputeUnits_ / 2
+      : info_.maxPhysicalComputeUnits_;
 
   if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CACHELINE_SIZE,
