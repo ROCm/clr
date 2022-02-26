@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -490,6 +490,13 @@ RUNTIME_ENTRY(cl_int, clReleaseDevice, (cl_device_id device)) {
   return CL_SUCCESS;
 }
 RUNTIME_EXIT
+
+// dummy function for OCL, release resource for HIP
+namespace amd {
+
+void shutDown() {}
+
+}  // namespace amd
 
 /*! @}
  *  @}
