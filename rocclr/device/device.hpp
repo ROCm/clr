@@ -248,7 +248,7 @@ struct Info : public amd::EmbeddedObject {
   uint32_t maxComputeUnits_;
 
   //! The max number of parallel compute cores on the compute device.
-  uint32_t maxBoostComputeUnits_;
+  uint32_t maxPhysicalComputeUnits_;
 
   //! Maximum dimensions that specify the global and local work-item IDs
   //  used by the data-parallel execution model.
