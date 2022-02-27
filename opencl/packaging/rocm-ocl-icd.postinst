@@ -3,7 +3,6 @@
 set -e
 
 INSTALL_PATH=@CPACK_PACKAGING_INSTALL_PREFIX@
-ROCM_LIBPATH=@ROCM_PATH@/lib
 
 do_ldconfig() {
   echo ${INSTALL_PATH}/lib > /etc/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
@@ -15,10 +14,6 @@ case "$1" in
     echo "$1"
   ;;
   configure)
-    mkdir -p ${ROCM_LIBPATH}
-    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so ${ROCM_LIBPATH}/libOpenCL.so
-    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@ ${ROCM_LIBPATH}/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
-    ln -s -f -r ${INSTALL_PATH}/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@ ${ROCM_LIBPATH}/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
     do_ldconfig
   ;;
   *)
