@@ -3,13 +3,27 @@
 -   Install mesa-common-dev
 -   Either build or install [COMGR](https://github.com/RadeonOpenCompute/ROCm-CompilerSupport), [CLANG](https://github.com/RadeonOpenCompute/llvm-project) and [Device Library](https://github.com/RadeonOpenCompute/ROCm-Device-Libs)
 
+## Branch of repository
+
+Before get HIP source code, set the expected branch of repository at the variable HIP_BRANCH.
+For example, for ROCm5.0 release branch, set
+```
+export HIP_BRANCH=rocm-5.0.x
+```
+
+ROCm5.1 release branch, set
+```
+export HIP_BRANCH=rocm-5.1.x
+```
+Similiar format for future branches.
+
 ## Getting the source code
 
 ```bash
-git clone -b develop https://github.com/ROCm-Developer-Tools/hipamd.git
-git clone -b develop https://github.com/ROCm-Developer-Tools/hip.git
-git clone -b develop https://github.com/ROCm-Developer-Tools/ROCclr.git
-git clone -b develop https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime.git
+git clone -b $HIP_BRANCH https://github.com/ROCm-Developer-Tools/hipamd.git
+git clone -b $HIP_BRANCH https://github.com/ROCm-Developer-Tools/hip.git
+git clone -b $HIP_BRANCH https://github.com/ROCm-Developer-Tools/ROCclr.git
+git clone -b $HIP_BRANCH https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime.git
 ```
 
 ## Set the environment variables
