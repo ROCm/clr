@@ -64,8 +64,9 @@ hipError_t ihipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
   image = as_amd(memObj)->asImage();
 
   void* surfObjectBuffer = nullptr;
-  ihipMalloc(&surfObjectBuffer, sizeof(__hip_surface), CL_MEM_SVM_FINE_GRAIN_BUFFER);
-  if (surfObjectBuffer == nullptr) {
+  hipError_t err = ihipMalloc(&surfObjectBuffer, sizeof(__hip_surface),
+                              CL_MEM_SVM_FINE_GRAIN_BUFFER);
+  if (surfObjectBuffer == nullptr || err != hipSuccess) {
     return hipErrorOutOfMemory;
   }
   *pSurfObject = new (surfObjectBuffer) __hip_surface{image, *pResDesc};

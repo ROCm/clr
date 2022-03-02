@@ -518,7 +518,8 @@ DynCO::~DynCO() {
 
   for (auto& elem : vars_) {
     if(elem.second->getVarKind() == Var::DVK_Managed) {
-      ihipFree(elem.second->getManagedVarPtr());
+      hipError_t err = ihipFree(elem.second->getManagedVarPtr());
+      assert(err == hipSuccess);
     }
     delete elem.second;
   }
@@ -543,8 +544,8 @@ hipError_t DynCO::getDeviceVar(DeviceVar** dvar, std::string var_name) {
     return hipErrorNotFound;
   }
 
-  it->second->getDeviceVar(dvar, device_id_, module());
-  return hipSuccess;
+  hipError_t err = it->second->getDeviceVar(dvar, device_id_, module());
+  return err;
 }
 
 hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
@@ -623,6 +624,7 @@ hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
 
 hipError_t DynCO::populateDynGlobalVars() {
   amd::ScopedLock lock(dclock_);
+  hipError_t err = hipSuccess;
   std::vector<std::string> var_names;
   std::string managedVarExt = ".managed";
   // For Dynamic Modules there is only one hipFatBinaryDevInfo_
@@ -643,10 +645,10 @@ hipError_t DynCO::populateDynGlobalVars() {
     if (elem.find(managedVarExt) != std::string::npos) {
       std::string managedVar = elem;
       managedVar.erase(managedVar.length() - managedVarExt.length(), managedVarExt.length());
-      initDynManagedVars(managedVar);
+      err = initDynManagedVars(managedVar);
     }
   }
-  return hipSuccess;
+  return err;
 }
 
 hipError_t DynCO::populateDynGlobalFuncs() {
@@ -706,7 +708,8 @@ FatBinaryInfo** StatCO::addFatBinary(const void* data, bool initialized) {
   amd::ScopedLock lock(sclock_);
 
   if (initialized) {
-    digestFatBinary(data, modules_[data]);
+    hipError_t err = digestFatBinary(data, modules_[data]);
+    assert(err == hipSuccess);
   }
   return &modules_[data];
 }
@@ -727,7 +730,8 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
   auto it = managedVars_.begin();
   while (it != managedVars_.end()) {
     if ((*it)->moduleInfo() == module) {
-      ihipFree((*it)->getManagedVarPtr());
+      hipError_t err = ihipFree((*it)->getManagedVarPtr());
+      assert(err == hipSuccess);
       delete *it;
       it = managedVars_.erase(it);
     } else {
@@ -826,7 +830,7 @@ hipError_t StatCO::registerStatManagedVar(Var* var) {
 
 hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
   amd::ScopedLock lock(sclock_);
-
+  hipError_t err = hipSuccess;
   if (managedVarsDevicePtrInitalized_.find(deviceId) == managedVarsDevicePtrInitalized_.end() ||
       !managedVarsDevicePtrInitalized_[deviceId]) {
     for (auto var : managedVars_) {
@@ -835,8 +839,9 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
 
       amd::HostQueue* queue = hip::getNullStream();
       if(queue != nullptr) {
-        ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()), var->getManagedVarPtr(),
-                  dvar->size(), hipMemcpyHostToDevice, *queue);
+        err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()),
+                                    var->getManagedVarPtr(),
+                                    dvar->size(), hipMemcpyHostToDevice, *queue);
       } else {
         ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
         return hipErrorInvalidResourceHandle;
@@ -844,6 +849,6 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
     }
     managedVarsDevicePtrInitalized_[deviceId] = true;
   }
-  return hipSuccess;
+  return err;
 }
 }; //namespace: hip

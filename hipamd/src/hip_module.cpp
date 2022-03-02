@@ -265,9 +265,12 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     int max_blocks_per_grid = 0;
     int best_block_size = 0;
     int block_size = blockDimX * blockDimY * blockDimZ;
-    hip_impl::ihipOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks, &max_blocks_per_grid,
+    hipError_t err = hip_impl::ihipOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks, &max_blocks_per_grid,
                                                             &best_block_size, *device, f,
                                                             block_size, sharedMemBytes, true);
+    if (err != hipSuccess) {
+      return err;
+    }
     if (((globalWorkSizeX * globalWorkSizeY * globalWorkSizeZ) / block_size) >
         unsigned(max_blocks_per_grid)) {
       return hipErrorCooperativeLaunchTooLarge;
@@ -544,13 +547,13 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
                                                   int numDevices, unsigned int flags, uint32_t extFlags)
 {
   int numActiveGPUs = 0;
-  ihipDeviceGetCount(&numActiveGPUs);
+  hipError_t result = hipSuccess;
+  result = ihipDeviceGetCount(&numActiveGPUs);
 
   if ((numDevices > numActiveGPUs) || (launchParamsList == nullptr)) {
     return hipErrorInvalidValue;
   }
 
-  hipError_t result = hipErrorUnknown;
   uint64_t allGridSize = 0;
   std::vector<const amd::Device*> mgpu_list(numDevices);
 
@@ -683,7 +686,7 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
   // have the default read mode set to normalized float.
   (*texRef)->readMode = hipReadModeNormalizedFloat;
 
-  PlatformState::instance().registerTexRef(*texRef, hmod, std::string(name));
+  hipError_t err = PlatformState::instance().registerTexRef(*texRef, hmod, std::string(name));
 
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(err);
 }
