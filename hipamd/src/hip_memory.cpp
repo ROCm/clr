@@ -990,10 +990,10 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
       HIP_RETURN(hipErrorOutOfMemory);
     }
 
-    for (const auto& device: hip::getCurrentDevice()->devices()) {
+    for (const auto& device : g_devices) {
       // Since the amd::Memory object is shared between all devices
       // it's fine to have multiple addresses mapped to it
-      const device::Memory* devMem = mem->getDeviceMemory(*device);
+      const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
       amd::MemObjMap::AddMemObj(reinterpret_cast<void*>(devMem->virtualAddress()), mem);
     }
 
