@@ -62,7 +62,8 @@ hipError_t Stream::EndCapture() {
   }
   for (auto stream : parallelCaptureStreams_) {
     hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-    s->EndCapture();
+    hipError_t err = s->EndCapture();
+    assert(err == hipSuccess);
   }
   captureStatus_ = hipStreamCaptureStatusNone;
   pCaptureGraph_ = nullptr;
@@ -307,7 +308,8 @@ public:
     // There is a scenario where hipResetDevice destroys stream per thread
     // hence isValid check is required to make sure only valid stream is used
     if (m_stream == nullptr || !hip::isValid(m_stream)) {
-      ihipStreamCreate(&m_stream, hipStreamDefault, hip::Stream::Priority::Normal);
+      hipError_t err = ihipStreamCreate(&m_stream, hipStreamDefault, hip::Stream::Priority::Normal);
+      assert(err == hipSuccess);
     }
     return m_stream;
   }

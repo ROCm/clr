@@ -62,7 +62,7 @@ DeviceVar::~DeviceVar() {
 
   if (shadowVptr != nullptr) {
     textureReference* texRef = reinterpret_cast<textureReference*>(shadowVptr);
-    ihipUnbindTexture(texRef);
+    hipError_t err = ihipUnbindTexture(texRef);
     delete texRef;
     shadowVptr = nullptr;
   }

@@ -99,17 +99,18 @@ extern "C" void __hipRegisterFunction(
     char *var = getenv("HIP_ENABLE_DEFERRED_LOADING");
     return var ? atoi(var) : 1;
   }() };
-
+  hipError_t hip_error = hipSuccess;
   hip::Function* func = new hip::Function(std::string(deviceName), modules);
-  PlatformState::instance().registerStatFunction(hostFunction, func);
+  hip_error = PlatformState::instance().registerStatFunction(hostFunction, func);
+  guarantee((hip_error == hipSuccess), "Cannot register Static function");
 
   if (!enable_deferred_loading) {
     HIP_INIT_VOID();
     hipFunction_t hfunc = nullptr;
-    hipError_t hip_error = hipSuccess;
+
     for (size_t dev_idx = 0; dev_idx < g_devices.size(); ++dev_idx) {
       hip_error = PlatformState::instance().getStatFunc(&hfunc, hostFunction, dev_idx);
-      guarantee((hip_error == hipSuccess), "Cannot Retrieve Static function");
+      guarantee((hip_error == hipSuccess), "Cannot retrieve Static function");
     }
   }
 }
@@ -130,7 +131,8 @@ extern "C" void __hipRegisterVar(
   int         global)    // Unknown, always 0
 {
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Variable, size, 0, 0, modules);
-  PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  guarantee((err == hipSuccess), "Cannot register Static Global Var");
 }
 
 extern "C" void __hipRegisterSurface(hip::FatBinaryInfo** modules,      // The device modules containing code object
@@ -139,7 +141,8 @@ extern "C" void __hipRegisterSurface(hip::FatBinaryInfo** modules,      // The d
                                      char* deviceVar,  // Variable name in device code
                                      int type, int ext) {
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Surface, sizeof(surfaceReference), 0, 0, modules);
-  PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  guarantee((err == hipSuccess), "Cannot register Static Glbal Var");
 }
 
 extern "C" void __hipRegisterManagedVar(void *hipModule,   // Pointer to hip module returned from __hipRegisterFatbinary
@@ -154,7 +157,8 @@ extern "C" void __hipRegisterManagedVar(void *hipModule,   // Pointer to hip mod
   if( status == hipSuccess) {
     amd::HostQueue* queue = hip::getNullStream();
     if(queue != nullptr) {
-      ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *queue);
+      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *queue);
+      guarantee((status == hipSuccess), "Error during memcpy to managed memory!");
     } else {
       ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
     }
@@ -163,7 +167,8 @@ extern "C" void __hipRegisterManagedVar(void *hipModule,   // Pointer to hip mod
   }
   hip::Var* var_ptr = new hip::Var(std::string(name), hip::Var::DeviceVarKind::DVK_Managed, pointer,
                                    size, align, reinterpret_cast<hip::FatBinaryInfo**>(hipModule));
-  PlatformState::instance().registerStatManagedVar(var_ptr);
+  status = PlatformState::instance().registerStatManagedVar(var_ptr);
+  guarantee((status == hipSuccess), "Cannot register Static Managed Var");
 }
 
 extern "C" void __hipRegisterTexture(hip::FatBinaryInfo** modules,      // The device modules containing code object
@@ -172,12 +177,14 @@ extern "C" void __hipRegisterTexture(hip::FatBinaryInfo** modules,      // The d
                                      char* deviceVar,  // Variable name in device code
                                      int type, int norm, int ext) {
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Texture, sizeof(textureReference), 0, 0, modules);
-  PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
+  guarantee((err == hipSuccess), "Cannot register Static Global Var");
 }
 
 extern "C" void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules)
 {
-  PlatformState::instance().removeFatBinary(modules);
+  hipError_t err = PlatformState::instance().removeFatBinary(modules);
+  guarantee((err == hipSuccess), "Cannot Unregister Fat Binary");
 }
 
 extern "C" hipError_t hipConfigureCall(
@@ -603,15 +610,19 @@ void hipLaunchKernelGGLImpl(
   }
 
   hipFunction_t func = nullptr;
-  hipError_t hip_error = PlatformState::instance().getStatFunc(&func, reinterpret_cast<void*>(function_address), deviceId);
+  hipError_t hip_error =
+             PlatformState::instance().getStatFunc(&func,
+                                                  reinterpret_cast<void*>(function_address),
+                                                  deviceId);
   if ((hip_error != hipSuccess) || (func == nullptr)) {
     LogPrintfError("Cannot find the static function: 0x%x", function_address);
   }
 
-  hipModuleLaunchKernel(func,
-    numBlocks.x, numBlocks.y, numBlocks.z,
-    dimBlocks.x, dimBlocks.y, dimBlocks.z,
-    sharedMemBytes, stream, nullptr, kernarg);
+  hip_error = hipModuleLaunchKernel(func,
+                                    numBlocks.x, numBlocks.y, numBlocks.z,
+                                    dimBlocks.x, dimBlocks.y, dimBlocks.z,
+                                    sharedMemBytes, stream, nullptr, kernarg);
+  assert(hip_error == hipSuccess);
 }
 
 void hipLaunchCooperativeKernelGGLImpl(
@@ -624,8 +635,9 @@ void hipLaunchCooperativeKernelGGLImpl(
 {
   HIP_INIT_VOID();
 
-  hipLaunchCooperativeKernel(reinterpret_cast<void*>(function_address),
+  hipError_t err = hipLaunchCooperativeKernel(reinterpret_cast<void*>(function_address),
     numBlocks, dimBlocks, kernarg, sharedMemBytes, stream);
+  assert(err == hipSuccess);
 }
 
 }
@@ -730,7 +742,8 @@ void PlatformState::init()
   }
   initialized_ = true;
   for (auto& it : statCO_.modules_) {
-    digestFatBinary(it.first, it.second);
+    hipError_t err = digestFatBinary(it.first, it.second);
+    assert(err == hipSuccess);
   }
   for (auto &it : statCO_.vars_) {
     it.second->resize_dVar(g_devices.size());
@@ -819,7 +832,7 @@ hipError_t PlatformState::getDynGlobalVar(const char* hostVar, hipModule_t hmod,
     return hipErrorNotFound;
   }
   *dev_ptr = nullptr;
-  it->second->getManagedVarPointer(hostVar, dev_ptr, size_ptr);
+  IHIP_RETURN_ONFAIL(it->second->getManagedVarPointer(hostVar, dev_ptr, size_ptr));
   // if dev_ptr is nullptr, hostvar is not in managed variable list
   if (*dev_ptr == nullptr) {
     hip::DeviceVar* dvar = nullptr;

@@ -297,8 +297,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   }
 
   void *texObjectBuffer = nullptr;
-  ihipMalloc(&texObjectBuffer, sizeof(__hip_texture), CL_MEM_SVM_FINE_GRAIN_BUFFER);
-  if (texObjectBuffer == nullptr) {
+  hipError_t err = ihipMalloc(&texObjectBuffer, sizeof(__hip_texture), CL_MEM_SVM_FINE_GRAIN_BUFFER);
+  if (texObjectBuffer == nullptr || err != hipSuccess) {
     return hipErrorOutOfMemory;
   }
   *pTexObject = new (texObjectBuffer) __hip_texture{image, sampler, *pResDesc, *pTexDesc, (pResViewDesc != nullptr) ? *pResViewDesc : hipResourceViewDesc{}};
