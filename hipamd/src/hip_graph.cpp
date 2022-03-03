@@ -45,9 +45,8 @@ hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams) {
     return hipErrorInvalidValue;
   }
   hipFunction_t func = nullptr;
-  hipError_t status =
-      PlatformState::instance().getStatFunc(&func, pNodeParams->func, ihipGetDevice());
-  if ((status != hipSuccess) || (func == nullptr)) {
+  hipError_t status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
+  if (status != hipSuccess) {
     return hipErrorInvalidDeviceFunction;
   }
   size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
@@ -85,8 +84,8 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return status;
   }
   hipFunction_t func = nullptr;
-  status = PlatformState::instance().getStatFunc(&func, pNodeParams->func, ihipGetDevice());
-  if ((status != hipSuccess) || (func == nullptr)) {
+  status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
+  if (status != hipSuccess) {
     return hipErrorInvalidDeviceFunction;
   }
   *pGraphNode = new hipGraphKernelNode(pNodeParams, func);

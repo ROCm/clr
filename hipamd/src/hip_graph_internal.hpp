@@ -444,6 +444,16 @@ class hipGraphKernelNode : public hipGraphNode {
   hipFunction_t func_;
 
  public:
+  static hipError_t getFunc(hipFunction_t* func, const hipKernelNodeParams& params, unsigned int device) {
+    hipError_t status = PlatformState::instance().getStatFunc(func, params.func, device);
+    if (status != hipSuccess) {
+      *func = reinterpret_cast<hipFunction_t>(params.func);
+    }
+    if (*func == nullptr) {
+      return hipErrorInvalidDeviceFunction;
+    }
+    return hipSuccess;
+  }
   hipGraphKernelNode(const hipKernelNodeParams* pNodeParams, const hipFunction_t func)
       : hipGraphNode(hipGraphNodeTypeKernel) {
     pKernelParams_ = new hipKernelNodeParams(*pNodeParams);
@@ -485,9 +495,8 @@ class hipGraphKernelNode : public hipGraphNode {
     }
     if (params->func != pKernelParams_->func) {
       hipFunction_t func = nullptr;
-      hipError_t status =
-          PlatformState::instance().getStatFunc(&func, params->func, ihipGetDevice());
-      if ((status != hipSuccess) || (func == nullptr)) {
+      hipError_t status = hipGraphKernelNode::getFunc(&func, *params, ihipGetDevice());
+      if (status != hipSuccess) {
         return hipErrorInvalidDeviceFunction;
       }
       func_ = func;
@@ -499,9 +508,8 @@ class hipGraphKernelNode : public hipGraphNode {
   hipError_t SetCommandParams(const hipKernelNodeParams* params) {
     if (params->func != pKernelParams_->func) {
       hipFunction_t func = nullptr;
-      hipError_t status =
-          PlatformState::instance().getStatFunc(&func, params->func, ihipGetDevice());
-      if ((status != hipSuccess) || (func == nullptr)) {
+      hipError_t status = hipGraphKernelNode::getFunc(&func, *params, ihipGetDevice());
+      if (status != hipSuccess) {
         return hipErrorInvalidDeviceFunction;
       }
       func_ = func;
