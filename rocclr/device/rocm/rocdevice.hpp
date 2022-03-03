@@ -163,6 +163,10 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return nullptr;
   }
+  virtual device::Memory* createMemory(size_t size) const {
+    ShouldNotReachHere();
+    return nullptr;
+  }
 
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
@@ -366,6 +370,7 @@ class Device : public NullDevice {
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
 
   virtual device::Memory* createMemory(amd::Memory& owner) const;
+  virtual device::Memory* createMemory(size_t size) const;
 
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object

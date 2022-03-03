@@ -90,6 +90,8 @@ class NullDevice : public amd::Device {
 
   //! Just returns NULL for the dummy device
   virtual device::Memory* createMemory(amd::Memory& owner) const { return nullptr; }
+  //! Just returns NULL for the dummy device
+  virtual device::Memory* createMemory(size_t size) const { return nullptr; }
 
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
@@ -364,6 +366,8 @@ class Device : public NullDevice {
 
   //! Memory allocation
   virtual device::Memory* createMemory(amd::Memory& owner  //!< abstraction layer memory object
+                                       ) const;
+  virtual device::Memory* createMemory(size_t size    //!< Size of memory allocation
                                        ) const;
 
   //! Sampler object allocation

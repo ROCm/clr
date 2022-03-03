@@ -2829,6 +2829,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           WriteAqlArgAt(hidden_arguments, gridSync, it.size_, it.offset_);
           break;
         }
+        case amd::KernelParameterDescriptor::HiddenHeap:
+          if (dev().HeapBuffer() != nullptr) {
+            // Add heap pointer to the code
+            size_t heap_ptr = static_cast<size_t>(dev().HeapBuffer()->virtualAddress());
+            WriteAqlArgAt(hidden_arguments, heap_ptr, it.size_, it.offset_);
+          }
+          break;
         case amd::KernelParameterDescriptor::HiddenBlockCountX:
           WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(newGlobalSize[0] / local[0]),
                         it.size_, it.offset_);
