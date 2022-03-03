@@ -553,6 +553,12 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   if ((numDevices > numActiveGPUs) || (launchParamsList == nullptr)) {
     return hipErrorInvalidValue;
   }
+  // Validate all streams passed by user
+  for (int i = 0; i < numDevices; ++i) {
+    if (!hip::isValid(launchParamsList[i].stream)) {
+        return hipErrorInvalidValue;
+    }
+  }
 
   uint64_t allGridSize = 0;
   std::vector<const amd::Device*> mgpu_list(numDevices);
