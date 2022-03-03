@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -1086,7 +1086,6 @@ bool Device::populateOCLDeviceConstants() {
      info_.uuid_[i] = unique_id[i+4];
     }
   }
-
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice,
                          (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT,
@@ -1865,6 +1864,17 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   }
 
   return memory;
+}
+
+// ================================================================================================
+device::Memory* Device::createMemory(size_t size) const {
+  auto buffer = new roc::Buffer(*this, size);
+  static constexpr bool LocalAlloc = true;
+  if ((buffer == nullptr) || !buffer->create(LocalAlloc)) {
+    LogError("Couldn't allocate memory on device!");
+    return nullptr;
+  }
+  return buffer;
 }
 
 // ================================================================================================

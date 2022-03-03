@@ -60,7 +60,7 @@ class Memory : public device::Memory {
                        uint mapFlags, size_t* rowPitch, size_t* slicePitch) override;
 
   // Create device memory according to OpenCL memory flag.
-  virtual bool create() = 0;
+  virtual bool create(bool local_alloc = false) = 0;
 
   // Pins system memory associated with this memory object.
   bool pinSystemMemory(void* hostPtr,  // System memory address
@@ -169,7 +169,7 @@ class Buffer : public roc::Memory {
   virtual ~Buffer();
 
   // Create device memory according to OpenCL memory flag.
-  virtual bool create();
+  virtual bool create(bool local_alloc = false);
 
   // Recreate the device memory using new size and alignment.
   bool recreate(size_t newSize, size_t newAlignment, bool forceSystem);
@@ -198,7 +198,7 @@ class Image : public roc::Memory {
   virtual ~Image();
 
   //! Create device memory according to OpenCL memory flag.
-  virtual bool create();
+  virtual bool create(bool local_alloc = false);
 
   //! Create an image view
   bool createView(const Memory& parent);

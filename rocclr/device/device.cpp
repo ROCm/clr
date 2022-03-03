@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -458,6 +458,7 @@ Device::Device()
       blitProgram_(nullptr),
       hwDebugMgr_(nullptr),
       context_(nullptr),
+      heap_buffer_(nullptr),
       arena_mem_obj_(nullptr),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr),
@@ -469,6 +470,11 @@ Device::~Device() {
   if (vaCacheMap_) {
     CondLog(vaCacheMap_->size() != 0, "Application didn't unmap all host memory!");
     delete vaCacheMap_;
+  }
+
+  if (heap_buffer_ != nullptr) {
+    delete heap_buffer_;
+    heap_buffer_ = nullptr;
   }
 
   delete vaCacheAccess_;
@@ -516,6 +522,11 @@ bool Device::create(const Isa &isa) {
   vaCacheMap_ = new std::map<uintptr_t, device::Memory*>();
   if (nullptr == vaCacheMap_) {
     return false;
+  }
+  if (amd::IS_HIP) {
+    // Allocate initial heap for device memory allocator
+    static constexpr size_t HeapBufferSize = 1024 * Ki;
+    heap_buffer_ = createMemory(HeapBufferSize);
   }
   return true;
 }

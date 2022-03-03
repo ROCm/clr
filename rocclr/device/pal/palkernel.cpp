@@ -358,6 +358,14 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         break;
       case amd::KernelParameterDescriptor::HiddenMultiGridSync:
         break;
+      case amd::KernelParameterDescriptor::HiddenHeap:
+        if (gpu.dev().HeapBuffer() != nullptr) {
+          // Add heap pointer to the code
+          size_t heap_ptr = static_cast<size_t>(gpu.dev().HeapBuffer()->virtualAddress());
+          gpu.addVmMemory(reinterpret_cast<Memory*>(gpu.dev().HeapBuffer()));
+          WriteAqlArgAt(hidden_arguments, heap_ptr, it.size_, it.offset_);
+        }
+        break;
       case amd::KernelParameterDescriptor::HiddenBlockCountX:
         WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[0] / local[0]),
                       it.size_, it.offset_);

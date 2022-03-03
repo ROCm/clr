@@ -708,12 +708,20 @@ void Buffer::destroy() {
 }
 
 // ================================================================================================
-bool Buffer::create() {
+bool Buffer::create(bool alloc_local) {
   if (owner() == nullptr) {
-    deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
-    if (deviceMemory_ != nullptr) {
-      flags_ |= HostMemoryDirectAccess;
-      return true;
+    if (alloc_local) {
+      deviceMemory_ = dev().deviceLocalAlloc(size());
+      if (deviceMemory_ != nullptr) {
+        flags_ |= HostMemoryDirectAccess;
+        return true;
+      }
+    } else {
+      deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
+      if (deviceMemory_ != nullptr) {
+        flags_ |= HostMemoryDirectAccess;
+        return true;
+      }
     }
     return false;
   }
@@ -1120,7 +1128,7 @@ bool Image::createInteropImage() {
   return true;
 }
 
-bool Image::create() {
+bool Image::create(bool alloc_local) {
   if (owner()->parent() != nullptr) {
     if (!ValidateMemory()) {
       return false;

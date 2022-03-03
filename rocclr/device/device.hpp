@@ -1625,6 +1625,9 @@ class Device : public RuntimeObject {
   //! Allocate a chunk of device memory as a cache for a CL memory object
   virtual device::Memory* createMemory(Memory& owner) const = 0;
 
+  //! Allocate a chunk of device memory without owner class
+  virtual device::Memory* createMemory(size_t size) const = 0;
+
   //! Allocate a device sampler object
   virtual bool createSampler(const Sampler&, device::Sampler**) const = 0;
 
@@ -1852,6 +1855,9 @@ class Device : public RuntimeObject {
   //! Staging buffer for P2P transfer
   Memory* P2PStage() const { return p2p_stage_; }
 
+  //! Returns heap buffer object for device allocator
+  device::Memory* HeapBuffer() const { return heap_buffer_; }
+
   //! Does this device allow P2P access?
   bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
 
@@ -1908,7 +1914,9 @@ class Device : public RuntimeObject {
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
   static Memory* p2p_stage_;          //!< Staging resources
 
-  amd::Memory* arena_mem_obj_;        //!< Arena memory object
+  device::Memory* heap_buffer_;   //!< Preallocated heap buffer for memory allocations on device
+
+  amd::Memory* arena_mem_obj_;    //!< Arena memory object
 
  private:
   const Isa *isa_;                //!< Device isa

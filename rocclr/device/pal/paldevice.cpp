@@ -1675,7 +1675,7 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
   return gpuImage;
 }
 
-//! Allocates cache memory on the card
+// ================================================================================================
 device::Memory* Device::createMemory(amd::Memory& owner) const {
   bool directAccess = false;
   pal::Memory* memory = nullptr;
@@ -1706,6 +1706,17 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   return memory;
 }
 
+// ================================================================================================
+device::Memory* Device::createMemory(size_t size) const {
+  auto buffer = new pal::Memory(*this, size);
+  if ((buffer == nullptr) || !buffer->create(Resource::Local)) {
+    LogError("Couldn't allocate memory on device!");
+    return nullptr;
+  }
+  return buffer;
+}
+
+// ================================================================================================
 bool Device::createSampler(const amd::Sampler& owner, device::Sampler** sampler) const {
   *sampler = nullptr;
   Sampler* gpuSampler = new Sampler(*this);
