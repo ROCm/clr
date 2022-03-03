@@ -1659,7 +1659,7 @@ hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
 
 hipError_t hipGraphHostNodeGetParams(hipGraphNode_t node, hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphHostNodeGetParams, node, pNodeParams);
-  if (node == nullptr || pNodeParams == nullptr) {
+  if (node == nullptr || pNodeParams == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   reinterpret_cast<hipGraphHostNode*>(node)->GetParams(pNodeParams);
