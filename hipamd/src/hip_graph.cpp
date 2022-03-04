@@ -106,8 +106,8 @@ hipError_t ihipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return status;
   }
   *pGraphNode = new hipGraphMemcpyNode(pCopyParams);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  return hipSuccess;
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  return status;
 }
 
 hipError_t ihipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -122,8 +122,8 @@ hipError_t ihipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph
     return status;
   }
   *pGraphNode = new hipGraphMemcpyNode1D(dst, src, count, kind);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  return hipSuccess;
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  return status;
 }
 
 hipError_t ihipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -152,8 +152,8 @@ hipError_t ihipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return status;
   }
   *pGraphNode = new hipGraphMemsetNode(pMemsetParams);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  return hipSuccess;
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  return status;
 }
 
 hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
@@ -482,7 +482,10 @@ hipError_t capturehipMemcpy(hipStream_t stream, void* dst, const void* src, size
     return status;
   }
   hipGraphNode_t node = new hipGraphMemcpyNode1D(dst, src, sizeBytes, kind);
-  ihipGraphAddNode(node, graph, pDependencies.data(), numDependencies);
+  status = ihipGraphAddNode(node, graph, pDependencies.data(), numDependencies);
+  if (status != hipSuccess) {
+    return status;
+  }
   s->SetLastCapturedNode(node);
   return hipSuccess;
 }
@@ -545,8 +548,11 @@ hipError_t capturehipMemcpyFromSymbolAsync(hipStream_t& stream, void*& dst, cons
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode =
       new hipGraphMemcpyNodeFromSymbol(dst, symbol, sizeBytes, offset, kind);
-  ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                   s->GetLastCapturedNodes().size());
+  status = ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                            s->GetLastCapturedNodes().size());
+  if (status != hipSuccess) {
+    return status;
+  }
   s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
@@ -566,8 +572,11 @@ hipError_t capturehipMemcpyToSymbolAsync(hipStream_t& stream, const void*& symbo
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode = new hipGraphMemcpyNodeToSymbol(symbol, src, sizeBytes, offset, kind);
-  ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                   s->GetLastCapturedNodes().size());
+  status = ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                            s->GetLastCapturedNodes().size());
+  if (status != hipSuccess) {
+    return status;
+  }
   s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
@@ -688,8 +697,11 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
   hostParams.userData = userData;
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode = new hipGraphHostNode(&hostParams);
-  ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                   s->GetLastCapturedNodes().size());
+  hipError_t status = ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                                       s->GetLastCapturedNodes().size());
+  if (status != hipSuccess) {
+    return status;
+  }
   s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
@@ -898,8 +910,8 @@ hipError_t hipGraphAddEmptyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipGraphEmptyNode();
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -911,8 +923,8 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipChildGraphNode(childGraph);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph) {
@@ -1443,8 +1455,8 @@ hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode, hipGraph_
     HIP_RETURN(status);
   }
   *pGraphNode = new hipGraphMemcpyNodeFromSymbol(dst, symbol, count, offset, kind);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphMemcpyNodeSetParamsFromSymbol(hipGraphNode_t node, void* dst, const void* symbol,
@@ -1502,8 +1514,8 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
   if (*pGraphNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphMemcpyNodeSetParamsToSymbol(hipGraphNode_t node, const void* symbol,
@@ -1552,8 +1564,8 @@ hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t gra
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipGraphEventRecordNode(event);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphEventRecordNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_out) {
@@ -1594,8 +1606,8 @@ hipError_t hipGraphAddEventWaitNode(hipGraphNode_t* pGraphNode, hipGraph_t graph
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipGraphEventWaitNode(event);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphEventWaitNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_out) {
@@ -1641,8 +1653,8 @@ hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipGraphHostNode(pNodeParams);
-  ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
-  HIP_RETURN(hipSuccess);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphHostNodeGetParams(hipGraphNode_t node, hipHostNodeParams* pNodeParams) {
