@@ -1751,6 +1751,9 @@ class Device : public RuntimeObject {
 
   virtual const uint32_t getPreferredNumaNode() const { return 0; }
   virtual void ReleaseGlobalSignal(void* signal) const {}
+  virtual const bool isFineGrainSupported() const {
+    return (info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS) != 0 ? true : false;
+  }
 
   //! Returns TRUE if the device is available for computations
   bool isOnline() const { return online_; }

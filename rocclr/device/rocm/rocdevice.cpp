@@ -1064,6 +1064,15 @@ Memory* Device::getGpuMemory(amd::Memory* mem) const {
   return static_cast<roc::Memory*>(mem->getDeviceMemory(*this));
 }
 
+const bool Device::isFineGrainSupported() const {
+  bool result = (info().svmCapabilities_ & CL_DEVICE_SVM_ATOMICS) != 0 ? true : false;
+  if (result) {
+    if (gpu_fine_grained_segment_.handle != 0) {
+      return true;
+    }
+  }
+  return false;
+}
 // ================================================================================================
 bool Device::populateOCLDeviceConstants() {
   info_.available_ = true;
