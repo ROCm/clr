@@ -3,11 +3,6 @@ if [ $1 -le 1 ]; then
 
   rm -f /etc/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
   rm -f /etc/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
-  rm -f @ROCM_PATH@/lib/libOpenCL.so
-  rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
-  rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
-  rmdir --ignore-fail-on-non-empty @ROCM_PATH@/lib
-  rmdir --ignore-fail-on-non-empty @ROCM_PATH@
 fi
 
 
