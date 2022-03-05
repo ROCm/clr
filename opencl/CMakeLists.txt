@@ -11,6 +11,7 @@ include(GNUInstallDirs)
 
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
 option(EMU_ENV "Enable building for emulation environment" OFF)
+option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
 
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
@@ -62,13 +63,18 @@ if(DEFINED ENV{ROCM_LIBPATCH_VERSION})
   message("Using CPACK_PACKAGE_VERSION ${CPACK_PACKAGE_VERSION}")
 endif()
 
-set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm/opencl" CACHE PATH "Package Installation path for OpenCL")
+set(CPACK_PACKAGING_INSTALL_PREFIX "/opt/rocm" CACHE PATH "Package Installation path for OpenCL")
 #ROCM_PATH is needed to create symlink of libraries
 if(NOT DEFINED ROCM_PATH)
   string(REPLACE "/opencl" "" ROCM_PATH ${CPACK_PACKAGING_INSTALL_PREFIX})
 endif()
 message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
-
+#TODO: Once build script changes are in , the string replace statement can be removed
+if(FILE_REORG_BACKWARD_COMPATIBILITY)
+  if(CPACK_PACKAGING_INSTALL_PREFIX)
+    string(REPLACE "/opencl" "" CPACK_PACKAGING_INSTALL_PREFIX ${CPACK_PACKAGING_INSTALL_PREFIX})
+  endif()
+endif()
 
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
@@ -79,5 +85,10 @@ configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
 configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
 
 add_subdirectory(packaging)
+
+#File reorg Backward compatibility function
+if(FILE_REORG_BACKWARD_COMPATIBILITY)
+  include(opencl-backward-compat.cmake)
+endif()
 
 endif()

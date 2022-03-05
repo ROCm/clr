@@ -11,15 +11,6 @@ case "$1" in
   purge)
   ;;
   remove | upgrade )
-    rm -f @ROCM_PATH@/lib/libOpenCL.so
-    rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_MAJOR@
-    rm -f @ROCM_PATH@/lib/libOpenCL.so.@OPENCL_LIB_VERSION_STRING@
-    if [ -e "@ROCM_PATH@" ] ; then
-        if [  -e "@ROCM_PATH@/lib" ] ; then
-            rmdir --ignore-fail-on-non-empty @ROCM_PATH@/lib
-        fi
-        rmdir --ignore-fail-on-non-empty @ROCM_PATH@
-    fi
     rm_ldconfig
   ;;
   *)
