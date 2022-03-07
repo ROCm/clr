@@ -51,6 +51,8 @@ std::unordered_set<hipGraphNode*> hipGraphNode::nodeSet_;
 amd::Monitor hipGraphNode::nodeSetLock_{"Guards global node set"};
 std::unordered_set<ihipGraph*> ihipGraph::graphSet_;
 amd::Monitor ihipGraph::graphSetLock_{"Guards global graph set"};
+std::unordered_set<hipGraphExec*> hipGraphExec::graphExecSet_;
+amd::Monitor hipGraphExec::graphExecSetLock_{"Guards global exec graph set"};
 
 hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
@@ -671,6 +673,14 @@ ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const{
 ihipGraph* ihipGraph::clone() const{
   std::unordered_map<Node, Node> clonedNodes;
   return clone(clonedNodes);
+}
+
+bool hipGraphExec::isGraphExecValid(hipGraphExec* pGraphExec) {
+  amd::ScopedLock lock(graphExecSetLock_);
+  if (graphExecSet_.find(pGraphExec) == graphExecSet_.end()) {
+    return false;
+  }
+  return true;
 }
 
 hipError_t hipGraphExec::CreateQueues(size_t numQueues) {

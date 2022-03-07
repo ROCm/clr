@@ -290,6 +290,8 @@ struct hipGraphExec {
   uint currentQueueIndex_;
   std::unordered_map<Node, Node> clonedNodes_;
   amd::Command* lastEnqueuedCommand_;
+  static std::unordered_set<hipGraphExec*> graphExecSet_;
+  static amd::Monitor graphExecSetLock_ ;
 
  public:
   hipGraphExec(std::vector<Node>& levelOrder, std::vector<std::vector<Node>>& lists,
@@ -300,7 +302,10 @@ struct hipGraphExec {
         nodeWaitLists_(nodeWaitLists),
         clonedNodes_(clonedNodes),
         lastEnqueuedCommand_(nullptr),
-        currentQueueIndex_(0) {}
+        currentQueueIndex_(0) {
+    amd::ScopedLock lock(graphExecSetLock_);
+    graphExecSet_.insert(this);
+        }
 
   ~hipGraphExec() {
     // new commands are launched for every launch they are destroyed as and when command is
@@ -309,6 +314,8 @@ struct hipGraphExec {
       queue->release();
     }
     for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;
+    amd::ScopedLock lock(graphExecSetLock_);
+    graphExecSet_.erase(this);
   }
 
   Node GetClonedNode(Node node) {
@@ -320,6 +327,9 @@ struct hipGraphExec {
     }
     return clonedNode;
   }
+
+  // check executable graphs validity
+  static bool isGraphExecValid(hipGraphExec* pGraphExec);
 
   std::vector<Node>& GetNodes() { return levelOrder_; }
 
