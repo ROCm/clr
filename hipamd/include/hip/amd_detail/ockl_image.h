@@ -68,9 +68,9 @@ __device__ void __ockl_image_store_2Da(unsigned int ADDRESS_SPACE_CONSTANT*i, in
 
 __device__ void __ockl_image_store_3D(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, float4::Native_vec_ p);
 
-__device__ void __ockl_image_store_CM(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, float4::Native_vec_ p);
+__device__ void __ockl_image_store_CM(unsigned int ADDRESS_SPACE_CONSTANT*i, int2::Native_vec_ c, int f, float4::Native_vec_ p);
 
-__device__ void __ockl_image_store_CMa(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, float4::Native_vec_ p);
+__device__ void __ockl_image_store_CMa(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, int f, float4::Native_vec_ p);
 
 __device__ void __ockl_image_store_lod_1D(unsigned int ADDRESS_SPACE_CONSTANT*i, int c, int l, float4::Native_vec_ p);
 
@@ -82,9 +82,9 @@ __device__ void __ockl_image_store_lod_2Da(unsigned int ADDRESS_SPACE_CONSTANT*i
 
 __device__ void __ockl_image_store_lod_3D(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, int l, float4::Native_vec_ p);
 
-__device__ void __ockl_image_store_lod_CM(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, int l, float4::Native_vec_ p);
+__device__ void __ockl_image_store_lod_CM(unsigned int ADDRESS_SPACE_CONSTANT*i, int2::Native_vec_ c, int f, int l, float4::Native_vec_ p);
 
-__device__ void __ockl_image_store_lod_CMa(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, int l, float4::Native_vec_ p);
+__device__ void __ockl_image_store_lod_CMa(unsigned int ADDRESS_SPACE_CONSTANT*i, int4::Native_vec_ c, int f, int l, float4::Native_vec_ p);
 
 __device__ float4::Native_vec_ __ockl_image_sample_1D(unsigned int ADDRESS_SPACE_CONSTANT*i, unsigned int ADDRESS_SPACE_CONSTANT*s, float c);
 

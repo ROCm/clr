@@ -164,6 +164,57 @@ static __HOST_DEVICE__ __forceinline__ float4::Native_vec_ __hipMapToNativeFloat
     return tmp;
 }
 
+template<typename T>
+static __HOST_DEVICE__ __forceinline__ 
+typename std::enable_if<std::is_scalar<T>::value, const T>::type 
+__hipMapFromNativeFloat4(const float4::Native_vec_& u) {
+    T tmp;
+    tmp = static_cast<T>(u.x);
+    return tmp;
+}
+
+template<typename T>
+static __HOST_DEVICE__ __forceinline__
+typename std::enable_if<!std::is_scalar<T>::value && sizeof(T) / sizeof(typename T::value_type) == 1, const T>::type 
+__hipMapFromNativeFloat4(const float4::Native_vec_& u) {
+    T tmp;
+    tmp.x = static_cast<typename T::value_type>(u.x);
+    return tmp;
+}
+
+template<typename T>
+static __HOST_DEVICE__ __forceinline__
+typename std::enable_if<!std::is_scalar<T>::value && sizeof(T) / sizeof(typename T::value_type) == 2, const T>::type
+__hipMapFromNativeFloat4(const float4::Native_vec_& u) {
+    T tmp;
+    tmp.x = static_cast<typename T::value_type>(u.x);
+    tmp.y = static_cast<typename T::value_type>(u.y);
+    return tmp;
+}
+
+template<typename T>
+static __HOST_DEVICE__ __forceinline__
+typename std::enable_if<!std::is_scalar<T>::value && sizeof(T) / sizeof(typename T::value_type) == 3, const T>::type
+__hipMapFromNativeFloat4(const float4::Native_vec_& u) {
+    T tmp;
+    tmp.x = static_cast<typename T::value_type>(u.x);
+    tmp.y = static_cast<typename T::value_type>(u.y);
+    tmp.z = static_cast<typename T::value_type>(u.z);
+    return tmp;
+}
+
+template<typename T>
+static __HOST_DEVICE__ __forceinline__
+typename std::enable_if<!std::is_scalar<T>::value && sizeof(T) / sizeof(typename T::value_type) == 4, const T>::type
+__hipMapFromNativeFloat4(const float4::Native_vec_& u) {
+    T tmp;
+    tmp.x = static_cast<typename T::value_type>(u.x);
+    tmp.y = static_cast<typename T::value_type>(u.y);
+    tmp.z = static_cast<typename T::value_type>(u.z);
+    tmp.w = static_cast<typename T::value_type>(u.w);
+    return tmp;
+}
+
 template <
     typename T,
     typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
@@ -172,7 +223,7 @@ static __device__ __hip_img_chk__ void surf1Dread(T* data, hipSurfaceObject_t su
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
     auto tmp = __ockl_image_load_1D(i, x);
-    *data = mapFrom<T>(tmp);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
 }
 
 template <
@@ -194,7 +245,7 @@ static __device__ __hip_img_chk__ void surf2Dread(T* data, hipSurfaceObject_t su
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
     auto tmp = __ockl_image_load_2D(i, int2(x, y).data);
-    *data =  mapFrom<T>(tmp);  
+    *data = __hipMapFromNativeFloat4<T>(tmp);
 }
 
 template <
@@ -216,7 +267,7 @@ static __device__ __hip_img_chk__ void surf3Dread(T* data, hipSurfaceObject_t su
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_3D(i), __ockl_image_channel_order_3D(i));
     auto tmp = __ockl_image_load_3D(i, int4(x, y, z, 0).data);
-    *data = mapFrom<T>(tmp);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
 }
 
 template <
@@ -228,6 +279,94 @@ static __device__ __hip_img_chk__ void surf3Dwrite(T data, hipSurfaceObject_t su
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_3D(i), __ockl_image_channel_order_3D(i));
     auto tmp = __hipMapToNativeFloat4(data);
     __ockl_image_store_3D(i, int4(x, y, z, 0).data, tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surf1DLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int layer,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
+    auto tmp = __ockl_image_load_lod_1D(i, x, layer);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surf1DLayeredwrite(T data, hipSurfaceObject_t surfObj, int x, int layer,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
+    auto tmp = __hipMapToNativeFloat4(data);
+    __ockl_image_store_lod_1D(i, x, layer, tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surf2DLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int layer,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __ockl_image_load_lod_2D(i, int2(x, y).data, layer);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surf2DLayeredwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int layer,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __hipMapToNativeFloat4(data);
+    __ockl_image_store_lod_2D(i, int2(x, y).data, layer, tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surfCubemapread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __ockl_image_load_CM(i, int2(x, y).data, face);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surfCubemapwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int face,
+        int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __hipMapToNativeFloat4(data);
+    __ockl_image_store_CM(i, int2(x, y).data, face, tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surfCubemapLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
+        int layer, int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __ockl_image_load_lod_CM(i, int2(x, y).data, face, layer);
+    *data = __hipMapFromNativeFloat4<T>(tmp);
+}
+
+template <
+    typename T,
+    typename std::enable_if<__hip_is_isurf_channel_type<T>::value>::type* = nullptr>
+static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
+        int layer, int boundaryMode = hipBoundaryModeZero) {
+    __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
+    auto tmp = __hipMapToNativeFloat4(data);
+    __ockl_image_store_lod_CM(i, int2(x, y).data, face, layer, tmp);
 }
 
 #endif
