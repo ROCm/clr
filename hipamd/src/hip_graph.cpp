@@ -997,7 +997,7 @@ hipError_t ihipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
 
 hipError_t hipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
   HIP_INIT_API(hipGraphLaunch, graphExec, stream);
-  if (graphExec == nullptr || !hip::isValid(stream)) {
+  if (graphExec == nullptr || !hip::isValid(stream) || !hipGraphExec::isGraphExecValid(graphExec)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN_DURATION(ihipGraphLaunch(graphExec, stream));
