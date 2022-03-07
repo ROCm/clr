@@ -685,9 +685,11 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
     s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
     s->SetParentStream(e->GetCaptureStream());
     s->SetParallelCaptureStream(stream);
+  } else {
+    assert(std::find(g_captureStreams.begin(), g_captureStreams.end(), stream) !=
+           g_captureStreams.end() && "capturing stream should be present");
   }
   s->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
-  g_captureStreams.push_back(stream);
   return hipSuccess;
 }
 
@@ -773,9 +775,9 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   }
   // If mode is not hipStreamCaptureModeRelaxed, hipStreamEndCapture must be called on the stream
   // from the same thread
+  const auto& it = std::find(g_captureStreams.begin(), g_captureStreams.end(), stream);
   if (s->GetCaptureMode() != hipStreamCaptureModeRelaxed &&
-      std::find(g_captureStreams.begin(), g_captureStreams.end(), stream) ==
-          g_captureStreams.end()) {
+      it == g_captureStreams.end()) {
     HIP_RETURN(hipErrorStreamCaptureWrongThread);
   }
   // If capture was invalidated, due to a violation of the rules of stream capture
@@ -786,7 +788,7 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   // check if all parallel streams have joined
   // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do
   // not result in hipErrorStreamCaptureUnjoined
-  if (s->GetCaptureGraph()->GetLeafNodeCount() != 1) {
+  if (s->GetCaptureGraph()->GetLeafNodeCount() > 1) {
     std::vector<hipGraphNode_t> leafNodes = s->GetCaptureGraph()->GetLeafNodes();
     const std::vector<hipGraphNode_t>& removedDepNodes = s->GetRemovedDependencies();
     bool foundInRemovedDep = false;
@@ -802,7 +804,8 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
     }
   }
   *pGraph = s->GetCaptureGraph();
-  g_captureStreams.clear();
+  // erase the stream and move the elements to the erased spot
+  g_captureStreams.erase(it);
   // end capture on all streams/events part of graph capture
   HIP_RETURN_DURATION(s->EndCapture());
 }
