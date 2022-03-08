@@ -2632,6 +2632,18 @@ bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
 }
 
 // ================================================================================================
+void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {
+  void* hw_event = (event.NotifyEvent() != nullptr) ?
+    event.NotifyEvent()->HwEvent() : event.HwEvent();
+  if (hw_event == nullptr) {
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event to read time");
+    *start = *end = 0;
+  } else {
+    fetchSignalTime(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, getBackendDevice(),
+                    start, end);
+  }
+}
+// ================================================================================================
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     // Abort on device exceptions.
