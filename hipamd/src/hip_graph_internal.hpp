@@ -603,7 +603,7 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
 
  public:
   hipGraphMemcpyNode1D(void* dst, const void* src, size_t count, hipMemcpyKind kind,
-                       hipGraphNodeType type = hipGraphNodeTypeMemcpy)
+                       hipGraphNodeType type = hipGraphNodeTypeMemcpy1D)
       : hipGraphNode(type), dst_(dst), src_(src), count_(count), kind_(kind) {}
 
   ~hipGraphMemcpyNode1D() {}
