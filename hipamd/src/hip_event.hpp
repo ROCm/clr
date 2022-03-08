@@ -111,6 +111,7 @@ class Event {
   amd::Monitor& lock() { return lock_; }
   const int deviceId() const { return device_id_; }
   void setDeviceId(int id) { device_id_ = id; }
+  amd::Event* event() { return event_; }
 
   /// End capture on this event
   void EndCapture() {
@@ -140,6 +141,9 @@ class Event {
   virtual hipError_t OpenHandle(ihipIpcEventHandle_t* handle) {
     return hipErrorInvalidConfiguration;
   }
+  virtual bool awaitEventCompletion();
+  virtual bool ready();
+  virtual int64_t time() const;
 
  protected:
   amd::Monitor lock_;
@@ -150,9 +154,16 @@ class Event {
   //! hip*ModuleLaunchKernel API which takes start and stop events so no
   //! hipEventRecord is called. Cleanup needed once those APIs are deprecated.
   bool recorded_;
+};
 
-  bool ready();
-  int64_t time() const;
+class EventDD : public Event {
+ public:
+  EventDD(unsigned int flags) : Event(flags) {}
+  virtual ~EventDD() {}
+
+  virtual bool awaitEventCompletion();
+  virtual bool ready();
+  virtual int64_t time() const;
 };
 
 class IPCEvent : public Event {
