@@ -1749,6 +1749,8 @@ class Device : public RuntimeObject {
     return false;
   };
 
+  virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {};
+
   virtual const uint32_t getPreferredNumaNode() const { return 0; }
   virtual void ReleaseGlobalSignal(void* signal) const {}
   virtual const bool isFineGrainSupported() const {
