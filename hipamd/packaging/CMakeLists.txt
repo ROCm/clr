@@ -73,7 +73,9 @@ if(WIN32)
           USE_SOURCE_PERMISSIONS)
 else()
   install(DIRECTORY ${HIP_COMMON_DIR}/bin DESTINATION .  COMPONENT dev
-          USE_SOURCE_PERMISSIONS PATTERN *.bat EXCLUDE)
+          USE_SOURCE_PERMISSIONS
+          DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+          PATTERN *.bat EXCLUDE)
 endif()
 
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
@@ -82,7 +84,8 @@ if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
 endif()
 
 install(DIRECTORY ${hip_SOURCE_DIR}/bin DESTINATION . COMPONENT dev
-        USE_SOURCE_PERMISSIONS)
+        USE_SOURCE_PERMISSIONS
+        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY ${HIP_COMMON_DIR}/include DESTINATION . COMPONENT dev)
 install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/amd_detail
         DESTINATION include/hip COMPONENT dev)
@@ -93,7 +96,7 @@ install(FILES ${CMAKE_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h
 install(FILES ${CMAKE_BINARY_DIR}/include/hip/hip_version.h
         DESTINATION include/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/.hipVersion DESTINATION bin COMPONENT dev)
-install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION . COMPONENT dev)
+install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION lib/cmake/hip COMPONENT dev)
 #End dev files install
 
 #Begin doc files install
@@ -102,12 +105,12 @@ if(DOXYGEN_EXE)
     add_custom_target(build_doxygen ALL
                   COMMAND HIP_PATH=${HIP_COMMON_DIR} doxygen ${HIP_COMMON_DIR}/docs/doxygen-input/doxy.cfg)
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/RuntimeAPI/html
-            DESTINATION docs/RuntimeAPI COMPONENT doc)
+            DESTINATION share/doc/hip/RuntimeAPI COMPONENT doc)
 endif()
 #End doc files install
 
 #Begin samples files install
-install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION . COMPONENT samples)
+install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION share/hip COMPONENT samples)
 #End samples files install
 
 #Begin test files install
@@ -156,18 +159,21 @@ set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "hip-runtime-amd")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "hip-runtime-amd")
 
 set(CPACK_COMPONENT_BINARY_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [RUNTIME - AMD]")
-
-configure_file(hip-runtime-amd.postinst ${CMAKE_CURRENT_BINARY_DIR}/binary/postinst @ONLY)
-configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
-
-set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
+if(FILE_REORG_BACKWARD_COMPATIBILITY)
+#This is used for softlinking hip-target files
+   configure_file(hip-runtime-amd.postinst ${CMAKE_CURRENT_BINARY_DIR}/binary/postinst @ONLY)
+   configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
+   set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
+endif()
 set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr (>= 2.0), rocm-llvm, libc6, rocm-core")
 set(CPACK_DEBIAN_BINARY_PACKAGE_PROVIDES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 
 set(CPACK_RPM_BINARY_PACKAGE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
-set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst")
-set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
+if(FILE_REORG_BACKWARD_COMPATIBILITY)
+   set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst")
+   set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
+endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
 set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr >= 2.0, rocm-llvm, rocm-core")
 set(CPACK_RPM_BINARY_PACKAGE_PROVIDES "hip-rocclr = ${HIP_BASE_VERSION}")
@@ -249,16 +255,10 @@ set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_COMPONENT_RUNTIME-NVIDIA_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [RUNTIME-NVIDIA]")
 
-configure_file(hip-runtime-nvidia.postinst ${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/postinst @ONLY)
-configure_file(hip-runtime-nvidia.prerm    ${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/prerm @ONLY)
-set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/postinst;${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/prerm")
-
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS "cuda (>= 7.5), rocm-core")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_REPLACES "hip-nvcc")
 
-set(CPACK_RPM_RUNTIME-NVIDIA_POST_INSTALL_SCRIPT_FILE  "${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/postinst")
-set(CPACK_RPM_RUNTIME-NVIDIA_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/runtime-nvidia/prerm")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_OBSOLETES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core")

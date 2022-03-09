@@ -19,35 +19,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 ROCMDIR=@ROCM_PATH@
-HIPDIR=$ROCMDIR/hip
-([ ! -d $ROCMDIR ] || [ ! -d $HIPDIR ]) && exit 0
-
-# Remove soft-link to bin files
-HIPBINDIR=$HIPDIR/bin
-ROCMBINDIR=$ROCMDIR/bin
-([ ! -d $ROCMBINDIR ] || [ ! -d $HIPBINDIR ]) && exit 0
-HIPBINFILES=$HIPBINDIR/*
 CURRENTDIR=`pwd`
-cd $ROCMBINDIR
-for f in $HIPBINFILES; do
-    [ -e $f ] || continue
-    rm $(basename $f)
-done
-rm .hipVersion
-cd $CURRENTDIR
-rmdir --ignore-fail-on-non-empty $ROCMBINDIR
 
-# Remove soft-link to headers
-HIPINCDIR=$HIPDIR/include
-cd $HIPINCDIR/hip
+HIPINCDIR=$ROCMDIR/include/hip
+([ ! -d $HIPINCDIR ]) && exit 0
+cd $HIPINCDIR
 rm hcc_detail
 rm nvcc_detail
 cd $CURRENTDIR
 
-ROCMINCDIR=$ROCMDIR/include
-([ ! -d $ROCMINCDIR ] || [ ! -d $HIPINCDIR ]) && exit 0
-cd $ROCMINCDIR
-rm hip
+#FILE_REORG_BACKWARD_COMPATIBILITY
+  #backward copatibility code , to be removed later
+HIPDIR=$ROCMDIR/hip
+HIPINCDIR=$ROCMDIR/hip/include/hip
+([ ! -d $HIPINCDIR ]) && exit 0
+cd $HIPINCDIR
+rm -f hcc_detail
+rm -f nvcc_detail
 cd $CURRENTDIR
-rmdir --ignore-fail-on-non-empty $ROCMINCDIR
-
+([ ! -d $HIPDIR ]) && exit 0
+rmdir --ignore-fail-on-non-empty $HIPDIR

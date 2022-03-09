@@ -19,31 +19,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 ROCMDIR=@ROCM_PATH@
-HIPDIR=$ROCMDIR/hip
-
-# Soft-link to bin files
-HIPBINFILES=$HIPDIR/bin/*
-ROCMBINDIR=$ROCMDIR/bin
-mkdir -p $ROCMBINDIR
+HIPINCDIR=$ROCMDIR/include/hip
 CURRENTDIR=`pwd`
-cd $ROCMBINDIR
-for f in $HIPBINFILES
-do
-    ln -r -s -f $f $(basename $f)
-done
-    ln -r -s -f $HIPDIR/bin/.hipVersion .hipVersion
-cd $CURRENTDIR
-
-# Soft-link to headers
-HIPINCDIR=$HIPDIR/include/hip
-ROCMINCDIR=$ROCMDIR/include
-mkdir -p $ROCMINCDIR
-cd $ROCMINCDIR
-    ln -r -s -f $HIPINCDIR hip
-cd $CURRENTDIR
-
 # The following will be removed after upstream updation
 cd $HIPINCDIR
-    ln -r -s -f amd_detail hcc_detail
-    ln -r -s -f nvidia_detail nvcc_detail
+ln -r -s -f amd_detail hcc_detail
+ln -r -s -f nvidia_detail nvcc_detail
 cd $CURRENTDIR
+
+#FILE_REORG_BACKWARD_COMPATIBILITY
+HIPINCDIR=$ROCMDIR/hip/include/hip
+if [ -d $HIPINCDIR ]; then
+  # The following will be removed after upstream updation
+  cd $HIPINCDIR
+  ln -r -s -f amd_detail hcc_detail
+  ln -r -s -f nvidia_detail nvcc_detail
+  cd $CURRENTDIR
+fi
