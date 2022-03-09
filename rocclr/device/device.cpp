@@ -276,7 +276,6 @@ void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
   if (!rval.second) {
     DevLogPrintfError("Memobj map already has an entry for ptr: 0x%x",
                       reinterpret_cast<uintptr_t>(k));
-    guarantee(false, "Memobj map already has an entry for ptr");
   }
 }
 
