@@ -49,6 +49,7 @@ option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS "Enable/Disable FP Atomics version" OFF)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
+option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
 set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
 
 if(__HIP_ENABLE_PCH)
@@ -246,7 +247,7 @@ message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
 
 # Determine HIP install path
 if (UNIX)
-    set(HIP_DEFAULT_INSTALL_PREFIX "${ROCM_PATH}/hip")
+    set(HIP_DEFAULT_INSTALL_PREFIX "${ROCM_PATH}")
 endif()
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Installation path for HIP" FORCE)
@@ -256,8 +257,22 @@ if(DEV_LOG_ENABLE MATCHES "yes")
   add_definitions(-DDEV_LOG_ENABLE)
 endif()
 
-# Set default install path as "${ROCM_PATH}/hip", can override the path from cmake build.
+# Set default install path as "${ROCM_PATH}", can override the path from cmake build.
 set(CPACK_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Package Installation path for HIP")
+
+if(NOT WIN32)
+#TODO Once the build script(prototype) changes are merged
+# The string replace statements should be removed
+    if(FILE_REORG_BACKWARD_COMPATIBILITY)
+        if(CPACK_INSTALL_PREFIX)
+            string(REPLACE "/hip" "" CPACK_INSTALL_PREFIX ${CPACK_INSTALL_PREFIX})
+        endif()
+
+        if(CMAKE_INSTALL_PREFIX)
+            string(REPLACE "/hip" "" CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+        endif()
+    endif()#End of File reorg check
+endif()#end of OS check
 
 if(IS_ABSOLUTE ${CMAKE_INSTALL_PREFIX})
     message(STATUS "HIP will be installed in: " ${CMAKE_INSTALL_PREFIX})
@@ -268,7 +283,7 @@ endif()
 # set the installation path for the installer package
 set(CPACK_SET_DESTDIR ON CACHE BOOL "Installer package will install hip to CMAKE_INSTALL_PREFIX instead of CPACK_PACKAGING_INSTALL_PREFIX")
 if (NOT CPACK_SET_DESTDIR)
-  set(CPACK_PACKAGING_INSTALL_PREFIX "${ROCM_PATH}/hip" CACHE PATH "Default installation path of hcc installer package")
+  set(CPACK_PACKAGING_INSTALL_PREFIX "${ROCM_PATH}" CACHE PATH "Default installation path of hcc installer package")
 endif (NOT CPACK_SET_DESTDIR)
 
 #############################
@@ -348,17 +363,25 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
       endif()
     else()
       # Exclude .bat files on Linux.
+      #Hip bin files moved to /opt/rocm/bin and the file permission need to set properly
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS
+              DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
               PATTERN *.bat EXCLUDE)
     endif()
 
-    # The following two lines will be removed after upstream updation
-    install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/include\")")
-    install(CODE "file(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/include)")
+    if(WIN32) #not required for flat folder structure
+      # The following two lines will be removed after upstream updation
+      install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/include\")")
+      install(CODE "file(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/include)")
+    endif()
 
     install(DIRECTORY include DESTINATION .)
     install(DIRECTORY ${HIP_COMMON_INCLUDE_DIR}/hip/ DESTINATION include/hip/)
-    install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION .)
+    if(WIN32)
+      install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION .)
+    else()
+      install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION CONFIG_PACKAGE_INSTALL_DIR)
+    endif()
 endif()
 
 # Install generated headers
@@ -455,4 +478,9 @@ if(HIP_HIPCC_EXECUTABLE)
     endif()
 endif()
 
-# vim: ts=4:sw=4:expandtab:smartindent
+#File reorg Backward compatibility function
+if(NOT WIN32)
+    if(FILE_REORG_BACKWARD_COMPATIBILITY)
+        include(hip-backward-compat.cmake)
+    endif()
+endif()
