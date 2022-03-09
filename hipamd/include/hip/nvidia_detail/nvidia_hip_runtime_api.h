@@ -34,6 +34,7 @@ THE SOFTWARE.
 #define CUDA_10020 10020
 #define CUDA_11010 11010
 #define CUDA_11030 11030
+#define CUDA_11040 11040
 
 #ifdef __cplusplus
 extern "C" {
@@ -2412,11 +2413,12 @@ inline static hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGrap
         cudaGraphInstantiate(pGraphExec, graph, pErrorNode, pLogBuffer, bufferSize));
 }
 
+#if CUDA_VERSION >= CUDA_11040
 inline static hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                                       unsigned long long flags) {
     return hipCUDAErrorTohipError(cudaGraphInstantiateWithFlags(pGraphExec, graph, flags));
 }
-
+#endif
 inline static hipError_t hipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
     return hipCUDAErrorTohipError(cudaGraphLaunch(graphExec, stream));
 }
