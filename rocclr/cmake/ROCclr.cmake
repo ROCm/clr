@@ -95,7 +95,7 @@ else()
   target_compile_definitions(rocclr PUBLIC ATI_OS_LINUX)
 endif()
 
-if(NOT CMAKE_CL_64)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
   target_compile_definitions(rocclr PUBLIC ATI_BITS_32)
 endif()
 
