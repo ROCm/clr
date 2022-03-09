@@ -994,7 +994,10 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
       // Since the amd::Memory object is shared between all devices
       // it's fine to have multiple addresses mapped to it
       const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
-      amd::MemObjMap::AddMemObj(reinterpret_cast<void*>(devMem->virtualAddress()), mem);
+      void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
+      if (amd::MemObjMap::FindMemObj(vAddr) == nullptr) {
+        amd::MemObjMap::AddMemObj(vAddr, mem);
+      }
     }
 
     amd::MemObjMap::AddMemObj(hostPtr, mem);
