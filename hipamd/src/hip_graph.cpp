@@ -824,6 +824,10 @@ hipError_t hipGraphDestroy(hipGraph_t graph) {
   if (graph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  // if graph is not valid its destroyed already
+  if (!ihipGraph::isGraphValid(graph)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   delete graph;
   HIP_RETURN(hipSuccess);
 }
