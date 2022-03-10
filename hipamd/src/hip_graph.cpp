@@ -1527,7 +1527,7 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
   HIP_INIT_API(hipGraphAddMemcpyNodeToSymbol, pGraphNode, graph, pDependencies, numDependencies,
                symbol, src, count, offset, kind);
   if (pGraphNode == nullptr || graph == nullptr || src == nullptr ||
-    (pDependencies == nullptr && numDependencies > 0)) {
+    !ihipGraph::isGraphValid(graph) || (pDependencies == nullptr && numDependencies > 0)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   size_t sym_size = 0;
