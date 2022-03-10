@@ -127,6 +127,58 @@ bool RTCProgram::addBuiltinHeader() {
   return true;
 }
 
+bool RTCProgram::findIsa() {
+  const char* libName;
+#ifdef _WIN32
+  libName = "libamdhip64.dll";
+#else
+  libName = "libamdhip64.so";
+#endif
+
+  void* handle = amd::Os::loadLibrary(libName);
+
+  if (!handle) {
+    LogInfo("hip runtime failed to load using dlopen");
+    buildLog +=
+        "Error: Please provide architecture for which code is to be "
+        "generated.\n";
+    return false;
+  }
+
+  void* sym_hipGetDevice = amd::Os::getSymbol(handle, "hipGetDevice");
+  void* sym_hipGetDeviceProperties = amd::Os::getSymbol(handle, "hipGetDeviceProperties");
+
+  if (sym_hipGetDevice == nullptr || sym_hipGetDeviceProperties == nullptr) {
+    LogInfo("ISA cannot be found to dlsym failure");
+    buildLog +=
+        "Error: Please provide architecture for which code is to be "
+        "generated.\n";
+    return false;
+  }
+
+  hipError_t (*dyn_hipGetDevice)(int*) = reinterpret_cast
+             <hipError_t (*)(int*)>(sym_hipGetDevice);
+
+  hipError_t (*dyn_hipGetDeviceProperties)(hipDeviceProp_t*, int) = reinterpret_cast
+             <hipError_t (*)(hipDeviceProp_t*, int)>(sym_hipGetDeviceProperties);
+
+  int device;
+  hipError_t status = dyn_hipGetDevice(&device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  hipDeviceProp_t props;
+  status = dyn_hipGetDeviceProperties(&props, device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  isa = "amdgcn-amd-amdhsa--";
+  isa.append(props.gcnArchName);
+
+  amd::Os::unloadLibrary(handle);
+  return true;
+}
+
 bool RTCProgram::transformOptions() {
   auto getValueOf = [](const std::string& option) {
     std::string res;
@@ -165,10 +217,8 @@ bool RTCProgram::transformOptions() {
     settings.offloadArchProvided = true;
     return true;
   }
-  buildLog +=
-      "Error: Please provide architecture for which code is to be "
-      "generated.\n";
-  return false;
+  // App has not provided the gpu archiecture, need to find it
+  return findIsa();
 }
 
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
