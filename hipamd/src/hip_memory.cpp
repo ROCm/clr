@@ -977,7 +977,9 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostRegister, hostPtr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
-  if(hostPtr != nullptr) {
+  if (hostPtr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  } else {
     amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
                             CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
 
@@ -1005,8 +1007,6 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
       mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
     }
     HIP_RETURN(hipSuccess);
-  } else {
-    HIP_RETURN_DURATION(ihipMalloc(&hostPtr, sizeBytes, flags), hostPtr);
   }
 }
 
