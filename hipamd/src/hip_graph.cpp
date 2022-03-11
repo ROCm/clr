@@ -1175,9 +1175,14 @@ hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
   }
   for (size_t i = 0; i < numDependencies; i++) {
     // When the same node is specified for both from and to
-    if (from[i] == to[i]) {
+    if (from[i] == nullptr || to[i] == nullptr || from[i] == to[i] ||
+        // making sure the nodes blong to the graph
+        to[i]->GetParentGraph() != graph || from[i]->GetParentGraph() != graph) {
       HIP_RETURN(hipErrorInvalidValue);
     }
+  }
+
+  for (size_t i = 0; i < numDependencies; i++) {
     // When the same edge added from->to return invalid value
     const std::vector<Node>& edges = from[i]->GetEdges();
     for (auto edge : edges) {
