@@ -808,10 +808,11 @@ RgpSqttMarkerEvent RgpCaptureMgr::BuildEventMarker(const VirtualGPU* gpu,
 void RgpCaptureMgr::WriteMarker(const VirtualGPU* gpu, const void* data, size_t data_size) const {
   assert((data_size % sizeof(uint32_t)) == 0);
   assert((data_size / sizeof(uint32_t)) > 0);
+  Pal::RgpMarkerSubQueueFlags subQueueFlags = {};
+  subQueueFlags.includeMainSubQueue = 1;
 
-  gpu->queue(MainEngine)
-      .iCmd()
-      ->CmdInsertRgpTraceMarker(static_cast<uint32_t>(data_size / sizeof(uint32_t)), data);
+  gpu->queue(MainEngine).iCmd()->CmdInsertRgpTraceMarker(
+    subQueueFlags, static_cast<uint32_t>(data_size / sizeof(uint32_t)), data);
 }
 
 // ================================================================================================
