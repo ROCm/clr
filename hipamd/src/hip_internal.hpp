@@ -153,12 +153,18 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
     }                                    \
   } while (0);
 
-extern thread_local std::vector<hipStream_t> g_captureStreams;
-
 #define CHECK_STREAM_CAPTURE_SUPPORTED()                                                           \
-  for (auto stream : g_captureStreams) {                                                           \
-    if (reinterpret_cast<hip::Stream*>(stream)->GetCaptureMode() != hipStreamCaptureModeRelaxed) { \
+  if (l_streamCaptureMode == hipStreamCaptureModeThreadLocal) {                                    \
+    if (l_captureStreams.size() != 0) {                                                            \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
+    }                                                                                              \
+  } else if (l_streamCaptureMode == hipStreamCaptureModeGlobal) {                                  \
+    if (l_captureStreams.size() != 0) {                                                            \
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
+    }                                                                                              \
+    amd::ScopedLock lock(g_captureStreamsLock);                                                    \
+    if (g_captureStreams.size() != 0) {                                                            \
+        HIP_RETURN(hipErrorStreamCaptureUnsupported);                                              \
     }                                                                                              \
   }
 
@@ -210,7 +216,7 @@ namespace hip {
     hipGraph_t pCaptureGraph_;
     /// Based on mode stream capture places restrictions on API calls that can be made within or
     /// concurrently
-    hipStreamCaptureMode captureMode_;
+    hipStreamCaptureMode captureMode_{hipStreamCaptureModeGlobal};
     bool originStream_;
     /// Origin sream has no parent. Parent stream for the derived captured streams with event
     /// dependencies
@@ -450,5 +456,10 @@ constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;
 
 constexpr bool kMarkerDisableFlush = true;   //!< Avoids command batch flush in ROCclr
+
+extern std::vector<hip::Stream*> g_captureStreams;
+extern amd::Monitor g_captureStreamsLock;
+extern thread_local std::vector<hip::Stream*> l_captureStreams;
+extern thread_local hipStreamCaptureMode l_streamCaptureMode;
 
 #endif // HIP_SRC_HIP_INTERNAL_H
