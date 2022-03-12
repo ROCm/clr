@@ -24,7 +24,10 @@
 #include "hip_platform.hpp"
 #include "hip_event.hpp"
 
-thread_local std::vector<hipStream_t> g_captureStreams;
+std::vector<hip::Stream*> g_captureStreams;
+amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
+thread_local std::vector<hip::Stream*> l_captureStreams;
+thread_local hipStreamCaptureMode l_streamCaptureMode{hipStreamCaptureModeGlobal};
 
 inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                              const hipGraphNode_t* pDependencies, size_t numDependencies) {
@@ -685,9 +688,6 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
     s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
     s->SetParentStream(e->GetCaptureStream());
     s->SetParallelCaptureStream(stream);
-  } else {
-    assert(std::find(g_captureStreams.begin(), g_captureStreams.end(), stream) !=
-           g_captureStreams.end() && "capturing stream should be present");
   }
   s->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
   return hipSuccess;
@@ -731,13 +731,12 @@ hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
 
   if (mode == nullptr ||
       *mode < hipStreamCaptureModeGlobal ||
-      *mode > hipStreamCaptureModeRelaxed ||
-      g_captureStreams.size() == 0) {
+      *mode > hipStreamCaptureModeRelaxed) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  hipStreamCaptureMode oldMode = reinterpret_cast<hip::Stream*>(g_captureStreams[0])->GetCaptureMode();
-  reinterpret_cast<hip::Stream*>(g_captureStreams[0])->SetCaptureMode(*mode);
+  auto oldMode = l_streamCaptureMode;
+  l_streamCaptureMode = *mode;
   *mode = oldMode;
 
   HIP_RETURN_DURATION(hipSuccess);
@@ -752,14 +751,21 @@ hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) 
   // capture cannot be initiated on legacy stream
   // It can be initiated if the stream is not already in capture mode
   if (stream == nullptr ||
-      (mode < hipStreamCaptureModeGlobal || mode > hipStreamCaptureModeRelaxed) ||
+      mode < hipStreamCaptureModeGlobal ||
+      mode > hipStreamCaptureModeRelaxed ||
       s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   s->SetCaptureGraph(new ihipGraph());
   s->SetCaptureMode(mode);
   s->SetOriginStream();
-  g_captureStreams.push_back(stream);
+  if (mode != hipStreamCaptureModeRelaxed) {
+    l_captureStreams.push_back(s);
+  }
+  if (mode == hipStreamCaptureModeGlobal) {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    g_captureStreams.push_back(s);
+  }
   HIP_RETURN_DURATION(hipSuccess);
 }
 
@@ -775,10 +781,16 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   }
   // If mode is not hipStreamCaptureModeRelaxed, hipStreamEndCapture must be called on the stream
   // from the same thread
-  const auto& it = std::find(g_captureStreams.begin(), g_captureStreams.end(), stream);
-  if (s->GetCaptureMode() != hipStreamCaptureModeRelaxed &&
-      it == g_captureStreams.end()) {
-    HIP_RETURN(hipErrorStreamCaptureWrongThread);
+  const auto& it = std::find(l_captureStreams.begin(), l_captureStreams.end(), s);
+  if (s->GetCaptureMode() != hipStreamCaptureModeRelaxed) {
+    if (it == l_captureStreams.end()) {
+      HIP_RETURN(hipErrorStreamCaptureWrongThread);
+    }
+    l_captureStreams.erase(it);
+  }
+  if (s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    g_captureStreams.erase(std::find(g_captureStreams.begin(), g_captureStreams.end(), s));
   }
   // If capture was invalidated, due to a violation of the rules of stream capture
   if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
@@ -804,8 +816,6 @@ hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
     }
   }
   *pGraph = s->GetCaptureGraph();
-  // erase the stream and move the elements to the erased spot
-  g_captureStreams.erase(it);
   // end capture on all streams/events part of graph capture
   HIP_RETURN_DURATION(s->EndCapture());
 }
