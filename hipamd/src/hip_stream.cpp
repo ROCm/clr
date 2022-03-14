@@ -421,8 +421,18 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
 
-  delete reinterpret_cast<hip::Stream*>(stream);
+  amd::ScopedLock lock(g_captureStreamsLock);
+  const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
+  if (g_it != g_captureStreams.end()) {
+    g_captureStreams.erase(g_it);
+  }
+  const auto& l_it = std::find(l_captureStreams.begin(), l_captureStreams.end(), s);
+  if (l_it != l_captureStreams.end()) {
+    l_captureStreams.erase(l_it);
+  }
+  delete s;
 
   HIP_RETURN(hipSuccess);
 }
