@@ -75,11 +75,13 @@ hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const cha
   if (numHeaders && (headers == nullptr || headerNames == nullptr)) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
-  if(name == nullptr) {
-    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
+  std::string progName;
+
+  if (name) {
+    progName = name;
   }
 
-  auto* rtcProgram = new hiprtc::RTCProgram(std::string(name));
+  auto* rtcProgram = new hiprtc::RTCProgram(progName);
   if (rtcProgram == nullptr) {
     HIPRTC_RETURN(HIPRTC_ERROR_PROGRAM_CREATION_FAILURE);
   }
