@@ -1685,12 +1685,10 @@ hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphAddHostNode, pGraphNode, graph, pDependencies, numDependencies, pNodeParams);
   if (pGraphNode == nullptr || graph == nullptr || pNodeParams == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr)) {
+      (numDependencies > 0 && pDependencies == nullptr) || pNodeParams->fn == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (pNodeParams->fn == nullptr || pNodeParams->userData == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
+
   *pGraphNode = new hipGraphHostNode(pNodeParams);
   hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
   HIP_RETURN(status);
