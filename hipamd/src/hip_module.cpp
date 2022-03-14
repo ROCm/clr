@@ -29,24 +29,15 @@
 
 hipError_t ihipModuleLoadData(hipModule_t* module, const void* mmap_ptr, size_t mmap_size);
 
-extern hipError_t ihipLaunchKernel(const void* hostFunction,
-                                         dim3 gridDim,
-                                         dim3 blockDim,
-                                         void** args,
-                                         size_t sharedMemBytes,
-                                         hipStream_t stream,
-                                         hipEvent_t startEvent,
-                                         hipEvent_t stopEvent,
-                                         int flags);
+extern hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+                                   void** args, size_t sharedMemBytes, hipStream_t stream,
+                                   hipEvent_t startEvent, hipEvent_t stopEvent, int flags);
 
 const std::string& FunctionName(const hipFunction_t f) {
   return hip::DeviceFunc::asFunction(f)->kernel()->name();
 }
 
-static uint64_t ElfSize(const void *emi)
-{
-  return amd::Elf::getElfSize(emi);
-}
+static uint64_t ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 hipError_t hipModuleUnload(hipModule_t hmod) {
   HIP_INIT_API(hipModuleUnload, hmod);
@@ -60,31 +51,28 @@ hipError_t hipModuleLoad(hipModule_t* module, const char* fname) {
   HIP_RETURN(PlatformState::instance().loadModule(module, fname));
 }
 
-hipError_t hipModuleLoadData(hipModule_t *module, const void *image)
-{
+hipError_t hipModuleLoadData(hipModule_t* module, const void* image) {
   HIP_INIT_API(hipModuleLoadData, module, image);
 
   HIP_RETURN(PlatformState::instance().loadModule(module, 0, image));
 }
 
-hipError_t hipModuleLoadDataEx(hipModule_t *module, const void *image,
-                                  unsigned int numOptions, hipJitOption* options,
-                                  void** optionsValues)
-{
+hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOptions,
+                               hipJitOption* options, void** optionsValues) {
   /* TODO: Pass options to Program */
   HIP_INIT_API(hipModuleLoadDataEx, module, image);
 
   HIP_RETURN(PlatformState::instance().loadModule(module, 0, image));
 }
 
-extern hipError_t __hipExtractCodeObjectFromFatBinary(const void* data,
-                                                const std::vector<std::string>& devices,
-                                                std::vector<std::pair<const void*, size_t>>& code_objs);
+extern hipError_t __hipExtractCodeObjectFromFatBinary(
+    const void* data, const std::vector<std::string>& devices,
+    std::vector<std::pair<const void*, size_t>>& code_objs);
 
-hipError_t hipModuleGetFunction(hipFunction_t *hfunc, hipModule_t hmod, const char *name) {
+hipError_t hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name) {
   HIP_INIT_API(hipModuleGetFunction, hfunc, hmod, name);
 
-  if(hfunc == nullptr || name == nullptr) {
+  if (hfunc == nullptr || name == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -96,8 +84,8 @@ hipError_t hipModuleGetFunction(hipFunction_t *hfunc, hipModule_t hmod, const ch
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t hmod, const char* name)
-{
+hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t hmod,
+                              const char* name) {
   HIP_INIT_API(hipModuleGetGlobal, dptr, bytes, hmod, name);
 
   if (dptr == nullptr || bytes == nullptr) {
@@ -134,13 +122,13 @@ hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunc
     HIP_RETURN(hipErrorInvalidDeviceFunction);
   }
 
-  const device::Kernel::WorkGroupInfo* wrkGrpInfo
-    = kernel->getDeviceKernel(*(hip::getCurrentDevice()->devices()[0]))->workGroupInfo();
+  const device::Kernel::WorkGroupInfo* wrkGrpInfo =
+      kernel->getDeviceKernel(*(hip::getCurrentDevice()->devices()[0]))->workGroupInfo();
   if (wrkGrpInfo == nullptr) {
     HIP_RETURN(hipErrorMissingConfiguration);
   }
 
-  switch(attrib) {
+  switch (attrib) {
     case HIP_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES:
       *value = static_cast<int>(wrkGrpInfo->localMemSize_);
       break;
@@ -157,7 +145,7 @@ hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunc
       *value = static_cast<int>(wrkGrpInfo->usedVGPRs_);
       break;
     case HIP_FUNC_ATTRIBUTE_PTX_VERSION:
-      *value = 30; // Defaults to 3.0 as HCC
+      *value = 30;  // Defaults to 3.0 as HCC
       break;
     case HIP_FUNC_ATTRIBUTE_BINARY_VERSION:
       *value = static_cast<int>(kernel->signature().version());
@@ -171,15 +159,14 @@ hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunc
     case HIP_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT:
       *value = 0;
       break;
-     default:
-       HIP_RETURN(hipErrorInvalidValue);
+    default:
+      HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const void* func)
-{
+hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const void* func) {
   HIP_INIT_API(hipFuncGetAttributes, attr, func);
 
   HIP_RETURN_ONFAIL(PlatformState::instance().getStatFuncAttr(attr, func, ihipGetDevice()));
@@ -187,7 +174,7 @@ hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const void* func)
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipFuncSetAttribute ( const void* func, hipFuncAttribute attr, int value ) {
+hipError_t hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value) {
   HIP_INIT_API(hipFuncSetAttribute, func, attr, value);
 
   // No way to set function attribute yet.
@@ -195,8 +182,7 @@ hipError_t hipFuncSetAttribute ( const void* func, hipFuncAttribute attr, int va
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipFuncSetCacheConfig (const void* func, hipFuncCache_t cacheConfig) {
-
+hipError_t hipFuncSetCacheConfig(const void* func, hipFuncCache_t cacheConfig) {
   HIP_INIT_API(hipFuncSetCacheConfig, cacheConfig);
 
   // No way to set cache config yet.
@@ -204,7 +190,7 @@ hipError_t hipFuncSetCacheConfig (const void* func, hipFuncCache_t cacheConfig) 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipFuncSetSharedMemConfig ( const void* func, hipSharedMemConfig config) {
+hipError_t hipFuncSetSharedMemConfig(const void* func, hipSharedMemConfig config) {
   HIP_INIT_API(hipFuncSetSharedMemConfig, func, config);
 
   // No way to set Shared Memory config function yet.
@@ -213,11 +199,10 @@ hipError_t hipFuncSetSharedMemConfig ( const void* func, hipSharedMemConfig conf
 }
 
 hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
-                                            uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                            uint32_t blockDimX, uint32_t blockDimY,
-                                            uint32_t blockDimZ, uint32_t sharedMemBytes,
-                                            void** kernelParams, void** extra, int deviceId,
-                                            uint32_t params = 0) {
+                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
+                                     uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
+                                     uint32_t sharedMemBytes, void** kernelParams, void** extra,
+                                     int deviceId, uint32_t params = 0) {
   if (f == nullptr) {
     LogPrintfError("%s", "Function passed is null");
     return hipErrorInvalidImage;
@@ -265,9 +250,9 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     int max_blocks_per_grid = 0;
     int best_block_size = 0;
     int block_size = blockDimX * blockDimY * blockDimZ;
-    hipError_t err = hip_impl::ihipOccupancyMaxActiveBlocksPerMultiprocessor(&num_blocks, &max_blocks_per_grid,
-                                                            &best_block_size, *device, f,
-                                                            block_size, sharedMemBytes, true);
+    hipError_t err = hip_impl::ihipOccupancyMaxActiveBlocksPerMultiprocessor(
+        &num_blocks, &max_blocks_per_grid, &best_block_size, *device, f, block_size, sharedMemBytes,
+        true);
     if (err != hipSuccess) {
       return err;
     }
@@ -374,9 +359,9 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   amd::Kernel* kernel = function->kernel();
   amd::ScopedLock lock(function->dflock_);
 
-  hipError_t status =
-      ihipLaunchKernel_validate(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
-                                blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra, deviceId, params);
+  hipError_t status = ihipLaunchKernel_validate(
+      f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX, blockDimY, blockDimZ,
+      sharedMemBytes, kernelParams, extra, deviceId, params);
   if (status != hipSuccess) {
     return status;
   }
@@ -409,16 +394,12 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   return hipSuccess;
 }
 
-hipError_t hipModuleLaunchKernel(hipFunction_t f,
-                                 uint32_t gridDimX, uint32_t gridDimY, uint32_t gridDimZ,
-                                 uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
-                                 uint32_t sharedMemBytes, hipStream_t hStream,
-                                 void **kernelParams, void **extra)
-{
-  HIP_INIT_API(hipModuleLaunchKernel, f, gridDimX, gridDimY, gridDimZ,
-               blockDimX, blockDimY, blockDimZ,
-               sharedMemBytes, hStream,
-               kernelParams, extra);
+hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY,
+                                 uint32_t gridDimZ, uint32_t blockDimX, uint32_t blockDimY,
+                                 uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
+                                 void** kernelParams, void** extra) {
+  HIP_INIT_API(hipModuleLaunchKernel, f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
+               blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;
@@ -427,11 +408,10 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f,
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
     HIP_RETURN(hipErrorInvalidConfiguration);
   }
-  HIP_RETURN(ihipModuleLaunchKernel(f, static_cast<uint32_t>(globalWorkSizeX),
-                                static_cast<uint32_t>(globalWorkSizeY),
-                                static_cast<uint32_t>(globalWorkSizeZ),
-                                blockDimX, blockDimY, blockDimZ,
-                                sharedMemBytes, hStream, kernelParams, extra, nullptr, nullptr));
+  HIP_RETURN(ihipModuleLaunchKernel(
+      f, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
+      static_cast<uint32_t>(globalWorkSizeZ), blockDimX, blockDimY, blockDimZ, sharedMemBytes,
+      hStream, kernelParams, extra, nullptr, nullptr));
 }
 
 hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
@@ -439,106 +419,77 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
                                     hipStream_t hStream, void** kernelParams, void** extra,
-                                    hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags)
-{
+                                    hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags) {
   HIP_INIT_API(hipExtModuleLaunchKernel, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               localWorkSizeX, localWorkSizeY, localWorkSizeZ,
-               sharedMemBytes, hStream,
+               localWorkSizeX, localWorkSizeY, localWorkSizeZ, sharedMemBytes, hStream,
                kernelParams, extra, startEvent, stopEvent, flags);
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, localWorkSizeX, localWorkSizeY,
-      localWorkSizeZ, sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent, flags));
+  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
+                                    localWorkSizeX, localWorkSizeY, localWorkSizeZ, sharedMemBytes,
+                                    hStream, kernelParams, extra, startEvent, stopEvent, flags));
 }
-
 
 
 hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                    uint32_t blockDimX, uint32_t blockDimY,
-                                    uint32_t blockDimZ, size_t sharedMemBytes,
-                                    hipStream_t hStream, void** kernelParams, void** extra,
-                                    hipEvent_t startEvent,
-                                    hipEvent_t stopEvent)
-{
+                                    uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
+                                    size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
+                                    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent) {
   HIP_INIT_API(hipHccModuleLaunchKernel, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               blockDimX, blockDimY, blockDimZ,
-               sharedMemBytes, hStream,
-               kernelParams, extra, startEvent, stopEvent);
+               blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
+               startEvent, stopEvent);
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX, blockDimY, blockDimZ,
-                                sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent));
+  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
+                                    blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams,
+                                    extra, startEvent, stopEvent));
 }
 
 hipError_t hipModuleLaunchKernelExt(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                    uint32_t blockDimX, uint32_t blockDimY,
-                                    uint32_t blockDimZ, size_t sharedMemBytes,
-                                    hipStream_t hStream, void** kernelParams, void** extra,
-                                    hipEvent_t startEvent,
-                                    hipEvent_t stopEvent)
-{
+                                    uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
+                                    size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
+                                    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent) {
   HIP_INIT_API(hipModuleLaunchKernelExt, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               blockDimX, blockDimY, blockDimZ,
-               sharedMemBytes, hStream,
-               kernelParams, extra, startEvent, stopEvent);
+               blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
+               startEvent, stopEvent);
 
-  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX, blockDimY, blockDimZ,
-                                sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent));
+  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
+                                    blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams,
+                                    extra, startEvent, stopEvent));
 }
 
-extern "C" hipError_t hipLaunchKernel_common(const void *hostFunction,
-                                      dim3 gridDim,
-                                      dim3 blockDim,
-                                      void** args,
-                                      size_t sharedMemBytes,
-                                      hipStream_t stream)
-{
+extern "C" hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+                                             void** args, size_t sharedMemBytes,
+                                             hipStream_t stream) {
   STREAM_CAPTURE(hipLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes);
-  return ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
-                              nullptr, nullptr, 0);
+  return ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream, nullptr,
+                          nullptr, 0);
 }
 
-extern "C" hipError_t hipLaunchKernel(const void *hostFunction,
-                                      dim3 gridDim,
-                                      dim3 blockDim,
-                                      void** args,
-                                      size_t sharedMemBytes,
-                                      hipStream_t stream)
-{
+extern "C" hipError_t hipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+                                      void** args, size_t sharedMemBytes, hipStream_t stream) {
   HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
   HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
-extern "C" hipError_t hipLaunchKernel_spt(const void *hostFunction,
-                                      dim3 gridDim,
-                                      dim3 blockDim,
-                                      void** args,
-                                      size_t sharedMemBytes,
-                                      hipStream_t stream)
-{
+extern "C" hipError_t hipLaunchKernel_spt(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+                                          void** args, size_t sharedMemBytes, hipStream_t stream) {
   HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
-extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction,
-                                         dim3 gridDim,
-                                         dim3 blockDim,
-                                         void** args,
-                                         size_t sharedMemBytes,
-                                         hipStream_t stream,
-                                         hipEvent_t startEvent,
-                                         hipEvent_t stopEvent,
-                                         int flags)
-{
-    HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
-    HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream, startEvent, stopEvent, flags));
+extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+                                         void** args, size_t sharedMemBytes, hipStream_t stream,
+                                         hipEvent_t startEvent, hipEvent_t stopEvent, int flags) {
+  HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
+  HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
+                              startEvent, stopEvent, flags));
 }
 
-hipError_t hipLaunchCooperativeKernel_common(const void* f,
-                                      dim3 gridDim, dim3 blockDim,
-                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
-{
+hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 blockDim,
+                                             void** kernelParams, uint32_t sharedMemBytes,
+                                             hipStream_t hStream) {
   if (!hip::isValid(hStream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -556,34 +507,30 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f,
   }
   return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
                                 static_cast<uint32_t>(globalWorkSizeY),
-                                static_cast<uint32_t>(globalWorkSizeZ),
-                                blockDim.x, blockDim.y, blockDim.z,
-                                sharedMemBytes, hStream, kernelParams, nullptr, nullptr, nullptr, 0,
-                                amd::NDRangeKernelCommand::CooperativeGroups);
+                                static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y,
+                                blockDim.z, sharedMemBytes, hStream, kernelParams, nullptr, nullptr,
+                                nullptr, 0, amd::NDRangeKernelCommand::CooperativeGroups);
 }
 
-hipError_t hipLaunchCooperativeKernel(const void* f,
-                                      dim3 gridDim, dim3 blockDim,
-                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
-{
-  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
-               sharedMemBytes, hStream);
-  HIP_RETURN(hipLaunchCooperativeKernel_common(f,gridDim, blockDim, kernelParams, sharedMemBytes, hStream));
+hipError_t hipLaunchCooperativeKernel(const void* f, dim3 gridDim, dim3 blockDim,
+                                      void** kernelParams, uint32_t sharedMemBytes,
+                                      hipStream_t hStream) {
+  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim, sharedMemBytes, hStream);
+  HIP_RETURN(hipLaunchCooperativeKernel_common(f, gridDim, blockDim, kernelParams, sharedMemBytes,
+                                               hStream));
 }
 
-hipError_t hipLaunchCooperativeKernel_spt(const void* f,
-                                      dim3 gridDim, dim3 blockDim,
-                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
-{
-  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
-               sharedMemBytes, hStream);
+hipError_t hipLaunchCooperativeKernel_spt(const void* f, dim3 gridDim, dim3 blockDim,
+                                          void** kernelParams, uint32_t sharedMemBytes,
+                                          hipStream_t hStream) {
+  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim, sharedMemBytes, hStream);
   PER_THREAD_DEFAULT_STREAM(hStream);
-  HIP_RETURN(hipLaunchCooperativeKernel_common(f, gridDim, blockDim, kernelParams, sharedMemBytes, hStream));
+  HIP_RETURN(hipLaunchCooperativeKernel_common(f, gridDim, blockDim, kernelParams, sharedMemBytes,
+                                               hStream));
 }
 
-hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList,
-                                                  int numDevices, unsigned int flags, uint32_t extFlags)
-{
+hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList, int numDevices,
+                                                  unsigned int flags, uint32_t extFlags) {
   int numActiveGPUs = 0;
   hipError_t result = hipSuccess;
   result = ihipDeviceGetCount(&numActiveGPUs);
@@ -594,7 +541,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   // Validate all streams passed by user
   for (int i = 0; i < numDevices; ++i) {
     if (!hip::isValid(launchParamsList[i].stream)) {
-        return hipErrorInvalidValue;
+      return hipErrorInvalidValue;
     }
   }
 
@@ -605,8 +552,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
     uint32_t blockDims = 0;
     const hipLaunchParams& launch = launchParamsList[i];
     blockDims = launch.blockDim.x * launch.blockDim.y * launch.blockDim.z;
-    allGridSize += launch.gridDim.x * launch.gridDim.y * launch.gridDim.z *
-                   blockDims;
+    allGridSize += launch.gridDim.x * launch.gridDim.y * launch.gridDim.z * blockDims;
 
     // Make sure block dimensions are valid
     if (0 == blockDims) {
@@ -633,7 +579,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   if ((flags & hipCooperativeLaunchMultiDeviceNoPreSync) == 0) {
     for (int i = 0; i < numDevices; ++i) {
       amd::HostQueue* queue =
-        reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
+          reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
       queue->finish();
     }
   }
@@ -666,11 +612,11 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
         globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
       HIP_RETURN(hipErrorInvalidConfiguration);
     }
-    result = ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
-      static_cast<uint32_t>(globalWorkSizeY), static_cast<uint32_t>(globalWorkSizeZ),
-      launch.blockDim.x, launch.blockDim.y, launch.blockDim.z,
-      launch.sharedMem, launch.stream, launch.args, nullptr, nullptr, nullptr,
-      flags, extFlags, i, numDevices, prevGridSize, allGridSize, firstDevice);
+    result = ihipModuleLaunchKernel(
+        func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
+        static_cast<uint32_t>(globalWorkSizeZ), launch.blockDim.x, launch.blockDim.y,
+        launch.blockDim.z, launch.sharedMem, launch.stream, launch.args, nullptr, nullptr, nullptr,
+        flags, extFlags, i, numDevices, prevGridSize, allGridSize, firstDevice);
     if (result != hipSuccess) {
       break;
     }
@@ -681,7 +627,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   if ((flags & hipCooperativeLaunchMultiDeviceNoPostSync) == 0) {
     for (int i = 0; i < numDevices; ++i) {
       amd::HostQueue* queue =
-        reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
+          reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
       queue->finish();
     }
   }
@@ -689,18 +635,18 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
   return result;
 }
 
-hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList,
-                                                 int numDevices, unsigned int flags)
-{
+hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList, int numDevices,
+                                                 unsigned int flags) {
   HIP_INIT_API(hipLaunchCooperativeKernelMultiDevice, launchParamsList, numDevices, flags);
 
-  HIP_RETURN(ihipLaunchCooperativeKernelMultiDevice(launchParamsList, numDevices, flags,
-                                                (amd::NDRangeKernelCommand::CooperativeGroups |
-                                                 amd::NDRangeKernelCommand::CooperativeMultiDeviceGroups)));
+  HIP_RETURN(ihipLaunchCooperativeKernelMultiDevice(
+      launchParamsList, numDevices, flags,
+      (amd::NDRangeKernelCommand::CooperativeGroups |
+       amd::NDRangeKernelCommand::CooperativeMultiDeviceGroups)));
 }
 
-hipError_t hipExtLaunchMultiKernelMultiDevice(hipLaunchParams* launchParamsList,
-                                              int numDevices, unsigned int flags) {
+hipError_t hipExtLaunchMultiKernelMultiDevice(hipLaunchParams* launchParamsList, int numDevices,
+                                              unsigned int flags) {
   HIP_INIT_API(hipExtLaunchMultiKernelMultiDevice, launchParamsList, numDevices, flags);
 
   HIP_RETURN(ihipLaunchCooperativeKernelMultiDevice(launchParamsList, numDevices, flags, 0));
@@ -720,7 +666,7 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
     HIP_RETURN(hipErrorNotSupported);
   }
 
-   /* Get address and size for the global symbol */
+  /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynTexRef(name, hmod, texRef)) {
     LogPrintfError("Cannot get texRef for name: %s at module:0x%x \n", name, hmod);
     HIP_RETURN(hipErrorNotFound);

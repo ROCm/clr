@@ -11,6 +11,11 @@ global:
     hiprtcGetErrorString;
     hiprtcAddNameExpression;
     hiprtcVersion;
+    hiprtcLinkCreate;
+    hiprtcLinkAddFile;
+    hiprtcLinkAddData;
+    hiprtcLinkComplete;
+    hiprtcLinkDestroy;
 local:
     *;
 };
