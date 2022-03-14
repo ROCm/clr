@@ -9,3 +9,8 @@ hiprtcGetProgramLogSize
 hiprtcGetCode
 hiprtcGetCodeSize
 hiprtcGetErrorString
+hiprtcLinkCreate
+hiprtcLinkAddFile
+hiprtcLinkAddData
+hiprtcLinkComplete
+hiprtcLinkDestroy

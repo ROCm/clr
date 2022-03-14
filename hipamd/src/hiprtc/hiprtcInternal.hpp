@@ -46,7 +46,6 @@ extern unsigned __hipRTC_header_size;
 
 #include "hiprtcComgrHelper.hpp"
 
-
 namespace hiprtc {
 namespace internal {
 template <typename T> inline std::string ToString(T v) {
@@ -90,67 +89,139 @@ struct Settings {
 };
 
 class RTCProgram {
+protected:
+  // Lock and control variables
   static amd::Monitor lock_;
-  static std::once_flag initialized;
+  static std::once_flag initialized_;
 
-  std::string name;
-  Settings settings;
+  RTCProgram(std::string name);
+  ~RTCProgram() {
+    amd::Comgr::destroy_data_set(exec_input_);
+  }
 
-  std::string isa;
-  std::string buildLog;
-
-  std::vector<char> executable;
-
-  std::map<std::string, std::string> strippedNames;
-  std::map<std::string, std::string> demangledNames;
-  std::string sourceCode;
-  std::string sourceName;
-
-  std::vector<std::string> compileOptions;
-  std::vector<std::string> linkOptions;
-  std::vector<std::string> exeOptions;
-
-  amd_comgr_data_set_t compileInput;
-  amd_comgr_data_set_t linkInput;
-  amd_comgr_data_set_t execInput;
-
-  bool dumpIsa();
+  // Member Functions
   bool findIsa();
+  
+  // Data Members  
+  std::string name_;  
+  std::string isa_;
+  std::string build_log_;
+  std::vector<char> executable_;
 
+  amd_comgr_data_set_t exec_input_;
+  std::vector<std::string> exe_options_;
+};
+
+class RTCCompileProgram : public RTCProgram {
+
+  // Private Data Members
+  Settings settings_;
+
+  std::string source_code_;
+  std::string source_name_;
+  std::map<std::string, std::string> stripped_names_;
+  std::map<std::string, std::string> demangled_names_;
+  
+  std::vector<std::string> compile_options_;
+  std::vector<std::string> link_options_;
+
+  amd_comgr_data_set_t compile_input_;
+  amd_comgr_data_set_t link_input_;
+
+  // Private Member functions
   bool addSource_impl();
   bool addBuiltinHeader();
   bool transformOptions();
 
-  RTCProgram() = delete;
-  RTCProgram(RTCProgram&) = delete;
-  RTCProgram& operator=(RTCProgram&) = delete;
+  RTCCompileProgram() = delete;
+  RTCCompileProgram(RTCCompileProgram&) = delete;
+  RTCCompileProgram& operator=(RTCCompileProgram&) = delete;
 
  public:
-  RTCProgram(std::string);
+  RTCCompileProgram(std::string);
+  ~RTCCompileProgram() {
+    amd::Comgr::destroy_data_set(compile_input_);
+    amd::Comgr::destroy_data_set(link_input_);
+  }
 
   // Converters
-  inline static hiprtcProgram as_hiprtcProgram(RTCProgram* p) {
+  inline static hiprtcProgram as_hiprtcProgram(RTCCompileProgram* p) {
     return reinterpret_cast<hiprtcProgram>(p);
   }
-  inline static RTCProgram* as_RTCProgram(hiprtcProgram& p) {
-    return reinterpret_cast<RTCProgram*>(p);
+  inline static RTCCompileProgram* as_RTCCompileProgram(hiprtcProgram& p) {
+    return reinterpret_cast<RTCCompileProgram*>(p);
   }
 
+  // Public Member Functions
   bool addSource(const std::string& source, const std::string& name);
   bool addHeader(const std::string& source, const std::string& name);
   bool compile(const std::vector<std::string>& options);
   bool getDemangledName(const char* name_expression, const char** loweredName);
   bool trackMangledName(std::string& name);
 
-  const std::vector<char>& getExec() const { return executable; }
-  size_t getExecSize() const { return executable.size(); }
-  const std::string& getLog() const { return buildLog; }
-  size_t getLogSize() const { return buildLog.size(); }
-
-  ~RTCProgram() {
-    amd::Comgr::destroy_data_set(compileInput);
-    amd::Comgr::destroy_data_set(linkInput);
-    amd::Comgr::destroy_data_set(execInput);
-  }
+  // Public Getter/Setters
+  const std::vector<char>& getExec() const { return executable_; }
+  size_t getExecSize() const { return executable_.size(); }
+  const std::string& getLog() const { return build_log_; }
+  size_t getLogSize() const { return build_log_.size(); }
 };
+
+// Linker Arguments passed via hipLinkCreate
+struct LinkArguments {
+  unsigned int max_registers_;
+  unsigned int threads_per_block_;
+  float wall_time_;
+  size_t info_log_size_;
+  char* info_log_;
+  size_t error_log_size_;
+  char* error_log_;
+  unsigned int optimization_level_;
+  unsigned int target_from_hip_context_;
+  unsigned int jit_target_;
+  unsigned int fallback_strategy_;
+  int generate_debug_info_;
+  long log_verbose_;
+  int generate_line_info_;
+  unsigned int cache_mode_;
+  bool sm3x_opt_;
+  bool fast_compile_;
+  const char** global_symbol_names_;
+  void** global_symbol_addresses_;
+  unsigned int global_symbol_count_;
+  int lto_;
+  int ftz_;
+  int prec_div_;
+  int prec_sqrt_;
+  int fma_;
+};
+
+class RTCLinkProgram : public RTCProgram {
+
+  // Private Member Functions (forbid these function calls)
+  RTCLinkProgram() = delete;
+  RTCLinkProgram(RTCLinkProgram&) = delete;
+  RTCLinkProgram& operator=(RTCLinkProgram&) = delete;
+
+  amd_comgr_data_kind_t GetCOMGRDataKind(hiprtcJITInputType input_type);
+
+  // Linker Argumenets at hipLinkCreate
+  LinkArguments link_args_;
+
+  // Private Data Members
+  amd_comgr_data_set_t link_input_;
+  std::vector<std::string> link_options_;
+public:
+  RTCLinkProgram(std::string name);
+  ~RTCLinkProgram() {
+    amd::Comgr::destroy_data_set(link_input_);
+  }
+  // Public Member Functions
+  bool AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
+                        void** options_vals_ptr);
+  bool AddLinkerFile(std::string file_path, hiprtcJITInputType input_type);
+  bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
+                    hiprtcJITInputType input_type);
+  bool LinkComplete(void** bin_out, size_t* size_out);
+};
+
 }  // namespace hiprtc

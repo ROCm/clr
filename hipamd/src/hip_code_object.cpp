@@ -34,7 +34,7 @@ THE SOFTWARE.
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                       amd::HostQueue& queue, bool isAsync = false);
 hipError_t ihipFree(void* ptr);
-//forward declaration of methods required for managed variables
+// forward declaration of methods required for managed variables
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 namespace {
 size_t constexpr strLiteralLength(char const* str) {
@@ -67,9 +67,7 @@ struct __ClangOffloadBundleHeader {
 
 namespace hip {
 
-uint64_t CodeObject::ElfSize(const void *emi) {
-  return amd::Elf::getElfSize(emi);
-}
+uint64_t CodeObject::ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupported,
                         bool& sramEccSupported) {
@@ -375,10 +373,10 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
 }
 
 // This will be moved to COMGR eventually
-hipError_t CodeObject::ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t fsize,
-                       const void ** image, const std::vector<std::string>& device_names,
-                       std::vector<std::pair<const void*, size_t>>& code_objs) {
-
+hipError_t CodeObject::ExtractCodeObjectFromFile(
+    amd::Os::FileDesc fdesc, size_t fsize, const void** image,
+    const std::vector<std::string>& device_names,
+    std::vector<std::pair<const void*, size_t>>& code_objs) {
   hipError_t hip_error = hipSuccess;
 
   if (fdesc < 0) {
@@ -386,8 +384,8 @@ hipError_t CodeObject::ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t
   }
 
   // Map the file to memory, with offset 0.
-  //file will be unmapped in ModuleUnload
-  //const void* image = nullptr;
+  // file will be unmapped in ModuleUnload
+  // const void* image = nullptr;
   if (!amd::Os::MemoryMapFileDesc(fdesc, fsize, 0, image)) {
     return hipErrorInvalidValue;
   }
@@ -399,11 +397,9 @@ hipError_t CodeObject::ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t
 }
 
 // This will be moved to COMGR eventually
-hipError_t CodeObject::ExtractCodeObjectFromMemory(const void* data,
-                       const std::vector<std::string>& device_names,
-                       std::vector<std::pair<const void*, size_t>>& code_objs,
-                       std::string& uri) {
-
+hipError_t CodeObject::ExtractCodeObjectFromMemory(
+    const void* data, const std::vector<std::string>& device_names,
+    std::vector<std::pair<const void*, size_t>>& code_objs, std::string& uri) {
   // Get the URI from memory
   if (!amd::Os::GetURIFromMemory(data, 0, uri)) {
     return hipErrorInvalidValue;
@@ -413,9 +409,9 @@ hipError_t CodeObject::ExtractCodeObjectFromMemory(const void* data,
 }
 
 // This will be moved to COMGR eventually
-hipError_t CodeObject::extractCodeObjectFromFatBinary(const void* data,
-                       const std::vector<std::string>& agent_triple_target_ids,
-                       std::vector<std::pair<const void*, size_t>>& code_objs) {
+hipError_t CodeObject::extractCodeObjectFromFatBinary(
+    const void* data, const std::vector<std::string>& agent_triple_target_ids,
+    std::vector<std::pair<const void*, size_t>>& code_objs) {
   std::string magic((const char*)data, bundle_magic_string_size);
   if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR)) {
     return hipErrorInvalidKernelFile;
@@ -492,12 +488,11 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(const void* data,
 }
 
 hipError_t DynCO::loadCodeObject(const char* fname, const void* image) {
-
   amd::ScopedLock lock(dclock_);
 
   // Number of devices = 1 in dynamic code object
   fb_info_ = new FatBinaryInfo(fname, image);
-  std::vector<hip::Device*> devices = { g_devices[ihipGetDevice()] };
+  std::vector<hip::Device*> devices = {g_devices[ihipGetDevice()]};
   IHIP_RETURN_ONFAIL(fb_info_->ExtractFatBinary(devices));
 
   // No Lazy loading for DynCO
@@ -512,12 +507,12 @@ hipError_t DynCO::loadCodeObject(const char* fname, const void* image) {
   return hipSuccess;
 }
 
-//Dynamic Code Object
+// Dynamic Code Object
 DynCO::~DynCO() {
   amd::ScopedLock lock(dclock_);
 
   for (auto& elem : vars_) {
-    if(elem.second->getVarKind() == Var::DVK_Managed) {
+    if (elem.second->getVarKind() == Var::DVK_Managed) {
       hipError_t err = ihipFree(elem.second->getManagedVarPtr());
       assert(err == hipSuccess);
     }
@@ -553,7 +548,7 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
 
   CheckDeviceIdMatch();
 
-  if(hfunc == nullptr) {
+  if (hfunc == nullptr) {
     return hipErrorInvalidValue;
   }
 
@@ -655,9 +650,8 @@ hipError_t DynCO::populateDynGlobalFuncs() {
   amd::ScopedLock lock(dclock_);
 
   std::vector<std::string> func_names;
-  device::Program* dev_program
-    = fb_info_->GetProgram(ihipGetDevice())->getDeviceProgram(
-                           *hip::getCurrentDevice()->devices()[0]);
+  device::Program* dev_program = fb_info_->GetProgram(ihipGetDevice())
+                                     ->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
 
   // Get all the global func names from COMGR
   if (!dev_program->getGlobalFuncFromCodeObj(&func_names)) {
@@ -672,9 +666,8 @@ hipError_t DynCO::populateDynGlobalFuncs() {
   return hipSuccess;
 }
 
-//Static Code Object
-StatCO::StatCO() {
-}
+// Static Code Object
+StatCO::StatCO() {}
 
 StatCO::~StatCO() {
   amd::ScopedLock lock(sclock_);
@@ -784,7 +777,8 @@ hipError_t StatCO::getStatFunc(hipFunction_t* hfunc, const void* hostFunction, i
   return it->second->getStatFunc(hfunc, deviceId);
 }
 
-hipError_t StatCO::getStatFuncAttr(hipFuncAttributes* func_attr, const void* hostFunction, int deviceId) {
+hipError_t StatCO::getStatFuncAttr(hipFuncAttributes* func_attr, const void* hostFunction,
+                                   int deviceId) {
   amd::ScopedLock lock(sclock_);
 
   const auto it = functions_.find(hostFunction);
@@ -838,10 +832,9 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
       IHIP_RETURN_ONFAIL(var->getStatDeviceVar(&dvar, deviceId));
 
       amd::HostQueue* queue = hip::getNullStream();
-      if(queue != nullptr) {
-        err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()),
-                                    var->getManagedVarPtr(),
-                                    dvar->size(), hipMemcpyHostToDevice, *queue);
+      if (queue != nullptr) {
+        err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()), var->getManagedVarPtr(),
+                         dvar->size(), hipMemcpyHostToDevice, *queue);
       } else {
         ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
         return hipErrorInvalidResourceHandle;
@@ -851,4 +844,4 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
   }
   return err;
 }
-}; //namespace: hip
+};  // namespace hip
