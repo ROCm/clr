@@ -239,7 +239,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.cooperativeMultiDeviceUnmatchedBlockDim = info.cooperativeMultiDeviceGroups_;
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
-  deviceProps.maxTexture1DLinear = 16 * info.imageMaxBufferSize_;  // Max pixel size is 16 bytes
+  deviceProps.maxTexture1DLinear = std::min(static_cast<long int>(INT32_MAX), static_cast<long int>(16 * info.imageMaxBufferSize_));  // Max pixel size is 16 bytes
   deviceProps.maxTexture1D = info.image1DMaxWidth_;
   deviceProps.maxTexture2D[0] = info.image2DMaxWidth_;
   deviceProps.maxTexture2D[1] = info.image2DMaxHeight_;
