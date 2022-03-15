@@ -131,7 +131,9 @@ int64_t Event::time() const {
 
 hipError_t Event::streamWaitCommand(amd::Command*& command, amd::HostQueue* queue) {
   amd::Command::EventWaitList eventWaitList;
-  eventWaitList.push_back(event_);
+  if (event_ != nullptr) {
+    eventWaitList.push_back(event_);
+  }
   command = new amd::Marker(*queue, kMarkerDisableFlush, eventWaitList);
 
   if (command == NULL) {
