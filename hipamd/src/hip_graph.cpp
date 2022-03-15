@@ -1640,8 +1640,7 @@ hipError_t hipGraphAddEventWaitNode(hipGraphNode_t* pGraphNode, hipGraph_t graph
                                     const hipGraphNode_t* pDependencies, size_t numDependencies,
                                     hipEvent_t event) {
   HIP_INIT_API(hipGraphAddEventWaitNode, pGraphNode, graph, pDependencies, numDependencies, event);
-  if (pGraphNode == nullptr || graph == nullptr || (numDependencies > 0 && pDependencies == nullptr)
-      || event == nullptr) {
+  if (graph == nullptr || (numDependencies > 0 && pDependencies == nullptr) || event == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraphNode = new hipGraphEventWaitNode(event);
