@@ -155,6 +155,8 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   hipDeviceProp_t prop = {0};
   HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
 
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+
   switch (attr) {
   case hipDeviceAttributeMaxThreadsPerBlock:
     *pi = prop.maxThreadsPerBlock;
@@ -181,7 +183,8 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     *pi = prop.sharedMemPerBlock;
     break;
   case hipDeviceAttributeTotalConstantMemory:
-    *pi = prop.totalConstMem;
+    // size_t to int casting
+    *pi = std::min(prop.totalConstMem, int32_max);
     break;
   case hipDeviceAttributeWarpSize:
     *pi = prop.warpSize;
@@ -265,7 +268,8 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     *reinterpret_cast<unsigned int**>(pi) = prop.hdpRegFlushCntl;
     break;
   case hipDeviceAttributeMaxPitch:
-    *pi = prop.memPitch;
+    // size_t to int casting
+    *pi = std::min(prop.memPitch, int32_max);
     break;
   case hipDeviceAttributeTextureAlignment:
     *pi = prop.textureAlignment;

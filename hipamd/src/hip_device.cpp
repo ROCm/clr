@@ -178,6 +178,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   }
   auto* deviceHandle = g_devices[device]->devices()[0];
 
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
   hipDeviceProp_t deviceProps = {0};
 
   const auto& info = deviceHandle->info();
@@ -191,13 +192,13 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.maxThreadsDim[0] = info.maxWorkItemSizes_[0];
   deviceProps.maxThreadsDim[1] = info.maxWorkItemSizes_[1];
   deviceProps.maxThreadsDim[2] = info.maxWorkItemSizes_[2];
-  deviceProps.maxGridSize[0] = INT32_MAX;
-  deviceProps.maxGridSize[1] = INT32_MAX;
-  deviceProps.maxGridSize[2] = INT32_MAX;
+  deviceProps.maxGridSize[0] = int32_max;
+  deviceProps.maxGridSize[1] = int32_max;
+  deviceProps.maxGridSize[2] = int32_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
   deviceProps.memoryBusWidth = info.globalMemChannels_;
-  deviceProps.totalConstMem = info.maxConstantBufferSize_;
+  deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
   deviceProps.major = isa.versionMajor();
   deviceProps.minor = isa.versionMinor();
   deviceProps.multiProcessorCount = info.maxComputeUnits_;
@@ -239,17 +240,17 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.cooperativeMultiDeviceUnmatchedBlockDim = info.cooperativeMultiDeviceGroups_;
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
-  deviceProps.maxTexture1DLinear = std::min(static_cast<long int>(INT32_MAX), static_cast<long int>(16 * info.imageMaxBufferSize_));  // Max pixel size is 16 bytes
-  deviceProps.maxTexture1D = info.image1DMaxWidth_;
-  deviceProps.maxTexture2D[0] = info.image2DMaxWidth_;
-  deviceProps.maxTexture2D[1] = info.image2DMaxHeight_;
-  deviceProps.maxTexture3D[0] = info.image3DMaxWidth_;
-  deviceProps.maxTexture3D[1] = info.image3DMaxHeight_;
-  deviceProps.maxTexture3D[2] = info.image3DMaxDepth_;
+  deviceProps.maxTexture1DLinear = std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
+  deviceProps.maxTexture1D    = std::min(info.image1DMaxWidth_, int32_max);
+  deviceProps.maxTexture2D[0] = std::min(info.image2DMaxWidth_, int32_max);
+  deviceProps.maxTexture2D[1] = std::min(info.image2DMaxHeight_, int32_max);
+  deviceProps.maxTexture3D[0] = std::min(info.image3DMaxWidth_, int32_max);
+  deviceProps.maxTexture3D[1] = std::min(info.image3DMaxHeight_, int32_max);
+  deviceProps.maxTexture3D[2] = std::min(info.image3DMaxDepth_, int32_max);
   deviceProps.hdpMemFlushCntl = info.hdpMemFlushCntl;
   deviceProps.hdpRegFlushCntl = info.hdpRegFlushCntl;
 
-  deviceProps.memPitch = info.maxMemAllocSize_;
+  deviceProps.memPitch = std::min(info.maxMemAllocSize_, int32_max);
   deviceProps.textureAlignment = info.imageBaseAddressAlignment_;
   deviceProps.texturePitchAlignment = info.imagePitchAlignment_;
   deviceProps.kernelExecTimeoutEnabled = 0;
