@@ -273,7 +273,7 @@ namespace hip {
     /// Returns captured graph
     hipGraph_t GetCaptureGraph() const { return pCaptureGraph_; }
     /// Returns last captured graph node
-    std::vector<hipGraphNode_t> GetLastCapturedNodes() const { return lastCapturedNodes_; }
+    const std::vector<hipGraphNode_t>& GetLastCapturedNodes() const { return lastCapturedNodes_; }
     /// Set last captured graph node
     void SetLastCapturedNode(hipGraphNode_t graphNode) {
       lastCapturedNodes_.clear();
