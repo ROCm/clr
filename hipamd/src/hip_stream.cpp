@@ -457,6 +457,10 @@ hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int
     HIP_RETURN(hipErrorInvalidHandle);
   }
 
+  if (flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
