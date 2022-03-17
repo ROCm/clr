@@ -1711,7 +1711,8 @@ hipError_t hipGraphHostNodeGetParams(hipGraphNode_t node, hipHostNodeParams* pNo
 
 hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node, const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphHostNodeSetParams, node, pNodeParams);
-  if (pNodeParams->fn == nullptr || pNodeParams->userData == nullptr) {
+  if (pNodeParams == nullptr || pNodeParams->fn == nullptr || pNodeParams->userData == nullptr ||
+      node == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hipGraphHostNode*>(node)->SetParams(pNodeParams));
@@ -1720,8 +1721,8 @@ hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node, const hipHostNodeParam
 hipError_t hipGraphExecHostNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                          const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphExecHostNodeSetParams, hGraphExec, node, pNodeParams);
-  if (hGraphExec == nullptr || pNodeParams == nullptr ||
-      pNodeParams->fn == nullptr || pNodeParams->userData == nullptr) {
+  if (hGraphExec == nullptr || pNodeParams == nullptr || pNodeParams->fn == nullptr ||
+      pNodeParams->userData == nullptr || node == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
