@@ -270,17 +270,25 @@ class HostcallListener {
 
 HostcallListener* hostcallListener = nullptr;
 amd::Monitor listenerLock("Hostcall listener lock");
+constexpr static uint64_t kTimeoutFloor = K * K * 4;
+constexpr static uint64_t kTimeoutCeil = K * K * 16;
 
 void HostcallListener::consumePackets() {
-  uint64_t timeout = 1024 * 1024;
+  uint64_t timeout = kTimeoutFloor;
   uint64_t signal_value = SIGNAL_INIT;
   while (true) {
     while (true) {
       uint64_t new_value = doorbell_->Wait(signal_value, device::Signal::Condition::Ne, timeout);
       if (new_value != signal_value) {
         signal_value = new_value;
+        // Reduce the timeout for quicker processing
+        timeout = timeout >> 0x1;
+        timeout = std::max(kTimeoutFloor, timeout);
         break;
       }
+      // Increase the timeout since we dont need to check as frequently
+      timeout = timeout << 0x1;
+      timeout = std::min(kTimeoutCeil, timeout);
     }
 
     if (signal_value == SIGNAL_DONE) {
