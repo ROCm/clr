@@ -2624,6 +2624,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(ptr, offset);
   int device = 0;
+  device::Memory* devMem = nullptr;
   memset(attributes, 0, sizeof(hipPointerAttribute_t));
 
   if (memObj != nullptr) {
@@ -2637,8 +2638,13 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
         attributes->hostPointer = static_cast<char*>(memObj->getSvmPtr()) + offset;
       }
     }
-
-    device::Memory* devMem = memObj->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
+    // the pointer that attribute is retrieved for might not be on the current device
+    for (const auto& device : g_devices) {
+      if(device->deviceId() == memObj->getUserData().deviceId) {
+        devMem = memObj->getDeviceMemory(*device->devices()[0]);
+        break;
+      }
+    }
     //getDeviceMemory can fail, hence validate the sanity of the mem obtained
     if (nullptr == devMem) {
       DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
