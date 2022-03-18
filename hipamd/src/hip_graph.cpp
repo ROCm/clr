@@ -1303,7 +1303,7 @@ hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  if (s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+  if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
     HIP_RETURN(hipErrorIllegalState);
   }
   if (numDependencies > 0 && dependencies == nullptr) {
