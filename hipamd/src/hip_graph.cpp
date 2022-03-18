@@ -1286,9 +1286,10 @@ hipError_t hipStreamGetCaptureInfo_v2(hipStream_t stream, hipStreamCaptureStatus
     if (graph_out != nullptr) {
       *graph_out = s->GetCaptureGraph();
     }
-    if (dependencies_out != nullptr && numDependencies_out != nullptr) {
-      auto t= s->GetLastCapturedNodes().data();
+    if (dependencies_out != nullptr) {
       *dependencies_out = s->GetLastCapturedNodes().data();
+    }
+    if (numDependencies_out != nullptr) {
       *numDependencies_out = s->GetLastCapturedNodes().size();
     }
   }
