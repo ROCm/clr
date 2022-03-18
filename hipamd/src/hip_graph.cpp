@@ -985,7 +985,7 @@ hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t g
   }
 
   //invalid flag check
-  if (flags != hipGraphInstantiateFlagAutoFreeOnLaunch){
+  if (flags != 0 && flags != hipGraphInstantiateFlagAutoFreeOnLaunch) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
