@@ -110,7 +110,9 @@ bool Stream::Create() {
     queue->vdev()->profilerAttach(isProfilerAttached);
     device_->SaveQueue(queue);
   } else if (queue != nullptr) {
-    queue->release();
+    // Queue creation has failed, and virtual device associated with the queue may not be created.
+    // Just need to delete the queue instance.
+    delete queue;
   }
 
   return result;
