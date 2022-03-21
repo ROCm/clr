@@ -1151,6 +1151,11 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
+    if (amd::IS_HIP) {
+      // Allocate initial heap for device memory allocator
+      static constexpr size_t HeapBufferSize = 1024 * Ki;
+      heap_buffer_ = createMemory(HeapBufferSize);
+    }
   }
   return true;
 }
