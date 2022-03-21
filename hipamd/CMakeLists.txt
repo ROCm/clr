@@ -260,19 +260,38 @@ endif()
 # Set default install path as "${ROCM_PATH}", can override the path from cmake build.
 set(CPACK_INSTALL_PREFIX ${HIP_DEFAULT_INSTALL_PREFIX} CACHE PATH "Package Installation path for HIP")
 
+#TODO: Workaround to handle hip installation in /opt/rocm
+#Once the build script(prototype) changes for file reorg are merged, this should be removed
+# CPACK_INSTALL_PREFIX = /opt/rocm-ver/hip
+# CMAKE_INSTALL_PREFIX = /xxx/out/OS-Name/OS-Version/hip
+# The workaround will remove the destination name "hip" from the prefix path
 if(NOT WIN32)
-#TODO Once the build script(prototype) changes are merged
-# The string replace statements should be removed
     if(FILE_REORG_BACKWARD_COMPATIBILITY)
+        #In jenkins and docker builds using build_hip_on_rocclr.sh, the CPACK_INSTALL_PREFIX path will contain string "/opt/rocm"
+        # Use that condition to remove string "hip"
         if(CPACK_INSTALL_PREFIX)
-            string(REPLACE "/hip" "" CPACK_INSTALL_PREFIX ${CPACK_INSTALL_PREFIX})
+            string(FIND ${CPACK_INSTALL_PREFIX} "/opt/rocm" ROCMDIR_FOUND)
+            if(NOT ${ROCMDIR_FOUND} MATCHES "-1")
+                get_filename_component(DEST_DIR ${CPACK_INSTALL_PREFIX} NAME)
+                if(DEST_DIR STREQUAL "hip")
+                    get_filename_component(CPACK_INSTALL_PREFIX ${CPACK_INSTALL_PREFIX} DIRECTORY)
+                endif()#end  of DEST_DIR check
+            endif()#end of rocm dir check
         endif()
 
+        #In jenkins and docker builds using build_hip_on_rocclr.sh, the CMAKE_INSTALL_PREFIX path will contain string "/out/"
         if(CMAKE_INSTALL_PREFIX)
-            string(REPLACE "/hip" "" CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+            string(FIND ${CMAKE_INSTALL_PREFIX} "/out/" OUTDIR_FOUND)
+            if(NOT ${OUTDIR_FOUND} MATCHES "-1")
+                get_filename_component(DEST_DIR ${CMAKE_INSTALL_PREFIX} NAME)
+                if(DEST_DIR STREQUAL "hip")
+                    get_filename_component(CMAKE_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX} DIRECTORY)
+                endif()#end  of DEST_DIR check
+            endif()#end of out dir find check
         endif()
+
     endif()#End of File reorg check
-endif()#end of OS check
+endif()#end of OS check  #end of TODO
 
 if(IS_ABSOLUTE ${CMAKE_INSTALL_PREFIX})
     message(STATUS "HIP will be installed in: " ${CMAKE_INSTALL_PREFIX})
