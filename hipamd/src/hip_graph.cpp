@@ -1638,7 +1638,8 @@ hipError_t hipGraphEventRecordNodeSetEvent(hipGraphNode_t node, hipEvent_t event
 hipError_t hipGraphExecEventRecordNodeSetEvent(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                                hipEvent_t event) {
   HIP_INIT_API(hipGraphExecEventRecordNodeSetEvent, hGraphExec, hNode, event);
-  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr) {
+  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr ||
+      hNode->GetType() != hipGraphNodeTypeEventRecord) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(hNode);
@@ -1683,7 +1684,8 @@ hipError_t hipGraphEventWaitNodeSetEvent(hipGraphNode_t node, hipEvent_t event) 
 hipError_t hipGraphExecEventWaitNodeSetEvent(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                              hipEvent_t event) {
   HIP_INIT_API(hipGraphExecEventWaitNodeSetEvent, hGraphExec, hNode, event);
-  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr) {
+  if (hGraphExec == nullptr || hNode == nullptr || event == nullptr ||
+      (hNode->GetType() != hipGraphNodeTypeWaitEvent)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(hNode);
