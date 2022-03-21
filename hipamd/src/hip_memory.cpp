@@ -101,7 +101,10 @@ hipError_t ihipFree(void *ptr)
       }
     } else {
       // Wait on the device, associated with the current memory object
-      hip::getNullStream(memory_object->getContext())->finish();
+      amd::HostQueue* queue = hip::getNullStream(memory_object->getContext());
+      if (queue != nullptr) {
+        queue->finish();
+      }
       deviceID = hip::getDeviceID(memory_object->getContext());
     }
     hip::Stream::syncNonBlockingStreams(deviceID);
