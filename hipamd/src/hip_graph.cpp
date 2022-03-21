@@ -1663,7 +1663,8 @@ hipError_t hipGraphAddEventWaitNode(hipGraphNode_t* pGraphNode, hipGraph_t graph
 
 hipError_t hipGraphEventWaitNodeGetEvent(hipGraphNode_t node, hipEvent_t* event_out) {
   HIP_INIT_API(hipGraphEventWaitNodeGetEvent, node, event_out);
-  if (node == nullptr || event_out == nullptr) {
+  if (node == nullptr || event_out == nullptr ||
+      node->GetType() != hipGraphNodeTypeWaitEvent) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   reinterpret_cast<hipGraphEventWaitNode*>(node)->GetParams(event_out);
