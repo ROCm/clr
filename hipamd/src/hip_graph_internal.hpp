@@ -224,7 +224,6 @@ struct hipGraphNode {
     }
   }
   ihipGraph* GetParentGraph() { return parentGraph_; }
-  virtual ihipGraph* GetChildGraph() { return nullptr; }
   void SetParentGraph(ihipGraph* graph) { parentGraph_ = graph; }
   virtual hipError_t SetParams(hipGraphNode* node) { return hipSuccess; }
 };

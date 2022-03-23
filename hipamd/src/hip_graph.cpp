@@ -1215,9 +1215,7 @@ hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGrap
     HIP_RETURN(hipErrorInvalidValue);
   }
   *pGraph = reinterpret_cast<hipChildGraphNode*>(node)->GetChildGraph();
-
-  //if the node count is larger than 0, the current node is a parent
-  if (*pGraph == nullptr || reinterpret_cast<ihipGraph*>(pGraph)->GetNodeCount() > 0) {
+  if (pGraph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(hipSuccess);
