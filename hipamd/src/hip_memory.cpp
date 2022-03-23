@@ -1044,7 +1044,7 @@ hipError_t hipHostUnregister(void* hostPtr) {
   }
 
   LogPrintfError("Cannot unregister host_ptr: 0x%x \n", hostPtr);
-  HIP_RETURN(hipErrorInvalidValue);
+  HIP_RETURN(hipErrorHostMemoryNotRegistered);
 }
 
 // Deprecated function:
