@@ -1211,11 +1211,11 @@ hipError_t hipGraphExecKernelNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
 
 hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGraph) {
   HIP_INIT_API(hipGraphChildGraphNodeGetGraph, node, pGraph);
-  if (node == nullptr || pGraph == nullptr) {
+  if (node == nullptr || pGraph == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  *pGraph = reinterpret_cast<hipChildGraphNode*>(node)->GetChildGraph();
-  if (pGraph == nullptr) {
+  *pGraph = reinterpret_cast<hipGraphNode*>(node)->GetChildGraph();
+  if (*pGraph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(hipSuccess);
