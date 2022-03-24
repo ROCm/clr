@@ -384,11 +384,16 @@ hipError_t hipDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPrio
 hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags) {
   HIP_INIT_API(hipStreamGetFlags, stream, flags);
 
-  if ((flags != nullptr) && (stream != nullptr)) {
-    if (!hip::isValid(stream)) {
-      HIP_RETURN(hipErrorContextIsDestroyed);
+  if (flags != nullptr) {
+    if (stream == nullptr) {
+      // hipStreamDefault
+      *flags = 0;
+    } else {
+      if (!hip::isValid(stream)) {
+        HIP_RETURN(hipErrorContextIsDestroyed);
+      }
+      *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
     }
-    *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
   } else {
     HIP_RETURN(hipErrorInvalidValue);
   }
