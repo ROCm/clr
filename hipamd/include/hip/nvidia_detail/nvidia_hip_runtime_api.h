@@ -227,6 +227,7 @@ inline static CUresourcetype hipResourcetype_enumToCUresourcetype(
 
 #define hipTexRef CUtexref
 #define hiparray CUarray
+typedef CUmipmappedArray hipMipmappedArray_t;
 
 // hipTextureAddressMode
 typedef enum cudaTextureAddressMode hipTextureAddressMode;
@@ -411,6 +412,9 @@ typedef struct cudaChannelFormatDesc hipChannelFormatDesc;
 typedef struct cudaResourceDesc hipResourceDesc;
 typedef struct cudaTextureDesc hipTextureDesc;
 typedef struct cudaResourceViewDesc hipResourceViewDesc;
+typedef CUDA_RESOURCE_DESC HIP_RESOURCE_DESC;
+typedef CUDA_TEXTURE_DESC HIP_TEXTURE_DESC;
+typedef CUDA_RESOURCE_VIEW_DESC HIP_RESOURCE_VIEW_DESC;
 // adding code for hipmemSharedConfig
 #define hipSharedMemBankSizeDefault cudaSharedMemBankSizeDefault
 #define hipSharedMemBankSizeFourByte cudaSharedMemBankSizeFourByte
@@ -1189,6 +1193,22 @@ inline static hipError_t hipMalloc3DArray(hipArray** array, const hipChannelForm
 
 inline static hipError_t hipFreeArray(hipArray* array) {
     return hipCUDAErrorTohipError(cudaFreeArray(array));
+}
+
+inline static hipError_t hipMipmappedArrayCreate(hipMipmappedArray_t* pHandle,
+                                                 HIP_ARRAY3D_DESCRIPTOR* pMipmappedArrayDesc,
+                                                 unsigned int numMipmapLevels) {
+    return hipCUResultTohipError(cuMipmappedArrayCreate(pHandle, pMipmappedArrayDesc, numMipmapLevels));
+}
+
+inline static hipError_t hipMipmappedArrayDestroy(hipMipmappedArray_t hMipmappedArray) {
+    return hipCUResultTohipError(cuMipmappedArrayDestroy(hMipmappedArray));
+}
+
+inline static hipError_t hipMipmappedArrayGetLevel(hipArray_t* pLevelArray,
+                                                   hipMipmappedArray_t hMipMappedArray,
+                                                   unsigned int level) {
+    return hipCUResultTohipError(cuMipmappedArrayGetLevel((CUarray*)pLevelArray, hMipMappedArray, level));
 }
 
 inline static hipError_t hipHostGetDevicePointer(void** devPtr, void* hostPtr, unsigned int flags) {
@@ -2355,6 +2375,29 @@ inline static hipError_t hipLaunchCooperativeKernel(T f, dim3 gridDim, dim3 bloc
                                              void** kernelParams, unsigned int sharedMemBytes, hipStream_t stream) {
     return hipCUDAErrorTohipError(
             cudaLaunchCooperativeKernel(reinterpret_cast<const void*>(f), gridDim, blockDim, kernelParams, sharedMemBytes, stream));
+}
+
+inline static hipError_t hipTexObjectCreate(hipTextureObject_t* pTexObject,
+                                            const HIP_RESOURCE_DESC* pResDesc,
+                                            const HIP_TEXTURE_DESC* pTexDesc,
+                                            const HIP_RESOURCE_VIEW_DESC* pResViewDesc) {
+    return hipCUResultTohipError(cuTexObjectCreate((CUtexObject*)pTexObject, pResDesc, pTexDesc, pResViewDesc));
+}
+
+inline static hipError_t hipTexObjectDestroy(hipTextureObject_t texObject) {
+    return hipCUResultTohipError(cuTexObjectDestroy((CUtexObject)texObject));
+}
+
+inline static hipError_t hipTexObjectGetResourceDesc(HIP_RESOURCE_DESC* pResDesc, hipTextureObject_t texObject) {
+    return hipCUResultTohipError(cuTexObjectGetResourceDesc(pResDesc, (CUtexObject)texObject));
+}
+
+inline static hipError_t hipTexObjectGetResourceViewDesc(HIP_RESOURCE_VIEW_DESC* pResViewDesc, hipTextureObject_t texObject) {
+    return hipCUResultTohipError(cuTexObjectGetResourceViewDesc(pResViewDesc, (CUtexObject)texObject));
+}
+
+inline static hipError_t hipTexObjectGetTextureDesc(HIP_TEXTURE_DESC* pTexDesc, hipTextureObject_t texObject) {
+    return hipCUResultTohipError(cuTexObjectGetTextureDesc(pTexDesc, (CUtexObject)texObject));
 }
 
 inline static hipError_t hipTexRefSetAddressMode(hipTexRef hTexRef, int dim, hipAddress_mode am){
