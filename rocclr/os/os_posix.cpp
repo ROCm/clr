@@ -310,11 +310,8 @@ void Os::setCurrentThreadName(const char* name) { ::prctl(PR_SET_NAME, name); }
 
 void Os::setPreferredNumaNode(uint32_t node) {
 #ifdef ROCCLR_SUPPORT_NUMA_POLICY
-  if (AMD_CPU_AFFINITY) {
-    // Set preferred node affinity mask
-    int num_cpus = numa_num_configured_cpus();
-    bitmask* bm = numa_bitmask_alloc(num_cpus);
-
+  if (AMD_CPU_AFFINITY && (numa_available() >= 0)) {
+    bitmask* bm = numa_allocate_cpumask();
     numa_node_to_cpus(node, bm);
     if (numa_sched_setaffinity(0, bm) < 0) {
       assert(0 && "failed to set affinity");
