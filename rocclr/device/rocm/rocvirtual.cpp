@@ -158,8 +158,7 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
 
   amd::Thread* thread = amd::Thread::current();
   if (!(thread != nullptr ||
-      ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current() &&
-        amd::Os::setThreadAffinityToMainThread()))) {
+      ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
     return false;
   }
 
@@ -413,40 +412,41 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     ts->retain();
     prof_signal->ts_ = ts;
     ts->AddProfilingSignal(prof_signal);
-    uint32_t init_value = kInitSignalValueOne;
-    bool enqueHandler= false;
-    enqueHandler = AMD_DIRECT_DISPATCH &&
-                   (ts->command().Callback() != nullptr ||
-                    ts->command().GetBatchHead() != nullptr )  &&
-                   (!ts->command().CpuWaitRequested());
-    // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
-    // requires the batch update upon HSA signal completion
-    if (enqueHandler) {
+    if (AMD_DIRECT_DISPATCH) {
+      bool enqueHandler= false;
       uint32_t init_value = kInitSignalValueOne;
-      // If API callback is enabled, then use a blocking signal for AQL queue.
-      // HSA signal will be acquired in SW and released after HSA signal callback
-      if (ts->command().Callback() != nullptr) {
-        ts->SetCallbackSignal(prof_signal->signal_);
-        // Blocks AQL queue from further processing
-        hsa_signal_add_relaxed(prof_signal->signal_, 1);
-        init_value += 1;
-      }
-      hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
-          HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
-      if (HSA_STATUS_SUCCESS != result) {
-        LogError("hsa_amd_signal_async_handler() failed to set the handler!");
-      } else {
-        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
-          prof_signal->signal_.handle, prof_signal);
-      }
+      enqueHandler = (ts->command().Callback() != nullptr ||
+                      ts->command().GetBatchHead() != nullptr )  &&
+                      !ts->command().CpuWaitRequested();
+      // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
+      // requires the batch update upon HSA signal completion
+      if (enqueHandler) {
+        uint32_t init_value = kInitSignalValueOne;
+        // If API callback is enabled, then use a blocking signal for AQL queue.
+        // HSA signal will be acquired in SW and released after HSA signal callback
+        if (ts->command().Callback() != nullptr) {
+          ts->SetCallbackSignal(prof_signal->signal_);
+          // Blocks AQL queue from further processing
+          hsa_signal_add_relaxed(prof_signal->signal_, 1);
+          init_value += 1;
+        }
+        hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
+            HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
+        if (HSA_STATUS_SUCCESS != result) {
+          LogError("hsa_amd_signal_async_handler() failed to set the handler!");
+        } else {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
+            prof_signal->signal_.handle, prof_signal);
+        }
 
-      // Update the current command/marker with HW event
-      prof_signal->retain();
-      ts->command().SetHwEvent(prof_signal);
-    } else if (ts->command().profilingInfo().marker_ts_ ) {
-      // Update the current command/marker with HW event
-      prof_signal->retain();
-      ts->command().SetHwEvent(prof_signal);
+        // Update the current command/marker with HW event
+        prof_signal->retain();
+        ts->command().SetHwEvent(prof_signal);
+      } else if (ts->command().profilingInfo().marker_ts_ ) {
+        // Update the current command/marker with HW event
+        prof_signal->retain();
+        ts->command().SetHwEvent(prof_signal);
+      }
     }
     if (!sdma_profiling_) {
       hsa_amd_profiling_async_copy_enable(true);
