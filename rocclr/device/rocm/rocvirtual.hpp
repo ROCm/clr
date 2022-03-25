@@ -121,7 +121,7 @@ class Timestamp : public amd::ReferenceCountedObject {
 
   ~Timestamp() {}
 
-  uint64_t getTime(uint64_t* start, uint64_t* end) {
+  void getTime(uint64_t* start, uint64_t* end) {
     checkGpuTime();
     *start = start_;
     *end = end_;
