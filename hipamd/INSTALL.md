@@ -36,8 +36,20 @@ export OPENCL_DIR="$(readlink -f ROCm-OpenCL-Runtime)"
 ```
 
 ## Build HIPAMD
-Commands to build hipamd are as following,
 
+Commands to build hipamd are as following,
+```bash
+cd "$HIPAMD_DIR"
+mkdir -p build; cd build
+cmake -DHIP_COMMON_DIR=$HIP_DIR -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" ..
+make -j$(nproc)
+sudo make install
+```
+
+Please note, HIP_COMMON_DIR looks for hip common ([HIP](https://github.com/ROCm-Developer-Tools/HIP/)) source codes.
+By default, release version of hipamd is built. hip will be installed to the default path <ROCM_PATH>/hip
+
+Developer can use cmake option CMAKE_INSTALL_PREFIX to define the path where hip is expected to be installed, commands to build are as following,
 ```bash
 cd "$HIPAMD_DIR"
 mkdir -p build; cd build
@@ -46,7 +58,5 @@ make -j$(nproc)
 sudo make install
 ```
 
-Note,
-HIP_COMMON_DIR looks for hip common ([HIP](https://github.com/ROCm-Developer-Tools/HIP/)) source codes.
-By default, release version of hipamd is built.
+After installation, make sure HIP_PATH is pointed to the path where hip is installed.
 
