@@ -363,3 +363,17 @@ amd_dbgapi_get_build_name
 amd_dbgapi_get_git_hash
 amd_dbgapi_get_build_id
 hipThreadExchangeStreamCaptureMode
+hipMemAddressFree
+hipMemAddressReserve
+hipMemCreate
+hipMemExportToShareableHandle
+hipMemGetAccess
+hipMemGetAllocationGranularity
+hipMemGetAllocationPropertiesFromHandle
+hipMemImportFromShareableHandle
+hipMemMap
+hipMemMapArrayAsync
+hipMemRelease
+hipMemRetainAllocationHandle
+hipMemSetAccess
+hipMemUnmap

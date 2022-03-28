@@ -330,7 +330,21 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemPoolSetAccess = 317,
   HIP_API_ID_hipMemPoolSetAttribute = 318,
   HIP_API_ID_hipMemPoolTrimTo = 319,
-  HIP_API_ID_LAST = 319,
+  HIP_API_ID_hipMemAddressFree = 320,
+  HIP_API_ID_hipMemAddressReserve = 321,
+  HIP_API_ID_hipMemCreate = 322,
+  HIP_API_ID_hipMemExportToShareableHandle = 323,
+  HIP_API_ID_hipMemGetAccess = 324,
+  HIP_API_ID_hipMemGetAllocationGranularity = 325,
+  HIP_API_ID_hipMemGetAllocationPropertiesFromHandle = 326,
+  HIP_API_ID_hipMemImportFromShareableHandle = 327,
+  HIP_API_ID_hipMemMap = 328,
+  HIP_API_ID_hipMemMapArrayAsync = 329,
+  HIP_API_ID_hipMemRelease = 330,
+  HIP_API_ID_hipMemRetainAllocationHandle = 331,
+  HIP_API_ID_hipMemSetAccess = 332,
+  HIP_API_ID_hipMemUnmap = 333,
+  HIP_API_ID_LAST = 333,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -571,11 +585,21 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipMallocManaged: return "hipMallocManaged";
     case HIP_API_ID_hipMallocMipmappedArray: return "hipMallocMipmappedArray";
     case HIP_API_ID_hipMallocPitch: return "hipMallocPitch";
+    case HIP_API_ID_hipMemAddressFree: return "hipMemAddressFree";
+    case HIP_API_ID_hipMemAddressReserve: return "hipMemAddressReserve";
     case HIP_API_ID_hipMemAdvise: return "hipMemAdvise";
     case HIP_API_ID_hipMemAllocHost: return "hipMemAllocHost";
     case HIP_API_ID_hipMemAllocPitch: return "hipMemAllocPitch";
+    case HIP_API_ID_hipMemCreate: return "hipMemCreate";
+    case HIP_API_ID_hipMemExportToShareableHandle: return "hipMemExportToShareableHandle";
+    case HIP_API_ID_hipMemGetAccess: return "hipMemGetAccess";
     case HIP_API_ID_hipMemGetAddressRange: return "hipMemGetAddressRange";
+    case HIP_API_ID_hipMemGetAllocationGranularity: return "hipMemGetAllocationGranularity";
+    case HIP_API_ID_hipMemGetAllocationPropertiesFromHandle: return "hipMemGetAllocationPropertiesFromHandle";
     case HIP_API_ID_hipMemGetInfo: return "hipMemGetInfo";
+    case HIP_API_ID_hipMemImportFromShareableHandle: return "hipMemImportFromShareableHandle";
+    case HIP_API_ID_hipMemMap: return "hipMemMap";
+    case HIP_API_ID_hipMemMapArrayAsync: return "hipMemMapArrayAsync";
     case HIP_API_ID_hipMemPoolCreate: return "hipMemPoolCreate";
     case HIP_API_ID_hipMemPoolDestroy: return "hipMemPoolDestroy";
     case HIP_API_ID_hipMemPoolExportPointer: return "hipMemPoolExportPointer";
@@ -591,6 +615,10 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipMemPtrGetInfo: return "hipMemPtrGetInfo";
     case HIP_API_ID_hipMemRangeGetAttribute: return "hipMemRangeGetAttribute";
     case HIP_API_ID_hipMemRangeGetAttributes: return "hipMemRangeGetAttributes";
+    case HIP_API_ID_hipMemRelease: return "hipMemRelease";
+    case HIP_API_ID_hipMemRetainAllocationHandle: return "hipMemRetainAllocationHandle";
+    case HIP_API_ID_hipMemSetAccess: return "hipMemSetAccess";
+    case HIP_API_ID_hipMemUnmap: return "hipMemUnmap";
     case HIP_API_ID_hipMemcpy: return "hipMemcpy";
     case HIP_API_ID_hipMemcpy2D: return "hipMemcpy2D";
     case HIP_API_ID_hipMemcpy2DAsync: return "hipMemcpy2DAsync";
@@ -893,11 +921,21 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipMallocManaged", name) == 0) return HIP_API_ID_hipMallocManaged;
   if (strcmp("hipMallocMipmappedArray", name) == 0) return HIP_API_ID_hipMallocMipmappedArray;
   if (strcmp("hipMallocPitch", name) == 0) return HIP_API_ID_hipMallocPitch;
+  if (strcmp("hipMemAddressFree", name) == 0) return HIP_API_ID_hipMemAddressFree;
+  if (strcmp("hipMemAddressReserve", name) == 0) return HIP_API_ID_hipMemAddressReserve;
   if (strcmp("hipMemAdvise", name) == 0) return HIP_API_ID_hipMemAdvise;
   if (strcmp("hipMemAllocHost", name) == 0) return HIP_API_ID_hipMemAllocHost;
   if (strcmp("hipMemAllocPitch", name) == 0) return HIP_API_ID_hipMemAllocPitch;
+  if (strcmp("hipMemCreate", name) == 0) return HIP_API_ID_hipMemCreate;
+  if (strcmp("hipMemExportToShareableHandle", name) == 0) return HIP_API_ID_hipMemExportToShareableHandle;
+  if (strcmp("hipMemGetAccess", name) == 0) return HIP_API_ID_hipMemGetAccess;
   if (strcmp("hipMemGetAddressRange", name) == 0) return HIP_API_ID_hipMemGetAddressRange;
+  if (strcmp("hipMemGetAllocationGranularity", name) == 0) return HIP_API_ID_hipMemGetAllocationGranularity;
+  if (strcmp("hipMemGetAllocationPropertiesFromHandle", name) == 0) return HIP_API_ID_hipMemGetAllocationPropertiesFromHandle;
   if (strcmp("hipMemGetInfo", name) == 0) return HIP_API_ID_hipMemGetInfo;
+  if (strcmp("hipMemImportFromShareableHandle", name) == 0) return HIP_API_ID_hipMemImportFromShareableHandle;
+  if (strcmp("hipMemMap", name) == 0) return HIP_API_ID_hipMemMap;
+  if (strcmp("hipMemMapArrayAsync", name) == 0) return HIP_API_ID_hipMemMapArrayAsync;
   if (strcmp("hipMemPoolCreate", name) == 0) return HIP_API_ID_hipMemPoolCreate;
   if (strcmp("hipMemPoolDestroy", name) == 0) return HIP_API_ID_hipMemPoolDestroy;
   if (strcmp("hipMemPoolExportPointer", name) == 0) return HIP_API_ID_hipMemPoolExportPointer;
@@ -913,6 +951,10 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipMemPtrGetInfo", name) == 0) return HIP_API_ID_hipMemPtrGetInfo;
   if (strcmp("hipMemRangeGetAttribute", name) == 0) return HIP_API_ID_hipMemRangeGetAttribute;
   if (strcmp("hipMemRangeGetAttributes", name) == 0) return HIP_API_ID_hipMemRangeGetAttributes;
+  if (strcmp("hipMemRelease", name) == 0) return HIP_API_ID_hipMemRelease;
+  if (strcmp("hipMemRetainAllocationHandle", name) == 0) return HIP_API_ID_hipMemRetainAllocationHandle;
+  if (strcmp("hipMemSetAccess", name) == 0) return HIP_API_ID_hipMemSetAccess;
+  if (strcmp("hipMemUnmap", name) == 0) return HIP_API_ID_hipMemUnmap;
   if (strcmp("hipMemcpy", name) == 0) return HIP_API_ID_hipMemcpy;
   if (strcmp("hipMemcpy2D", name) == 0) return HIP_API_ID_hipMemcpy2D;
   if (strcmp("hipMemcpy2DAsync", name) == 0) return HIP_API_ID_hipMemcpy2DAsync;
@@ -2095,6 +2137,18 @@ typedef struct hip_api_data_s {
       size_t height;
     } hipMallocPitch;
     struct {
+      void* devPtr;
+      size_t size;
+    } hipMemAddressFree;
+    struct {
+      void** ptr;
+      void* ptr__val;
+      size_t size;
+      size_t alignment;
+      void* addr;
+      unsigned long long flags;
+    } hipMemAddressReserve;
+    struct {
       const void* dev_ptr;
       size_t count;
       hipMemoryAdvise advice;
@@ -2115,6 +2169,27 @@ typedef struct hip_api_data_s {
       unsigned int elementSizeBytes;
     } hipMemAllocPitch;
     struct {
+      hipMemGenericAllocationHandle_t* handle;
+      hipMemGenericAllocationHandle_t handle__val;
+      size_t size;
+      const hipMemAllocationProp* prop;
+      hipMemAllocationProp prop__val;
+      unsigned long long flags;
+    } hipMemCreate;
+    struct {
+      void* shareableHandle;
+      hipMemGenericAllocationHandle_t handle;
+      hipMemAllocationHandleType handleType;
+      unsigned long long flags;
+    } hipMemExportToShareableHandle;
+    struct {
+      unsigned long long* flags;
+      unsigned long long flags__val;
+      const hipMemLocation* location;
+      hipMemLocation location__val;
+      void* ptr;
+    } hipMemGetAccess;
+    struct {
       hipDeviceptr_t* pbase;
       hipDeviceptr_t pbase__val;
       size_t* psize;
@@ -2122,11 +2197,42 @@ typedef struct hip_api_data_s {
       hipDeviceptr_t dptr;
     } hipMemGetAddressRange;
     struct {
+      size_t* granularity;
+      size_t granularity__val;
+      const hipMemAllocationProp* prop;
+      hipMemAllocationProp prop__val;
+      hipMemAllocationGranularity_flags option;
+    } hipMemGetAllocationGranularity;
+    struct {
+      hipMemAllocationProp* prop;
+      hipMemAllocationProp prop__val;
+      hipMemGenericAllocationHandle_t handle;
+    } hipMemGetAllocationPropertiesFromHandle;
+    struct {
       size_t* free;
       size_t free__val;
       size_t* total;
       size_t total__val;
     } hipMemGetInfo;
+    struct {
+      hipMemGenericAllocationHandle_t* handle;
+      hipMemGenericAllocationHandle_t handle__val;
+      void* osHandle;
+      hipMemAllocationHandleType shHandleType;
+    } hipMemImportFromShareableHandle;
+    struct {
+      void* ptr;
+      size_t size;
+      size_t offset;
+      hipMemGenericAllocationHandle_t handle;
+      unsigned long long flags;
+    } hipMemMap;
+    struct {
+      hipArrayMapInfo* mapInfoList;
+      hipArrayMapInfo mapInfoList__val;
+      unsigned int count;
+      hipStream_t stream;
+    } hipMemMapArrayAsync;
     struct {
       hipMemPool_t* mem_pool;
       hipMemPool_t mem_pool__val;
@@ -2217,6 +2323,25 @@ typedef struct hip_api_data_s {
       const void* dev_ptr;
       size_t count;
     } hipMemRangeGetAttributes;
+    struct {
+      hipMemGenericAllocationHandle_t handle;
+    } hipMemRelease;
+    struct {
+      hipMemGenericAllocationHandle_t* handle;
+      hipMemGenericAllocationHandle_t handle__val;
+      void* addr;
+    } hipMemRetainAllocationHandle;
+    struct {
+      void* ptr;
+      size_t size;
+      const hipMemAccessDesc* desc;
+      hipMemAccessDesc desc__val;
+      size_t count;
+    } hipMemSetAccess;
+    struct {
+      void* ptr;
+      size_t size;
+    } hipMemUnmap;
     struct {
       void* dst;
       const void* src;
@@ -3965,6 +4090,19 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMallocPitch.width = (size_t)width; \
   cb_data.args.hipMallocPitch.height = (size_t)height; \
 };
+// hipMemAddressFree[('void*', 'devPtr'), ('size_t', 'size')]
+#define INIT_hipMemAddressFree_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemAddressFree.devPtr = (void*)devPtr; \
+  cb_data.args.hipMemAddressFree.size = (size_t)size; \
+};
+// hipMemAddressReserve[('void**', 'ptr'), ('size_t', 'size'), ('size_t', 'alignment'), ('void*', 'addr'), ('unsigned long long', 'flags')]
+#define INIT_hipMemAddressReserve_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemAddressReserve.ptr = (void**)ptr; \
+  cb_data.args.hipMemAddressReserve.size = (size_t)size; \
+  cb_data.args.hipMemAddressReserve.alignment = (size_t)alignment; \
+  cb_data.args.hipMemAddressReserve.addr = (void*)addr; \
+  cb_data.args.hipMemAddressReserve.flags = (unsigned long long)flags; \
+};
 // hipMemAdvise[('const void*', 'dev_ptr'), ('size_t', 'count'), ('hipMemoryAdvise', 'advice'), ('int', 'device')]
 #define INIT_hipMemAdvise_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemAdvise.dev_ptr = (const void*)dev_ptr; \
@@ -3985,16 +4123,67 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemAllocPitch.height = (size_t)height; \
   cb_data.args.hipMemAllocPitch.elementSizeBytes = (unsigned int)elementSizeBytes; \
 };
+// hipMemCreate[('hipMemGenericAllocationHandle_t*', 'handle'), ('size_t', 'size'), ('const hipMemAllocationProp*', 'prop'), ('unsigned long long', 'flags')]
+#define INIT_hipMemCreate_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemCreate.handle = (hipMemGenericAllocationHandle_t*)handle; \
+  cb_data.args.hipMemCreate.size = (size_t)size; \
+  cb_data.args.hipMemCreate.prop = (const hipMemAllocationProp*)prop; \
+  cb_data.args.hipMemCreate.flags = (unsigned long long)flags; \
+};
+// hipMemExportToShareableHandle[('void*', 'shareableHandle'), ('hipMemGenericAllocationHandle_t', 'handle'), ('hipMemAllocationHandleType', 'handleType'), ('unsigned long long', 'flags')]
+#define INIT_hipMemExportToShareableHandle_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemExportToShareableHandle.shareableHandle = (void*)shareableHandle; \
+  cb_data.args.hipMemExportToShareableHandle.handle = (hipMemGenericAllocationHandle_t)handle; \
+  cb_data.args.hipMemExportToShareableHandle.handleType = (hipMemAllocationHandleType)handleType; \
+  cb_data.args.hipMemExportToShareableHandle.flags = (unsigned long long)flags; \
+};
+// hipMemGetAccess[('unsigned long long*', 'flags'), ('const hipMemLocation*', 'location'), ('void*', 'ptr')]
+#define INIT_hipMemGetAccess_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemGetAccess.flags = (unsigned long long*)flags; \
+  cb_data.args.hipMemGetAccess.location = (const hipMemLocation*)location; \
+  cb_data.args.hipMemGetAccess.ptr = (void*)ptr; \
+};
 // hipMemGetAddressRange[('hipDeviceptr_t*', 'pbase'), ('size_t*', 'psize'), ('hipDeviceptr_t', 'dptr')]
 #define INIT_hipMemGetAddressRange_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemGetAddressRange.pbase = (hipDeviceptr_t*)pbase; \
   cb_data.args.hipMemGetAddressRange.psize = (size_t*)psize; \
   cb_data.args.hipMemGetAddressRange.dptr = (hipDeviceptr_t)dptr; \
 };
+// hipMemGetAllocationGranularity[('size_t*', 'granularity'), ('const hipMemAllocationProp*', 'prop'), ('hipMemAllocationGranularity_flags', 'option')]
+#define INIT_hipMemGetAllocationGranularity_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemGetAllocationGranularity.granularity = (size_t*)granularity; \
+  cb_data.args.hipMemGetAllocationGranularity.prop = (const hipMemAllocationProp*)prop; \
+  cb_data.args.hipMemGetAllocationGranularity.option = (hipMemAllocationGranularity_flags)option; \
+};
+// hipMemGetAllocationPropertiesFromHandle[('hipMemAllocationProp*', 'prop'), ('hipMemGenericAllocationHandle_t', 'handle')]
+#define INIT_hipMemGetAllocationPropertiesFromHandle_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemGetAllocationPropertiesFromHandle.prop = (hipMemAllocationProp*)prop; \
+  cb_data.args.hipMemGetAllocationPropertiesFromHandle.handle = (hipMemGenericAllocationHandle_t)handle; \
+};
 // hipMemGetInfo[('size_t*', 'free'), ('size_t*', 'total')]
 #define INIT_hipMemGetInfo_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemGetInfo.free = (size_t*)free; \
   cb_data.args.hipMemGetInfo.total = (size_t*)total; \
+};
+// hipMemImportFromShareableHandle[('hipMemGenericAllocationHandle_t*', 'handle'), ('void*', 'osHandle'), ('hipMemAllocationHandleType', 'shHandleType')]
+#define INIT_hipMemImportFromShareableHandle_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemImportFromShareableHandle.handle = (hipMemGenericAllocationHandle_t*)handle; \
+  cb_data.args.hipMemImportFromShareableHandle.osHandle = (void*)osHandle; \
+  cb_data.args.hipMemImportFromShareableHandle.shHandleType = (hipMemAllocationHandleType)shHandleType; \
+};
+// hipMemMap[('void*', 'ptr'), ('size_t', 'size'), ('size_t', 'offset'), ('hipMemGenericAllocationHandle_t', 'handle'), ('unsigned long long', 'flags')]
+#define INIT_hipMemMap_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemMap.ptr = (void*)ptr; \
+  cb_data.args.hipMemMap.size = (size_t)size; \
+  cb_data.args.hipMemMap.offset = (size_t)offset; \
+  cb_data.args.hipMemMap.handle = (hipMemGenericAllocationHandle_t)handle; \
+  cb_data.args.hipMemMap.flags = (unsigned long long)flags; \
+};
+// hipMemMapArrayAsync[('hipArrayMapInfo*', 'mapInfoList'), ('unsigned int', 'count'), ('hipStream_t', 'stream')]
+#define INIT_hipMemMapArrayAsync_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemMapArrayAsync.mapInfoList = (hipArrayMapInfo*)mapInfoList; \
+  cb_data.args.hipMemMapArrayAsync.count = (unsigned int)count; \
+  cb_data.args.hipMemMapArrayAsync.stream = (hipStream_t)stream; \
 };
 // hipMemPoolCreate[('hipMemPool_t*', 'mem_pool'), ('const hipMemPoolProps*', 'pool_props')]
 #define INIT_hipMemPoolCreate_CB_ARGS_DATA(cb_data) { \
@@ -4087,6 +4276,27 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemRangeGetAttributes.num_attributes = (size_t)num_attributes; \
   cb_data.args.hipMemRangeGetAttributes.dev_ptr = (const void*)dev_ptr; \
   cb_data.args.hipMemRangeGetAttributes.count = (size_t)count; \
+};
+// hipMemRelease[('hipMemGenericAllocationHandle_t', 'handle')]
+#define INIT_hipMemRelease_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemRelease.handle = (hipMemGenericAllocationHandle_t)handle; \
+};
+// hipMemRetainAllocationHandle[('hipMemGenericAllocationHandle_t*', 'handle'), ('void*', 'addr')]
+#define INIT_hipMemRetainAllocationHandle_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemRetainAllocationHandle.handle = (hipMemGenericAllocationHandle_t*)handle; \
+  cb_data.args.hipMemRetainAllocationHandle.addr = (void*)addr; \
+};
+// hipMemSetAccess[('void*', 'ptr'), ('size_t', 'size'), ('const hipMemAccessDesc*', 'desc'), ('size_t', 'count')]
+#define INIT_hipMemSetAccess_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemSetAccess.ptr = (void*)ptr; \
+  cb_data.args.hipMemSetAccess.size = (size_t)size; \
+  cb_data.args.hipMemSetAccess.desc = (const hipMemAccessDesc*)desc; \
+  cb_data.args.hipMemSetAccess.count = (size_t)count; \
+};
+// hipMemUnmap[('void*', 'ptr'), ('size_t', 'size')]
+#define INIT_hipMemUnmap_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemUnmap.ptr = (void*)ptr; \
+  cb_data.args.hipMemUnmap.size = (size_t)size; \
 };
 // hipMemcpy[('void*', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipMemcpyKind', 'kind')]
 #define INIT_hipMemcpy_CB_ARGS_DATA(cb_data) { \
@@ -5629,6 +5839,13 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipMallocPitch.ptr) data->args.hipMallocPitch.ptr__val = *(data->args.hipMallocPitch.ptr);
       if (data->args.hipMallocPitch.pitch) data->args.hipMallocPitch.pitch__val = *(data->args.hipMallocPitch.pitch);
       break;
+// hipMemAddressFree[('void*', 'devPtr'), ('size_t', 'size')]
+    case HIP_API_ID_hipMemAddressFree:
+      break;
+// hipMemAddressReserve[('void**', 'ptr'), ('size_t', 'size'), ('size_t', 'alignment'), ('void*', 'addr'), ('unsigned long long', 'flags')]
+    case HIP_API_ID_hipMemAddressReserve:
+      if (data->args.hipMemAddressReserve.ptr) data->args.hipMemAddressReserve.ptr__val = *(data->args.hipMemAddressReserve.ptr);
+      break;
 // hipMemAdvise[('const void*', 'dev_ptr'), ('size_t', 'count'), ('hipMemoryAdvise', 'advice'), ('int', 'device')]
     case HIP_API_ID_hipMemAdvise:
       break;
@@ -5641,15 +5858,48 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipMemAllocPitch.dptr) data->args.hipMemAllocPitch.dptr__val = *(data->args.hipMemAllocPitch.dptr);
       if (data->args.hipMemAllocPitch.pitch) data->args.hipMemAllocPitch.pitch__val = *(data->args.hipMemAllocPitch.pitch);
       break;
+// hipMemCreate[('hipMemGenericAllocationHandle_t*', 'handle'), ('size_t', 'size'), ('const hipMemAllocationProp*', 'prop'), ('unsigned long long', 'flags')]
+    case HIP_API_ID_hipMemCreate:
+      if (data->args.hipMemCreate.handle) data->args.hipMemCreate.handle__val = *(data->args.hipMemCreate.handle);
+      if (data->args.hipMemCreate.prop) data->args.hipMemCreate.prop__val = *(data->args.hipMemCreate.prop);
+      break;
+// hipMemExportToShareableHandle[('void*', 'shareableHandle'), ('hipMemGenericAllocationHandle_t', 'handle'), ('hipMemAllocationHandleType', 'handleType'), ('unsigned long long', 'flags')]
+    case HIP_API_ID_hipMemExportToShareableHandle:
+      break;
+// hipMemGetAccess[('unsigned long long*', 'flags'), ('const hipMemLocation*', 'location'), ('void*', 'ptr')]
+    case HIP_API_ID_hipMemGetAccess:
+      if (data->args.hipMemGetAccess.flags) data->args.hipMemGetAccess.flags__val = *(data->args.hipMemGetAccess.flags);
+      if (data->args.hipMemGetAccess.location) data->args.hipMemGetAccess.location__val = *(data->args.hipMemGetAccess.location);
+      break;
 // hipMemGetAddressRange[('hipDeviceptr_t*', 'pbase'), ('size_t*', 'psize'), ('hipDeviceptr_t', 'dptr')]
     case HIP_API_ID_hipMemGetAddressRange:
       if (data->args.hipMemGetAddressRange.pbase) data->args.hipMemGetAddressRange.pbase__val = *(data->args.hipMemGetAddressRange.pbase);
       if (data->args.hipMemGetAddressRange.psize) data->args.hipMemGetAddressRange.psize__val = *(data->args.hipMemGetAddressRange.psize);
       break;
+// hipMemGetAllocationGranularity[('size_t*', 'granularity'), ('const hipMemAllocationProp*', 'prop'), ('hipMemAllocationGranularity_flags', 'option')]
+    case HIP_API_ID_hipMemGetAllocationGranularity:
+      if (data->args.hipMemGetAllocationGranularity.granularity) data->args.hipMemGetAllocationGranularity.granularity__val = *(data->args.hipMemGetAllocationGranularity.granularity);
+      if (data->args.hipMemGetAllocationGranularity.prop) data->args.hipMemGetAllocationGranularity.prop__val = *(data->args.hipMemGetAllocationGranularity.prop);
+      break;
+// hipMemGetAllocationPropertiesFromHandle[('hipMemAllocationProp*', 'prop'), ('hipMemGenericAllocationHandle_t', 'handle')]
+    case HIP_API_ID_hipMemGetAllocationPropertiesFromHandle:
+      if (data->args.hipMemGetAllocationPropertiesFromHandle.prop) data->args.hipMemGetAllocationPropertiesFromHandle.prop__val = *(data->args.hipMemGetAllocationPropertiesFromHandle.prop);
+      break;
 // hipMemGetInfo[('size_t*', 'free'), ('size_t*', 'total')]
     case HIP_API_ID_hipMemGetInfo:
       if (data->args.hipMemGetInfo.free) data->args.hipMemGetInfo.free__val = *(data->args.hipMemGetInfo.free);
       if (data->args.hipMemGetInfo.total) data->args.hipMemGetInfo.total__val = *(data->args.hipMemGetInfo.total);
+      break;
+// hipMemImportFromShareableHandle[('hipMemGenericAllocationHandle_t*', 'handle'), ('void*', 'osHandle'), ('hipMemAllocationHandleType', 'shHandleType')]
+    case HIP_API_ID_hipMemImportFromShareableHandle:
+      if (data->args.hipMemImportFromShareableHandle.handle) data->args.hipMemImportFromShareableHandle.handle__val = *(data->args.hipMemImportFromShareableHandle.handle);
+      break;
+// hipMemMap[('void*', 'ptr'), ('size_t', 'size'), ('size_t', 'offset'), ('hipMemGenericAllocationHandle_t', 'handle'), ('unsigned long long', 'flags')]
+    case HIP_API_ID_hipMemMap:
+      break;
+// hipMemMapArrayAsync[('hipArrayMapInfo*', 'mapInfoList'), ('unsigned int', 'count'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemMapArrayAsync:
+      if (data->args.hipMemMapArrayAsync.mapInfoList) data->args.hipMemMapArrayAsync.mapInfoList__val = *(data->args.hipMemMapArrayAsync.mapInfoList);
       break;
 // hipMemPoolCreate[('hipMemPool_t*', 'mem_pool'), ('const hipMemPoolProps*', 'pool_props')]
     case HIP_API_ID_hipMemPoolCreate:
@@ -5708,6 +5958,20 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipMemRangeGetAttributes.data) data->args.hipMemRangeGetAttributes.data__val = *(data->args.hipMemRangeGetAttributes.data);
       if (data->args.hipMemRangeGetAttributes.data_sizes) data->args.hipMemRangeGetAttributes.data_sizes__val = *(data->args.hipMemRangeGetAttributes.data_sizes);
       if (data->args.hipMemRangeGetAttributes.attributes) data->args.hipMemRangeGetAttributes.attributes__val = *(data->args.hipMemRangeGetAttributes.attributes);
+      break;
+// hipMemRelease[('hipMemGenericAllocationHandle_t', 'handle')]
+    case HIP_API_ID_hipMemRelease:
+      break;
+// hipMemRetainAllocationHandle[('hipMemGenericAllocationHandle_t*', 'handle'), ('void*', 'addr')]
+    case HIP_API_ID_hipMemRetainAllocationHandle:
+      if (data->args.hipMemRetainAllocationHandle.handle) data->args.hipMemRetainAllocationHandle.handle__val = *(data->args.hipMemRetainAllocationHandle.handle);
+      break;
+// hipMemSetAccess[('void*', 'ptr'), ('size_t', 'size'), ('const hipMemAccessDesc*', 'desc'), ('size_t', 'count')]
+    case HIP_API_ID_hipMemSetAccess:
+      if (data->args.hipMemSetAccess.desc) data->args.hipMemSetAccess.desc__val = *(data->args.hipMemSetAccess.desc);
+      break;
+// hipMemUnmap[('void*', 'ptr'), ('size_t', 'size')]
+    case HIP_API_ID_hipMemUnmap:
       break;
 // hipMemcpy[('void*', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipMemcpyKind', 'kind')]
     case HIP_API_ID_hipMemcpy:
@@ -7577,6 +7841,22 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", height=" << data->args.hipMallocPitch.height;
       oss << ")";
     break;
+    case HIP_API_ID_hipMemAddressFree:
+      oss << "hipMemAddressFree(";
+      oss << "devPtr=" << data->args.hipMemAddressFree.devPtr;
+      oss << ", size=" << data->args.hipMemAddressFree.size;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemAddressReserve:
+      oss << "hipMemAddressReserve(";
+      if (data->args.hipMemAddressReserve.ptr == NULL) oss << "ptr=NULL";
+      else oss << "ptr=" << data->args.hipMemAddressReserve.ptr__val;
+      oss << ", size=" << data->args.hipMemAddressReserve.size;
+      oss << ", alignment=" << data->args.hipMemAddressReserve.alignment;
+      oss << ", addr=" << data->args.hipMemAddressReserve.addr;
+      oss << ", flags=" << data->args.hipMemAddressReserve.flags;
+      oss << ")";
+    break;
     case HIP_API_ID_hipMemAdvise:
       oss << "hipMemAdvise(";
       oss << "dev_ptr=" << data->args.hipMemAdvise.dev_ptr;
@@ -7603,6 +7883,33 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", elementSizeBytes=" << data->args.hipMemAllocPitch.elementSizeBytes;
       oss << ")";
     break;
+    case HIP_API_ID_hipMemCreate:
+      oss << "hipMemCreate(";
+      if (data->args.hipMemCreate.handle == NULL) oss << "handle=NULL";
+      else oss << "handle=" << data->args.hipMemCreate.handle__val;
+      oss << ", size=" << data->args.hipMemCreate.size;
+      if (data->args.hipMemCreate.prop == NULL) oss << ", prop=NULL";
+      else oss << ", prop=" << data->args.hipMemCreate.prop__val;
+      oss << ", flags=" << data->args.hipMemCreate.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemExportToShareableHandle:
+      oss << "hipMemExportToShareableHandle(";
+      oss << "shareableHandle=" << data->args.hipMemExportToShareableHandle.shareableHandle;
+      oss << ", handle=" << data->args.hipMemExportToShareableHandle.handle;
+      oss << ", handleType=" << data->args.hipMemExportToShareableHandle.handleType;
+      oss << ", flags=" << data->args.hipMemExportToShareableHandle.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemGetAccess:
+      oss << "hipMemGetAccess(";
+      if (data->args.hipMemGetAccess.flags == NULL) oss << "flags=NULL";
+      else oss << "flags=" << data->args.hipMemGetAccess.flags__val;
+      if (data->args.hipMemGetAccess.location == NULL) oss << ", location=NULL";
+      else oss << ", location=" << data->args.hipMemGetAccess.location__val;
+      oss << ", ptr=" << data->args.hipMemGetAccess.ptr;
+      oss << ")";
+    break;
     case HIP_API_ID_hipMemGetAddressRange:
       oss << "hipMemGetAddressRange(";
       if (data->args.hipMemGetAddressRange.pbase == NULL) oss << "pbase=NULL";
@@ -7612,12 +7919,53 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", dptr=" << data->args.hipMemGetAddressRange.dptr;
       oss << ")";
     break;
+    case HIP_API_ID_hipMemGetAllocationGranularity:
+      oss << "hipMemGetAllocationGranularity(";
+      if (data->args.hipMemGetAllocationGranularity.granularity == NULL) oss << "granularity=NULL";
+      else oss << "granularity=" << data->args.hipMemGetAllocationGranularity.granularity__val;
+      if (data->args.hipMemGetAllocationGranularity.prop == NULL) oss << ", prop=NULL";
+      else oss << ", prop=" << data->args.hipMemGetAllocationGranularity.prop__val;
+      oss << ", option=" << data->args.hipMemGetAllocationGranularity.option;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemGetAllocationPropertiesFromHandle:
+      oss << "hipMemGetAllocationPropertiesFromHandle(";
+      if (data->args.hipMemGetAllocationPropertiesFromHandle.prop == NULL) oss << "prop=NULL";
+      else oss << "prop=" << data->args.hipMemGetAllocationPropertiesFromHandle.prop__val;
+      oss << ", handle=" << data->args.hipMemGetAllocationPropertiesFromHandle.handle;
+      oss << ")";
+    break;
     case HIP_API_ID_hipMemGetInfo:
       oss << "hipMemGetInfo(";
       if (data->args.hipMemGetInfo.free == NULL) oss << "free=NULL";
       else oss << "free=" << data->args.hipMemGetInfo.free__val;
       if (data->args.hipMemGetInfo.total == NULL) oss << ", total=NULL";
       else oss << ", total=" << data->args.hipMemGetInfo.total__val;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemImportFromShareableHandle:
+      oss << "hipMemImportFromShareableHandle(";
+      if (data->args.hipMemImportFromShareableHandle.handle == NULL) oss << "handle=NULL";
+      else oss << "handle=" << data->args.hipMemImportFromShareableHandle.handle__val;
+      oss << ", osHandle=" << data->args.hipMemImportFromShareableHandle.osHandle;
+      oss << ", shHandleType=" << data->args.hipMemImportFromShareableHandle.shHandleType;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemMap:
+      oss << "hipMemMap(";
+      oss << "ptr=" << data->args.hipMemMap.ptr;
+      oss << ", size=" << data->args.hipMemMap.size;
+      oss << ", offset=" << data->args.hipMemMap.offset;
+      oss << ", handle=" << data->args.hipMemMap.handle;
+      oss << ", flags=" << data->args.hipMemMap.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemMapArrayAsync:
+      oss << "hipMemMapArrayAsync(";
+      if (data->args.hipMemMapArrayAsync.mapInfoList == NULL) oss << "mapInfoList=NULL";
+      else oss << "mapInfoList=" << data->args.hipMemMapArrayAsync.mapInfoList__val;
+      oss << ", count=" << data->args.hipMemMapArrayAsync.count;
+      oss << ", stream=" << data->args.hipMemMapArrayAsync.stream;
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolCreate:
@@ -7738,6 +8086,33 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", num_attributes=" << data->args.hipMemRangeGetAttributes.num_attributes;
       oss << ", dev_ptr=" << data->args.hipMemRangeGetAttributes.dev_ptr;
       oss << ", count=" << data->args.hipMemRangeGetAttributes.count;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemRelease:
+      oss << "hipMemRelease(";
+      oss << "handle=" << data->args.hipMemRelease.handle;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemRetainAllocationHandle:
+      oss << "hipMemRetainAllocationHandle(";
+      if (data->args.hipMemRetainAllocationHandle.handle == NULL) oss << "handle=NULL";
+      else oss << "handle=" << data->args.hipMemRetainAllocationHandle.handle__val;
+      oss << ", addr=" << data->args.hipMemRetainAllocationHandle.addr;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemSetAccess:
+      oss << "hipMemSetAccess(";
+      oss << "ptr=" << data->args.hipMemSetAccess.ptr;
+      oss << ", size=" << data->args.hipMemSetAccess.size;
+      if (data->args.hipMemSetAccess.desc == NULL) oss << ", desc=NULL";
+      else oss << ", desc=" << data->args.hipMemSetAccess.desc__val;
+      oss << ", count=" << data->args.hipMemSetAccess.count;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemUnmap:
+      oss << "hipMemUnmap(";
+      oss << "ptr=" << data->args.hipMemUnmap.ptr;
+      oss << ", size=" << data->args.hipMemUnmap.size;
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy:

@@ -417,6 +417,20 @@ global:
     hipMemPoolImportFromShareableHandle;
     hipMemPoolExportPointer;
     hipMemPoolImportPointer;
+    hipMemAddressFree;
+    hipMemAddressReserve;
+    hipMemCreate;
+    hipMemExportToShareableHandle;
+    hipMemGetAccess;
+    hipMemGetAllocationGranularity;
+    hipMemGetAllocationPropertiesFromHandle;
+    hipMemImportFromShareableHandle;
+    hipMemMap;
+    hipMemMapArrayAsync;
+    hipMemRelease;
+    hipMemRetainAllocationHandle;
+    hipMemSetAccess;
+    hipMemUnmap;
 local:
     *;
 } hip_5.0;
