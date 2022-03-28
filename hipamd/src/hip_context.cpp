@@ -63,7 +63,11 @@ bool init() {
     if (context && CL_SUCCESS != context->create(nullptr)) {
       context->release();
     } else {
-      g_devices.push_back(new Device(context, i));
+      auto device = new Device(context, i);
+      if ((device == nullptr) || !device->Create()) {
+        return false;
+      }
+      g_devices.push_back(device);
     }
   }
 

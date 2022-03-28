@@ -33,6 +33,7 @@ THE SOFTWARE.
 #define CUDA_10010 10010
 #define CUDA_10020 10020
 #define CUDA_11010 11010
+#define CUDA_11010 11020
 #define CUDA_11030 11030
 #define CUDA_11040 11040
 
@@ -407,6 +408,15 @@ typedef struct cudaPos hipPos;
 // Flags that can be used with hipStreamCreateWithFlags
 #define hipStreamDefault cudaStreamDefault
 #define hipStreamNonBlocking cudaStreamNonBlocking
+
+typedef cudaMemPool_t hipMemPool_t;
+typedef enum cudaMemPoolAttr hipMemPoolAttr;
+typedef struct cudaMemLocation hipMemLocation;
+typedef struct cudaMemPoolProps hipMemPoolProps;
+typedef struct cudaMemAccessDesc hipMemAccessDesc;
+typedef enum cudaMemAccessFlags hipMemAccessFlags;
+typedef enum cudaMemAllocationHandleType hipMemAllocationHandleType;
+typedef struct cudaMemPoolPtrExportData hipMemPoolPtrExportData;
 
 typedef struct cudaChannelFormatDesc hipChannelFormatDesc;
 typedef struct cudaResourceDesc hipResourceDesc;
@@ -1781,6 +1791,11 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
         case hipDeviceAttributeDirectManagedMemAccessFromHost:
             cdattr = cudaDevAttrDirectManagedMemAccessFromHost;
             break;
+#if CUDA_VERSION >= CUDA_11020
+        case hipDeviceAttributeMemoryPoolsSupported:
+            cdattr = cudaDevAttrMemoryPoolsSupported;
+            break;
+#endif // CUDA_VERSION >= CUDA_11020
         default:
             return hipCUDAErrorTohipError(cudaErrorInvalidValue);
     }
@@ -2283,6 +2298,100 @@ inline static hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* 
                                                  int  numDevices, unsigned int  flags) {
     return hipCUDAErrorTohipError(cudaLaunchCooperativeKernelMultiDevice(launchParamsList, numDevices, flags));
 }
+
+#if CUDA_VERSION >= CUDA_11020
+// ========================== HIP Stream Ordered Memory Allocator =================================
+inline static hipError_t hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device) {
+  return hipCUDAErrorTohipError(cudaDeviceGetDefaultMemPool(mem_pool, device));
+}
+
+inline static hipError_t hipDeviceSetMemPool(int device, hipMemPool_t mem_pool) {
+  return hipCUDAErrorTohipError(cudaDeviceSetMemPool(device, mem_pool));
+}
+
+inline static hipError_t hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device) {
+  return hipCUDAErrorTohipError(cudaDeviceGetMemPool(mem_pool, device));
+}
+
+inline static hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
+  return hipCUDAErrorTohipError(cudaMallocAsync(dev_ptr, size, stream));
+}
+
+inline static hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
+  return hipCUDAErrorTohipError(cudaFreeAsync(dev_ptr, stream));
+}
+
+inline static hipError_t hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold) {
+  return hipCUDAErrorTohipError(cudaMemPoolTrimTo(mem_pool, min_bytes_to_hold));
+}
+
+inline static hipError_t hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value) {
+  return hipCUDAErrorTohipError(cudaMemPoolSetAttribute(mem_pool, attr, value));
+}
+
+inline static hipError_t hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value) {
+  return hipCUDAErrorTohipError(cudaMemPoolGetAttribute(mem_pool, attr, value));
+}
+
+inline static hipError_t hipMemPoolSetAccess(
+    hipMemPool_t mem_pool,
+    const hipMemAccessDesc* desc_list,
+    size_t count) {
+  return hipCUDAErrorTohipError(cudaMemPoolSetAccess(mem_pool, desc_list, count));
+}
+
+inline static hipError_t hipMemPoolGetAccess(
+    hipMemAccessFlags* flags,
+    hipMemPool_t mem_pool,
+    hipMemLocation* location) {
+  return hipCUDAErrorTohipError(cudaMemPoolGetAccess(flags, mem_pool, location));
+}
+
+inline static hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_props) {
+  return hipCUDAErrorTohipError(cudaMemPoolCreate(mem_pool, pool_props));
+}
+
+inline static hipError_t hipMemPoolDestroy(hipMemPool_t mem_pool) {
+  return hipCUDAErrorTohipError(cudaMemPoolDestroy(mem_pool));
+}
+
+inline static hipError_t hipMallocFromPoolAsync(
+    void** dev_ptr,
+    size_t size,
+    hipMemPool_t mem_pool,
+    hipStream_t stream) {
+  return hipCUDAErrorTohipError(cudaMallocFromPoolAsync(dev_ptr, size, mem_pool, stream));
+}
+
+inline static hipError_t hipMemPoolExportToShareableHandle(
+    void*                      shared_handle,
+    hipMemPool_t               mem_pool,
+    hipMemAllocationHandleType handle_type,
+    unsigned int               flags) {
+  return hipCUDAErrorTohipError(cudaMemPoolExportToShareableHandle(
+            shared_handle, mem_pool, handle_type, flags));
+}
+
+inline static hipError_t hipMemPoolImportFromShareableHandle(
+    hipMemPool_t*              mem_pool,
+    void*                      shared_handle,
+    hipMemAllocationHandleType handle_type,
+    unsigned int               flags) {
+  return hipCUDAErrorTohipError(cudaMemPoolImportFromShareableHandle(
+            mem_pool, shared_handle, handle_type, flags));
+}
+
+inline static hipError_t hipMemPoolExportPointer(hipMemPoolPtrExportData* export_data, void* ptr) {
+  return hipCUDAErrorTohipError(cudaMemPoolExportPointer(export_data, ptr));
+}
+
+inline static hipError_t hipMemPoolImportPointer(
+    void**                   ptr,
+    hipMemPool_t             mem_pool,
+    hipMemPoolPtrExportData* export_data) {
+  return hipCUDAErrorTohipError(cudaMemPoolImportPointer(ptr, mem_pool, export_data));
+}
+#endif // CUDA_VERSION >= CUDA_11020
 
 #ifdef __cplusplus
 }

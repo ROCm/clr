@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -195,6 +195,7 @@ class accelerator_view;
 };
 namespace hip {
   class Device;
+  class MemoryPool;
   class Stream {
   public:
     enum Priority : int { High = -1, Normal = 0, Low = 1 };
@@ -244,6 +245,8 @@ namespace hip {
     void Finish() const;
     /// Get device ID associated with the current stream;
     int DeviceId() const;
+    /// Get HIP device associated with the stream
+    Device* GetDevice() const { return device_; }
     /// Get device ID associated with a stream;
     static int DeviceId(const hipStream_t hStream);
     /// Returns if stream is null stream
@@ -344,15 +347,23 @@ namespace hip {
 
     std::vector<amd::HostQueue*> queues_;
 
+    MemoryPool* default_mem_pool_;
+    MemoryPool* current_mem_pool_;
+
+    std::set<MemoryPool*> mem_pools_;
+
   public:
     Device(amd::Context* ctx, int devId): context_(ctx),
-         deviceId_(devId),
-         null_stream_(this, Stream::Priority::Normal, 0, true),
+        deviceId_(devId),
+        null_stream_(this, Stream::Priority::Normal, 0, true),
          flags_(hipDeviceScheduleSpin),
-         isActive_(false)
+        isActive_(false),
+        default_mem_pool_(nullptr),
+        current_mem_pool_(nullptr)
         { assert(ctx != nullptr); }
-    ~Device() {}
+    ~Device();
 
+    bool Create();
     amd::Context* asContext() const { return context_; }
     int deviceId() const { return deviceId_; }
     void retain() const { context_->retain(); }
@@ -397,6 +408,29 @@ namespace hip {
       }
       return false;
     }
+
+    /// Set the current memory pool on the device
+    void SetCurrentMemoryPool(MemoryPool* pool = nullptr) {
+      current_mem_pool_ = (pool == nullptr) ? default_mem_pool_ : pool;
+    }
+
+    /// Get the current memory pool on the device
+    MemoryPool* GetCurrentMemoryPool() const { return current_mem_pool_; }
+
+    /// Get the default memory pool on the device
+    MemoryPool* GetDefaultMemoryPool() const { return default_mem_pool_; }
+
+    /// Add memory pool to the device
+    void AddMemoryPool(MemoryPool* pool);
+
+    /// Remove memory pool from the device
+    void RemoveMemoryPool(MemoryPool* pool);
+
+    /// Free memory from the device
+    bool FreeMemory(amd::Memory* memory, Stream* stream);
+
+    /// Release freed memory from all pools on the current device
+    void ReleaseFreedMemory(Stream* stream);
   };
 
   /// Current thread's device

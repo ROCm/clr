@@ -400,6 +400,23 @@ local:
 hip_5.1 {
 global:
     hipDeviceGetUuid;
+    hipDeviceGetDefaultMemPool;
+    hipDeviceSetMemPool;
+    hipDeviceGetMemPool;
+    hipMallocAsync;
+    hipFreeAsync;
+    hipMemPoolTrimTo;
+    hipMemPoolSetAttribute;
+    hipMemPoolGetAttribute;
+    hipMemPoolSetAccess;
+    hipMemPoolGetAccess;
+    hipMemPoolCreate;
+    hipMemPoolDestroy;
+    hipMallocFromPoolAsync;
+    hipMemPoolExportToShareableHandle;
+    hipMemPoolImportFromShareableHandle;
+    hipMemPoolExportPointer;
+    hipMemPoolImportPointer;
 local:
     *;
 } hip_5.0;

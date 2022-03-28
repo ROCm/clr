@@ -21,6 +21,7 @@
 #include <hip/hip_runtime.h>
 
 #include "hip_internal.hpp"
+#include "hip_mempool_impl.hpp"
 
 namespace hip {
 
@@ -33,6 +34,58 @@ amd::HostQueue* Device::NullStream(bool skip_alloc) {
   // Wait for all active streams before executing commands on the default
   iHipWaitActiveStreams(null_queue);
   return null_queue;
+}
+
+// ================================================================================================
+bool Device::Create() {
+  // Create default memory pool
+  default_mem_pool_ = new MemoryPool(this);
+  if (default_mem_pool_ == nullptr) {
+    return false;
+  }
+  // Current is default pool after device creation
+  current_mem_pool_ = default_mem_pool_;
+  return true;
+}
+
+// ================================================================================================
+void Device::AddMemoryPool(MemoryPool* pool) {
+  if (auto it = mem_pools_.find(pool); it == mem_pools_.end()) {
+    mem_pools_.insert(pool);
+  }
+}
+
+// ================================================================================================
+void Device::RemoveMemoryPool(MemoryPool* pool) {
+  if (auto it = mem_pools_.find(pool); it != mem_pools_.end()) {
+    mem_pools_.erase(it);
+  }
+}
+
+// ================================================================================================
+bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
+  // Search for memory in the entire list of pools
+  for (auto& it : mem_pools_) {
+    if (it->FreeMemory(memory, stream)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ================================================================================================
+void Device::ReleaseFreedMemory(Stream* stream) {
+  // Search for memory in the entire list of pools
+  for (auto& it : mem_pools_) {
+    it->ReleaseFreedMemory(stream);
+  }
+}
+
+// ================================================================================================
+Device::~Device() {
+  if (default_mem_pool_ != nullptr) {
+    default_mem_pool_->release();
+  }
 }
 
 }
