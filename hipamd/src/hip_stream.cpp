@@ -407,6 +407,12 @@ hipError_t hipStreamSynchronize(hipStream_t stream) {
   // Wait for the current host queue
   hip::getQueue(stream)->finish();
 
+  // Make sure runtime releases memory for all memory pools on the device,
+  // associated with the queue
+  auto hip_stream = reinterpret_cast<hip::Stream*>(stream);
+  auto device = (hip_stream == nullptr) ? hip::getCurrentDevice() : hip_stream->GetDevice();
+  device->ReleaseFreedMemory(hip_stream);
+
   HIP_RETURN(hipSuccess);
 }
 

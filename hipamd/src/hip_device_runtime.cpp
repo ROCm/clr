@@ -329,6 +329,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributeFineGrainSupport:
     *pi = static_cast<int>(g_devices[device]->devices()[0]->isFineGrainSupported());
     break;
+  case hipDeviceAttributeMemoryPoolsSupported:
+    *pi = HIP_MEM_POOL_SUPPORT;
+    break;
   default:
     HIP_RETURN(hipErrorInvalidValue);
   }
