@@ -371,3 +371,17 @@ amd_dbgapi_get_build_id
 hipStreamGetCaptureInfo
 hipStreamGetCaptureInfo_v2
 hipThreadExchangeStreamCaptureMode
+hipMemAddressFree
+hipMemAddressReserve
+hipMemCreate
+hipMemExportToShareableHandle
+hipMemGetAccess
+hipMemGetAllocationGranularity
+hipMemGetAllocationPropertiesFromHandle
+hipMemImportFromShareableHandle
+hipMemMap
+hipMemMapArrayAsync
+hipMemRelease
+hipMemRetainAllocationHandle
+hipMemSetAccess
+hipMemUnmap

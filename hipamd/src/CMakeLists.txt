@@ -122,7 +122,8 @@ target_sources(amdhip64 PRIVATE
   hip_stream.cpp
   hip_surface.cpp
   hip_texture.cpp
-  hip_gl.cpp)
+  hip_gl.cpp
+  hip_vm.cpp)
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
