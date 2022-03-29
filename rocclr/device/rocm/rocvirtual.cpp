@@ -1817,8 +1817,8 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
     }
 
     if ((nullptr == srcMem && nullptr == dstMem) || // both not in svm space
-        dev().forceFineGrain(srcMem) ||
-        dev().forceFineGrain(dstMem)) {
+        (nullptr != srcMem && dev().forceFineGrain(srcMem)) ||
+        (nullptr != dstMem && dev().forceFineGrain(dstMem))) {
       // Wait on a kernel if one is outstanding
       releaseGpuMemoryFence();
 
