@@ -2509,11 +2509,11 @@ inline static hipError_t hipTexObjectGetTextureDesc(HIP_TEXTURE_DESC* pTexDesc, 
     return hipCUResultTohipError(cuTexObjectGetTextureDesc(pTexDesc, (CUtexObject)texObject));
 }
 
-inline static hipError_t hipTexRefSetAddressMode(hipTexRef hTexRef, int dim, hipAddress_mode am){
+__HIP_DEPRECATED inline static hipError_t hipTexRefSetAddressMode(hipTexRef hTexRef, int dim, hipAddress_mode am){
     return hipCUResultTohipError(cuTexRefSetAddressMode(hTexRef,dim,am));
 }
 
-inline static hipError_t hipTexRefSetFilterMode(hipTexRef hTexRef, hipFilter_mode fm){
+__HIP_DEPRECATED inline static hipError_t hipTexRefSetFilterMode(hipTexRef hTexRef, hipFilter_mode fm){
     return hipCUResultTohipError(cuTexRefSetFilterMode(hTexRef,fm));
 }
 
@@ -2525,15 +2525,15 @@ inline static hipError_t hipTexRefSetAddress2D(hipTexRef hTexRef, const CUDA_ARR
     return hipCUResultTohipError(cuTexRefSetAddress2D(hTexRef,desc,dptr,Pitch));
 }
 
-inline static hipError_t hipTexRefSetFormat(hipTexRef hTexRef, hipArray_Format fmt, int NumPackedComponents){
+__HIP_DEPRECATED inline static hipError_t hipTexRefSetFormat(hipTexRef hTexRef, hipArray_Format fmt, int NumPackedComponents){
     return hipCUResultTohipError(cuTexRefSetFormat(hTexRef,fmt,NumPackedComponents));
 }
 
-inline static hipError_t hipTexRefSetFlags(hipTexRef hTexRef, unsigned int Flags){
+__HIP_DEPRECATED inline static hipError_t hipTexRefSetFlags(hipTexRef hTexRef, unsigned int Flags){
     return hipCUResultTohipError(cuTexRefSetFlags(hTexRef,Flags));
 }
 
-inline static hipError_t hipTexRefSetArray(hipTexRef hTexRef, hiparray hArray, unsigned int Flags){
+__HIP_DEPRECATED inline static hipError_t hipTexRefSetArray(hipTexRef hTexRef, hiparray hArray, unsigned int Flags){
     return hipCUResultTohipError(cuTexRefSetArray(hTexRef,hArray,Flags));
 }
 
