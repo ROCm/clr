@@ -774,16 +774,6 @@ bool Device::create() {
     return false;
   }
 
-  // only create arena_mem_object if CPU memory is accessible.
-  if (info_.hmmCpuMemoryAccessible_) {
-    arena_mem_obj_ = new (context()) amd::ArenaMemory(context());
-    if (!arena_mem_obj_->create(nullptr)) {
-      LogError("Arena Memory Creation failed!");
-      arena_mem_obj_->release();
-      arena_mem_obj_ = nullptr;
-    }
-  }
-
   if (amd::IS_HIP) {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 1024 * Ki;
@@ -2386,7 +2376,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
       // Query ptr type to see if it's a HMM allocation
       hsa_status_t status = hsa_amd_pointer_info(
         const_cast<void*>(dev_ptr), &ptr_info, nullptr, nullptr, nullptr);
-      // The call shoudl never fail in ROCR, but just check for an error and continue
+      // The call should never fail in ROCR, but just check for an error and continue
       if (status != HSA_STATUS_SUCCESS) {
         LogError("hsa_amd_pointer_info() failed");
       }
@@ -3084,10 +3074,23 @@ device::Signal* Device::createSignal() const {
 }
 
 // ================================================================================================
-amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset) {
-  // If arena_mem_obj_ is null, then HMM and Xnack is disabled. Return nullptr.
-  if (arena_mem_obj_ == nullptr) {
+amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size) {
+  // Only create arena_mem_object if CPU memory is accessible from HMM
+  // or if runtime received an interop from another ROCr's client
+  if (!info_.hmmCpuMemoryAccessible_ && !IsValidAllocation(ptr, size)) {
     return nullptr;
+  }
+
+  if (arena_mem_obj_ == nullptr) {
+    arena_mem_obj_ = new (context()) amd::ArenaMemory(context());
+    if ((arena_mem_obj_ != nullptr) && !arena_mem_obj_->create(nullptr)) {
+      LogError("Arena Memory Creation failed!");
+      arena_mem_obj_->release();
+      arena_mem_obj_ = nullptr;
+    }
+    if (arena_mem_obj_ == nullptr) {
+      return arena_mem_obj_;
+    }
   }
 
   // Calculate the offset of the pointer.
@@ -3103,6 +3106,31 @@ void Device::ReleaseGlobalSignal(void* signal) const {
   if (signal != nullptr) {
     reinterpret_cast<ProfilingSignal*>(signal)->release();
   }
+}
+
+// ================================================================================================
+bool Device::IsValidAllocation(const void* dev_ptr, size_t size) const {
+  //! @todo Temporarily disable pointer detection feature,
+  //! until the new interfaces will be accepted in HIP API
+  return false;
+  hsa_amd_pointer_info_t ptr_info = {};
+  ptr_info.size = sizeof(hsa_amd_pointer_info_t);
+  // Query ptr type to see if it's a HMM allocation
+  hsa_status_t status = hsa_amd_pointer_info(
+    const_cast<void*>(dev_ptr), &ptr_info, nullptr, nullptr, nullptr);
+  // The call should never fail in ROCR, but just check for an error and continue
+  if (status != HSA_STATUS_SUCCESS) {
+    LogError("hsa_amd_pointer_info() failed");
+  }
+  // Check if it's a legacy non-HMM allocation in ROCr
+  if (ptr_info.type != HSA_EXT_POINTER_TYPE_UNKNOWN) {
+    if ((size != 0) && ((reinterpret_cast<const_address>(dev_ptr) -
+                         reinterpret_cast<const_address>(ptr_info.agentBaseAddress)) > size)) {
+      return false;
+    }
+    return true;
+  }
+  return false;
 }
 
 // ================================================================================================

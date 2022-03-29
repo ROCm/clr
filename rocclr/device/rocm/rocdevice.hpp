@@ -539,10 +539,13 @@ class Device : public NullDevice {
 
   void getGlobalCUMask(std::string cuMaskStr);
 
-  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset);
+  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0);
 
   const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
   const bool isFineGrainSupported() const;
+
+  //! Returns True if memory pointer is known to ROCr (excludes HMM allocations)
+  bool IsValidAllocation(const void* dev_ptr, size_t size) const;
 
  private:
   bool create();

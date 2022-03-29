@@ -1887,7 +1887,7 @@ class Device : public RuntimeObject {
 
   void SetActiveWait(bool state) { activeWait_ = state; }
 
-  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset) {
+  virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0) {
     return nullptr;
   }
 #if defined(__clang__)
