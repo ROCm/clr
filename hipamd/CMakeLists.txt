@@ -414,6 +414,18 @@ endif()
 install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
         DESTINATION include/hip)
 
+if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
+  file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
+  set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
+  set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
+  if(WIN32)
+    set(hipcc_bin ${hipcc_bin}.exe)
+    set(hipconfig_bin ${hipconfig_bin}.exe)
+  endif()
+  install(PROGRAMS ${hipcc_bin} DESTINATION bin)
+  install(PROGRAMS ${hipconfig_bin} DESTINATION bin)
+endif()
+
 #############################
 # hip-config
 #############################
