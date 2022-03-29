@@ -1103,7 +1103,9 @@ bool Device::populateOCLDeviceConstants() {
   }
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(_bkendDevice,
-                         (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT,
+                         (amd::IS_HIP) ?
+                         (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT :
+                         (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
                          &info_.maxComputeUnits_)) {
     return false;
   }
