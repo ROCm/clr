@@ -28,6 +28,7 @@ set(HIP_WRAPPER_CMAKE_DIR ${HIP_WRAPPER_DIR}/cmake)
 set(HIP_WRAPPER_FINDHIP_DIR ${HIP_WRAPPER_DIR}/FindHIP)
 set(HIP_SRC_INC_DIR ${HIP_SRC_PATH}/include/hip)
 set(HIP_SRC_BIN_DIR ${HIP_SRC_PATH}/bin)
+set(HIP_INFO_FILE ".hipInfo")
 
 #Function to generate header template file
 function(create_header_template)
@@ -173,6 +174,12 @@ function(create_library_symlink)
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
                   ../../lib/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
   endforeach()
+  #Add symlink for .hipInfo
+  set(file_name ${HIP_INFO_FILE})
+  add_custom_target(link_${file_name} ALL
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMAND ${CMAKE_COMMAND} -E create_symlink
+                  ../../lib/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
 endfunction()
 
 function(create_cmake_symlink)
@@ -248,6 +255,8 @@ if(HIP_PLATFORM STREQUAL "amd" )
     install(FILES ${HIP_WRAPPER_LIB_DIR}/libamdhip64.a DESTINATION hip/lib COMPONENT binary)
   endif()#End BUILD_SHARED_LIBS
 endif()#End HIP_PLATFORM AMD
+#install hipInfo
+install(FILES ${HIP_WRAPPER_LIB_DIR}/${HIP_INFO_FILE} DESTINATION hip/lib COMPONENT binary)
 #create symlink to cmake files
 create_cmake_symlink()
 install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR} DESTINATION hip/lib COMPONENT binary)
