@@ -260,6 +260,8 @@ class NullDevice : public amd::Device {
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const { return false; }
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {};
+  virtual bool IsCacheFlushed(Device::CacheState state) const { return false; };
+  virtual void SetCacheState(Device::CacheState state) {};
   virtual void ReleaseGlobalSignal(void* signal) const {}
 
 #if defined(__clang__)
@@ -440,6 +442,8 @@ class Device : public NullDevice {
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
+  virtual bool IsCacheFlushed(Device::CacheState state) const;
+  virtual void SetCacheState(Device::CacheState state);
   virtual void ReleaseGlobalSignal(void* signal) const;
 
   //! Allocate host memory in terms of numa policy set by user
@@ -583,6 +587,7 @@ class Device : public NullDevice {
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
   hsa_signal_t prefetch_signal_;    //!< Prefetch signal, used to explicitly prefetch SVM on device
+  std::atomic<int> cache_state_;    //!< State of cache, kUnknown/kFlushedToDevice/kFlushedToSystem
 
   size_t gpuvm_segment_max_alloc_;
   size_t alloc_granularity_;

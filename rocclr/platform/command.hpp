@@ -102,7 +102,7 @@ class Event : public RuntimeObject {
   static const EventWaitList nullWaitList;
 
   struct ProfilingInfo {
-    ProfilingInfo(bool enabled = false) : enabled_(enabled), waves_(0), marker_ts_(false) {
+    ProfilingInfo(bool enabled = false) : enabled_(enabled), waves_(0), marker_ts_(0) {
       if (enabled) {
         clear();
         callback_ = nullptr;
@@ -113,10 +113,11 @@ class Event : public RuntimeObject {
     uint64_t submitted_;
     uint64_t start_;
     uint64_t end_;
-    bool enabled_;    //!< Profiling enabled for the wave limiter
-    uint32_t waves_;  //!< The number of waves used in a dispatch
+    bool enabled_;        //!< Profiling enabled for the wave limiter
+    uint32_t waves_;      //!< The number of waves used in a dispatch
     ProfilingCallback* callback_;
-    bool marker_ts_;
+    uint32_t marker_ts_;  //!< Marker with release scope
+                          //!< 5 - system scope, 3 - device scope, 1 - no scopes
     void clear() {
       queued_ = 0ULL;
       submitted_ = 0ULL;

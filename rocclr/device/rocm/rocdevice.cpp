@@ -180,6 +180,7 @@ Device::Device(hsa_agent_t bkendDevice)
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
   prefetch_signal_.handle = 0;
+  cache_state_ = Device::CacheState::kCacheStateInvalid;
 }
 
 void Device::setupCpuAgent() {
@@ -2635,6 +2636,17 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
                     start, end);
   }
 }
+
+// ================================================================================================
+bool Device::IsCacheFlushed(Device::CacheState state) const {
+  return (static_cast<int>(state) == cache_state_.load(std::memory_order_relaxed));
+}
+
+// ================================================================================================
+void Device::SetCacheState(Device::CacheState state) {
+  cache_state_.store(static_cast<int>(state), std::memory_order_relaxed);
+}
+
 // ================================================================================================
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
