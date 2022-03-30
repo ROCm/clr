@@ -1527,6 +1527,13 @@ class Device : public RuntimeObject {
     kKernArg = 2
   } MemorySegment;
 
+  typedef enum CacheState {
+    kCacheStateInvalid = -1,
+    kCacheStateIgnore = 0,
+    kCacheStateAgent = 1,
+    kCacheStateSystem = 2
+  } CacheState;
+
   typedef std::pair<LinkAttribute, int32_t /* value */> LinkAttrType;
 
   static constexpr size_t kP2PStagingSize = 4 * Mi;
@@ -1746,6 +1753,11 @@ class Device : public RuntimeObject {
       const amd::Event& event,  //!< AMD event for HW status validation
       bool wait = false         //!< If true then forces the event completion
       ) const {
+    return false;
+  };
+
+  // Returns bool value if the device cache is equal to the parameter
+  virtual bool IsCacheFlushed(CacheState state) const {
     return false;
   };
 

@@ -55,8 +55,14 @@ Event::Event(HostQueue& queue)
 }
 
 // ================================================================================================
-Event::Event() : callbacks_(NULL), status_(CL_SUBMITTED),
-    hw_event_(nullptr), notify_event_(nullptr), device_(nullptr) { notified_.clear(); }
+Event::Event()
+    : callbacks_(NULL),
+      status_(CL_SUBMITTED),
+      hw_event_(nullptr),
+      notify_event_(nullptr),
+      device_(nullptr) {
+  notified_.clear();
+}
 
 // ================================================================================================
 Event::~Event() {
@@ -241,7 +247,7 @@ bool Event::awaitCompletion() {
       return false;
     }
 
-    ClPrint(LOG_DEBUG, LOG_WAIT, "waiting for event %p to complete, current status %d",
+    ClPrint(LOG_DEBUG, LOG_WAIT, "Waiting for event %p to complete, current status %d",
       this, status());
     auto* queue = command().queue();
     if ((queue != nullptr) && queue->vdev()->ActiveWait()) {
@@ -256,7 +262,7 @@ bool Event::awaitCompletion() {
         lock_.wait();
       }
     }
-    ClPrint(LOG_DEBUG, LOG_WAIT, "event %p wait completed", this);
+    ClPrint(LOG_DEBUG, LOG_WAIT, "Event %p wait completed", this);
   }
 
   return status() == CL_COMPLETE;
@@ -277,7 +283,7 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
+      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       // Save notification, associated with the current event
       notify_event_ = command;
@@ -290,7 +296,7 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "queue marker to command queue: %p", queue);
+      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       command->release();
     }
@@ -336,7 +342,7 @@ void Command::enqueue() {
     Agent::postEventCreate(as_cl(static_cast<Event*>(this)), type_);
   }
 
-  ClPrint(LOG_DEBUG, LOG_CMD, "command is enqueued: %p", this);
+  ClPrint(LOG_DEBUG, LOG_CMD, "Command enqueued: %p", this);
 
   // Direct dispatch logic below will submit the command immediately, but the command status
   // update will occur later after flush() with a wait
@@ -360,7 +366,7 @@ void Command::enqueue() {
       EnableProfiling();
     }
 
-    if (isMarker && !profilingInfo().marker_ts_) {
+    if (isMarker && (profilingInfo().marker_ts_ == 0)) {
       // Update batch head for the current marker. Hence the status of all commands can be
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
@@ -414,6 +420,7 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
     profilingInfo_.callback_ = nullptr;
+    profilingInfo_.marker_ts_ = 1;
   }
   kernel_.retain();
 }
