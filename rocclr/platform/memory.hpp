@@ -143,7 +143,8 @@ class Memory : public amd::RuntimeObject {
 
   struct UserData
   {
-     int deviceId = 0;
+     int deviceId = 0;     //!< Device ID memory is allocated on
+     void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
   };
 
  protected:
