@@ -108,7 +108,8 @@ if(WIN32)
   elseif(DEFINED ENV{HIP_DIR})
     file(TO_CMAKE_PATH "$ENV{HIP_DIR}" HIP_DIR)
   else()
-    set(HIP_PATH "C:/Program Files/AMD HIP SDK/hip")
+    # using the HIP found
+    set(HIP_PATH ${PACKAGE_PREFIX_DIR})
   endif()
 else()
   # Linux - set a default path for ROCM_PATH
