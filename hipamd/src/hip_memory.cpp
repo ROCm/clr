@@ -28,7 +28,7 @@
 #include "amdocl/cl_vk_amd.hpp"
 
 // ================================================================================================
-amd::Memory* getMemoryObject(const void* ptr, size_t& offset) {
+amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
   amd::Memory *memObj = amd::MemObjMap::FindMemObj(ptr);
   if (memObj != nullptr) {
     const char* hostPtr = reinterpret_cast<const char*>(ptr);
@@ -51,7 +51,8 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset) {
     }
   } else {
     // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM and Xnack is disabled.
-    memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(ptr, offset);
+    memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(
+        ptr, offset, size);
   }
   return memObj;
 }
@@ -2413,7 +2414,7 @@ hipError_t hipMemsetD32Async(hipDeviceptr_t dst, int value, size_t count,
 hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent,
                                         size_t sizeBytes) {
   size_t offset = 0;
-  amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset);
+  amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset, sizeBytes);
 
   if (memory == nullptr) {
     return hipErrorInvalidValue;
