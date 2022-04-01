@@ -71,7 +71,11 @@ hipError_t Event::synchronize() {
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
   if (!g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, kWaitCompletion)) {
-    event_->awaitCompletion();
+    amd::Command* command = nullptr;
+    hipError_t status = recordCommand(command, event_->command().queue(), flags);
+    command->enqueue();
+    g_devices[deviceId()]->devices()[0]->IsHwEventReady(command->event(), kWaitCompletion);
+    command->release();
   }
 
   return hipSuccess;
@@ -202,11 +206,20 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   return hipSuccess;
 }
 
-hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue) {
+hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
+                                uint32_t ext_flags ) {
   if (command == nullptr) {
-    static constexpr bool kRecordExplicitGpuTs = true;
+    uint32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
+                            (hipEventReleaseToSystem | hipEventReleaseToDevice);
+    if (releaseFlags & hipEventReleaseToDevice) {
+      releaseFlags = amd::Device::kCacheStateAgent;
+    } else if (releaseFlags & hipEventReleaseToSystem) {
+      releaseFlags = amd::Device::kCacheStateSystem;
+    } else {
+      releaseFlags = amd::Device::kCacheStateIgnore;
+    }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, kRecordExplicitGpuTs);
+    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, releaseFlags);
   }
   return hipSuccess;
 }

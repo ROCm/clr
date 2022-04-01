@@ -130,7 +130,7 @@ hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue) {
+hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue, uint32_t flags) {
   bool recorded = isRecorded();
   if (!recorded) {
     command = new amd::Marker(*queue, kMarkerDisableFlush);

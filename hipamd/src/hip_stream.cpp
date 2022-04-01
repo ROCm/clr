@@ -208,7 +208,7 @@ void Stream::destroyAllStreams(int deviceId) {
 
 // ================================================================================================
 void iHipWaitActiveStreams(amd::HostQueue* blocking_queue, bool wait_null_stream) {
-  amd::Command::EventWaitList eventWaitList;
+  amd::Command::EventWaitList eventWaitList(0);
   {
     amd::ScopedLock lock(streamSetLock);
 
