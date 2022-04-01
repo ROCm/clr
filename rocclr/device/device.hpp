@@ -603,6 +603,8 @@ struct Info : public amd::EmbeddedObject {
 
   //! AQL Barrier Value Packet support
   bool aqlBarrierValue_;
+
+  bool pcie_atomics_; //!< Pcie atomics support flag
 };
 
 //! Device settings

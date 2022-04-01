@@ -374,6 +374,9 @@ class Device : public NullDevice {
   static const std::vector<AgentInfo>& getCpuAgents() { return cpu_agents_; }
 
   void setupCpuAgent(); // Setup the CPU agent which has the least NUMA distance to this GPU
+
+  void checkAtomicSupport(); //!< Check the support for pcie atomics
+
   //! Destructor for the physical HSA device
   virtual ~Device();
 
