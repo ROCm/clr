@@ -24,8 +24,64 @@
 
 namespace pal {
 
+static constexpr std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
+    PCIndexSelect::None,                     // CPF
+    PCIndexSelect::ShaderEngine,             // IA
+    PCIndexSelect::ShaderEngine,             // VGT
+    PCIndexSelect::ShaderArray,              // PA
+    PCIndexSelect::ShaderArray,              // SC
+    PCIndexSelect::ShaderEngine,             // SPI
+    PCIndexSelect::ShaderEngine,             // SQ
+    PCIndexSelect::ShaderArray,              // SX
+    PCIndexSelect::ComputeUnit,              // TA
+    PCIndexSelect::ComputeUnit,              // TD
+    PCIndexSelect::ComputeUnit,              // TCP
+    PCIndexSelect::Instance,                 // TCC
+    PCIndexSelect::Instance,                 // TCA
+    PCIndexSelect::ShaderArray,              // DB
+    PCIndexSelect::ShaderArray,              // CB
+    PCIndexSelect::None,                     // GDS
+    PCIndexSelect::None,                     // SRBM
+    PCIndexSelect::None,                     // GRBM
+    PCIndexSelect::ShaderEngine,             // GRBMSE
+    PCIndexSelect::None,                     // RLC
+    PCIndexSelect::Instance,                 // DMA
+    PCIndexSelect::None,                     // MC
+    PCIndexSelect::None,                     // CPG
+    PCIndexSelect::None,                     // CPC
+    PCIndexSelect::None,                     // WD
+    PCIndexSelect::None,                     // TCS
+    PCIndexSelect::None,                     // ATC
+    PCIndexSelect::None,                     // ATCL2
+    PCIndexSelect::None,                     // MCVML2
+    PCIndexSelect::Instance,                 // EA
+    PCIndexSelect::None,                     // RPB
+    PCIndexSelect::ShaderArray,              // RMI
+    PCIndexSelect::Instance,                 // UMCCH
+    PCIndexSelect::Instance,                 // GE
+    PCIndexSelect::ShaderArray,              // GL1A
+    PCIndexSelect::ShaderArray,              // GL1C
+    PCIndexSelect::ShaderArray,              // GL1CG
+    PCIndexSelect::Instance,                 // GL2A
+    PCIndexSelect::Instance,                 // GL2C
+    PCIndexSelect::None,                     // CHA
+    PCIndexSelect::Instance,                 // CHC
+    PCIndexSelect::None,                     // CHCG
+    PCIndexSelect::None,                     // GUS
+    PCIndexSelect::None,                     // GCR
+    PCIndexSelect::None,                     // PH
+    PCIndexSelect::ShaderArray,              // UTCL1
+    PCIndexSelect::None,                     // GeDist
+    PCIndexSelect::ShaderEngine,             // GeSe
+    PCIndexSelect::None,                     // Df
+}};
+
 PalCounterReference* PalCounterReference::Create(VirtualGPU& gpu) {
   Pal::Result result;
+
+  if (blockIdToIndexSelect.size() !=  static_cast<size_t>(Pal::GpuBlock::Count)) {
+    LogError("Size of blockIdToIndexSelect does not match GpuBlock::Count");
+  }
 
   // Create performance experiment
   Pal::PerfExperimentCreateInfo createInfo = {};
@@ -148,60 +204,6 @@ bool PalCounterReference::finalize() {
     return false;
   }
 }
-
-static constexpr std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
-    PCIndexSelect::None,                     // CPF
-    PCIndexSelect::ShaderEngine,             // IA
-    PCIndexSelect::ShaderEngine,             // VGT
-    PCIndexSelect::ShaderArray,              // PA
-    PCIndexSelect::ShaderArray,              // SC
-    PCIndexSelect::ShaderEngine,             // SPI
-    PCIndexSelect::ShaderEngine,             // SQ
-    PCIndexSelect::ShaderArray,              // SX
-    PCIndexSelect::ComputeUnit,              // TA
-    PCIndexSelect::ComputeUnit,              // TD
-    PCIndexSelect::ComputeUnit,              // TCP
-    PCIndexSelect::Instance,                 // TCC
-    PCIndexSelect::Instance,                 // TCA
-    PCIndexSelect::ShaderArray,              // DB
-    PCIndexSelect::ShaderArray,              // CB
-    PCIndexSelect::None,                     // GDS
-    PCIndexSelect::None,                     // SRBM
-    PCIndexSelect::None,                     // GRBM
-    PCIndexSelect::ShaderEngine,             // GRBMSE
-    PCIndexSelect::None,                     // RLC
-    PCIndexSelect::Instance,                 // DMA
-    PCIndexSelect::None,                     // MC
-    PCIndexSelect::None,                     // CPG
-    PCIndexSelect::None,                     // CPC
-    PCIndexSelect::None,                     // WD
-    PCIndexSelect::None,                     // TCS
-    PCIndexSelect::None,                     // ATC
-    PCIndexSelect::None,                     // ATCL2
-    PCIndexSelect::None,                     // MCVML2
-    PCIndexSelect::Instance,                 // EA
-    PCIndexSelect::None,                     // RPB
-    PCIndexSelect::ShaderArray,              // RMI
-    PCIndexSelect::Instance,                 // UMCCH
-    PCIndexSelect::Instance,                 // GE
-    PCIndexSelect::ShaderArray,              // GL1A
-    PCIndexSelect::ShaderArray,              // GL1C
-    PCIndexSelect::ShaderArray,              // GL1CG
-    PCIndexSelect::Instance,                 // GL2A
-    PCIndexSelect::Instance,                 // GL2C
-    PCIndexSelect::None,                     // CHA
-    PCIndexSelect::Instance,                 // CHC
-    PCIndexSelect::None,                     // CHCG
-    PCIndexSelect::None,                     // GUS
-    PCIndexSelect::None,                     // GCR
-    PCIndexSelect::None,                     // PH
-    PCIndexSelect::ShaderArray,              // UTCL1
-    PCIndexSelect::None,                     // GeDist
-    PCIndexSelect::ShaderEngine,             // GeSe
-    PCIndexSelect::None,                     // Df
-}};
-
-static_assert(blockIdToIndexSelect.size() ==  static_cast<size_t>(Pal::GpuBlock::Count), "size of blockIdToIndexSelect does not match GpuBlock::Count");
 
 // Converting from ORCA cmndefs.h to PAL palPerfExperiment.h
 static constexpr std::array<std::pair<int, int>, 83> ciBlockIdOrcaToPal = {{
