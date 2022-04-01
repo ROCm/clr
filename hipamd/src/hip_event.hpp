@@ -53,7 +53,7 @@ typedef struct ihipIpcEventShmem_s {
 
 class EventMarker : public amd::Marker {
  public:
-  EventMarker(amd::HostQueue& queue, bool disableFlush, bool markerTs = false)
+  EventMarker(amd::HostQueue& queue, bool disableFlush, uint32_t markerTs = 0)
       : amd::Marker(queue, disableFlush) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.callback_ = nullptr;
@@ -93,7 +93,8 @@ class Event {
   virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   virtual hipError_t streamWait(hipStream_t stream, uint flags);
 
-  virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
+  virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue,
+                                   uint32_t flags = 0);
   virtual hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
   hipError_t addMarker(hipStream_t stream, amd::Command* command, bool record);
 
@@ -199,7 +200,7 @@ class IPCEvent : public Event {
   hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   hipError_t streamWait(hipStream_t stream, uint flags);
 
-  hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue, uint32_t flags = 0);
   hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
 };
 
