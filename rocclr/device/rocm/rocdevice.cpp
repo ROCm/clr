@@ -207,6 +207,16 @@ void Device::setupCpuAgent() {
           system_segment_.handle, system_coarse_segment_.handle, _bkendDevice.handle);
 }
 
+void Device::checkAtomicSupport() {
+  std::vector<amd::Device::LinkAttrType> link_attrs;
+  link_attrs.push_back(std::make_pair(LinkAttribute::kLinkAtomicSupport, 0));
+  if (findLinkInfo(system_segment_, &link_attrs)) {
+    if (link_attrs[0].second == 1) {
+      info_.pcie_atomics_ = true;
+    }
+  }
+}
+
 Device::~Device() {
 #ifdef WITH_AMDGPU_PRO
   delete pro_device_;
@@ -1166,6 +1176,8 @@ bool Device::populateOCLDeviceConstants() {
   assert(info_.globalMemChannels_ > 0);
 
   setupCpuAgent();
+
+  checkAtomicSupport();
 
   assert(system_segment_.handle != 0);
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(

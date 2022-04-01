@@ -2781,7 +2781,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           break;
         }
         case amd::KernelParameterDescriptor::HiddenHostcallBuffer: {
-          if (amd::IS_HIP) {
+          if (roc_device_.info().pcie_atomics_) {
             uintptr_t buffer = reinterpret_cast<uintptr_t>(
               roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups, cuMask_));
             if (!buffer) {
@@ -2790,6 +2790,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
               return false;
             }
             WriteAqlArgAt(hidden_arguments, buffer, it.size_, it.offset_);
+          } else {
+            ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
+                    "Pcie atomics not enabled, printf not supported");
+            return false;
           }
           break;
         }
