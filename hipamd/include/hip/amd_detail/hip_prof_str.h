@@ -344,7 +344,10 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemRetainAllocationHandle = 331,
   HIP_API_ID_hipMemSetAccess = 332,
   HIP_API_ID_hipMemUnmap = 333,
-  HIP_API_ID_LAST = 333,
+  HIP_API_ID_hipDeviceSetGraphMemAttribute = 334,
+  HIP_API_ID_hipDeviceGetGraphMemAttribute = 335,
+  HIP_API_ID_hipDeviceGraphMemTrim = 336,
+  HIP_API_ID_LAST = 336,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -554,6 +557,9 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphicsSubResourceGetMappedArray: return "hipGraphicsSubResourceGetMappedArray";
     case HIP_API_ID_hipGraphicsUnmapResources: return "hipGraphicsUnmapResources";
     case HIP_API_ID_hipGraphicsUnregisterResource: return "hipGraphicsUnregisterResource";
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute: return "hipDeviceSetGraphMemAttribute";
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute: return "hipDeviceGetGraphMemAttribute";
+    case HIP_API_ID_hipDeviceGraphMemTrim: return "hipDeviceGraphMemTrim";
     case HIP_API_ID_hipHccModuleLaunchKernel: return "hipHccModuleLaunchKernel";
     case HIP_API_ID_hipHostAlloc: return "hipHostAlloc";
     case HIP_API_ID_hipHostFree: return "hipHostFree";
@@ -889,6 +895,9 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphicsResourceGetMappedPointer", name) == 0) return HIP_API_ID_hipGraphicsResourceGetMappedPointer;
   if (strcmp("hipGraphicsSubResourceGetMappedArray", name) == 0) return HIP_API_ID_hipGraphicsSubResourceGetMappedArray;
   if (strcmp("hipGraphicsUnmapResources", name) == 0) return HIP_API_ID_hipGraphicsUnmapResources;
+  if (strcmp("hipDeviceGetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceGetGraphMemAttribute;
+  if (strcmp("hipDeviceSetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceSetGraphMemAttribute;
+  if (strcmp("hipDeviceGraphMemTrim", name) == 0) return HIP_API_ID_hipDeviceGraphMemTrim;
   if (strcmp("hipGraphicsUnregisterResource", name) == 0) return HIP_API_ID_hipGraphicsUnregisterResource;
   if (strcmp("hipHccModuleLaunchKernel", name) == 0) return HIP_API_ID_hipHccModuleLaunchKernel;
   if (strcmp("hipHostAlloc", name) == 0) return HIP_API_ID_hipHostAlloc;
@@ -1930,6 +1939,19 @@ typedef struct hip_api_data_s {
       size_t size__val;
       hipGraphicsResource_t resource;
     } hipGraphicsResourceGetMappedPointer;
+    struct {
+      int device;
+      hipGraphMemAttributeType attr;
+      void* value;
+    } hipDeviceGetGraphMemAttribute;
+    struct {
+      int device;
+      hipGraphMemAttributeType attr;
+      void* value;
+    } hipDeviceSetGraphMemAttribute;
+    struct {
+      int device;
+    } hipDeviceGraphMemTrim;
     struct {
       hipArray_t* array;
       hipArray_t array__val;
@@ -3903,6 +3925,22 @@ typedef struct hip_api_data_s {
 #define INIT_hipGraphicsUnregisterResource_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphicsUnregisterResource.resource = (hipGraphicsResource_t)resource; \
 };
+// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+#define INIT_hipDeviceGetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceGetGraphMemAttribute.device = (int)device; \
+  cb_data.args.hipDeviceGetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
+  cb_data.args.hipDeviceGetGraphMemAttribute.value = (void*)value; \
+};
+// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+#define INIT_hipDeviceSetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceSetGraphMemAttribute.device = (int)device; \
+  cb_data.args.hipDeviceSetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
+  cb_data.args.hipDeviceSetGraphMemAttribute.value = (void*)value; \
+};
+// hipDeviceGraphMemTrim[('int', 'device')]
+#define INIT_hipDeviceGraphMemTrim_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceGraphMemTrim.device = (int)device; \
+};
 // hipHccModuleLaunchKernel[('hipFunction_t', 'f'), ('unsigned int', 'globalWorkSizeX'), ('unsigned int', 'globalWorkSizeY'), ('unsigned int', 'globalWorkSizeZ'), ('unsigned int', 'blockDimX'), ('unsigned int', 'blockDimY'), ('unsigned int', 'blockDimZ'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'hStream'), ('void**', 'kernelParams'), ('void**', 'extra'), ('hipEvent_t', 'startEvent'), ('hipEvent_t', 'stopEvent')]
 #define INIT_hipHccModuleLaunchKernel_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipHccModuleLaunchKernel.f = (hipFunction_t)f; \
@@ -5714,6 +5752,15 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipGraphicsUnregisterResource[('hipGraphicsResource_t', 'resource')]
     case HIP_API_ID_hipGraphicsUnregisterResource:
+      break;
+// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
+      break;
+// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
+      break;
+// hipDeviceGraphMemTrim [('int', 'device')]
+    case HIP_API_ID_hipDeviceGraphMemTrim:
       break;
 // hipHccModuleLaunchKernel[('hipFunction_t', 'f'), ('unsigned int', 'globalWorkSizeX'), ('unsigned int', 'globalWorkSizeY'), ('unsigned int', 'globalWorkSizeZ'), ('unsigned int', 'blockDimX'), ('unsigned int', 'blockDimY'), ('unsigned int', 'blockDimZ'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'hStream'), ('void**', 'kernelParams'), ('void**', 'extra'), ('hipEvent_t', 'startEvent'), ('hipEvent_t', 'stopEvent')]
     case HIP_API_ID_hipHccModuleLaunchKernel:
@@ -7533,6 +7580,25 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", numDependencies=" << data->args.hipGraphRemoveDependencies.numDependencies;
       oss << ")";
     break;
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
+      oss << "hipDeviceSetGraphMemAttribute(";
+      oss << "device=" << data->args.hipDeviceSetGraphMemAttribute.device;
+      oss << ", attr=" << data->args.hipDeviceSetGraphMemAttribute.attr;
+      oss << ", value=" << data->args.hipDeviceSetGraphMemAttribute.value;
+      oss << ")";
+      break;
+    case HIP_API_ID_hipDeviceGraphMemTrim:
+      oss << "hipDeviceGraphMemTrim(";
+      oss << "device=" << data->args.hipDeviceGraphMemTrim.device;
+      oss << ")";
+      break;
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
+      oss << "hipDeviceGetGraphMemAttribute(";
+      oss << "device=" << data->args.hipDeviceGetGraphMemAttribute.device;
+      oss << ", attr=" << data->args.hipDeviceGetGraphMemAttribute.attr;
+      oss << ", value=" << data->args.hipDeviceGetGraphMemAttribute.value;
+      oss << ")";
+      break;
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
       oss << "hipGraphicsGLRegisterBuffer(";
       if (data->args.hipGraphicsGLRegisterBuffer.resource == NULL) oss << "resource=NULL";

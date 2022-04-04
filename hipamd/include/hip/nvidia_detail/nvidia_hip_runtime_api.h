@@ -1133,6 +1133,7 @@ typedef enum cudaStreamCaptureStatus hipStreamCaptureStatus;
 typedef union cudaKernelNodeAttrValue hipKernelNodeAttrValue;
 typedef enum  cudaKernelNodeAttrID hipKernelNodeAttrID;
 
+typedef enum  cudaGraphMemAttributeType hipGraphMemAttributeType;
 
 #if CUDA_VERSION >= CUDA_11030
 typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDependenciesFlags;
@@ -3017,6 +3018,18 @@ inline static hipError_t hipGraphExecEventRecordNodeSetEvent(hipGraphExec_t hGra
 inline static hipError_t hipGraphExecEventWaitNodeSetEvent(hipGraphExec_t hGraphExec,
                                                            hipGraphNode_t hNode, hipEvent_t event) {
     return hipCUDAErrorTohipError(cudaGraphExecEventWaitNodeSetEvent(hGraphExec, hNode, event));
+}
+
+inline static hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
+    return hipCUDAErrorTohipError(cudaDeviceGetGraphMemAttribute(device, attr, value));
+}
+
+inline static hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
+    return hipCUDAErrorTohipError(cudaDeviceSetGraphMemAttribute(device, attr, value));
+}
+
+inline static hipError_t hipDeviceGraphMemTrim(int device) {
+    return hipCUDAErrorTohipError(cudaDeviceGraphMemTrim(device));
 }
 #endif
 
