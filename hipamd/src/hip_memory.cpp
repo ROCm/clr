@@ -2608,8 +2608,13 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
   HIP_RETURN(hipSuccess);
 }
 
+
 hipError_t hipHostGetDevicePointer(void** devicePointer, void* hostPointer, unsigned flags) {
   HIP_INIT_API(hipHostGetDevicePointer, devicePointer, hostPointer, flags);
+
+  if (devicePointer == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   size_t offset = 0;
 
