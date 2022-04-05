@@ -788,31 +788,25 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
   hipError_t SetParams(const void* symbol, const void* src, size_t count, size_t offset,
                        hipMemcpyKind kind) {
 
-    size_t zeroOffset = 0;
-    amd::Memory* srcMemory = getMemoryObject(src, zeroOffset);
-    amd::Memory* dstMemory = getMemoryObject(symbol, zeroOffset);
-    hipMemoryType srcMemoryType =
-        amd::MemObjMap::FindMemObj(srcMemory) ? hipMemoryTypeDevice : hipMemoryTypeHost;
-    hipMemoryType dstMemoryType =
-        amd::MemObjMap::FindMemObj(dstMemory) ? hipMemoryTypeDevice : hipMemoryTypeHost;
-
-    // Return error if sizeBytes passed to memcpy is more than the actual size allocated
-    if ((dstMemory && count > (dstMemory->getSize() - offset)) ||
-        (srcMemory && count > (srcMemory->getSize() - offset))) {
-      return hipErrorInvalidValue;
-    }
-    // check the kind with memory types
-    if (std::get<0>(hip::getMemoryType(kind)) != srcMemoryType)
-      return hipErrorInvalidValue;
-    if (std::get<1>(hip::getMemoryType(kind)) != dstMemoryType)
-        return hipErrorInvalidValue;
-
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
-
-    hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+    //check to see if src is also a symbol (cuda negative test case)
+    hipError_t status = ihipMemcpySymbol_validate(src, count, offset, sym_size, device_ptr);
+    if (status == hipSuccess) {
+      return hipErrorInvalidValue;
+    }
+    status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
     if (status != hipSuccess) {
       return status;
+    }
+    size_t dOffset = 0;
+    amd::Memory* srcMemory = getMemoryObject(src, dOffset);
+    if(srcMemory == nullptr && kind != hipMemcpyHostToDevice) {
+      return hipErrorInvalidValue;
+    } else if (srcMemory != nullptr && kind != hipMemcpyDeviceToDevice) {
+      return hipErrorInvalidValue;
+    } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyDeviceToHost) {
+      return hipErrorInvalidValue;
     }
     symbol_ = symbol;
     src_ = src;
