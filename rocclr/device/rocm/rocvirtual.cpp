@@ -2733,6 +2733,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 
     amd::NDRange local(sizes.local());
     address hidden_arguments = const_cast<address>(parameters);
+    // Calculate local size if it wasn't provided
+    devKernel->FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
 
     // Check if runtime has to setup hidden arguments
     for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
@@ -2931,7 +2933,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchPacket.grid_size_y = sizes.dimensions() > 1 ? newGlobalSize[1] : 1;
     dispatchPacket.grid_size_z = sizes.dimensions() > 2 ? newGlobalSize[2] : 1;
 
-    devKernel->FindLocalWorkSize(sizes.dimensions(), sizes.global(), local);
     dispatchPacket.workgroup_size_x = sizes.dimensions() > 0 ? local[0] : 1;
     dispatchPacket.workgroup_size_y = sizes.dimensions() > 1 ? local[1] : 1;
     dispatchPacket.workgroup_size_z = sizes.dimensions() > 2 ? local[2] : 1;
