@@ -2287,6 +2287,9 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
     // dst ptr is host ptr hence error
     return hipErrorInvalidValue;
   }
+  if (memory->getSize() < sizeBytes) {
+    return hipErrorInvalidValue;
+  }
   return hipSuccess;
 }
 
