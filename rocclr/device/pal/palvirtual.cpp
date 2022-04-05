@@ -878,6 +878,9 @@ VirtualGPU::VirtualGPU(Device& device)
 
   queues_[MainEngine] = nullptr;
   queues_[SdmaEngine] = nullptr;
+
+  // The hostcall buffer for this vqueue is initialized on demand.
+  hostcallBuffer_ = nullptr;
 }
 
 bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
@@ -1034,9 +1037,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_,
                                               &dbg_vmid);
   }
-
-  // The hostcall buffer for this vqueue is initialized on demand.
-  hostcallBuffer_ = nullptr;
 
   return true;
 }
