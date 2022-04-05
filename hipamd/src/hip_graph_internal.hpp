@@ -699,11 +699,26 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
                        hipMemcpyKind kind) {
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
-
-    hipError_t status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
+    //check to see if dst is also a symbol (cuda negative test case)
+    hipError_t status = ihipMemcpySymbol_validate(dst, count, offset, sym_size, device_ptr);
+    if (status == hipSuccess) {
+      return hipErrorInvalidValue;
+    }
+    status = ihipMemcpySymbol_validate(symbol, count, offset, sym_size, device_ptr);
     if (status != hipSuccess) {
       return status;
     }
+
+    size_t dOffset = 0;
+    amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+    if( dstMemory == nullptr && kind != hipMemcpyHostToDevice) {
+      return hipErrorInvalidMemcpyDirection;
+    } else if ( dstMemory != nullptr && kind != hipMemcpyDeviceToDevice) {
+      return hipErrorInvalidMemcpyDirection;
+    } else if ( kind == hipMemcpyHostToHost || kind == hipMemcpyDeviceToHost) {
+      return hipErrorInvalidMemcpyDirection;
+    }
+
     dst_ = dst;
     symbol_ = symbol;
     count_ = count;
