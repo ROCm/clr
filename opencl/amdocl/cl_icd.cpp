@@ -27,8 +27,6 @@
 #include "cl_d3d11_amd.hpp"
 #endif  //_WIN32
 
-#include <icd/loader/icd_dispatch.h>
-
 #include <mutex>
 
 amd::PlatformIDS amd::PlatformID::Platform =  //{ NULL };
