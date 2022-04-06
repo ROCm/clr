@@ -13,12 +13,17 @@ set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
 include(GNUInstallDirs)
 
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
+option(BUILD_ICD "Enable building OpenCL ICD Loader" ON)
 option(EMU_ENV "Enable building for emulation environment" OFF)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
 
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
-add_subdirectory(khronos/icd)
+if(BUILD_ICD)
+  add_subdirectory(khronos/icd)
+else()
+  find_package(OpenCL REQUIRED)
+endif()
 add_subdirectory(amdocl)
 add_subdirectory(tools/clinfo)
 add_subdirectory(tools/cltrace)
@@ -56,8 +61,10 @@ if (DEFINED ROCM_PATCH_VERSION)
   set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
 endif()
 
-get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
-get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
+if(BUILD_ICD)
+  get_target_property(OPENCL_LIB_VERSION_MAJOR OpenCL SOVERSION)
+  get_target_property(OPENCL_LIB_VERSION_STRING OpenCL VERSION)
+endif()
 
 #Set Package Version
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
@@ -81,11 +88,13 @@ endif()
 
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
-set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-ocl-icd)
-configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
-configure_file(packaging/rocm-ocl-icd.prerm ${BUILD_DIR}/prerm @ONLY)
-configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
-configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
+if(BUILD_ICD)
+  set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-ocl-icd)
+  configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
+  configure_file(packaging/rocm-ocl-icd.prerm ${BUILD_DIR}/prerm @ONLY)
+  configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
+  configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
+endif()
 
 add_subdirectory(packaging)
 
