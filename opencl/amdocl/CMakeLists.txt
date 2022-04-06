@@ -111,6 +111,11 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
+if(WIN32)
+  configure_file(amdocl.rc.in amdocl_info.rc @ONLY)
+  target_sources(amdocl PRIVATE amdocl_info.rc)
+endif()
+
 target_link_libraries(amdocl PUBLIC rocclr)
 
 INSTALL(TARGETS amdocl
