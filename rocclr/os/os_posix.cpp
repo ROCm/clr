@@ -701,14 +701,14 @@ void Os::setCurrentStackPtr(address sp) {
   sp -= sizeof(void*);
   *(void**)sp = __builtin_return_address(0);
 
-#if defined(ATI_ARCH_ARM)
-  assert(!"Unimplemented");
-#else
+#if defined(ATI_ARCH_X86)
   __asm__ __volatile__(
 #if !defined(OMIT_FRAME_POINTER)
       LP64_SWITCH("movl (%%ebp),%%ebp;", "movq (%%rbp),%%rbp;")
 #endif  // !OMIT_FRAME_POINTER
           LP64_SWITCH("movl %0,%%esp; ret;", "movq %0,%%rsp; ret;")::"r"(sp));
+#else
+  assert(!"Unimplemented");
 #endif
 }
 
