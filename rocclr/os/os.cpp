@@ -112,7 +112,7 @@ int Os::processorCount_ = 0;
 void Os::spinPause() {
 #if defined(ATI_ARCH_X86)
   _mm_pause();
-#elif defined(__ARM_ARCH_7A__)
+#elif defined(ATI_ARCH_ARM)
   __asm__ __volatile__("yield");
 #endif
 }

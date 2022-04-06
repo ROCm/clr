@@ -21,15 +21,11 @@
 #ifndef TOP_HPP_
 #define TOP_HPP_
 
-#if defined(__GNUC__)
-#if defined(__arm__) || defined(__aarch64__)
+#if defined(__ARM_ARCH_7__) || defined(__ARM_ARCH_7A__) || defined(__arm) || defined(__arm__) || defined(_M_ARM) || defined(__aarch64__) || defined(_M_ARM64)
 #define ATI_ARCH_ARM
-#elif defined(__x86__) || defined(__x86_64__)
+#elif defined(i386) || defined(__i386) || defined(__i386__) || defined(_M_IX86) || defined(__x86__) || defined(__x86_64) || defined(__x86_64__) || defined(__amd64) || defined(__amd64__) || defined(_M_X64) || defined(_M_AMD64)
 #define ATI_ARCH_X86
 #endif
-#else /*!__GNUC__*/
-#define ATI_ARCH_X86
-#endif /*!__GNUC__*/
 
 #if defined(ATI_ARCH_ARM)
 #define __EXPORTED_HEADERS__ 1
@@ -51,9 +47,9 @@
 #define CL_DEVICE_HOST_UNIFIED_MEMORY 0x1035
 #endif
 
-#if !defined(ATI_ARCH_ARM)
+#if defined(ATI_ARCH_X86)
 #include <xmmintrin.h>
-#endif /*!ATI_ARCH_ARM*/
+#endif /*ATI_ARCH_X86*/
 
 #include <atomic>
 #include <cstdint>
