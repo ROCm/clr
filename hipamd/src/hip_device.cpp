@@ -90,15 +90,11 @@ Device::~Device() {
 
 }
 
-namespace amd {
-
-void shutDown() {
+void ihipDestroyDevice() {
   for (auto deviceHandle : g_devices) {
     delete deviceHandle;
   }
 }
-
-}  // namespace amd
 
 hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId) {
   if (deviceId < 0 || static_cast<size_t>(deviceId) >= g_devices.size() || device == nullptr) {
