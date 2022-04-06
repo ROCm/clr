@@ -27,8 +27,6 @@
 #include "platform/program.hpp"
 #include "os/os.hpp"
 
-#include <icd/loader/icd_dispatch.h>
-
 /*! \addtogroup API
  *  @{
  *
