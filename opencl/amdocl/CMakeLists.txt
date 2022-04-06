@@ -94,6 +94,11 @@ target_sources(amdocl PRIVATE
   cl_svm.cpp
   cl_thread_trace_amd.cpp)
 
+if(WIN32)
+  target_sources(amdocl PRIVATE
+  cl_runtime.cpp)
+endif()
+
 if(BUILD_SHARED_LIBS)
   if(WIN32)
     target_sources(amdocl PRIVATE amdocl.def)
