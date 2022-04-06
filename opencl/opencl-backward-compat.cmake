@@ -88,18 +88,20 @@ endfunction()
 
 #function to create symlink to libraries
 function(create_library_symlink)
-  file(MAKE_DIRECTORY ${OPENCL_WRAPPER_LIB_DIR})
-  set(LIB_OPENCL "libOpenCL.so")
-  set(MAJ_VERSION "${OPENCL_LIB_VERSION_MAJOR}")
-  set(SO_VERSION "${OPENCL_LIB_VERSION_STRING}")
-  set(library_files "${LIB_OPENCL}"  "${LIB_OPENCL}.${MAJ_VERSION}" "${LIB_OPENCL}.${SO_VERSION}")
+  if(BUILD_ICD)
+    file(MAKE_DIRECTORY ${OPENCL_WRAPPER_LIB_DIR})
+    set(LIB_OPENCL "libOpenCL.so")
+    set(MAJ_VERSION "${OPENCL_LIB_VERSION_MAJOR}")
+    set(SO_VERSION "${OPENCL_LIB_VERSION_STRING}")
+    set(library_files "${LIB_OPENCL}"  "${LIB_OPENCL}.${MAJ_VERSION}" "${LIB_OPENCL}.${SO_VERSION}")
 
-  foreach(file_name ${library_files})
-     add_custom_target(link_${file_name} ALL
+    foreach(file_name ${library_files})
+      add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
                   ../../${CMAKE_INSTALL_LIBDIR}/${file_name} ${OPENCL_WRAPPER_LIB_DIR}/${file_name})
-  endforeach()
+    endforeach()
+  endif()
   if(BUILD_SHARED_LIBS)
     set(LIB_AMDDOC "libamdocl64.so")
   else()
@@ -124,7 +126,9 @@ install(DIRECTORY ${OPENCL_WRAPPER_BIN_DIR}  DESTINATION ${OPENCL} COMPONENT bin
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 # Create symlink to libraries
 create_library_symlink()
-install(DIRECTORY ${OPENCL_WRAPPER_LIB_DIR}  DESTINATION ${OPENCL} COMPONENT icd)
+if(BUILD_ICD)
+  install(DIRECTORY ${OPENCL_WRAPPER_LIB_DIR}  DESTINATION ${OPENCL} COMPONENT icd)
+endif()
 if(BUILD_SHARED_LIBS)
   install(FILES ${OPENCL_WRAPPER_DIR}/libamdocl64.so  DESTINATION ${OPENCL}/lib COMPONENT binary)
 else()
