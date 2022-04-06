@@ -82,8 +82,6 @@ public:
 
 inline bool Runtime::initialized() { return initialized_; }
 
-extern void shutDown();
-
 }  // namespace amd
 
 #endif /*RUNTIME_HPP_*/
