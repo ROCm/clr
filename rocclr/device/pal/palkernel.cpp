@@ -374,12 +374,16 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         if (sizes.dimensions() >= 2) {
           WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[1] / local[1]),
                         it.size_, it.offset_);
+        } else {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(1), it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenBlockCountZ:
         if (sizes.dimensions() >= 3) {
           WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(global[2] / local[2]),
                         it.size_, it.offset_);
+        } else {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(1), it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenGroupSizeX:
@@ -388,11 +392,15 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
       case amd::KernelParameterDescriptor::HiddenGroupSizeY:
         if (sizes.dimensions() >= 2) {
           WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[1]), it.size_, it.offset_);
+        } else {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(1), it.size_, it.offset_);
         }
-        break;
+      break;
       case amd::KernelParameterDescriptor::HiddenGroupSizeZ:
         if (sizes.dimensions() >= 3) {
           WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[2]), it.size_, it.offset_);
+        } else {
+          WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(1), it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenRemainderX:
@@ -436,11 +444,6 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
   if (signature.version() == kernel.signature().version()) {
     memcpy(aqlArgBuf, parameters, argsBufferSize());
   }
-
-  // Note: In a case of structs the size won't match,
-  // since HSAIL compiler expects a reference...
-  assert(argsBufferSize() <= signature.paramsSize() &&
-         "A mismatch of sizes of arguments between compiler and runtime!");
 
   // hsa_kernel_dispatch_packet_t disp;
   hsa_kernel_dispatch_packet_t* hsaDisp =

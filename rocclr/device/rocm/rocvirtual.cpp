@@ -2840,12 +2840,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           if (sizes.dimensions() >= 2) {
             WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(newGlobalSize[1] / local[1]),
                           it.size_, it.offset_);
+          } else {
+            WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(1), it.size_, it.offset_);
           }
           break;
         case amd::KernelParameterDescriptor::HiddenBlockCountZ:
           if (sizes.dimensions() >= 3) {
             WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(newGlobalSize[2] / local[2]),
                           it.size_, it.offset_);
+          } else {
+            WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(1), it.size_, it.offset_);
           }
           break;
         case amd::KernelParameterDescriptor::HiddenGroupSizeX:
@@ -2854,11 +2858,15 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
         case amd::KernelParameterDescriptor::HiddenGroupSizeY:
           if (sizes.dimensions() >= 2) {
             WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[1]), it.size_, it.offset_);
+          } else {
+            WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(1), it.size_, it.offset_);
           }
           break;
         case amd::KernelParameterDescriptor::HiddenGroupSizeZ:
           if (sizes.dimensions() >= 3) {
             WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(local[2]), it.size_, it.offset_);
+          } else {
+            WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(1), it.size_, it.offset_);
           }
           break;
         case amd::KernelParameterDescriptor::HiddenRemainderX:
@@ -2906,11 +2914,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       // Load all kernel arguments
       memcpy(argBuffer, parameters, gpuKernel.KernargSegmentByteSize());
     }
-
-    // Note: In a case of structs the size won't match,
-    // since HSAIL compiler expects a reference...
-    assert(gpuKernel.KernargSegmentByteSize() <= signature.paramsSize() &&
-      "A mismatch of sizes of arguments between compiler and runtime!");
 
     // Check for group memory overflow
     //! @todo Check should be in HSA - here we should have at most an assert
