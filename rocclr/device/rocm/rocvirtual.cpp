@@ -2618,7 +2618,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
   uint64_t vqVA = reinterpret_cast<uint64_t>(vqMem->getDeviceMemory());
   uint64_t pattern = 0;
   amd::Coord3D origin(0, 0, 0);
-  amd::Coord3D region(virtualQueue_->getSize(), 0, 0);
+  amd::Coord3D region(virtualQueue_->getSize(), 1, 1);
 
   if (!dev().xferMgr().fillBuffer(*vqMem, &pattern, sizeof(pattern), region, origin, region)) {
     return false;
