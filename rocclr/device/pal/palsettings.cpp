@@ -497,10 +497,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Enable some OpenCL 2.0 extensions
   if (oclVersion_ >= OpenCL20) {
-    {
-      // Not supported by Unknown device
-      enableExtension(ClKhrGLDepthImages);
-    }
     enableExtension(ClKhrSubGroups);
     enableExtension(ClKhrDepthImages);
 
