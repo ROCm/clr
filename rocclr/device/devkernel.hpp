@@ -277,7 +277,7 @@ static const std::map<std::string, uint32_t> ArgValueKindV3 = {
   {"hidden_default_queue",      amd::KernelParameterDescriptor::HiddenDefaultQueue},
   {"hidden_completion_action",  amd::KernelParameterDescriptor::HiddenCompletionAction},
   {"hidden_multigrid_sync_arg", amd::KernelParameterDescriptor::HiddenMultiGridSync},
-  {"hidden_heap",               amd::KernelParameterDescriptor::HiddenHeap},
+  {"hidden_heap_v1",            amd::KernelParameterDescriptor::HiddenHeap},
   {"hidden_hostcall_buffer",    amd::KernelParameterDescriptor::HiddenHostcallBuffer},
   {"hidden_block_count_x",      amd::KernelParameterDescriptor::HiddenBlockCountX},
   {"hidden_block_count_y",      amd::KernelParameterDescriptor::HiddenBlockCountY},
