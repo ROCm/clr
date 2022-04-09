@@ -48,7 +48,7 @@ RTCProgram::RTCProgram(std::string name_) : name(name_) {
   const std::string hipVerMinor{"-DHIP_VERSION_MINOR=" + std::to_string(HIP_VERSION_MINOR)};
   const std::string hipVerPatch{"-DHIP_VERSION_PATCH=" + std::to_string(HIP_VERSION_PATCH)};
 
-  compileOptions.reserve(18);  // count of options below
+  compileOptions.reserve(20);  // count of options below
   compileOptions.push_back("-O3");
 
 #ifdef HIPRTC_EARLY_INLINE
@@ -72,7 +72,8 @@ RTCProgram::RTCProgram(std::string name_) : name(name_) {
   compileOptions.push_back("-std=c++14");
   compileOptions.push_back("-nogpuinc");
 #ifdef _WIN32
-  compileOptions.push_back("-target x86_64-pc-windows-msvc");
+  compileOptions.push_back("-target");
+  compileOptions.push_back("x86_64-pc-windows-msvc");
   compileOptions.push_back("-fms-extensions");
   compileOptions.push_back("-fms-compatibility");
 #endif
