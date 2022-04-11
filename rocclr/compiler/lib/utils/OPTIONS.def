@@ -1267,6 +1267,14 @@ OPTION(OT_BOOL, \
        false, 0, 0, NULL, \
        "Enable the xnack feature for Finalizer/SC")
 
+// -code-object-version=<num> : code object version
+OPTION(OT_UINT32, \
+       OA_RUNTIME|OVA_OPTIONAL|OA_SEPARATOR_EQUAL, \
+       "code-object-version", NULL, \
+       LCCodeObjectVersion, \
+       4, 4, 5, NULL, \
+       "Specify code object ABI version. Allowed values are 4, and 5. Defaults to 4. (COMGR only)")
+
 /*
    Do not remove the following line. Any option should be
    added above this line.

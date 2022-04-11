@@ -346,7 +346,7 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
 bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                               const std::vector<std::string>& options, const bool requiredDump,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
-                              char* binaryData[], size_t* binarySize) {
+                              char* binaryData[], size_t* binarySize, const bool link_dev_libs) {
 
   amd_comgr_language_t langver;
   setLanguage(amdOptions->oVariables->CLStd, &langver);
@@ -364,19 +364,22 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   amd_comgr_status_t status = createAction(langver, options, &action, &hasAction);
 
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::create_data_set(&dataSetDevLibs);
+  if (link_dev_libs) {
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      status = amd::Comgr::create_data_set(&dataSetDevLibs);
+    }
+
+    if (status == AMD_COMGR_STATUS_SUCCESS) {
+      hasDataSetDevLibs = true;
+      status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
+                                    dataSetDevLibs);
+      extractBuildLog(dataSetDevLibs);
+    }
   }
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    hasDataSetDevLibs = true;
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
-                                   dataSetDevLibs);
-    extractBuildLog(dataSetDevLibs);
-  }
-
-  if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, dataSetDevLibs, *output);
+    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action,
+      (link_dev_libs) ? dataSetDevLibs : inputs, *output);
     extractBuildLog(*output);
   }
 
@@ -689,6 +692,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
   if (device().settings().lcWavefrontSize64_) {
     driverOptions.push_back("-mwavefrontsize64");
   }
+  driverOptions.push_back("-mcode-object-version=" + std::to_string(options->oVariables->LCCodeObjectVersion));
 
   // Iterate through each source code and dump it into tmp
   std::fstream f;
@@ -967,8 +971,9 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   char* binaryData = nullptr;
   size_t binarySize = 0;
   std::vector<std::string> linkOptions;
+  constexpr bool kLinkDevLibs = false;
   bool ret = linkLLVMBitcode(inputs, linkOptions, false, options, &output, &binaryData,
-                             &binarySize);
+                             &binarySize, kLinkDevLibs);
 
   amd::Comgr::destroy_data_set(output);
   amd::Comgr::destroy_data_set(inputs);
@@ -1202,6 +1207,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
     if (device().settings().lcWavefrontSize64_) {
         linkOptions.push_back("wavefrontsize64");
     }
+    linkOptions.push_back("code_object_v" + std::to_string(options->oVariables->LCCodeObjectVersion));
 
     amd_comgr_status_t status = addCodeObjData(llvmBinary_.data(), llvmBinary_.size(),
                                                AMD_COMGR_DATA_KIND_BC,
@@ -1277,6 +1283,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   if (device().settings().lcWavefrontSize64_) {
     codegenOptions.push_back("-mwavefrontsize64");
   }
+  codegenOptions.push_back("-mcode-object-version=" + std::to_string(options->oVariables->LCCodeObjectVersion));
 
   // NOTE: The params is also used to identy cached code object. This parameter
   //       should not contain any dyanamically generated filename.
