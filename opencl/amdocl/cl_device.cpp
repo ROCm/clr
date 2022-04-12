@@ -491,13 +491,6 @@ RUNTIME_ENTRY(cl_int, clReleaseDevice, (cl_device_id device)) {
 }
 RUNTIME_EXIT
 
-// dummy function for OCL, release resource for HIP
-namespace amd {
-
-void shutDown() {}
-
-}  // namespace amd
-
 /*! @}
  *  @}
  */
