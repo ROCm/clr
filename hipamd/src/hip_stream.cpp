@@ -586,6 +586,10 @@ hipError_t hipExtStreamCreateWithCUMask(hipStream_t* stream, uint32_t cuMaskSize
 // ================================================================================================
 hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
   HIP_INIT_API(hipStreamGetPriority, stream, priority);
+  if ((priority != nullptr) && (stream == nullptr)) {
+    *priority = 0;
+    HIP_RETURN(hipSuccess);
+  }
 
   if ((priority != nullptr) && (stream != nullptr)) {
     if (!hip::isValid(stream)) {
