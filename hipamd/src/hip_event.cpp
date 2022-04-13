@@ -336,24 +336,29 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
 }
 
-hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
-  HIP_INIT_API(hipEventRecord, event, stream);
-
+hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   STREAM_CAPTURE(hipEventRecord, stream, event);
 
   if (event == nullptr) {
-    HIP_RETURN(hipErrorInvalidHandle);
+    return hipErrorInvalidHandle;
   }
-
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-
   amd::HostQueue* queue = hip::getQueue(stream);
-
   if (g_devices[e->deviceId()]->devices()[0] != &queue->device()) {
-    HIP_RETURN(hipErrorInvalidHandle);
+    return hipErrorInvalidHandle;
   }
+  return e->addMarker(stream, nullptr, true);
+}
 
-  HIP_RETURN(e->addMarker(stream, nullptr, true));
+hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
+  HIP_INIT_API(hipEventRecord, event, stream);
+  HIP_RETURN(hipEventRecord_common(event, stream));
+}
+
+hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream) {
+  HIP_INIT_API(hipEventRecord, event, stream);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipEventRecord_common(event, stream));
 }
 
 hipError_t hipEventSynchronize(hipEvent_t event) {

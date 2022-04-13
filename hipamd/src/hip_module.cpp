@@ -486,6 +486,18 @@ hipError_t hipModuleLaunchKernelExt(hipFunction_t f, uint32_t globalWorkSizeX,
                                 sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent));
 }
 
+extern "C" hipError_t hipLaunchKernel_common(const void *hostFunction,
+                                      dim3 gridDim,
+                                      dim3 blockDim,
+                                      void** args,
+                                      size_t sharedMemBytes,
+                                      hipStream_t stream)
+{
+  STREAM_CAPTURE(hipLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes);
+  return ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
+                              nullptr, nullptr, 0);
+}
+
 extern "C" hipError_t hipLaunchKernel(const void *hostFunction,
                                       dim3 gridDim,
                                       dim3 blockDim,
@@ -493,10 +505,20 @@ extern "C" hipError_t hipLaunchKernel(const void *hostFunction,
                                       size_t sharedMemBytes,
                                       hipStream_t stream)
 {
-    HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
-    STREAM_CAPTURE(hipLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes);
-    HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
-                                nullptr, nullptr, 0));
+  HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
+  HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
+}
+
+extern "C" hipError_t hipLaunchKernel_spt(const void *hostFunction,
+                                      dim3 gridDim,
+                                      dim3 blockDim,
+                                      void** args,
+                                      size_t sharedMemBytes,
+                                      hipStream_t stream)
+{
+  HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
 extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction,
@@ -513,13 +535,10 @@ extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction,
     HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream, startEvent, stopEvent, flags));
 }
 
-hipError_t hipLaunchCooperativeKernel(const void* f,
+hipError_t hipLaunchCooperativeKernel_common(const void* f,
                                       dim3 gridDim, dim3 blockDim,
                                       void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
 {
-  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
-               sharedMemBytes, hStream);
-
   if (!hip::isValid(hStream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -533,14 +552,33 @@ hipError_t hipLaunchCooperativeKernel(const void* f,
   if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-    HIP_RETURN(hipErrorInvalidConfiguration);
+    return hipErrorInvalidConfiguration;
   }
-  HIP_RETURN(ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
+  return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
                                 static_cast<uint32_t>(globalWorkSizeY),
                                 static_cast<uint32_t>(globalWorkSizeZ),
                                 blockDim.x, blockDim.y, blockDim.z,
                                 sharedMemBytes, hStream, kernelParams, nullptr, nullptr, nullptr, 0,
-                                amd::NDRangeKernelCommand::CooperativeGroups));
+                                amd::NDRangeKernelCommand::CooperativeGroups);
+}
+
+hipError_t hipLaunchCooperativeKernel(const void* f,
+                                      dim3 gridDim, dim3 blockDim,
+                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
+{
+  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
+               sharedMemBytes, hStream);
+  HIP_RETURN(hipLaunchCooperativeKernel_common(f,gridDim, blockDim, kernelParams, sharedMemBytes, hStream));
+}
+
+hipError_t hipLaunchCooperativeKernel_spt(const void* f,
+                                      dim3 gridDim, dim3 blockDim,
+                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream)
+{
+  HIP_INIT_API(hipLaunchCooperativeKernel, f, gridDim, blockDim,
+               sharedMemBytes, hStream);
+  PER_THREAD_DEFAULT_STREAM(hStream);
+  HIP_RETURN(hipLaunchCooperativeKernel_common(f, gridDim, blockDim, kernelParams, sharedMemBytes, hStream));
 }
 
 hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList,

@@ -294,26 +294,45 @@ static hipError_t ihipStreamCreate(hipStream_t* stream,
 // ================================================================================================
 class stream_per_thread {
 private:
-  hipStream_t m_stream;
+  std::vector<hipStream_t> m_streams;
 public:
-  stream_per_thread():m_stream(nullptr) {}
+  stream_per_thread() {
+    m_streams.resize(g_devices.size());
+    for (auto &stream : m_streams) {
+      stream = nullptr;
+    }
+  }
   stream_per_thread(const stream_per_thread& ) = delete;
   void operator=(const stream_per_thread& ) = delete;
   ~stream_per_thread() {
-    if (m_stream != nullptr && hip::isValid(m_stream)) {
-      delete reinterpret_cast<hip::Stream*>(m_stream);
-      m_stream = nullptr;
+    for (auto &stream:m_streams) {
+      if (stream != nullptr && hip::isValid(stream)) {
+        delete reinterpret_cast<hip::Stream*>(stream);
+        stream = nullptr;
+      }
     }
   }
 
-  hipStream_t& get() {
+  hipStream_t get() {
+    hip::Device* device = hip::getCurrentDevice();
+    int currDev = device->deviceId();
+    // This is to make sure m_streams is not empty
+    if (m_streams.empty()) {
+      m_streams.resize(g_devices.size());
+      for (auto &stream : m_streams) {
+        stream = nullptr;
+      }
+    }
     // There is a scenario where hipResetDevice destroys stream per thread
     // hence isValid check is required to make sure only valid stream is used
-    if (m_stream == nullptr || !hip::isValid(m_stream)) {
-      hipError_t err = ihipStreamCreate(&m_stream, hipStreamDefault, hip::Stream::Priority::Normal);
-      assert(err == hipSuccess);
+    if (m_streams[currDev] == nullptr || !hip::isValid(m_streams[currDev])) {
+      hipError_t status = ihipStreamCreate(&m_streams[currDev], hipStreamDefault,
+                                           hip::Stream::Priority::Normal);
+      if (status != hipSuccess) {
+        DevLogError("Stream creation failed\n");
+      }
     }
-    return m_stream;
+    return m_streams[currDev];
   }
 };
 thread_local stream_per_thread streamPerThreadObj;
@@ -323,6 +342,15 @@ void getStreamPerThread(hipStream_t& stream) {
   if (stream == hipStreamPerThread) {
     stream = streamPerThreadObj.get();
   }
+}
+
+// ================================================================================================
+hipStream_t getPerThreadDefaultStream() {
+  // Function to get per thread default stream
+  // More about the usecases yet to come
+  hipStream_t stream = hipStreamPerThread;
+  getStreamPerThread(stream);
+  return stream;
 }
 
 // ================================================================================================
@@ -381,44 +409,53 @@ hipError_t hipDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPrio
 }
 
 // ================================================================================================
-hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags) {
-  HIP_INIT_API(hipStreamGetFlags, stream, flags);
-
-  if (flags != nullptr) {
-    if (stream == nullptr) {
-      // hipStreamDefault
-      *flags = 0;
-    } else {
-      if (!hip::isValid(stream)) {
-        HIP_RETURN(hipErrorContextIsDestroyed);
-      }
-      *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
+hipError_t hipStreamGetFlags_common(hipStream_t stream, unsigned int* flags) {
+  if ((flags != nullptr) && (stream != nullptr)) {
+    if (!hip::isValid(stream)) {
+      return hipErrorContextIsDestroyed;
     }
+    *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
   } else {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
+
+// ================================================================================================
+hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags) {
+  HIP_INIT_API(hipStreamGetFlags, stream, flags);
+  HIP_RETURN(hipStreamGetFlags_common(stream, flags));
+}
+
+// ================================================================================================
+hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags) {
+  HIP_INIT_API(hipStreamGetFlags, stream, flags);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamGetFlags_common(stream, flags));
+}
+
+// ================================================================================================
+hipError_t hipStreamSynchronize_common(hipStream_t stream) {
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+  // Wait for the current host queue
+  hip::getQueue(stream)->finish();
+  return hipSuccess;
 }
 
 // ================================================================================================
 hipError_t hipStreamSynchronize(hipStream_t stream) {
   HIP_INIT_API(hipStreamSynchronize, stream);
+  HIP_RETURN(hipStreamSynchronize_common(stream));
+}
 
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
-  }
-
-  // Wait for the current host queue
-  hip::getQueue(stream)->finish();
-
-  // Make sure runtime releases memory for all memory pools on the device,
-  // associated with the queue
-  auto hip_stream = reinterpret_cast<hip::Stream*>(stream);
-  auto device = (hip_stream == nullptr) ? hip::getCurrentDevice() : hip_stream->GetDevice();
-  device->ReleaseFreedMemory(hip_stream);
-
-  HIP_RETURN(hipSuccess);
+// ================================================================================================
+hipError_t hipStreamSynchronize_spt(hipStream_t stream) {
+  HIP_INIT_API(hipStreamSynchronize, stream);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamSynchronize_common(stream));
 }
 
 // ================================================================================================
@@ -463,33 +500,42 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
 }
 
 // ================================================================================================
-hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags) {
-  HIP_INIT_API(hipStreamWaitEvent, stream, event, flags);
-
+hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsigned int flags) {
   EVENT_CAPTURE(hipStreamWaitEvent, event, stream, flags);
 
   if (event == nullptr) {
-    HIP_RETURN(hipErrorInvalidHandle);
+    return hipErrorInvalidHandle;
   }
 
   if (flags != 0) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
+    return hipErrorContextIsDestroyed;
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  HIP_RETURN(e->streamWait(stream, flags));
+  return e->streamWait(stream, flags);
 }
 
 // ================================================================================================
-hipError_t hipStreamQuery(hipStream_t stream) {
-  HIP_INIT_API(hipStreamQuery, stream);
+hipError_t hipStreamWaitEvent(hipStream_t stream, hipEvent_t event, unsigned int flags) {
+  HIP_INIT_API(hipStreamWaitEvent, stream, event, flags);
+  HIP_RETURN(hipStreamWaitEvent_common(stream, event, flags));
+}
 
+// ================================================================================================
+hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned int flags) {
+  HIP_INIT_API(hipStreamWaitEvent, stream, event, flags);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamWaitEvent_common(stream, event, flags));
+}
+
+// ================================================================================================
+hipError_t hipStreamQuery_common(hipStream_t stream) {
   if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
+    return hipErrorContextIsDestroyed;
   }
 
   amd::HostQueue* hostQueue = hip::getQueue(stream);
@@ -497,7 +543,7 @@ hipError_t hipStreamQuery(hipStream_t stream) {
   amd::Command* command = hostQueue->getLastQueuedCommand(true);
   if (command == nullptr) {
     // Nothing was submitted to the queue
-    HIP_RETURN(hipSuccess);
+    return hipSuccess;
   }
 
   amd::Event& event = command->event();
@@ -511,7 +557,20 @@ hipError_t hipStreamQuery(hipStream_t stream) {
   }
   hipError_t status = ready ? hipSuccess : hipErrorNotReady;
   command->release();
-  HIP_RETURN(status);
+  return status;
+}
+
+// ================================================================================================
+hipError_t hipStreamQuery(hipStream_t stream) {
+  HIP_INIT_API(hipStreamQuery, stream);
+  HIP_RETURN(hipStreamQuery_common(stream));
+}
+
+// ================================================================================================
+hipError_t hipStreamQuery_spt(hipStream_t stream) {
+  HIP_INIT_API(hipStreamQuery, stream);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamQuery_common(stream));
 }
 
 // ================================================================================================
@@ -586,24 +645,35 @@ hipError_t hipExtStreamCreateWithCUMask(hipStream_t* stream, uint32_t cuMaskSize
 }
 
 // ================================================================================================
-hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
-  HIP_INIT_API(hipStreamGetPriority, stream, priority);
+hipError_t hipStreamGetPriority_common(hipStream_t stream, int* priority) {
   if ((priority != nullptr) && (stream == nullptr)) {
     *priority = 0;
-    HIP_RETURN(hipSuccess);
+    return hipSuccess;
   }
 
   if ((priority != nullptr) && (stream != nullptr)) {
     if (!hip::isValid(stream)) {
-      HIP_RETURN(hipErrorContextIsDestroyed);
+      return hipErrorContextIsDestroyed;
     }
     *priority = static_cast<int>(reinterpret_cast<hip::Stream*>(stream)->GetPriority());
   } else {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
 
+// ================================================================================================
+hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
+  HIP_INIT_API(hipStreamGetPriority, stream, priority);
+  HIP_RETURN(hipStreamGetPriority_common(stream, priority));
+}
+
+// ================================================================================================
+hipError_t hipStreamGetPriority_spt(hipStream_t stream, int* priority) {
+  HIP_INIT_API(hipStreamGetPriority, stream, priority);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamGetPriority_common(stream, priority));
 }
 
 // ================================================================================================

@@ -171,7 +171,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
 // Sync APIs cannot be called when stream capture is active
 #define CHECK_STREAM_CAPTURING()                                                                   \
   if (!g_captureStreams.empty()) {                                                                 \
-    HIP_RETURN(hipErrorStreamCaptureImplicit);                                                     \
+    return hipErrorStreamCaptureImplicit;                                                     \
   }
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
@@ -180,13 +180,18 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = capture##name(stream, ##__VA_ARGS__);                                      \
-    HIP_RETURN(status);                                                                            \
+    return status;                                                                            \
   }
 
 #define EVENT_CAPTURE(name, event, ...)                                                            \
   if (event != nullptr && reinterpret_cast<hip::Event*>(event)->GetCaptureStatus() == true) {      \
     hipError_t status = capture##name(event, ##__VA_ARGS__);                                       \
     HIP_RETURN(status);                                                                            \
+  }
+
+#define PER_THREAD_DEFAULT_STREAM(stream)                                                         \
+  if (stream == nullptr) {                                                                        \
+    stream = getPerThreadDefaultStream();                                                         \
   }
 
 namespace hc {
@@ -484,6 +489,7 @@ extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
 extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size = 0);
 extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size);
 extern void getStreamPerThread(hipStream_t& stream);
+extern hipStream_t getPerThreadDefaultStream();
 extern hipError_t ihipUnbindTexture(textureReference* texRef);
 
 extern hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device);
