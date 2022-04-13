@@ -1220,18 +1220,20 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     return CreateImage(params, forceLinear);
   }
 
-  Pal::gpusize svmPtr = 0;
-  if ((nullptr != params) && (nullptr != params->owner_) &&
-      (nullptr != params->owner_->getSvmPtr())) {
-    svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
-    desc_.SVMRes_ = true;
-    svmPtr = (svmPtr == 1) ? 0 : svmPtr;
-    if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
-      desc_.gl2CacheDisabled_ = true;
+  if (memoryType() != Resource::VaRange) {
+    Pal::gpusize svmPtr = 0;
+    if ((nullptr != params) && (nullptr != params->owner_) &&
+        (nullptr != params->owner_->getSvmPtr())) {
+      svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+      desc_.SVMRes_ = true;
+      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
+      if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
+        desc_.gl2CacheDisabled_ = true;
+      }
     }
-  }
-  if (desc_.SVMRes_) {
-    return CreateSvm(params, svmPtr);
+    if (desc_.SVMRes_) {
+      return CreateSvm(params, svmPtr);
+    }
   }
 
   Pal::GpuMemoryCreateInfo createInfo = {};
@@ -1248,6 +1250,8 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     createInfo.flags.sdiExternal = true;
   } else if (memoryType() == BusAddressable) {
     createInfo.flags.busAddressable = true;
+  } else if (memoryType() == VaRange) {
+    createInfo.flags.virtualAlloc = true;
   }
 
   memTypeToHeap(&createInfo);

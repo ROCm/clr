@@ -207,6 +207,25 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return;
   }
+  virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+
+  virtual void virtualFree(void* addr) {
+    ShouldNotReachHere();
+    return;
+  }
+
+  virtual void virtualMap(void* addr, amd::Memory& mem, size_t size) {
+    ShouldNotReachHere();
+    return;
+  }
+
+  virtual void virtualUnmap(void* addr, size_t size) {
+    ShouldNotReachHere();
+    return;
+  }
 
   //! Determine if we can use device memory for SVM
   const bool forceFineGrain(amd::Memory* memory) const {
@@ -436,6 +455,11 @@ class Device : public NullDevice {
                                 amd::MemoryAdvice advice, bool use_cpu = false) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
+
+  virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
+  virtual void virtualFree(void* addr);
+  virtual void virtualMap(void* addr, amd::Memory& mem, size_t size);
+  virtual void virtualUnmap(void* addr, size_t size);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);

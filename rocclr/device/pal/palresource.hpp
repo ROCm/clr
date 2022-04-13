@@ -172,7 +172,8 @@ class Resource : public amd::HeapObject {
     Scratch,           //!< resource is scratch memory
     Shader,            //!< resource is a shader
     P2PAccess,         //!< resource is a shared resource for P2P access
-    VkInterop          //!< resource is a Vulkan memory object
+    VkInterop,         //!< resource is a Vulkan memory object
+    VaRange            //!< reousrce is a virtual address range
   };
 
   //! Resource map flags
