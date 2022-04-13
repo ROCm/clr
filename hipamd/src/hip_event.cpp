@@ -251,9 +251,6 @@ hipError_t Event::addMarker(hipStream_t stream, amd::Command* command, bool reco
 }  // namespace hip
 // ================================================================================================
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
-  if (event == nullptr) {
-    return hipErrorInvalidValue;
-  }
 #if !defined(_MSC_VER)
   unsigned supportedFlags = hipEventDefault | hipEventBlockingSync | hipEventDisableTiming |
       hipEventReleaseToDevice | hipEventReleaseToSystem | hipEventInterprocess;
@@ -288,11 +285,21 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
 
 hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   HIP_INIT_API(hipEventCreateWithFlags, event, flags);
+
+  if (event == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
   HIP_RETURN(ihipEventCreateWithFlags(event, flags), *event);
 }
 
 hipError_t hipEventCreate(hipEvent_t* event) {
   HIP_INIT_API(hipEventCreate, event);
+
+  if (event == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
   HIP_RETURN(ihipEventCreateWithFlags(event, 0), *event);
 }
 
