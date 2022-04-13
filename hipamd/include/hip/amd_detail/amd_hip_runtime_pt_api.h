@@ -34,6 +34,7 @@ THE SOFTWARE.
 #endif
 
 #if defined(__HIP_STREAM_PER_THREAD)
+    // Memory APIs
     #define hipMemcpy                     __HIP_API_SPT(hipMemcpy)
     #define hipMemcpyToSymbol             __HIP_API_SPT(hipMemcpyToSymbol)
     #define hipMemcpyFromSymbol           __HIP_API_SPT(hipMemcpyFromSymbol)
@@ -44,10 +45,21 @@ THE SOFTWARE.
     #define hipMemset                     __HIP_API_SPT(hipMemset)
     #define hipMemset2D                   __HIP_API_SPT(hipMemset2D)
     #define hipMemset3D                   __HIP_API_SPT(hipMemset3D)
+    #define hipMemcpyAsync                __HIP_API_SPT(hipMemcpyAsync)
 
-    #define hipMemcpyAsync              __HIP_API_SPT(hipMemcpyAsync)
-    #define hipLaunchKernel             __HIP_API_SPT(hipLaunchKernel)
-    #define hipStreamSynchronize        __HIP_API_SPT(hipStreamSynchronize)
+    // Stream APIs
+    #define hipStreamSynchronize          __HIP_API_SPT(hipStreamSynchronize)
+    #define hipStreamQuery                __HIP_API_SPT(hipStreamQuery)
+    #define hipStreamGetFlags             __HIP_API_SPT(hipStreamGetFlags)
+    #define hipStreamGetPriority          __HIP_API_SPT(hipStreamGetPriority)
+    #define hipStreamWaitEvent            __HIP_API_SPT(hipStreamWaitEvent)
+
+    // Event APIs
+    #define hipEventRecord               __HIP_API_SPT(hipEventRecord)
+
+    // Launch APIs
+    #define hipLaunchKernel               __HIP_API_SPT(hipLaunchKernel)
+    #define hipLaunchCooperativeKernel    __HIP_API_SPT(hipLaunchCooperativeKernel)
 #endif
 
 hipError_t hipMemcpy_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
@@ -77,10 +89,29 @@ hipError_t hipMemset3D_spt(hipPitchedPtr pitchedDevPtr, int  value, hipExtent ex
 
 hipError_t hipMemcpyAsync_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                           hipStream_t stream);
+
+hipError_t hipStreamQuery_spt(hipStream_t stream);
+
 hipError_t hipStreamSynchronize_spt(hipStream_t stream);
+
+hipError_t hipStreamGetPriority_spt(hipStream_t stream, int* priority);
+
+hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned int flags);
+
+hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags);
+
+hipError_t hipLaunchCooperativeKernel_spt(const void* f,
+                                      dim3 gridDim, dim3 blockDim,
+                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream);
+#ifdef __cplusplus
+extern "C" {
+#endif
 hipError_t hipLaunchKernel_spt(const void* function_address,
                            dim3 numBlocks,
                            dim3 dimBlocks,
                            void** args,
                            size_t sharedMemBytes, hipStream_t stream);
+#ifdef __cplusplus
+}
+#endif // extern "C"
 #endif //HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
