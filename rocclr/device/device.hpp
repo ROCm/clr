@@ -1719,6 +1719,39 @@ class Device : public RuntimeObject {
   virtual void svmFree(void* ptr) const = 0;
 
   /**
+   * Reserve a VA range with no backing store
+   *
+   * @param addr Start address requested
+   * @param size Size of the range in bytes
+   * @param alignment Alignment in bytes
+   */
+  virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) = 0;
+
+  /**
+   * Free a VA range
+   *
+   * @param addr Start address of the range
+   */
+  virtual void virtualFree(void* addr) = 0;
+
+  /**
+   * Map a memory to a VA range
+   *
+   * @param addr Start address of the range
+   * @param mem Backing store
+   * @param size Size to be mapped in bytes
+   */
+  virtual void virtualMap(void* addr, Memory& mem, size_t size) = 0;
+
+  /**
+   * Unmap a memory from a VA
+   *
+   * @param addr Address of the VA range
+   * @param size Size of the range to be unmapped in bytes
+   */
+  virtual void virtualUnmap(void* addr, size_t size) = 0;
+
+  /**
    * @return True if the device successfully applied the SVM attributes in HMM for device memory
    */
   virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,

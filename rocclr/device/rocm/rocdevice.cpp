@@ -2266,6 +2266,24 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   return svmPtr;
 }
 
+void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
+{
+  return nullptr;
+}
+
+void Device::virtualFree(void* addr)
+{
+}
+
+void Device::virtualMap(void* addr, amd::Memory& mem, size_t size)
+{
+}
+
+void Device::virtualUnmap(void* addr, size_t size)
+{
+}
+
+
 // ================================================================================================
 bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
                               amd::MemoryAdvice advice, bool first_alloc, bool use_cpu) const {
