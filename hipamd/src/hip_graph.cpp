@@ -1241,9 +1241,9 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
   hipGraphNode_t hipErrorNode_out;
   hipGraphExecUpdateResult updateResult_out;
   // Check if this instantiated graph is updatable. All restrictions in hipGraphExecUpdate() apply.
-  if (hipGraphExecUpdate(hGraphExec, childGraph, &hipErrorNode_out, &updateResult_out) ==
-      hipErrorGraphExecUpdateFailure) {
-    HIP_RETURN(hipErrorUnknown);
+  hipError_t status = hipGraphExecUpdate(hGraphExec, childGraph, &hipErrorNode_out, &updateResult_out);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
   }
 
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
