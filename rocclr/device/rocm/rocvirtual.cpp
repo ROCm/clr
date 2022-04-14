@@ -351,10 +351,13 @@ bool VirtualGPU::HwQueueTracker::Create() {
 
 // ================================================================================================
 hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
-    hsa_signal_value_t init_val, Timestamp* ts, uint32_t queue_size) {
+    hsa_signal_value_t init_val, Timestamp* ts) {
   bool new_signal = false;
-  // If queue size grows, then add more signals to avoid more frequent stalls
-  if (queue_size > signal_list_.size()) {
+
+  // Peep signal +2 ahead to see if its done
+  auto temp_id = (current_id_ + 2) % signal_list_.size();
+  // If GPU is still busy with processing, then add more signals to avoid more frequent stalls
+  if (hsa_signal_load_relaxed(signal_list_[temp_id]->signal_) > 0) {
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
     if (signal != nullptr) {
       hsa_agent_t agent = gpu_.gpu_device();
@@ -812,11 +815,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
 
   if (timestamp_ != nullptr) {
-    // Pool size must grow to the size of pending AQL packets
-    const uint32_t pool_size = index - read;
     // Get active signal for current dispatch if profiling is necessary
-    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_,
-                                                        pool_size);
+    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
   }
 
   // Make sure the slot is free for usage
@@ -970,12 +970,9 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   auto cache_state = extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
   if (!skipSignal) {
-    // Pool size must grow to the size of pending AQL packets
-    const uint32_t pool_size = index - read;
-
     // Get active signal for current dispatch if profiling is necessary
     barrier_packet_.completion_signal =
-      Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, pool_size);
+      Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
   } else {
     // Attach external signal to the packet
     barrier_packet_.completion_signal = signal;
