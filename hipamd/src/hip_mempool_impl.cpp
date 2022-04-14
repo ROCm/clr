@@ -121,6 +121,13 @@ bool Heap::ReleaseAllMemory(hip::Stream* stream) {
 }
 
 // ================================================================================================
+void Heap::RemoveStream(hip::Stream* stream) {
+  for (auto it = allocations_.begin(); it != allocations_.end();) {
+    it->second.safe_streams_.erase(stream);
+  }
+}
+
+// ================================================================================================
 void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
@@ -195,6 +202,13 @@ void MemoryPool::ReleaseFreedMemory(hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   free_heap_.ReleaseAllMemory(stream);
+}
+
+// ================================================================================================
+void MemoryPool::RemoveStream(hip::Stream* stream) {
+  amd::ScopedLock lock(lock_pool_ops_);
+
+  free_heap_.RemoveStream(stream);
 }
 
 // ================================================================================================

@@ -104,6 +104,9 @@ public:
   /// Releases all memory, safe to the provided stream, until the threshold value is met
   bool ReleaseAllMemory(hip::Stream* stream);
 
+  /// Remove the provided stream from the safe list
+  void RemoveStream(hip::Stream* stream);
+
   /// Heap doesn't have any allocations
   bool IsEmpty() const { return (allocations_.size() == 0) ? true : false; }
 
@@ -122,6 +125,7 @@ public:
   /// Set maximum total, allocated by the heap
   void SetMaxTotalSize(uint64_t value) { max_total_size_ = value; }
 
+  /// Erases single allocation form the heap's map
   std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator EraseAllocaton(
     std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator& it);
 
@@ -170,6 +174,9 @@ public:
   /// Releases all allocations from free_heap_. It can be called on Stream or Device synchronization
   /// @note The caller must make sure it's safe to release memory
   void ReleaseFreedMemory(hip::Stream* stream = nullptr);
+
+  /// Removes a stream from tracking
+  void RemoveStream(hip::Stream* stream);
 
   /// Releases all allocations in MemoryPool
   void ReleaseAllMemory();

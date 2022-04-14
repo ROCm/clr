@@ -436,6 +436,8 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
 
+  s->GetDevice()->RemoveStreamFromPools(s);
+
   amd::ScopedLock lock(g_captureStreamsLock);
   const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
   if (g_it != g_captureStreams.end()) {
