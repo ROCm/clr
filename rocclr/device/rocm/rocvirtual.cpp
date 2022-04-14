@@ -330,7 +330,7 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::Create() {
-  constexpr size_t kSignalListSize = 32;
+  uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
   signal_list_.resize(kSignalListSize);
 
   hsa_agent_t agent = gpu_.gpu_device();
