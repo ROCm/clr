@@ -37,6 +37,17 @@ amd::HostQueue* Device::NullStream(bool skip_alloc) {
 }
 
 // ================================================================================================
+Stream* Device::GetNullStream() {
+  amd::HostQueue* null_queue = null_stream_.asHostQueue();
+  if (null_queue == nullptr) {
+    return nullptr;
+  }
+  // Wait for all active streams before executing commands on the default
+  iHipWaitActiveStreams(null_queue);
+  return &null_stream_;
+}
+
+// ================================================================================================
 bool Device::Create() {
   // Create default memory pool
   default_mem_pool_ = new MemoryPool(this);
@@ -50,6 +61,7 @@ bool Device::Create() {
 
 // ================================================================================================
 void Device::AddMemoryPool(MemoryPool* pool) {
+  amd::ScopedLock lock(lock_);
   if (auto it = mem_pools_.find(pool); it == mem_pools_.end()) {
     mem_pools_.insert(pool);
   }
@@ -57,6 +69,7 @@ void Device::AddMemoryPool(MemoryPool* pool) {
 
 // ================================================================================================
 void Device::RemoveMemoryPool(MemoryPool* pool) {
+  amd::ScopedLock lock(lock_);
   if (auto it = mem_pools_.find(pool); it != mem_pools_.end()) {
     mem_pools_.erase(it);
   }
@@ -64,6 +77,7 @@ void Device::RemoveMemoryPool(MemoryPool* pool) {
 
 // ================================================================================================
 bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
+  amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
   for (auto& it : mem_pools_) {
     if (it->FreeMemory(memory, stream)) {
@@ -75,9 +89,19 @@ bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
 
 // ================================================================================================
 void Device::ReleaseFreedMemory(Stream* stream) {
+  amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
   for (auto& it : mem_pools_) {
     it->ReleaseFreedMemory(stream);
+  }
+}
+
+// ================================================================================================
+void Device::RemoveStreamFromPools(Stream* stream) {
+  amd::ScopedLock lock(lock_);
+  // Update all pools with the destroyed stream
+  for (auto& it : mem_pools_) {
+    it->RemoveStream(stream);
   }
 }
 

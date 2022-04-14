@@ -391,6 +391,7 @@ namespace hip {
     unsigned int getFlags() const { return flags_; }
     void setFlags(unsigned int flags) { flags_ = flags; }
     amd::HostQueue* NullStream(bool skip_alloc = false);
+    Stream* GetNullStream();
 
     void SaveQueue(amd::HostQueue* queue) {
       amd::ScopedLock lock(lock_);
@@ -431,6 +432,9 @@ namespace hip {
 
     /// Release freed memory from all pools on the current device
     void ReleaseFreedMemory(Stream* stream);
+
+    /// Removes a destroyed stream from the safe list of memory pools
+    void RemoveStreamFromPools(Stream* stream);
   };
 
   /// Current thread's device
