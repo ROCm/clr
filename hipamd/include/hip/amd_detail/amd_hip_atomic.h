@@ -186,7 +186,11 @@ unsigned long long atomicAdd_system(unsigned long long* address, unsigned long l
 __device__
 inline
 float atomicAdd(float* address, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicAdd(address, val);
+#else
   return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
@@ -208,7 +212,11 @@ void atomicAddNoRet(float* address, float val)
 __device__
 inline
 double atomicAdd(double* address, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicAdd(address, val);
+#else
   return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
@@ -268,7 +276,11 @@ unsigned long long atomicSub_system(unsigned long long* address, unsigned long l
 __device__
 inline
 float atomicSub(float* address, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicAdd(address, -val);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
@@ -280,7 +292,11 @@ float atomicSub_system(float* address, float val) {
 __device__
 inline
 double atomicSub(double* address, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicAdd(address, -val);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
@@ -836,24 +852,10 @@ __device__
 inline
 float atomicAdd(float* address, float val)
 {
-#ifndef __HIP_USE_CMPXCHG_FOR_FP_ATOMICS
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+    return unsafeAtomicAdd(address, val);
 #else
-    unsigned int* uaddr{reinterpret_cast<unsigned int*>(address)};
-    unsigned int r{__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-
-    unsigned int old;
-    do {
-        old = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-
-        if (r != old) { r = old; continue; }
-
-        r = atomicCAS(uaddr, r, __float_as_uint(val + __uint_as_float(r)));
-
-        if (r == old) break;
-    } while (true);
-
-    return __uint_as_float(r);
+    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
 #endif
 }
 
@@ -871,25 +873,10 @@ __device__
 inline
 double atomicAdd(double* address, double val)
 {
-#ifndef __HIP_USE_CMPXCHG_FOR_FP_ATOMICS
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+    return unsafeAtomicAdd(address, val);
 #else
-    unsigned long long* uaddr{reinterpret_cast<unsigned long long*>(address)};
-    unsigned long long r{__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-
-    unsigned long long old;
-    do {
-        old = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-
-        if (r != old) { r = old; continue; }
-
-        r = atomicCAS(
-            uaddr, r, __double_as_longlong(val + __longlong_as_double(r)));
-
-        if (r == old) break;
-    } while (true);
-
-    return __longlong_as_double(r);
+    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
 #endif
 }
 

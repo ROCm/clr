@@ -47,7 +47,6 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #############################
 option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
-option(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS "Enable/Disable FP Atomics version" OFF)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
 set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
@@ -56,10 +55,6 @@ if(__HIP_ENABLE_PCH)
   set(_pchStatus 1)
 else()
   set(_pchStatus 0)
-endif()
-
-if(__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
-  add_definitions(-D__HIP_USE_CMPXCHG_FOR_FP_ATOMICS)
 endif()
 
 message(STATUS "HIPCC_BIN_DIR found at ${HIPCC_BIN_DIR}")
