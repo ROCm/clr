@@ -209,7 +209,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
 hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
                                 uint32_t ext_flags ) {
   if (command == nullptr) {
-    uint32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
+    int32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
                             (hipEventReleaseToSystem | hipEventReleaseToDevice);
     if (releaseFlags & hipEventReleaseToDevice) {
       releaseFlags = amd::Device::kCacheStateAgent;
@@ -219,7 +219,7 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
       releaseFlags = amd::Device::kCacheStateIgnore;
     }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, releaseFlags);
+    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, true, releaseFlags);
   }
   return hipSuccess;
 }
