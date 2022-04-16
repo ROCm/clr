@@ -131,7 +131,7 @@ void Timestamp::checkGpuTime() {
       }
       // Avoid profiling data for the sync barrier, in tiny performance tests the first call
       // to ROCr is very slow and that also affects the overall performance of the callback thread
-      if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_ > 0) {
+      if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_) {
         hsa_amd_profiling_dispatch_time_t time = {};
         if (it->engine_ == HwQueueEngine::Compute) {
           hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
@@ -447,7 +447,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
-      } else if (ts->command().profilingInfo().marker_ts_ > 0 ) {
+      } else if (ts->command().profilingInfo().marker_ts_) {
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
@@ -3114,7 +3114,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     } else {
       profilingBegin(vcmd);
       if (timestamp_ != nullptr) {
-        uint32_t releaseFlags = vcmd.profilingInfo().marker_ts_;
+        int32_t releaseFlags = vcmd.getEventScope();
         if (ROC_EVENT_NO_FLUSH && releaseFlags == Device::CacheState::kCacheStateIgnore) {
           dispatchBarrierPacket(kNopPacketHeader, false);
         } else if (releaseFlags == Device::CacheState::kCacheStateAgent) {
