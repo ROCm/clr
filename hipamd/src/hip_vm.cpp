@@ -29,6 +29,10 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  for (auto& dev: g_devices) {
+    dev->devices()[0]->virtualFree(devPtr);
+  }
+
   HIP_RETURN(hipSuccess);
 }
 
@@ -38,6 +42,25 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
   if (ptr == nullptr ||
       flags !=0) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  *ptr = nullptr;
+
+  void* startAddress = addr;
+
+  for (auto& dev : g_devices) {
+    *ptr = dev->devices()[0]->virtualAlloc(startAddress, size, alignment);
+
+    // if addr==0 we generate the va and use it for other devices
+    if (startAddress == nullptr) {
+      startAddress = *ptr;
+    } else if (*ptr != startAddress) {
+      // if we cannot reserve the same VA on other devices, just fail
+      for (auto& d : g_devices) {
+        if (d == dev) HIP_RETURN(hipErrorOutOfMemory);
+        d->devices()[0]->virtualFree(startAddress);
+      }
+    }
   }
 
   HIP_RETURN(hipSuccess);
