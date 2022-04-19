@@ -1,7 +1,12 @@
 cmake_minimum_required(VERSION 3.5.1)
 project(rocm-opencl)
 
+set(CPACK_COMPONENTS_ALL binary dev)
+if(BUILD_ICD)
 set(CPACK_COMPONENTS_ALL binary dev icd)
+else()
+set(CPACK_COMPONENTS_ALL binary dev)
+endif()
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
@@ -17,8 +22,10 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2/CL
         PATTERN cl_dx9_media_sharing.h EXCLUDE
         PATTERN cl_egl.h EXCLUDE )
 
-install(TARGETS OpenCL DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT icd )
-install(FILES ${CMAKE_SOURCE_DIR}/khronos/icd/LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/rocm-ocl-icd COMPONENT icd)
+if(BUILD_ICD)
+  install(TARGETS OpenCL DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT icd )
+  install(FILES ${CMAKE_SOURCE_DIR}/khronos/icd/LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/rocm-ocl-icd COMPONENT icd)
+endif()
 
 
 # Generic CPACK variables
@@ -44,11 +51,19 @@ endif()
 message("Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}")
 
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
-set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "rocm-ocl-icd, libelf-dev, comgr, hsa-rocr, rocm-core")
+if(BUILD_ICD)
+  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "rocm-ocl-icd, libelf-dev, comgr, hsa-rocr, rocm-core")
+else()
+  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "ocl-icd-libopencl1, libelf-dev, comgr, hsa-rocr, rocm-core")
+endif()
 
 # RPM CPACK variables
 set(CPACK_BINARY_RPM "ON")
-set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "rocm-ocl-icd, comgr, hsa-rocr, rocm-core")
+if(BUILD_ICD)
+  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "rocm-ocl-icd, comgr, hsa-rocr, rocm-core")
+else()
+  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "ocl-icd, comgr, hsa-rocr, rocm-core")
+endif()
 
 #Unable to set CPACK_RPM_BIANRY_PACKAGE_LICENSE to control individual pacakge license
 #Hence combining the license for BINARY,DEV,ICD to one
@@ -69,21 +84,23 @@ set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-opencl, hsa-rocr-devel, rocm-core")
 #############################
 
 # Debian CPACK variables
-set(CPACK_ICD_DEB "ON")
-set(CPACK_DEBIAN_ICD_PACKAGE_NAME "rocm-ocl-icd")
+if(BUILD_ICD)
+  set(CPACK_ICD_DEB "ON")
+  set(CPACK_DEBIAN_ICD_PACKAGE_NAME "rocm-ocl-icd")
 
-set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/prerm")
-set(CPACK_DEBIAN_ICD_PACKAGE_DEPENDS "rocm-core")
+  set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/prerm")
+  set(CPACK_DEBIAN_ICD_PACKAGE_DEPENDS "rocm-core")
 
 # RPM CPACK variables
-set(CPACK_ICD_RPM "ON")
-set(CPACK_RPM_ICD_PACKAGE_NAME "rocm-ocl-icd")
+  set(CPACK_ICD_RPM "ON")
+  set(CPACK_RPM_ICD_PACKAGE_NAME "rocm-ocl-icd")
 
 
 
-set(CPACK_RPM_ICD_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_post")
-set(CPACK_RPM_ICD_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_postun")
-set(CPACK_RPM_ICD_PACKAGE_REQUIRES "rocm-core")
+  set(CPACK_RPM_ICD_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_post")
+  set(CPACK_RPM_ICD_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_postun")
+  set(CPACK_RPM_ICD_PACKAGE_REQUIRES "rocm-core")
+endif()
 
 if(DEFINED ENV{CPACK_RPM_PACKAGE_RELEASE})
   set(CPACK_RPM_PACKAGE_RELEASE $ENV{CPACK_RPM_PACKAGE_RELEASE})
@@ -112,8 +129,10 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS ${CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_DEV_PACKAGE_REQUIRES ${CPACK_RPM_DEV_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_ICD_PACKAGE_REQUIRES ${CPACK_RPM_ICD_PACKAGE_REQUIRES})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_ICD_PACKAGE_DEPENDS ${CPACK_DEBIAN_ICD_PACKAGE_DEPENDS})
+    if(BUILD_ICD)
+        string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_ICD_PACKAGE_REQUIRES ${CPACK_RPM_ICD_PACKAGE_REQUIRES})
+        string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_ICD_PACKAGE_DEPENDS ${CPACK_DEBIAN_ICD_PACKAGE_DEPENDS})
+    endif()
 endif()
 
 include(CPack)
