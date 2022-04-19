@@ -30,29 +30,17 @@ set(HIP_SRC_INC_DIR ${HIP_SRC_PATH}/include/hip)
 set(HIP_SRC_BIN_DIR ${HIP_SRC_PATH}/bin)
 set(HIP_INFO_FILE ".hipInfo")
 
-#Function to generate header template file
-function(create_header_template)
-    file(WRITE ${HIP_WRAPPER_DIR}/header.hpp.in "/*
-    Copyright (c) 2022 Advanced Micro Devices, Inc. All rights reserved.
+#Function to set actual file contents in wrapper files
+#Some components grep for the contents in the file
+function(set_file_contents input_file)
+    set(hashzero_check "#if 0
+/* The following is a copy of the original file for the benefit of build systems which grep for values
+ * in this file rather than preprocess it. This is just for backward compatibility */")
 
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the \"Software\"), to deal
-    in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-    copies of the Software, and to permit persons to whom the Software is
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   THE SOFTWARE.
-   */\n\n#ifndef @include_guard@\n#define @include_guard@ \n\n#pragma message(\"This file is deprecated. Use file from include path /opt/rocm-ver/include/ and prefix with hip\")\n@include_statements@ \n\n#endif")
+    file(READ ${input_file} file_contents)
+    set(hash_endif "#endif")
+    get_filename_component(file_name ${input_file} NAME)
+    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/${file_name})
 endfunction()
 
 #use header template file and generate wrapper header files
@@ -68,14 +56,15 @@ function(generate_wrapper_header)
     # set include guard
     get_filename_component(INC_GAURD_NAME ${header_file} NAME_WE)
     string(TOUPPER ${INC_GAURD_NAME} INC_GAURD_NAME)
-    set(include_guard "${include_guard}HIP_WRAPPER_INCLUDE_HIP_${INC_GAURD_NAME}_H")
+    set(include_guard "HIP_WRAPPER_INCLUDE_HIP_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "${include_statements}#include \"../../../include/hip/${file_name}\"\n")
-
-    configure_file(${HIP_WRAPPER_DIR}/header.hpp.in ${HIP_WRAPPER_INC_DIR}/${file_name})
-    unset(include_guard)
-    unset(include_statements)
+    set(include_statements "#include \"../../../include/hip/${file_name}\"\n")
+    if(${file_name} STREQUAL "hip_version.h")
+      set_file_contents(${header_file})
+    else()
+      configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/${file_name})
+    endif()
   endforeach()
 
   #find all header files from include/hip/amd_detail
@@ -85,14 +74,12 @@ function(generate_wrapper_header)
     # set include guard
     get_filename_component(INC_GAURD_NAME ${header_file} NAME_WE)
     string(TOUPPER ${INC_GAURD_NAME} INC_GAURD_NAME)
-    set(include_guard "${include_guard}HIP_WRAPPER_INCLUDE_HIP_AMD_DETAIL_${INC_GAURD_NAME}_H")
+    set(include_guard "HIP_WRAPPER_INCLUDE_HIP_AMD_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "${include_statements}#include \"../../../../include/hip/amd_detail/${file_name}\"\n")
+    set(include_statements "#include \"../../../../include/hip/amd_detail/${file_name}\"\n")
 
-    configure_file(${HIP_WRAPPER_DIR}/header.hpp.in ${HIP_WRAPPER_INC_DIR}/amd_detail/${file_name})
-    unset(include_guard)
-    unset(include_statements)
+    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/amd_detail/${file_name})
   endforeach()
 
   #find all header files from include/hip/nvidia_detail
@@ -102,14 +89,12 @@ function(generate_wrapper_header)
     # set include guard
     get_filename_component(INC_GAURD_NAME ${header_file} NAME_WE)
     string(TOUPPER ${INC_GAURD_NAME} INC_GAURD_NAME)
-    set(include_guard "${include_guard}HIP_WRAPPER_INCLUDE_HIP_NVIDIA_DETAIL_${INC_GAURD_NAME}_H")
+    set(include_guard "HIP_WRAPPER_INCLUDE_HIP_NVIDIA_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "${include_statements}#include \"../../../../include/hip/nvidia_detail/${file_name}\"\n")
+    set(include_statements "#include \"../../../../include/hip/nvidia_detail/${file_name}\"\n")
 
-    configure_file(${HIP_WRAPPER_DIR}/header.hpp.in ${HIP_WRAPPER_INC_DIR}/nvidia_detail/${file_name})
-    unset(include_guard)
-    unset(include_statements)
+    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/nvidia_detail/${file_name})
   endforeach()
 
 endfunction()
@@ -229,8 +214,6 @@ function(create_cmake_symlink)
 
 endfunction()
 
-#Creater a template for header file
-create_header_template()
 #Use template header file and generater wrapper header files
 generate_wrapper_header()
 install(DIRECTORY ${HIP_WRAPPER_INC_DIR} DESTINATION hip/include  COMPONENT dev)
