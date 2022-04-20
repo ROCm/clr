@@ -25,11 +25,6 @@
 #include <unistd.h>
 #endif
 
-void ipcEventCallback(hipStream_t stream, hipError_t status, void* user_data) {
-  std::atomic<int>* signal = reinterpret_cast<std::atomic<int>*>(user_data);
-  signal->store(0);
-  return;
-}
 // ================================================================================================
 
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
@@ -53,6 +48,7 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
           sizeof(hip::ihipIpcEventShmem_t))) {
     return false;
   }
+  close(temp_fd);
   ipc_evt_.ipc_shmem_->owners = 1;
   ipc_evt_.ipc_shmem_->read_index = -1;
   ipc_evt_.ipc_shmem_->write_index = 0;
@@ -60,7 +56,13 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
     ipc_evt_.ipc_shmem_->signal[sig_idx] = 0;
   }
 
-  close(temp_fd);
+  // device sets 0 to this ptr when the ipc event is completed
+  hipError_t status = ihipHostRegister(&ipc_evt_.ipc_shmem_->signal,
+                                       sizeof(uint32_t) * IPC_SIGNALS_PER_EVENT,
+                                       0);
+  if (status != hipSuccess) {
+    return false;
+  }
   return true;
 #else
   return false;
@@ -154,17 +156,17 @@ hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* comm
     // Lock signal.
     ipc_evt_.ipc_shmem_->signal[offset] = 1;
     ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
-
-    std::atomic<int>* signal = &ipc_evt_.ipc_shmem_->signal[offset];
-    StreamCallback* cbo = new StreamCallback(
-        stream, reinterpret_cast<hipStreamCallback_t>(ipcEventCallback), signal, command);
-    if (!tEvent.setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
-      command->release();
-      return hipErrorInvalidHandle;
-    }
     command->enqueue();
-    // waiting for the call back to be called
-    command->awaitCompletion();
+
+    // device writes 0 to signal after the hipEventRecord command is completed
+    // the signal value is checked by WaitThenDecrementSignal cb
+    hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WRITE_VALUE,
+                                 &(ipc_evt_.ipc_shmem_->signal[offset]),
+                                 0,
+                                 0, 0, sizeof(uint32_t));
+    if (status != hipSuccess) {
+      return status;
+    }
 
     // Update read index to indicate new signal.
     int expected = write_index - 1;
@@ -203,8 +205,12 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
 
   ipc_evt_.ipc_shmem_->owners += 1;
   setDeviceId(ipc_evt_.ipc_shmem_->owners_device_id.load());
-
-  return hipSuccess;
+  // device sets 0 to this ptr when the ipc event is completed
+  hipError_t status = hipSuccess;
+  status = ihipHostRegister(&ipc_evt_.ipc_shmem_->signal,
+                            sizeof(uint32_t) * IPC_SIGNALS_PER_EVENT,
+                            0);
+  return status;
 }
 
 }  // namespace hip

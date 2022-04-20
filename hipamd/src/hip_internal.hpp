@@ -493,10 +493,13 @@ extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size
 extern void getStreamPerThread(hipStream_t& stream);
 extern hipStream_t getPerThreadDefaultStream();
 extern hipError_t ihipUnbindTexture(textureReference* texRef);
-
+extern hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags);
+extern hipError_t ihipHostUnregister(void* hostPtr);
 extern hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device);
 
 extern hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId);
+extern hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void* ptr,
+                                      uint64_t value, uint64_t mask, unsigned int flags, size_t sizeBytes);
 
 constexpr bool kOptionChangeable = true;
 constexpr bool kNewDevProg = false;

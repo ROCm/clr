@@ -48,7 +48,7 @@ typedef struct ihipIpcEventShmem_s {
   std::atomic<int> owners_process_id;
   std::atomic<int> read_index;
   std::atomic<int> write_index;
-  std::atomic<int> signal[IPC_SIGNALS_PER_EVENT];
+  uint32_t signal[IPC_SIGNALS_PER_EVENT];
 } ihipIpcEventShmem_t;
 
 class EventMarker : public amd::Marker {
@@ -186,6 +186,7 @@ class IPCEvent : public Event {
       int owners = --ipc_evt_.ipc_shmem_->owners;
       // Make sure event is synchronized
       hipError_t status = synchronize();
+      status  = ihipHostUnregister(&ipc_evt_.ipc_shmem_->signal);
       if (!amd::Os::MemoryUnmapFile(ipc_evt_.ipc_shmem_, sizeof(hip::ihipIpcEventShmem_t))) {
         // print hipErrorInvalidHandle;
       }

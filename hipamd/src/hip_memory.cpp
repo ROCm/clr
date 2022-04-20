@@ -997,11 +997,9 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
-  HIP_INIT_API(hipHostRegister, hostPtr, sizeBytes, flags);
-  CHECK_STREAM_CAPTURE_SUPPORTED();
+hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
   if (hostPtr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   } else {
     amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
                             CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
@@ -1012,7 +1010,7 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
     if (!mem->create(hostPtr, sysMemAlloc, skipAlloc, forceAlloc)) {
       mem->release();
       LogPrintfError("Cannot create memory for size: %u with flags: %d \n", sizeBytes, flags);
-      HIP_RETURN(hipErrorOutOfMemory);
+      return hipErrorOutOfMemory;
     }
 
     for (const auto& device : g_devices) {
@@ -1029,14 +1027,17 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
     if (mem != nullptr) {
       mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
     }
-    HIP_RETURN(hipSuccess);
+    return hipSuccess;
   }
 }
 
-hipError_t hipHostUnregister(void* hostPtr) {
-  HIP_INIT_API(hipHostUnregister, hostPtr);
+hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
+  HIP_INIT_API(hipHostRegister, hostPtr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  HIP_RETURN(ihipHostRegister(hostPtr, sizeBytes,flags));
+}
 
+hipError_t ihipHostUnregister(void* hostPtr) {
   size_t offset = 0;
   amd::Memory* mem = getMemoryObject(hostPtr, offset);
 
@@ -1056,11 +1057,18 @@ hipError_t hipHostUnregister(void* hostPtr) {
     }
     amd::MemObjMap::RemoveMemObj(hostPtr);
     mem->release();
-    HIP_RETURN(hipSuccess);
+    return hipSuccess;
   }
 
   LogPrintfError("Cannot unregister host_ptr: 0x%x \n", hostPtr);
-  HIP_RETURN(hipErrorHostMemoryNotRegistered);
+  return hipErrorHostMemoryNotRegistered;
+}
+
+
+hipError_t hipHostUnregister(void* hostPtr) {
+  HIP_INIT_API(hipHostUnregister, hostPtr);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+  HIP_RETURN(ihipHostUnregister(hostPtr));
 }
 
 // Deprecated function:
