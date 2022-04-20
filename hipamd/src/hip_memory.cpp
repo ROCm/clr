@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -79,43 +79,34 @@ amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size) {
 }
 
 // ================================================================================================
-hipError_t ihipFree(void *ptr)
-{
+hipError_t ihipFree(void *ptr) {
   if (ptr == nullptr) {
     return hipSuccess;
   }
 
   size_t offset = 0;
   amd::Memory* memory_object = getMemoryObject(ptr, offset);
-  int deviceID = -1;
   if (memory_object != nullptr) {
-    // Check if it's an allocation in system memory and can be shared across all devices
-    if (memory_object->getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER) {
-      for (auto& dev : g_devices) {
-        // Skip stream allocation, since if it wasn't allocated until free, then the device
-        // wasn't used
-        constexpr bool SkipStreamAlloc = true;
-        amd::HostQueue* queue = dev->NullStream(SkipStreamAlloc);
-        if (queue != nullptr) {
-          queue->finish();
-        }
-      }
-    } else {
-      // Wait on the device, associated with the current memory object
-      amd::HostQueue* queue = hip::getNullStream(memory_object->getContext());
-      if (queue != nullptr) {
-        queue->finish();
-      }
-      deviceID = hip::getDeviceID(memory_object->getContext());
+    // Wait on the device, associated with the current memory object during allocation
+    auto device_id = memory_object->getUserData().deviceId;
+    auto dev = g_devices[device_id];
+    // Skip stream allocation, since if it wasn't allocated until free, then the device wasn't used
+    constexpr bool SkipStreamAlloc = true;
+    amd::HostQueue* queue = dev->NullStream(SkipStreamAlloc);
+    if (queue != nullptr) {
+      queue->finish();
     }
-    hip::Stream::syncNonBlockingStreams(deviceID);
+    hip::Stream::syncNonBlockingStreams(device_id);
     amd::SvmBuffer::free(memory_object->getContext(), ptr);
     return hipSuccess;
   }
   return hipErrorInvalidValue;
 }
 
-hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out, const hipExternalMemoryHandleDesc* memHandleDesc) {
+// ================================================================================================
+hipError_t hipImportExternalMemory(
+    hipExternalMemory_t* extMem_out,
+    const hipExternalMemoryHandleDesc* memHandleDesc) {
   HIP_INIT_API(hipImportExternalMemory, extMem_out, memHandleDesc);
 
   size_t sizeBytes = memHandleDesc->size;
@@ -141,7 +132,11 @@ hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out, const hipExt
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipExternalMemoryGetMappedBuffer(void **devPtr, hipExternalMemory_t extMem, const hipExternalMemoryBufferDesc *bufferDesc) {
+// ================================================================================================
+hipError_t hipExternalMemoryGetMappedBuffer(
+    void **devPtr,
+    hipExternalMemory_t extMem,
+    const hipExternalMemoryBufferDesc *bufferDesc) {
   HIP_INIT_API(hipExternalMemoryGetMappedBuffer, devPtr, extMem, bufferDesc);
 
   if (extMem == nullptr) {
@@ -1037,31 +1032,27 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
 hipError_t hipHostUnregister(void* hostPtr) {
   HIP_INIT_API(hipHostUnregister, hostPtr);
   CHECK_STREAM_CAPTURE_SUPPORTED();
-  for (auto& dev : g_devices) {
-    dev->NullStream()->finish();
-  }
 
-  if (amd::SvmBuffer::malloced(hostPtr)) {
-    amd::SvmBuffer::free(*hip::host_device->asContext(), hostPtr);
-    HIP_RETURN(hipSuccess);
-  } else {
-    size_t offset = 0;
-    amd::Memory* mem = getMemoryObject(hostPtr, offset);
+  size_t offset = 0;
+  amd::Memory* mem = getMemoryObject(hostPtr, offset);
 
-    if(mem) {
-      for (const auto& device: g_devices) {
-        const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
-        if (devMem != nullptr) {
-          void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
-          if (amd::MemObjMap::FindMemObj(vAddr)) {
-            amd::MemObjMap::RemoveMemObj(vAddr);
-          }
+  if (mem != nullptr) {
+    // Wait on the device, associated with the current memory object during allocation
+    auto device_id = mem->getUserData().deviceId;
+    g_devices[device_id]->NullStream()->finish();
+
+    for (const auto& device: g_devices) {
+      const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
+      if (devMem != nullptr) {
+        void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
+        if (amd::MemObjMap::FindMemObj(vAddr)) {
+          amd::MemObjMap::RemoveMemObj(vAddr);
         }
       }
-      amd::MemObjMap::RemoveMemObj(hostPtr);
-      mem->release();
-      HIP_RETURN(hipSuccess);
     }
+    amd::MemObjMap::RemoveMemObj(hostPtr);
+    mem->release();
+    HIP_RETURN(hipSuccess);
   }
 
   LogPrintfError("Cannot unregister host_ptr: 0x%x \n", hostPtr);

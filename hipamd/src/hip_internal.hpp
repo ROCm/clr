@@ -268,7 +268,7 @@ namespace hip {
     const std::vector<uint32_t> GetCUMask() const { return cuMask_; }
 
     /// Sync all non-blocking streams
-    static void syncNonBlockingStreams(int deviceId = -1);
+    static void syncNonBlockingStreams(int deviceId);
 
     /// Destroy all streams on a given device
     static void destroyAllStreams(int deviceId);
