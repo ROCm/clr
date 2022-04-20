@@ -46,6 +46,7 @@
 namespace amd {
 
 volatile bool Runtime::initialized_ = false;
+bool Runtime::LibraryDetached = false;
 
 bool Runtime::init() {
   if (initialized_) {
