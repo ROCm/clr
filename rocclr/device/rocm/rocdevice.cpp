@@ -2657,7 +2657,9 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 
 // ================================================================================================
 bool Device::IsCacheFlushed(Device::CacheState state) const {
-  return (static_cast<int>(state) == cache_state_.load(std::memory_order_relaxed));
+
+  return ROC_EVENT_NO_FLUSH ? 
+         (static_cast<int>(state) == cache_state_.load(std::memory_order_relaxed)) : true;
 }
 
 // ================================================================================================
