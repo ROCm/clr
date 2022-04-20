@@ -866,6 +866,10 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
 hipError_t ihipArrayCreate(hipArray** array,
                            const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray,
                            unsigned int numMipmapLevels) {
+  if (array == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
   // NumChannels specifies the number of packed components per HIP array element; it may be 1, 2, or 4;
   if ((pAllocateArray->NumChannels != 1) &&
       (pAllocateArray->NumChannels != 2) &&
