@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #include "thread/thread.hpp"
+#include "platform/runtime.hpp"
 
 #include <windows.h>
 #include <iostream>
@@ -45,6 +46,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
 #endif  // DEBUG
       break;
     case DLL_PROCESS_DETACH:
+      amd::Runtime::setLibraryDetached();
       break;
     case DLL_THREAD_DETACH: {
       amd::Thread* thread = amd::Thread::current();
