@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -912,8 +912,28 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
 }
 
 bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t mmap_size) {
-  //TODO: fix with proper implementation
-  return false;
+  if (mmap_ptr == nullptr) {
+    return false;
+  }
+
+  HANDLE map_handle = OpenFileMapping(FILE_MAP_ALL_ACCESS, FALSE, fname);
+
+  if (map_handle == nullptr) {
+    map_handle = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, mmap_size, fname);
+    if (map_handle == nullptr) {
+      return false;
+    }
+  }
+
+  *mmap_ptr = MapViewOfFile(map_handle, FILE_MAP_ALL_ACCESS, 0, 0, mmap_size);
+
+  CloseHandle(map_handle);
+
+  if (*mmap_ptr == nullptr) {
+    return false;
+  }
+
+  return true;
 }
 }  // namespace amd
 
