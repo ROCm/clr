@@ -32,6 +32,7 @@ namespace amd {
 
 class Runtime : AllStatic {
   static volatile bool initialized_;
+  static bool LibraryDetached;
 
  public:
   //! Return true if the OpencCL runtime is already initialized
@@ -45,6 +46,14 @@ class Runtime : AllStatic {
 
   //! Return true if the Runtime is still single-threaded.
   static bool singleThreaded() { return !initialized(); }
+
+  //! Return whether the library is detached by OS
+  static bool isLibraryDetached() { return LibraryDetached; }
+
+  //! Set the library has been detached.
+  static void setLibraryDetached() {
+    LibraryDetached = true;
+  }
 };
 
 #if 0
