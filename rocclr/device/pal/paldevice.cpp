@@ -2262,19 +2262,11 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
 
 void Device::virtualFree(void* addr)
 {
-  amd::Memory* svmMem = amd::MemObjMap::FindMemObj(addr);
-  if (nullptr != svmMem && (svmMem->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
-    svmMem->release();
+  amd::Memory* va = amd::MemObjMap::FindMemObj(addr);
+  if (nullptr != va && (va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    va->release();
     amd::MemObjMap::RemoveMemObj(addr);
   }
-}
-
-void Device::virtualMap(void* addr, amd::Memory& mem, size_t size)
-{
-}
-
-void Device::virtualUnmap(void* addr, size_t size)
-{
 }
 
 bool Device::AcquireExclusiveGpuAccess() {

@@ -91,6 +91,7 @@ class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
 class TransferBufferFileCommand;
 class StreamOperationCommand;
+class VirtualMapCommand;
 class ExternalSemaphoreCmd;
 class HwDebugManager;
 class Isa;
@@ -1236,6 +1237,7 @@ class VirtualDevice : public amd::HeapObject {
     ShouldNotReachHere();
   }
   virtual void submitStreamOperation(amd::StreamOperationCommand& cmd) { ShouldNotReachHere(); }
+  virtual void submitVirtualMap(amd::VirtualMapCommand& cmd) { ShouldNotReachHere(); }
 
   virtual void profilerAttach(bool enable) = 0;
 
@@ -1735,23 +1737,6 @@ class Device : public RuntimeObject {
    * @param addr Start address of the range
    */
   virtual void virtualFree(void* addr) = 0;
-
-  /**
-   * Map a memory to a VA range
-   *
-   * @param addr Start address of the range
-   * @param mem Backing store
-   * @param size Size to be mapped in bytes
-   */
-  virtual void virtualMap(void* addr, Memory& mem, size_t size) = 0;
-
-  /**
-   * Unmap a memory from a VA
-   *
-   * @param addr Address of the VA range
-   * @param size Size of the range to be unmapped in bytes
-   */
-  virtual void virtualUnmap(void* addr, size_t size) = 0;
 
   /**
    * @return True if the device successfully applied the SVM attributes in HMM for device memory

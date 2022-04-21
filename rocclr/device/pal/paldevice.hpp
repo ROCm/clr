@@ -146,8 +146,6 @@ class NullDevice : public amd::Device {
   virtual void svmFree(void* ptr) const { return; }
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) { return nullptr; };
   virtual void virtualFree(void* addr) { };
-  virtual void virtualMap(void* addr, amd::Memory& mem, size_t size) { };
-  virtual void virtualUnmap(void* addr, size_t size) { };
 
   virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle) { return false; }
   virtual void DestroyExtSemaphore(void* extSemaphore) { }
@@ -529,8 +527,6 @@ class Device : public NullDevice {
 
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
-  virtual void virtualMap(void* addr, amd::Memory& mem, size_t size);
-  virtual void virtualUnmap(void* addr, size_t size);
 
   //! Returns SRD manger object
   SrdManager& srds() const { return *srdManager_; }
