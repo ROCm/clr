@@ -661,18 +661,27 @@ hipError_t hipMemGetAddressRange(hipDeviceptr_t* pbase, size_t* psize, hipDevice
 hipError_t hipMemGetInfo(size_t* free, size_t* total) {
   HIP_INIT_API(hipMemGetInfo, free, total);
 
-  size_t freeMemory[2];
-  amd::Device* device = hip::getCurrentDevice()->devices()[0];
-  if(device == nullptr) {
-    HIP_RETURN(hipErrorInvalidDevice);
-  }
-
-  if(!device->globalFreeMemory(freeMemory)) {
+  if (free == nullptr && total == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  *free = freeMemory[0] * Ki;
-  *total = device->info().globalMemSize_;
+  size_t freeMemory[2];
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  if (device == nullptr) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+
+  if (!device->globalFreeMemory(freeMemory)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (free != nullptr) {
+    *free = freeMemory[0] * Ki;
+  }
+
+  if (total != nullptr) {
+    *total = device->info().globalMemSize_;
+  }
 
   HIP_RETURN(hipSuccess);
 }
