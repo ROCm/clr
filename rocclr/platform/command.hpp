@@ -1699,6 +1699,45 @@ class SvmPrefetchAsyncCommand : public Command {
   size_t cpu_access() const { return cpu_access_; }
 };
 
+/*! \brief  A virtual map memory command.
+ *
+ */
+
+class VirtualMapCommand : public Command {
+ private:
+  const void* ptr_;     //!< Virtual address to map to the memory
+  size_t size_;         //!< Size of the mapping in bytes
+  Memory* memory_;      //!< Memory to map, nullptr means unmap
+
+ public:
+  //! Construct a new VirtualMapCommand
+  VirtualMapCommand(HostQueue& queue, const EventWaitList& eventWaitList,
+                   void* ptr, size_t size, Memory* memory)
+      : Command(queue, 1, eventWaitList),
+        ptr_(ptr),
+        size_(size),
+        memory_(memory) {
+    // Sanity checks
+    assert(size > 0 && "invalid");
+    if (memory_) memory_->retain();
+  }
+
+  virtual void releaseResources() {
+    if (memory_) memory_->release();
+    DEBUG_ONLY(memory_ = nullptr);
+    Command::releaseResources();
+  }
+
+  virtual void submit(device::VirtualDevice& device) { device.submitVirtualMap(*this); }
+
+  //! Read the memory object
+  Memory* memory() const { return memory_; }
+  //! Read the size
+  size_t size() const { return size_; }
+  //! Read the pointer
+  const void* ptr() const { return ptr_; }
+};
+
 /*! @}
  *  @}
  */

@@ -2124,6 +2124,30 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
+void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+
+  profilingBegin(vcmd);
+  amd::Memory* va = amd::MemObjMap::FindMemObj(vcmd.ptr());
+  if (va == nullptr || !(va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    profilingEnd(vcmd);
+    return;
+  }
+  pal::Memory* vaRange = dev().getGpuMemory(va);
+  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr)? nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
+  Pal::VirtualMemoryRemapRange range{
+    vaRange->iMem(),
+    0,
+    memory,
+    0,
+    vcmd.size(),
+    Pal::VirtualGpuMemAccessMode::NoAccess
+  };
+  Pal::Result result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+  profilingEnd(vcmd);
+}
+
 // ================================================================================================
 void VirtualGPU::PrintChildren(const HSAILKernel& hsaKernel, VirtualGPU* gpuDefQueue) {
   AmdAqlWrap* wraps = (AmdAqlWrap*)(&((AmdVQueueHeader*)gpuDefQueue->virtualQueue_->data())[1]);
