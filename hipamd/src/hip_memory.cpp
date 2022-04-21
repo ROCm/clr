@@ -653,7 +653,7 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
-  if (ptr == nullptr) {
+  if ((ptr == nullptr) || (pitch == nullptr)) {
     return hipErrorInvalidValue;
   }
 
