@@ -2461,7 +2461,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
 
 // ================================================================================================
 bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
-                                       size_t sizeBytes) const {
+                                       size_t offset, size_t sizeBytes) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   uint blitType = StreamOpsWrite;
@@ -2474,12 +2474,12 @@ bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
   bool is32BitWrite = (sizeBytes == sizeof(uint32_t)) ? true : false;
   // Program kernels arguments for the write operation
   if (is32BitWrite) {
-    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
     setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
   } else {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
-    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
   }
   setArgument(kernels_[blitType], 3, sizeof(size_t), &sizeBytes);
@@ -2494,8 +2494,8 @@ bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
 }
 
 // ================================================================================================
-bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, size_t sizeBytes,
-                                      uint64_t flags, uint64_t mask) const {
+bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, size_t offset,
+                                      size_t sizeBytes, uint64_t flags, uint64_t mask) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   uint blitType = StreamOpsWait;
@@ -2510,14 +2510,14 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
   bool is32BitWait = (sizeBytes == sizeof(uint32_t)) ? true : false;
   // Program kernels arguments for the wait operation
   if (is32BitWait) {
-    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
     setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
     setArgument(kernels_[blitType], 3, sizeof(uint32_t), &flags);
     setArgument(kernels_[blitType], 4, sizeof(uint32_t), &mask);
   } else {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
-    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
     setArgument(kernels_[blitType], 3, sizeof(uint64_t), &flags);
     setArgument(kernels_[blitType], 4, sizeof(uint64_t), &mask);

@@ -429,12 +429,14 @@ class KernelBlitManager : public DmaBlitManager {
   //! Stream memory write operation - Write a 'value' at 'memory'.
   bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
                              uint64_t value,
+                             size_t offset,
                              size_t sizeBytes
   ) const;
 
   //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
   bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
                              uint64_t value,
+                             size_t offset,
                              size_t sizeBytes,
                              uint64_t flags,
                              uint64_t mask
@@ -483,7 +485,7 @@ class KernelBlitManager : public DmaBlitManager {
   void releaseArguments(address args) const;
 
   inline void setArgument(amd::Kernel* kernel, size_t index,
-                          size_t size, const void* value, uint32_t offset = 0,
+                          size_t size, const void* value, size_t offset = 0,
                           const device::Memory* dev_mem = nullptr) const;
 
   uint32_t ConstantBufferOffset() const {
@@ -528,7 +530,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
-                                           size_t size, const void* value, uint32_t offset,
+                                           size_t size, const void* value, size_t offset,
                                            const device::Memory* dev_mem) const {
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
