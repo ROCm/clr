@@ -2781,7 +2781,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           break;
         }
         case amd::KernelParameterDescriptor::HiddenHostcallBuffer: {
-          if (roc_device_.info().pcie_atomics_) {
+          if (dev().info().pcie_atomics_) {
             uintptr_t buffer = reinterpret_cast<uintptr_t>(
               roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups, cuMask_));
             if (!buffer) {
@@ -2936,8 +2936,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
 
     // Check for group memory overflow
     //! @todo Check should be in HSA - here we should have at most an assert
-    assert(roc_device_.info().localMemSizePerCU_ > 0);
-    if (ldsUsage > roc_device_.info().localMemSizePerCU_) {
+    assert(dev().info().localMemSizePerCU_ > 0);
+    if (ldsUsage > dev().info().localMemSizePerCU_) {
       LogError("No local memory available\n");
       return false;
     }

@@ -1585,8 +1585,8 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   bool rejected = false;
 
   // Fall into the ROC path for rejected transfers
-  if (setup_.disableCopyBufferRect_ ||
-      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess()) {
+  if (dev().info().pcie_atomics_ && (setup_.disableCopyBufferRect_ ||
+      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess())) {
     result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire);
 
     if (result) {
