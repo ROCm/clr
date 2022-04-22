@@ -2394,8 +2394,8 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     else {
     // mask is applied on value before performing
     // the comparision defined by 'condition'
-      bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWait(*memory, value,
-                                                  sizeBytes, flags, mask);
+      bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWait(*memory, value, offset,
+                                                                              sizeBytes, flags, mask);
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Waiting for value: 0x%lx."
               " Flags: 0x%lx mask: 0x%lx", value, flags, mask);
       if (!result) {
@@ -2405,12 +2405,11 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   } else if (type == ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
     amd::Coord3D origin(offset);
     amd::Coord3D size(sizeBytes);
-
     // Ensure memory ordering preceding the write
     dispatchBarrierPacket(kBarrierPacketReleaseHeader);
 
     bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWrite(*memory, value,
-                                                  sizeBytes);
+                                                                            offset, sizeBytes);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writing value: 0x%lx", value);
     if (!result) {
       LogError("submitStreamOperation: Write failed!");
