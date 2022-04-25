@@ -586,6 +586,7 @@ class Device : public NullDevice {
   static std::vector<hsa_agent_t> gpu_agents_;
   static std::vector<AgentInfo> cpu_agents_;
 
+  static amd::Monitor lockP2P_;
   hsa_agent_t cpu_agent_;
   uint32_t preferred_numa_node_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
