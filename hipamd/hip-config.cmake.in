@@ -125,7 +125,7 @@ endif()
 
 if(HIP_COMPILER STREQUAL "clang")
   if(WIN32)
-    file(TO_CMAKE_PATH "$ENV{HIP_PATH}" HIP_CLANG_ROOT)
+    file(TO_CMAKE_PATH "${HIP_PATH}" HIP_CLANG_ROOT)
   else()
     set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
   endif()
@@ -276,23 +276,23 @@ if(HIP_COMPILER STREQUAL "clang")
       message("clang compiler doesn't support parallel jobs")
     endif()
   endif()
-  if(NOT WIN32)
-    file(GLOB HIP_CLANGRT_LIB_SEARCH_PATHS "${HIP_CLANG_ROOT}/lib/clang/*/lib/*")
-    find_library(CLANGRT_BUILTINS
-      NAMES
-        clang_rt.builtins
-        clang_rt.builtins-x86_64
-      PATHS
-        ${HIP_CLANGRT_LIB_SEARCH_PATHS}
-        ${HIP_CLANG_INCLUDE_PATH}/../lib/linux)
 
-    # Add support for __fp16 and _Float16, explicitly link with compiler-rt
-    if(CLANGRT_BUILTINS-NOTFOUND)
-      message(FATAL_ERROR "clangrt builtins lib not found")
-    else()
-      set_property(TARGET hip::host APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
-      set_property(TARGET hip::device APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
-    endif()
+  file(GLOB HIP_CLANGRT_LIB_SEARCH_PATHS "${HIP_CLANG_ROOT}/lib/clang/*/lib/*")
+  find_library(CLANGRT_BUILTINS
+    NAMES
+      clang_rt.builtins
+      clang_rt.builtins-x86_64
+    PATHS
+      ${HIP_CLANGRT_LIB_SEARCH_PATHS}
+      ${HIP_CLANG_INCLUDE_PATH}/../lib/linux
+      ${HIP_CLANG_INCLUDE_PATH}/../lib/windows)
+
+  # Add support for __fp16 and _Float16, explicitly link with compiler-rt
+  if(NOT CLANGRT_BUILTINS)
+    message(FATAL_ERROR "clangrt builtins lib not found")
+  else()
+    set_property(TARGET hip::host APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
+    set_property(TARGET hip::device APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
   endif()
 endif()
 
