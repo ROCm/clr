@@ -19,8 +19,7 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/khronos/headers/opencl2.2/CL
         USE_SOURCE_PERMISSIONS
         PATTERN cl_d3d10.h EXCLUDE
         PATTERN cl_d3d11.h EXCLUDE
-        PATTERN cl_dx9_media_sharing.h EXCLUDE
-        PATTERN cl_egl.h EXCLUDE )
+        PATTERN cl_dx9_media_sharing.h EXCLUDE )
 
 if(BUILD_ICD)
   install(TARGETS OpenCL DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT icd )
