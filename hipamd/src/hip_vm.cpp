@@ -193,6 +193,18 @@ hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocat
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(handle);
+
+  auto& queue = *g_devices[ga->GetProperties().location.id]->NullStream();
+
+  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size, &ga->asAmdMemory());
+  cmd->enqueue();
+  cmd->awaitCompletion();
+  cmd->release();
+
+  amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
+  va->getUserData().deviceId = ga->GetProperties().location.id;
+
   HIP_RETURN(hipSuccess);
 }
 
@@ -243,6 +255,15 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   HIP_INIT_API(hipMemUnmap, ptr, size);
 
   if (ptr == nullptr) HIP_RETURN(hipErrorInvalidValue);
+
+  amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
+
+  auto& queue = *g_devices[va->getUserData().deviceId]->NullStream();
+
+  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size, nullptr);
+  cmd->enqueue();
+  cmd->awaitCompletion();
+  cmd->release();
 
   HIP_RETURN(hipSuccess);
 }
