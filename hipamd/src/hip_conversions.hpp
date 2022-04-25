@@ -301,6 +301,24 @@ unsigned int getNumChannels(const hipChannelFormatDesc& desc) {
 }
 
 inline
+bool CheckArrayFormat(const hipChannelFormatDesc& desc) {
+  if(desc.x == 0) {
+    return false;
+  } else {
+    if(desc.y != 0 && desc.y != desc.x) {
+      return false;
+    }
+    if(desc.z !=0 && desc.z != desc.x) {
+      return false;
+    }
+    if(desc.w !=0 && desc.w != desc.x) {
+      return false;
+    }
+  }
+  return true;
+}
+
+inline
 hipArray_Format getArrayFormat(const hipChannelFormatDesc& desc) {
   switch (desc.f) {
     case hipChannelFormatKindUnsigned:
