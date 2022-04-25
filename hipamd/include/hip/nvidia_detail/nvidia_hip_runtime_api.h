@@ -1107,6 +1107,7 @@ inline static enum cudaChannelFormatKind hipChannelFormatKindToCudaChannelFormat
 typedef cudaGraph_t hipGraph_t;
 typedef cudaGraphNode_t hipGraphNode_t;
 typedef cudaGraphExec_t hipGraphExec_t;
+typedef cudaUserObject_t hipUserObject_t;
 
 typedef enum cudaGraphNodeType hipGraphNodeType;
 #define hipGraphNodeTypeKernel cudaGraphNodeTypeKernel
@@ -3231,6 +3232,29 @@ inline static hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAt
 
 inline static hipError_t hipDeviceGraphMemTrim(int device) {
     return hipCUDAErrorTohipError(cudaDeviceGraphMemTrim(device));
+}
+
+inline static hipError_t hipUserObjectCreate(hipUserObject_t* object_out, void* ptr, hipHostFn_t destroy,
+                                             unsigned int initialRefcount, unsigned int flags) {
+    return hipCUDAErrorTohipError(cudaUserObjectCreate(object_out, ptr, destroy, initialRefcount, flags));
+}
+
+
+inline static hipError_t hipUserObjectRelease(hipUserObject_t object, unsigned int count __dparm(1)) {
+    return hipCUDAErrorTohipError(cudaUserObjectRelease(object, count));
+}
+
+
+inline static hipError_t hipUserObjectRetain(hipUserObject_t object, unsigned int count __dparm(1)) {
+    return hipCUDAErrorTohipError(cudaUserObjectRelease(object, count));
+}
+
+inline static hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, unsigned int count __dparm(1), unsigned int flags __dparm(0)) {
+    return hipCUDAErrorTohipError(cudaGraphRetainUserObject(graph, object, count, flags));
+}
+
+inline static hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, unsigned int count __dparm(1)) {
+    return hipCUDAErrorTohipError(cudaGraphReleaseUserObject(graph, object, count));
 }
 #endif
 

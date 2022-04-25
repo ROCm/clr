@@ -6,7 +6,6 @@
 #ifndef _HIP_PROF_STR_H
 #define _HIP_PROF_STR_H
 #define HIP_PROF_VER 1
-
 // HIP API callbacks ID enumeration
 enum hip_api_id_t {
   HIP_API_ID_NONE = 0,
@@ -354,7 +353,12 @@ enum hip_api_id_t {
   HIP_API_ID_hipDriverGetVersion = 341,
   HIP_API_ID_hipGraphUpload = 342,
   HIP_API_ID_hipRuntimeGetVersion = 343,
-  HIP_API_ID_LAST = 343,
+  HIP_API_ID_hipUserObjectCreate = 344,
+  HIP_API_ID_hipUserObjectRelease = 345,
+  HIP_API_ID_hipUserObjectRetain = 346,
+  HIP_API_ID_hipGraphRetainUserObject = 347,
+  HIP_API_ID_hipGraphReleaseUserObject = 348,
+  HIP_API_ID_LAST = 348,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -760,6 +764,11 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipTexRefSetMipmappedArray: return "hipTexRefSetMipmappedArray";
     case HIP_API_ID_hipThreadExchangeStreamCaptureMode: return "hipThreadExchangeStreamCaptureMode";
     case HIP_API_ID_hipWaitExternalSemaphoresAsync: return "hipWaitExternalSemaphoresAsync";
+    case HIP_API_ID_hipUserObjectCreate: return "hipUserObjectCreate";
+    case HIP_API_ID_hipUserObjectRelease: return "hipUserObjectRelease";
+    case HIP_API_ID_hipUserObjectRetain: return "hipUserObjectRetain";
+    case HIP_API_ID_hipGraphRetainUserObject: return "hipGraphRetainUserObject";
+    case HIP_API_ID_hipGraphReleaseUserObject: return "hipGraphReleaseUserObject";
   };
   return "unknown";
 };
@@ -1106,6 +1115,11 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipTexRefSetMipmappedArray", name) == 0) return HIP_API_ID_hipTexRefSetMipmappedArray;
   if (strcmp("hipThreadExchangeStreamCaptureMode", name) == 0) return HIP_API_ID_hipThreadExchangeStreamCaptureMode;
   if (strcmp("hipWaitExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipWaitExternalSemaphoresAsync;
+  if (strcmp("hipUserObjectCreate", name) == 0) return HIP_API_ID_hipUserObjectCreate;
+  if (strcmp("hipUserObjectRelease", name) == 0) return HIP_API_ID_hipUserObjectRelease;
+  if (strcmp("hipUserObjectRetain", name) == 0) return HIP_API_ID_hipUserObjectRetain;
+  if (strcmp("hipGraphRetainUserObject", name) == 0) return HIP_API_ID_hipGraphRetainUserObject;
+  if (strcmp("hipGraphReleaseUserObject", name) == 0) return HIP_API_ID_hipGraphReleaseUserObject;
   return HIP_API_ID_NONE;
 }
 
@@ -3100,6 +3114,34 @@ typedef struct hip_api_data_s {
       unsigned int numExtSems;
       hipStream_t stream;
     } hipWaitExternalSemaphoresAsync;
+    struct {
+      hipUserObject_t* object_out;
+      hipUserObject_t  object_out__val;
+      void* ptr;
+      hipHostFn_t destroy;
+      unsigned int initialRefcount;
+      unsigned int flags;
+    } hipUserObjectCreate;
+    struct {
+      hipUserObject_t object;
+      unsigned int count;
+    } hipUserObjectRelease;
+    struct {
+      hipUserObject_t object;
+      unsigned int count;
+    } hipUserObjectRetain;
+
+    struct {
+      hipGraph_t graph;
+      hipUserObject_t object;
+      unsigned int count;
+      unsigned int flags;
+    } hipGraphRetainUserObject;
+    struct {
+      hipGraph_t graph;
+      hipUserObject_t object;
+      unsigned int count;
+    } hipGraphReleaseUserObject;
   } args;
 } hip_api_data_t;
 
@@ -5134,6 +5176,37 @@ typedef struct hip_api_data_s {
   cb_data.args.hipWaitExternalSemaphoresAsync.numExtSems = (unsigned int)numExtSems; \
   cb_data.args.hipWaitExternalSemaphoresAsync.stream = (hipStream_t)stream; \
 };
+// hipUserObjectCreate[('hipUserObject_t*', 'object_out'), ('void*', 'ptr'), ('hipHostFn_t', 'destroy'), ('unsigned int', 'initialRefcount'), ('unsigned int', 'flags')]
+#define INIT_hipUserObjectCreate_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipUserObjectCreate.object_out = (hipUserObject_t*)object_out; \
+  cb_data.args.hipUserObjectCreate.ptr = (void*)ptr; \
+  cb_data.args.hipUserObjectCreate.destroy = (hipHostFn_t)destroy; \
+  cb_data.args.hipUserObjectCreate.initialRefcount = (unsigned int)initialRefcount; \
+  cb_data.args.hipUserObjectCreate.flags = (unsigned int)flags; \
+};
+// hipUserObjectRelease[('hipUserObject_t', 'object'), ('unsigned int', 'count')]
+#define INIT_hipUserObjectRelease_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipUserObjectRelease.object = (hipUserObject_t)object; \
+  cb_data.args.hipUserObjectRelease.count = (unsigned int)count; \
+};
+// hipUserObjectRetain[('hipUserObject_t', 'object'), ('unsigned int', 'count')]
+#define INIT_hipUserObjectRetain_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipUserObjectRetain.object = (hipUserObject_t)object; \
+  cb_data.args.hipUserObjectRetain.count = (unsigned int)count; \
+};
+// hipGraphRetainUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count'), ('unsigned int', 'flags')]
+#define INIT_hipGraphRetainUserObject_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphRetainUserObject.graph = (hipGraph_t)graph; \
+  cb_data.args.hipGraphRetainUserObject.object = (hipUserObject_t)object; \
+  cb_data.args.hipGraphRetainUserObject.count = (unsigned int)count; \
+  cb_data.args.hipGraphRetainUserObject.flags = (unsigned int)flags; \
+};
+// hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
+#define INIT_hipGraphReleaseUserObject_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphReleaseUserObject.graph = (hipGraph_t)graph; \
+  cb_data.args.hipGraphReleaseUserObject.object = (hipUserObject_t)object; \
+  cb_data.args.hipGraphReleaseUserObject.count = (unsigned int)count; \
+};
 #define INIT_CB_ARGS_DATA(cb_id, cb_data) INIT_##cb_id##_CB_ARGS_DATA(cb_data)
 
 // Macros for non-public API primitives
@@ -6584,6 +6657,22 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipWaitExternalSemaphoresAsync:
       if (data->args.hipWaitExternalSemaphoresAsync.extSemArray) data->args.hipWaitExternalSemaphoresAsync.extSemArray__val = *(data->args.hipWaitExternalSemaphoresAsync.extSemArray);
       if (data->args.hipWaitExternalSemaphoresAsync.paramsArray) data->args.hipWaitExternalSemaphoresAsync.paramsArray__val = *(data->args.hipWaitExternalSemaphoresAsync.paramsArray);
+      break;
+// hipUserObjectCreate[('hipUserObject_t*', 'object_out'), ('void*', 'ptr')]
+    case HIP_API_ID_hipUserObjectCreate:
+      if (data->args.hipUserObjectCreate.object_out) data->args.hipUserObjectCreate.object_out__val = *(data->args.hipUserObjectCreate.object_out);
+      break;
+// hipUserObjectRelease[('hipUserObject_t', 'object')]
+    case HIP_API_ID_hipUserObjectRelease:
+      break;
+// hipUserObjectRetain[('hipUserObject_t', 'object')]
+    case HIP_API_ID_hipUserObjectRetain:
+      break;
+// hipGraphRetainUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count'), ('unsigned int', 'flags')]
+    case HIP_API_ID_hipGraphRetainUserObject:
+      break;
+// hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
+    case HIP_API_ID_hipGraphReleaseUserObject:
       break;
     default: break;
   };
@@ -9273,6 +9362,43 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else oss << ", paramsArray=" << data->args.hipWaitExternalSemaphoresAsync.paramsArray__val;
       oss << ", numExtSems=" << data->args.hipWaitExternalSemaphoresAsync.numExtSems;
       oss << ", stream=" << data->args.hipWaitExternalSemaphoresAsync.stream;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipUserObjectCreate:
+      oss << "hipUserObjectCreate(";
+      if (data->args.hipUserObjectCreate.object_out == NULL) oss << "object_out=NULL";
+      else oss << "object_out=" << data->args.hipUserObjectCreate.object_out__val;
+      oss << ", ptr=" << data->args.hipUserObjectCreate.ptr;
+      oss << ", destroy=" << data->args.hipUserObjectCreate.destroy;
+      oss << ", initialRefcount=" << data->args.hipUserObjectCreate.initialRefcount;
+      oss << ", flags=" << data->args.hipUserObjectCreate.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipUserObjectRelease:
+      oss << "hipUserObjectRelease(";
+      oss << "object=" << data->args.hipUserObjectRelease.object;
+      oss << ", count=" << data->args.hipUserObjectRelease.count;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipUserObjectRetain:
+      oss << "hipUserObjectRetain(";
+      oss << "object=" << data->args.hipUserObjectRetain.object;
+      oss << ", count=" << data->args.hipUserObjectRetain.count;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGraphRetainUserObject:
+      oss << "hipGraphRetainUserObject(";
+      oss << "graph=" << data->args.hipGraphRetainUserObject.graph;
+      oss << ", object=" << data->args.hipGraphRetainUserObject.object;
+      oss << ", count=" << data->args.hipGraphRetainUserObject.count;
+      oss << ", flags=" << data->args.hipGraphRetainUserObject.flags;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGraphReleaseUserObject:
+      oss << "hipGraphReleaseUserObject(";
+      oss << "graph=" << data->args.hipGraphReleaseUserObject.graph;
+      oss << ", object=" << data->args.hipGraphReleaseUserObject.object;
+      oss << ", count=" << data->args.hipGraphReleaseUserObject.count;
       oss << ")";
     break;
     default: oss << "unknown";

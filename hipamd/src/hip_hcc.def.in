@@ -441,3 +441,8 @@ hipMemcpy2DToArray_spt
 hipMemcpy2DFromArrayAsync_spt
 hipDrvGetErrorName
 hipDrvGetErrorString
+hipUserObjectCreate
+hipUserObjectRelease
+hipUserObjectRetain
+hipGraphRetainUserObject
+hipGraphReleaseUserObject
