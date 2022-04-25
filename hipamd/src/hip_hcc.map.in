@@ -441,6 +441,11 @@ global:
     hipMemRetainAllocationHandle;
     hipMemSetAccess;
     hipMemUnmap;
+    hipUserObjectCreate;
+    hipUserObjectRelease;
+    hipUserObjectRetain;
+    hipGraphRetainUserObject;
+    hipGraphReleaseUserObject;
 local:
     *;
 } hip_5.0;

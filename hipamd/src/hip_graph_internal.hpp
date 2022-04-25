@@ -43,6 +43,55 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
 void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
                  hipGraphExec* ptr);
 
+struct hipUserObject : public amd::ReferenceCountedObject {
+  typedef void(*UserCallbackDestructor)(void* data);
+  static std::unordered_set<hipUserObject*> ObjectSet_;
+  static amd::Monitor UserObjectLock_;
+ public:
+  hipUserObject(UserCallbackDestructor callback, void* data, unsigned int flags) : ReferenceCountedObject(),
+    callback_(callback), data_(data), flags_(flags) {
+    amd::ScopedLock lock(UserObjectLock_);
+    ObjectSet_.insert(this);
+  }
+
+  virtual ~hipUserObject() {
+    amd::ScopedLock lock(UserObjectLock_);
+    if (callback_ != nullptr) {
+      callback_(data_);
+    }
+    ObjectSet_.erase(this);
+  }
+
+  void increaseRefCount(const unsigned int refCount) {
+    for (uint32_t i = 0; i < refCount; i++) {
+      retain();
+    }
+  }
+
+  void decreaseRefCount(const unsigned int refCount) {
+    assert((refCount <= referenceCount()) && "count is bigger than refcount");
+    for (uint32_t i = 0; i < refCount; i++) {
+      release();
+    }
+  }
+
+  static bool isUserObjvalid(hipUserObject* pUsertObj) {
+    amd::ScopedLock lock(UserObjectLock_);
+    if (ObjectSet_.find(pUsertObj) == ObjectSet_.end()) {
+      return false;
+    }
+    return true;
+  }
+
+ private:
+  UserCallbackDestructor callback_;
+  void* data_;
+  unsigned int flags_;
+  //! Disable default operator=
+  hipUserObject& operator=(const hipUserObject&) = delete;
+  //! Disable copy constructor
+  hipUserObject(const hipUserObject& obj) = delete;
+};
 struct hipGraphNode {
  protected:
   amd::HostQueue* queue_;
@@ -237,6 +286,7 @@ struct ihipGraph {
   const ihipGraph* pOriginalGraph_ = nullptr;
   static std::unordered_set<ihipGraph*> graphSet_;
   static amd::Monitor graphSetLock_;
+  static std::unordered_set<hipUserObject*> graphUserObj_;
 
  public:
   ihipGraph() {
@@ -250,6 +300,9 @@ struct ihipGraph {
     }
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.erase(this);
+    for (auto userobj : graphUserObj_) {
+      userobj->release();
+    }
   };
 
   // check graphs validity
@@ -272,6 +325,24 @@ struct ihipGraph {
   std::vector<std::pair<Node, Node>> GetEdges() const;
   // returns the original graph ptr if cloned
   const ihipGraph* getOriginalGraph() const;
+  // Add user obj resource to graph
+  void addUserObjGraph(hipUserObject* pUserObj) {
+    amd::ScopedLock lock(graphSetLock_);
+    graphUserObj_.insert(pUserObj);
+  }
+  // Check user obj resource from graph is valid
+  static bool isUserObjGraphValid(hipUserObject* pUserObj) {
+    amd::ScopedLock lock(graphSetLock_);
+    if (graphUserObj_.find(pUserObj) == graphUserObj_.end()) {
+      return false;
+    }
+    return true;
+  }
+  // Delete user obj resource from graph
+  void RemoveUserObjGraph(hipUserObject* pUserObj) {
+    amd::ScopedLock lock(graphSetLock_);
+    graphUserObj_.erase(pUserObj);
+  }
   // saves the original graph ptr if cloned
   void setOriginalGraph(const ihipGraph* pOriginalGraph);
 
@@ -281,6 +352,14 @@ struct ihipGraph {
   void GetRunList(std::vector<std::vector<Node>>& parallelLists,
                   std::unordered_map<Node, std::vector<Node>>& dependencies);
   void LevelOrder(std::vector<Node>& levelOrder);
+  void GetUserObjs( std::unordered_set<hipUserObject*>& graphExeUserObjs) {
+    for(auto userObj : graphUserObj_)
+    {
+      amd::ScopedLock lock(graphSetLock_);
+      userObj->retain();
+      graphExeUserObjs.insert(userObj);
+    }
+  }
   ihipGraph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
   ihipGraph* clone() const;
 };
@@ -295,17 +374,19 @@ struct hipGraphExec {
   std::unordered_map<Node, Node> clonedNodes_;
   amd::Command* lastEnqueuedCommand_;
   static std::unordered_set<hipGraphExec*> graphExecSet_;
+  std::unordered_set<hipUserObject*> graphExeUserObj_;
   static amd::Monitor graphExecSetLock_;
 
  public:
   hipGraphExec(std::vector<Node>& levelOrder, std::vector<std::vector<Node>>& lists,
                std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-               std::unordered_map<Node, Node>& clonedNodes)
+               std::unordered_map<Node, Node>& clonedNodes, std::unordered_set<hipUserObject*>& userObjs)
       : parallelLists_(lists),
         levelOrder_(levelOrder),
         nodeWaitLists_(nodeWaitLists),
         clonedNodes_(clonedNodes),
         lastEnqueuedCommand_(nullptr),
+        graphExeUserObj_(userObjs),
         currentQueueIndex_(0) {
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.insert(this);
@@ -319,6 +400,9 @@ struct hipGraphExec {
     }
     for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;
     amd::ScopedLock lock(graphExecSetLock_);
+    for (auto userobj : graphExeUserObj_) {
+      userobj->release();
+    }
     graphExecSet_.erase(this);
   }
 
