@@ -106,6 +106,7 @@ std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
 
 address Device::mg_sync_ = nullptr;
+amd::Monitor Device::lockP2P_("Lock P2P ON/OFF");
 
 bool NullDevice::create(const amd::Isa &isa) {
   if (!isa.runtimeRocSupported()) {
@@ -2016,7 +2017,7 @@ void Device::hostFree(void* ptr, size_t size) const { memFree(ptr, size); }
 
 bool Device::enableP2P(amd::Device* ptrDev) {
   assert(ptrDev != nullptr);
-
+  amd::ScopedLock lock(lockP2P_);
   Device* peerDev = static_cast<Device*>(ptrDev);
   if (std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev) ==
       enabled_p2p_devices_.end()) {
@@ -2029,7 +2030,7 @@ bool Device::enableP2P(amd::Device* ptrDev) {
 
 bool Device::disableP2P(amd::Device* ptrDev) {
   assert(ptrDev != nullptr);
-
+  amd::ScopedLock lock(lockP2P_);
   Device* peerDev = static_cast<Device*>(ptrDev);
   //if device is present then remove
   auto it = std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev);
