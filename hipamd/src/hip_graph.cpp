@@ -776,10 +776,17 @@ hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) 
 
 hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   HIP_INIT_API(hipStreamEndCapture, stream, pGraph);
-  if (pGraph == nullptr || stream == nullptr || !hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+  if (pGraph == nullptr || stream == nullptr) {
+    HIP_RETURN(hipErrorIllegalState);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  // Capture status must be active before endCapture can be initiated
+  if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
+    HIP_RETURN(hipErrorIllegalState);
+  }
   // Capture must be ended on the same stream in which it was initiated
   if (!s->IsOriginStream()) {
     HIP_RETURN(hipErrorStreamCaptureUnmatched);
