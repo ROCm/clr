@@ -71,11 +71,15 @@ hipError_t Event::synchronize() {
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
   if (!g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, kWaitCompletion)) {
-    amd::Command* command = nullptr;
-    hipError_t status = recordCommand(command, event_->command().queue(), flags);
-    command->enqueue();
-    g_devices[deviceId()]->devices()[0]->IsHwEventReady(command->event(), kWaitCompletion);
-    command->release();
+    if (event_->HwEvent() != nullptr) {
+      amd::Command* command = nullptr;
+      hipError_t status = recordCommand(command, event_->command().queue(), flags);
+      command->enqueue();
+      g_devices[deviceId()]->devices()[0]->IsHwEventReady(command->event(), kWaitCompletion);
+      command->release();
+    } else {
+      event_->awaitCompletion();
+    }
   }
 
   return hipSuccess;
