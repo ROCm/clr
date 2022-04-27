@@ -165,6 +165,7 @@ void Memory::initDeviceMemory() {
 
 // ================================================================================================
 void Memory::resetAllocationState() {
+
   // Reset device memory allocation state
   for (size_t i = 0; i < context_().devices().size(); i++) {
     deviceAlloced_[context_().devices()[i]].store(AllocInit, std::memory_order_relaxed);
@@ -322,6 +323,7 @@ bool Memory::addDeviceMemory(const Device* dev) {
   AllocState create = AllocCreate;
   AllocState init = AllocInit;
 
+  amd::ScopedLock lock(lockMemoryOps());
   if (deviceAlloced_[dev].compare_exchange_strong(init, create, std::memory_order_acq_rel)) {
     // Check if runtime already allocated all available slots for device memory
     if (numDevices() == NumDevicesWithP2P()) {
