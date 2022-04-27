@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -251,13 +251,9 @@ hipError_t Event::addMarker(hipStream_t stream, amd::Command* command, bool reco
 }  // namespace hip
 // ================================================================================================
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
-#if !defined(_MSC_VER)
   unsigned supportedFlags = hipEventDefault | hipEventBlockingSync | hipEventDisableTiming |
       hipEventReleaseToDevice | hipEventReleaseToSystem | hipEventInterprocess;
-#else
-  unsigned supportedFlags = hipEventDefault | hipEventBlockingSync | hipEventDisableTiming |
-      hipEventReleaseToDevice | hipEventReleaseToSystem;
-#endif
+
   const unsigned releaseFlags = (hipEventReleaseToDevice | hipEventReleaseToSystem);
   // can't set any unsupported flags.
   // can't set both release flags
