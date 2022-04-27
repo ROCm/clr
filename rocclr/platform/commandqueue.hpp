@@ -264,6 +264,9 @@ class HostQueue : public CommandQueue {
     // an invalid access
     command->retain();
 
+    if (command->profilingInfo().marker_ts_) {
+      markerTsCount_++;
+    }
     // Release the last command in the batch
     if (lastEnqueueCommand_ != nullptr) {
       lastEnqueueCommand_->release();
@@ -284,12 +287,20 @@ class HostQueue : public CommandQueue {
   //! Get queue status
   bool GetQueueStatus() { return isActive_; }
 
+  //! Get markerTsCount
+  uint32_t GetMarkerTsCount() const { return markerTsCount_; }
+
+  //! Reset counter
+  void ResetMarkerTsCount() { markerTsCount_ = 0; }
+
 private:
   Command* head_;   //!< Head of the batch list
   Command* tail_;   //!< Tail of the batch list
 
   //! True if this command queue is active
   bool isActive_;
+
+  uint32_t markerTsCount_; //!< Count of TS markers
 };
 
 
