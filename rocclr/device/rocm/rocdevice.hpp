@@ -357,7 +357,7 @@ class Device : public NullDevice {
 
   static bool loadHsaModules();
 
-  hsa_agent_t getBackendDevice() const { return _bkendDevice; }
+  hsa_agent_t getBackendDevice() const { return bkendDevice_; }
   const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
 
   static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
@@ -592,7 +592,7 @@ class Device : public NullDevice {
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
-  hsa_agent_t _bkendDevice;
+  hsa_agent_t bkendDevice_;
   uint32_t pciDeviceId_;
   hsa_agent_t* p2p_agents_list_;
   hsa_profile_t agent_profile_;

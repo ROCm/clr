@@ -157,7 +157,7 @@ bool NullDevice::create(const amd::Isa &isa) {
 Device::Device(hsa_agent_t bkendDevice)
     : mapCacheOps_(nullptr)
     , mapCache_(nullptr)
-    , _bkendDevice(bkendDevice)
+    , bkendDevice_(bkendDevice)
     , pciDeviceId_(0)
     , gpuvm_segment_max_alloc_(0)
     , alloc_granularity_(0)
@@ -205,7 +205,7 @@ void Device::setupCpuAgent() {
   system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
           "coarse=0x%zx) for gpu agent=0x%zx", index, cpu_agent_.handle,
-          system_segment_.handle, system_coarse_segment_.handle, _bkendDevice.handle);
+          system_segment_.handle, system_coarse_segment_.handle, bkendDevice_.handle);
 }
 
 void Device::checkAtomicSupport() {
@@ -542,13 +542,13 @@ void Device::tearDown() {
 
 bool Device::create() {
   char agent_name[64] = {0};
-  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_NAME, agent_name)) {
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_NAME, agent_name)) {
     LogError("Unable to get HSA device name");
     return false;
   }
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CHIP_ID,
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CHIP_ID,
                          &pciDeviceId_)) {
     LogPrintfError("Unable to get PCI ID of HSA device %s", agent_name);
     return false;
@@ -559,7 +559,7 @@ bool Device::create() {
     hsa_isa_t first_isa;
   } agent_isas = {0, {0}};
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_iterate_isas(_bkendDevice,
+      hsa_agent_iterate_isas(bkendDevice_,
                              [](hsa_isa_t isa, void* data) {
                                agent_isas_t* agent_isas = static_cast<agent_isas_t*>(data);
                                if (agent_isas->count++ == 0) {
@@ -604,7 +604,7 @@ bool Device::create() {
   }
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_PROFILE, &agent_profile_)) {
     LogPrintfError("Unable to get profile for HSA device %s (PCI ID %x)", agent_name, pciDeviceId_);
     return false;
   }
@@ -613,7 +613,7 @@ bool Device::create() {
   // Check cooperative groups for HIP only
   if (amd::IS_HIP &&
       (HSA_STATUS_SUCCESS !=
-       hsa_agent_get_info(_bkendDevice,
+       hsa_agent_get_info(bkendDevice_,
                           static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_COOPERATIVE_QUEUES),
                           &coop_groups))) {
     LogPrintfError(
@@ -650,7 +650,7 @@ bool Device::create() {
 
   uint32_t hsa_bdf_id = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice,
+      hsa_agent_get_info(bkendDevice_,
         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_BDFID), &hsa_bdf_id)) {
     LogPrintfError("Unable to determine BFD ID for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
@@ -663,7 +663,7 @@ bool Device::create() {
   info_.deviceTopology_.pcie.function = (hsa_bdf_id & 0x07);
   uint32_t pci_domain_id = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice,
+      hsa_agent_get_info(bkendDevice_,
         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_DOMAIN), &pci_domain_id)) {
     LogPrintfError("Unable to determine domain ID for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
@@ -687,7 +687,7 @@ bool Device::create() {
   // Get Agent HDP Flush Register Memory
   hsa_amd_hdp_flush_t hdpInfo;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice,
+      hsa_agent_get_info(bkendDevice_,
         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_HDP_FLUSH), &hdpInfo)) {
     LogPrintfError("Unable to determine HDP flush info for HSA device %s", agent_name);
     return false;
@@ -725,7 +725,7 @@ bool Device::create() {
 
   if ((glb_ctx_ == nullptr) && (gpu_agents_.size() >= 1) &&
       // Allow creation for the last device in the list.
-      (gpu_agents_[gpu_agents_.size() - 1].handle == _bkendDevice.handle)) {
+      (gpu_agents_[gpu_agents_.size() - 1].handle == bkendDevice_.handle)) {
     std::vector<amd::Device*> devices;
     uint32_t numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
     // Add all PAL devices
@@ -1087,7 +1087,7 @@ bool Device::populateOCLDeviceConstants() {
 
   ::strncpy(info_.name_, isa().targetId(), sizeof(info_.name_) - 1);
   char device_name[64] = {0};
-  if (HSA_STATUS_SUCCESS == hsa_agent_get_info(_bkendDevice,
+  if (HSA_STATUS_SUCCESS == hsa_agent_get_info(bkendDevice_,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_PRODUCT_NAME,
                                                device_name)) {
     ::strncpy(info_.boardName_, device_name, sizeof(info_.boardName_) - 1);
@@ -1095,7 +1095,7 @@ bool Device::populateOCLDeviceConstants() {
 
   char unique_id[32] = {0};
   if (HSA_STATUS_SUCCESS ==
-      hsa_agent_get_info(_bkendDevice, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_UUID),
+      hsa_agent_get_info(bkendDevice_, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_UUID),
                          unique_id)) {
     // ROCr gives the UUID info in the format GPU-XXXX with length 20 bytes
     // Strip the first 4 bytes and store only the 16 bytes representing UUID
@@ -1104,7 +1104,7 @@ bool Device::populateOCLDeviceConstants() {
     }
   }
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice,
+      hsa_agent_get_info(bkendDevice_,
                          (amd::IS_HIP) ?
                          (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COOPERATIVE_COMPUTE_UNIT_COUNT :
                          (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
@@ -1118,7 +1118,7 @@ bool Device::populateOCLDeviceConstants() {
       : info_.maxComputeUnits_;
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_COMPUTE_UNIT_COUNT,
                          &info_.maxPhysicalComputeUnits_)) {
     return false;
   }
@@ -1128,7 +1128,7 @@ bool Device::populateOCLDeviceConstants() {
       ? info_.maxPhysicalComputeUnits_ / 2
       : info_.maxPhysicalComputeUnits_;
 
-  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_,
                                                (hsa_agent_info_t)HSA_AMD_AGENT_INFO_CACHELINE_SIZE,
                                                &info_.globalMemCacheLineSize_)) {
     return false;
@@ -1137,7 +1137,7 @@ bool Device::populateOCLDeviceConstants() {
 
   uint32_t cachesize[4] = {0};
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_CACHE_SIZE, cachesize)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_CACHE_SIZE, cachesize)) {
     return false;
   }
   assert(cachesize[0] > 0);
@@ -1152,7 +1152,7 @@ bool Device::populateOCLDeviceConstants() {
       (settings().doublePrecision_) ? 1 : 0;
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MAX_CLOCK_FREQUENCY,
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MAX_CLOCK_FREQUENCY,
                          &info_.maxEngineClockFrequency_)) {
     return false;
   }
@@ -1163,13 +1163,13 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_MAX_FREQUENCY,
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_MEMORY_MAX_FREQUENCY,
           &info_.maxMemoryClockFrequency_)) {
       return false;
   }
 
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice,
+      hsa_agent_get_info(bkendDevice_,
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
                          &info_.globalMemChannels_)) {
     return false;
@@ -1182,14 +1182,14 @@ bool Device::populateOCLDeviceConstants() {
 
   assert(system_segment_.handle != 0);
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(
-                                _bkendDevice, Device::iterateGpuMemoryPoolCallback, this)) {
+                                bkendDevice_, Device::iterateGpuMemoryPoolCallback, this)) {
     return false;
   }
 
   assert(group_segment_.handle != 0);
 
   for (auto agent: gpu_agents_) {
-    if (agent.handle != _bkendDevice.handle) {
+    if (agent.handle != bkendDevice_.handle) {
       hsa_status_t err;
       // Can another GPU (agent) have access to the current GPU memory pool (gpuvm_segment_)?
       hsa_amd_memory_pool_access_t access;
@@ -1280,7 +1280,7 @@ bool Device::populateOCLDeviceConstants() {
 
   uint32_t max_work_group_size = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WORKGROUP_MAX_SIZE, &max_work_group_size)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_WORKGROUP_MAX_SIZE, &max_work_group_size)) {
     return false;
   }
   assert(max_work_group_size > 0);
@@ -1290,7 +1290,7 @@ bool Device::populateOCLDeviceConstants() {
 
   uint16_t max_workgroup_size[3] = {0, 0, 0};
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WORKGROUP_MAX_DIM, &max_workgroup_size)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_WORKGROUP_MAX_DIM, &max_workgroup_size)) {
     return false;
   }
   assert(max_workgroup_size[0] != 0 && max_workgroup_size[1] != 0 && max_workgroup_size[2] != 0);
@@ -1336,9 +1336,9 @@ bool Device::populateOCLDeviceConstants() {
   info_.spirVersions_ = "";
 
   uint16_t major, minor;
-  if (hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MAJOR, &major) !=
+  if (hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_VERSION_MAJOR, &major) !=
           HSA_STATUS_SUCCESS ||
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_VERSION_MINOR, &minor) !=
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_VERSION_MINOR, &minor) !=
           HSA_STATUS_SUCCESS) {
     return false;
   }
@@ -1383,7 +1383,7 @@ bool Device::populateOCLDeviceConstants() {
 
   uint8_t hsa_extensions[128];
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_EXTENSIONS, hsa_extensions)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_EXTENSIONS, hsa_extensions)) {
     return false;
   }
 
@@ -1392,14 +1392,14 @@ bool Device::populateOCLDeviceConstants() {
   if (image_is_supported) {
     // Images
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_MAX_SAMPLER_HANDLERS),
                            &info_.maxSamplers_)) {
       return false;
     }
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_MAX_IMAGE_RD_HANDLES),
                            &info_.maxReadImageArgs_)) {
       return false;
@@ -1409,7 +1409,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.maxWriteImageArgs_ = 8;
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_MAX_IMAGE_RORW_HANDLES),
                            &info_.maxReadWriteImageArgs_)) {
       return false;
@@ -1417,7 +1417,7 @@ bool Device::populateOCLDeviceConstants() {
 
     uint32_t image_max_dim[3];
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_2D_MAX_ELEMENTS),
                            &image_max_dim)) {
       return false;
@@ -1427,7 +1427,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.image2DMaxHeight_ = image_max_dim[1];
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_3D_MAX_ELEMENTS),
                            &image_max_dim)) {
       return false;
@@ -1439,7 +1439,7 @@ bool Device::populateOCLDeviceConstants() {
 
     uint32_t max_array_size = 0;
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_ARRAY_MAX_LAYERS),
                            &max_array_size)) {
       return false;
@@ -1449,7 +1449,7 @@ bool Device::populateOCLDeviceConstants() {
 
     uint32_t max_image1d_width = 0;
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1D_MAX_ELEMENTS),
                            &max_image1d_width)) {
       return false;
@@ -1457,7 +1457,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.image1DMaxWidth_ = max_image1d_width;
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1DB_MAX_ELEMENTS),
                            &image_max_dim)) {
       return false;
@@ -1502,19 +1502,19 @@ bool Device::populateOCLDeviceConstants() {
     info_.simdWidth_ = isa().simdWidth();
     info_.simdInstructionWidth_ = isa().simdInstructionWidth();
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_WAVEFRONT_SIZE, &info_.wavefrontWidth_)) {
+        hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_WAVEFRONT_SIZE, &info_.wavefrontWidth_)) {
       return false;
     }
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
                            &info_.vramBusBitWidth_)) {
       return false;
     }
 
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_NUM_SIMDS_PER_CU),
                            &info_.simdPerCU_)) {
       return false;
@@ -1522,7 +1522,7 @@ bool Device::populateOCLDeviceConstants() {
 
     uint32_t max_waves_per_cu = 0;
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MAX_WAVES_PER_CU),
                            &max_waves_per_cu)) {
       return false;
@@ -1537,7 +1537,7 @@ bool Device::populateOCLDeviceConstants() {
     uint32_t cache_sizes[4];
     /* FIXIT [skudchad] -  Seems like hardcoded in HSA backend so 0*/
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_AGENT_INFO_CACHE_SIZE),
                            cache_sizes)) {
       return false;
@@ -1545,7 +1545,7 @@ bool Device::populateOCLDeviceConstants() {
 
     uint32_t asic_revision = 0;
     if (HSA_STATUS_SUCCESS !=
-        hsa_agent_get_info(_bkendDevice,
+        hsa_agent_get_info(bkendDevice_,
                            static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_ASIC_REVISION),
                            &asic_revision)) {
       return false;
@@ -1614,7 +1614,7 @@ bool Device::populateOCLDeviceConstants() {
   }
 
   // HMM specific capability for CPU direct access to device memory
-  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(_bkendDevice,
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_,
       static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS),
       &info_.hmmDirectHostAccess_)) {
     LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
@@ -2744,7 +2744,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   // is no queue.
   uint32_t queue_max_packets = 0;
   if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(_bkendDevice, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_max_packets)) {
+      hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_QUEUE_MAX_SIZE, &queue_max_packets)) {
     DevLogError("Cannot get hsa agent info \n");
     return nullptr;
   }
@@ -2758,7 +2758,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     queue_type = HSA_QUEUE_TYPE_COOPERATIVE;
   }
 
-  while (hsa_queue_create(_bkendDevice, queue_size, queue_type, callbackQueue, this,
+  while (hsa_queue_create(bkendDevice_, queue_size, queue_type, callbackQueue, this,
                           std::numeric_limits<uint>::max(), std::numeric_limits<uint>::max(),
                           &queue) != HSA_STATUS_SUCCESS) {
     queue_size >>= 1;
@@ -2952,7 +2952,7 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
 
   // Retrieve the hops between 2 devices.
   int32_t hops = 0;
-  hsa_status_t hsa_status = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+  hsa_status_t hsa_status = hsa_amd_agent_memory_pool_get_info(bkendDevice_, pool,
                             HSA_AMD_AGENT_MEMORY_POOL_INFO_NUM_LINK_HOPS, &hops);
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
@@ -3000,7 +3000,7 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
 
   // Retrieve link info on the pool.
   std::vector<hsa_amd_memory_pool_link_info_t> link_info(hops);
-  hsa_status = hsa_amd_agent_memory_pool_get_info(_bkendDevice, pool,
+  hsa_status = hsa_amd_agent_memory_pool_get_info(bkendDevice_, pool,
                HSA_AMD_AGENT_MEMORY_POOL_INFO_LINK_INFO, link_info.data());
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
