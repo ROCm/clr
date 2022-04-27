@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,8 @@
 #include "hip_event.hpp"
 #if !defined(_MSC_VER)
 #include <unistd.h>
+#else
+#include <io.h>
 #endif
 
 // ================================================================================================
@@ -32,13 +34,17 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
 namespace hip {
 
 bool IPCEvent::createIpcEventShmemIfNeeded() {
-#if !defined(_MSC_VER)
   if (ipc_evt_.ipc_shmem_) {
     // ipc_shmem_ already created, no need to create it again
     return true;
   }
+
   char name_template[] = "/tmp/eventXXXXXX";
+#if !defined(_MSC_VER)
   int temp_fd = mkstemp(name_template);
+#else
+  _mktemp_s(name_template, sizeof(name_template));
+#endif
 
   ipc_evt_.ipc_name_ = name_template;
   ipc_evt_.ipc_name_.replace(0, 5, "/hip_");
@@ -48,7 +54,11 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
           sizeof(hip::ihipIpcEventShmem_t))) {
     return false;
   }
+
+#if !defined(_MSC_VER)
   close(temp_fd);
+#endif
+
   ipc_evt_.ipc_shmem_->owners = 1;
   ipc_evt_.ipc_shmem_->read_index = -1;
   ipc_evt_.ipc_shmem_->write_index = 0;
@@ -64,9 +74,6 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
     return false;
   }
   return true;
-#else
-  return false;
-#endif
 }
 
 hipError_t IPCEvent::query() {
@@ -219,21 +226,17 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
 
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
   HIP_INIT_API(hipIpcGetEventHandle, handle, event);
-#if !defined(_MSC_VER)
+
   if (handle == nullptr || event == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   HIP_RETURN(e->GetHandle(reinterpret_cast<ihipIpcEventHandle_t*>(handle)));
-#else
-  assert(0 && "Unimplemented");
-  HIP_RETURN(hipErrorNotSupported);
-#endif
 }
 
 hipError_t hipIpcOpenEventHandle(hipEvent_t* event, hipIpcEventHandle_t handle) {
   HIP_INIT_API(hipIpcOpenEventHandle, event, handle);
-#if !defined(_MSC_VER)
+
   hipError_t hip_err = hipSuccess;
   if (event == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -245,8 +248,4 @@ hipError_t hipIpcOpenEventHandle(hipEvent_t* event, hipIpcEventHandle_t handle) 
   hip::Event* e = reinterpret_cast<hip::Event*>(*event);
   ihipIpcEventHandle_t* iHandle = reinterpret_cast<ihipIpcEventHandle_t*>(&handle);
   HIP_RETURN(e->OpenHandle(iHandle));
-#else
-  assert(0 && "Unimplemented");
-  HIP_RETURN(hipErrorNotSupported);
-#endif
 }
