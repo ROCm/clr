@@ -2442,7 +2442,8 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
 
     assert((dstMemory->validateRegion(origin, size)) && "The incorrect fill size!");
 
-    if (!fillMemory(cmd.type(), dstMemory, cmd.pattern(), cmd.patternSize(), origin, size, true)) {
+    if (!fillMemory(cmd.type(), dstMemory, cmd.pattern(), cmd.patternSize(), size, origin, size,
+                    true)) {
       cmd.setStatus(CL_INVALID_OPERATION);
     }
   } else {
