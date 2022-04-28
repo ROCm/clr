@@ -695,6 +695,9 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height) {
   HIP_INIT_API(hipMallocPitch, ptr, pitch, width, height);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  if (width == 0 || height == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   const cl_image_format image_format = { CL_R, CL_UNSIGNED_INT8 };
   HIP_RETURN(ihipMallocPitch(ptr, pitch, width, height, 1, CL_MEM_OBJECT_IMAGE2D, &image_format), (ptr != nullptr)? *ptr : nullptr);
 }
@@ -998,7 +1001,7 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 }
 
 hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
-  if (hostPtr == nullptr) {
+  if (hostPtr == nullptr || sizeBytes == 0) {
     return hipErrorInvalidValue;
   } else {
     amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
@@ -1010,7 +1013,7 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
     if (!mem->create(hostPtr, sysMemAlloc, skipAlloc, forceAlloc)) {
       mem->release();
       LogPrintfError("Cannot create memory for size: %u with flags: %d \n", sizeBytes, flags);
-      return hipErrorOutOfMemory;
+      return hipErrorInvalidValue;
     }
 
     for (const auto& device : g_devices) {
@@ -2657,6 +2660,9 @@ hipError_t hipMemAllocPitch(hipDeviceptr_t* dptr, size_t* pitch, size_t widthInB
                             size_t height, unsigned int elementSizeBytes) {
   HIP_INIT_API(hipMemAllocPitch, dptr, pitch, widthInBytes, height, elementSizeBytes);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  if (elementSizeBytes != 4 && elementSizeBytes != 8 && elementSizeBytes != 16) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   HIP_RETURN(hipMallocPitch(dptr, pitch, widthInBytes, height));
 }
 
