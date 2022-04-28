@@ -481,7 +481,15 @@ hipError_t hipExtMallocWithFlags(void** ptr, size_t sizeBytes, unsigned int flag
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  HIP_RETURN(ihipMalloc(ptr, sizeBytes, ihipFlags), (ptr != nullptr)? *ptr : nullptr);
+  hipError_t status = ihipMalloc(ptr, sizeBytes, ihipFlags);
+
+  if ((status == hipSuccess) && ((*ptr) != nullptr)) {
+    size_t offset = 0; // This is ignored
+    amd::Memory* svmMem = getMemoryObject(*ptr, offset);
+    // Save the HIP memory flags so that they can be accessed later
+    svmMem->getUserData().flags = flags;
+  }
+  HIP_RETURN(status, (ptr != nullptr)? *ptr : nullptr);
 }
 
 hipError_t hipMalloc(void** ptr, size_t sizeBytes) {
@@ -509,7 +517,7 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER | (flags << 16);
+  unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
   if (flags == 0 ||
       flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
       (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
@@ -524,7 +532,16 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
     ihipFlags &= ~CL_MEM_SVM_ATOMICS;
   }
 
-  HIP_RETURN_DURATION(ihipMalloc(ptr, sizeBytes, ihipFlags), *ptr);
+  hipError_t status = ihipMalloc(ptr, sizeBytes, ihipFlags);
+
+  if ((status == hipSuccess) && ((*ptr) != nullptr)) {
+    size_t offset = 0; // This is ignored
+    amd::Memory* svmMem = getMemoryObject(*ptr, offset);
+    // Save the HIP memory flags so that they can be accessed later
+    svmMem->getUserData().flags = flags;
+  }
+
+  HIP_RETURN_DURATION(status, *ptr);
 }
 
 hipError_t hipFree(void* ptr) {
@@ -997,7 +1014,13 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  *flagsPtr = svmMem->getMemFlags() >> 16;
+  // To match with Nvidia behaviour validate that hostPtr passed was allocated using hipHostMalloc(), and not hipMalloc()
+  if (!(svmMem->getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // Retrieve HIP memory flags
+  *flagsPtr = svmMem->getUserData().flags;
 
   HIP_RETURN(hipSuccess);
 }
@@ -1031,6 +1054,8 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
     amd::MemObjMap::AddMemObj(hostPtr, mem);
     if (mem != nullptr) {
       mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
+      // Save the HIP memory flags so that they can be accessed later
+      mem->getUserData().flags = flags;
     }
     return hipSuccess;
   }
@@ -2810,7 +2835,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     constexpr uint32_t kManagedAlloc = (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR);
     attributes->isManaged =
         ((memObj->getMemFlags() & kManagedAlloc) == kManagedAlloc) ? true : false;
-    attributes->allocationFlags = memObj->getMemFlags() >> 16;
+    attributes->allocationFlags = memObj->getUserData().flags;
     attributes->device = memObj->getUserData().deviceId;
     HIP_RETURN(hipSuccess);
   }
@@ -2994,7 +3019,7 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
       }
       case HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS : {
         if (memObj) {
-          *reinterpret_cast<uint32_t*>(data) = memObj->getMemFlags() >> 16;
+          *reinterpret_cast<uint32_t*>(data) = memObj->getUserData().flags;
         } else {
           *reinterpret_cast<uint32_t*>(data) = 0;
         }
