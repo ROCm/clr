@@ -1100,7 +1100,6 @@ typedef enum cudaGraphNodeType hipGraphNodeType;
 #define hipGraphNodeTypeEmpty cudaGraphNodeTypeEmpty
 #define hipGraphNodeTypeWaitEvent cudaGraphNodeTypeWaitEvent
 #define hipGraphNodeTypeEventRecord cudaGraphNodeTypeEventRecord
-#define hipGraphNodeTypeMemcpy1D cudaGraphNodeTypeMemcpy1D
 #define hipGraphNodeTypeMemcpyFromSymbol cudaGraphNodeTypeMemcpyFromSymbol
 #define hipGraphNodeTypeMemcpyToSymbol cudaGraphNodeTypeMemcpyToSymbol
 #define hipGraphNodeTypeCount cudaGraphNodeTypeCount
