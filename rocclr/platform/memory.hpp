@@ -146,6 +146,7 @@ class Memory : public amd::RuntimeObject {
   {
      int deviceId = 0;     //!< Device ID memory is allocated on
      void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
+     unsigned int flags = 0; //!< HIP memory flags
   };
 
  protected:
