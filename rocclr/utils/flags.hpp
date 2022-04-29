@@ -182,7 +182,7 @@ release(bool, OCL_CODE_CACHE_RESET, false,                                    \
         "1 =  Reset the compiler code cache storage")                         \
 release_on_stg(bool, PAL_DISABLE_SDMA, false,                                 \
         "1 = Disable SDMA for PAL")                                           \
-release(uint, PAL_RGP_DISP_COUNT, 50,                                         \
+release(uint, PAL_RGP_DISP_COUNT, 10000,                                      \
         "The number of dispatches for RGP capture with SQTT")                 \
 release(uint, PAL_MALL_POLICY, 0,                                             \
         "Controls the behaviour of allocations with respect to the MALL"      \
