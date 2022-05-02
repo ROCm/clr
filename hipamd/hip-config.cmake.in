@@ -198,7 +198,7 @@ if(NOT WIN32)
       ${ROCM_PATH}/include
   )
 
-  if (HSA_HEADER-NOTFOUND)
+  if (NOT HSA_HEADER)
     message (FATAL_ERROR "HSA header not found! ROCM_PATH environment not set")
   endif()
 endif()
