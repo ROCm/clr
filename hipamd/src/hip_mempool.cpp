@@ -115,9 +115,6 @@ hipError_t hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, vo
   if (mem_pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (mem_pool == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
   auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
   HIP_RETURN(hip_mem_pool->GetAttribute(attr, value));
 }
@@ -128,6 +125,21 @@ hipError_t hipMemPoolSetAccess(
     const hipMemAccessDesc* desc_list,
     size_t count) {
   HIP_INIT_API(hipMemPoolSetAccess, mem_pool, desc_list, count);
+  if ((mem_pool == nullptr) || (desc_list == nullptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+  for (int i = 0; i < count; ++i) {
+    if (desc_list[i].location.type == hipMemLocationTypeDevice) {
+      if (desc_list[i].location.id >= g_devices.size()) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      auto device = g_devices[desc_list[i].location.id];
+      hip_mem_pool->SetAccess(device, desc_list[i].flags);
+    } else {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
   HIP_RETURN(hipSuccess);
 }
 
@@ -137,6 +149,19 @@ hipError_t hipMemPoolGetAccess(
     hipMemPool_t mem_pool,
     hipMemLocation* location) {
   HIP_INIT_API(hipMemPoolGetAccess, flags, mem_pool, location);
+  if ((mem_pool == nullptr) || (location == nullptr) || (flags == nullptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+  if (location->type == hipMemLocationTypeDevice) {
+    if (location->id >= g_devices.size()) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    auto device = g_devices[location->id];
+    hip_mem_pool->GetAccess(device, flags);
+  } else {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   HIP_RETURN(hipSuccess);
 }
 

@@ -128,6 +128,25 @@ void Heap::RemoveStream(hip::Stream* stream) {
 }
 
 // ================================================================================================
+void Heap::SetAccess(hip::Device* device, bool enable) {
+  for (const auto& it : allocations_) {
+    auto peer_device = device->asContext()->devices()[0];
+    device::Memory* mem = it.first->getDeviceMemory(*peer_device);
+    if (mem != nullptr) {
+      if (!mem->getAllowedPeerAccess() && enable) {
+        // Enable p2p access for the specified device
+        peer_device->deviceAllowAccess(reinterpret_cast<void*>(mem->virtualAddress()));
+        mem->setAllowedPeerAccess(true);
+      } else if (mem->getAllowedPeerAccess() && !enable) {
+        mem->setAllowedPeerAccess(false);
+      }
+    } else {
+      LogError("Couldn't find device memory for P2P access");
+    }
+  }
+}
+
+// ================================================================================================
 void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
@@ -155,6 +174,15 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream) {
     memory = getMemoryObject(dev_ptr, offset);
     // Saves the current device id so that it can be accessed later
     memory->getUserData().deviceId = device_->deviceId();
+
+    // Update access for the new allocation from other devices
+    for (const auto& it : access_map_) {
+      auto vdi_device = it.first->asContext()->devices()[0];
+      device::Memory* mem = memory->getDeviceMemory(*vdi_device);
+      if ((mem != nullptr) && (it.second != hipMemAccessFlagsProtNone)) {
+        mem->setAllowedPeerAccess(true);
+      }
+    }
   } else {
     free_heap_.RemoveMemory(memory);
     const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
@@ -308,6 +336,49 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       return hipErrorInvalidValue;
   }
   return hipSuccess;
+}
+
+// ================================================================================================
+void MemoryPool::SetAccess(hip::Device* device, hipMemAccessFlags flags) {
+  amd::ScopedLock lock(lock_pool_ops_);
+
+  // Check if the requested device is the pool device where memory was allocated
+  if (device == device_) {
+    return;
+  }
+
+  hipMemAccessFlags current_flags = hipMemAccessFlagsProtNone;
+
+  // Check if access was enabled before
+  if (access_map_.find(device) != access_map_.end()) {
+    current_flags = access_map_[device];
+  }
+
+  if (current_flags != flags) {
+    bool enable_access = false;
+    // Save the access state  in the device map
+    access_map_[device] = flags;
+    // Check if access is enabled
+    if ((flags == hipMemAccessFlagsProtRead) || (flags == hipMemAccessFlagsProtReadWrite)) {
+      enable_access = true;
+    }
+    // Update device access on the both pools
+    busy_heap_.SetAccess(device, enable_access);
+    free_heap_.SetAccess(device, enable_access);
+  }
+}
+
+// ================================================================================================
+void MemoryPool::GetAccess(hip::Device* device, hipMemAccessFlags* flags) {
+  amd::ScopedLock lock(lock_pool_ops_);
+
+  // Current pool device has full access to memory allocation
+  *flags = (device == device_) ? hipMemAccessFlagsProtReadWrite : hipMemAccessFlagsProtNone;
+
+  // Check if access was enabled before
+  if (access_map_.find(device) != access_map_.end()) {
+    *flags = access_map_[device];
+  }
 }
 
 }
