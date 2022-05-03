@@ -107,6 +107,9 @@ public:
   /// Remove the provided stream from the safe list
   void RemoveStream(hip::Stream* stream);
 
+  /// Enables P2P access to the provided device
+  void SetAccess(hip::Device* device, bool enable);
+
   /// Heap doesn't have any allocations
   bool IsEmpty() const { return (allocations_.size() == 0) ? true : false; }
 
@@ -193,6 +196,12 @@ public:
   /// Get memory pool control attributes
   hipError_t GetAttribute(hipMemPoolAttr attr, void* value);
 
+  /// Set memory pool access by different devices
+  void SetAccess(hip::Device* device, hipMemAccessFlags flags);
+
+  /// Set memory pool access by different devices
+  void GetAccess(hip::Device* device, hipMemAccessFlags* flags);
+
   /// Accessors for the pool state
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
@@ -213,6 +222,7 @@ private:
   } state_;
 
   amd::Monitor  lock_pool_ops_;  //!< Access to the pool must be lock protected
+  std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
   hip::Device*  device_;    //!< Hip device the heap will reside
 };
 
