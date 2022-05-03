@@ -462,6 +462,10 @@ static void CL_CALLBACK notify_callback(const char *errinfo,
 
 void OCLCreateImage::run(void) {
   if (failed_) {
+    printf ("\n");
+    printf ("**********************************************************\n");
+    printf ("* WARNING: Test skip. Image may not be supported in OCL. *\n");
+    printf ("**********************************************************\n");
     return;
   }
 
