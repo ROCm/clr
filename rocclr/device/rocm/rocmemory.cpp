@@ -883,7 +883,8 @@ bool Buffer::create(bool alloc_local) {
         const_cast<Device&>(dev()).updateFreeMemory(size(), false);
       }
     }
-    else {
+    // Hide private allocations from memory tracking
+    else if (owner()->getContext() != dev().context()) {
       const_cast<Device&>(dev()).updateFreeMemory(size(), false);
     }
 

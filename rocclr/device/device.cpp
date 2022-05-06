@@ -22,6 +22,7 @@
 #include "thread/monitor.hpp"
 #include "utils/options.hpp"
 #include "comgrctx.hpp"
+#include "blit.hpp"
 
 #include <algorithm>
 #include <array>
@@ -472,7 +473,7 @@ Device::~Device() {
   }
 
   if (heap_buffer_ != nullptr) {
-    delete heap_buffer_;
+    heap_buffer_->release();
     heap_buffer_ = nullptr;
   }
 
@@ -511,6 +512,25 @@ bool Device::ValidateHsail() {
   return true;
 }
 
+// ================================================================================================
+amd::Memory* Device::createPrivateBuffer(size_t size) const {
+  auto buffer = new (context()) amd::Buffer(context(), CL_MEM_READ_WRITE, size);
+
+  if ((nullptr != buffer) && !buffer->create(nullptr)) {
+    buffer->release();
+    LogError("Couldn't allocate internal buffer on device!");
+    return nullptr;
+  }
+
+  if (nullptr == buffer->getDeviceMemory(*this)) {
+    LogError("Couldn't allocate internal buffer on device!");
+    return nullptr;
+  }
+
+  return buffer;
+}
+
+// ================================================================================================
 bool Device::create(const Isa &isa) {
   assert(!vaCacheAccess_ && !vaCacheMap_);
   isa_ = &isa;
@@ -525,6 +545,7 @@ bool Device::create(const Isa &isa) {
   return true;
 }
 
+// ================================================================================================
 void Device::registerDevice() {
   assert(Runtime::singleThreaded() && "this is not thread-safe");
 
@@ -549,6 +570,33 @@ void Device::registerDevice() {
   devices_->push_back(this);
 }
 
+// ================================================================================================
+device::VirtualDevice* Device::CreateDeviceQueue(CommandQueue* queue) {
+  auto vgpu = createVirtualDevice(queue);
+
+  // Device library expects cleared to zero heap memory
+  // @note: It must occur once per device, but runtime needs a queue to clear memory
+  if (HeapBuffer() != nullptr) {
+    auto HeapZeroOut = [this, vgpu]()->bool {
+      uint64_t pattern = 0;
+      amd::Coord3D origin(0, 0, 0);
+      amd::Coord3D region(HeapBuffer()->size(), 1, 1);
+
+      // Force synchronization in the blit manager. Runtime has to make sure the clear is done
+      vgpu->blitMgr().enableSynchronization();
+      auto result = vgpu->blitMgr().fillBuffer(
+          *HeapBuffer(), &pattern, sizeof(pattern), region, origin, region);
+      // Disable synchronization in the blit manager on the queue
+      vgpu->blitMgr().disableSynchronization();
+      return result;
+    };
+    std::call_once(heap_initialized_, HeapZeroOut);
+  }
+
+  return vgpu;
+}
+
+// ================================================================================================
 void Device::addVACache(device::Memory* memory) const {
   // Make sure system memory has direct access
   if (memory->isHostMemDirectAccess()) {
