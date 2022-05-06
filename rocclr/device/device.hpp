@@ -57,6 +57,7 @@
 #include <set>
 #include <unordered_set>
 #include <utility>
+#include <mutex>
 
 namespace amd {
 class Command;
@@ -1629,6 +1630,9 @@ class Device : public RuntimeObject {
   //! Return this device's type.
   cl_device_type type() const { return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT); }
 
+  //! Creates a queue on device for submitting the commands
+  device::VirtualDevice* CreateDeviceQueue(CommandQueue* queue = nullptr);
+
   //! Create a new virtual device environment.
   virtual device::VirtualDevice* createVirtualDevice(CommandQueue* queue = NULL) = 0;
 
@@ -1638,8 +1642,8 @@ class Device : public RuntimeObject {
   //! Allocate a chunk of device memory as a cache for a CL memory object
   virtual device::Memory* createMemory(Memory& owner) const = 0;
 
-  //! Allocate a chunk of device memory without owner class
-  virtual device::Memory* createMemory(size_t size) const = 0;
+  //! Allocate a chunk of device memory with the owner class in the internal context
+  amd::Memory* createPrivateBuffer(size_t size) const;
 
   //! Allocate a device sampler object
   virtual bool createSampler(const Sampler&, device::Sampler**) const = 0;
@@ -1895,7 +1899,7 @@ class Device : public RuntimeObject {
   Memory* P2PStage() const { return p2p_stage_; }
 
   //! Returns heap buffer object for device allocator
-  device::Memory* HeapBuffer() const { return heap_buffer_; }
+  device::Memory* HeapBuffer() const { return heap_buffer_->getDeviceMemory(*this); }
 
   //! Does this device allow P2P access?
   bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
@@ -1953,8 +1957,8 @@ class Device : public RuntimeObject {
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
   static Memory* p2p_stage_;          //!< Staging resources
 
-  device::Memory* heap_buffer_;   //!< Preallocated heap buffer for memory allocations on device
-
+  std::once_flag heap_initialized_; //!< Heap buffer initialization flag
+  amd::Memory* heap_buffer_;      //!< Preallocated heap buffer for memory allocations on device
   amd::Memory* arena_mem_obj_;    //!< Arena memory object
 
  private:
