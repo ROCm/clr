@@ -465,6 +465,9 @@ void Resource::memTypeToHeap(Pal::GpuMemoryCreateInfo* createInfo) {
       createInfo->heaps[2] = Pal::GpuHeapGartUswc;
       createInfo->flags.peerWritable = dev().P2PAccessAllowed();
       break;
+    case VaRange:
+      createInfo->heapCount = 0;
+      break;
     default:
       createInfo->heaps[0] = Pal::GpuHeapLocal;
       break;
@@ -1271,6 +1274,9 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     address_ = memRef_->cpuAddress_;
     memRef_->cpuAddress_ = nullptr;
     mapCount_++;
+  }
+  if (memoryType() == VaRange) {
+    params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
   }
   return true;
 }
