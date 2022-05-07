@@ -1624,6 +1624,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.hmmSupported_, info_.hmmCpuMemoryAccessible_, info_.hmmDirectHostAccess_);
 
   info_.globalCUMask_ = {};
+  info_.virtualMemoryManagement_ = false;
 
   return true;
 }

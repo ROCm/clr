@@ -606,6 +606,8 @@ struct Info : public amd::EmbeddedObject {
   bool aqlBarrierValue_;
 
   bool pcie_atomics_; //!< Pcie atomics support flag
+
+  bool virtualMemoryManagement_; //!< Virtual memory management support
 };
 
 //! Device settings

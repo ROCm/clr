@@ -616,6 +616,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Resizable bar enabled");
     }
   }
+  info_.virtualMemoryManagement_ = true;
 }
 
 Device::XferBuffers::~XferBuffers() {
