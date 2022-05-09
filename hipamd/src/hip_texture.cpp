@@ -88,9 +88,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
     return hipErrorInvalidValue;
   }
 
-  // pResViewDesc can only be specified if the type of resource is a HIP array or a HIP mipmapped array.
-  if ((pResViewDesc != nullptr) &&
-      ((pResDesc->resType != hipResourceTypeArray) && (pResDesc->resType != hipResourceTypeMipmappedArray))) {
+  if (pResViewDesc != nullptr && pResDesc->resType == hipResourceTypeLinear) {
     return hipErrorInvalidValue;
   }
 
