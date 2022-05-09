@@ -19,7 +19,15 @@
  THE SOFTWARE. */
 
 #include "vdi_common.hpp"
-#include <icd/loader/icd_dispatch.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <d3d9.h>
+#include <d3d10_1.h>
+#include <CL/cl_d3d10.h>
+#include <CL/cl_d3d11.h>
+#include <CL/cl_dx9_media_sharing.h>
+#endif
+#include <CL/cl_icd.h>
 
 cl_icd_dispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {0};
 amd::PlatformIDS amd::PlatformID::Platform = {amd::ICDDispatchedObject::icdVendorDispatch_};
