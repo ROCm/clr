@@ -20,6 +20,11 @@
 cmake_minimum_required(VERSION 3.16.8)
 project(hip)
 
+# Set default libdir to be "lib" for ROCm, distros will override this anyway:
+set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
+
+include(GNUInstallDirs)
+
 # sample command for hip-rocclr runtime, you'll need to have rocclr built
 # ROCM_PATH is the path where ROCM is installed
 #  For shared lib of hip-rocclr runtime
@@ -39,7 +44,7 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 
 # required to add the right link to libhsa-runtime in install/lib path
 # CMAKE_PREFIX_PATH is used as rpath to search for libs outside HIP
-set(CMAKE_INSTALL_RPATH "${CMAKE_PREFIX_PATH}/lib")
+set(CMAKE_INSTALL_RPATH "${CMAKE_PREFIX_PATH}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #############################
@@ -308,9 +313,9 @@ endif (NOT CPACK_SET_DESTDIR)
 #############################
 # Build steps
 #############################
-set(BIN_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/bin)
-set(LIB_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib)
-set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include)
+set(BIN_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR})
+set(LIB_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR})
+set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
 set(CONFIG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip)
 set(CONFIG_LANG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip-lang)
 
@@ -358,10 +363,10 @@ endif()
 #############################
 
 # Install .hipInfo
-install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION lib)
+install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # Install .hipVersion
-install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION bin)
+install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Install src, bin, include & cmake if necessary
 execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
@@ -370,7 +375,7 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
     if(WIN32)
       install(DIRECTORY ${HIP_COMMON_BIN_DIR} DESTINATION . USE_SOURCE_PERMISSIONS)
       if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/" DESTINATION bin
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/src/" DESTINATION ${CMAKE_INSTALL_BINDIR}
                 FILES_MATCHING PATTERN "*.pdb"
                                PATTERN "*.ilk"
                                PATTERN "CMakeFiles" EXCLUDE
@@ -390,12 +395,12 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
 
     if(WIN32) #not required for flat folder structure
       # The following two lines will be removed after upstream updation
-      install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/include\")")
-      install(CODE "file(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/include)")
+      install(CODE "MESSAGE(\"Removing ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR}\")")
+      install(CODE "file(REMOVE_RECURSE ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})")
     endif()
 
     install(DIRECTORY include DESTINATION .)
-    install(DIRECTORY ${HIP_COMMON_INCLUDE_DIR}/hip/ DESTINATION include/hip/)
+    install(DIRECTORY ${HIP_COMMON_INCLUDE_DIR}/hip/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/)
     if(WIN32)
       install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION .)
     else()
@@ -407,11 +412,11 @@ endif()
 # FIXME: Associate with individual targets.
 if(HIP_PLATFORM STREQUAL "amd")
 install(FILES ${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h
-        DESTINATION include/hip/amd_detail)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail)
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin DESTINATION . USE_SOURCE_PERMISSIONS)
 endif()
 install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
-        DESTINATION include/hip)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip)
 
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
@@ -502,7 +507,7 @@ endif()
 # Target: clang
 if(HIP_HIPCC_EXECUTABLE)
     add_custom_target(analyze
-        COMMAND ${HIP_HIPCC_EXECUTABLE} -fvisibility=hidden -fvisibility-inlines-hidden --analyze --analyzer-outputtext  -isystem ${ROCM_PATH}/include -Wno-unused-command-line-argument -I${ROCM_PATH}/include -c  src/*.cpp -Iinclude/ -I./
+        COMMAND ${HIP_HIPCC_EXECUTABLE} -fvisibility=hidden -fvisibility-inlines-hidden --analyze --analyzer-outputtext  -isystem ${ROCM_PATH}/${CMAKE_INSTALL_INCLUDEDIR} -Wno-unused-command-line-argument -I${ROCM_PATH}/${CMAKE_INSTALL_INCLUDEDIR} -c  src/*.cpp -Iinclude/ -I./
     WORKING_DIRECTORY ${HIP_SRC_PATH})
     if(CPPCHECK_EXE)
         add_dependencies(analyze cppcheck)
