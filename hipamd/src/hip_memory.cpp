@@ -1125,11 +1125,6 @@ inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes
 hipError_t hipMemcpyToSymbol_common(const void* symbol, const void* src, size_t sizeBytes,
                              size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-
-  if (kind != hipMemcpyHostToDevice) {
-    HIP_RETURN(hipErrorInvalidMemcpyDirection);
-  }
-
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
 
@@ -1158,11 +1153,6 @@ hipError_t hipMemcpyToSymbol_spt(const void* symbol, const void* src, size_t siz
 hipError_t hipMemcpyFromSymbol_common(void* dst, const void* symbol, size_t sizeBytes,
                                size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-
-  if (kind != hipMemcpyDeviceToHost) {
-    HIP_RETURN(hipErrorInvalidMemcpyDirection);
-  }
-
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
 
@@ -1194,10 +1184,6 @@ hipError_t hipMemcpyToSymbolAsync(const void* symbol, const void* src, size_t si
 
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice) {
-    HIP_RETURN(hipErrorInvalidMemcpyDirection);
-  }
-
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
 
@@ -1214,10 +1200,6 @@ hipError_t hipMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t sizeBy
   HIP_INIT_API(hipMemcpyFromSymbolAsync, symbol, dst, sizeBytes, offset, kind, stream);
 
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
-
-  if (kind != hipMemcpyDeviceToHost) {
-    HIP_RETURN(hipErrorInvalidMemcpyDirection);
-  }
 
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
