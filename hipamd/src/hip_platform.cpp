@@ -278,9 +278,6 @@ hipError_t hipGetSymbolAddress(void** devPtr, const void* symbol) {
   HIP_INIT_API(hipGetSymbolAddress, devPtr, symbol);
 
   hipError_t hip_error = hipSuccess;
-  if (devPtr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
   size_t sym_size = 0;
 
   HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(), devPtr, &sym_size));
@@ -291,9 +288,6 @@ hipError_t hipGetSymbolAddress(void** devPtr, const void* symbol) {
 hipError_t hipGetSymbolSize(size_t* sizePtr, const void* symbol) {
   HIP_INIT_API(hipGetSymbolSize, sizePtr, symbol);
 
-  if (sizePtr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
   hipDeviceptr_t device_ptr = nullptr;
   HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(), &device_ptr, sizePtr));
 
