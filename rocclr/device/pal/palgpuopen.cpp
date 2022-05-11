@@ -140,7 +140,8 @@ bool RgpCaptureMgr::Update(Pal::IPlatform* platform) {
     trace_.gpa_session_ = new GpuUtil::GpaSession(platform, device_.iDev(),
                                                   api_version >> 4,   // OCL API version major
                                                   api_version & 0xf,  // OCL API version minor
-                                                  GpuUtil::ApiType::OpenCl,
+                                                  (amd::IS_HIP) ? GpuUtil::ApiType::Hip :
+                                                                  GpuUtil::ApiType::OpenCl,
                                                   RgpSqttInstrumentationSpecVersion,
                                                   RgpSqttInstrumentationApiVersion);
 
