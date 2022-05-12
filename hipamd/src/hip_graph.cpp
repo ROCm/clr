@@ -43,22 +43,16 @@ inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
 
 
 hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams) {
-  if (pNodeParams->kernelParams == nullptr) {
-    return hipErrorInvalidValue;
-  }
   hipFunction_t func = nullptr;
   hipError_t status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
   if (status != hipSuccess) {
     return hipErrorInvalidDeviceFunction;
   }
+
   size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
   size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-    return hipErrorInvalidConfiguration;
-  }
+
   status = ihipLaunchKernel_validate(
       func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
       static_cast<uint32_t>(globalWorkSizeZ), pNodeParams->blockDim.x, pNodeParams->blockDim.y,
@@ -81,15 +75,28 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   if (!ihipGraph::isGraphValid(graph)) {
     return hipErrorInvalidValue;
   }
-  hipError_t status = ihipValidateKernelParams(pNodeParams);
-  if (hipSuccess != status) {
-    return status;
-  }
+
   hipFunction_t func = nullptr;
-  status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
+  hipError_t status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
   if (status != hipSuccess) {
     return hipErrorInvalidDeviceFunction;
   }
+
+  // If neither 'kernelParams' or 'extra' are provided or if both are provided, return error
+  if ((pNodeParams->kernelParams == nullptr && pNodeParams->extra == nullptr) ||
+      (pNodeParams->kernelParams != nullptr) && (pNodeParams->extra != nullptr)) {
+    return hipErrorInvalidValue;
+  }
+
+  size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
+  size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
+  size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
+  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+    return hipErrorInvalidConfiguration;
+  }
+
   *pGraphNode = new hipGraphKernelNode(pNodeParams, func);
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
   return status;

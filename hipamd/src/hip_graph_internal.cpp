@@ -645,7 +645,7 @@ ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const{
     newGraph->vertices_.push_back(node);
     clonedNodes[entry] = node;
   }
-  std::vector<Node> dependancies;
+
   std::vector<Node> clonedEdges;
   std::vector<Node> clonedDependencies;
   for (auto node : vertices_) {

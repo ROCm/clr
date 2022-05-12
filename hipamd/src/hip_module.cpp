@@ -217,13 +217,6 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     return hipErrorInvalidValue;
   }
 
-  if (extra != nullptr) {
-    if (extra[0] != HIP_LAUNCH_PARAM_BUFFER_POINTER || extra[2] != HIP_LAUNCH_PARAM_BUFFER_SIZE ||
-        extra[4] != HIP_LAUNCH_PARAM_END) {
-      return hipErrorNotInitialized;
-    }
-  }
-
   const amd::Device* device = g_devices[deviceId]->devices()[0];
   // Make sure dispatch doesn't exceed max workgroup size limit
   if (blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
