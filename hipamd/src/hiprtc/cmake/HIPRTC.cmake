@@ -35,7 +35,9 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define __constant__ __attribute__((constant))\n\
 #define __shared__ __attribute__((shared))\n\
 #define __align__(x) __attribute__((aligned(x)))\n\
+#if !defined(__has_feature) || !__has_feature(cuda_noinline_keyword)\n\
 #define __noinline__ __attribute__((noinline))\n\
+#endif\n\
 #define __forceinline__ inline __attribute__((always_inline))\n\
 
 #define launch_bounds_impl0(requiredMaxThreadsPerBlock)                                       \\\n\

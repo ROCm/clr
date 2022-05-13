@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -47,7 +47,10 @@ THE SOFTWARE.
 #define __constant__ __attribute__((constant))
 #endif // !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 
+#if !defined(__has_feature) || !__has_feature(cuda_noinline_keyword)
 #define __noinline__ __attribute__((noinline))
+#endif
+
 #define __forceinline__ inline __attribute__((always_inline))
 
 #if __HIP_NO_IMAGE_SUPPORT
