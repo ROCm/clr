@@ -27,6 +27,9 @@
 #include "platform/memory.hpp"
 #include "amdocl/cl_vk_amd.hpp"
 
+amd::Monitor hip::hipArraySetLock{"Guards global hipArray set"};
+std::unordered_set<hipArray*> hip::hipArraySet;
+
 // ================================================================================================
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
   amd::Memory *memObj = amd::MemObjMap::FindMemObj(ptr);
@@ -614,7 +617,12 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   if (array == nullptr) {
     return hipErrorInvalidValue;
   }
-
+  {
+    amd::ScopedLock lock(hip::hipArraySetLock);
+    if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
+      return hipErrorContextIsDestroyed;
+    }
+  }
   cl_mem memObj = reinterpret_cast<cl_mem>(array->data);
   if (is_valid(memObj) == false) {
     return hipErrorInvalidValue;
@@ -628,9 +636,11 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   }
 
   as_amd(memObj)->release();
-
+  {
+    amd::ScopedLock lock(hip::hipArraySetLock);
+    hip::hipArraySet.erase(array);
+  }
   delete array;
-
   return hipSuccess;
 }
 
@@ -963,7 +973,10 @@ hipError_t ihipArrayCreate(hipArray** array,
   (*array)->depth = pAllocateArray->Depth;
   (*array)->Format = pAllocateArray->Format;
   (*array)->NumChannels = pAllocateArray->NumChannels;
-
+  {
+    amd::ScopedLock lock(hip::hipArraySetLock);
+    hip::hipArraySet.insert(*array);
+  }
   return hipSuccess;
 }
 

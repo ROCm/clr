@@ -468,6 +468,8 @@ namespace hip {
   int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid
   extern bool isValid(hipStream_t& stream);
+  extern amd::Monitor hipArraySetLock;
+  extern std::unordered_set<hipArray*> hipArraySet;
 };
 
 extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
@@ -510,5 +512,4 @@ extern std::vector<hip::Stream*> g_captureStreams;
 extern amd::Monitor g_captureStreamsLock;
 extern thread_local std::vector<hip::Stream*> l_captureStreams;
 extern thread_local hipStreamCaptureMode l_streamCaptureMode;
-
 #endif // HIP_SRC_HIP_INTERNAL_H

@@ -211,7 +211,10 @@ hipError_t hipGraphicsSubResourceGetMappedArray(hipArray_t* array, hipGraphicsRe
   myarray->isDrv = 0;
   myarray->textureType = 0;
   *array = myarray;
-
+  {
+    amd::ScopedLock lock(hip::hipArraySetLock);
+    hip::hipArraySet.insert(*array);
+  }
   HIP_RETURN(hipSuccess);
 }
 
