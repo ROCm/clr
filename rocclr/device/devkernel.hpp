@@ -498,6 +498,7 @@ class Kernel : public amd::HeapObject {
 
   const uint32_t WorkitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
   void SetWorkitemPrivateSegmentByteSize(uint32_t size) { workitemPrivateSegmentByteSize_ = size; }
+  const bool KernalHasDynamicCallStack() const { return kernelHasDynamicCallStack_; }
 
   const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   void SetKernargSegmentByteSize(uint32_t size) { kernargSegmentByteSize_ = size; }
@@ -564,6 +565,7 @@ class Kernel : public amd::HeapObject {
   uint32_t workitemPrivateSegmentByteSize_ = 0;
   uint32_t kernargSegmentByteSize_ = 0;   //!< Size of kernel argument buffer
   uint32_t kernargSegmentAlignment_ = 0;
+  bool kernelHasDynamicCallStack_ = 0;
 
   union Flags {
     struct {

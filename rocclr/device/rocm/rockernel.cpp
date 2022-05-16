@@ -90,6 +90,13 @@ bool LightningKernel::postLoad() {
     return false;
   }
 
+  hsaStatus = hsa_executable_symbol_get_info(symbol, HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_DYNAMIC_CALLSTACK,
+                                             &kernelHasDynamicCallStack_);
+  if (hsaStatus != HSA_STATUS_SUCCESS) {
+    DevLogPrintfError(" Cannot Get Dynamic callstack info, failed with hsa_status: %d \n ", hsaStatus);
+    return false;
+  }
+
   if (!RuntimeHandle().empty()) {
     hsa_executable_symbol_t kernelSymbol;
     int                     variable_size;
@@ -155,7 +162,7 @@ bool LightningKernel::postLoad() {
   workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
-  workGroupInfo_.usedStackSize_ = 0;
+  workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   workGroupInfo_.wavefrontPerSIMD_ = program()->rocDevice().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
   if (workGroupInfo_.size_ == 0) {
