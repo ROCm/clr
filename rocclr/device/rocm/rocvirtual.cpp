@@ -2963,6 +2963,14 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchPacket.group_segment_size = ldsUsage + sharedMemBytes;
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
+    if ((devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+      dispatchPacket.private_segment_size += dev().StackSize();
+      uint32_t maxMemPerThread = device().info().localMemSizePerCU_ / device().info().maxThreadsPerCU_;
+      if (dispatchPacket.private_segment_size > maxMemPerThread) {
+        dispatchPacket.private_segment_size = maxMemPerThread;
+      }
+    }
+
     // Pass the header accordingly
     auto aqlHeaderWithOrder = aqlHeader_;
     if (vcmd != nullptr && vcmd->getAnyOrderLaunchFlag()) {
@@ -2970,9 +2978,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       aqlHeaderWithOrder &= kAqlHeaderMask;
     }
 
-    if (addSystemScope_ || (vcmd != nullptr && 
+    if (addSystemScope_ || (vcmd != nullptr &&
         vcmd->getEventScope() == amd::Device::kCacheStateSystem)) {
-      aqlHeaderWithOrder &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE | 
+      aqlHeaderWithOrder &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE |
                               HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aqlHeaderWithOrder |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE |
                              HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);

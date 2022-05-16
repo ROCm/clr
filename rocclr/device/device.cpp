@@ -718,6 +718,15 @@ bool Device::getDeviceIDs(cl_device_type deviceType, uint32_t numEntries, cl_dev
   return true;
 }
 
+bool Device::UpdateStackSize(uint64_t stackSize) {
+  uint32_t maxMemPerThread = info().localMemSizePerCU_ / info().maxThreadsPerCU_;
+  if (maxMemPerThread < stackSize) {
+    return false;
+  }
+  stack_size_ = stackSize;
+  return true;
+}
+
 char* Device::getExtensionString() {
   std::stringstream extStream;
   size_t size;

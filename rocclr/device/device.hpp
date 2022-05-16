@@ -1903,6 +1903,12 @@ class Device : public RuntimeObject {
     return (heap_buffer_ != nullptr) ? heap_buffer_->getDeviceMemory(*this) : nullptr;
   }
 
+  //! Returns stack size set for the device
+  uint64_t StackSize() const { return stack_size_; }
+
+  //! Sets the stack size of the device
+  bool UpdateStackSize(uint64_t stackSize);
+
   //! Does this device allow P2P access?
   bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
 
@@ -1962,6 +1968,7 @@ class Device : public RuntimeObject {
   std::once_flag heap_initialized_; //!< Heap buffer initialization flag
   amd::Memory* heap_buffer_;      //!< Preallocated heap buffer for memory allocations on device
   amd::Memory* arena_mem_obj_;    //!< Arena memory object
+  uint64_t stack_size_{0};        //!< Device stack size
 
  private:
   const Isa *isa_;                //!< Device isa
