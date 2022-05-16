@@ -1899,7 +1899,9 @@ class Device : public RuntimeObject {
   Memory* P2PStage() const { return p2p_stage_; }
 
   //! Returns heap buffer object for device allocator
-  device::Memory* HeapBuffer() const { return heap_buffer_->getDeviceMemory(*this); }
+  device::Memory* HeapBuffer() const {
+    return (heap_buffer_ != nullptr) ? heap_buffer_->getDeviceMemory(*this) : nullptr;
+  }
 
   //! Does this device allow P2P access?
   bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
