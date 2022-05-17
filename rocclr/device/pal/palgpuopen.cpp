@@ -608,6 +608,13 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu) {
     gpu->eventEnd(MainEngine, trace_.begin_sqtt_event_);
   }
 
+  if (result == Pal::Result::Success) {
+    GpuUtil::SampleTraceApiInfo sample_trace_api_info = {};
+    sample_trace_api_info.instructionTraceMode = (inst_tracing_enabled_) ?
+        GpuUtil::InstructionTraceMode::FullFrame : GpuUtil::InstructionTraceMode::Disabled;
+    trace_.gpa_session_->SetSampleTraceApiInfo(sample_trace_api_info, trace_.gpa_sample_id_);
+  }
+
   // Submit the trace-begin command buffer
   if (result == Pal::Result::Success) {
     static constexpr bool NeedFlush = true;
