@@ -1501,8 +1501,8 @@ hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode, hipGraph_
                                            size_t count, size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphAddMemcpyNodeFromSymbol, pGraphNode, graph, pDependencies, numDependencies,
                dst, symbol, count, offset, kind);
-  if (graph == nullptr || pGraphNode == nullptr || pDependencies == nullptr ||
-      dst == nullptr || !ihipGraph::isGraphValid(graph)) {
+  if (graph == nullptr || pGraphNode == nullptr || (numDependencies > 0 && pDependencies == nullptr)
+       || dst == nullptr || !ihipGraph::isGraphValid(graph)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
