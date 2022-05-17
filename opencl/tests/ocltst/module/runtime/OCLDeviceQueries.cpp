@@ -109,6 +109,7 @@ static const AMDDeviceInfo DeviceInfo[] = {
     /* Navi23 */   { "gfx1032",     "gfx1032",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
     /* Van Gogh */ { "gfx1033",     "gfx1033",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
     /* Rembrandt */{ "gfx1035",     "gfx1035",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    /* Raphael */  { "gfx1036",     "gfx1036",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
 };
 
 const int DeviceInfoSize = sizeof(DeviceInfo) / sizeof(AMDDeviceInfo);
