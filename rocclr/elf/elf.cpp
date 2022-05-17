@@ -430,12 +430,6 @@ bool Elf::getTarget(uint16_t& machine, ElfPlatform& platform) const
     platform = CPU_PLATFORM;
     machine = mach - CPU_BASE;
   }
-#if !defined(WITH_LIGHTNING_COMPILER)
-  else if ( (mach >= CAL_FIRST) && (mach <= CAL_LAST)) {
-    platform = CAL_PLATFORM;
-    machine = mach - CAL_BASE;
-  }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
   else if (mach == EM_386
       || mach == EM_HSAIL
       || mach == EM_HSAIL_64
@@ -1012,20 +1006,6 @@ bool Elf::isCALTarget(const char* p, signed char ec)
   if (!isElfMagic(p)) {
     return false;
   }
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-  Elf64_Half machine;
-  if (ec == ELFCLASS32) {
-    machine = ((Elf32_Ehdr*)p)->e_machine;
-  }
-  else {
-    machine = ((Elf64_Ehdr*)p)->e_machine;
-  }
-
-  if ( (machine >= Elf::CAL_FIRST) && (machine <= Elf::CAL_LAST) ) {
-    return true;
-  }
-#endif // !defined(WITH_LIGHTNING_COMPILER)
 
   return false;
 }

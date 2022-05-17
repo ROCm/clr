@@ -24,10 +24,6 @@
 #include <map>
 
 #include "top.hpp"
-#if !defined(WITH_LIGHTNING_COMPILER)
-#include "caltarget.h" // using CALtargetEnum
-#endif // !defined(WITH_LIGHTNING_COMPILER)
-
 #include "elfio/elfio.hpp"
 #include <sstream>
 using amd::ELFIO::Elf64_Ehdr;
@@ -86,12 +82,6 @@ public:
 
     typedef enum {
         // NOTE!!! Never remove an entry or change the order.
-
-#if !defined(WITH_LIGHTNING_COMPILER)
-        //  All CAL targets are within [CAL_FIRST, CAL_LAST].
-        CAL_FIRST      = CAL_TARGET_600  + CAL_BASE,
-        CAL_LAST       = CAL_TARGET_LAST + CAL_BASE,
-#endif // !defined(WITH_LIGHTNING_COMPILER)
 
         // All CPU targets are within [CPU_FIRST, CPU_LAST]
         CPU_FIRST      = CPU_FEATURES_FIRST + CPU_BASE,
