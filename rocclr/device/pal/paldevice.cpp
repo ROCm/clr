@@ -1268,6 +1268,7 @@ bool Device::init() {
   info.flags.supportRgpTraces = true;
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
+  info.clientApiId = (amd::IS_HIP) ? Pal::ClientApi::Hip : Pal::ClientApi::OpenCl;
 
   if (IS_LINUX) {
     //! @note: Linux may have a deadlock if runtime will attempt to reserve
