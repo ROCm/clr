@@ -1154,14 +1154,13 @@ bool Device::initializeHeapResources() {
     xferQueue_->enableSyncedBlit();
     if (amd::IS_HIP) {
       // Allocate initial heap for device memory allocator
-      constexpr size_t kHeapBufferSize = 128 * Ki;
-      heap_buffer_ = createPrivateBuffer(kHeapBufferSize);
+      static constexpr size_t HeapBufferSize = 1024 * Ki;
+      heap_buffer_ = createMemory(HeapBufferSize);
     }
   }
   return true;
 }
 
-// ================================================================================================
 device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   bool profiling = false;
   uint rtCUs = amd::CommandQueue::RealTimeDisabled;
@@ -1191,15 +1190,14 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   }
 
   VirtualGPU* vgpu = new VirtualGPU(*this);
-  if (nullptr == vgpu || !vgpu->create(profiling, deviceQueueSize, rtCUs, queue->priority())) {
+  if (vgpu && vgpu->create(profiling, deviceQueueSize, rtCUs, queue->priority())) {
+    return vgpu;
+  } else {
     delete vgpu;
     return nullptr;
   }
-
-  return vgpu;
 }
 
-// ================================================================================================
 device::Program* Device::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
@@ -1715,6 +1713,16 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   }
 
   return memory;
+}
+
+// ================================================================================================
+device::Memory* Device::createMemory(size_t size) const {
+  auto buffer = new pal::Memory(*this, size);
+  if ((buffer == nullptr) || !buffer->create(Resource::Local)) {
+    LogError("Couldn't allocate memory on device!");
+    return nullptr;
+  }
+  return buffer;
 }
 
 // ================================================================================================

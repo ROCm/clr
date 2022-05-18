@@ -167,7 +167,7 @@ class HostQueue : public CommandQueue {
     //! The command queue thread entry point.
     void run(void* data) {
       HostQueue* queue = static_cast<HostQueue*>(data);
-      virtualDevice_ = queue->device().CreateDeviceQueue(queue);
+      virtualDevice_ = queue->device().createVirtualDevice(queue);
       if (virtualDevice_ != NULL) {
         queue->loop(virtualDevice_);
         Release();
@@ -178,7 +178,7 @@ class HostQueue : public CommandQueue {
     }
 
     void Init(HostQueue* queue) {
-      virtualDevice_ = queue->device().CreateDeviceQueue(queue);
+      virtualDevice_ = queue->device().createVirtualDevice(queue);
       if (virtualDevice_ != nullptr) {
         acceptingCommands_ = true;
       }

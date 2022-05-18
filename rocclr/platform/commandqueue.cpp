@@ -284,7 +284,7 @@ bool DeviceQueue::create() {
   const bool defaultDeviceQueue = properties().test(CL_QUEUE_ON_DEVICE_DEFAULT);
   bool result = false;
 
-  virtualDevice_ = device().CreateDeviceQueue(this);
+  virtualDevice_ = device().createVirtualDevice(this);
   if (virtualDevice_ != NULL) {
     result = true;
     context().addDeviceQueue(device(), this, defaultDeviceQueue);
