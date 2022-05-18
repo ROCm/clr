@@ -788,8 +788,8 @@ bool Device::create() {
 
   if (amd::IS_HIP) {
     // Allocate initial heap for device memory allocator
-    constexpr size_t kHeapBufferSize = 128 * Ki;
-    heap_buffer_ = createPrivateBuffer(kHeapBufferSize);
+    static constexpr size_t HeapBufferSize = 1024 * Ki;
+    heap_buffer_ = createMemory(HeapBufferSize);
   }
 
   return true;
@@ -1659,7 +1659,6 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
   return virtualDevice;
 }
 
-// ================================================================================================
 bool Device::globalFreeMemory(size_t* freeMemory) const {
   const uint TotalFreeMemory = 0;
   const uint LargestFreeBlock = 1;
@@ -1674,7 +1673,6 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   return true;
 }
 
-// ================================================================================================
 bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxContext,
                                 bool validateOnly) {
 #if defined(_WIN32)
@@ -1888,6 +1886,17 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
   }
 
   return memory;
+}
+
+// ================================================================================================
+device::Memory* Device::createMemory(size_t size) const {
+  auto buffer = new roc::Buffer(*this, size);
+  static constexpr bool LocalAlloc = true;
+  if ((buffer == nullptr) || !buffer->create(LocalAlloc)) {
+    LogError("Couldn't allocate memory on device!");
+    return nullptr;
+  }
+  return buffer;
 }
 
 // ================================================================================================
