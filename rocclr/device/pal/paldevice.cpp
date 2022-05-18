@@ -105,6 +105,9 @@ static constexpr PalDevice supportedPalDevices[] = {
   {10, 3,  4,  Pal::GfxIpLevel::GfxIp10_3, "gfx1034",       Pal::AsicRevision::Navi24},
   {10, 3,  5,  Pal::GfxIpLevel::GfxIp10_3, "gfx1035",       Pal::AsicRevision::Rembrandt},
   {10, 3,  6,  Pal::GfxIpLevel::GfxIp10_3, "gfx1036",       Pal::AsicRevision::Raphael},
+  {11, 0,  0,  Pal::GfxIpLevel::GfxIp11_0, "gfx1100",       Pal::AsicRevision::Navi31},
+  {11, 0,  1,  Pal::GfxIpLevel::GfxIp11_0, "gfx1101",       Pal::AsicRevision::Navi32},
+  {11, 0,  2,  Pal::GfxIpLevel::GfxIp11_0, "gfx1102",       Pal::AsicRevision::Navi33},
 };
 
 static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,

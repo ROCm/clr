@@ -222,6 +222,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
+    case Pal::AsicRevision::Navi31:
+    case Pal::AsicRevision::Navi32:
+    case Pal::AsicRevision::Navi33:
       gfx10Plus_ = true;
       // Force luxmark to use HSAIL
       {
