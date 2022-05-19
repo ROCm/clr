@@ -540,6 +540,7 @@ void Device::tearDown() {
   hsa_shut_down();
 }
 
+// ================================================================================================
 bool Device::create() {
   char agent_name[64] = {0};
   if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_NAME, agent_name)) {
@@ -788,13 +789,22 @@ bool Device::create() {
 
   if (amd::IS_HIP) {
     // Allocate initial heap for device memory allocator
-    static constexpr size_t HeapBufferSize = 1024 * Ki;
+    static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
+    // Clear memory to 0 for device library logic
+    if ((heap_buffer_ == nullptr) ||
+        (HSA_STATUS_SUCCESS != hsa_amd_memory_fill(
+            reinterpret_cast<void*>(HeapBuffer()->virtualAddress()), 0,
+            HeapBufferSize / sizeof(uint32_t)))) {
+      LogError("Heap buffer allocation failed!");
+      return false;
+    }
   }
 
   return true;
 }
 
+// ================================================================================================
 device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Options* options) {
   device::Program* program;
   if (settings().useLightning_) {
