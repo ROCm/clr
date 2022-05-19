@@ -21,11 +21,7 @@
 cmake_minimum_required(VERSION 3.16.8)
 
 #set components for HIP
-if(HIP_CATCH_TEST EQUAL "1")
-   set(CPACK_COMPONENTS_ALL binary dev doc samples runtime-nvidia test)
-else()
-   set(CPACK_COMPONENTS_ALL binary dev doc samples runtime-nvidia)
-endif()
+set(CPACK_COMPONENTS_ALL binary dev doc samples runtime-nvidia)
 
 ###############Install Required files for all compnents########
 
@@ -107,14 +103,6 @@ endif()
 #Begin samples files install
 install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT samples)
 #End samples files install
-
-#Begin test files install
-if(HIP_CATCH_TEST EQUAL "1")
-install(DIRECTORY ${CMAKE_BINARY_DIR}/catch
-        DESTINATION . COMPONENT test
-        USE_SOURCE_PERMISSIONS)
-endif()
-#End test files install
 
 
 ##################################
@@ -200,22 +188,6 @@ set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
 #End dev Packaging setting
 
-#Begin test Packaging setting
-if(HIP_CATCH_TEST EQUAL "1")
-set(CPACK_TEST_DEB "ON")
-set(CPACK_TEST_RPM "ON")
-set(CPACK_DEBIAN_TEST_PACKAGE_NAME "hip-catch-tests")
-set(CPACK_RPM_TEST_PACKAGE_NAME "hip-catch-tests")
-set(CPACK_COMPONENT_TEST_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [TESTS]")
-
-set(CPACK_DEBIAN_TEST_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
-set(CPACK_DEBIAN_TEST_PACKAGE_PROVIDES "hip-catch-tests")
-
-string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_TEST_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
-endif()
-#End test Packaging setting
-
 #Begin doc Packaging setting
 set(CPACK_DOC_DEB "ON")
 set(CPACK_DOC_RPM "ON")
@@ -271,12 +243,6 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS ${CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS})
-
-if(HIP_CATCH_TEST EQUAL "1")
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_TEST_PACKAGE_REQUIRES ${CPACK_RPM_TEST_PACKAGE_REQUIRES})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_TEST_PACKAGE_DEPENDS ${CPACK_DEBIAN_TEST_PACKAGE_DEPENDS})
-endif()#HIPC_CATCH_TEST
-
 endif()
 
 include(CPack)
