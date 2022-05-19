@@ -689,7 +689,8 @@ hipError_t hipGraphExec::CreateQueues(size_t numQueues) {
     cl_command_queue_properties properties =
         (callbacks_table.is_enabled() || HIP_FORCE_QUEUE_PROFILING) ? CL_QUEUE_PROFILING_ENABLE : 0;
     queue = new amd::HostQueue(*hip::getCurrentDevice()->asContext(),
-                               *hip::getCurrentDevice()->devices()[0], properties);
+                               *hip::getCurrentDevice()->devices()[0], properties,
+                               amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal);
 
     bool result = (queue != nullptr) ? queue->create() : false;
     // Create a host queue
@@ -716,7 +717,8 @@ hipError_t hipGraphExec::Init() {
 
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& levelOrder, amd::Command*& rootCommand,
+                        std::vector<Node>& levelOrder,
+                        std::vector<amd::Command*>& rootCommands,
                         amd::Command*& endCommand, amd::HostQueue* queue) {
   hipError_t status;
   for (auto& node : levelOrder) {
@@ -739,13 +741,14 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
       first = false;
       continue;
     }
-    rootCommand = new amd::Marker(*queue, false, {});
+    amd::Command* rootCommand = new amd::Marker(*queue, false, {});
     amd::Command::EventWaitList waitList;
     waitList.push_back(rootCommand);
     if (!singleList.empty()) {
       auto commands = singleList[0]->GetCommands();
       if (!commands.empty()) {
         commands[0]->updateEventWaitList(waitList);
+        rootCommands.push_back(rootCommand);
       }
     }
   }
@@ -794,17 +797,16 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     return hipErrorInvalidResourceHandle;
   }
   UpdateQueue(parallelLists_, queue, this);
-  amd::Command* rootCommand = nullptr;
+  std::vector<amd::Command*> rootCommands;
   amd::Command* endCommand = nullptr;
   status =
-      FillCommands(parallelLists_, nodeWaitLists_, levelOrder_, rootCommand, endCommand, queue);
+      FillCommands(parallelLists_, nodeWaitLists_, levelOrder_, rootCommands, endCommand, queue);
   if (status != hipSuccess) {
     return status;
   }
-
-  if (rootCommand != nullptr) {
-    rootCommand->enqueue();
-    rootCommand->release();
+  for (auto& cmd : rootCommands) {
+    cmd->enqueue();
+    cmd->release();
   }
   for (auto& node : levelOrder_) {
     node->EnqueueCommands(stream);
