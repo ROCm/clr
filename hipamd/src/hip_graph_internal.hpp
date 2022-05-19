@@ -37,7 +37,8 @@ typedef hipGraphNode* Node;
 hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams);
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& levelOrder, amd::Command*& rootCommand,
+                        std::vector<Node>& levelOrder,
+                        std::vector<amd::Command*>& rootCommands,
                         amd::Command*& endCommand, amd::HostQueue* queue);
 void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
                  hipGraphExec* ptr);
@@ -394,12 +395,12 @@ struct hipChildGraphNode : public hipGraphNode {
       return status;
     }
     commands_.reserve(2);
-    amd::Command* rootCommand = nullptr;
+    std::vector<amd::Command*> rootCommands;
     amd::Command* endCommand = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphlevelOrder_, rootCommand,
+    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphlevelOrder_, rootCommands,
                           endCommand, queue);
-    if (rootCommand != nullptr) {
-      commands_.push_back(rootCommand);
+    for (auto& cmd : rootCommands) {
+      commands_.push_back(cmd);
     }
     if (endCommand != nullptr) {
       commands_.push_back(endCommand);
