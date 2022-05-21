@@ -600,6 +600,13 @@ hipError_t hipMemPtrGetInfo(void *ptr, size_t *size) {
 hipError_t hipHostFree(void* ptr) {
   HIP_INIT_API(hipHostFree, ptr);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  size_t offset = 0;
+  amd::Memory* memory_object = getMemoryObject(ptr, offset);
+  if (memory_object != nullptr) {
+    if (memory_object->getSvmPtr() == nullptr) {
+      return hipErrorInvalidValue;
+    }
+  }
   HIP_RETURN(ihipFree(ptr));
 }
 
