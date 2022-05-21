@@ -971,6 +971,9 @@ hipError_t hipMallocArray(hipArray** array,
                           size_t height,
                           unsigned int flags) {
   HIP_INIT_API(hipMallocArray, array, desc, width, height, flags);
+  if (array == nullptr || desc == nullptr) {
+    return hipErrorInvalidValue;
+  }
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR allocateArray = {width,
                                           height,
@@ -996,6 +999,9 @@ hipError_t hipMalloc3DArray(hipArray_t* array,
                             hipExtent extent,
                             unsigned int flags) {
   HIP_INIT_API(hipMalloc3DArray, array, desc, extent, flags);
+  if (array == nullptr || desc == nullptr) {
+    return hipErrorInvalidValue;
+  }
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR allocateArray = {extent.width,
                                           extent.height,
