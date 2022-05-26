@@ -221,6 +221,8 @@ class HostcallListener {
   std::set<HostcallBuffer*> buffers_;
   device::Signal* doorbell_;
   MessageHandler messages_;
+  // Keep track of devices for which signal creation have already been done
+  std::set<const amd::Device*> devices_;
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
    device::UriLocator* urilocator = nullptr;
@@ -325,6 +327,7 @@ void HostcallListener::terminate() {
 #endif
 #endif
   delete doorbell_;
+  devices_.clear();
 }
 
 void HostcallListener::addBuffer(HostcallBuffer* buffer) {
@@ -355,6 +358,7 @@ bool HostcallListener::initSignal(const amd::Device &dev) {
   // everything up and bail out.
   if (thread_.state() < Thread::INITIALIZED) {
     delete doorbell_;
+    devices_.clear();
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
     delete urilocator;
@@ -367,13 +371,18 @@ bool HostcallListener::initSignal(const amd::Device &dev) {
 }
 
 bool HostcallListener::initDevice(const amd::Device &dev) {
+  // Create only one signal per device
+  // This is to avoid conflicts when n signals are created for n HIP streams per device
+  if (devices_.count(&dev) == 0) {
 #if defined(WITH_PAL_DEVICE) && !defined(_WIN32)
-  auto ws = device::Signal::WaitState::Active;
+    auto ws = device::Signal::WaitState::Active;
 #else
-  auto ws = device::Signal::WaitState::Blocked;
+    auto ws = device::Signal::WaitState::Blocked;
 #endif
-  if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
-    return false;
+    if ((doorbell_ == nullptr) || !doorbell_->Init(dev, SIGNAL_INIT, ws)) {
+      return false;
+    }
+    devices_.insert(&dev);
   }
 return true;
 }
@@ -395,11 +404,16 @@ bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
     }
     ClPrint(amd::LOG_INFO, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
             "Launched hostcall listener at %p", hostcallListener);
-  } else if (!hostcallListener->initDevice(dev)) {
+  }
+// For PAL, create one signal per device (inside hostcallListener->initDevice(dev)) whose pointer is stored in this hostcall buffer
+// For ROCr, create only one signal across all devices (inside hostcallListener->initSignal(dev)) whose pointer is stored in every hostcall buffer
+#if defined(WITH_PAL_DEVICE)
+  else if (!hostcallListener->initDevice(dev)) {
     ClPrint(amd::LOG_INFO, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
             "failed to initialize device for hostcall");
     return false;
   }
+#endif // defined(WITH_PAL_DEVICE)
   hostcallListener->addBuffer(buffer);
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Registered hostcall buffer %p with listener %p", buffer,
           hostcallListener);
