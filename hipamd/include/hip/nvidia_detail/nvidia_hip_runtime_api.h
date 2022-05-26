@@ -1140,7 +1140,26 @@ typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDepe
 #define hipStreamAddCaptureDependencies cudaStreamAddCaptureDependencies
 #define hipStreamSetCaptureDependencies cudaStreamSetCaptureDependencies
 #endif
-
+#if CUDA_VERSION >= CUDA_10020
+typedef struct CUmemAllocationProp_st hipMemAllocationProp;
+#define hipMemAllocationGranularityMinimum CU_MEM_ALLOC_GRANULARITY_MINIMUM
+#define hipMemAllocationGranularityRecommended CU_MEM_ALLOC_GRANULARITY_RECOMMENDED
+typedef enum CUmemAllocationGranularity_flags_enum  hipMemAllocationGranularity_flags;
+//typedef struct CUmemLocation_st hipMemLocation;
+typedef enum CUmemLocationType_enum hipMemLocationType;
+#define hipMemLocationTypeInvalid CU_MEM_LOCATION_TYPE_INVALID
+#define hipMemLocationTypeDevice CU_MEM_LOCATION_TYPE_DEVICE
+//typedef enum CUmemAllocationHandleType_enum  hipMemAllocationHandleType;
+#define hipMemHandleTypeNone CU_MEM_HANDLE_TYPE_NONE
+#define hipMemHandleTypePosixFileDescriptor CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR
+#define hipMemHandleTypeWin32 CU_MEM_HANDLE_TYPE_WIN32
+#define hipMemHandleTypeWin32Kmt CU_MEM_HANDLE_TYPE_WIN32_KMT
+typedef enum CUmemAllocationType_enum  hipMemAllocationType;
+#define hipMemAllocationTypeInvalid CU_MEM_ALLOCATION_TYPE_INVALID
+#define hipMemAllocationTypePinned CU_MEM_ALLOCATION_TYPE_PINNED
+#define hipMemAllocationTypeMax CU_MEM_ALLOCATION_TYPE_MAX
+#define hipMemGenericAllocationHandle_t CUmemGenericAllocationHandle
+#endif
 /**
  * Stream CallBack struct
  */
@@ -1837,14 +1856,32 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
             cdattr = cudaDevAttrMemoryPoolsSupported;
             break;
 #endif // CUDA_VERSION >= CUDA_11020
+        case hipDeviceAttributeVirtualMemoryManagementSupported:
+            return hipCUResultTohipError(cuDeviceGetAttribute(pi,
+                                                              CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
+                                                              device));
         default:
             return hipCUDAErrorTohipError(cudaErrorInvalidValue);
     }
-
     cerror = cudaDeviceGetAttribute(pi, cdattr, device);
-
     return hipCUDAErrorTohipError(cerror);
 }
+#if CUDA_VERSION >= CUDA_10020
+inline static hipError_t hipMemGetAllocationGranularity(size_t* granularity,
+                                                        const hipMemAllocationProp* prop,
+                                                        hipMemAllocationGranularity_flags option) {
+    return hipCUResultTohipError(cuMemGetAllocationGranularity(granularity, prop, option));
+}
+inline static hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle,
+                                      size_t size,
+                                      const hipMemAllocationProp* prop,
+                                      unsigned long long flags) {
+    return hipCUResultTohipError(cuMemCreate(handle, size, prop, flags));
+}
+inline static hipError_t hipMemRelease(hipMemGenericAllocationHandle_t handle) {
+    return hipCUResultTohipError(cuMemRelease(handle));
+}
+#endif // CUDA_VERSION >= CUDA_10020
 
 inline static hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks,
                                                                       const void* func,
