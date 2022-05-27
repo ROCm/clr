@@ -775,7 +775,10 @@ hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) 
 
 hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   HIP_INIT_API(hipStreamEndCapture, stream, pGraph);
-  if (pGraph == nullptr || stream == nullptr) {
+  if (pGraph == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (stream == nullptr) {
     HIP_RETURN(hipErrorIllegalState);
   }
   if (!hip::isValid(stream)) {
