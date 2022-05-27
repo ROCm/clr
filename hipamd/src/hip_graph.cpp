@@ -1279,13 +1279,23 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
     HIP_RETURN(hipErrorUnknown);
   }
 
-  hipGraphNode_t hipErrorNode_out;
-  hipGraphExecUpdateResult updateResult_out;
-  // Check if this instantiated graph is updatable. All restrictions in hipGraphExecUpdate() apply.
-  hipError_t status =
-      hipGraphExecUpdate(hGraphExec, childGraph, &hipErrorNode_out, &updateResult_out);
-  if (status != hipSuccess) {
-    HIP_RETURN(status);
+// Validate whether the topology of node and childGraph matches
+  std::vector<Node> childGraphNodes1;
+  node->LevelOrder(childGraphNodes1);
+
+  std::vector<Node> childGraphNodes2;
+  childGraph->LevelOrder(childGraphNodes2);
+
+  if (childGraphNodes1.size() != childGraphNodes2.size()) {
+    HIP_RETURN(hipErrorUnknown);
+  }
+  // Validate if the node insertion order matches
+  else {
+    for (std::vector<Node>::size_type i = 0; i != childGraphNodes1.size(); i++) {
+      if (childGraphNodes1[i]->GetType() != childGraphNodes2[i]->GetType()) {
+        HIP_RETURN(hipErrorUnknown);
+      }
+    }
   }
 
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
