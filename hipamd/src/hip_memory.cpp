@@ -619,9 +619,14 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   if (is_valid(memObj) == false) {
     return hipErrorInvalidValue;
   }
+
   for (auto& dev : g_devices) {
-    dev->NullStream()->finish();
+    amd::HostQueue* queue = dev->NullStream(true);
+    if (queue != nullptr) {
+      queue->finish();
+    }
   }
+
   as_amd(memObj)->release();
 
   delete array;
@@ -1087,7 +1092,11 @@ hipError_t ihipHostUnregister(void* hostPtr) {
   if (mem != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
     auto device_id = mem->getUserData().deviceId;
-    g_devices[device_id]->NullStream()->finish();
+
+    amd::HostQueue* queue = g_devices[device_id]->NullStream(true);
+    if (queue != nullptr) {
+      queue->finish();
+    }
 
     for (const auto& device: g_devices) {
       const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
@@ -3380,7 +3389,10 @@ hipError_t ihipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
   }
 
   for (auto& dev : g_devices) {
-    dev->NullStream()->finish();
+    amd::HostQueue* queue = dev->NullStream(true);
+    if (queue != nullptr) {
+      queue->finish();
+    }
   }
 
   as_amd(mem_obj)->release();
