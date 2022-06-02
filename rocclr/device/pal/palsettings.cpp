@@ -266,6 +266,9 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       aiPlus_ = true;
       enableCoopGroups_ = IS_LINUX;
       enableCoopMultiDeviceGroups_ = IS_LINUX;
+      if (useLightning_) {
+        singleFpDenorm_ = true;
+      }
     // Fall through to VI ...
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Bristol:
@@ -533,17 +536,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 #endif
   }
 
-  if (useLightning_) {
-    switch (palProp.gfxLevel) {
-      case Pal::GfxIpLevel::GfxIp10_3:
-      case Pal::GfxIpLevel::GfxIp10_1:
-      case Pal::GfxIpLevel::GfxIp9:
-        singleFpDenorm_ = true;
-        break;
-      default:
-        break;
-    }
-  }
   // If is Rebar, override prepinned memory size.
   if ((heaps[Pal::GpuHeapInvisible].heapSize == 0) &&
       (heaps[Pal::GpuHeapLocal].heapSize > 256 * Mi)) {
