@@ -487,7 +487,8 @@ bool OneMemoryArgCommand::validatePeerMemory() {
   // extra memory objects.
   if (queue_device->settings().rocr_backend_) {
     const std::vector<Device*>& srcDevices = memory_->getContext().devices();
-    if (srcDevices.size() == 1 && queue_device != srcDevices[0]) {
+    if (!memory_->isArena() &&
+        srcDevices.size() == 1 && queue_device != srcDevices[0]) {
       // current device and source device are not same hence
       // explicit allow access is needed for P2P access
       device::Memory* mem = memory_->getDeviceMemory(*srcDevices[0]);
@@ -533,14 +534,16 @@ bool TwoMemoryArgsCommand::validatePeerMemory(){
     const std::vector<Device*>& dstDevices = memory2_->getContext().devices();
     // explicit allow access is needed for P2P access
     device::Memory* mem1 = memory1_->getDeviceMemory(*srcDevices[0]);
-    if (!mem1->getAllowedPeerAccess() && srcDevices.size() == 1) {
+    if (!memory1_->isArena() &&
+        !mem1->getAllowedPeerAccess() && srcDevices.size() == 1) {
       void* src = reinterpret_cast<void*>(mem1->originalDeviceAddress());
       accessAllowed = srcDevices[0]->deviceAllowAccess(src);
       mem1->setAllowedPeerAccess(true);
     }
 
     device::Memory* mem2 = memory2_->getDeviceMemory(*dstDevices[0]);
-    if (!mem2->getAllowedPeerAccess() && dstDevices.size() == 1) {
+    if (!memory2_->isArena() &&
+        !mem2->getAllowedPeerAccess() && dstDevices.size() == 1) {
       void* dst = reinterpret_cast<void*>(mem2->originalDeviceAddress());
       accessAllowed &= dstDevices[0]->deviceAllowAccess(dst);
       mem2->setAllowedPeerAccess(true);
