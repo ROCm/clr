@@ -398,3 +398,7 @@ hipStreamWaitEvent_spt
 hipEventRecord_spt
 hipLaunchKernel_spt
 hipLaunchCooperativeKernel_spt
+hipStreamWriteValue32
+hipStreamWriteValue64
+hipStreamWaitValue32
+hipStreamWaitValue64
