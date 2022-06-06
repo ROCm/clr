@@ -202,8 +202,8 @@ hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocat
   cmd->awaitCompletion();
   cmd->release();
 
-  amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
-  va->getUserData().deviceId = ga->GetProperties().location.id;
+  // update the internal svm address to ptr
+  ga->asAmdMemory().setSvmPtr(ptr);
 
   HIP_RETURN(hipSuccess);
 }
@@ -235,6 +235,18 @@ hipError_t hipMemRetainAllocationHandle(hipMemGenericAllocationHandle_t* handle,
 
   if (handle == nullptr || addr == nullptr) HIP_RETURN(hipErrorInvalidValue);
 
+  amd::Memory* mem = amd::MemObjMap::FindMemObj(addr);
+
+  if (mem == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(mem->getUserData().data);
+
+  if (*handle == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(hipSuccess);
 }
 
@@ -264,6 +276,10 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
+
+  // restore the original va of the generic allocation
+  hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(va->getUserData().data);
+  va->setSvmPtr(ga->genericAddress());
 
   HIP_RETURN(hipSuccess);
 }
