@@ -38,7 +38,8 @@ public:
 
   const hipMemAllocationProp& GetProperties() const { return properties_; }
   hipMemGenericAllocationHandle_t asMemGenericAllocationHandle() { return reinterpret_cast<hipMemGenericAllocationHandle_t>(this); }
-  amd::Memory& asAmdMemory() { return *amd::MemObjMap::FindMemObj(ptr_); }
+  amd::Memory& asAmdMemory() { return *amd::MemObjMap::FindMemObj(genericAddress()); }
+  void* genericAddress() const { return ptr_; }
 };
 };
 
