@@ -135,6 +135,16 @@ void khrIcdOsVendorsEnumerate(void)
         }
 
         closedir(dir);
+
+        KHRicdVendor *vendorIterator;
+        for (vendorIterator = khrIcdVendors; vendorIterator; vendorIterator = vendorIterator->next)
+        {
+            if (vendorIterator->libName != NULL)
+            {
+                free(vendorIterator->libName);
+                vendorIterator->libName = NULL;
+            }
+        }
     }
 
     if (NULL != envPath)
