@@ -1214,6 +1214,7 @@ hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
   for (size_t i = 0; i < numDependencies; i++) {
     // When the same node is specified for both from and to
     if (from[i] == nullptr || to[i] == nullptr || from[i] == to[i] ||
+        !hipGraphNode::isNodeValid(to[i]) || !hipGraphNode::isNodeValid(from[i]) ||
         // making sure the nodes blong to the graph
         to[i]->GetParentGraph() != graph || from[i]->GetParentGraph() != graph) {
       HIP_RETURN(hipErrorInvalidValue);
