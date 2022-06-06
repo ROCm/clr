@@ -2129,7 +2129,7 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(vcmd);
-  amd::Memory* va = amd::MemObjMap::FindMemObj(vcmd.ptr());
+  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
   if (va == nullptr || !(va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     profilingEnd(vcmd);
     return;
@@ -2145,6 +2145,17 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     Pal::VirtualGpuMemAccessMode::NoAccess
   };
   Pal::Result result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+  if (result == Pal::Result::Success) {
+    if (vcmd.memory() != nullptr) {
+      // assert the va wasn't mapped already
+      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vcmd.memory());
+    } else {
+      // assert the va is mapped and needs to be removed
+      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
+      amd::MemObjMap::RemoveMemObj(vcmd.ptr());
+    }
+  }
   profilingEnd(vcmd);
 }
 
