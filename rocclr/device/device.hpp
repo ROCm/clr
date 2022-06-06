@@ -1289,9 +1289,17 @@ class MemObjMap : public AllStatic {
       const void* k);  //!< find the mem object based on the input pointer
   static void UpdateAccess(amd::Device *peerDev);
   static void Purge(amd::Device* dev); //!< Purge all user allocated memories on the given device
+
+  static void AddVirtualMemObj(const void* k,
+                               amd::Memory* v);  //!< Same as AddMemObj but for virtual addressing
+  static void RemoveVirtualMemObj(const void* k);  //!< Same as RemoveMemObj but for virtual addressing
+  static amd::Memory* FindVirtualMemObj(
+      const void* k);  //!< Same as FindMemObj but for virtual addressing
  private:
   static std::map<uintptr_t, amd::Memory*>
       MemObjMap_;                      //!< the mem object<->hostptr information container
+  static std::map<uintptr_t, amd::Memory*>
+      VirtualMemObjMap_;               //!< the virtual mem object<->hostptr information container
   static amd::Monitor AllocatedLock_;  //!< amd monitor locker
 };
 

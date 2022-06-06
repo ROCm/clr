@@ -2261,7 +2261,7 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
   }
   // if the device supports SVM FGS, return the committed CPU address directly.
   pal::Memory* gpuMem = getGpuMemory(mem);
-  amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+  amd::MemObjMap::AddVirtualMemObj(mem->getSvmPtr(), mem);
 
   void* svmPtr = mem->getSvmPtr();
 
@@ -2270,10 +2270,10 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
 
 void Device::virtualFree(void* addr)
 {
-  amd::Memory* va = amd::MemObjMap::FindMemObj(addr);
+  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(addr);
   if (nullptr != va && (va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     va->release();
-    amd::MemObjMap::RemoveMemObj(addr);
+    amd::MemObjMap::RemoveVirtualMemObj(addr);
   }
 }
 

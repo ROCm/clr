@@ -264,6 +264,7 @@ Memory* Device::p2p_stage_ = nullptr;
 
 Monitor MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
+std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
 
 size_t MemObjMap::size() {
   amd::ScopedLock lock(AllocatedLock_);
@@ -294,6 +295,42 @@ amd::Memory* MemObjMap::FindMemObj(const void* k) {
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
   auto it = MemObjMap_.upper_bound(key);
   if (it == MemObjMap_.begin()) {
+    return nullptr;
+  }
+
+  --it;
+  amd::Memory* mem = it->second;
+  if (key >= it->first && key < (it->first + mem->getSize())) {
+    // the k is in the range
+    return mem;
+  } else {
+    return nullptr;
+  }
+}
+void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
+  amd::ScopedLock lock(AllocatedLock_);
+  auto rval = VirtualMemObjMap_.insert({ reinterpret_cast<uintptr_t>(k), v });
+  if (!rval.second) {
+    DevLogPrintfError("Virtual Memobj map already has an entry for ptr: 0x%x",
+                      reinterpret_cast<uintptr_t>(k));
+  }
+}
+
+void MemObjMap::RemoveVirtualMemObj(const void* k) {
+  amd::ScopedLock lock(AllocatedLock_);
+  auto rval = VirtualMemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
+  if (rval != 1) {
+    DevLogPrintfError("Virtual Memobj map does not have ptr: 0x%x",
+                      reinterpret_cast<uintptr_t>(k));
+    guarantee(false, "VirtualMemobj map does not have ptr");
+  }
+}
+
+amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
+  amd::ScopedLock lock(AllocatedLock_);
+  uintptr_t key = reinterpret_cast<uintptr_t>(k);
+  auto it = VirtualMemObjMap_.upper_bound(key);
+  if (it == VirtualMemObjMap_.begin()) {
     return nullptr;
   }
 
