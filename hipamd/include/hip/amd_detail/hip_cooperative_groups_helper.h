@@ -114,23 +114,23 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
 namespace grid {
 
 __CG_STATIC_QUALIFIER__ uint32_t size() {
-  return (uint32_t)((hipBlockDim_z * hipGridDim_z) * (hipBlockDim_y * hipGridDim_y) *
-                    (hipBlockDim_x * hipGridDim_x));
+  return (uint32_t)((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
+                    (blockDim.x * gridDim.x));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
   // Compute global id of the workgroup to which the current thread belongs to
-  uint32_t blkIdx = (uint32_t)((hipBlockIdx_z * hipGridDim_y * hipGridDim_x) +
-                               (hipBlockIdx_y * hipGridDim_x) + (hipBlockIdx_x));
+  uint32_t blkIdx = (uint32_t)((blockIdx.z * gridDim.y * gridDim.x) +
+                               (blockIdx.y * gridDim.x) + (blockIdx.x));
 
   // Compute total number of threads being passed to reach current workgroup
   // within grid
   uint32_t num_threads_till_current_workgroup =
-      (uint32_t)(blkIdx * (hipBlockDim_x * hipBlockDim_y * hipBlockDim_z));
+      (uint32_t)(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
 
   // Compute thread local rank within current workgroup
-  uint32_t local_thread_rank = (uint32_t)((hipThreadIdx_z * hipBlockDim_y * hipBlockDim_x) +
-                                          (hipThreadIdx_y * hipBlockDim_x) + (hipThreadIdx_x));
+  uint32_t local_thread_rank = (uint32_t)((threadIdx.z * blockDim.y * blockDim.x) +
+                                          (threadIdx.y * blockDim.x) + (threadIdx.x));
 
   return (num_threads_till_current_workgroup + local_thread_rank);
 }
@@ -148,20 +148,20 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 namespace workgroup {
 
 __CG_STATIC_QUALIFIER__ dim3 group_index() {
-  return (dim3((uint32_t)hipBlockIdx_x, (uint32_t)hipBlockIdx_y, (uint32_t)hipBlockIdx_z));
+  return (dim3((uint32_t)blockIdx.x, (uint32_t)blockIdx.y, (uint32_t)blockIdx.z));
 }
 
 __CG_STATIC_QUALIFIER__ dim3 thread_index() {
-  return (dim3((uint32_t)hipThreadIdx_x, (uint32_t)hipThreadIdx_y, (uint32_t)hipThreadIdx_z));
+  return (dim3((uint32_t)threadIdx.x, (uint32_t)threadIdx.y, (uint32_t)threadIdx.z));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t size() {
-  return ((uint32_t)(hipBlockDim_x * hipBlockDim_y * hipBlockDim_z));
+  return ((uint32_t)(blockDim.x * blockDim.y * blockDim.z));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return ((uint32_t)((hipThreadIdx_z * hipBlockDim_y * hipBlockDim_x) +
-                     (hipThreadIdx_y * hipBlockDim_x) + (hipThreadIdx_x)));
+  return ((uint32_t)((threadIdx.z * blockDim.y * blockDim.x) +
+                     (threadIdx.y * blockDim.x) + (threadIdx.x)));
 }
 
 __CG_STATIC_QUALIFIER__ bool is_valid() {
