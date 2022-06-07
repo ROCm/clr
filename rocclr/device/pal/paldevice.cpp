@@ -57,6 +57,14 @@
 #include <sstream>
 #include <tuple>
 
+#ifdef PAL_GPUOPEN_OCL
+// gpuutil headers
+#include "gpuUtil/palGpaSession.h"
+#include "devDriverServer.h"
+#include "protocols/rgpServer.h"
+#include "protocols/driverControlServer.h"
+#endif // PAL_GPUOPEN_OCL
+
 namespace {
 
 //! Define the mapping from PAL asic revision enumeration values to the
@@ -1288,6 +1296,16 @@ bool Device::init() {
   if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
     return false;
   }
+
+#ifdef PAL_GPUOPEN_OCL
+  if ((platform_->GetDevDriverServer() != nullptr) &&
+      (platform_->GetDevDriverServer()->GetDriverControlServer() != nullptr)) {
+    // Make sure the devdriver initialization is done after Pal platform creation
+    // to avoid a timeout in RGP server
+    platform_->GetDevDriverServer()->GetDriverControlServer()->StartLateDeviceInit();
+    platform_->GetDevDriverServer()->GetDriverControlServer()->FinishDeviceInit();
+  }
+#endif // PAL_GPUOPEN_OCL
 
   // Get the total number of active devices
   // Count up all the devices in the system.
