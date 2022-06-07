@@ -108,13 +108,18 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
 
   auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
 
+  bool fgpu_rdc = false;
   std::vector<std::string> opt;
   opt.reserve(numOptions);
   for (int i = 0; i < numOptions; i++) {
-    opt.push_back(std::string(options[i]));
+    if(std::string(options[i]) == std::string("-fgpu-rdc")) {
+      fgpu_rdc = true;
+    } else {
+      opt.push_back(std::string(options[i]));
+    }
   }
 
-  if (!rtcProgram->compile(opt)) {
+  if (!rtcProgram->compile(opt, fgpu_rdc)) {
     HIPRTC_RETURN(HIPRTC_ERROR_COMPILATION);
   }
 
@@ -223,6 +228,31 @@ hiprtcResult hiprtcVersion(int* major, int* minor) {
   // TODO add actual version, what do these numbers mean
   *major = 9;
   *minor = 0;
+
+  HIPRTC_RETURN(HIPRTC_SUCCESS);
+}
+
+hiprtcResult hiprtcGetBitcode (hiprtcProgram prog, char* bitcode) {
+  if (bitcode == nullptr) {
+    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
+  }
+
+  auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
+  if (!rtcProgram->GetBitcode(bitcode)) {
+    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_PROGRAM);
+  }
+  HIPRTC_RETURN(HIPRTC_SUCCESS);
+}
+
+hiprtcResult hiprtcGetBitcodeSize(hiprtcProgram prog, size_t* bitcode_size) {
+  if (bitcode_size == nullptr) {
+    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
+  }
+
+  auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
+  if (!rtcProgram->GetBitcodeSize(bitcode_size)) {
+    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_PROGRAM);
+  }
 
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
