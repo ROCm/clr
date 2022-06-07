@@ -231,7 +231,7 @@ hiprtcResult hiprtcLinkCreate(unsigned int num_options, hiprtcJIT_option* option
                               void** options_vals_pptr, hiprtcLinkState* hip_link_state_ptr) {
   HIPRTC_INIT_API(num_options, options_ptr, options_vals_pptr, hip_link_state_ptr);
 
-  if (options_ptr == nullptr || options_vals_pptr == nullptr || hip_link_state_ptr == nullptr) {
+  if (hip_link_state_ptr == nullptr) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
