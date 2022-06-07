@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.16.8)
 
 #set components for HIP
 if(HIP_CATCH_TEST EQUAL "1")
@@ -35,34 +35,34 @@ set(CPACK_DEB_COMPONENT_INSTALL ON)
 
 ###Set License####
 set(CPACK_RESOURCE_FILE_LICENSE ${hip_SOURCE_DIR}/LICENSE.txt)
-install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION share/doc/${PROJECT_NAME} COMPONENT binary)
+install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT binary)
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 
 #Begin binary files install
 if(HIP_PLATFORM STREQUAL "amd" )
    if(BUILD_SHARED_LIBS)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION lib COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION lib COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
    else()
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.a DESTINATION lib COMPONENT binary)
+      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
    endif()#End BUILD_SHARED_LIBS
 
 #TODO:This do not belong in BINARY package.
 #Keeping it as is for now
-install(FILES ${CMAKE_BINARY_DIR}/.hipInfo DESTINATION lib COMPONENT binary)
-install(FILES ${CMAKE_BINARY_DIR}/hip-config.cmake ${CMAKE_BINARY_DIR}/hip-config-version.cmake DESTINATION lib/cmake/hip COMPONENT binary)
-install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION lib/cmake/hip  COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/hip-config.cmake ${CMAKE_BINARY_DIR}/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT binary)
+install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
 
-install(FILES ${CMAKE_BINARY_DIR}/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/src/hip-lang-config-version.cmake DESTINATION lib/cmake/hip-lang COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT binary)
 
-install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION lib/cmake/hip-lang  COMPONENT binary)
+install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
 
 endif()#End HIP_PLATFORM = "amd"
 #End bianry files install
@@ -83,15 +83,15 @@ install(DIRECTORY ${hip_SOURCE_DIR}/bin DESTINATION . COMPONENT dev
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 install(DIRECTORY ${HIP_COMMON_DIR}/include DESTINATION . COMPONENT dev)
 install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/amd_detail
-        DESTINATION include/hip COMPONENT dev)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
 install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/nvidia_detail
-        DESTINATION include/hip COMPONENT dev)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h
-        DESTINATION include/hip/amd_detail COMPONENT dev)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/include/hip/hip_version.h
-        DESTINATION include/hip COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/.hipVersion DESTINATION bin COMPONENT dev)
-install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION lib/cmake/hip COMPONENT dev)
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
+install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 #End dev files install
 
 #Begin doc files install
@@ -100,12 +100,12 @@ if(DOXYGEN_EXE)
     add_custom_target(build_doxygen ALL
                   COMMAND HIP_PATH=${HIP_COMMON_DIR} doxygen ${HIP_COMMON_DIR}/docs/doxygen-input/doxy.cfg)
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/RuntimeAPI/html
-            DESTINATION share/doc/hip/RuntimeAPI COMPONENT doc)
+            DESTINATION ${CMAKE_INSTALL_DOCDIR}/RuntimeAPI COMPONENT doc)
 endif()
 #End doc files install
 
 #Begin samples files install
-install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION share/hip COMPONENT samples)
+install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT samples)
 #End samples files install
 
 #Begin test files install

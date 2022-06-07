@@ -59,7 +59,7 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../include/hip/${file_name}\"\n")
+    set(include_statements "#include \"../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/${file_name}\"\n")
     if(${file_name} STREQUAL "hip_version.h")
       set_file_contents(${header_file})
     else()
@@ -77,7 +77,7 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_AMD_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../../include/hip/amd_detail/${file_name}\"\n")
+    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail/${file_name}\"\n")
 
     configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/amd_detail/${file_name})
   endforeach()
@@ -92,7 +92,7 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_NVIDIA_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../../include/hip/nvidia_detail/${file_name}\"\n")
+    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/nvidia_detail/${file_name}\"\n")
 
     configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/nvidia_detail/${file_name})
   endforeach()
@@ -111,7 +111,7 @@ function(create_binary_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../bin/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
   endforeach()
 
   unset(binary_files)
@@ -122,14 +122,14 @@ function(create_binary_symlink)
       add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../bin/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
 
     else()
       if( NOT ${file_name} MATCHES ".bat$")
         add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../bin/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
       endif()#end of bat file check
     endif()#end of OS check
   endforeach()
@@ -157,14 +157,14 @@ function(create_library_symlink)
      add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../lib/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_LIBDIR}/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
   endforeach()
   #Add symlink for .hipInfo
   set(file_name ${HIP_INFO_FILE})
   add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../lib/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_LIBDIR}/${file_name} ${HIP_WRAPPER_LIB_DIR}/${file_name})
 endfunction()
 
 function(create_cmake_symlink)
@@ -176,7 +176,7 @@ function(create_cmake_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../../../lib/cmake/hip/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip/${file_name})
+                  ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip/${file_name})
   endforeach()
   #create symlink to  hip-lang
   unset(config_files)
@@ -187,7 +187,7 @@ function(create_cmake_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../../../lib/cmake/hip-lang/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip-lang/${file_name})
+                  ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip-lang/${file_name})
   endforeach()
 
   unset(config_files)
@@ -199,7 +199,7 @@ function(create_cmake_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../../lib/cmake/hip/FindHIP/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/FindHIP/${file_name})
+                  ../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip/FindHIP/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/FindHIP/${file_name})
   endforeach()
 
   unset(config_files)
@@ -209,7 +209,7 @@ function(create_cmake_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../lib/cmake/hip/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/${file_name})
+                  ../../${CMAKE_INSTALL_LIBDIR}/cmake/hip/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/${file_name})
   endforeach()
 
 endfunction()
