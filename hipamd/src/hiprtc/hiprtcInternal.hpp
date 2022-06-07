@@ -128,6 +128,9 @@ class RTCCompileProgram : public RTCProgram {
   amd_comgr_data_set_t compile_input_;
   amd_comgr_data_set_t link_input_;
 
+  bool fgpu_rdc_;
+  std::vector<char> LLVMBitcode_;
+
   // Private Member functions
   bool addSource_impl();
   bool addBuiltinHeader();
@@ -155,10 +158,12 @@ class RTCCompileProgram : public RTCProgram {
   // Public Member Functions
   bool addSource(const std::string& source, const std::string& name);
   bool addHeader(const std::string& source, const std::string& name);
-  bool compile(const std::vector<std::string>& options);
+  bool compile(const std::vector<std::string>& options, bool fgpu_rdc);
   bool getDemangledName(const char* name_expression, const char** loweredName);
   bool trackMangledName(std::string& name);
 
+  bool GetBitcode(char* bitcode);
+  bool GetBitcodeSize(size_t* bitcode_size);
   // Public Getter/Setters
   const std::vector<char>& getExec() const { return executable_; }
   size_t getExecSize() const { return executable_.size(); }

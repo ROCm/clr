@@ -94,7 +94,7 @@ bool RTCProgram::findIsa() {
 }
 
 //RTC Compile Program Member Functions
-RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_) {
+RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgpu_rdc_(false) {
 
   if ((amd::Comgr::create_data_set(&compile_input_) != AMD_COMGR_STATUS_SUCCESS) ||
       (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS)) {
@@ -229,13 +229,15 @@ bool RTCCompileProgram::transformOptions() {
 
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
 
-bool RTCCompileProgram::compile(const std::vector<std::string>& options) {
+bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
   amd::ScopedLock lock(lock_); // Lock, because LLVM is not multi threaded
 
   if (!addSource_impl()) {
     LogError("Error in hiprtc: unable to add source code");
     return false;
   }
+
+  fgpu_rdc_ = fgpu_rdc;
 
   // Append compile options
   compile_options_.reserve(compile_options_.size() + options.size());
@@ -246,14 +248,17 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options) {
     return false;
   }
 
-  std::vector<char> LLVMBitcode;
-  if (!compileToBitCode(compile_input_, isa_, compile_options_, build_log_, LLVMBitcode)) {
+  if (!compileToBitCode(compile_input_, isa_, compile_options_, build_log_, LLVMBitcode_)) {
     LogError("Error in hiprtc: unable to compile source to bitcode");
     return false;
   }
 
+  if (fgpu_rdc_) {
+    return true;
+  }
+
   std::string linkFileName = "linked";
-  if (!addCodeObjData(link_input_, LLVMBitcode, linkFileName, AMD_COMGR_DATA_KIND_BC)) {
+  if (!addCodeObjData(link_input_, LLVMBitcode_, linkFileName, AMD_COMGR_DATA_KIND_BC)) {
     LogError("Error in hiprtc: unable to add linked code object");
     return false;
   }
@@ -346,6 +351,25 @@ bool RTCCompileProgram::getDemangledName(const char* name_expression, const char
     return false;
   }
   return false;
+}
+
+bool RTCCompileProgram::GetBitcode(char* bitcode) {
+
+  if (!fgpu_rdc_ || LLVMBitcode_.size() <= 0) {
+    return false;
+  }
+
+  std::copy(LLVMBitcode_.begin(), LLVMBitcode_.end(), bitcode);
+  return true;
+}
+
+bool RTCCompileProgram::GetBitcodeSize(size_t* bitcode_size) {
+  if (!fgpu_rdc_ || LLVMBitcode_.size() <= 0) {
+    return false;
+  }
+
+  *bitcode_size = LLVMBitcode_.size();
+  return true;
 }
 
 //RTC Link Program Member Functions

@@ -267,6 +267,8 @@ hiprtcGetProgramLogSize
 hiprtcGetCode
 hiprtcGetCodeSize
 hiprtcGetErrorString
+hiprtcGetBitcode
+hiprtcGetBitcodeSize
 hiprtcLinkCreate
 hiprtcLinkAddFile
 hiprtcLinkAddData
