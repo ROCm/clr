@@ -245,8 +245,6 @@ void RgpCaptureMgr::Finalize() {
     rgp_server_->DisableTraces();
   }
 
-  dev_driver_server_->GetDriverControlServer()->StartLateDeviceInit();
-
   // Finalize the devmode manager
   dev_driver_server_->Finalize();
 
@@ -776,15 +774,6 @@ void RgpCaptureMgr::PostDeviceCreate() {
   auto* pDriverControlServer = dev_driver_server_->GetDriverControlServer();
 
   assert(pDriverControlServer != nullptr);
-
-  // If the driver hasn't been marked as fully initialized yet, mark it now.
-  // We consider the time after the logical device creation to be the fully initialized driver
-  // position. This is mainly because PAL is fully initialized at this point and we also know
-  // whether or not the debug vmid has been acquired. External tools use this information to
-  // decide when it's reasonable to make certain requests of the driver through protocol functions.
-  if (pDriverControlServer->IsDriverInitialized() == false) {
-    pDriverControlServer->FinishDeviceInit();
-  }
 }
 
 // ================================================================================================
