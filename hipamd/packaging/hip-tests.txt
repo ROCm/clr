@@ -18,8 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 2.8.3)
+cmake_minimum_required(VERSION 3.16.8)
 project(hip_catch_tests)
+# Set default libdir to be "lib" for ROCm, distros/users can override this
+set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
+include(GNUInstallDirs)
 
 install(DIRECTORY @PROJECT_BINARY_DIR@/catch
         DESTINATION .
@@ -66,6 +69,6 @@ endif()
 
 set ( CPACK_RESOURCE_FILE_LICENSE "@hip_SOURCE_DIR@/LICENSE.txt" )
 # Install license file
-install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION share/doc/${CPACK_PACKAGE_NAME})
+install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR})
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 include(CPack)
