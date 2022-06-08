@@ -125,7 +125,12 @@ endif()
 
 if(HIP_COMPILER STREQUAL "clang")
   if(WIN32)
+    # Using SDK folder
     file(TO_CMAKE_PATH "${HIP_PATH}" HIP_CLANG_ROOT)
+    if (NOT EXISTS "${HIP_CLANG_ROOT}/bin/clang.exe")
+      # if using install folder
+      file(TO_CMAKE_PATH "${HIP_PATH}/../lc" HIP_CLANG_ROOT)
+    endif()
   else()
     set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
   endif()
@@ -285,7 +290,8 @@ if(HIP_COMPILER STREQUAL "clang")
     PATHS
       ${HIP_CLANGRT_LIB_SEARCH_PATHS}
       ${HIP_CLANG_INCLUDE_PATH}/../lib/linux
-      ${HIP_CLANG_INCLUDE_PATH}/../lib/windows)
+      ${HIP_CLANG_INCLUDE_PATH}/../lib/windows
+      NO_DEFAULT_PATH)
 
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
   if(NOT CLANGRT_BUILTINS)
