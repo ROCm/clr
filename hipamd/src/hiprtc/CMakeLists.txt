@@ -47,8 +47,21 @@ set_target_properties(hiprtc PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-if(NOT WIN32)
-  if(BUILD_SHARED_LIBS)
+if(WIN32)
+  if(${HIP_LIB_VERSION_MAJOR} VERSION_GREATER 9)
+    set(HIP_MAJOR_VERSION "${HIP_LIB_VERSION_MAJOR}")
+  else()
+    set(HIP_MAJOR_VERSION "0${HIP_LIB_VERSION_MAJOR}")
+  endif()
+  set(HIP_MINOR_VERSION "0${HIP_LIB_VERSION_MINOR}")
+endif()
+
+if(BUILD_SHARED_LIBS)
+  if(WIN32)
+    set_target_properties(hiprtc PROPERTIES
+      OUTPUT_NAME "hiprtc${HIP_MAJOR_VERSION}${HIP_MINOR_VERSION}"
+      ARCHIVE_OUTPUT_NAME "hiprtc")
+  else()
     set_target_properties(hiprtc PROPERTIES
       VERSION ${HIP_LIB_VERSION_STRING}
       SOVERSION ${HIP_LIB_VERSION_MAJOR})
@@ -151,7 +164,8 @@ if(WIN32)
   # Windows uses DEF file to determine which symbols to expose.
   target_sources(hiprtc-builtins PRIVATE hiprtc-builtins.def)
   set_target_properties(hiprtc-builtins PROPERTIES
-    OUTPUT_NAME "hiprtc-builtins64_${HIP_LIB_VERSION_MAJOR}${HIP_LIB_VERSION_MINOR}")
+    OUTPUT_NAME "hiprtc-builtins${HIP_MAJOR_VERSION}${HIP_MINOR_VERSION}"
+    ARCHIVE_OUTPUT_NAME "hiprtc-builtins")
   # Since ${HIPRTC_GEN_OBJ} was manually generated with llvm-mc, /MT did not embed
   # libcmt.lib inside of the obj. So we need to manually set it as defaultlib.
   target_link_options(hiprtc-builtins PRIVATE "LINKER:/DEFAULTLIB:libcmt")
