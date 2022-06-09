@@ -465,7 +465,7 @@ hipError_t hipDeviceSetCacheConfig ( hipFuncCache_t cacheConfig ) {
 
   // No way to set cache config yet.
 
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
@@ -492,7 +492,7 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
 
   // No way to set cache config yet.
 
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipDeviceSynchronize ( void ) {
