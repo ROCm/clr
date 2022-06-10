@@ -42,7 +42,7 @@ RTCProgram::RTCProgram(std::string name) : name_(name) {
 bool RTCProgram::findIsa() {
   const char* libName;
 #ifdef _WIN32
-  libName = "libamdhip64.dll";
+  libName = "amdhip64.dll";
 #else
   libName = "libamdhip64.so";
 #endif
@@ -52,6 +52,7 @@ bool RTCProgram::findIsa() {
   if (!handle) {
     LogInfo("hip runtime failed to load using dlopen");
     build_log_ +=
+        "hip runtime failed to load.\n"
         "Error: Please provide architecture for which code is to be "
         "generated.\n";
     return false;
@@ -63,6 +64,7 @@ bool RTCProgram::findIsa() {
   if (sym_hipGetDevice == nullptr || sym_hipGetDeviceProperties == nullptr) {
     LogInfo("ISA cannot be found to dlsym failure");
     build_log_ +=
+        "ISA cannot be found from hip runtime.\n"
         "Error: Please provide architecture for which code is to be "
         "generated.\n";
     return false;
