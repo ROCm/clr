@@ -213,7 +213,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   class HwQueueTracker : public amd::EmbeddedObject {
    public:
-    HwQueueTracker(const VirtualGPU& gpu): gpu_(gpu) {}
+    HwQueueTracker(const VirtualGPU& gpu): gpu_(gpu), handlerPending_(false) {}
 
     ~HwQueueTracker();
 
@@ -255,6 +255,11 @@ class VirtualGPU : public device::VirtualDevice {
     //! Empty check for external signals
     bool IsExternalSignalListEmpty() const { return external_signals_.empty(); }
 
+    //! Set the status to indicate a pending handler
+    void SetHandlerPending(bool pending) { handlerPending_ = pending; }
+
+    //! Check if callback has been queued
+    bool IsHandlerPending() const { return handlerPending_; }
   private:
     //! Wait for the next active signal
     void WaitNext() {
@@ -273,6 +278,7 @@ class VirtualGPU : public device::VirtualDevice {
     const VirtualGPU& gpu_;       //!< VirtualGPU, associated with this tracker
     std::vector<ProfilingSignal*> external_signals_;  //!< External signals for a wait in this queue
     std::vector<hsa_signal_t> waiting_signals_;   //!< Current waiting signals in this queue
+    bool handlerPending_;         //!< This indicates if we have queued a callback handler
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
@@ -393,6 +399,10 @@ class VirtualGPU : public device::VirtualDevice {
   void profilerAttach(bool enable = false) { profilerAttached_ = enable; }
 
   bool isProfilerAttached() const { return profilerAttached_; }
+
+  //! Indicates the status of the callback handler. The callback would process the commands
+  //! and would collect profiling data, update refcounts
+  bool isHandlerPending() const { return barriers_.IsHandlerPending(); }
   // } roc OpenCL integration
  private:
   //! Dispatches a barrier with blocking HSA signals

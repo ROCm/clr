@@ -358,6 +358,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void profilerAttach(bool enable = false) {}
 
+  bool isHandlerPending() const { return false; }
+
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
 

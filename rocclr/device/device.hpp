@@ -1258,6 +1258,9 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns true if device has active wait setting
   bool ActiveWait() const;
 
+  //! Returns the status of queue handler callback
+  virtual bool isHandlerPending() const = 0;
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
