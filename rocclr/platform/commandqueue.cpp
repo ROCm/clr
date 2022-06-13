@@ -114,8 +114,7 @@ void HostQueue::finish() {
       return;
     }
   }
-
-  if (nullptr == command || !isCacheFlushed) {
+  if (nullptr == command || !isCacheFlushed || vdev()->isHandlerPending()) {
     if (nullptr != command) {
       command->release();
     }
