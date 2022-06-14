@@ -147,6 +147,15 @@ class Memory : public amd::RuntimeObject {
      int deviceId = 0;     //!< Device ID memory is allocated on
      void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
      unsigned int flags = 0; //!< HIP memory flags
+     //! hipMallocPitch allocates buffer using width & height and returns pitch & device pointer.
+     //! Since device pointer is void*, It looses the values of width & height used for allocation.
+     //! Memory object has total size however it's pitch * height * depth and its not straight forward to
+     //! deduce these numbers from size and thus, below metadata are added to memory class so that
+     //! can be used to validate in hipMemset2D's inputs.
+     size_t pitch_ = 0;               //!< Pitch value in bytes
+     size_t width_ = 0;               //!< Width value in bytes
+     size_t height_ = 0;              //!< Height value
+     size_t depth_ = 0;               //!< Depth value
   };
 
  protected:
