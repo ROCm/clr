@@ -385,13 +385,13 @@ bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option
         link_args_.info_log_ = (reinterpret_cast<char*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_INFO_LOG_BUFFER_SIZE_BYTES:
-        link_args_.info_log_size_ = *(reinterpret_cast<size_t*>(options_vals_ptr[opt_idx]));
+        link_args_.info_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_ERROR_LOG_BUFFER:
         link_args_.error_log_ = reinterpret_cast<char*>(options_vals_ptr[opt_idx]);
         break;
       case HIPRTC_JIT_ERROR_LOG_BUFFER_SIZE_BYTES:
-        link_args_.error_log_size_ = *(reinterpret_cast<size_t*>(options_vals_ptr[opt_idx]));
+        link_args_.error_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_OPTIMIZATION_LEVEL:
         link_args_.optimization_level_
