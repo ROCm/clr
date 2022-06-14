@@ -1161,15 +1161,6 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
-    if (amd::IS_HIP) {
-      // Allocate initial heap for device memory allocator
-      static constexpr size_t HeapBufferSize = 128 * Ki;
-      heap_buffer_ = createMemory(HeapBufferSize);
-      if (heap_buffer_ == nullptr) {
-        LogError("Heap buffer allocation failed!");
-        return false;
-      }
-    }
   }
   return true;
 }
@@ -2322,6 +2313,22 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
   vgpusAccess().unlock();
 }
 
+// ================================================================================================
+void Device::HiddenHeapAlloc() {
+  auto HeapAlloc = [this]()->bool {
+    // Allocate initial heap for device memory allocator
+    static constexpr size_t HeapBufferSize = 128 * Ki;
+    heap_buffer_ = createMemory(HeapBufferSize);
+    if (heap_buffer_ == nullptr) {
+      LogError("Heap buffer allocation failed!");
+      return false;
+    }
+    return true;
+  };
+  std::call_once(heap_initialized_, HeapAlloc);
+}
+
+// ================================================================================================
 Device::SrdManager::~SrdManager() {
   for (uint i = 0; i < pool_.size(); ++i) {
     pool_[i].buf_->unmap(nullptr);

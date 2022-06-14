@@ -53,6 +53,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <mutex>
 #include <list>
 #include <set>
 #include <unordered_set>
@@ -1943,7 +1944,6 @@ class Device : public RuntimeObject {
   virtual device::UriLocator* createUriLocator() const = 0;
 #endif
 #endif
-
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -1967,7 +1967,8 @@ class Device : public RuntimeObject {
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
   static Memory* p2p_stage_;          //!< Staging resources
 
-  device::Memory* heap_buffer_;   //!< Preallocated heap buffer for memory allocations on device
+  std::once_flag heap_initialized_; //!< Heap buffer initialization flag
+  device::Memory* heap_buffer_;     //!< Preallocated heap buffer for memory allocations on device
 
   amd::Memory* arena_mem_obj_;    //!< Arena memory object
   uint64_t stack_size_{0};        //!< Device stack size
