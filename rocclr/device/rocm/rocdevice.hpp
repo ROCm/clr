@@ -566,6 +566,9 @@ class Device : public NullDevice {
   //! Returns True if memory pointer is known to ROCr (excludes HMM allocations)
   bool IsValidAllocation(const void* dev_ptr, size_t size) const;
 
+  //! Allocates hidden heap for device memory allocations
+  void HiddenHeapAlloc();
+
  private:
   bool create();
 

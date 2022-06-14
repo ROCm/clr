@@ -2679,8 +2679,10 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
   return true;
 }
 
-bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
-  const_address parameters, void* eventHandle, uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd) {
+// ================================================================================================
+bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
+    const amd::Kernel& kernel, const_address parameters, void* eventHandle,
+    uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd) {
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
@@ -2845,6 +2847,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
           break;
         }
         case amd::KernelParameterDescriptor::HiddenHeap:
+          // Allocate hidden heap for HIP applications only
+          if ((amd::IS_HIP) && (dev().HeapBuffer() == nullptr)) {
+            const_cast<Device&>(dev()).HiddenHeapAlloc();
+          }
           if (dev().HeapBuffer() != nullptr) {
             // Add heap pointer to the code
             size_t heap_ptr = static_cast<size_t>(dev().HeapBuffer()->virtualAddress());

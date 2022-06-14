@@ -264,6 +264,7 @@ const HSAILProgram& HSAILKernel::prog() const {
   return reinterpret_cast<const HSAILProgram&>(prog_);
 }
 
+// ================================================================================================
 hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const amd::Kernel& kernel,
                                                          const amd::NDRangeContainer& sizes,
                                                          const_address params,
@@ -359,10 +360,14 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
       case amd::KernelParameterDescriptor::HiddenMultiGridSync:
         break;
       case amd::KernelParameterDescriptor::HiddenHeap:
-        if (gpu.dev().HeapBuffer() != nullptr) {
+        // Allocate hidden heap for HIP applications only
+        if ((amd::IS_HIP) && (palDevice().HeapBuffer() == nullptr)) {
+          const_cast<Device&>(palDevice()).HiddenHeapAlloc();
+        }
+        if (palDevice().HeapBuffer() != nullptr) {
           // Add heap pointer to the code
-          size_t heap_ptr = static_cast<size_t>(gpu.dev().HeapBuffer()->virtualAddress());
-          gpu.addVmMemory(reinterpret_cast<Memory*>(gpu.dev().HeapBuffer()));
+          size_t heap_ptr = static_cast<size_t>(palDevice().HeapBuffer()->virtualAddress());
+          gpu.addVmMemory(reinterpret_cast<Memory*>(palDevice().HeapBuffer()));
           WriteAqlArgAt(hidden_arguments, heap_ptr, it.size_, it.offset_);
         }
         break;
@@ -425,12 +430,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         break;
       case amd::KernelParameterDescriptor::HiddenPrivateBase:
         WriteAqlArgAt(hidden_arguments,
-                      (gpu.dev().properties().gpuMemoryProperties.privateApertureBase >> AddressShift),
+                      (palDevice().properties().gpuMemoryProperties.privateApertureBase >> AddressShift),
                       it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenSharedBase:
         WriteAqlArgAt(hidden_arguments,
-                      (gpu.dev().properties().gpuMemoryProperties.sharedApertureBase >> AddressShift),
+                      (palDevice().properties().gpuMemoryProperties.sharedApertureBase >> AddressShift),
                       it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenQueuePtr:
@@ -485,6 +490,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
   return hsaDisp;
 }
 
+// ================================================================================================
 const LightningProgram& LightningKernel::prog() const {
   return reinterpret_cast<const LightningProgram&>(prog_);
 }

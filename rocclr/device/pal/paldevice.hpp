@@ -626,6 +626,9 @@ class Device : public NullDevice {
   }
 #endif
 #endif
+  //! Allocates hidden heap for device memory allocations
+  void HiddenHeapAlloc();
+
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);
