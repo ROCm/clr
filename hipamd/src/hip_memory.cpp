@@ -733,6 +733,10 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
   }
   size_t offset = 0; //this is ignored
   amd::Memory* memObj = getMemoryObject(*ptr, offset);
+  memObj->getUserData().pitch_ = *pitch;
+  memObj->getUserData().width_ = width;
+  memObj->getUserData().height_ = height;
+  memObj->getUserData().depth_ = depth;
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
@@ -2617,6 +2621,11 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
   }
   if (sizeBytes > memory->getSize()) {
     return hipErrorInvalidValue;
+  }
+  if (pitchedDevPtr.pitch == memory->getUserData().pitch_) {
+    if (extent.height > memory->getUserData().height_) {
+       return hipErrorInvalidValue;
+    }
   }
   return hipSuccess;
 }
