@@ -215,17 +215,15 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
   if (command == nullptr) {
     int32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
                             (hipEventReleaseToSystem | hipEventReleaseToDevice);
-    bool markerTs = true;
     if (releaseFlags & hipEventReleaseToDevice) {
       releaseFlags = amd::Device::kCacheStateAgent;
     } else if (releaseFlags & hipEventReleaseToSystem) {
       releaseFlags = amd::Device::kCacheStateSystem;
     } else {
       releaseFlags = amd::Device::kCacheStateIgnore;
-      markerTs = false;
     }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, markerTs, releaseFlags);
+    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, true, releaseFlags);
   }
   return hipSuccess;
 }
