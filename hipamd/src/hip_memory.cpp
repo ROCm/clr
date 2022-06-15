@@ -918,8 +918,11 @@ hipError_t ihipArrayCreate(hipArray** array,
     return hipErrorInvalidValue;
   }
 
+  if (pAllocateArray->Flags & hipArrayCubemap) {
+    return hipErrorInvalidValue;
+  }
+
   if ((pAllocateArray->Flags & hipArraySurfaceLoadStore) ||
-      (pAllocateArray->Flags & hipArrayCubemap) ||
       (pAllocateArray->Flags & hipArrayTextureGather)) {
     return hipErrorNotSupported;
   }
