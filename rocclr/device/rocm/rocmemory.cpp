@@ -206,6 +206,7 @@ void Memory::cpuUnmap(device::VirtualDevice& vDev) {
   decIndMapCount();
 }
 
+// ================================================================================================
 hsa_status_t Memory::interopMapBuffer(int fd) {
   hsa_agent_t agent = dev().getBackendDevice();
   size_t size;
@@ -219,7 +220,9 @@ hsa_status_t Memory::interopMapBuffer(int fd) {
   deviceMemory_ = static_cast<char*>(interop_deviceMemory_);// + out.buf_offset;
   if (status != HSA_STATUS_SUCCESS) return status;
   // if map_buffer wrote a legitimate SRD, copy it to amdImageDesc_
-  if ((metadata_size != 0) &&
+  // Note: Check if amdImageDesc_ is valid, because VA library maps linear planes of YUV image
+  // as buffers for processing in HIP later
+  if ((amdImageDesc_ != nullptr) && (metadata_size != 0) &&
       (reinterpret_cast<hsa_amd_image_descriptor_t*>(metadata)->deviceID ==
        amdImageDesc_->deviceID)) {
     memcpy(amdImageDesc_, metadata, metadata_size);
@@ -230,6 +233,7 @@ hsa_status_t Memory::interopMapBuffer(int fd) {
 }
 
 // Setup an interop buffer (dmabuf handle) as an OpenCL buffer
+// ================================================================================================
 bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
 #if defined(_WIN32)
   return false;
