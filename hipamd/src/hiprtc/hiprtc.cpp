@@ -151,7 +151,7 @@ hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expressio
 
   auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
 
-  if (!rtcProgram->getDemangledName(name_expression, loweredName)) {
+  if (!rtcProgram->getMangledName(name_expression, loweredName)) {
     return HIPRTC_RETURN(HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID);
   }
 

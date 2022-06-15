@@ -466,7 +466,7 @@ std::string handleMangledName(std::string loweredName) {
   return loweredName;
 }
 
-bool fillDemangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames) {
+bool fillMangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames) {
   amd_comgr_data_t dataObject;
   if (auto res = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
       res != AMD_COMGR_STATUS_SUCCESS) {
@@ -504,8 +504,7 @@ bool fillDemangledNames(std::vector<char>& executable, std::vector<std::string>&
   return true;
 }
 
-bool getMangledNames(const std::vector<std::string>& mangledNames,
-                     std::map<std::string, std::string>& strippedNames,
+bool getDemangledNames(const std::vector<std::string>& mangledNames,
                      std::map<std::string, std::string>& demangledNames) {
   for (auto& i : mangledNames) {
     std::string demangledName;
@@ -516,22 +515,10 @@ bool getMangledNames(const std::vector<std::string>& mangledNames,
                                        [](unsigned char c) { return std::isspace(c); }),
                         demangledName.end());
 
-    if (auto res = strippedNames.find(demangledName); res != strippedNames.end()) {
-      auto& strippedName = res->second;
-      if (auto dres = demangledNames.find(strippedName); dres != demangledNames.end()) {
-        dres->second = i;
-        continue;
-      } else {
-        return false;
-      }
-    }
-
     if (auto dres = demangledNames.find(demangledName); dres != demangledNames.end()) {
       dres->second = i;
-      continue;
     }
   }
-
   return true;
 }
 }  // namespace helpers

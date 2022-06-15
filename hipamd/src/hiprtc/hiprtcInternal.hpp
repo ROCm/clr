@@ -159,8 +159,9 @@ class RTCCompileProgram : public RTCProgram {
   bool addSource(const std::string& source, const std::string& name);
   bool addHeader(const std::string& source, const std::string& name);
   bool compile(const std::vector<std::string>& options, bool fgpu_rdc);
-  bool getDemangledName(const char* name_expression, const char** loweredName);
+  bool getMangledName(const char* name_expression, const char** loweredName);
   bool trackMangledName(std::string& name);
+  void stripNamedExpression(std::string& named_expression);
 
   bool GetBitcode(char* bitcode);
   bool GetBitcodeSize(size_t* bitcode_size);
