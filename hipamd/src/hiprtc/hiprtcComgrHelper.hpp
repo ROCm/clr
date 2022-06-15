@@ -52,9 +52,8 @@ bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
                    std::vector<std::string>& exeOptions, std::string name, std::string& buildLog);
 bool demangleName(const std::string& mangledName, std::string& demangledName);
 std::string handleMangledName(std::string loweredName);
-bool fillDemangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames);
-bool getMangledNames(const std::vector<std::string>& mangledNames,
-                     std::map<std::string, std::string>& strippedNames,
+bool fillMangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames);
+bool getDemangledNames(const std::vector<std::string>& mangledNames,
                      std::map<std::string, std::string>& demangledNames);
 }  // namespace helpers
 }  // namespace hiprtc
