@@ -122,8 +122,8 @@ bool Heap::ReleaseAllMemory(hip::Stream* stream) {
 
 // ================================================================================================
 void Heap::RemoveStream(hip::Stream* stream) {
-  for (auto it = allocations_.begin(); it != allocations_.end();) {
-    it->second.safe_streams_.erase(stream);
+  for (auto it : allocations_) {
+    it.second.safe_streams_.erase(stream);
   }
 }
 
