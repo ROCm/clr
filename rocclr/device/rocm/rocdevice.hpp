@@ -253,16 +253,6 @@ class NullDevice : public amd::Device {
     return false;
   }
 
-  virtual bool disableP2P(amd::Device* peerDev) {
-    ShouldNotReachHere();
-    return true;
-  }
-
-  virtual bool enableP2P(amd::Device* peerDev) {
-    ShouldNotReachHere();
-    return true;
-  }
-
   virtual bool SetClockMode(
       const cl_set_device_clock_mode_input_amd setClockModeInput,
       cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
@@ -430,9 +420,6 @@ class Device : public NullDevice {
 
   virtual void hostFree(void* ptr, size_t size = 0) const;
 
-  virtual bool enableP2P(amd::Device* peerDev);
-  virtual bool disableP2P(amd::Device* peerDev);
-
   bool deviceAllowAccess(void* dst) const;
 
   void* deviceLocalAlloc(size_t size, bool atomics = false) const;
@@ -589,11 +576,9 @@ class Device : public NullDevice {
   static std::vector<hsa_agent_t> gpu_agents_;
   static std::vector<AgentInfo> cpu_agents_;
 
-  static amd::Monitor lockP2P_;
   hsa_agent_t cpu_agent_;
   uint32_t preferred_numa_node_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
-  std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
   hsa_agent_t bkendDevice_;
   uint32_t pciDeviceId_;

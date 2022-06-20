@@ -2191,6 +2191,12 @@ void Device::hostFree(void* ptr, size_t size) const {
   amd::Os::releaseMemory(ptr, size);
 }
 
+bool Device::deviceAllowAccess(void* ptr) const {
+  std::lock_guard<std::mutex> lock(lockAllowAccess_);
+  // Empty function for now.
+  return true;
+}
+
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
   alignment = std::max(alignment, static_cast<size_t>(info_.memBaseAddrAlign_));

@@ -1715,15 +1715,9 @@ class Device : public RuntimeObject {
     return true;
   }
 
-  virtual bool enableP2P(amd::Device* ptrDev) {
-    ShouldNotCallThis();
-    return true;
-  }
+  bool enableP2P(amd::Device* ptrDev);
 
-  virtual bool disableP2P(amd::Device* ptrDev) {
-    ShouldNotCallThis();
-    return true;
-  }
+  bool disableP2P(amd::Device* ptrDev);
 
   /**
    * @copydoc amd::Context::hostFree
@@ -1973,6 +1967,7 @@ class Device : public RuntimeObject {
   static amd::Context* glb_ctx_;      //!< Global context with all devices
   static amd::Monitor p2p_stage_ops_; //!< Lock to serialise cache for the P2P resources
   static Memory* p2p_stage_;          //!< Staging resources
+  std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
 
   std::once_flag heap_initialized_; //!< Heap buffer initialization flag
   device::Memory* heap_buffer_;     //!< Preallocated heap buffer for memory allocations on device
@@ -1989,7 +1984,7 @@ class Device : public RuntimeObject {
 #endif
 
   static std::vector<Device*>* devices_;  //!< All known devices
-
+  static amd::Monitor lockP2P_;
   Monitor* vaCacheAccess_;                            //!< Lock to serialize VA caching access
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
   uint32_t index_;  //!< Unique device index

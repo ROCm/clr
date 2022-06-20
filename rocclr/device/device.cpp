@@ -85,6 +85,7 @@ bool VirtualDevice::ActiveWait() const {
 
 namespace amd {
 
+amd::Monitor Device::lockP2P_("Lock P2P ON/OFF");
 std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
   constexpr amd::Isa::Feature NONE = amd::Isa::Feature::Unsupported;
   constexpr amd::Isa::Feature ANY  = amd::Isa::Feature::Any;
@@ -706,6 +707,32 @@ bool Device::getDeviceIDs(cl_device_type deviceType, uint32_t numEntries, cl_dev
   }
 
   *not_null(numDevices) = (uint32_t)ret.size();
+  return true;
+}
+
+
+bool Device::enableP2P(amd::Device* ptrDev) {
+  assert(ptrDev != nullptr);
+  amd::ScopedLock lock(lockP2P_);
+  Device* peerDev = static_cast<Device*>(ptrDev);
+  if (std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev) ==
+      enabled_p2p_devices_.end()) {
+    enabled_p2p_devices_.push_back(peerDev);
+    // Update access to all old allocations
+    amd::MemObjMap::UpdateAccess(static_cast<amd::Device*>(this));
+  }
+  return true;
+}
+
+bool Device::disableP2P(amd::Device* ptrDev) {
+  assert(ptrDev != nullptr);
+  amd::ScopedLock lock(lockP2P_);
+  Device* peerDev = static_cast<Device*>(ptrDev);
+  //if device is present then remove
+  auto it = std::find(enabled_p2p_devices_.begin(), enabled_p2p_devices_.end(), peerDev);
+  if (it != enabled_p2p_devices_.end()) {
+    enabled_p2p_devices_.erase(it);
+  }
   return true;
 }
 
