@@ -543,6 +543,9 @@ class Device : public NullDevice {
   //! Returns PAL device interface
   Pal::IDevice* iDev() const { return device_; }
 
+  //! Allow access for peer device
+  bool deviceAllowAccess(void* dst) const;
+
   RgpCaptureMgr* rgpCaptureMgr() const { return rgpCaptureMgr_; }
 
   //! Update free memory for OCL extension
@@ -680,6 +683,7 @@ class Device : public NullDevice {
   mutable amd::Monitor scratchAlloc_;     //!< Lock to serialise scratch allocation
   mutable amd::Monitor mapCacheOps_;      //!< Lock to serialise cache for the map resources
   mutable amd::Monitor lockResourceOps_;  //!< Lock to serialise resource access
+  mutable std::mutex lockAllowAccess_;    //!< To serialize allow_access calls
   XferBuffers* xferRead_;                 //!< Transfer buffers read
   std::vector<amd::Memory*>* mapCache_;   //!< Map cache info structure
   ResourceCache* resourceCache_;          //!< Resource cache
