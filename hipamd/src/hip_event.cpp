@@ -261,7 +261,10 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   const unsigned releaseFlags = (hipEventReleaseToDevice | hipEventReleaseToSystem);
   // can't set any unsupported flags.
   // can't set both release flags
-  const bool illegalFlags = (flags & ~supportedFlags) || (flags & releaseFlags) == releaseFlags;
+  // if hipEventInterprocess flag is set, then hipEventDisableTiming flag also must be set
+  const bool illegalFlags = (flags & ~supportedFlags) ||
+                            ((flags & releaseFlags) == releaseFlags) ||
+                            ((flags & hipEventInterprocess) && !(flags & hipEventDisableTiming));
   if (!illegalFlags) {
     hip::Event* e = nullptr;
     if (flags & hipEventInterprocess) {
