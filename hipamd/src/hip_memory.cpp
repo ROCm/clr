@@ -308,6 +308,7 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   if (dst == nullptr || src == nullptr) {
     return hipErrorInvalidValue;
   }
+
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
@@ -420,6 +421,9 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   status = ihipMemcpy_validate(dst, src, sizeBytes, kind);
   if (status != hipSuccess) {
     return status;
+  }
+  if (src == dst && kind == hipMemcpyDefault) {
+    return hipSuccess;
   }
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
