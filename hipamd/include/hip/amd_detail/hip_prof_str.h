@@ -347,7 +347,11 @@ enum hip_api_id_t {
   HIP_API_ID_hipDeviceSetGraphMemAttribute = 334,
   HIP_API_ID_hipDeviceGetGraphMemAttribute = 335,
   HIP_API_ID_hipDeviceGraphMemTrim = 336,
-  HIP_API_ID_LAST = 336,
+  HIP_API_ID_hipDeviceSetLimit = 337,
+  HIP_API_ID_hipTexRefSetArray = 338,
+  HIP_API_ID_hipTexRefSetFlags = 339,
+  HIP_API_ID_hipTexRefSetMipmapLevelBias = 340,
+  HIP_API_ID_LAST = 340,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -358,22 +362,41 @@ enum hip_api_id_t {
   HIP_API_ID_hipCreateTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDestroyTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDeviceGetCount = HIP_API_ID_NONE,
+  HIP_API_ID_hipEventRecord_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureAlignmentOffset = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectTextureDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureReference = HIP_API_ID_NONE,
+  HIP_API_ID_hipLaunchCooperativeKernel_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipLaunchKernel_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpy2DArrayToArray = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpy2DFromArray_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpy2DToArray_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpy2D_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpy3D_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyArrayToArray = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpyAsync_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyAtoA = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyAtoD = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyAtoHAsync = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyDtoA = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyFromArrayAsync = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpyFromSymbol_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyHtoAAsync = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyToArrayAsync = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpyToSymbol_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemcpy_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemset2D_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemset3D_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemset_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipModuleLaunchKernelExt = HIP_API_ID_NONE,
   HIP_API_ID_hipSetValidDevices = HIP_API_ID_NONE,
+  HIP_API_ID_hipStreamGetFlags_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipStreamGetPriority_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipStreamQuery_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipStreamSynchronize_spt = HIP_API_ID_NONE,
+  HIP_API_ID_hipStreamWaitEvent_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectCreate = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectDestroy = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectGetResourceDesc = HIP_API_ID_NONE,
@@ -386,11 +409,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipTexRefGetMipmapFilterMode = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefGetMipmappedArray = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetAddressMode = HIP_API_ID_NONE,
-  HIP_API_ID_hipTexRefSetArray = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetFilterMode = HIP_API_ID_NONE,
-  HIP_API_ID_hipTexRefSetFlags = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetMipmapFilterMode = HIP_API_ID_NONE,
-  HIP_API_ID_hipTexRefSetMipmapLevelBias = HIP_API_ID_NONE,
   HIP_API_ID_hipUnbindTexture = HIP_API_ID_NONE,
   HIP_API_ID_ihipModuleLaunchKernel = HIP_API_ID_NONE,
 };
@@ -434,6 +454,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceGetByPCIBusId: return "hipDeviceGetByPCIBusId";
     case HIP_API_ID_hipDeviceGetCacheConfig: return "hipDeviceGetCacheConfig";
     case HIP_API_ID_hipDeviceGetDefaultMemPool: return "hipDeviceGetDefaultMemPool";
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute: return "hipDeviceGetGraphMemAttribute";
     case HIP_API_ID_hipDeviceGetLimit: return "hipDeviceGetLimit";
     case HIP_API_ID_hipDeviceGetMemPool: return "hipDeviceGetMemPool";
     case HIP_API_ID_hipDeviceGetName: return "hipDeviceGetName";
@@ -442,6 +463,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceGetSharedMemConfig: return "hipDeviceGetSharedMemConfig";
     case HIP_API_ID_hipDeviceGetStreamPriorityRange: return "hipDeviceGetStreamPriorityRange";
     case HIP_API_ID_hipDeviceGetUuid: return "hipDeviceGetUuid";
+    case HIP_API_ID_hipDeviceGraphMemTrim: return "hipDeviceGraphMemTrim";
     case HIP_API_ID_hipDevicePrimaryCtxGetState: return "hipDevicePrimaryCtxGetState";
     case HIP_API_ID_hipDevicePrimaryCtxRelease: return "hipDevicePrimaryCtxRelease";
     case HIP_API_ID_hipDevicePrimaryCtxReset: return "hipDevicePrimaryCtxReset";
@@ -449,6 +471,8 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDevicePrimaryCtxSetFlags: return "hipDevicePrimaryCtxSetFlags";
     case HIP_API_ID_hipDeviceReset: return "hipDeviceReset";
     case HIP_API_ID_hipDeviceSetCacheConfig: return "hipDeviceSetCacheConfig";
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute: return "hipDeviceSetGraphMemAttribute";
+    case HIP_API_ID_hipDeviceSetLimit: return "hipDeviceSetLimit";
     case HIP_API_ID_hipDeviceSetMemPool: return "hipDeviceSetMemPool";
     case HIP_API_ID_hipDeviceSetSharedMemConfig: return "hipDeviceSetSharedMemConfig";
     case HIP_API_ID_hipDeviceSynchronize: return "hipDeviceSynchronize";
@@ -557,9 +581,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphicsSubResourceGetMappedArray: return "hipGraphicsSubResourceGetMappedArray";
     case HIP_API_ID_hipGraphicsUnmapResources: return "hipGraphicsUnmapResources";
     case HIP_API_ID_hipGraphicsUnregisterResource: return "hipGraphicsUnregisterResource";
-    case HIP_API_ID_hipDeviceSetGraphMemAttribute: return "hipDeviceSetGraphMemAttribute";
-    case HIP_API_ID_hipDeviceGetGraphMemAttribute: return "hipDeviceGetGraphMemAttribute";
-    case HIP_API_ID_hipDeviceGraphMemTrim: return "hipDeviceGraphMemTrim";
     case HIP_API_ID_hipHccModuleLaunchKernel: return "hipHccModuleLaunchKernel";
     case HIP_API_ID_hipHostAlloc: return "hipHostAlloc";
     case HIP_API_ID_hipHostFree: return "hipHostFree";
@@ -723,9 +744,12 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipTexRefGetMipmapLevelClamp: return "hipTexRefGetMipmapLevelClamp";
     case HIP_API_ID_hipTexRefSetAddress: return "hipTexRefSetAddress";
     case HIP_API_ID_hipTexRefSetAddress2D: return "hipTexRefSetAddress2D";
+    case HIP_API_ID_hipTexRefSetArray: return "hipTexRefSetArray";
     case HIP_API_ID_hipTexRefSetBorderColor: return "hipTexRefSetBorderColor";
+    case HIP_API_ID_hipTexRefSetFlags: return "hipTexRefSetFlags";
     case HIP_API_ID_hipTexRefSetFormat: return "hipTexRefSetFormat";
     case HIP_API_ID_hipTexRefSetMaxAnisotropy: return "hipTexRefSetMaxAnisotropy";
+    case HIP_API_ID_hipTexRefSetMipmapLevelBias: return "hipTexRefSetMipmapLevelBias";
     case HIP_API_ID_hipTexRefSetMipmapLevelClamp: return "hipTexRefSetMipmapLevelClamp";
     case HIP_API_ID_hipTexRefSetMipmappedArray: return "hipTexRefSetMipmappedArray";
     case HIP_API_ID_hipThreadExchangeStreamCaptureMode: return "hipThreadExchangeStreamCaptureMode";
@@ -773,6 +797,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceGetByPCIBusId", name) == 0) return HIP_API_ID_hipDeviceGetByPCIBusId;
   if (strcmp("hipDeviceGetCacheConfig", name) == 0) return HIP_API_ID_hipDeviceGetCacheConfig;
   if (strcmp("hipDeviceGetDefaultMemPool", name) == 0) return HIP_API_ID_hipDeviceGetDefaultMemPool;
+  if (strcmp("hipDeviceGetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceGetGraphMemAttribute;
   if (strcmp("hipDeviceGetLimit", name) == 0) return HIP_API_ID_hipDeviceGetLimit;
   if (strcmp("hipDeviceGetMemPool", name) == 0) return HIP_API_ID_hipDeviceGetMemPool;
   if (strcmp("hipDeviceGetName", name) == 0) return HIP_API_ID_hipDeviceGetName;
@@ -781,6 +806,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceGetSharedMemConfig", name) == 0) return HIP_API_ID_hipDeviceGetSharedMemConfig;
   if (strcmp("hipDeviceGetStreamPriorityRange", name) == 0) return HIP_API_ID_hipDeviceGetStreamPriorityRange;
   if (strcmp("hipDeviceGetUuid", name) == 0) return HIP_API_ID_hipDeviceGetUuid;
+  if (strcmp("hipDeviceGraphMemTrim", name) == 0) return HIP_API_ID_hipDeviceGraphMemTrim;
   if (strcmp("hipDevicePrimaryCtxGetState", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxGetState;
   if (strcmp("hipDevicePrimaryCtxRelease", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxRelease;
   if (strcmp("hipDevicePrimaryCtxReset", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxReset;
@@ -788,6 +814,8 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDevicePrimaryCtxSetFlags", name) == 0) return HIP_API_ID_hipDevicePrimaryCtxSetFlags;
   if (strcmp("hipDeviceReset", name) == 0) return HIP_API_ID_hipDeviceReset;
   if (strcmp("hipDeviceSetCacheConfig", name) == 0) return HIP_API_ID_hipDeviceSetCacheConfig;
+  if (strcmp("hipDeviceSetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceSetGraphMemAttribute;
+  if (strcmp("hipDeviceSetLimit", name) == 0) return HIP_API_ID_hipDeviceSetLimit;
   if (strcmp("hipDeviceSetMemPool", name) == 0) return HIP_API_ID_hipDeviceSetMemPool;
   if (strcmp("hipDeviceSetSharedMemConfig", name) == 0) return HIP_API_ID_hipDeviceSetSharedMemConfig;
   if (strcmp("hipDeviceSynchronize", name) == 0) return HIP_API_ID_hipDeviceSynchronize;
@@ -895,9 +923,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphicsResourceGetMappedPointer", name) == 0) return HIP_API_ID_hipGraphicsResourceGetMappedPointer;
   if (strcmp("hipGraphicsSubResourceGetMappedArray", name) == 0) return HIP_API_ID_hipGraphicsSubResourceGetMappedArray;
   if (strcmp("hipGraphicsUnmapResources", name) == 0) return HIP_API_ID_hipGraphicsUnmapResources;
-  if (strcmp("hipDeviceGetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceGetGraphMemAttribute;
-  if (strcmp("hipDeviceSetGraphMemAttribute", name) == 0) return HIP_API_ID_hipDeviceSetGraphMemAttribute;
-  if (strcmp("hipDeviceGraphMemTrim", name) == 0) return HIP_API_ID_hipDeviceGraphMemTrim;
   if (strcmp("hipGraphicsUnregisterResource", name) == 0) return HIP_API_ID_hipGraphicsUnregisterResource;
   if (strcmp("hipHccModuleLaunchKernel", name) == 0) return HIP_API_ID_hipHccModuleLaunchKernel;
   if (strcmp("hipHostAlloc", name) == 0) return HIP_API_ID_hipHostAlloc;
@@ -1062,9 +1087,12 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipTexRefGetMipmapLevelClamp", name) == 0) return HIP_API_ID_hipTexRefGetMipmapLevelClamp;
   if (strcmp("hipTexRefSetAddress", name) == 0) return HIP_API_ID_hipTexRefSetAddress;
   if (strcmp("hipTexRefSetAddress2D", name) == 0) return HIP_API_ID_hipTexRefSetAddress2D;
+  if (strcmp("hipTexRefSetArray", name) == 0) return HIP_API_ID_hipTexRefSetArray;
   if (strcmp("hipTexRefSetBorderColor", name) == 0) return HIP_API_ID_hipTexRefSetBorderColor;
+  if (strcmp("hipTexRefSetFlags", name) == 0) return HIP_API_ID_hipTexRefSetFlags;
   if (strcmp("hipTexRefSetFormat", name) == 0) return HIP_API_ID_hipTexRefSetFormat;
   if (strcmp("hipTexRefSetMaxAnisotropy", name) == 0) return HIP_API_ID_hipTexRefSetMaxAnisotropy;
+  if (strcmp("hipTexRefSetMipmapLevelBias", name) == 0) return HIP_API_ID_hipTexRefSetMipmapLevelBias;
   if (strcmp("hipTexRefSetMipmapLevelClamp", name) == 0) return HIP_API_ID_hipTexRefSetMipmapLevelClamp;
   if (strcmp("hipTexRefSetMipmappedArray", name) == 0) return HIP_API_ID_hipTexRefSetMipmappedArray;
   if (strcmp("hipThreadExchangeStreamCaptureMode", name) == 0) return HIP_API_ID_hipThreadExchangeStreamCaptureMode;
@@ -1240,6 +1268,11 @@ typedef struct hip_api_data_s {
       int device;
     } hipDeviceGetDefaultMemPool;
     struct {
+      int device;
+      hipGraphMemAttributeType attr;
+      void* value;
+    } hipDeviceGetGraphMemAttribute;
+    struct {
       size_t* pValue;
       size_t pValue__val;
       enum hipLimit_t limit;
@@ -1284,6 +1317,9 @@ typedef struct hip_api_data_s {
       hipDevice_t device;
     } hipDeviceGetUuid;
     struct {
+      int device;
+    } hipDeviceGraphMemTrim;
+    struct {
       hipDevice_t dev;
       unsigned int* flags;
       unsigned int flags__val;
@@ -1308,6 +1344,15 @@ typedef struct hip_api_data_s {
     struct {
       hipFuncCache_t cacheConfig;
     } hipDeviceSetCacheConfig;
+    struct {
+      int device;
+      hipGraphMemAttributeType attr;
+      void* value;
+    } hipDeviceSetGraphMemAttribute;
+    struct {
+      enum hipLimit_t limit;
+      size_t value;
+    } hipDeviceSetLimit;
     struct {
       int device;
       hipMemPool_t mem_pool;
@@ -1939,19 +1984,6 @@ typedef struct hip_api_data_s {
       size_t size__val;
       hipGraphicsResource_t resource;
     } hipGraphicsResourceGetMappedPointer;
-    struct {
-      int device;
-      hipGraphMemAttributeType attr;
-      void* value;
-    } hipDeviceGetGraphMemAttribute;
-    struct {
-      int device;
-      hipGraphMemAttributeType attr;
-      void* value;
-    } hipDeviceSetGraphMemAttribute;
-    struct {
-      int device;
-    } hipDeviceGraphMemTrim;
     struct {
       hipArray_t* array;
       hipArray_t array__val;
@@ -2990,11 +3022,22 @@ typedef struct hip_api_data_s {
       size_t Pitch;
     } hipTexRefSetAddress2D;
     struct {
+      textureReference* tex;
+      textureReference tex__val;
+      hipArray_const_t array;
+      unsigned int flags;
+    } hipTexRefSetArray;
+    struct {
       textureReference* texRef;
       textureReference texRef__val;
       float* pBorderColor;
       float pBorderColor__val;
     } hipTexRefSetBorderColor;
+    struct {
+      textureReference* texRef;
+      textureReference texRef__val;
+      unsigned int Flags;
+    } hipTexRefSetFlags;
     struct {
       textureReference* texRef;
       textureReference texRef__val;
@@ -3006,6 +3049,11 @@ typedef struct hip_api_data_s {
       textureReference texRef__val;
       unsigned int maxAniso;
     } hipTexRefSetMaxAnisotropy;
+    struct {
+      textureReference* texRef;
+      textureReference texRef__val;
+      float bias;
+    } hipTexRefSetMipmapLevelBias;
     struct {
       textureReference* texRef;
       textureReference texRef__val;
@@ -3205,6 +3253,12 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDeviceGetDefaultMemPool.mem_pool = (hipMemPool_t*)mem_pool; \
   cb_data.args.hipDeviceGetDefaultMemPool.device = (int)device; \
 };
+// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+#define INIT_hipDeviceGetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceGetGraphMemAttribute.device = (int)device; \
+  cb_data.args.hipDeviceGetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
+  cb_data.args.hipDeviceGetGraphMemAttribute.value = (void*)value; \
+};
 // hipDeviceGetLimit[('size_t*', 'pValue'), ('hipLimit_t', 'limit')]
 #define INIT_hipDeviceGetLimit_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDeviceGetLimit.pValue = (size_t*)pValue; \
@@ -3248,6 +3302,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDeviceGetUuid.uuid = (hipUUID*)uuid; \
   cb_data.args.hipDeviceGetUuid.device = (hipDevice_t)device; \
 };
+// hipDeviceGraphMemTrim[('int', 'device')]
+#define INIT_hipDeviceGraphMemTrim_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceGraphMemTrim.device = (int)device; \
+};
 // hipDevicePrimaryCtxGetState[('hipDevice_t', 'dev'), ('unsigned int*', 'flags'), ('int*', 'active')]
 #define INIT_hipDevicePrimaryCtxGetState_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDevicePrimaryCtxGetState.dev = (hipDevice_t)dev; \
@@ -3278,6 +3336,17 @@ typedef struct hip_api_data_s {
 // hipDeviceSetCacheConfig[('hipFuncCache_t', 'cacheConfig')]
 #define INIT_hipDeviceSetCacheConfig_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDeviceSetCacheConfig.cacheConfig = (hipFuncCache_t)cacheConfig; \
+};
+// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+#define INIT_hipDeviceSetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceSetGraphMemAttribute.device = (int)device; \
+  cb_data.args.hipDeviceSetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
+  cb_data.args.hipDeviceSetGraphMemAttribute.value = (void*)value; \
+};
+// hipDeviceSetLimit[('hipLimit_t', 'limit'), ('size_t', 'value')]
+#define INIT_hipDeviceSetLimit_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDeviceSetLimit.limit = (hipLimit_t)limit; \
+  cb_data.args.hipDeviceSetLimit.value = (size_t)value; \
 };
 // hipDeviceSetMemPool[('int', 'device'), ('hipMemPool_t', 'mem_pool')]
 #define INIT_hipDeviceSetMemPool_CB_ARGS_DATA(cb_data) { \
@@ -3788,6 +3857,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
 #define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphKernelNodeGetAttribute.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipGraphKernelNodeGetAttribute.attr = (hipKernelNodeAttrID)attr; \
+  cb_data.args.hipGraphKernelNodeGetAttribute.value = (hipKernelNodeAttrValue*)value; \
 };
 // hipGraphKernelNodeGetParams[('hipGraphNode_t', 'node'), ('hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeGetParams_CB_ARGS_DATA(cb_data) { \
@@ -3796,6 +3868,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('const hipKernelNodeAttrValue*', 'value')]
 #define INIT_hipGraphKernelNodeSetAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphKernelNodeSetAttribute.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipGraphKernelNodeSetAttribute.attr = (hipKernelNodeAttrID)attr; \
+  cb_data.args.hipGraphKernelNodeSetAttribute.value = (const hipKernelNodeAttrValue*)value; \
 };
 // hipGraphKernelNodeSetParams[('hipGraphNode_t', 'node'), ('const hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeSetParams_CB_ARGS_DATA(cb_data) { \
@@ -3924,22 +3999,6 @@ typedef struct hip_api_data_s {
 // hipGraphicsUnregisterResource[('hipGraphicsResource_t', 'resource')]
 #define INIT_hipGraphicsUnregisterResource_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphicsUnregisterResource.resource = (hipGraphicsResource_t)resource; \
-};
-// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
-#define INIT_hipDeviceGetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipDeviceGetGraphMemAttribute.device = (int)device; \
-  cb_data.args.hipDeviceGetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
-  cb_data.args.hipDeviceGetGraphMemAttribute.value = (void*)value; \
-};
-// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
-#define INIT_hipDeviceSetGraphMemAttribute_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipDeviceSetGraphMemAttribute.device = (int)device; \
-  cb_data.args.hipDeviceSetGraphMemAttribute.attr = (hipGraphMemAttributeType)attr; \
-  cb_data.args.hipDeviceSetGraphMemAttribute.value = (void*)value; \
-};
-// hipDeviceGraphMemTrim[('int', 'device')]
-#define INIT_hipDeviceGraphMemTrim_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipDeviceGraphMemTrim.device = (int)device; \
 };
 // hipHccModuleLaunchKernel[('hipFunction_t', 'f'), ('unsigned int', 'globalWorkSizeX'), ('unsigned int', 'globalWorkSizeY'), ('unsigned int', 'globalWorkSizeZ'), ('unsigned int', 'blockDimX'), ('unsigned int', 'blockDimY'), ('unsigned int', 'blockDimZ'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'hStream'), ('void**', 'kernelParams'), ('void**', 'extra'), ('hipEvent_t', 'startEvent'), ('hipEvent_t', 'stopEvent')]
 #define INIT_hipHccModuleLaunchKernel_CB_ARGS_DATA(cb_data) { \
@@ -4988,10 +5047,21 @@ typedef struct hip_api_data_s {
   cb_data.args.hipTexRefSetAddress2D.dptr = (hipDeviceptr_t)dptr; \
   cb_data.args.hipTexRefSetAddress2D.Pitch = (size_t)Pitch; \
 };
+// hipTexRefSetArray[('textureReference*', 'tex'), ('hipArray_const_t', 'array'), ('unsigned int', 'flags')]
+#define INIT_hipTexRefSetArray_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipTexRefSetArray.tex = (textureReference*)texRef; \
+  cb_data.args.hipTexRefSetArray.array = (hipArray_const_t)array; \
+  cb_data.args.hipTexRefSetArray.flags = (unsigned int)flags; \
+};
 // hipTexRefSetBorderColor[('textureReference*', 'texRef'), ('float*', 'pBorderColor')]
 #define INIT_hipTexRefSetBorderColor_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipTexRefSetBorderColor.texRef = (textureReference*)texRef; \
   cb_data.args.hipTexRefSetBorderColor.pBorderColor = (float*)pBorderColor; \
+};
+// hipTexRefSetFlags[('textureReference*', 'texRef'), ('unsigned int', 'Flags')]
+#define INIT_hipTexRefSetFlags_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipTexRefSetFlags.texRef = (textureReference*)texRef; \
+  cb_data.args.hipTexRefSetFlags.Flags = (unsigned int)Flags; \
 };
 // hipTexRefSetFormat[('textureReference*', 'texRef'), ('hipArray_Format', 'fmt'), ('int', 'NumPackedComponents')]
 #define INIT_hipTexRefSetFormat_CB_ARGS_DATA(cb_data) { \
@@ -5003,6 +5073,11 @@ typedef struct hip_api_data_s {
 #define INIT_hipTexRefSetMaxAnisotropy_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipTexRefSetMaxAnisotropy.texRef = (textureReference*)texRef; \
   cb_data.args.hipTexRefSetMaxAnisotropy.maxAniso = (unsigned int)maxAniso; \
+};
+// hipTexRefSetMipmapLevelBias[('textureReference*', 'texRef'), ('float', 'bias')]
+#define INIT_hipTexRefSetMipmapLevelBias_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipTexRefSetMipmapLevelBias.texRef = (textureReference*)texRef; \
+  cb_data.args.hipTexRefSetMipmapLevelBias.bias = (float)bias; \
 };
 // hipTexRefSetMipmapLevelClamp[('textureReference*', 'texRef'), ('float', 'minMipMapLevelClamp'), ('float', 'maxMipMapLevelClamp')]
 #define INIT_hipTexRefSetMipmapLevelClamp_CB_ARGS_DATA(cb_data) { \
@@ -5048,6 +5123,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipDestroyTextureObject_CB_ARGS_DATA(cb_data) {};
 // hipDeviceGetCount()
 #define INIT_hipDeviceGetCount_CB_ARGS_DATA(cb_data) {};
+// hipEventRecord_spt()
+#define INIT_hipEventRecord_spt_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureAlignmentOffset()
 #define INIT_hipGetTextureAlignmentOffset_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureObjectResourceDesc()
@@ -5058,10 +5135,24 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetTextureObjectTextureDesc_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureReference()
 #define INIT_hipGetTextureReference_CB_ARGS_DATA(cb_data) {};
+// hipLaunchCooperativeKernel_spt()
+#define INIT_hipLaunchCooperativeKernel_spt_CB_ARGS_DATA(cb_data) {};
+// hipLaunchKernel_spt()
+#define INIT_hipLaunchKernel_spt_CB_ARGS_DATA(cb_data) {};
 // hipMemcpy2DArrayToArray()
 #define INIT_hipMemcpy2DArrayToArray_CB_ARGS_DATA(cb_data) {};
+// hipMemcpy2DFromArray_spt()
+#define INIT_hipMemcpy2DFromArray_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemcpy2DToArray_spt()
+#define INIT_hipMemcpy2DToArray_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemcpy2D_spt()
+#define INIT_hipMemcpy2D_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemcpy3D_spt()
+#define INIT_hipMemcpy3D_spt_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyArrayToArray()
 #define INIT_hipMemcpyArrayToArray_CB_ARGS_DATA(cb_data) {};
+// hipMemcpyAsync_spt()
+#define INIT_hipMemcpyAsync_spt_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyAtoA()
 #define INIT_hipMemcpyAtoA_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyAtoD()
@@ -5072,14 +5163,36 @@ typedef struct hip_api_data_s {
 #define INIT_hipMemcpyDtoA_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyFromArrayAsync()
 #define INIT_hipMemcpyFromArrayAsync_CB_ARGS_DATA(cb_data) {};
+// hipMemcpyFromSymbol_spt()
+#define INIT_hipMemcpyFromSymbol_spt_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyHtoAAsync()
 #define INIT_hipMemcpyHtoAAsync_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyToArrayAsync()
 #define INIT_hipMemcpyToArrayAsync_CB_ARGS_DATA(cb_data) {};
+// hipMemcpyToSymbol_spt()
+#define INIT_hipMemcpyToSymbol_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemcpy_spt()
+#define INIT_hipMemcpy_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemset2D_spt()
+#define INIT_hipMemset2D_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemset3D_spt()
+#define INIT_hipMemset3D_spt_CB_ARGS_DATA(cb_data) {};
+// hipMemset_spt()
+#define INIT_hipMemset_spt_CB_ARGS_DATA(cb_data) {};
 // hipModuleLaunchKernelExt()
 #define INIT_hipModuleLaunchKernelExt_CB_ARGS_DATA(cb_data) {};
 // hipSetValidDevices()
 #define INIT_hipSetValidDevices_CB_ARGS_DATA(cb_data) {};
+// hipStreamGetFlags_spt()
+#define INIT_hipStreamGetFlags_spt_CB_ARGS_DATA(cb_data) {};
+// hipStreamGetPriority_spt()
+#define INIT_hipStreamGetPriority_spt_CB_ARGS_DATA(cb_data) {};
+// hipStreamQuery_spt()
+#define INIT_hipStreamQuery_spt_CB_ARGS_DATA(cb_data) {};
+// hipStreamSynchronize_spt()
+#define INIT_hipStreamSynchronize_spt_CB_ARGS_DATA(cb_data) {};
+// hipStreamWaitEvent_spt()
+#define INIT_hipStreamWaitEvent_spt_CB_ARGS_DATA(cb_data) {};
 // hipTexObjectCreate()
 #define INIT_hipTexObjectCreate_CB_ARGS_DATA(cb_data) {};
 // hipTexObjectDestroy()
@@ -5104,16 +5217,10 @@ typedef struct hip_api_data_s {
 #define INIT_hipTexRefGetMipmappedArray_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetAddressMode()
 #define INIT_hipTexRefSetAddressMode_CB_ARGS_DATA(cb_data) {};
-// hipTexRefSetArray()
-#define INIT_hipTexRefSetArray_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetFilterMode()
 #define INIT_hipTexRefSetFilterMode_CB_ARGS_DATA(cb_data) {};
-// hipTexRefSetFlags()
-#define INIT_hipTexRefSetFlags_CB_ARGS_DATA(cb_data) {};
 // hipTexRefSetMipmapFilterMode()
 #define INIT_hipTexRefSetMipmapFilterMode_CB_ARGS_DATA(cb_data) {};
-// hipTexRefSetMipmapLevelBias()
-#define INIT_hipTexRefSetMipmapLevelBias_CB_ARGS_DATA(cb_data) {};
 // hipUnbindTexture()
 #define INIT_hipUnbindTexture_CB_ARGS_DATA(cb_data) {};
 // ihipModuleLaunchKernel()
@@ -5263,6 +5370,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDeviceGetDefaultMemPool:
       if (data->args.hipDeviceGetDefaultMemPool.mem_pool) data->args.hipDeviceGetDefaultMemPool.mem_pool__val = *(data->args.hipDeviceGetDefaultMemPool.mem_pool);
       break;
+// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
+      break;
 // hipDeviceGetLimit[('size_t*', 'pValue'), ('hipLimit_t', 'limit')]
     case HIP_API_ID_hipDeviceGetLimit:
       if (data->args.hipDeviceGetLimit.pValue) data->args.hipDeviceGetLimit.pValue__val = *(data->args.hipDeviceGetLimit.pValue);
@@ -5296,6 +5406,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDeviceGetUuid:
       if (data->args.hipDeviceGetUuid.uuid) data->args.hipDeviceGetUuid.uuid__val = *(data->args.hipDeviceGetUuid.uuid);
       break;
+// hipDeviceGraphMemTrim[('int', 'device')]
+    case HIP_API_ID_hipDeviceGraphMemTrim:
+      break;
 // hipDevicePrimaryCtxGetState[('hipDevice_t', 'dev'), ('unsigned int*', 'flags'), ('int*', 'active')]
     case HIP_API_ID_hipDevicePrimaryCtxGetState:
       if (data->args.hipDevicePrimaryCtxGetState.flags) data->args.hipDevicePrimaryCtxGetState.flags__val = *(data->args.hipDevicePrimaryCtxGetState.flags);
@@ -5319,6 +5432,12 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipDeviceSetCacheConfig[('hipFuncCache_t', 'cacheConfig')]
     case HIP_API_ID_hipDeviceSetCacheConfig:
+      break;
+// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
+      break;
+// hipDeviceSetLimit[('hipLimit_t', 'limit'), ('size_t', 'value')]
+    case HIP_API_ID_hipDeviceSetLimit:
       break;
 // hipDeviceSetMemPool[('int', 'device'), ('hipMemPool_t', 'mem_pool')]
     case HIP_API_ID_hipDeviceSetMemPool:
@@ -5752,15 +5871,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipGraphicsUnregisterResource[('hipGraphicsResource_t', 'resource')]
     case HIP_API_ID_hipGraphicsUnregisterResource:
-      break;
-// hipDeviceSetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
-    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
-      break;
-// hipDeviceGetGraphMemAttribute[('int', 'device'), ('hipGraphMemAttributeType', 'attr'), ('void*', 'value')]
-    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
-      break;
-// hipDeviceGraphMemTrim [('int', 'device')]
-    case HIP_API_ID_hipDeviceGraphMemTrim:
       break;
 // hipHccModuleLaunchKernel[('hipFunction_t', 'f'), ('unsigned int', 'globalWorkSizeX'), ('unsigned int', 'globalWorkSizeY'), ('unsigned int', 'globalWorkSizeZ'), ('unsigned int', 'blockDimX'), ('unsigned int', 'blockDimY'), ('unsigned int', 'blockDimZ'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'hStream'), ('void**', 'kernelParams'), ('void**', 'extra'), ('hipEvent_t', 'startEvent'), ('hipEvent_t', 'stopEvent')]
     case HIP_API_ID_hipHccModuleLaunchKernel:
@@ -6389,10 +6499,18 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipTexRefSetAddress2D.texRef) data->args.hipTexRefSetAddress2D.texRef__val = *(data->args.hipTexRefSetAddress2D.texRef);
       if (data->args.hipTexRefSetAddress2D.desc) data->args.hipTexRefSetAddress2D.desc__val = *(data->args.hipTexRefSetAddress2D.desc);
       break;
+// hipTexRefSetArray[('textureReference*', 'tex'), ('hipArray_const_t', 'array'), ('unsigned int', 'flags')]
+    case HIP_API_ID_hipTexRefSetArray:
+      if (data->args.hipTexRefSetArray.tex) data->args.hipTexRefSetArray.tex__val = *(data->args.hipTexRefSetArray.tex);
+      break;
 // hipTexRefSetBorderColor[('textureReference*', 'texRef'), ('float*', 'pBorderColor')]
     case HIP_API_ID_hipTexRefSetBorderColor:
       if (data->args.hipTexRefSetBorderColor.texRef) data->args.hipTexRefSetBorderColor.texRef__val = *(data->args.hipTexRefSetBorderColor.texRef);
       if (data->args.hipTexRefSetBorderColor.pBorderColor) data->args.hipTexRefSetBorderColor.pBorderColor__val = *(data->args.hipTexRefSetBorderColor.pBorderColor);
+      break;
+// hipTexRefSetFlags[('textureReference*', 'texRef'), ('unsigned int', 'Flags')]
+    case HIP_API_ID_hipTexRefSetFlags:
+      if (data->args.hipTexRefSetFlags.texRef) data->args.hipTexRefSetFlags.texRef__val = *(data->args.hipTexRefSetFlags.texRef);
       break;
 // hipTexRefSetFormat[('textureReference*', 'texRef'), ('hipArray_Format', 'fmt'), ('int', 'NumPackedComponents')]
     case HIP_API_ID_hipTexRefSetFormat:
@@ -6401,6 +6519,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipTexRefSetMaxAnisotropy[('textureReference*', 'texRef'), ('unsigned int', 'maxAniso')]
     case HIP_API_ID_hipTexRefSetMaxAnisotropy:
       if (data->args.hipTexRefSetMaxAnisotropy.texRef) data->args.hipTexRefSetMaxAnisotropy.texRef__val = *(data->args.hipTexRefSetMaxAnisotropy.texRef);
+      break;
+// hipTexRefSetMipmapLevelBias[('textureReference*', 'texRef'), ('float', 'bias')]
+    case HIP_API_ID_hipTexRefSetMipmapLevelBias:
+      if (data->args.hipTexRefSetMipmapLevelBias.texRef) data->args.hipTexRefSetMipmapLevelBias.texRef__val = *(data->args.hipTexRefSetMipmapLevelBias.texRef);
       break;
 // hipTexRefSetMipmapLevelClamp[('textureReference*', 'texRef'), ('float', 'minMipMapLevelClamp'), ('float', 'maxMipMapLevelClamp')]
     case HIP_API_ID_hipTexRefSetMipmapLevelClamp:
@@ -6666,6 +6788,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", device=" << data->args.hipDeviceGetDefaultMemPool.device;
       oss << ")";
     break;
+    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
+      oss << "hipDeviceGetGraphMemAttribute(";
+      oss << "device=" << data->args.hipDeviceGetGraphMemAttribute.device;
+      oss << ", attr=" << data->args.hipDeviceGetGraphMemAttribute.attr;
+      oss << ", value=" << data->args.hipDeviceGetGraphMemAttribute.value;
+      oss << ")";
+    break;
     case HIP_API_ID_hipDeviceGetLimit:
       oss << "hipDeviceGetLimit(";
       if (data->args.hipDeviceGetLimit.pValue == NULL) oss << "pValue=NULL";
@@ -6726,6 +6855,11 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", device=" << data->args.hipDeviceGetUuid.device;
       oss << ")";
     break;
+    case HIP_API_ID_hipDeviceGraphMemTrim:
+      oss << "hipDeviceGraphMemTrim(";
+      oss << "device=" << data->args.hipDeviceGraphMemTrim.device;
+      oss << ")";
+    break;
     case HIP_API_ID_hipDevicePrimaryCtxGetState:
       oss << "hipDevicePrimaryCtxGetState(";
       oss << "dev=" << data->args.hipDevicePrimaryCtxGetState.dev;
@@ -6765,6 +6899,19 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipDeviceSetCacheConfig:
       oss << "hipDeviceSetCacheConfig(";
       oss << "cacheConfig=" << data->args.hipDeviceSetCacheConfig.cacheConfig;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
+      oss << "hipDeviceSetGraphMemAttribute(";
+      oss << "device=" << data->args.hipDeviceSetGraphMemAttribute.device;
+      oss << ", attr=" << data->args.hipDeviceSetGraphMemAttribute.attr;
+      oss << ", value=" << data->args.hipDeviceSetGraphMemAttribute.value;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipDeviceSetLimit:
+      oss << "hipDeviceSetLimit(";
+      oss << "limit=" << data->args.hipDeviceSetLimit.limit;
+      oss << ", value=" << data->args.hipDeviceSetLimit.value;
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSetMemPool:
@@ -7580,25 +7727,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", numDependencies=" << data->args.hipGraphRemoveDependencies.numDependencies;
       oss << ")";
     break;
-    case HIP_API_ID_hipDeviceSetGraphMemAttribute:
-      oss << "hipDeviceSetGraphMemAttribute(";
-      oss << "device=" << data->args.hipDeviceSetGraphMemAttribute.device;
-      oss << ", attr=" << data->args.hipDeviceSetGraphMemAttribute.attr;
-      oss << ", value=" << data->args.hipDeviceSetGraphMemAttribute.value;
-      oss << ")";
-      break;
-    case HIP_API_ID_hipDeviceGraphMemTrim:
-      oss << "hipDeviceGraphMemTrim(";
-      oss << "device=" << data->args.hipDeviceGraphMemTrim.device;
-      oss << ")";
-      break;
-    case HIP_API_ID_hipDeviceGetGraphMemAttribute:
-      oss << "hipDeviceGetGraphMemAttribute(";
-      oss << "device=" << data->args.hipDeviceGetGraphMemAttribute.device;
-      oss << ", attr=" << data->args.hipDeviceGetGraphMemAttribute.attr;
-      oss << ", value=" << data->args.hipDeviceGetGraphMemAttribute.value;
-      oss << ")";
-      break;
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
       oss << "hipGraphicsGLRegisterBuffer(";
       if (data->args.hipGraphicsGLRegisterBuffer.resource == NULL) oss << "resource=NULL";
@@ -9008,12 +9136,27 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", Pitch=" << data->args.hipTexRefSetAddress2D.Pitch;
       oss << ")";
     break;
+    case HIP_API_ID_hipTexRefSetArray:
+      oss << "hipTexRefSetArray(";
+      if (data->args.hipTexRefSetArray.tex == NULL) oss << "tex=NULL";
+      else oss << "tex=" << data->args.hipTexRefSetArray.tex__val;
+      oss << ", array=" << data->args.hipTexRefSetArray.array;
+      oss << ", flags=" << data->args.hipTexRefSetArray.flags;
+      oss << ")";
+    break;
     case HIP_API_ID_hipTexRefSetBorderColor:
       oss << "hipTexRefSetBorderColor(";
       if (data->args.hipTexRefSetBorderColor.texRef == NULL) oss << "texRef=NULL";
       else oss << "texRef=" << data->args.hipTexRefSetBorderColor.texRef__val;
       if (data->args.hipTexRefSetBorderColor.pBorderColor == NULL) oss << ", pBorderColor=NULL";
       else oss << ", pBorderColor=" << data->args.hipTexRefSetBorderColor.pBorderColor__val;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipTexRefSetFlags:
+      oss << "hipTexRefSetFlags(";
+      if (data->args.hipTexRefSetFlags.texRef == NULL) oss << "texRef=NULL";
+      else oss << "texRef=" << data->args.hipTexRefSetFlags.texRef__val;
+      oss << ", Flags=" << data->args.hipTexRefSetFlags.Flags;
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetFormat:
@@ -9029,6 +9172,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipTexRefSetMaxAnisotropy.texRef == NULL) oss << "texRef=NULL";
       else oss << "texRef=" << data->args.hipTexRefSetMaxAnisotropy.texRef__val;
       oss << ", maxAniso=" << data->args.hipTexRefSetMaxAnisotropy.maxAniso;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipTexRefSetMipmapLevelBias:
+      oss << "hipTexRefSetMipmapLevelBias(";
+      if (data->args.hipTexRefSetMipmapLevelBias.texRef == NULL) oss << "texRef=NULL";
+      else oss << "texRef=" << data->args.hipTexRefSetMipmapLevelBias.texRef__val;
+      oss << ", bias=" << data->args.hipTexRefSetMipmapLevelBias.bias;
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetMipmapLevelClamp:
