@@ -27,6 +27,14 @@ hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void
   size_t offset = 0;
   unsigned int outFlags = 0;
 
+  if (ptr == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  if (!hip::isValid(stream)) {
+    return hipErrorInvalidValue;
+  }
+
   amd::Memory* memory = getMemoryObject(ptr, offset);
   if (!memory) {
     return hipErrorInvalidValue;
@@ -54,7 +62,7 @@ hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void
         outFlags = ROCCLR_STREAM_WAIT_VALUE_NOR;
       break;
       default:
-        ShouldNotReachHere();
+        return hipErrorInvalidValue;
       break;
     }
   } else if (cmdType != ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
