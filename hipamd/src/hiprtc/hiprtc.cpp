@@ -277,11 +277,11 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
   HIPRTC_INIT_API(hip_link_state, image, image_size, name, num_options, options_ptr,
                   option_values);
 
-  if (image == nullptr || image_size <= 0 || name == nullptr) {
+  if (image == nullptr || image_size <= 0) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
-  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX 
+  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX
       || input_type == HIPRTC_JIT_INPUT_FATBINARY || input_type == HIPRTC_JIT_INPUT_OBJECT
       || input_type == HIPRTC_JIT_INPUT_LIBRARY || input_type == HIPRTC_JIT_INPUT_NVVM) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
