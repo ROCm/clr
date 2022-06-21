@@ -1,4 +1,7 @@
-/* Modifications Copyright (C) 2010-2022 Advanced Micro Devices, Inc. */
+/* Modifications Copyright(C)[2021-2022] Advanced Micro Devices, Inc.
+ * All rights reserved.
+ * */
+
 /*******************************************************************************
  * Copyright (c) 2008-2015 The Khronos Group Inc.
  *
