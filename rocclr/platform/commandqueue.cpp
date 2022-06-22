@@ -172,12 +172,14 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
     // Process the command's event wait list.
     const Command::EventWaitList& events = command->eventWaitList();
     bool dependencyFailed = false;
-
+    ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) processing: %p ,events.size(): %d",
+            getOclCommandKindString(command->type()), command, events.size());
     for (const auto& it : events) {
       // Only wait if the command is enqueued into another queue.
       if (it->command().queue() != this) {
         // Runtime has to flush the current batch only if the dependent wait is blocking
         if (it->command().status() != CL_COMPLETE) {
+          ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) %p awaiting event: %p", getOclCommandKindString(command->type()), command, it);
           virtualDevice->flush(head, true);
           tail = head = NULL;
           dependencyFailed |= !it->awaitCompletion();
