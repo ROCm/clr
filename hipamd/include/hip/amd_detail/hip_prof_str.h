@@ -351,7 +351,10 @@ enum hip_api_id_t {
   HIP_API_ID_hipTexRefSetArray = 338,
   HIP_API_ID_hipTexRefSetFlags = 339,
   HIP_API_ID_hipTexRefSetMipmapLevelBias = 340,
-  HIP_API_ID_LAST = 340,
+  HIP_API_ID_hipDriverGetVersion = 341,
+  HIP_API_ID_hipGraphUpload = 342,
+  HIP_API_ID_hipRuntimeGetVersion = 343,
+  HIP_API_ID_LAST = 343,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -477,6 +480,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceSetSharedMemConfig: return "hipDeviceSetSharedMemConfig";
     case HIP_API_ID_hipDeviceSynchronize: return "hipDeviceSynchronize";
     case HIP_API_ID_hipDeviceTotalMem: return "hipDeviceTotalMem";
+    case HIP_API_ID_hipDriverGetVersion: return "hipDriverGetVersion";
     case HIP_API_ID_hipDrvMemcpy2DUnaligned: return "hipDrvMemcpy2DUnaligned";
     case HIP_API_ID_hipDrvMemcpy3D: return "hipDrvMemcpy3D";
     case HIP_API_ID_hipDrvMemcpy3DAsync: return "hipDrvMemcpy3DAsync";
@@ -574,6 +578,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphNodeGetDependentNodes: return "hipGraphNodeGetDependentNodes";
     case HIP_API_ID_hipGraphNodeGetType: return "hipGraphNodeGetType";
     case HIP_API_ID_hipGraphRemoveDependencies: return "hipGraphRemoveDependencies";
+    case HIP_API_ID_hipGraphUpload: return "hipGraphUpload";
     case HIP_API_ID_hipGraphicsGLRegisterBuffer: return "hipGraphicsGLRegisterBuffer";
     case HIP_API_ID_hipGraphicsGLRegisterImage: return "hipGraphicsGLRegisterImage";
     case HIP_API_ID_hipGraphicsMapResources: return "hipGraphicsMapResources";
@@ -710,6 +715,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipPointerGetAttributes: return "hipPointerGetAttributes";
     case HIP_API_ID_hipProfilerStart: return "hipProfilerStart";
     case HIP_API_ID_hipProfilerStop: return "hipProfilerStop";
+    case HIP_API_ID_hipRuntimeGetVersion: return "hipRuntimeGetVersion";
     case HIP_API_ID_hipSetDevice: return "hipSetDevice";
     case HIP_API_ID_hipSetDeviceFlags: return "hipSetDeviceFlags";
     case HIP_API_ID_hipSetupArgument: return "hipSetupArgument";
@@ -820,6 +826,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceSetSharedMemConfig", name) == 0) return HIP_API_ID_hipDeviceSetSharedMemConfig;
   if (strcmp("hipDeviceSynchronize", name) == 0) return HIP_API_ID_hipDeviceSynchronize;
   if (strcmp("hipDeviceTotalMem", name) == 0) return HIP_API_ID_hipDeviceTotalMem;
+  if (strcmp("hipDriverGetVersion", name) == 0) return HIP_API_ID_hipDriverGetVersion;
   if (strcmp("hipDrvMemcpy2DUnaligned", name) == 0) return HIP_API_ID_hipDrvMemcpy2DUnaligned;
   if (strcmp("hipDrvMemcpy3D", name) == 0) return HIP_API_ID_hipDrvMemcpy3D;
   if (strcmp("hipDrvMemcpy3DAsync", name) == 0) return HIP_API_ID_hipDrvMemcpy3DAsync;
@@ -917,6 +924,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphNodeGetDependentNodes", name) == 0) return HIP_API_ID_hipGraphNodeGetDependentNodes;
   if (strcmp("hipGraphNodeGetType", name) == 0) return HIP_API_ID_hipGraphNodeGetType;
   if (strcmp("hipGraphRemoveDependencies", name) == 0) return HIP_API_ID_hipGraphRemoveDependencies;
+  if (strcmp("hipGraphUpload", name) == 0) return HIP_API_ID_hipGraphUpload;
   if (strcmp("hipGraphicsGLRegisterBuffer", name) == 0) return HIP_API_ID_hipGraphicsGLRegisterBuffer;
   if (strcmp("hipGraphicsGLRegisterImage", name) == 0) return HIP_API_ID_hipGraphicsGLRegisterImage;
   if (strcmp("hipGraphicsMapResources", name) == 0) return HIP_API_ID_hipGraphicsMapResources;
@@ -1053,6 +1061,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipPointerGetAttributes", name) == 0) return HIP_API_ID_hipPointerGetAttributes;
   if (strcmp("hipProfilerStart", name) == 0) return HIP_API_ID_hipProfilerStart;
   if (strcmp("hipProfilerStop", name) == 0) return HIP_API_ID_hipProfilerStop;
+  if (strcmp("hipRuntimeGetVersion", name) == 0) return HIP_API_ID_hipRuntimeGetVersion;
   if (strcmp("hipSetDevice", name) == 0) return HIP_API_ID_hipSetDevice;
   if (strcmp("hipSetDeviceFlags", name) == 0) return HIP_API_ID_hipSetDeviceFlags;
   if (strcmp("hipSetupArgument", name) == 0) return HIP_API_ID_hipSetupArgument;
@@ -1365,6 +1374,10 @@ typedef struct hip_api_data_s {
       size_t bytes__val;
       hipDevice_t device;
     } hipDeviceTotalMem;
+    struct {
+      int* driverVersion;
+      int driverVersion__val;
+    } hipDriverGetVersion;
     struct {
       const hip_Memcpy2D* pCopy;
       hip_Memcpy2D pCopy__val;
@@ -1958,6 +1971,10 @@ typedef struct hip_api_data_s {
       hipGraphNode_t to__val;
       size_t numDependencies;
     } hipGraphRemoveDependencies;
+    struct {
+      hipGraphExec_t graphExec;
+      hipStream_t stream;
+    } hipGraphUpload;
     struct {
       hipGraphicsResource** resource;
       hipGraphicsResource* resource__val;
@@ -2823,6 +2840,10 @@ typedef struct hip_api_data_s {
       const void* ptr;
     } hipPointerGetAttributes;
     struct {
+      int* runtimeVersion;
+      int runtimeVersion__val;
+    } hipRuntimeGetVersion;
+    struct {
       int deviceId;
     } hipSetDevice;
     struct {
@@ -3364,6 +3385,10 @@ typedef struct hip_api_data_s {
 #define INIT_hipDeviceTotalMem_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDeviceTotalMem.bytes = (size_t*)bytes; \
   cb_data.args.hipDeviceTotalMem.device = (hipDevice_t)device; \
+};
+// hipDriverGetVersion[('int*', 'driverVersion')]
+#define INIT_hipDriverGetVersion_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDriverGetVersion.driverVersion = (int*)driverVersion; \
 };
 // hipDrvMemcpy2DUnaligned[('const hip_Memcpy2D*', 'pCopy')]
 #define INIT_hipDrvMemcpy2DUnaligned_CB_ARGS_DATA(cb_data) { \
@@ -3957,6 +3982,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphRemoveDependencies.from = (const hipGraphNode_t*)from; \
   cb_data.args.hipGraphRemoveDependencies.to = (const hipGraphNode_t*)to; \
   cb_data.args.hipGraphRemoveDependencies.numDependencies = (size_t)numDependencies; \
+};
+// hipGraphUpload[('hipGraphExec_t', 'graphExec'), ('hipStream_t', 'stream')]
+#define INIT_hipGraphUpload_CB_ARGS_DATA(cb_data) { \
 };
 // hipGraphicsGLRegisterBuffer[('hipGraphicsResource**', 'resource'), ('GLuint', 'buffer'), ('unsigned int', 'flags')]
 #define INIT_hipGraphicsGLRegisterBuffer_CB_ARGS_DATA(cb_data) { \
@@ -4853,6 +4881,10 @@ typedef struct hip_api_data_s {
 // hipProfilerStop[]
 #define INIT_hipProfilerStop_CB_ARGS_DATA(cb_data) { \
 };
+// hipRuntimeGetVersion[('int*', 'runtimeVersion')]
+#define INIT_hipRuntimeGetVersion_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipRuntimeGetVersion.runtimeVersion = (int*)runtimeVersion; \
+};
 // hipSetDevice[('int', 'deviceId')]
 #define INIT_hipSetDevice_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipSetDevice.deviceId = (int)device; \
@@ -5452,6 +5484,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDeviceTotalMem:
       if (data->args.hipDeviceTotalMem.bytes) data->args.hipDeviceTotalMem.bytes__val = *(data->args.hipDeviceTotalMem.bytes);
       break;
+// hipDriverGetVersion[('int*', 'driverVersion')]
+    case HIP_API_ID_hipDriverGetVersion:
+      if (data->args.hipDriverGetVersion.driverVersion) data->args.hipDriverGetVersion.driverVersion__val = *(data->args.hipDriverGetVersion.driverVersion);
+      break;
 // hipDrvMemcpy2DUnaligned[('const hip_Memcpy2D*', 'pCopy')]
     case HIP_API_ID_hipDrvMemcpy2DUnaligned:
       if (data->args.hipDrvMemcpy2DUnaligned.pCopy) data->args.hipDrvMemcpy2DUnaligned.pCopy__val = *(data->args.hipDrvMemcpy2DUnaligned.pCopy);
@@ -5843,6 +5879,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphRemoveDependencies:
       if (data->args.hipGraphRemoveDependencies.from) data->args.hipGraphRemoveDependencies.from__val = *(data->args.hipGraphRemoveDependencies.from);
       if (data->args.hipGraphRemoveDependencies.to) data->args.hipGraphRemoveDependencies.to__val = *(data->args.hipGraphRemoveDependencies.to);
+      break;
+// hipGraphUpload[('hipGraphExec_t', 'graphExec'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipGraphUpload:
       break;
 // hipGraphicsGLRegisterBuffer[('hipGraphicsResource**', 'resource'), ('GLuint', 'buffer'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
@@ -6359,6 +6398,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipProfilerStop[]
     case HIP_API_ID_hipProfilerStop:
+      break;
+// hipRuntimeGetVersion[('int*', 'runtimeVersion')]
+    case HIP_API_ID_hipRuntimeGetVersion:
+      if (data->args.hipRuntimeGetVersion.runtimeVersion) data->args.hipRuntimeGetVersion.runtimeVersion__val = *(data->args.hipRuntimeGetVersion.runtimeVersion);
       break;
 // hipSetDevice[('int', 'deviceId')]
     case HIP_API_ID_hipSetDevice:
@@ -6934,6 +6977,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipDeviceTotalMem.bytes == NULL) oss << "bytes=NULL";
       else oss << "bytes=" << data->args.hipDeviceTotalMem.bytes__val;
       oss << ", device=" << data->args.hipDeviceTotalMem.device;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipDriverGetVersion:
+      oss << "hipDriverGetVersion(";
+      if (data->args.hipDriverGetVersion.driverVersion == NULL) oss << "driverVersion=NULL";
+      else oss << "driverVersion=" << data->args.hipDriverGetVersion.driverVersion__val;
       oss << ")";
     break;
     case HIP_API_ID_hipDrvMemcpy2DUnaligned:
@@ -7725,6 +7774,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipGraphRemoveDependencies.to == NULL) oss << ", to=NULL";
       else oss << ", to=" << data->args.hipGraphRemoveDependencies.to__val;
       oss << ", numDependencies=" << data->args.hipGraphRemoveDependencies.numDependencies;
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGraphUpload:
+      oss << "hipGraphUpload(";
+      oss << "graphExec=" << data->args.hipGraphUpload.graphExec;
+      oss << ", stream=" << data->args.hipGraphUpload.stream;
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
@@ -8867,6 +8922,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipProfilerStop:
       oss << "hipProfilerStop(";
+      oss << ")";
+    break;
+    case HIP_API_ID_hipRuntimeGetVersion:
+      oss << "hipRuntimeGetVersion(";
+      if (data->args.hipRuntimeGetVersion.runtimeVersion == NULL) oss << "runtimeVersion=NULL";
+      else oss << "runtimeVersion=" << data->args.hipRuntimeGetVersion.runtimeVersion__val;
       oss << ")";
     break;
     case HIP_API_ID_hipSetDevice:
