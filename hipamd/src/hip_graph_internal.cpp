@@ -740,7 +740,8 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
       first = false;
       continue;
     }
-    amd::Command* rootCommand = new amd::Marker(*queue, false, {});
+    // marker from the same queue as the list
+    amd::Command* rootCommand = new amd::Marker(*singleList[0]->GetQueue(), false, {});
     amd::Command::EventWaitList waitList;
     waitList.push_back(rootCommand);
     if (!singleList.empty()) {
