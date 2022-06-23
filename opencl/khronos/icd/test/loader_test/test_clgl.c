@@ -1,3 +1,7 @@
+/* Modifications Copyright(C) 2022 Advanced Micro Devices, Inc.
+ * All rights reserved.
+ */
+
 #define CL_USE_DEPRECATED_OPENCL_1_0_APIS
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 

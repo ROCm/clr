@@ -1,3 +1,7 @@
+/* Modifications Copyright(C) 2022 Advanced Micro Devices, Inc.
+ * All rights reserved.
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

@@ -1,3 +1,7 @@
+/* Modifications Copyright(C) 2022 Advanced Micro Devices, Inc.
+ * All rights reserved.
+ */
+
 #include <CL/cl.h>
 #include "param_struct.h"
 #include <platform/icd_test_log.h>
