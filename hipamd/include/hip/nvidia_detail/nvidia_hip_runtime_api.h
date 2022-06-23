@@ -2264,7 +2264,7 @@ inline static hipError_t hipModuleGetFunction(hipFunction_t* function, hipModule
 }
 
 inline static hipError_t hipModuleGetTexRef(hipTexRef* pTexRef, hipModule_t hmod, const char* name){
-    hipCUResultTohipError(cuModuleGetTexRef(pTexRef, hmod, name));
+    return hipCUResultTohipError(cuModuleGetTexRef(pTexRef, hmod, name));
 }
 
 inline static hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const void* func) {
