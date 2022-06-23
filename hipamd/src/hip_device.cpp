@@ -121,9 +121,14 @@ void ihipDestroyDevice() {
 }
 
 hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId) {
-  if (deviceId < 0 || static_cast<size_t>(deviceId) >= g_devices.size() || device == nullptr) {
+  if (device == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  if (deviceId < 0 || static_cast<size_t>(deviceId) >= g_devices.size()) {
     return hipErrorInvalidDevice;
   }
+
   *device = deviceId;
   return hipSuccess;
 }
@@ -213,7 +218,7 @@ hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
 
   // Make sure that the size of `dest` is big enough to hold `src` including
   // trailing zero byte
-  if (nameLen > (cl_uint)(len - 1)) {
+  if (nameLen <= 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
