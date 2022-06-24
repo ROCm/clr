@@ -565,13 +565,23 @@ hipError_t hipSetDeviceFlags ( unsigned int  flags ) {
 
   constexpr uint32_t supportedFlags =
       hipDeviceScheduleMask | hipDeviceMapHost | hipDeviceLmemResizeToMax;
+  constexpr uint32_t mutualExclusiveFlags =
+      hipDeviceScheduleSpin | hipDeviceScheduleYield | hipDeviceScheduleBlockingSync;
+  // Only one scheduling flag allowed a time
+  uint32_t scheduleFlag = flags & hipDeviceScheduleMask;
+
+  if (((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleSpin) && ((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleYield)
+      && ((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleBlockingSync)
+      && ((scheduleFlag & hipDeviceScheduleAuto) != hipDeviceScheduleAuto)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   if (flags & ~supportedFlags) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
-  switch (flags & hipDeviceScheduleMask) {
+  switch (scheduleFlag) {
     case hipDeviceScheduleAuto:
       // Current behavior is different from the spec, due to MT usage in runtime
       if (hip::host_device->devices().size() >= std::thread::hardware_concurrency()) {
