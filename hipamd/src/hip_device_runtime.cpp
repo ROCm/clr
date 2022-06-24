@@ -535,7 +535,7 @@ hipError_t hipGetDevice ( int* deviceId ) {
 }
 
 hipError_t hipGetDeviceCount ( int* count ) {
-  HIP_INIT_API(hipGetDeviceCount, count);
+  HIP_INIT_API_NO_RETURN(hipGetDeviceCount, count);
 
   HIP_RETURN(ihipDeviceGetCount(count));
 }
