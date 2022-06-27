@@ -70,7 +70,8 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                             const size_t imageRowPitch,
                             const size_t imageSlicePitch,
                             const uint32_t numMipLevels,
-                            amd::Memory* buffer);
+                            amd::Memory* buffer,
+                            hipError_t& status);
 
 hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                                    const hipResourceDesc* pResDesc,
@@ -252,6 +253,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
     const cl_mem_object_type imageType = hip::getCLMemObjectType(pResDesc->resType);
     const size_t imageSizeInBytes = pResDesc->res.linear.sizeInBytes;
     amd::Memory* buffer = getMemoryObjectWithOffset(pResDesc->res.linear.devPtr, imageSizeInBytes);
+    hipError_t status = hipSuccess;
     image = ihipImageCreate(channelOrder,
                             channelType,
                             imageType,
@@ -262,10 +264,11 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             0, /* imageRowPitch */
                             0, /* imageSlicePitch */
                             0, /* numMipLevels */
-                            buffer);
+                            buffer,
+                            status);
     buffer->release();
     if (image == nullptr) {
-      return hipErrorInvalidValue;
+      return status;
     }
     break;
   }
@@ -277,6 +280,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
     const size_t imageSizeInBytes = pResDesc->res.pitch2D.width * imageFormat.getElementSize() +
                                     pResDesc->res.pitch2D.pitchInBytes * (pResDesc->res.pitch2D.height - 1);
     amd::Memory* buffer = getMemoryObjectWithOffset(pResDesc->res.pitch2D.devPtr, imageSizeInBytes);
+    hipError_t status = hipSuccess;
     image = ihipImageCreate(channelOrder,
                             channelType,
                             imageType,
@@ -287,10 +291,11 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             pResDesc->res.pitch2D.pitchInBytes, /* imageRowPitch */
                             0, /* imageSlicePitch */
                             0, /* numMipLevels */
-                            buffer);
+                            buffer,
+                            status);
     buffer->release();
     if (image == nullptr) {
-      return hipErrorInvalidValue;
+      return status;
     }
     break;
   }
