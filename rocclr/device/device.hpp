@@ -609,6 +609,7 @@ struct Info : public amd::EmbeddedObject {
   bool pcie_atomics_; //!< Pcie atomics support flag
 
   bool virtualMemoryManagement_; //!< Virtual memory management support
+  size_t virtualMemAllocGranularity_; //!< virtual memory allocation size/addr granularity
 };
 
 //! Device settings
