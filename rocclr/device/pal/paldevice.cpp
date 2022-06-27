@@ -625,6 +625,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     }
   }
   info_.virtualMemoryManagement_ = true;
+  info_.virtualMemAllocGranularity_ = static_cast<size_t>(palProp.gpuMemoryProperties.virtualMemAllocGranularity);
 }
 
 Device::XferBuffers::~XferBuffers() {
