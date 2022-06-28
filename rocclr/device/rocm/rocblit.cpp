@@ -2186,6 +2186,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   bool p2p = (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev()) &&
              ((sizeIn[0] > ROC_P2P_SDMA_SIZE * Ki) || !gpu().IsPendingDispatch());
   bool asan = false;
+  bool ipcShared = srcMemory.owner()->ipcShared() || dstMemory.owner()->ipcShared();
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
   asan = true;
@@ -2193,7 +2194,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
   if (setup_.disableHwlCopyBuffer_ ||
       (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
-       !(p2p || asan))) {
+       !(p2p || asan) && !ipcShared)) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
