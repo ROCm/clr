@@ -216,12 +216,6 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
 
   const amd::Device& dev = *ctx.devices()[0];
 
-  // For now limit to the max allocation size on the device.
-  // The apps should be able to go over the limit in the future
-  if (dev.info().maxMemAllocSize_ < size) {
-    return hipErrorMemoryAllocation;
-  }
-
   // Allocate SVM fine grain buffer with the forced host pointer, avoiding explicit memory
   // allocation in the device driver
   *ptr = amd::SvmBuffer::malloc(ctx, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR,
