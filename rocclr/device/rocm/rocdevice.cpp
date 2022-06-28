@@ -2184,7 +2184,7 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
       amd_mem_obj->release();
       return false;
     }
-
+    amd_mem_obj->setIpcShared(true);
     // Add the original mem_ptr to the MemObjMap with newly created amd_mem_obj
     amd::MemObjMap::AddMemObj(orig_dev_ptr, amd_mem_obj);
 

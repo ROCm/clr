@@ -197,6 +197,7 @@ class Memory : public amd::RuntimeObject {
       uint32_t svmPtrCommited_ : 1;    //!< svm host address committed flag
       uint32_t canBeCached_ : 1;       //!< flag to if the object can be cached
       uint32_t p2pAccess_ : 1;         //!< Memory object allows P2P access
+      uint32_t ipcShared_ : 1;         //!< Memory shared between processes
     };
     uint32_t flagsEx_;
   };
@@ -377,6 +378,13 @@ class Memory : public amd::RuntimeObject {
 
   //! Check if this objects allows P2P access
   bool P2PAccess() const { return p2pAccess_; }
+
+  // Set ipcShared status
+  void setIpcShared(bool ipcShared) {
+    ipcShared_ = ipcShared;
+  }
+  //! Check if this object allows IPC
+  bool ipcShared() const { return ipcShared_; }
 
   //! Returns the base device memory object for possible P2P access
   device::Memory* BaseP2PMemory() const { return deviceMemories_[0].value_; }
