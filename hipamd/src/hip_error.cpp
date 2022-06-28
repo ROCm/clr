@@ -193,6 +193,154 @@ const char *ihipGetErrorName(hipError_t hip_error)
     };
 }
 
+const char *ihipGetErrorString(hipError_t hip_error) {
+    switch(hip_error) {
+        case hipSuccess:
+            return "no error";
+        case hipErrorInvalidValue:
+            return "invalid argument";
+        case hipErrorOutOfMemory:
+            return "out of memory";
+        case hipErrorNotInitialized:
+            return "initialization error";
+        case hipErrorDeinitialized:
+            return "driver shutting down";
+        case hipErrorProfilerDisabled:
+            return "profiler disabled while using external profiling tool";
+        case hipErrorProfilerNotInitialized:
+            return "profiler is not initialized";
+        case hipErrorProfilerAlreadyStarted:
+            return "profiler already started";
+        case hipErrorProfilerAlreadyStopped:
+            return "profiler already stopped";
+        case hipErrorInvalidConfiguration:
+            return "invalid configuration argument";
+        case hipErrorInvalidPitchValue:
+            return "invalid pitch argument";
+        case hipErrorInvalidSymbol:
+            return "invalid device symbol";
+        case hipErrorInvalidDevicePointer:
+            return "invalid device pointer";
+        case hipErrorInvalidMemcpyDirection:
+            return "invalid copy direction for memcpy";
+        case hipErrorInsufficientDriver:
+            return "driver version is insufficient for runtime version";
+        case hipErrorMissingConfiguration:
+            return "__global__ function call is not configured";
+        case hipErrorPriorLaunchFailure:
+            return "unspecified launch failure in prior launch";
+        case hipErrorInvalidDeviceFunction:
+            return "invalid device function";
+        case hipErrorNoDevice:
+            return "no ROCm-capable device is detected";
+        case hipErrorInvalidDevice:
+            return "invalid device ordinal";
+        case hipErrorInvalidImage:
+            return "device kernel image is invalid";
+        case hipErrorInvalidContext:
+            return "invalid device context";
+        case hipErrorContextAlreadyCurrent:
+            return "context is already current context";
+        case hipErrorMapFailed:
+            return "mapping of buffer object failed";
+        case hipErrorUnmapFailed:
+            return "unmapping of buffer object failed";
+        case hipErrorArrayIsMapped:
+            return "array is mapped";
+        case hipErrorAlreadyMapped:
+            return "resource already mapped";
+        case hipErrorNoBinaryForGpu:
+            return "no kernel image is available for execution on the device";
+        case hipErrorAlreadyAcquired:
+            return "resource already acquired";
+        case hipErrorNotMapped:
+            return "resource not mapped";
+        case hipErrorNotMappedAsArray:
+            return "resource not mapped as array";
+        case hipErrorNotMappedAsPointer:
+            return "resource not mapped as pointer";
+        case hipErrorECCNotCorrectable:
+            return "uncorrectable ECC error encountered";
+        case hipErrorUnsupportedLimit:
+            return "limit is not supported on this architecture";
+        case hipErrorContextAlreadyInUse:
+            return "exclusive-thread device already in use by a different thread";
+        case hipErrorPeerAccessUnsupported:
+            return "peer access is not supported between these two devices";
+        case hipErrorInvalidKernelFile:
+            return "invalid kernel file";
+        case hipErrorInvalidGraphicsContext:
+            return "invalid OpenGL or DirectX context";
+        case hipErrorInvalidSource:
+            return "device kernel image is invalid";
+        case hipErrorFileNotFound:
+            return "file not found";
+        case hipErrorSharedObjectSymbolNotFound:
+            return "shared object symbol not found";
+        case hipErrorSharedObjectInitFailed:
+            return "shared object initialization failed";
+        case hipErrorOperatingSystem:
+            return "OS call failed or operation not supported on this OS";
+        case hipErrorInvalidHandle:
+            return "invalid resource handle";
+        case hipErrorIllegalState:
+            return "the operation cannot be performed in the present state";
+        case hipErrorNotFound:
+            return "named symbol not found";
+        case hipErrorNotReady:
+            return "device not ready";
+        case hipErrorIllegalAddress:
+            return "an illegal memory access was encountered";
+        case hipErrorLaunchOutOfResources:
+            return "too many resources requested for launch";
+        case hipErrorLaunchTimeOut:
+            return "the launch timed out and was terminated";
+        case hipErrorPeerAccessAlreadyEnabled:
+            return "peer access is already enabled";
+        case hipErrorPeerAccessNotEnabled:
+            return "peer access has not been enabled";
+        case hipErrorSetOnActiveProcess:
+            return "cannot set while device is active in this process";
+        case hipErrorContextIsDestroyed:
+            return "context is destroyed";
+        case hipErrorAssert:
+            return "device-side assert triggered";
+        case hipErrorHostMemoryAlreadyRegistered:
+            return "part or all of the requested memory range is already mapped";
+        case hipErrorHostMemoryNotRegistered:
+            return "pointer does not correspond to a registered memory region";
+        case hipErrorLaunchFailure:
+            return "unspecified launch failure";
+        case hipErrorCooperativeLaunchTooLarge:
+            return "too many blocks in cooperative launch";
+        case hipErrorNotSupported:
+            return "operation not supported";
+        case hipErrorStreamCaptureUnsupported:
+            return "operation not permitted when stream is capturing";
+        case hipErrorStreamCaptureInvalidated:
+            return "operation failed due to a previous error during capture";
+        case hipErrorStreamCaptureMerge:
+            return "operation would result in a merge of separate capture sequences";
+        case hipErrorStreamCaptureUnmatched:
+            return "capture was not ended in the same stream as it began";
+        case hipErrorStreamCaptureUnjoined:
+            return "capturing stream has unjoined work";
+        case hipErrorStreamCaptureIsolation:
+            return "dependency created on uncaptured work in another stream";
+        case hipErrorStreamCaptureImplicit:
+            return "operation would make the legacy stream depend on a capturing blocking stream";
+        case hipErrorCapturedEvent:
+            return "operation not permitted on an event last recorded in a capturing stream";
+        case hipErrorStreamCaptureWrongThread:
+            return "attempt to terminate a thread-local capture sequence from another thread";
+        case hipErrorGraphExecUpdateFailure:
+            return "the graph update was not performed because it included changes which violated constraints specific to instantiated graph update";
+        case hipErrorUnknown:
+        default:
+            return "unknown error";
+    }
+}
+
 const char* hipGetErrorName(hipError_t hip_error) 
 { 
   return ihipGetErrorName(hip_error); 
@@ -200,6 +348,6 @@ const char* hipGetErrorName(hipError_t hip_error)
 
 const char *hipGetErrorString(hipError_t hip_error)
 {
-  return ihipGetErrorName(hip_error);
+  return ihipGetErrorString(hip_error);
 }
 
