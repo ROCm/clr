@@ -723,6 +723,11 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
 
   const amd::Image::Format imageFormat(*image_format);
 
+  //avoid size_t overflow for pitch calculation
+  if (width * imageFormat.getElementSize() > (std::numeric_limits<size_t>::max() - device->info().imagePitchAlignment_)) {
+    return hipErrorInvalidValue;
+  }
+
   *pitch = amd::alignUp(width * imageFormat.getElementSize(), device->info().imagePitchAlignment_);
 
   size_t sizeBytes = *pitch * height * depth;
