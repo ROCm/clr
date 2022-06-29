@@ -96,6 +96,9 @@ Settings::Settings() {
                           ROC_CPU_WAIT_FOR_SIGNAL : cpu_wait_for_signal_;
   system_scope_signal_ = ROC_SYSTEM_SCOPE_SIGNAL;
   skip_copy_sync_      = ROC_SKIP_COPY_SYNC;
+
+  // Use coarse grain system memory for kernel arguments by default (to keep GPU cache)
+  fgs_kernel_arg_ = false;
 }
 
 // ================================================================================================
@@ -171,10 +174,6 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
 
   lcWavefrontSize64_ = !enableWave32Mode_;
 
-  // Enable fgs kernel arg segment only for a specific HW
-  fgs_kernel_arg_ = gfxipMajor == 9 && gfxStepping == 10;
-  fgs_kernel_arg_ = (!flagIsDefault(ROC_USE_FGS_KERNARG)) ?
-                          ROC_USE_FGS_KERNARG : fgs_kernel_arg_;
   // Override current device settings
   override();
 
@@ -228,6 +227,10 @@ void Settings::override() {
   if (!flagIsDefault(GPU_ENABLE_COOP_GROUPS)) {
     enableCoopGroups_ = GPU_ENABLE_COOP_GROUPS;
     enableCoopMultiDeviceGroups_ = GPU_ENABLE_COOP_GROUPS;
+  }
+
+  if (!flagIsDefault(ROC_USE_FGS_KERNARG)) {
+    fgs_kernel_arg_ = ROC_USE_FGS_KERNARG;
   }
 }
 }  // namespace roc
