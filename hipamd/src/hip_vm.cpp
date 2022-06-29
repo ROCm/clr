@@ -154,8 +154,7 @@ hipError_t hipMemGetAllocationGranularity(size_t* granularity, const hipMemAlloc
 
   const auto& dev_info = g_devices[prop->location.id]->devices()[0]->info();
 
-  // Default to that for now.
-  *granularity = dev_info.memBaseAddrAlign_;
+  *granularity = dev_info.virtualMemAllocGranularity_;
 
   HIP_RETURN(hipSuccess);
 }
