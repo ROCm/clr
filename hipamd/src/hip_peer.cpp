@@ -139,7 +139,7 @@ hipError_t hipDeviceGetP2PAttribute(int* value, hipDeviceP2PAttr attr,
       break;
     }
     case hipDevP2PAttrNativeAtomicSupported : {
-      link_attrs.push_back(std::make_pair(amd::Device::LinkAttribute::kLinkLinkType, 0));
+      link_attrs.push_back(std::make_pair(amd::Device::LinkAttribute::kLinkAtomicSupport, 0));
       break;
     }
     case hipDevP2PAttrHipArrayAccessSupported : {
@@ -154,7 +154,7 @@ hipError_t hipDeviceGetP2PAttribute(int* value, hipDeviceP2PAttr attr,
       if (srcDeviceProp.gcnArch == dstDeviceProp.gcnArch) {
         HIP_RETURN_ONFAIL(canAccessPeer(value, srcDevice, dstDevice));
       } else {
-        value = 0;
+        *value = 0;
       }
       break;
     }
