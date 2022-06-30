@@ -96,10 +96,16 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeArray,
-  // hipResourceDesc::res::array::array must be set to a valid HIP array handle.
-  if ((pResDesc->resType == hipResourceTypeArray) &&
-      (pResDesc->res.array.array == nullptr)) {
-    return hipErrorInvalidValue;
+  if (pResDesc->resType == hipResourceTypeArray) {
+      // hipResourceDesc::res::array::array must be set to a valid HIP array handle.
+    if (pResDesc->res.array.array == nullptr) {
+      return hipErrorInvalidValue;
+    } else if (pResDesc->res.array.array->depth > 0 &&
+      pTexDesc->filterMode == hipFilterModeLinear &&
+      !strncmp(info.name_, "gfx90a", strlen("gfx90a"))) {
+      LogPrintfInfo("%s doesn't support 3D linear filter!", info.name_);
+      return hipErrorNotSupported;
+    }
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeMipmappedArray,
