@@ -230,6 +230,11 @@ inline static CUresourcetype hipResourcetype_enumToCUresourcetype(
 #define hiparray CUarray
 typedef CUmipmappedArray hipMipmappedArray_t;
 
+#define HIP_TRSA_OVERRIDE_FORMAT        CU_TRSA_OVERRIDE_FORMAT
+#define HIP_TRSF_READ_AS_INTEGER        CU_TRSF_READ_AS_INTEGER
+#define HIP_TRSF_NORMALIZED_COORDINATES CU_TRSF_NORMALIZED_COORDINATES
+#define HIP_TRSF_SRGB                   CU_TRSF_SRGB
+
 // hipTextureAddressMode
 typedef enum cudaTextureAddressMode hipTextureAddressMode;
 #define hipAddressModeWrap cudaAddressModeWrap
