@@ -177,7 +177,8 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
         Timestamp* headTs  = reinterpret_cast<Timestamp*>(head->data());
         ts->setParsedCommand(head);
         for (auto it : headTs->Signals()) {
-          if (int64_t val = hsa_signal_load_relaxed(it->signal_) > 0) {
+          hsa_signal_value_t complete_val = (headTs->GetCallbackSignal().handle != 0) ? 1 : 0;
+          if (int64_t val = hsa_signal_load_relaxed(it->signal_) > complete_val) {
             hsa_status_t result = hsa_amd_signal_async_handler(headTs->Signals()[0]->signal_,
                                  HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                  &HsaAmdSignalHandler, ts);
