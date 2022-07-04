@@ -449,10 +449,21 @@ typedef struct cudaPos hipPos;
 
 typedef cudaMemPool_t hipMemPool_t;
 typedef enum cudaMemPoolAttr hipMemPoolAttr;
+#define hipMemPoolReuseFollowEventDependencies cudaMemPoolReuseFollowEventDependencies
+#define hipMemPoolReuseAllowOpportunistic cudaMemPoolReuseAllowOpportunistic
+#define hipMemPoolReuseAllowInternalDependencies cudaMemPoolReuseAllowInternalDependencies
+#define hipMemPoolAttrReleaseThreshold cudaMemPoolAttrReleaseThreshold
+#define hipMemPoolAttrReservedMemCurrent cudaMemPoolAttrReservedMemCurrent
+#define hipMemPoolAttrReservedMemHigh cudaMemPoolAttrReservedMemHigh
+#define hipMemPoolAttrUsedMemCurrent cudaMemPoolAttrUsedMemCurrent
+#define hipMemPoolAttrUsedMemHigh cudaMemPoolAttrUsedMemHigh
 typedef struct cudaMemLocation hipMemLocation;
 typedef struct cudaMemPoolProps hipMemPoolProps;
 typedef struct cudaMemAccessDesc hipMemAccessDesc;
 typedef enum cudaMemAccessFlags hipMemAccessFlags;
+#define hipMemAccessFlagsProtNone cudaMemAccessFlagsProtNone
+#define hipMemAccessFlagsProtRead cudaMemAccessFlagsProtRead
+#define hipMemAccessFlagsProtReadWrite cudaMemAccessFlagsProtReadWrite
 typedef enum cudaMemAllocationHandleType hipMemAllocationHandleType;
 typedef struct cudaMemPoolPtrExportData hipMemPoolPtrExportData;
 
@@ -1151,24 +1162,59 @@ typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDepe
 #define hipStreamSetCaptureDependencies cudaStreamSetCaptureDependencies
 #endif
 #if CUDA_VERSION >= CUDA_10020
-typedef struct CUmemAllocationProp_st hipMemAllocationProp;
 #define hipMemAllocationGranularityMinimum CU_MEM_ALLOC_GRANULARITY_MINIMUM
 #define hipMemAllocationGranularityRecommended CU_MEM_ALLOC_GRANULARITY_RECOMMENDED
 typedef enum CUmemAllocationGranularity_flags_enum  hipMemAllocationGranularity_flags;
-//typedef struct CUmemLocation_st hipMemLocation;
-typedef enum CUmemLocationType_enum hipMemLocationType;
-#define hipMemLocationTypeInvalid CU_MEM_LOCATION_TYPE_INVALID
-#define hipMemLocationTypeDevice CU_MEM_LOCATION_TYPE_DEVICE
-//typedef enum CUmemAllocationHandleType_enum  hipMemAllocationHandleType;
-#define hipMemHandleTypeNone CU_MEM_HANDLE_TYPE_NONE
-#define hipMemHandleTypePosixFileDescriptor CU_MEM_HANDLE_TYPE_POSIX_FILE_DESCRIPTOR
-#define hipMemHandleTypeWin32 CU_MEM_HANDLE_TYPE_WIN32
-#define hipMemHandleTypeWin32Kmt CU_MEM_HANDLE_TYPE_WIN32_KMT
-typedef enum CUmemAllocationType_enum  hipMemAllocationType;
-#define hipMemAllocationTypeInvalid CU_MEM_ALLOCATION_TYPE_INVALID
-#define hipMemAllocationTypePinned CU_MEM_ALLOCATION_TYPE_PINNED
-#define hipMemAllocationTypeMax CU_MEM_ALLOCATION_TYPE_MAX
+typedef enum cudaMemLocationType hipMemLocationType;
+#define hipMemLocationTypeInvalid cudaMemLocationTypeInvalid
+#define hipMemLocationTypeDevice cudaMemLocationTypeDevice
+#define hipMemHandleTypeNone cudaMemHandleTypeNone
+#define hipMemHandleTypePosixFileDescriptor cudaMemHandleTypePosixFileDescriptor
+#define hipMemHandleTypeWin32 cudaMemHandleTypeWin32
+#define hipMemHandleTypeWin32Kmt cudaMemHandleTypeWin32Kmt
+typedef enum cudaMemAllocationType hipMemAllocationType;
+#define hipMemAllocationTypeInvalid cudaMemAllocationTypeInvalid
+#define hipMemAllocationTypePinned cudaMemAllocationTypePinned
+#define hipMemAllocationTypeMax cudaMemAllocationTypeMax
 #define hipMemGenericAllocationHandle_t CUmemGenericAllocationHandle
+// Explicitely declaring hipMemAllocationProp based on CUmemAllocationProp but using CUDA runtime members instead
+// Because hipMemAllocationType, hipMemAllocationHandleType & hipMemLocation are defined using CUDA runtime data types & also used by hipMemPoolProps
+// Currently there doesn't exist CUDA inbuilt runtime structure corresponding to CUmemAllocationProp
+// Need to update this structure accordingly if CUDA updates CUmemAllocationProp
+typedef struct hipMemAllocationProp {
+    /** Memory allocation type */
+    hipMemAllocationType type;
+    /** Requested handle type */
+    hipMemAllocationHandleType requestedHandleTypes;
+    /** Location of allocation */
+    hipMemLocation location;
+    /**
+     * Windows-specific POBJECT_ATTRIBUTES required when
+     * ::CU_MEM_HANDLE_TYPE_WIN32 is specified.  This object atributes structure
+     * includes security attributes that define
+     * the scope of which exported allocations may be tranferred to other
+     * processes.  In all other cases, this field is required to be zero.
+     */
+    void *win32HandleMetaData;
+    struct {
+         /**
+         * Allocation hint for requesting compressible memory.
+         * On devices that support Compute Data Compression, compressible
+         * memory can be used to accelerate accesses to data with unstructured
+         * sparsity and other compressible data patterns. Applications are
+         * expected to query allocation property of the handle obtained with
+         * ::cuMemCreate using ::cuMemGetAllocationPropertiesFromHandle to
+         * validate if the obtained allocation is compressible or not. Note that
+         * compressed memory may not be mappable on all devices.
+         */
+         unsigned char compressionType;
+         /** RDMA capable */
+         unsigned char gpuDirectRDMACapable;
+         /** Bitmask indicating intended usage for this allocation */
+         unsigned short usage;
+         unsigned char reserved[4];
+    } allocFlags;
+} hipMemAllocationProp;
 #endif
 /**
  * Stream CallBack struct
@@ -1877,16 +1923,35 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
     return hipCUDAErrorTohipError(cerror);
 }
 #if CUDA_VERSION >= CUDA_10020
+inline static CUmemAllocationProp hipMemAllocationPropToCUmemAllocationProp(const hipMemAllocationProp* prop) {
+    CUmemAllocationProp cuProp;
+    cuProp.type = (CUmemAllocationType)prop->type;
+    cuProp.requestedHandleTypes = (CUmemAllocationHandleType)prop->requestedHandleTypes;
+    cuProp.location.type = (CUmemLocationType)prop->location.type;
+    cuProp.location.id = prop->location.id;
+    cuProp.win32HandleMetaData = prop->win32HandleMetaData;
+    cuProp.allocFlags.compressionType = prop->allocFlags.compressionType;
+    cuProp.allocFlags.gpuDirectRDMACapable = prop->allocFlags.gpuDirectRDMACapable;
+    cuProp.allocFlags.usage = prop->allocFlags.usage;
+    cuProp.allocFlags.reserved[0] = prop->allocFlags.reserved[0];
+    cuProp.allocFlags.reserved[1] = prop->allocFlags.reserved[1];
+    cuProp.allocFlags.reserved[2] = prop->allocFlags.reserved[2];
+    cuProp.allocFlags.reserved[3] = prop->allocFlags.reserved[3];
+    return cuProp;
+}
+
 inline static hipError_t hipMemGetAllocationGranularity(size_t* granularity,
                                                         const hipMemAllocationProp* prop,
                                                         hipMemAllocationGranularity_flags option) {
-    return hipCUResultTohipError(cuMemGetAllocationGranularity(granularity, prop, option));
+    CUmemAllocationProp cuProp = hipMemAllocationPropToCUmemAllocationProp(prop);
+    return hipCUResultTohipError(cuMemGetAllocationGranularity(granularity, &cuProp, option));
 }
 inline static hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle,
                                       size_t size,
                                       const hipMemAllocationProp* prop,
                                       unsigned long long flags) {
-    return hipCUResultTohipError(cuMemCreate(handle, size, prop, flags));
+    CUmemAllocationProp cuProp = hipMemAllocationPropToCUmemAllocationProp(prop);
+    return hipCUResultTohipError(cuMemCreate(handle, size, &cuProp, flags));
 }
 inline static hipError_t hipMemRelease(hipMemGenericAllocationHandle_t handle) {
     return hipCUResultTohipError(cuMemRelease(handle));
