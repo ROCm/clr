@@ -114,10 +114,8 @@ cl_mem_object_type getCLMemObjectType(const unsigned int hipWidth,
       return CL_MEM_OBJECT_IMAGE2D_ARRAY;
     }
   }
-
-  ShouldNotReachHere();
-
-  return {};
+  // error scenario. ShouldNotReachHere()
+  return CL_MEM_OBJECT_ALLOCATION_FAILURE;
 }
 
 inline
