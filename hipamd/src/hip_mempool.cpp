@@ -102,7 +102,7 @@ hipError_t hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold) {
 // ================================================================================================
 hipError_t hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value) {
   HIP_INIT_API(hipMemPoolSetAttribute, mem_pool, attr, value);
-  if (mem_pool == nullptr) {
+  if (mem_pool == nullptr || value == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
@@ -112,7 +112,7 @@ hipError_t hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, vo
 // ================================================================================================
 hipError_t hipMemPoolGetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value) {
   HIP_INIT_API(hipMemPoolGetAttribute, mem_pool, attr, value);
-  if (mem_pool == nullptr) {
+  if (mem_pool == nullptr || value == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
