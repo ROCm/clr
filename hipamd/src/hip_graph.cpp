@@ -82,6 +82,11 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return hipErrorInvalidDeviceFunction;
   }
 
+  status = ihipValidateKernelParams(pNodeParams);
+  if (hipSuccess != status) {
+    return status;
+  }
+
   // If neither 'kernelParams' or 'extra' are provided or if both are provided, return error
   if ((pNodeParams->kernelParams == nullptr && pNodeParams->extra == nullptr) ||
       (pNodeParams->kernelParams != nullptr) && (pNodeParams->extra != nullptr)) {
