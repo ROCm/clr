@@ -66,7 +66,9 @@ amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size) {
   amd::Memory* memObj = getMemoryObject(ptr, offset);
 
   if (memObj != nullptr) {
-    assert(size <= (memObj->getSize() - offset));
+    if (size > (memObj->getSize() - offset)) {
+      return nullptr;
+    }
     memObj = new (memObj->getContext()) amd::Buffer(*memObj, memObj->getMemFlags(), offset, size);
     if (memObj == nullptr) {;
       return nullptr;

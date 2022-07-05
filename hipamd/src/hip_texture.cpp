@@ -293,7 +293,9 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             0, /* numMipLevels */
                             buffer,
                             status);
-    buffer->release();
+    if (buffer != nullptr) {
+      buffer->release();
+    }
     if (image == nullptr) {
       return status;
     }
