@@ -574,16 +574,15 @@ hipError_t hipStreamQuery_spt(hipStream_t stream) {
 }
 
 // ================================================================================================
-hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t callback, void* userData,
                                 unsigned int flags) {
-  HIP_INIT_API(hipStreamAddCallback, stream, callback, userData, flags);
   //flags - Reserved for future use, must be 0
   if (callback == nullptr || flags != 0) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
+    return hipErrorContextIsDestroyed;
   }
 
   amd::HostQueue* hostQueue = hip::getQueue(stream);
@@ -594,7 +593,7 @@ hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback
   }
   amd::Command* command = new amd::Marker(*hostQueue, !kMarkerDisableFlush, eventWaitList);
   if (command == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   StreamCallback* cbo = new StreamCallback(stream, callback, userData, command);
 
@@ -617,14 +616,29 @@ hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback
   eventWaitList.push_back(command);
   amd::Command* block_command = new amd::Marker(*hostQueue, !kMarkerDisableFlush, eventWaitList);
   if (block_command == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   block_command->enqueue();
   block_command->release();
   // Release the callback marker
   command->release();
 
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
+
+// ================================================================================================
+hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                                unsigned int flags) {
+  HIP_INIT_API(hipStreamAddCallback, stream, callback, userData, flags);
+  HIP_RETURN(hipStreamAddCallback_common(stream, callback, userData, flags));
+}
+
+// ================================================================================================
+hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback, void* userData,
+                                unsigned int flags) {
+  HIP_INIT_API(hipStreamAddCallback, stream, callback, userData, flags);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamAddCallback_common(stream, callback, userData, flags));
 }
 
 // ================================================================================================
