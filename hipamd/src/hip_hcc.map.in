@@ -475,6 +475,24 @@ global:
     hipDeviceSetLimit;
     hiprtcGetBitcode;
     hiprtcGetBitcodeSize;
+    hipGraphLaunch_spt;
+    hipStreamBeginCapture_spt;
+    hipStreamEndCapture_spt;
+    hipStreamIsCapturing_spt;
+    hipStreamGetCaptureInfo_spt;
+    hipStreamGetCaptureInfo_v2_spt;
+    hipStreamAddCallback_spt;
+    hipMemsetAsync_spt;
+    hipMemset2DAsync_spt;
+    hipMemset3DAsync_spt;
+    hipMemcpy3DAsync_spt;
+    hipMemcpy2DAsync_spt;
+    hipMemcpyFromSymbolAsync_spt;
+    hipMemcpyToSymbolAsync_spt;
+    hipMemcpyFromArray_spt;
+    hipMemcpy2DToArray_spt;
+    hipMemcpy2DFromArrayAsync_spt;
+    hipMemcpy2DToArrayAsync_spt;
 local:
     *;
 } hip_5.2;
