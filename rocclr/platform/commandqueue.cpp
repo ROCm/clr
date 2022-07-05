@@ -136,7 +136,8 @@ void HostQueue::finish() {
   if (IS_HIP) {
     ScopedLock sl(vdev()->execution());
     ScopedLock l(lastCmdLock_);
-    if (lastEnqueueCommand_ != nullptr) {
+    // Runtime can clear the last command only if no other submissions occured during finish()
+    if (command == lastEnqueueCommand_) {
       lastEnqueueCommand_->release();
       lastEnqueueCommand_ = nullptr;
     }
