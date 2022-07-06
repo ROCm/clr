@@ -90,8 +90,12 @@ if (defined $options{o}) {
   }
 }
 
+# Only push STDIN if there are no arguments -- otherwise this
+# consumes the caller's stdin by accident.
 # push STDIN to ARGV array.
-push @ARGV, <STDIN> unless -t STDIN;
+if ($#ARGV < 0) {
+  push @ARGV, <STDIN> unless -t STDIN;
+}
 
 # error check: enough arguments presented.
 if ($#ARGV < 0) {
