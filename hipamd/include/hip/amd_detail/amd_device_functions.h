@@ -101,7 +101,7 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
   int32_t total = 0;
   for (int i = 0x20; i > 0; i >>= 1) {
     uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    uint32_t pcnt = __builtin_popcountll(temp_mask_lo);
+    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -135,7 +135,7 @@ __device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) 
   int32_t total = 0;
   for (int i = 0x20; i > 0; i >>= 1) {
     uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    uint32_t pcnt = __builtin_popcountll(temp_mask_lo);
+    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -653,7 +653,7 @@ __device__ long long int __clock();
 __device__ long long int clock64();
 __device__ long long int clock();
 // hip.amdgcn.bc - named sync
-__device__ void __named_sync(int a, int b);
+__device__ void __named_sync();
 
 #ifdef __HIP_DEVICE_COMPILE__
 
@@ -700,7 +700,7 @@ long long int  clock() { return __clock(); }
 // hip.amdgcn.bc - named sync
 __device__
 inline
-void __named_sync(int a, int b) { __builtin_amdgcn_s_barrier(); }
+void __named_sync() { __builtin_amdgcn_s_barrier(); }
 
 #endif // __HIP_DEVICE_COMPILE__
 
@@ -871,11 +871,7 @@ void __assert_fail(const char *assertion,
 }
 
 extern "C" __device__ __attribute__((noinline)) __attribute__((weak))
-void __assertfail(const char *assertion,
-                  const char *file,
-                  unsigned int line,
-                  const char *function,
-                  size_t charsize)
+void __assertfail()
 {
     // ignore all the args for now.
     __builtin_trap();
