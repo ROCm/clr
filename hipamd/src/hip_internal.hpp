@@ -118,8 +118,11 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   HIP_CB_SPAWNER_OBJECT(cid);
 
 // This macro should be called at the beginning of every HIP API.
-#define HIP_INIT_API(cid, ...)                               \
-  HIP_INIT_API_INTERNAL(0, cid, __VA_ARGS__)
+#define HIP_INIT_API(cid, ...)                                                                     \
+  HIP_INIT_API_INTERNAL(0, cid, __VA_ARGS__)                                                       \
+  if (g_devices.size() == 0) {                                                                     \
+    HIP_RETURN(hipErrorNoDevice);                                                                  \
+  }
 
 #define HIP_INIT_API_NO_RETURN(cid, ...)                     \
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
@@ -173,7 +176,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
 // Sync APIs cannot be called when stream capture is active
 #define CHECK_STREAM_CAPTURING()                                                                   \
   if (!g_captureStreams.empty()) {                                                                 \
-    return hipErrorStreamCaptureImplicit;                                                     \
+    return hipErrorStreamCaptureImplicit;                                                          \
   }
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
@@ -182,7 +185,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = capture##name(stream, ##__VA_ARGS__);                                      \
-    return status;                                                                            \
+    return status;                                                                                 \
   }
 
 #define EVENT_CAPTURE(name, event, ...)                                                            \
