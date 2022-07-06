@@ -81,12 +81,6 @@ if(NOT DEFINED ROCM_PATH)
   string(REPLACE "/opencl" "" ROCM_PATH ${CPACK_PACKAGING_INSTALL_PREFIX})
 endif()
 message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
-#TODO: Once build script changes are in , the string replace statement can be removed
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-  if(CPACK_PACKAGING_INSTALL_PREFIX)
-    string(REPLACE "/opencl" "" CPACK_PACKAGING_INSTALL_PREFIX ${CPACK_PACKAGING_INSTALL_PREFIX})
-  endif()
-endif()
 
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
