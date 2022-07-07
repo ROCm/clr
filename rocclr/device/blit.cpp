@@ -732,9 +732,11 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
                                           "address");
 
   // 3. If given address is not aligned calculate head and tail size.
-  size_t head_size = (aligned_dst_addr - dst_addr);
+  size_t head_size = std::min(aligned_dst_addr - dst_addr, fill_size);
   size_t aligned_size = ((fill_size - head_size) / sizeof(size_t)) * sizeof(size_t);
   size_t tail_size = (fill_size - head_size) % sizeof(size_t);
+  guarantee((head_size + aligned_size + tail_size) <= fill_size, "Head size, aligned size & tail"
+                                                          "size together cannot cross fill size");
 
   // 4. Clear unwanted bytes from the pattern if the pattern size is < sizeof(size_t).
   uint64_t pattern = *(reinterpret_cast<uint64_t*>(const_cast<void*>(pattern_ptr)));
