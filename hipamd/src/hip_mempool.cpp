@@ -61,10 +61,10 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   if ((dev_ptr == nullptr) || (size == 0) || (!hip::isValid(stream))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  auto device = reinterpret_cast<hip::Stream*>(stream)->GetDevice();
-  auto mem_pool = device->GetCurrentMemoryPool();
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream() :
     reinterpret_cast<hip::Stream*>(stream);
+  auto device = hip_stream->GetDevice();
+  auto mem_pool = device->GetCurrentMemoryPool();
   *dev_ptr = reinterpret_cast<hip::MemoryPool*>(mem_pool)->AllocateMemory(size, hip_stream);
   HIP_RETURN(hipSuccess);
 }
