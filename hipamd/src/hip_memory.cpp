@@ -2493,7 +2493,7 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
     // dst ptr is host ptr hence error
     return hipErrorInvalidValue;
   }
-  if (memory->getSize() < sizeBytes) {
+  if (memory->getSize() < (offset + sizeBytes)) {
     return hipErrorInvalidValue;
   }
   return hipSuccess;
@@ -2641,7 +2641,7 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
   if (memory == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (sizeBytes > memory->getSize()) {
+  if ((sizeBytes + offset) > memory->getSize()) {
     return hipErrorInvalidValue;
   }
   if (pitchedDevPtr.pitch == memory->getUserData().pitch_) {
