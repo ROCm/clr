@@ -67,7 +67,8 @@ public:
   hipError_t getStatFunc(hipFunction_t *hfunc, int deviceId);
   hipError_t getStatFuncAttr(hipFuncAttributes* func_attr, int deviceId);
   void resize_dFunc(size_t size) { dFunc_.resize(size); }
-  FatBinaryInfo** moduleInfo() { return modules_; };
+  FatBinaryInfo** moduleInfo() { return modules_; }
+  const std::string& name() const { return name_; }
 
 private:
   std::vector<DeviceFunc*> dFunc_;  //DeviceFuncObj per Device

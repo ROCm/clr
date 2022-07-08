@@ -39,21 +39,11 @@ int hipGetStreamDeviceId(hipStream_t stream) {
   return (s != nullptr)? s->DeviceId() : ihipGetDevice();
 }
 
-const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t stream) {
+const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t) {
   if (hostFunction == NULL) {
     return NULL;
   }
-  int deviceId = hipGetStreamDeviceId(stream);
-  if (deviceId == -1) {
-    LogPrintfError("Wrong Device Id: %d \n", deviceId);
-    return NULL;
-  }
-  hipFunction_t func = nullptr;
-  hipError_t hip_error = PlatformState::instance().getStatFunc(&func, hostFunction, deviceId);
-  if (hip_error != hipSuccess) {
-    return NULL;
-  }
-  return hipKernelNameRef(func);
+  return PlatformState::instance().getStatFuncName(hostFunction);
 }
 
 hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg) {
