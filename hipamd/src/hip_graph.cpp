@@ -69,7 +69,7 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                   const hipKernelNodeParams* pNodeParams) {
   if (pGraphNode == nullptr || graph == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr ||
-      pNodeParams->func == nullptr) {
+      pNodeParams->func == nullptr || pNodeParams->kernelParams == nullptr) {
     return hipErrorInvalidValue;
   }
   if (!ihipGraph::isGraphValid(graph)) {
