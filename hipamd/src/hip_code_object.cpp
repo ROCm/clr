@@ -723,9 +723,13 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
   auto it = managedVars_.begin();
   while (it != managedVars_.end()) {
     if ((*it)->moduleInfo() == module) {
-      hipError_t err = ihipFree((*it)->getManagedVarPtr());
-      assert(err == hipSuccess);
-      delete *it;
+      for (auto dev : g_devices) {
+        DeviceVar* dvar = nullptr;
+        IHIP_RETURN_ONFAIL((*it)->getStatDeviceVar(&dvar, dev->deviceId()));
+        // free also deletes the device ptr
+        hipError_t err = ihipFree(dvar->device_ptr());
+        assert(err == hipSuccess);
+      }
       it = managedVars_.erase(it);
     } else {
       ++it;
