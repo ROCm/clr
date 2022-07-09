@@ -297,6 +297,9 @@ struct Info : public amd::EmbeddedObject {
   //! Maximum configured memory clock frequency of the device in MHz.
   uint32_t maxMemoryClockFrequency_;
 
+  //! The constant frequency of wall clock in KHz
+  uint32_t wallClockFrequency_;
+
   //! Memory bus width in bits.
   uint32_t vramBusBitWidth_;
 
