@@ -195,6 +195,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributeClockRate:
     *pi = prop.clockRate;
     break;
+  case hipDeviceAttributeWallClockRate:
+    *pi = g_devices[device]->devices()[0]->info().wallClockFrequency_;
+    break;
   case hipDeviceAttributeMemoryClockRate:
     *pi = prop.memoryClockRate;
     break;

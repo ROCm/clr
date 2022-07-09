@@ -689,6 +689,7 @@ __device__ long long int __clock64();
 __device__ long long int __clock();
 __device__ long long int clock64();
 __device__ long long int clock();
+__device__ long long int wall_clock64();
 // hip.amdgcn.bc - named sync
 __device__ void __named_sync();
 
@@ -713,8 +714,8 @@ __device__
 inline __attribute((always_inline))
 long long int  __clock() { return __clock64(); }
 
-// Clock function to return wall clock count at a constant frequency. The interface to query
-// the frequency will be implemented.
+// Clock function to return wall clock count at a constant frequency that can be queried
+// through hipDeviceAttributeWallClockRate attribute.
 __device__
 inline  __attribute__((always_inline))
 long long int wall_clock64() {
