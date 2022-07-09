@@ -1164,6 +1164,14 @@ bool Device::populateOCLDeviceConstants() {
       return false;
   }
 
+  uint64_t wallClockFrequency = 0; // in Hz
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_TIMESTAMP_FREQUENCY ,
+          &wallClockFrequency)) {
+    LogWarning("HSA_AMD_AGENT_INFO_TIMESTAMP_FREQUENCY cannot be queried. Ignored!");
+  }
+  info_.wallClockFrequency_ = static_cast<uint32_t>(wallClockFrequency / 1000); // in KHz
+
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(bkendDevice_,
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
