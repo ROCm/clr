@@ -427,20 +427,30 @@ unsigned long long atomicMin_system(unsigned long long* address, unsigned long l
 
 __device__
 inline
-float atomicMin(float* address, float val) {
-  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
-  #else
-    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  float value = __uint_as_float(tmp);
-
-  while (val < value) {
-    value = atomicCAS(address, value, val);
+float atomicMin(float* addr, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMin(address, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-
   return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
+#endif
 }
 
 __device__
@@ -463,20 +473,30 @@ float atomicMin_system(float* address, float val) {
 
 __device__
 inline
-double atomicMin(double* address, double val) {
-  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
-  #else
-    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  double value = __longlong_as_double(tmp);
-
-  while (val < value) {
-    value = atomicCAS(address, value, val);
+double atomicMin(double* addr, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMin(address, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-
   return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
+#endif
 }
 
 __device__
@@ -547,20 +567,30 @@ unsigned long long atomicMax_system(unsigned long long* address, unsigned long l
 
 __device__
 inline
-float atomicMax(float* address, float val) {
-  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
-  #else
-    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  float value = __uint_as_float(tmp);
-
-  while (value < val) {
-    value = atomicCAS(address, value, val);
+float atomicMax(float* addr, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMax(addr, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-
   return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
+#endif
 }
 
 __device__
@@ -583,20 +613,30 @@ float atomicMax_system(float* address, float val) {
 
 __device__
 inline
-double atomicMax(double* address, double val) {
-  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT)};
-  #else
-    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  double value = __longlong_as_double(tmp);
-
-  while (value < val) {
-    value = atomicCAS(address, value, val);
+double atomicMax(double* addr, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMax(addr, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-
   return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
+#endif
 }
 
 __device__

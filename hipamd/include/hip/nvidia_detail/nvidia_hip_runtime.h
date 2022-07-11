@@ -76,6 +76,7 @@ typedef int hipLaunchParm;
 
 #ifdef __CUDACC__
 
+#include "nvidia_hip_atomics.h"
 #include "nvidia_hip_unsafe_atomics.h"
 
 #define hipThreadIdx_x threadIdx.x

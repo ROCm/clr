@@ -44,6 +44,22 @@ __device__ inline double unsafeAtomicAdd(double* addr, double value) {
 #endif
 }
 
+__device__ inline float unsafeAtomicMax(float* addr, float value) {
+    return atomicMax(addr, value);
+}
+
+__device__ inline double unsafeAtomicMax(double* addr, double val) {
+    return atomicMax(addr, val);
+}
+
+__device__ inline float unsafeAtomicMin(float* addr, float value) {
+    return atomicMin(addr, value);
+}
+
+__device__ inline double unsafeAtomicMin(double* addr, double val) {
+    return atomicMin(addr, val);
+}
+
 __device__ inline float safeAtomicAdd(float* addr, float value) {
     return atomicAdd(addr, value);
 }
@@ -63,6 +79,22 @@ __device__ inline double safeAtomicAdd(double* addr, double value) {
 #else
     return atomicAdd(addr, value);
 #endif
+}
+
+__device__ inline float safeAtomicMax(float* addr, float value) {
+    return atomicMax(addr, value);
+}
+
+__device__ inline double safeAtomicMax(double* addr, double val) {
+    return atomicMax(addr, val);
+}
+
+__device__ inline float safeAtomicMin(float* addr, float value) {
+    return atomicMin(addr, value);
+}
+
+__device__ inline double safeAtomicMin(double* addr, double val) {
+    return atomicMin(addr, val);
 }
 
 #endif
