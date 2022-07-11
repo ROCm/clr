@@ -313,6 +313,14 @@ bool CheckArrayFormat(const hipChannelFormatDesc& desc) {
       return false;
     }
   }
+  // The bit channel description should not allow any channels after a zero channel
+  if (desc.y == 0) {
+    return !(desc.z > 0 || desc.w > 0);
+  }
+  else if (desc.z == 0) {
+    return !(desc.w > 0);
+  }
+
   return true;
 }
 
