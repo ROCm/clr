@@ -486,21 +486,11 @@ class KernelBlitManager : public DmaBlitManager {
 
   inline void setArgument(amd::Kernel* kernel, size_t index,
                           size_t size, const void* value, size_t offset = 0,
-                          const device::Memory* dev_mem = nullptr) const;
+                          const device::Memory* dev_mem = nullptr,
+                          bool writeVAImmediate = false) const;
 
-  uint32_t ConstantBufferOffset() const {
-    // Make sure it can fit at least 128 bytes for OCL memory fill of double16
-    constexpr uint32_t kManagedSize = 0x80;
-    // Adjust the ofset to the new location
-    constantBufferOffset_ += kManagedSize;
-    // Check if the allocation exceeds the limit
-    if ((constantBufferOffset_ + kManagedSize) > constantBuffer_->getSize()) {
-      // Stall GPU and reset the ofset
-      gpu().releaseGpuMemoryFence();
-      constantBufferOffset_ = 0;
-    }
-    return constantBufferOffset_;
-  }
+  static constexpr uint32_t kCBSize = 0x80;
+  static constexpr size_t   kCBAlignment = 0x80;
 
   inline uint32_t NumBlitKernels() {
     return (dev().info().imageSupport_) ? BlitTotal : BlitLinearTotal;
@@ -514,8 +504,6 @@ class KernelBlitManager : public DmaBlitManager {
 
   amd::Program* program_;             //!< GPU program object
   amd::Kernel* kernels_[BlitTotal];   //!< GPU kernels for blit
-  amd::Memory* constantBuffer_;       //!< An internal CB for blits
-  mutable uint32_t constantBufferOffset_; //!< Current offset in the constant buffer
   size_t xferBufferSize_;             //!< Transfer buffer size
   mutable amd::Monitor  lockXferOps_; //!< Lock transfer operation
 };
@@ -531,7 +519,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
                                            size_t size, const void* value, size_t offset,
-                                           const device::Memory* dev_mem) const {
+                                           const device::Memory* dev_mem, bool writeVAImmediate) const {
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
   void* param = kernel->parameters().values() + desc.offset_;
@@ -548,16 +536,23 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
       reinterpret_cast<Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
     } else {
-      amd::Memory* mem = as_amd(*static_cast<const cl_mem*>(value));
       // convert cl_mem to amd::Memory*, return false if invalid.
-      reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
-        kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = mem;
-      if (dev_mem == nullptr) {
-        LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
-          mem->getDeviceMemory(dev())->virtualAddress()) + offset;
+      amd::Memory* mem = as_amd(*static_cast<const cl_mem*>(value));
+      if (!writeVAImmediate) {
+        reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
+          kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = mem;
+        if (dev_mem == nullptr) {
+          LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
+            mem->getDeviceMemory(dev())->virtualAddress()) + offset;
+        } else {
+          LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
+            dev_mem->virtualAddress()) + offset;
+        }
       } else {
-        LP64_SWITCH(uint32_value, uint64_value) = static_cast<uintptr_t>(
-          dev_mem->virtualAddress()) + offset;
+        reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
+          kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
+        uintptr_t addr = reinterpret_cast<uintptr_t>(value);
+        LP64_SWITCH(uint32_value, uint64_value) = addr + offset;
       }
     }
   } else if (desc.type_ == T_SAMPLER) {

@@ -403,6 +403,8 @@ class VirtualGPU : public device::VirtualDevice {
   //! Indicates the status of the callback handler. The callback would process the commands
   //! and would collect profiling data, update refcounts
   bool isHandlerPending() const { return barriers_.IsHandlerPending(); }
+
+  void* allocKernArg(size_t size, size_t alignment);
   // } roc OpenCL integration
  private:
   //! Dispatches a barrier with blocking HSA signals
@@ -427,7 +429,6 @@ class VirtualGPU : public device::VirtualDevice {
   bool initPool(size_t kernarg_pool_size);
   void destroyPool();
 
-  void* allocKernArg(size_t size, size_t alignment);
   void resetKernArgPool() {
     kernarg_pool_cur_offset_ = 0;
     kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
