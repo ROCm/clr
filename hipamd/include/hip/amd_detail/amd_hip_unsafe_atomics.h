@@ -50,7 +50,10 @@ THE SOFTWARE.
  * @return Original value contained in \p addr.
  */
 __device__ inline float unsafeAtomicAdd(float* addr, float value) {
-#if defined(__gfx90a__) &&                                                     \
+#if defined(__gfx940__) &&                                                     \
+    __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f32)
+  return __builtin_amdgcn_flat_atomic_fadd_f32(addr, value);
+#elif defined(__gfx90a__) &&                                                   \
     __has_builtin(__builtin_amdgcn_is_shared) &&                               \
     __has_builtin(__builtin_amdgcn_is_private) &&                              \
     __has_builtin(__builtin_amdgcn_ds_atomic_fadd_f32) &&                      \
@@ -71,6 +74,78 @@ __device__ inline float unsafeAtomicAdd(float* addr, float value) {
 #else
   return __atomic_fetch_add(addr, value, __ATOMIC_RELAXED);
 #endif
+}
+
+/**
+ * @brief Unsafe floating point rmw atomic max.
+ *
+ * Performs a relaxed read-modify-write floating point atomic max with
+ * device memory scope. The original value at \p addr is returned and
+ * the value at \p addr is replaced by \p val if greater.
+ *
+ * @note This operation is currently identical to that performed by
+ * atomicMax and is included for completeness.
+ *
+ * @param [in,out] addr Pointer to value to be updated
+ * @param [in] val Value used to update the value at \p addr.
+ * @return Original value contained in \p addr.
+ */
+__device__ inline float unsafeAtomicMax(float* addr, float val) {
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
+}
+
+/**
+ * @brief Unsafe floating point rmw atomic min.
+ *
+ * Performs a relaxed read-modify-write floating point atomic min with
+ * device memory scope. The original value at \p addr is returned and
+ * the value at \p addr is replaced by \p val if lesser.
+ *
+ * @note This operation is currently identical to that performed by
+ * atomicMin and is included for completeness.
+ *
+ * @param [in,out] addr Pointer to value to be updated
+ * @param [in] val Value used to update the value at \p addr.
+ * @return Original value contained in \p addr.
+ */
+__device__ inline float unsafeAtomicMin(float* addr, float val) {
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
 }
 
 /**
@@ -95,18 +170,124 @@ __device__ inline float unsafeAtomicAdd(float* addr, float value) {
  * Passing in global segment addresses in fine grain allocations will result in
  * undefined behavior and are not supported.
  *
- * @param [in,out] addr Pointer to value to be increment by \p value.
+ * @param [in,out] addr Pointer to value to be updated.
  * @param [in] value Value by \p addr is to be incremented.
  * @return Original value contained in \p addr.
  */
 __device__ inline double unsafeAtomicAdd(double* addr, double value) {
-#if defined(__gfx90a__) &&                                                     \
+#if (defined(__gfx90a__) || defined(__gfx940_)) &&                              \
     __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f64)
   return __builtin_amdgcn_flat_atomic_fadd_f64(addr, value);
 #elif defined (__hip_atomic_fetch_add)
   return __hip_atomic_fetch_add(addr, value, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 #else
   return __atomic_fetch_add(addr, value, __ATOMIC_RELAXED);
+#endif
+}
+
+/**
+ * @brief Unsafe double precision rmw atomic max.
+ *
+ * Performs a relaxed read-modify-write double precision atomic max with
+ * device memory scope. Original value at \p addr is returned and
+ * the value of \p addr is updated with \p val if greater.
+ *
+ * @note This operation currently only performs different operations for
+ * the gfx90a target. Other devices continue to use safe atomics.
+ *
+ * It can be used to generate code that uses fast hardware floating point atomic
+ * operations which may handle rounding and subnormal values differently than
+ * non-atomic floating point operations.
+ *
+ * The operation is not always safe and can have undefined behavior unless
+ * following condition are met:
+ *
+ * - \p addr is at least 8 byte aligned
+ * - If \p addr is a global segment address, it is in a coarse grain allocation.
+ * Passing in global segment addresses in fine grain allocations will result in
+ * undefined behavior and are not supported.
+ *
+ * @param [in,out] addr Pointer to value to be updated.
+ * @param [in] val Value used to updated the contents at \p addr
+ * @return Original value contained at \p addr.
+ */
+__device__ inline double unsafeAtomicMax(double* addr, double val) {
+#if (defined(__gfx90a__) || defined(__gfx940__)) && \
+    __has_builtin(__builtin_amdgcn_flat_atomic_fmax_f64)
+  return __builtin_amdgcn_flat_atomic_fmax_f64(addr, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
+#endif
+}
+
+/**
+ * @brief Unsafe double precision rmw atomic min.
+ *
+ * Performs a relaxed read-modify-write double precision atomic min with
+ * device memory scope. Original value at \p addr is returned and
+ * the value of \p addr is updated with \p val if lesser.
+ *
+ * @note This operation currently only performs different operations for
+ * the gfx90a target. Other devices continue to use safe atomics.
+ *
+ * It can be used to generate code that uses fast hardware floating point atomic
+ * operations which may handle rounding and subnormal values differently than
+ * non-atomic floating point operations.
+ *
+ * The operation is not always safe and can have undefined behavior unless
+ * following condition are met:
+ *
+ * - \p addr is at least 8 byte aligned
+ * - If \p addr is a global segment address, it is in a coarse grain allocation.
+ * Passing in global segment addresses in fine grain allocations will result in
+ * undefined behavior and are not supported.
+ *
+ * @param [in,out] addr Pointer to value to be updated.
+ * @param [in] val Value used to updated the contents at \p addr
+ * @return Original value contained at \p addr.
+ */
+__device__ inline double unsafeAtomicMin(double* addr, double val) {
+#if (defined(__gfx90a__) || defined(__gfx940__)) && \
+    __has_builtin(__builtin_amdgcn_flat_atomic_fmin_f64)
+  return __builtin_amdgcn_flat_atomic_fmin_f64(addr, val);
+#else
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
 #endif
 }
 
@@ -164,6 +345,78 @@ __device__ inline float safeAtomicAdd(float* addr, float value) {
 }
 
 /**
+ * @brief Safe floating point rmw atomic max.
+ *
+ * Performs a relaxed read-modify-write floating point atomic max with
+ * device memory scope. The original value at \p addr is returned and
+ * the value at \p addr is replaced by \p val if greater.
+ *
+ * @note This operation ensures that, on all targets, we produce safe atomics.
+ * This will be the case even when -munsafe-fp-atomics is passed into the compiler.
+ *
+ * @param [in,out] addr Pointer to value to be updated
+ * @param [in] val Value used to update the value at \p addr.
+ * @return Original value contained in \p addr.
+ */
+__device__ inline float safeAtomicMax(float* addr, float val) {
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
+}
+
+/**
+ * @brief Safe floating point rmw atomic min.
+ *
+ * Performs a relaxed read-modify-write floating point atomic min with
+ * device memory scope. The original value at \p addr is returned and
+ * the value at \p addr is replaced by \p val if lesser.
+ *
+ * @note This operation ensures that, on all targets, we produce safe atomics.
+ * This will be the case even when -munsafe-fp-atomics is passed into the compiler.
+ *
+ * @param [in,out] addr Pointer to value to be updated
+ * @param [in] val Value used to update the value at \p addr.
+ * @return Original value contained in \p addr.
+ */
+__device__ inline float safeAtomicMin(float* addr, float val) {
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned int *uaddr = (unsigned int *)addr;
+  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __uint_as_float(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __uint_as_float(value);
+  #endif
+}
+
+/**
  * @brief Safe double precision rmw atomic add.
  *
  * Performs a relaxed read-modify-write double precision atomic add with
@@ -178,7 +431,7 @@ __device__ inline float safeAtomicAdd(float* addr, float value) {
  * @return Original value contained in \p addr.
  */
 __device__ inline double safeAtomicAdd(double* addr, double value) {
-#if defined(__gfx90a__) &&                                                    \
+#if (defined(__gfx90a__) || defined(__gfx940__)) &&                                                    \
     __has_builtin(__hip_atomic_fetch_add)
   // On gfx90a, with the __hip_atomic_fetch_add builtin, relaxed system-scope
   // atomics will produce safe CAS loops, but are otherwise not different than
@@ -215,4 +468,99 @@ __device__ inline double safeAtomicAdd(double* addr, double value) {
 #endif // __has_builtin(__hip_atomic_fetch_add)
 #endif
 }
+
+/**
+ * @brief Safe double precision rmw atomic max.
+ *
+ * Performs a relaxed read-modify-write double precision atomic max with
+ * device memory scope. Original value at \p addr is returned and
+ * the value of \p addr is updated with \p val if greater.
+ *
+ * @note This operation ensures that, on all targets, we produce safe atomics.
+ * This will be the case even when -munsafe-fp-atomics is passed into the compiler.
+ *
+ * @param [in,out] addr Pointer to value to be updated.
+ * @param [in] val Value used to updated the contents at \p addr
+ * @return Original value contained at \p addr.
+ */
+__device__ inline double safeAtomicMax(double* addr, double val) {
+  #if __has_builtin(__builtin_amdgcn_is_private)
+  if (__builtin_amdgcn_is_private(
+          (const __attribute__((address_space(0))) void*)addr)) {
+    double old = *addr;
+    *addr = __builtin_fmax(old, val);
+    return old;
+  } else {
+  #endif
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value < val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) < val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
+  #if __has_builtin(__builtin_amdgcn_is_private)
+  }
+  #endif
+}
+
+/**
+ * @brief Safe double precision rmw atomic min.
+ *
+ * Performs a relaxed read-modify-write double precision atomic min with
+ * device memory scope. Original value at \p addr is returned and
+ * the value of \p addr is updated with \p val if lesser.
+ *
+ * @note This operation ensures that, on all targets, we produce safe atomics.
+ * This will be the case even when -munsafe-fp-atomics is passed into the compiler.
+ *
+ * @param [in,out] addr Pointer to value to be updated.
+ * @param [in] val Value used to updated the contents at \p addr
+ * @return Original value contained at \p addr.
+ */
+__device__ inline double safeAtomicMin(double* addr, double val) {
+  #if __has_builtin(__builtin_amdgcn_is_private)
+  if (__builtin_amdgcn_is_private(
+           (const __attribute__((address_space(0))) void*)addr)) {
+    double old = *addr;
+    *addr = __builtin_fmin(old, val);
+    return old;
+  } else {
+  #endif
+  #if __has_builtin(__hip_atomic_load) && \
+      __has_builtin(__hip_atomic_compare_exchange_strong)
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  bool done = false;
+  while (!done && value > val) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
+  return value;
+  #else
+  unsigned long long *uaddr = (unsigned long long *)addr;
+  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
+  bool done = false;
+  while (!done && __longlong_as_double(value) > val) {
+    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+  }
+  return __longlong_as_double(value);
+  #endif
+  #if __has_builtin(__builtin_amdgcn_is_private)
+  }
+  #endif
+}
+
 #endif
