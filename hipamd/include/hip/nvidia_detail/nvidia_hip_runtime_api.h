@@ -349,6 +349,7 @@ typedef enum cudaResourceViewFormat hipResourceViewFormat;
 #define HIP_LAUNCH_PARAM_END CU_LAUNCH_PARAM_END
 #define hipLimitPrintfFifoSize cudaLimitPrintfFifoSize
 #define hipLimitMallocHeapSize cudaLimitMallocHeapSize
+#define hipLimitStackSize      cudaLimitStackSize
 #define hipIpcMemLazyEnablePeerAccess cudaIpcMemLazyEnablePeerAccess
 
 #define hipOccupancyDefault cudaOccupancyDefault
