@@ -702,8 +702,7 @@ hipError_t hipMemGetInfo(size_t* free, size_t* total) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height, size_t depth,
-                           cl_mem_object_type imageType, const cl_image_format* image_format) {
+hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height, size_t depth) {
 
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
@@ -721,14 +720,12 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
     return hipErrorInvalidValue;
   }
 
-  const amd::Image::Format imageFormat(*image_format);
-
   //avoid size_t overflow for pitch calculation
-  if (width * imageFormat.getElementSize() > (std::numeric_limits<size_t>::max() - device->info().imagePitchAlignment_)) {
+  if (width  > (std::numeric_limits<size_t>::max() - device->info().imagePitchAlignment_)) {
     return hipErrorInvalidValue;
   }
 
-  *pitch = amd::alignUp(width * imageFormat.getElementSize(), device->info().imagePitchAlignment_);
+  *pitch = amd::alignUp(width, device->info().imagePitchAlignment_);
 
   size_t sizeBytes = *pitch * height * depth;
 
@@ -761,8 +758,7 @@ hipError_t hipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t height
   if (width == 0 || height == 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  const cl_image_format image_format = { CL_R, CL_UNSIGNED_INT8 };
-  HIP_RETURN(ihipMallocPitch(ptr, pitch, width, height, 1, CL_MEM_OBJECT_IMAGE2D, &image_format), (ptr != nullptr)? *ptr : nullptr);
+  HIP_RETURN(ihipMallocPitch(ptr, pitch, width, height, 1), (ptr != nullptr)? *ptr : nullptr);
 }
 
 hipError_t hipMalloc3D(hipPitchedPtr* pitchedDevPtr, hipExtent extent) {
@@ -774,9 +770,8 @@ hipError_t hipMalloc3D(hipPitchedPtr* pitchedDevPtr, hipExtent extent) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  const cl_image_format image_format = { CL_R, CL_UNSIGNED_INT8 };
   hipError_t status = ihipMallocPitch(&pitchedDevPtr->ptr, &pitch, extent.width, extent.height,
-                                      extent.depth, CL_MEM_OBJECT_IMAGE3D, &image_format);
+                                      extent.depth);
 
   if (status == hipSuccess) {
         pitchedDevPtr->pitch = pitch;
