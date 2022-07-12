@@ -134,7 +134,7 @@ release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
         "Force GPU opencl verison")                                           \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
         "Enable HSA device local memory usage")                               \
-release(uint, HSA_KERNARG_POOL_SIZE, 512 * 1024,                              \
+release(uint, HSA_KERNARG_POOL_SIZE, 1024 * 1024,                             \
         "Kernarg pool size")                                                  \
 release(bool, HSA_ENABLE_COARSE_GRAIN_SVM, true,                              \
         "Enable device memory for coarse grain SVM allocations")              \
