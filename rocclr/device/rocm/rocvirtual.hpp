@@ -511,7 +511,7 @@ class VirtualGPU : public device::VirtualDevice {
   HwQueueTracker  barriers_;      //!< Tracks active barriers in ROCr
 
   //!< The number of chunks the kernel arg pool will be divided
-  static constexpr uint32_t KernelArgPoolNumSignal = 8;
+  static constexpr uint32_t KernelArgPoolNumSignal = 4;
   address   kernarg_pool_base_;
   uint32_t  kernarg_pool_size_;
   uint32_t  kernarg_pool_chunk_end_;    //!< The end offset of the current chunck
