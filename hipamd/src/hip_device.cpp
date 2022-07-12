@@ -302,8 +302,6 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.pciDeviceID = info.deviceTopology_.pcie.device;
   deviceProps.maxSharedMemoryPerMultiProcessor = info.localMemSizePerCU_;
   deviceProps.canMapHostMemory = 1;
-  // FIXME: This should be removed, targets can have character names as well.
-  deviceProps.gcnArch = isa.versionMajor() * 100 + isa.versionMinor() * 10 + isa.versionStepping();
   sprintf(deviceProps.gcnArchName, "%s", isa.targetId());
   deviceProps.cooperativeLaunch = info.cooperativeGroups_;
   deviceProps.cooperativeMultiDeviceLaunch = info.cooperativeMultiDeviceGroups_;
