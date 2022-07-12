@@ -1009,6 +1009,9 @@ hipError_t ihipArrayCreate(hipArray** array,
 hipError_t hipArrayCreate(hipArray** array,
                           const HIP_ARRAY_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArrayCreate, array, pAllocateArray);
+  if (pAllocateArray == nullptr) {
+    return hipErrorInvalidValue;
+  }
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_ARRAY3D_DESCRIPTOR desc = {pAllocateArray->Width,
                                  pAllocateArray->Height,
