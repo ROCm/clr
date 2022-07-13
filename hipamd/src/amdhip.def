@@ -405,6 +405,7 @@ hipStreamWriteValue32
 hipStreamWriteValue64
 hipStreamWaitValue32
 hipStreamWaitValue64
+hipDeviceSetLimit
 hipGetStreamDeviceId
 hipGraphLaunch_spt
 hipStreamBeginCapture_spt
