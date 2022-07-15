@@ -62,6 +62,33 @@ extern "C" __device__ __attribute__((const)) float __ocml_trunc_f32(float);
 extern "C" __device__ __attribute__((const)) float __ocml_fmin_f32(float, float);
 extern "C" __device__ __attribute__((const)) float __ocml_fmax_f32(float, float);
 
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_f64(double);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_f64(double);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_f64(double);
+
+extern "C" __device__ __attribute__((const)) _Float16 __ocml_cvtrtn_f16_f32(float);
+extern "C" __device__ __attribute__((const)) _Float16 __ocml_cvtrtp_f16_f32(float);
+extern "C" __device__ __attribute__((const)) _Float16 __ocml_cvtrtz_f16_f32(float);
+
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_s32(int);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_s32(int);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_s32(int);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_u64(uint64_t);
+
 extern "C" __device__ __attribute__((convergent)) void __ockl_gws_init(uint nwm1, uint rid);
 extern "C" __device__ __attribute__((convergent)) void __ockl_gws_barrier(uint nwm1, uint rid);
 
