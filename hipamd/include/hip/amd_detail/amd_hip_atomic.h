@@ -429,7 +429,7 @@ __device__
 inline
 float atomicMin(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
-  return unsafeAtomicMin(address, val);
+  return unsafeAtomicMin(addr, val);
 #else
   #if __has_builtin(__hip_atomic_load) && \
       __has_builtin(__hip_atomic_compare_exchange_strong)
@@ -475,7 +475,7 @@ __device__
 inline
 double atomicMin(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
-  return unsafeAtomicMin(address, val);
+  return unsafeAtomicMin(addr, val);
 #else
   #if __has_builtin(__hip_atomic_load) && \
       __has_builtin(__hip_atomic_compare_exchange_strong)
