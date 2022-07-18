@@ -737,8 +737,7 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  uint32_t maxMemPerThread = info().localMemSizePerCU_ / info().maxThreadsPerCU_;
-  if (maxMemPerThread < stackSize) {
+  if (stackSize > 16 * Ki) {
     return false;
   }
   stack_size_ = stackSize;
