@@ -1135,6 +1135,13 @@ typedef enum cudaStreamCaptureStatus hipStreamCaptureStatus;
 
 typedef union cudaKernelNodeAttrValue hipKernelNodeAttrValue;
 typedef enum  cudaKernelNodeAttrID hipKernelNodeAttrID;
+#define hipKernelNodeAttributeAccessPolicyWindow cudaKernelNodeAttributeAccessPolicyWindow
+#define hipKernelNodeAttributeCooperative cudaKernelNodeAttributeCooperative
+typedef enum cudaAccessProperty hipAccessProperty;
+#define hipAccessPropertyNormal cudaAccessPropertyNormal
+#define hipAccessPropertyStreaming cudaAccessPropertyStreaming
+#define hipAccessPropertyPersisting cudaAccessPropertyPersisting
+typedef struct cudaAccessPolicyWindow hipAccessPolicyWindow;
 
 typedef enum  cudaGraphMemAttributeType hipGraphMemAttributeType;
 
