@@ -80,7 +80,7 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
   }
 
   if (hip_error == hipErrorNoBinaryForGpu) {
-    guarantee(false, "hipErrorNoBinaryForGpu: Couldn't find binary for current devices!");
+    LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for current devices! - %d",hip_error);
     return hip_error;
   }
 

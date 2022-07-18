@@ -482,7 +482,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
       }
     }
 
-    guarantee(false, "hipErrorNoBinaryForGpu: Unable to find code object for all current devices!");
+    LogPrintfError("hipErrorNoBinaryForGpu: Unable to find code object for all current devices! - %d",hipErrorNoBinaryForGpu);
     return hipErrorNoBinaryForGpu;
   }
 }
