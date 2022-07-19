@@ -439,3 +439,5 @@ hipMemcpyToSymbolAsync_spt
 hipMemcpyFromArray_spt
 hipMemcpy2DToArray_spt
 hipMemcpy2DFromArrayAsync_spt
+hipDrvGetErrorName
+hipDrvGetErrorString

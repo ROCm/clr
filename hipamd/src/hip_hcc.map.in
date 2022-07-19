@@ -493,6 +493,8 @@ global:
     hipMemcpy2DToArray_spt;
     hipMemcpy2DFromArrayAsync_spt;
     hipMemcpy2DToArrayAsync_spt;
+    hipDrvGetErrorName;
+    hipDrvGetErrorString;
 local:
     *;
 } hip_5.2;
