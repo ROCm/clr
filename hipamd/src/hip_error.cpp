@@ -351,3 +351,20 @@ const char *hipGetErrorString(hipError_t hip_error)
   return ihipGetErrorString(hip_error);
 }
 
+hipError_t hipDrvGetErrorName(hipError_t hip_error, const char** errStr)
+{
+  if (errStr == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  *errStr = ihipGetErrorName(hip_error);
+  return hipSuccess;
+}
+
+hipError_t hipDrvGetErrorString(hipError_t hip_error, const char** errStr)
+{
+  if (errStr == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  *errStr = ihipGetErrorString(hip_error);
+  return hipSuccess;
+}

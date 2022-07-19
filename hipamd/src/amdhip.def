@@ -425,3 +425,5 @@ hipMemcpyFromArray_spt
 hipMemcpy2DToArray_spt
 hipMemcpy2DFromArrayAsync_spt
 hipMemcpy2DToArrayAsync_spt
+hipDrvGetErrorName
+hipDrvGetErrorString
