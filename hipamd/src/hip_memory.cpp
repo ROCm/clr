@@ -1263,7 +1263,7 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
                                   size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice) {
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1295,7 +1295,7 @@ hipError_t hipMemcpyFromSymbolAsync_common(void* dst, const void* symbol, size_t
                                     size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyDeviceToHost) {
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice) {
     return hipErrorInvalidMemcpyDirection;
   }
 
