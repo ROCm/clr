@@ -2826,6 +2826,10 @@ inline static hipError_t hipGraphMemsetNodeSetParams(hipGraphNode_t node,
     return hipCUDAErrorTohipError(cudaGraphMemsetNodeSetParams(node, pNodeParams));
 }
 
+inline static hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
+    return hipCUDAErrorTohipError(cudaThreadExchangeStreamCaptureMode(mode));
+}
+
 inline static hipError_t hipGraphExecKernelNodeSetParams(hipGraphExec_t hGraphExec,
                                                          hipGraphNode_t node,
                                                          const hipKernelNodeParams* pNodeParams) {
