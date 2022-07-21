@@ -380,11 +380,6 @@ RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
 bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                                       void** options_vals_ptr) {
 
-  if (options_ptr == nullptr || options_vals_ptr == nullptr) {
-    crashWithMessage("JIT Options ptr cannot be null");
-    return false;
-  }
-
   for (size_t opt_idx = 0; opt_idx < num_options; ++opt_idx) {
 
     if (options_vals_ptr[opt_idx] == nullptr) {
