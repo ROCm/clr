@@ -112,11 +112,10 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   std::vector<std::string> opt;
   opt.reserve(numOptions);
   for (int i = 0; i < numOptions; i++) {
-    if(std::string(options[i]) == std::string("-fgpu-rdc")) {
+    if (std::string(options[i]) == std::string("-fgpu-rdc")) {
       fgpu_rdc = true;
-    } else {
-      opt.push_back(std::string(options[i]));
     }
+    opt.push_back(std::string(options[i]));
   }
 
   if (!rtcProgram->compile(opt, fgpu_rdc)) {
@@ -317,9 +316,14 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
+  std::string input_name;
+  if (name) {
+    input_name = name;
+  }
+
   hiprtc::RTCLinkProgram* rtc_link_prog_ptr
     = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
-  if (!rtc_link_prog_ptr->AddLinkerData(image, image_size, name, input_type)) {
+  if (!rtc_link_prog_ptr->AddLinkerData(image, image_size, input_name, input_type)) {
     HIPRTC_RETURN(HIPRTC_ERROR_PROGRAM_CREATION_FAILURE);
   }
 
