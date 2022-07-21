@@ -690,9 +690,6 @@ class hipGraphKernelNode : public hipGraphNode {
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
     // updates kernel attr params
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
-      if (params->accessPolicyWindow.base_ptr == NULL) {
-        return hipErrorInvalidResourceHandle;
-      }
       kernelAttr_.accessPolicyWindow.base_ptr = params->accessPolicyWindow.base_ptr;
       kernelAttr_.accessPolicyWindow.hitProp = params->accessPolicyWindow.hitProp;
       kernelAttr_.accessPolicyWindow.hitRatio = params->accessPolicyWindow.hitRatio;
@@ -707,9 +704,6 @@ class hipGraphKernelNode : public hipGraphNode {
   hipError_t GetAttrParams(hipKernelNodeAttrID attr, hipKernelNodeAttrValue* params) {
     // Get kernel attr params
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
-      if (kernelAttr_.accessPolicyWindow.base_ptr == NULL) {
-        return hipErrorInvalidResourceHandle;
-      }
       params->accessPolicyWindow.base_ptr = kernelAttr_.accessPolicyWindow.base_ptr;
       params->accessPolicyWindow.hitProp = kernelAttr_.accessPolicyWindow.hitProp;
       params->accessPolicyWindow.hitRatio = kernelAttr_.accessPolicyWindow.hitRatio;
