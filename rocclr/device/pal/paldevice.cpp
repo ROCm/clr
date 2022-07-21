@@ -322,7 +322,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                 uint numExclusiveComputeRings) {
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = palProp.vendorId;
-
+  //default uuid similar to rocm device
+  info_.uuid_[0] = 'X';
+  info_.uuid_[1] = 'X';
   info_.maxWorkItemDimensions_ = 3;
 
   info_.maxComputeUnits_ = settings().enableWgpMode_
