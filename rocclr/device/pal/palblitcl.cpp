@@ -22,6 +22,25 @@ namespace pal {
 
 #define BLIT_KERNEL(...) #__VA_ARGS__
 
+const char* palBlitLinearSourceCode = BLIT_KERNEL(
+\n
+extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong, ulong);
+\n
+extern void __amd_streamOpsWait(__global uint*,__global ulong*, ulong, ulong, ulong);
+\n
+__kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
+                                          ulong value, ulong sizeBytes) {
+  __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);
+}
+\n
+__kernel void __amd_rocclr_streamOpsWait(__global uint* ptrInt, __global ulong* ptrUlong,
+                                         ulong value, ulong flags, ulong mask) {
+  __amd_streamOpsWait(ptrInt, ptrUlong, value, flags, mask);
+}
+\n);
+
+
+
 const char* SchedulerSourceCode = BLIT_KERNEL(
 \n
 extern void __amd_scheduler(__global void*, __global void*, uint);

@@ -821,6 +821,8 @@ Device::~Device() {
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
 extern const char* GwsInitSourceCode;
+extern const char* palBlitLinearSourceCode;
+
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
 uint32_t gNumDevices = 0;
@@ -2469,8 +2471,9 @@ bool Device::createBlitProgram() {
   std::string extraBlits;
   std::string ocl20;
   if (amd::IS_HIP) {
+    extraBlits = palBlitLinearSourceCode;
     if (info().cooperativeGroups_) {
-      extraBlits = GwsInitSourceCode;
+      extraBlits.append(GwsInitSourceCode);
     }
   }
   else {

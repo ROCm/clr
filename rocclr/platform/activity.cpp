@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #include "platform/activity.hpp"
+#include "platform/command_utils.hpp"
 
 ACTIVITY_PROF_INSTANCES();
 
@@ -59,6 +60,8 @@ const char* getOclCommandKindString(uint32_t op) {
     CASE_STRING(CL_COMMAND_SVM_MEMFILL, SvmMemFill)
     CASE_STRING(CL_COMMAND_SVM_MAP, SvmMap)
     CASE_STRING(CL_COMMAND_SVM_UNMAP, SvmUnmap)
+    CASE_STRING(ROCCLR_COMMAND_STREAM_WAIT_VALUE, StreamWait)
+    CASE_STRING(ROCCLR_COMMAND_STREAM_WRITE_VALUE, StreamWrite)
     default: case_string = "Unknown command type";
   };
   return case_string;

@@ -193,6 +193,24 @@ class BlitManager : public amd::HeapObject {
                          bool entire = false          //!< Entire buffer will be updated
                          ) const = 0;
 
+
+  //! Stream memory write operation - Write a 'value' at 'memory'.
+  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes
+  ) const = 0;
+
+
+  //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
+  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes,
+                             uint64_t flags,
+                             uint64_t mask
+  ) const = 0;
+
   //! Enables synchronization on blit operations
   void enableSynchronization() { syncOperation_ = true; }
 

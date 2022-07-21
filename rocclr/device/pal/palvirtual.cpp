@@ -2134,6 +2134,48 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& vcmd) {
   profilingEnd(vcmd);
 }
 
+void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+  profilingBegin(cmd);
+
+  const cl_command_type type = cmd.type();
+  const uint64_t value = cmd.value();
+  const uint64_t mask = cmd.mask();
+  const unsigned int flags = cmd.flags();
+  const size_t sizeBytes = cmd.sizeBytes();
+  const size_t offset = cmd.offset();
+
+  amd::Memory* amdMemory = &cmd.memory();
+  Memory* memory = dev().getGpuMemory(amdMemory);
+
+  if (type == ROCCLR_COMMAND_STREAM_WAIT_VALUE) {
+
+    // Use a blit kernel to perform the wait operation
+    // mask is applied on value before performing
+    // the comparision defined by 'condition'
+    bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWait(*memory, value, offset,
+                                                                            sizeBytes, flags, mask);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Waiting for value: 0x%lx."
+            " Flags: 0x%lx mask: 0x%lx", value, flags, mask);
+    if (!result) {
+      LogError("submitStreamOperation: Wait failed!");
+    }
+  } else if (type == ROCCLR_COMMAND_STREAM_WRITE_VALUE) {
+    bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWrite(*memory, value,
+                                                                            offset, sizeBytes);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writing value: 0x%lx", value);
+    if (!result) {
+      LogError("submitStreamOperation: Write failed!");
+    }
+  } else {
+    ShouldNotReachHere();
+  }
+  profilingEnd(cmd);
+}
+
+
+
 void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
