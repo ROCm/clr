@@ -155,6 +155,30 @@ class DmaBlitManager : public device::HostBlitManager {
                          bool entire = false             //!< Entire buffer will be updated
                          ) const;
 
+  //! Stream memory write operation - Write a 'value' at 'memory'.
+  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes
+  ) const {
+    assert(!"Unimplemented");
+    return false;
+  };
+
+  //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
+  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes,
+                             uint64_t flags,
+                             uint64_t mask
+  ) const {
+    assert(!"Unimplemented");
+    return false;
+  };
+
+
+
  protected:
   static constexpr uint MaxPinnedBuffers = 4;
 
@@ -223,7 +247,9 @@ class KernelBlitManager : public DmaBlitManager {
     FillImage,
     Scheduler,
     GwsInit,
-    BlitTotal
+    StreamOpsWrite,
+    StreamOpsWait,
+    BlitTotal,
   };
 
   //! Constructor
@@ -378,6 +404,23 @@ class KernelBlitManager : public DmaBlitManager {
 
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
+  //! Stream memory write operation - Write a 'value' at 'memory'.
+  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes
+  ) const;
+
+  //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
+  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes,
+                             uint64_t flags,
+                             uint64_t mask
+  ) const;
+
+
  private:
   static constexpr size_t MaxXferBuffers = 2;
   static constexpr uint TransferSplitSize = 3;
@@ -408,6 +451,12 @@ class KernelBlitManager : public DmaBlitManager {
   bool createProgram(Device& device  //!< Device object
   );
 
+  inline void setArgument(amd::Kernel* kernel, size_t index,
+                          size_t size, const void* value, size_t offset = 0,
+                          const device::Memory* dev_mem = nullptr,
+                          bool writeVAImmediate = false) const;
+
+
   //! Creates a view memory object
   Memory* createView(const Memory& parent,         //!< Parent memory object
                      const cl_image_format format  //!< The new format for a view
@@ -432,7 +481,8 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyBufferRectAligned", "__amd_rocclr_copyBuffer",
     "__amd_rocclr_copyBufferAligned", "__amd_rocclr_fillBufferAligned",
     "__amd_rocclr_fillImage", "__amd_rocclr_scheduler",
-    "__amd_rocclr_gwsInit"
+    "__amd_rocclr_gwsInit", "__amd_rocclr_streamOpsWrite",
+    "__amd_rocclr_streamOpsWait"
 };
 
 /*@}*/  // namespace pal

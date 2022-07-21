@@ -157,6 +157,30 @@ class DmaBlitManager : public device::HostBlitManager {
                          bool entire = false             //!< Entire buffer will be updated
                          ) const;
 
+  //! Stream memory write operation - Write a 'value' at 'memory'.
+  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes
+  ) const {
+    assert(!"Unimplemented");
+    return false;
+  }
+
+  //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
+  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+                             uint64_t value,
+                             size_t offset,
+                             size_t sizeBytes,
+                             uint64_t flags,
+                             uint64_t mask
+  ) const {
+    assert(!"Unimplemented");
+    return false;
+  }
+
+
+
  protected:
   static constexpr uint MaxPinnedBuffers = 4;
   static constexpr size_t kMaxH2dMemcpySize = 8 * Ki;
@@ -427,14 +451,14 @@ class KernelBlitManager : public DmaBlitManager {
                   ) const;
 
   //! Stream memory write operation - Write a 'value' at 'memory'.
-  bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
+  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
                              uint64_t value,
                              size_t offset,
                              size_t sizeBytes
   ) const;
 
   //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
-  bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
                              uint64_t value,
                              size_t offset,
                              size_t sizeBytes,

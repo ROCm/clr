@@ -349,7 +349,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
   virtual void submitVirtualMap(amd::VirtualMapCommand& cmd);
-
+  virtual void submitStreamOperation(amd::StreamOperationCommand& cmd);
   void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd);
 
   void releaseMemory(GpuMemoryReference* mem);

@@ -983,7 +983,9 @@ void CalcRowSlicePitches(uint64_t* pitch, const int32_t* copySize, size_t rowPit
   }
 }
 
-static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const void* value) {
+inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, size_t size,
+                        const void* value, size_t offset,
+                        const device::Memory* dev_mem, bool writeVAImmediate) const {
   const amd::KernelParameterDescriptor& desc = kernel->signature().at(index);
 
   void* param = kernel->parameters().values() + desc.offset_;
@@ -1003,7 +1005,7 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
     } else {
       // convert cl_mem to amd::Memory*, return false if invalid.
       LP64_SWITCH(uint32_value, uint64_value) =
-          static_cast<uintptr_t>((*static_cast<Memory* const*>(value))->virtualAddress());
+          static_cast<uintptr_t>((*static_cast<Memory* const*>(value))->virtualAddress()) + offset;
       reinterpret_cast<Memory**>(kernel->parameters().values() +
                                  kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] =
           *static_cast<Memory* const*>(value);
@@ -1036,7 +1038,7 @@ static void setArgument(amd::Kernel* kernel, size_t index, size_t size, const vo
         break;
     }
 
-  switch (argSize) {
+  switch (desc.size_) {
     case sizeof(uint32_t):
       *static_cast<uint32_t*>(param) = uint32_value;
       break;
@@ -2425,6 +2427,85 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
 
   return result;
 }
+
+// ================================================================================================
+bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
+                                       size_t offset, size_t sizeBytes) const {
+  amd::ScopedLock k(lockXferOps_);
+  bool result = false;
+  uint blitType = StreamOpsWrite;
+  size_t dim = 1;
+  size_t globalWorkOffset[1] = { 0 };
+  size_t globalWorkSize[1] = { 1 };
+  size_t localWorkSize[1] = { 1 };
+  // Program kernels arguments for the write operation
+  Memory* mem = &gpuMem(memory);
+  bool is32BitWrite = (sizeBytes == sizeof(uint32_t)) ? true : false;
+  // Program kernels arguments for the write operation
+  if (is32BitWrite) {
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
+    setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
+  } else {
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
+    setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
+  }
+  setArgument(kernels_[blitType], 3, sizeof(size_t), &sizeBytes);
+  // Create ND range object for the kernel's execution
+  amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
+  // Execute the blit
+  address parameters = kernels_[blitType]->parameters().values();
+  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters);
+  synchronize();
+  return result;
+}
+
+// ================================================================================================
+bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, size_t offset,
+                                      size_t sizeBytes, uint64_t flags, uint64_t mask) const {
+  amd::ScopedLock k(lockXferOps_);
+  bool result = false;
+  uint blitType = StreamOpsWait;
+  size_t dim = 1;
+
+  size_t globalWorkOffset[1] = { 0 };
+  size_t globalWorkSize[1] = { 1 };
+  size_t localWorkSize[1] = { 1 };
+
+  // Program kernels arguments for the wait operation
+  Memory* mem = &gpuMem(memory);
+  bool is32BitWait = (sizeBytes == sizeof(uint32_t)) ? true : false;
+  // Program kernels arguments for the wait operation
+  if (is32BitWait) {
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
+    setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
+    setArgument(kernels_[blitType], 3, sizeof(uint32_t), &flags);
+    setArgument(kernels_[blitType], 4, sizeof(uint32_t), &mask);
+  } else {
+    setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
+    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
+    setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
+    setArgument(kernels_[blitType], 3, sizeof(uint64_t), &flags);
+    setArgument(kernels_[blitType], 4, sizeof(uint64_t), &mask);
+  }
+
+  // Create ND range object for the kernel's execution
+  amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
+
+  // Execute the blit
+  address parameters = kernels_[blitType]->parameters().values();
+  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters);
+  synchronize();
+
+  return result;
+}
+
+
+
+
+
 
 bool KernelBlitManager::runScheduler(device::Memory& vqueue, device::Memory& params, uint paramIdx,
                                      uint threads) const {
