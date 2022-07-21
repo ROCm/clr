@@ -627,6 +627,8 @@ hipError_t ihipArrayDestroy(hipArray* array) {
     amd::ScopedLock lock(hip::hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
       return hipErrorContextIsDestroyed;
+    } else {
+      hip::hipArraySet.erase(array);
     }
   }
   cl_mem memObj = reinterpret_cast<cl_mem>(array->data);
@@ -642,10 +644,6 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   }
 
   as_amd(memObj)->release();
-  {
-    amd::ScopedLock lock(hip::hipArraySetLock);
-    hip::hipArraySet.erase(array);
-  }
   delete array;
   return hipSuccess;
 }
