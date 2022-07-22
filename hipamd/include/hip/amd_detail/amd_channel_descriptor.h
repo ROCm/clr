@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ inline hipChannelFormatDesc hipCreateChannelDesc<char>() {
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<signed char>() {
     int e = (int)sizeof(signed char) * 8;
-    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindUnsigned);
+    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindSigned);
 }
 
 template <>
@@ -73,7 +73,7 @@ inline hipChannelFormatDesc hipCreateChannelDesc<unsigned char>() {
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<uchar1>() {
     int e = (int)sizeof(unsigned char) * 8;
-    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindSigned);
+    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindUnsigned);
 }
 
 template <>
@@ -85,7 +85,7 @@ inline hipChannelFormatDesc hipCreateChannelDesc<char1>() {
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<uchar2>() {
     int e = (int)sizeof(unsigned char) * 8;
-    return hipCreateChannelDesc(e, e, 0, 0, hipChannelFormatKindSigned);
+    return hipCreateChannelDesc(e, e, 0, 0, hipChannelFormatKindUnsigned);
 }
 
 template <>
@@ -98,7 +98,7 @@ inline hipChannelFormatDesc hipCreateChannelDesc<char2>() {
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<uchar3>() {
     int e = (int)sizeof(unsigned char) * 8;
-    return hipCreateChannelDesc(e, e, e, 0, hipChannelFormatKindSigned);
+    return hipCreateChannelDesc(e, e, e, 0, hipChannelFormatKindUnsigned);
 }
 
 template <>
@@ -111,7 +111,7 @@ inline hipChannelFormatDesc hipCreateChannelDesc<char3>() {
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<uchar4>() {
     int e = (int)sizeof(unsigned char) * 8;
-    return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindSigned);
+    return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindUnsigned);
 }
 
 template <>
