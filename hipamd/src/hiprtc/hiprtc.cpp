@@ -86,7 +86,12 @@ hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const cha
     HIPRTC_RETURN(HIPRTC_ERROR_PROGRAM_CREATION_FAILURE);
   }
 
-  if (!rtcProgram->addSource(std::string(src), std::string("CompileSource"))) {
+  if (name == nullptr || strlen(name) == 0) {
+    progName = "CompileSourceXXXXXX";
+    hiprtc::helpers::GenerateUniqueFileName(progName);
+  }
+
+  if (!rtcProgram->addSource(std::string(src), progName)) {
     delete rtcProgram;
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }

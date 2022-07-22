@@ -55,5 +55,6 @@ std::string handleMangledName(std::string loweredName);
 bool fillMangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames);
 bool getDemangledNames(const std::vector<std::string>& mangledNames,
                      std::map<std::string, std::string>& demangledNames);
+void GenerateUniqueFileName(std::string &name);
 }  // namespace helpers
 }  // namespace hiprtc

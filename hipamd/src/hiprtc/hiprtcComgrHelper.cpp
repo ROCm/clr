@@ -21,6 +21,9 @@ THE SOFTWARE.
 */
 
 #include "hiprtcComgrHelper.hpp"
+#if defined(_WIN32)
+  #include <io.h>
+#endif
 
 namespace hiprtc {
 
@@ -345,9 +348,26 @@ bool createExecutable(const amd_comgr_data_set_t linkInputs, const std::string& 
   return true;
 }
 
+void GenerateUniqueFileName(std::string &name) {
+#if !defined(_WIN32)
+  char *name_template = const_cast<char*>(name.c_str());
+  int temp_fd = mkstemp(name_template);
+#else
+  char *name_template = new char[name.length()+1];
+  strcpy_s(name_template, name.length()+1, name.data());
+  int sizeinchars = strnlen(name_template, 20) + 1;
+  _mktemp_s(name_template, sizeinchars);
+#endif
+  name = name_template;
+#if !defined(_WIN32)
+  unlink(name_template);
+  close(temp_fd);
+#endif
+}
+
 bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
                    std::vector<std::string>& exeOptions, std::string name, std::string& buildLog) {
-  if (name.size() == 0) return false;
+
   amd_comgr_action_info_t action;
 
   if (auto res = createAction(action, exeOptions, isa); res != AMD_COMGR_STATUS_SUCCESS) {
@@ -376,7 +396,18 @@ bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
     return false;
   }
 
-  auto isaFileName = name + ".s";
+  if (name.size() == 0) {
+    // Generate a unique name if the program name is not specified by the user
+    name = std::string("hiprtcXXXXXX");
+    GenerateUniqueFileName(name);
+  }
+  std::string isaName = isa;
+#if defined(_WIN32)
+  // Replace special charaters that are not supported by Windows FS.
+  std::replace(isaName.begin(), isaName.end(), ':', '@');
+#endif
+
+  auto isaFileName = name + std::string("-hip-") + isaName + ".s";
   std::ofstream f(isaFileName.c_str(), std::ios::trunc | std::ios::binary);
   if (f.is_open()) {
     f.write(isaOutput.data(), isaOutput.size());
