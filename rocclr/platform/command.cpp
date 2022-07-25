@@ -336,7 +336,7 @@ void Command::releaseResources() {
   }
 }
 
-static constexpr uint32_t kMarkerTsCount = 64;
+static constexpr uint32_t kMarkerTsCount = 1;
 // ================================================================================================
 void Command::enqueue() {
   assert(queue_ != NULL && "Cannot be enqueued");
@@ -372,7 +372,7 @@ void Command::enqueue() {
     bool submitBatch = !profilingInfo().marker_ts_;
     // Flush the batch if ther marker_ts have been continuously submitted until a threashold
     // is reached. This helps recycling the commands and frees memory.
-    if (queue_->GetMarkerTsCount() > kMarkerTsCount) {
+    if (queue_->GetMarkerTsCount() >= kMarkerTsCount) {
       submitBatch = true;
       queue_->ResetMarkerTsCount();
     }
