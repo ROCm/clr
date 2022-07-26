@@ -114,7 +114,13 @@ if(WIN32)
 else()
   # Linux - set a default path for ROCM_PATH
   if(NOT DEFINED ROCM_PATH)
-    set(ROCM_PATH /opt/rocm)
+    # TODO:once file reorg backward compatibility is turned off,
+    # ROCM_PATH can be set to PACKAGE_PREFIX_DIR.
+    # Time being find the ROCM_PATH based on hip-config file
+    # Following will provide the path with filename with symlinks resolved.
+    # Move four level up to get rocm path
+    file(REAL_PATH ${CMAKE_CURRENT_LIST_FILE}  CONFIG_PATH)
+    get_filename_component(ROCM_PATH "${CONFIG_PATH}/../../../../" ABSOLUTE)
   endif()
 
   #If HIP is not installed under ROCm, need this to find HSA assuming HSA is under ROCm
@@ -187,8 +193,7 @@ if(NOT WIN32)
   find_dependency(Threads)
 endif()
 
-#get_filename_component cannot resolve the symlinks if called from /opt/rocm/lib/hip
-#and do three level up again
+# From hip config directory, do three level up
 get_filename_component(_DIR "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
 get_filename_component(_IMPORT_PREFIX "${_DIR}/../../../" REALPATH)
 
