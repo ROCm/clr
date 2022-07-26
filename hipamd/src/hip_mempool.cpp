@@ -171,20 +171,10 @@ hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_
   if (mem_pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
   // validate hipMemAllocationType value
-  if (pool_props->allocType != hipMemAllocationTypeInvalid &&
-      pool_props->allocType != hipMemAllocationTypePinned &&
-      pool_props->allocType != hipMemAllocationTypeMax) {
+  if (pool_props->allocType != hipMemAllocationTypePinned) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
-  // validate hipMemLocationType value
-  if (pool_props->location.type != hipMemLocationTypeInvalid &&
-      pool_props->location.type != hipMemLocationTypeDevice) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
   // Make sure the pool creation occurs on a valid device
   if ((pool_props->location.type != hipMemLocationTypeDevice) ||
       (pool_props->location.id >= g_devices.size())) {
