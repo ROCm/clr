@@ -544,6 +544,13 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             data *= x.data;
             return *this;
         }
+
+        friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator*(
+        HIP_vector_type x, const HIP_vector_type& y) noexcept
+        {
+          return HIP_vector_type{ x } *= y;
+        }
+
         template<
             typename U,
             typename std::enable_if<
@@ -552,6 +559,12 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_type& operator*=(U x) noexcept
         {
             return *this *= HIP_vector_type{x};
+        }
+
+        friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator/(
+        HIP_vector_type x, const HIP_vector_type& y) noexcept
+        {
+          return HIP_vector_type{ x } /= y;
         }
 
         __HOST_DEVICE__
@@ -709,15 +722,6 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         return HIP_vector_type<T, n>{x} -= y;
     }
 
-    template<typename T, unsigned int n>
-    __HOST_DEVICE__
-    inline
-    constexpr
-    HIP_vector_type<T, n> operator*(
-        const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
-    {
-        return HIP_vector_type<T, n>{x} *= y;
-    }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
     inline
@@ -737,15 +741,6 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         return HIP_vector_type<T, n>{x} *= y;
     }
 
-    template<typename T, unsigned int n>
-    __HOST_DEVICE__
-    inline
-    constexpr
-    HIP_vector_type<T, n> operator/(
-        const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
-    {
-        return HIP_vector_type<T, n>{x} /= y;
-    }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
     inline
