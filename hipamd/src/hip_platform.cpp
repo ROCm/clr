@@ -615,7 +615,11 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
   int deviceId = hip::Stream::DeviceId(stream);
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, hostFunction, deviceId);
   if ((hip_error != hipSuccess) || (func == nullptr)) {
-    HIP_RETURN(hipErrorInvalidDeviceFunction);
+    if (hip_error == hipErrorSharedObjectInitFailed) {
+      HIP_RETURN(hip_error);
+    } else {
+      HIP_RETURN(hipErrorInvalidDeviceFunction);
+    }
   }
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
