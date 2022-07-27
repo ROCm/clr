@@ -151,8 +151,7 @@ hipError_t hipDeviceGetP2PAttribute(int* value, hipDeviceP2PAttr attr,
       // Linear layout access is supported if P2P is enabled
       // Opaque Images are supported only on homogeneous systems
       // Might have more conditions to check, in future.
-      if (0 == strncmp(srcDeviceProp.gcnArchName, dstDeviceProp.gcnArchName,
-                      sizeof(srcDeviceProp.gcnArchName))) {
+      if (srcDeviceProp.gcnArch == dstDeviceProp.gcnArch) {
         HIP_RETURN_ONFAIL(canAccessPeer(value, srcDevice, dstDevice));
       } else {
         *value = 0;
