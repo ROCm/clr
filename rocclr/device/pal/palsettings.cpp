@@ -199,6 +199,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   amd::Os::getAppPathAndFileName(appName, appPathAndName);
 
   switch (palProp.revision) {
+    // Fall through for Navi3x ...
+    case Pal::AsicRevision::Navi33:
+    case Pal::AsicRevision::Navi32:
+    case Pal::AsicRevision::Navi31:
+    // Fall through for Navi2x ...
     case Pal::AsicRevision::Phoenix1:
     case Pal::AsicRevision::Raphael:
     case Pal::AsicRevision::Rembrandt:
@@ -214,23 +219,18 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
           useWavefront64 = true;
         }
       }
+    // Fall through for Navi1x ...
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
     case Pal::AsicRevision::Navi10_A0:
-    case Pal::AsicRevision::Navi31:
-    case Pal::AsicRevision::Navi32:
-    case Pal::AsicRevision::Navi33:
       gfx10Plus_ = true;
-      // Force luxmark to use HSAIL
-      {
-        if ((appName == "luxmark.exe") ||
-            (appName == "luxmark")) {
-          useLightning_ = flagIsDefault(GPU_ENABLE_LC) ? false : GPU_ENABLE_LC;
-        }
-        else {
-          useLightning_ = GPU_ENABLE_LC;
-        }
+      useLightning_ = GPU_ENABLE_LC;
+      // Force luxmark to use HSAIL for gfx10 if GPU_ENABLE_LC isn't set in ENV
+      if (flagIsDefault(GPU_ENABLE_LC) &&
+          palProp.gfxLevel < Pal::GfxIpLevel::GfxIp11_0 &&
+          (appName == "luxmark.exe" || appName == "luxmark")) {
+        useLightning_ = false;
       }
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
