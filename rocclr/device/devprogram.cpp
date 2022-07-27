@@ -1753,12 +1753,13 @@ bool Program::trySubstObjFile(const char *SubstCfgFile,
     buildError_ = CL_BUILD_PROGRAM_FAILURE;
     str << "Subst failure: cannot read binary file " << substRes.first << '\n';
   } else {
-    setKernels(binary, binSize);
-    buildStatus_ = CL_BUILD_SUCCESS;
-    buildError_ = 0;
-    str << "Substituted program hash 0x"
-        << std::setbase(16) << substRes.second
-        << " with " << substRes.first << '\n';
+    if (setKernels(binary, binSize)) {
+      buildStatus_ = CL_BUILD_SUCCESS;
+      buildError_ = 0;
+      str << "Substituted program hash 0x"
+          << std::setbase(16) << substRes.second
+          << " with " << substRes.first << '\n';
+    }
   }
   buildLog_ += str.str();
   return true;
