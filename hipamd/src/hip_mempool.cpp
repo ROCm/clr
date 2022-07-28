@@ -134,6 +134,9 @@ hipError_t hipMemPoolSetAccess(
       if (desc_list[i].location.id >= g_devices.size()) {
         HIP_RETURN(hipErrorInvalidValue);
       }
+      if (desc_list[i].flags > hipMemAccessFlagsProtReadWrite) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
       auto device = g_devices[desc_list[i].location.id];
       hip_mem_pool->SetAccess(device, desc_list[i].flags);
     } else {
