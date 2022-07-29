@@ -500,21 +500,43 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
 
 bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
   amd::ScopedLock lock(lock_);
+  std::vector<char> llvm_bitcode;
 
+  // Get the file size.
   struct stat stat_buf;
   if (stat(file_path.c_str(), &stat_buf)) {
     return false;
   }
 
-  std::string link_file_name_("Linker Program");
-  std::vector<char> llvm_bitcode(stat_buf.st_size);
+  // Read the file contents
+  std::string link_file_name("Linker Program");
+  std::vector<char> link_file_info(stat_buf.st_size);
   std::ifstream bc_file(file_path, std::ios_base::in | std::ios_base::binary);
   if (!bc_file.good()) {
     return true;
   }
 
-  bc_file.read(llvm_bitcode.data(), stat_buf.st_size);
+  bc_file.read(link_file_info.data(), stat_buf.st_size);
   bc_file.close();
+
+  // If this is bundled bitcode then unbundle this.
+  if (input_type == HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE) {
+    if (!findIsa()) {
+      return false;
+    }
+
+    size_t co_offset = 0;
+    size_t co_size = 0;
+    if(!UnbundleBitCode(link_file_info, isa_, co_offset, co_size)) {
+      LogError("Error in hiprtc: unable to unbundle the llvm bitcode");
+      return false;
+    }
+
+    llvm_bitcode.assign(link_file_info.begin() + co_offset,
+                        link_file_info.begin() + co_offset + co_size);
+  } else {
+    llvm_bitcode.assign(link_file_name.begin(), link_file_name.end());
+  }
 
   amd_comgr_data_kind_t data_kind;
   if((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
@@ -522,7 +544,7 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
     return false;
   }
 
-  if (!addCodeObjData(link_input_, llvm_bitcode, link_file_name_, data_kind)) {
+  if (!addCodeObjData(link_input_, llvm_bitcode, link_file_name, data_kind)) {
     LogError("Error in hiprtc: unable to add linked code object");
     return false;
   }
@@ -533,9 +555,28 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
 bool RTCLinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                                    hiprtcJITInputType input_type) {
   amd::ScopedLock lock(lock_);
-
   char* image_char_buf = reinterpret_cast<char*>(image_ptr);
-  std::vector<char> llvm_bitcode(image_char_buf, image_char_buf + image_size);
+  std::vector<char> llvm_bitcode;
+
+  if (input_type == HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE) {
+    std::vector<char> bundled_llvm_bitcode(image_char_buf, image_char_buf + image_size);
+
+    if (!findIsa()) {
+      return false;
+    }
+
+    size_t co_offset = 0;
+    size_t co_size = 0;
+    if(!UnbundleBitCode(bundled_llvm_bitcode, isa_, co_offset, co_size)) {
+      LogError("Error in hiprtc: unable to unbundle the llvm bitcode");
+      return false;
+    }
+
+    llvm_bitcode.assign(bundled_llvm_bitcode.begin() + co_offset,
+                        bundled_llvm_bitcode.begin() + co_offset + co_size);
+  } else {
+    llvm_bitcode.assign(image_char_buf, image_char_buf + image_size);
+  }
 
   amd_comgr_data_kind_t data_kind;
   if((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
@@ -543,7 +584,7 @@ bool RTCLinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::stri
     return false;
   }
 
-  if(!addCodeObjData(link_input_,llvm_bitcode , link_file_name, data_kind)) {
+  if(!addCodeObjData(link_input_, llvm_bitcode , link_file_name, data_kind)) {
     LogError("Error in hiprtc: unable to add linked code object");
     return false;
   }

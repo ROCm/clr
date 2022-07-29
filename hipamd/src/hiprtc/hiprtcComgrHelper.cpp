@@ -28,6 +28,90 @@ THE SOFTWARE.
 namespace hiprtc {
 
 namespace helpers {
+
+size_t constexpr strLiteralLength(char const* str) {
+  return *str ? 1 + strLiteralLength(str + 1) : 0;
+}
+constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
+constexpr char const* CLANG_OFFLOAD_BUNDLER_MAGIC_STR = "__CLANG_OFFLOAD_BUNDLE__";
+static constexpr size_t bundle_magic_string_size = strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
+
+struct __ClangOffloadBundleInfo {
+  uint64_t offset;
+  uint64_t size;
+  uint64_t bundleEntryIdSize;
+  const char bundleEntryId[1];
+};
+
+struct __ClangOffloadBundleHeader {
+  const char magic[bundle_magic_string_size - 1];
+  uint64_t numOfCodeObjects;
+  __ClangOffloadBundleInfo desc[1];
+};
+
+// Consumes the string 'consume_' from the starting of the given input
+// eg: input = amdgcn-amd-amdhsa--gfx908 and consume_ is amdgcn-amd-amdhsa--
+// input will become gfx908.
+static bool consume(std::string& input, std::string consume_) {
+  if (input.substr(0, consume_.size()) != consume_) {
+    return false;
+  }
+  input = input.substr(consume_.size());
+  return true;
+}
+
+bool isCodeObjectCompatibleWithDevice(std::string bundleEntryId, std::string isa) {
+  // If it is a direct match then return true.
+  if (bundleEntryId == isa) {
+    return true;
+  }
+
+  consume(bundleEntryId, std::string("hip") + '-' + std::string(AMDGCN_TARGET_TRIPLE));
+  consume(isa, std::string(AMDGCN_TARGET_TRIPLE) + '-');
+
+  if (bundleEntryId == isa) {
+    return true;
+  }
+
+  return false;
+}
+
+bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::string& isa,
+                     size_t& co_offset, size_t& co_size) {
+  std::string magic(bundled_llvm_bitcode.begin(),
+                    bundled_llvm_bitcode.begin() + bundle_magic_string_size);
+  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR)) {
+    // Handle case where the whole file is unbundled
+    return true;
+  }
+
+  std::string bundled_llvm_bitcode_s(bundled_llvm_bitcode.begin(), bundled_llvm_bitcode.begin()
+                                                                   + bundled_llvm_bitcode.size());
+  const void* data = reinterpret_cast<const void*>(bundled_llvm_bitcode_s.c_str());
+  const auto obheader
+    = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
+  const auto* desc = &obheader->desc[0];
+  for (uint64_t idx=0; idx < obheader->numOfCodeObjects; ++idx,
+                desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
+                       reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
+                       desc->bundleEntryIdSize)) {
+    const void* image = reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) +
+                                                      desc->offset);
+    const size_t image_size = desc->size;
+    std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
+
+    // Check if the device id and code object id are compatible
+    if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa)) {
+      co_offset = (reinterpret_cast<uintptr_t>(image) - reinterpret_cast<uintptr_t>(data));
+      co_size = image_size;
+      std::cout<<"bundleEntryId: "<<bundleEntryId<<" Isa:"<<isa<<" Offset: "<<co_offset<<" Size: "
+               << co_size <<std::endl;
+      break;
+    }
+  }
+  return true;
+}
+
 bool addCodeObjData(amd_comgr_data_set_t& input, const std::vector<char>& source,
                     const std::string& name, const amd_comgr_data_kind_t type) {
   amd_comgr_data_t data;
