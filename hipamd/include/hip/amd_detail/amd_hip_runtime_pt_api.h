@@ -41,7 +41,6 @@ THE SOFTWARE.
     #define hipMemcpyToSymbol             __HIP_API_SPT(hipMemcpyToSymbol)
     #define hipMemcpyFromSymbol           __HIP_API_SPT(hipMemcpyFromSymbol)
     #define hipMemcpy2D                   __HIP_API_SPT(hipMemcpy2D)
-    #define hipMemcpy2DToArray            __HIP_API_SPT(hipMemcpy2DToArray)
     #define hipMemcpy2DFromArray          __HIP_API_SPT(hipMemcpy2DFromArray)
     #define hipMemcpy3D                   __HIP_API_SPT(hipMemcpy3D)
     #define hipMemset                     __HIP_API_SPT(hipMemset)
@@ -94,9 +93,6 @@ hipError_t hipMemcpyFromSymbol_spt(void* dst, const void* symbol,size_t sizeByte
 
 hipError_t hipMemcpy2D_spt(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                         size_t height, hipMemcpyKind kind);
-
-hipError_t hipMemcpy2DToArray_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
-                              size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 
 hipError_t hipMemcpy2DFromArray_spt( void* dst, size_t dpitch, hipArray_const_t src, size_t wOffset,
                         size_t hOffset, size_t width, size_t height, hipMemcpyKind kind);
