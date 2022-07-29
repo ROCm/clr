@@ -210,7 +210,7 @@ endif()
 # Profiling API support
 #############################
 # Generate profiling API macros/structures header
-option(USE_PROF_API ON "Enable roctracer integration")
+option(USE_PROF_API "Enable roctracer integration" ON)
 # Enable profiling API
 if(USE_PROF_API)
   set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
@@ -220,9 +220,21 @@ if(USE_PROF_API)
   set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
   set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
 
-  find_package(PythonInterp REQUIRED)
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+  execute_process(COMMAND ${Python3_EXECUTABLE} -c "import CppHeaderParser"
+                  RESULT_VARIABLE CPP_HEADER_PARSER
+                  OUTPUT_QUIET)
+
+  if(NOT ${CPP_HEADER_PARSER} EQUAL 0)
+    message(FATAL_ERROR "\
+The \"CppHeaderParser\" Python3 package is not installed. \
+Please install it using the following command: \"pip3 install CppHeaderParser\".\
+")
+  endif()
+
   add_custom_command(OUTPUT ${PROF_API_STR}
-    COMMAND ${PYTHON_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
+    COMMAND ${Python3_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
     DEPENDS ${PROF_API_STR_IN} ${PROF_API_HDR} ${PROF_API_GEN}
     COMMENT "Generating profiling primitives: ${PROF_API_STR}")
 

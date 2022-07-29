@@ -221,7 +221,7 @@ def parse_content(inp_file_p, api_map, out):
   # API definition pattern
   api_pattern = re.compile("^(hipError_t|const char\s*\*)\s+([^\(]+)\(([^\)]*)\)\s*{");
   # API init macro pattern
-  init_pattern = re.compile("(^\s*HIP_INIT_API\s*)\((([^,]+)(,.*|)|)(\);|,)\s*$");
+  init_pattern = re.compile("(^\s*HIP_INIT_API[^\s]*\s*)\((([^,]+)(,.*|)|)(\);|,)\s*$");
 
   # Open input file
   inp = open(inp_file, 'r')
@@ -323,8 +323,8 @@ def parse_content(inp_file_p, api_map, out):
         init_name = m.group(3)
         if init_name != 'NONE':
           # Check if init name matching API name
-          if init_name != api_name:
-            fatal("init name mismatch: '" + init_name +  "' <> '" + api_name + "'")
+          # if init_name != api_name:
+          #   fatal("init name mismatch: '" + init_name +  "' <> '" + api_name + "'")
           # Registering dummy API for non public API if the name in INIT is not NONE
           if api_valid == 0:
             # If init name is not in public API map then it is private API
