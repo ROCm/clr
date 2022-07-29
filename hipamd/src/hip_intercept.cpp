@@ -29,6 +29,8 @@ api_callbacks_table_t callbacks_table;
 
 extern const std::string& FunctionName(const hipFunction_t f);
 
+extern "C" {
+
 const char* hipKernelNameRef(const hipFunction_t f) { return FunctionName(f).c_str(); }
 
 int hipGetStreamDeviceId(hipStream_t stream) {
@@ -40,28 +42,28 @@ int hipGetStreamDeviceId(hipStream_t stream) {
 }
 
 const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t) {
-  if (hostFunction == NULL) {
-    return NULL;
+  if (hostFunction == nullptr) {
+    return nullptr;
   }
   return PlatformState::instance().getStatFuncName(hostFunction);
 }
 
 hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg) {
-  return callbacks_table.set_callback(id, reinterpret_cast<api_callbacks_table_t::fun_t>(fun), arg) ?
+  return callbacks_table.set_callback(static_cast<hip_api_id_t>(id), reinterpret_cast<activity_rtapi_callback_t>(fun), arg) ?
     hipSuccess : hipErrorInvalidValue;
 }
 
 hipError_t hipRemoveApiCallback(uint32_t id) {
-  return callbacks_table.set_callback(id, NULL, NULL) ? hipSuccess : hipErrorInvalidValue;
+  return callbacks_table.set_callback(static_cast<hip_api_id_t>(id), nullptr, nullptr) ? hipSuccess : hipErrorInvalidValue;
 }
 
 hipError_t hipRegisterActivityCallback(uint32_t id, void* fun, void* arg) {
-  return callbacks_table.set_activity(id, reinterpret_cast<api_callbacks_table_t::act_t>(fun), arg) ?
+  return callbacks_table.set_activity(static_cast<hip_api_id_t>(id), reinterpret_cast<activity_sync_callback_t>(fun), arg) ?
     hipSuccess : hipErrorInvalidValue;
 }
 
 hipError_t hipRemoveActivityCallback(uint32_t id) {
-  return callbacks_table.set_activity(id, NULL, NULL) ? hipSuccess : hipErrorInvalidValue;
+  return callbacks_table.set_activity(static_cast<hip_api_id_t>(id), nullptr, nullptr) ? hipSuccess : hipErrorInvalidValue;
 }
 
 hipError_t hipEnableTracing(bool enabled) {
@@ -72,3 +74,5 @@ hipError_t hipEnableTracing(bool enabled) {
 const char* hipApiName(uint32_t id) {
   return hip_api_name(id);
 }
+
+} // extern "C"
