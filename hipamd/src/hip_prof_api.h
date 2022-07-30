@@ -134,7 +134,7 @@ class api_callbacks_table_t {
 
   inline void sem_sync(const uint32_t& id) {
     sem_increment(id);
-    if (entry(id).sync.load() == true) sync_wait(id);
+    while (entry(id).sync.load() == true) sync_wait(id);
   }
 
   inline void sem_release(const uint32_t& id) {
