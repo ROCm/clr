@@ -135,7 +135,7 @@ void Heap::SetAccess(hip::Device* device, bool enable) {
     if (mem != nullptr) {
       if (!mem->getAllowedPeerAccess() && enable) {
         // Enable p2p access for the specified device
-        peer_device->deviceAllowAccess(reinterpret_cast<void*>(mem->virtualAddress()));
+        peer_device->allowPeerAccess(mem);
         mem->setAllowedPeerAccess(true);
       } else if (mem->getAllowedPeerAccess() && !enable) {
         mem->setAllowedPeerAccess(false);
@@ -180,6 +180,7 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream) {
       auto vdi_device = it.first->asContext()->devices()[0];
       device::Memory* mem = memory->getDeviceMemory(*vdi_device);
       if ((mem != nullptr) && (it.second != hipMemAccessFlagsProtNone)) {
+        vdi_device->allowPeerAccess(mem);
         mem->setAllowedPeerAccess(true);
       }
     }
