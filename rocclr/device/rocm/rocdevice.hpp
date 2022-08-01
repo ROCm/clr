@@ -422,6 +422,8 @@ class Device : public NullDevice {
 
   bool deviceAllowAccess(void* dst) const;
 
+  bool allowPeerAccess(device::Memory* memory) const;
+
   void* deviceLocalAlloc(size_t size, bool atomics = false) const;
 
   void memFree(void* ptr, size_t size) const;

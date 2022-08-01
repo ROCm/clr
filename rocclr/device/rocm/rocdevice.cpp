@@ -2045,6 +2045,22 @@ bool Device::deviceAllowAccess(void* ptr) const {
   return true;
 }
 
+bool Device::allowPeerAccess(device::Memory* memory) const {
+  if (memory == nullptr) {
+    return false;
+  }
+  if (!p2pAgents().empty()) {
+    void* ptr = reinterpret_cast<void*>(memory->virtualAddress());
+    hsa_agent_t agent = getBackendDevice();
+    hsa_status_t stat = hsa_amd_agents_allow_access(1, &agent, nullptr, ptr);
+    if (stat != HSA_STATUS_SUCCESS) {
+      LogError("Allow p2p access failed");
+      return false;
+    }
+  }
+  return true;
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
   const hsa_amd_memory_pool_t& pool = (atomics)? gpu_fine_grained_segment_ : gpuvm_segment_;
 
