@@ -2188,6 +2188,24 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
   return amd::Os::reserveMemory(nullptr, size, alignment, amd::Os::MEM_PROT_NONE);
 }
 
+bool Device::allowPeerAccess(device::Memory* memory) const {
+  if (memory == nullptr) {
+    return false;
+  }
+  Resource::CreateParams params;
+  amd::Memory* owner = reinterpret_cast<amd::Memory*>(memory->owner());
+  params.owner_ = owner;
+  params.gpu_ = static_cast<VirtualGPU*>(owner->getVirtualDevice());
+  params.svmBase_ = static_cast<Memory*>(owner->BaseP2PMemory());
+  pal::Memory* gpuMemory = getGpuMemory(owner);
+  bool result = gpuMemory->CreateP2PAccess(&params);
+  if (result != true) {
+    LogError("Allow p2p access");
+    return false;
+  }
+  return true;
+}
+
 void Device::hostFree(void* ptr, size_t size) const {
   // If we allocate the host memory, we need free, or we have to release
   amd::Os::releaseMemory(ptr, size);

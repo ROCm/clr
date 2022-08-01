@@ -420,6 +420,13 @@ class Resource : public amd::HeapObject {
   //! Update the modified field of the event, meaning the resource was updated
   bool isModified(VirtualGPU& gpu) const;
 
+  /*! \brief Creates a PAL P2P object, associated with the resource
+   *
+   *  \return True if we succesfully created a PAL P2P resource
+   */
+  bool CreateP2PAccess(CreateParams* params //!< special parameters for resource allocation
+                      );
+
  protected:
   /*! \brief Creates a PAL iamge object, associated with the resource
    *
@@ -449,13 +456,6 @@ class Resource : public amd::HeapObject {
    */
   bool CreateSvm(CreateParams* params,  //!< special parameters for resource allocation
                  Pal::gpusize svmPtr);
-
-  /*! \brief Creates a PAL P2P object, associated with the resource
-   *
-   *  \return True if we succesfully created a PAL P2P resource
-   */
-  bool CreateP2PAccess(CreateParams* params //!< special parameters for resource allocation
-                      );
 
   uint elementSize_;  //!< Size of a single element in bytes
 

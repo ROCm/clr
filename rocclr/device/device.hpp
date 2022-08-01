@@ -1715,6 +1715,11 @@ class Device : public RuntimeObject {
     return true;
   }
 
+  virtual bool allowPeerAccess(device::Memory* memory) const {
+    ShouldNotCallThis();
+    return true;
+  }
+
   bool enableP2P(amd::Device* ptrDev);
 
   bool disableP2P(amd::Device* ptrDev);
