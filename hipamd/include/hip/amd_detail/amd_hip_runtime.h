@@ -296,9 +296,18 @@ template <typename F>
 struct __HIP_Coordinates {
   using R = decltype(F{}(0));
 
-  struct __X { __device__ operator R() const noexcept { return F{}(0); } };
-  struct __Y { __device__ operator R() const noexcept { return F{}(1); } };
-  struct __Z { __device__ operator R() const noexcept { return F{}(2); } };
+  struct __X {
+    __device__ operator R() const noexcept { return F{}(0); }
+    __device__ R operator+=(const R& rhs) { return F{}(0) + rhs; }
+  };
+  struct __Y {
+    __device__ operator R() const noexcept { return F{}(1); }
+    __device__ R operator+=(const R& rhs) { return F{}(1) + rhs; }
+  };
+  struct __Z {
+    __device__ operator R() const noexcept { return F{}(2); }
+    __device__ R operator+=(const R& rhs) { return F{}(2) + rhs; }
+  };
 
   static constexpr __X x{};
   static constexpr __Y y{};
