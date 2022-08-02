@@ -70,10 +70,17 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                   const hipKernelNodeParams* pNodeParams) {
   if (pGraphNode == nullptr || graph == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr ||
-      pNodeParams->func == nullptr || pNodeParams->kernelParams == nullptr) {
+      pNodeParams->func == nullptr) {
     return hipErrorInvalidValue;
   }
+
   if (!ihipGraph::isGraphValid(graph)) {
+    return hipErrorInvalidValue;
+  }
+
+  // If neither 'kernelParams' or 'extra' are provided or if both are provided, return error
+  if ((pNodeParams->kernelParams == nullptr && pNodeParams->extra == nullptr) ||
+      (pNodeParams->kernelParams != nullptr && pNodeParams->extra != nullptr)) {
     return hipErrorInvalidValue;
   }
 
@@ -86,12 +93,6 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   status = ihipValidateKernelParams(pNodeParams);
   if (hipSuccess != status) {
     return status;
-  }
-
-  // If neither 'kernelParams' or 'extra' are provided or if both are provided, return error
-  if ((pNodeParams->kernelParams == nullptr && pNodeParams->extra == nullptr) ||
-      (pNodeParams->kernelParams != nullptr) && (pNodeParams->extra != nullptr)) {
-    return hipErrorInvalidValue;
   }
 
   size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
@@ -201,6 +202,59 @@ hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction
     return status;
   }
   s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
+hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f,
+                                           uint32_t& globalWorkSizeX, uint32_t& globalWorkSizeY,
+                                           uint32_t& globalWorkSizeZ, uint32_t& localWorkSizeX,
+                                           uint32_t& localWorkSizeY, uint32_t& localWorkSizeZ,
+                                           size_t& sharedMemBytes, void**& kernelParams,
+                                           void**& extra, hipEvent_t& startEvent,
+                                           hipEvent_t& stopEvent, uint32_t& flags) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node Ext kernel launch on stream : %p", stream);
+  if (!hip::isValid(stream)) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+
+  hipGraphNode_t pGraphNode;
+  hipError_t status;
+  if (startEvent != nullptr) {
+    pGraphNode = new hipGraphEventRecordNode(startEvent);
+    status = ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                              s->GetLastCapturedNodes().size());
+    if (status != hipSuccess) {
+      return status;
+    }
+    s->SetLastCapturedNode(pGraphNode);
+  }
+  hipKernelNodeParams nodeParams;
+  nodeParams.func = f;
+  nodeParams.blockDim = dim3(localWorkSizeX, localWorkSizeY, localWorkSizeZ);
+  nodeParams.extra = extra;
+  nodeParams.gridDim = dim3(globalWorkSizeX / localWorkSizeX, globalWorkSizeY / localWorkSizeY,
+                            globalWorkSizeZ / localWorkSizeZ);
+  nodeParams.kernelParams = kernelParams;
+  nodeParams.sharedMemBytes = sharedMemBytes;
+  status =
+      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &nodeParams);
+
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  if (stopEvent != nullptr) {
+    pGraphNode = new hipGraphEventRecordNode(stopEvent);
+    status = ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                              s->GetLastCapturedNodes().size());
+    if (status != hipSuccess) {
+      return status;
+    }
+    s->SetLastCapturedNode(pGraphNode);
+  }
   return hipSuccess;
 }
 
@@ -910,6 +964,7 @@ hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       (numDependencies > 0 && pDependencies == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
   HIP_RETURN_DURATION(
       ihipGraphAddKernelNode(pGraphNode, graph, pDependencies, numDependencies, pNodeParams));
 }

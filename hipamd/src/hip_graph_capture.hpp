@@ -23,6 +23,14 @@
 hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
                                   dim3& blockDim, void**& args, size_t& sharedMemBytes);
 
+hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f,
+                                           uint32_t& globalWorkSizeX, uint32_t& globalWorkSizeY,
+                                           uint32_t& globalWorkSizeZ, uint32_t& localWorkSizeX,
+                                           uint32_t& localWorkSizeY, uint32_t& localWorkSizeZ,
+                                           size_t& sharedMemBytes, void**& kernelParams,
+                                           void**& extra, hipEvent_t& startEvent,
+                                           hipEvent_t& stopEvent, uint32_t& flags);
+
 hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
                                    const void*& src, size_t& spitch, size_t& width, size_t& height,
                                    hipMemcpyKind& kind);
