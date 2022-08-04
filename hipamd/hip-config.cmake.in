@@ -112,21 +112,25 @@ if(WIN32)
     set(HIP_PATH ${PACKAGE_PREFIX_DIR})
   endif()
 else()
-  # Linux - set a default path for ROCM_PATH
+  # Linux
+  # If HIP is not installed under ROCm, need this to find HSA assuming HSA is under ROCm
+  if(DEFINED ENV{ROCM_PATH})
+    set(ROCM_PATH "$ENV{ROCM_PATH}")
+  endif()
+
+  # set a default path for ROCM_PATH
   if(NOT DEFINED ROCM_PATH)
     # TODO:once file reorg backward compatibility is turned off,
     # ROCM_PATH can be set to PACKAGE_PREFIX_DIR.
     # Time being find the ROCM_PATH based on hip-config file
-    # Following will provide the path with filename with symlinks resolved.
-    # Move four level up to get rocm path
-    file(REAL_PATH ${CMAKE_CURRENT_LIST_FILE}  CONFIG_PATH)
+    # Get the ROCM PATH in 2 steps as get_filename_component appears to process /../ textually
+    # first find the real path to hip-config file which doesn't have symbolic links
+    # Real Path : /opt/rocm-ver/lib/cmake/hip/hip-config.cmake
+    # then go up 4 levels get to /opt/rocm-ver
+    get_filename_component(CONFIG_PATH "${CMAKE_CURRENT_LIST_FILE}" REALPATH)
     get_filename_component(ROCM_PATH "${CONFIG_PATH}/../../../../" ABSOLUTE)
   endif()
 
-  #If HIP is not installed under ROCm, need this to find HSA assuming HSA is under ROCm
-  if(DEFINED ENV{ROCM_PATH})
-    set(ROCM_PATH "$ENV{ROCM_PATH}")
-  endif()
 endif()
 
 if(HIP_COMPILER STREQUAL "clang")
