@@ -18,7 +18,7 @@ class CodeObject;
 //Device Structures
 class DeviceVar {
 public:
-  DeviceVar(std::string name, hipModule_t hmod);
+  DeviceVar(std::string name, hipModule_t hmod, int deviceId);
   ~DeviceVar();
 
   //Accessors for device ptr and size, populated during constructor.

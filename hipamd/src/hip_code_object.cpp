@@ -843,7 +843,7 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
       DeviceVar* dvar = nullptr;
       IHIP_RETURN_ONFAIL(var->getStatDeviceVar(&dvar, deviceId));
 
-      amd::HostQueue* queue = hip::getNullStream();
+      amd::HostQueue* queue = g_devices.at(deviceId)->NullStream();
       if (queue != nullptr) {
         err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()), var->getManagedVarPtr(),
                          dvar->size(), hipMemcpyHostToDevice, *queue);
