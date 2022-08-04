@@ -40,11 +40,16 @@ void __hipGetPCH(const char** pch, unsigned int *size) {
 namespace hip {
 
 //Device Vars
-DeviceVar::DeviceVar(std::string name, hipModule_t hmod) : shadowVptr(nullptr), name_(name),
-                                                           amd_mem_obj_(nullptr), device_ptr_(nullptr),
-                                                           size_(0) {
+DeviceVar::DeviceVar(std::string name,
+                     hipModule_t hmod,
+                     int deviceId) :
+                     shadowVptr(nullptr), name_(name),
+                     amd_mem_obj_(nullptr), device_ptr_(nullptr),
+                     size_(0) {
   amd::Program* program = as_amd(reinterpret_cast<cl_program>(hmod));
-  device::Program* dev_program = program->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
+  device::Program* dev_program =
+                   program->getDeviceProgram(*g_devices.at(deviceId)->devices()[0]);
+
   if (dev_program == nullptr) {
     LogPrintfError("Cannot get Device Program for module: 0x%x \n", hmod);
     guarantee(false, "Cannot get Device Program");
@@ -206,7 +211,7 @@ hipError_t Var::getDeviceVar(DeviceVar** dvar, int deviceId, hipModule_t hmod) {
              "Device Var not initialized to size");
 
   if (dVar_[deviceId] == nullptr) {
-    dVar_[deviceId] = new DeviceVar(name_, hmod);
+    dVar_[deviceId] = new DeviceVar(name_, hmod, deviceId);
   }
 
   *dvar = dVar_[deviceId];
@@ -221,7 +226,7 @@ hipError_t Var::getStatDeviceVar(DeviceVar** dvar, int deviceId) {
     hipModule_t hmod = nullptr;
     IHIP_RETURN_ONFAIL((*modules_)->BuildProgram(deviceId));
     IHIP_RETURN_ONFAIL((*modules_)->GetModule(deviceId, &hmod));
-    dVar_[deviceId] = new DeviceVar(name_, hmod);
+    dVar_[deviceId] = new DeviceVar(name_, hmod, deviceId);
   }
   *dvar = dVar_[deviceId];
   return hipSuccess;
