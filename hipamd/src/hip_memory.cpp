@@ -3003,9 +3003,9 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
   memset(attributes, 0, sizeof(hipPointerAttribute_t));
 
   if (memObj != nullptr) {
-    attributes->memoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+    attributes->type = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
         memObj->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
-    if (attributes->memoryType == hipMemoryTypeHost) {
+    if (attributes->type == hipMemoryTypeHost) {
       if (memObj->getHostMem() != nullptr) {
         attributes->hostPointer = static_cast<char*>(memObj->getHostMem()) + offset;
       }

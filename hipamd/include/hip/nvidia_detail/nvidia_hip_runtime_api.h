@@ -2227,13 +2227,13 @@ inline static hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attribut
 #endif
         switch (memType) {
             case cudaMemoryTypeDevice:
-                attributes->memoryType = hipMemoryTypeDevice;
+                attributes->type = hipMemoryTypeDevice;
                 break;
             case cudaMemoryTypeHost:
-                attributes->memoryType = hipMemoryTypeHost;
+                attributes->type = hipMemoryTypeHost;
                 break;
             case cudaMemoryTypeManaged:
-                attributes->memoryType = hipMemoryTypeManaged;
+                attributes->type = hipMemoryTypeManaged;
                 break;
             default:
                 return hipErrorInvalidValue;
