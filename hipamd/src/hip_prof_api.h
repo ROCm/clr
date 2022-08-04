@@ -33,14 +33,8 @@
 
 // HIP API callbacks spawner object macro
 #define HIP_CB_SPAWNER_OBJECT(CB_ID) \
-  api_callbacks_spawner_t<HIP_API_ID_##CB_ID> __api_tracer; \
-  { \
-    hip_api_data_t* api_data = __api_tracer.get_api_data_ptr(); \
-    if (api_data != nullptr) { \
-      INIT_CB_ARGS_DATA(CB_ID, (*api_data)); \
-      __api_tracer.call(); \
-    } \
-  }
+  api_callbacks_spawner_t<HIP_API_ID_##CB_ID> \
+    __api_tracer([=](auto &api_data) constexpr { INIT_CB_ARGS_DATA(CB_ID, api_data); });
 
 class api_callbacks_table_t {
  public:
@@ -84,7 +78,7 @@ class api_callbacks_table_t {
     return true;
   }
 
-  auto get_callback_and_activity(hip_api_id_t id) {
+  auto get(hip_api_id_t id) {
     assert(id >= HIP_API_ID_FIRST && id <= HIP_API_ID_LAST && "invalid callback id");
     auto& entry = callbacks_table_[id];
 
@@ -118,56 +112,60 @@ extern api_callbacks_table_t callbacks_table;
 template <hip_api_id_t ID>
 class api_callbacks_spawner_t {
  public:
-  api_callbacks_spawner_t() :
-    api_data_(nullptr)
+  template <typename Functor>
+  constexpr api_callbacks_spawner_t(Functor init_cb_args_data) : record_()
   {
     static_assert(ID >= HIP_API_ID_FIRST && ID <= HIP_API_ID_LAST, "invalid callback id");
     if (!callbacks_table.is_enabled()) return;
 
-    std::tie(user_callback_, activity_) = callbacks_table.get_callback_and_activity(ID);
+    std::tie(user_callback_, activity_) = callbacks_table.get(ID);
+    if (activity_.first == nullptr)
+      return;
 
-    if (activity_.first != nullptr)
-      api_data_ = (hip_api_data_t*) activity_.first(ID, nullptr, nullptr, nullptr);
-  }
+    api_data_.correlation_id = 0;
+    api_data_.phase = ACTIVITY_API_PHASE_ENTER;
+    activity_.first(ID, &record_, &api_data_, activity_.second);
 
-  void call() {
-    if (user_callback_.first != nullptr)
-      user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, api_data_, user_callback_.second);
+    if (user_callback_.first) {
+      init_cb_args_data(api_data_);
+      user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, &api_data_, user_callback_.second);
+    }
+
+    activity_prof::correlation_id = api_data_.correlation_id;
   }
 
   ~api_callbacks_spawner_t() {
-    if (api_data_ == nullptr)
+    if (activity_.first == nullptr)
       return;
 
-    api_data_->phase = ACTIVITY_API_PHASE_EXIT;
+    activity_prof::correlation_id = 0;
+
+    api_data_.phase = ACTIVITY_API_PHASE_EXIT;
     if (user_callback_.first != nullptr)
-      user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, api_data_, user_callback_.second);
+      user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, &api_data_, user_callback_.second);
 
-    if (activity_.first != nullptr)
-      activity_.first(ID, nullptr, nullptr, activity_.second);
-  }
-
-  hip_api_data_t* get_api_data_ptr() const {
-    return api_data_;
+    activity_.first(ID, &record_, &api_data_, activity_.second);
   }
 
  private:
   std::pair<activity_rtapi_callback_t /* function */, void * /* arg */> user_callback_;
   std::pair<activity_sync_callback_t /* function */, void * /* arg */> activity_;
-  hip_api_data_t* api_data_;
+  activity_record_t record_;
+  union {
+    hip_api_data_t api_data_;
+  };
 };
 
 template <>
 class api_callbacks_spawner_t<HIP_API_ID_NONE> {
  public:
-  api_callbacks_spawner_t() {}
-  void call() {}
-  hip_api_data_t* get_api_data_ptr() { return nullptr; }
+  template <typename Functor>
+  api_callbacks_spawner_t(Functor) {}
 };
 
 #else
 
-#define HIP_CB_SPAWNER_OBJECT(x) do {} while(0)
+#define HIP_CB_SPAWNER_OBJECT(x) do {} while(false)
 
 class api_callbacks_table_t {
  public:
