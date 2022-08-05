@@ -22,7 +22,7 @@
 
 #include "device/devsignal.hpp"
 
-#include <hsa.h>
+#include "hsa/hsa.h"
 
 namespace roc {
 

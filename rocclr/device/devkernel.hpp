@@ -105,7 +105,7 @@ struct RuntimeHandle {
   uint32_t group_segment_size;        //!< From GROUP_SEGMENT_FIXED_SIZE
 };
 
-#include "amd_comgr.h"
+#include "amd_comgr/amd_comgr.h"
 
 //  for Code Object V3
 enum class ArgField : uint8_t {

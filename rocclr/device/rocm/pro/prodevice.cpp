@@ -20,7 +20,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-#include "hsa_ext_amd.h"
+#include "hsa/hsa_ext_amd.h"
 #include "lnxheaders.h"
 #include "prodevice.hpp"
 #include "amdgpu_drm.h"

@@ -25,7 +25,7 @@
 #include "utils/options.hpp"
 #include "rockernel.hpp"
 
-#include "amd_hsa_kernel_code.h"
+#include "hsa/amd_hsa_kernel_code.h"
 
 #include <string>
 #include <vector>

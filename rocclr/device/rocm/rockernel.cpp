@@ -19,7 +19,7 @@
  THE SOFTWARE. */
 
 #include "rockernel.hpp"
-#include "amd_hsa_kernel_code.h"
+#include "hsa/amd_hsa_kernel_code.h"
 
 #include <algorithm>
 

@@ -29,7 +29,7 @@
 #include "devwavelimiter.hpp"
 
 #if defined(USE_COMGR_LIBRARY)
-#include "amd_comgr.h"
+#include "amd_comgr/amd_comgr.h"
 #endif  // defined(USE_COMGR_LIBRARY)
 
 namespace amd {

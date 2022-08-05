@@ -24,7 +24,7 @@
 #include "top.hpp"
 #include "device/device.hpp"
 #include "device/rocm/rocdevice.hpp"
-#include "hsa_ven_amd_aqlprofile.h"
+#include "hsa/hsa_ven_amd_aqlprofile.h"
 
 namespace roc {
 

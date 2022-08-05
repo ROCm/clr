@@ -23,7 +23,7 @@
 #include <mutex>
 #if defined(USE_COMGR_LIBRARY)
 #include "top.hpp"
-#include "amd_comgr.h"
+#include "amd_comgr/amd_comgr.h"
 
 namespace amd {
 typedef void (*t_amd_comgr_get_version)(size_t *major, size_t *minor);
