@@ -34,7 +34,7 @@ typedef __GLXcontextRec* GLXContext;
 
 #include "device/rocm/mesa_glinterop.h"
 #include "device/rocm/rocregisters.hpp"
-#include "hsa_ext_amd.h"
+#include "hsa/hsa_ext_amd.h"
 
 namespace roc {
 

@@ -33,8 +33,8 @@
 #include "platform/sampler.hpp"
 #include "utils/debug.hpp"
 #include "os/os.hpp"
-#include "amd_hsa_kernel_code.h"
-#include "amd_hsa_queue.h"
+#include "hsa/amd_hsa_kernel_code.h"
+#include "hsa/amd_hsa_queue.h"
 
 #include <fstream>
 #include <limits>

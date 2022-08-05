@@ -23,7 +23,7 @@
 #ifndef WITHOUT_HSA_BACKEND
 
 #include "top.hpp"
-#include "hsa.h"
+#include "hsa/hsa.h"
 
 /*! \addtogroup HSA
  *  @{
