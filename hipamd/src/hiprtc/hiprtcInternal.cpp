@@ -33,7 +33,8 @@ using namespace helpers;
 
 //RTC Program Member Functions
 RTCProgram::RTCProgram(std::string name) : name_(name) {
-  std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib);
+  constexpr bool kComgrVersioned = true;
+  std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib, kComgrVersioned);
   if (amd::Comgr::create_data_set(&exec_input_) != AMD_COMGR_STATUS_SUCCESS) {
     crashWithMessage("Failed to allocate internal hiprtc structure");
   }
