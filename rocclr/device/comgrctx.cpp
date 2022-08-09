@@ -28,13 +28,40 @@ std::once_flag Comgr::initialized;
 ComgrEntryPoints Comgr::cep_;
 bool Comgr::is_ready_ = false;
 
-bool Comgr::LoadLib() {
+bool Comgr::LoadLib(bool is_versioned) {
 #if defined(COMGR_DYN_DLL)
   ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Loading COMGR library.");
-  static constexpr const char* ComgrLibName =
+
+  if (is_versioned) {
+#if defined(HIP_MAJOR_VERSION) && defined(HIP_MAJOR_VERSION)
+    std::string comgr_versioned_name, major_version, minor_version;
+    const std::string kComgrPrefix = "amd_comgr";
+
+    if (HIP_MAJOR_VERSION > 9) {
+      major_version = std::to_string(HIP_MAJOR_VERSION);
+    } else {
+      major_version = "0" + std::to_string(HIP_MAJOR_VERSION);
+    }
+
+    if (HIP_MINOR_VERSION > 9) {
+      minor_version = std::to_string(HIP_MINOR_VERSION);
+    } else {
+      minor_version = "0" + std::to_string(HIP_MINOR_VERSION);
+    }
+
+    comgr_versioned_name = kComgrPrefix + major_version + minor_version + std::string(".dll");
+
+    static const char* comgr_lib_name =
+    LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so.2"),
+                WINDOWS_SWITCH(comgr_versioned_name.c_str(), "libamd_comgr.so.2"));
+    cep_.handle = Os::loadLibrary(comgr_lib_name);
+#endif
+  } else {
+    static constexpr const char* comgr_lib_name =
     LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so.2"),
                 WINDOWS_SWITCH("amd_comgr.dll", "libamd_comgr.so.2"));
-  cep_.handle = Os::loadLibrary(ComgrLibName);
+    cep_.handle = Os::loadLibrary(comgr_lib_name);
+  }
   if (nullptr == cep_.handle) {
     ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Failed to load COMGR library.");
     return false;

@@ -140,7 +140,7 @@ class Comgr : public amd::AllStatic {
 public:
   static std::once_flag initialized;
 
-  static bool LoadLib();
+  static bool LoadLib(bool is_versioned = false);
 
   static bool IsReady() { return is_ready_; }
 
