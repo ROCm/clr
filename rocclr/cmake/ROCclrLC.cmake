@@ -30,3 +30,8 @@ if(BUILD_SHARED_LIBS)
   target_compile_definitions(rocclr PUBLIC COMGR_DYN_DLL)
 endif()
 target_link_libraries(rocclr PUBLIC amd_comgr)
+
+if(${CMAKE_PROJECT_NAME} STREQUAL "hip")
+  add_definitions(-DHIP_MAJOR_VERSION=${HIP_VERSION_MAJOR})
+  add_definitions(-DHIP_MINOR_VERSION=${HIP_VERSION_MINOR})
+endif()
