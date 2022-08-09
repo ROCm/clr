@@ -2653,8 +2653,7 @@ bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
   } else if (wait) {
     return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, ActiveWait());
   }
-  static constexpr bool Timeout = true;
-  return WaitForSignal<Timeout>(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_);
+  return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) == 0);
 }
 
 // ================================================================================================
