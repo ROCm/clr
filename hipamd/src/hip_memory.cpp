@@ -1089,7 +1089,7 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 }
 
 hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
-  if (hostPtr == nullptr || sizeBytes == 0) {
+  if (hostPtr == nullptr || sizeBytes == 0 || flags > 15) {
     return hipErrorInvalidValue;
   } else {
     amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
