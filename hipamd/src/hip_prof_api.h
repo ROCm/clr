@@ -24,7 +24,7 @@
 #include <atomic>
 #include <cassert>
 #include <iostream>
-#include <mutex>
+#include <shared_mutex>
 #include <utility>
 
 #if USE_PROF_API
@@ -50,8 +50,6 @@ class api_callbacks_table_t {
     if (id < HIP_API_ID_FIRST || id > HIP_API_ID_LAST)
       return false;
 
-    std::lock_guard<std::mutex> lock(writer_mutex_);
-
     /* 'function != nullptr' indicates it is activity register call,
        increment should happen only once but client is free to call
        register CB multiple times for same API id hence the check
@@ -70,9 +68,8 @@ class api_callbacks_table_t {
     }
     amd::IS_PROFILER_ON = (enabled_api_count_ > 0);
 
-    acquire_writer_lock(id);
-    callbacks_table_[id].activity = { function, arg };
-    release_writer_lock(id);
+    std::unique_lock lock(callbacks_table_[id].mutex);
+    callbacks_table_[id].activity = {function, arg};
 
     return true;
   }
@@ -81,11 +78,8 @@ class api_callbacks_table_t {
     if (id < HIP_API_ID_FIRST || id > HIP_API_ID_LAST)
       return false;
 
-    std::lock_guard<std::mutex> lock(writer_mutex_);
-
-    acquire_writer_lock(id);
-    callbacks_table_[id].user_callback = { function, arg };
-    release_writer_lock(id);
+    std::unique_lock lock(callbacks_table_[id].mutex);
+    callbacks_table_[id].user_callback = {function, arg};
 
     return true;
   }
@@ -94,9 +88,8 @@ class api_callbacks_table_t {
     assert(id >= HIP_API_ID_FIRST && id <= HIP_API_ID_LAST && "invalid callback id");
     auto& entry = callbacks_table_[id];
 
-    acquire_reader_lock(id);
+    std::shared_lock lock(callbacks_table_[id].mutex);
     auto ret = std::make_pair(entry.user_callback, entry.activity);
-    release_reader_lock(id);
 
     return ret;
   }
@@ -110,44 +103,11 @@ class api_callbacks_table_t {
   }
 
  private:
-  void acquire_reader_lock(hip_api_id_t id) {
-    auto& entry = callbacks_table_[id];
-
-    while (true) {
-      if (entry.reader_count++ == std::numeric_limits<uint32_t>::max())
-        assert(!"reader_count overflow");
-
-      if (!entry.writer_lock) break;
-
-      // A writer owns the lock, decrement the reader count and wait for the
-      // writer to release the lock.
-
-      if (entry.reader_count-- == 0) assert (!"reader_count corrupted");
-      while (entry.writer_lock) {}
-    }
-  }
-
-  void release_reader_lock(hip_api_id_t id) {
-    if (callbacks_table_[id].reader_count-- == 0)
-      assert (!"reader_count corrupted");
-  }
-
-  void acquire_writer_lock(hip_api_id_t id) {
-    callbacks_table_[id].writer_lock = true;
-    while (callbacks_table_[id].reader_count != 0) {}
-  }
-
-  void release_writer_lock(hip_api_id_t id) {
-    callbacks_table_[id].writer_lock = false;
-  }
-
-  std::mutex writer_mutex_{};
   uint32_t enabled_api_count_{0};
 
   // HIP API callbacks table
-  struct  {
-    std::atomic<bool> writer_lock{false};
-    std::atomic<uint32_t> reader_count{0};
+  struct {
+    std::shared_mutex mutex;
     std::pair<activity_sync_callback_t, void*> activity;
     std::pair<activity_rtapi_callback_t, void*> user_callback;
   } callbacks_table_[HIP_API_ID_LAST + 1]{};
