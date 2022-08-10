@@ -110,9 +110,9 @@ void OCLGenericAddressSpace::test6(void) {
             } \n\
             results[0] = *ptr;\n\
             results[1] = pint;\n\
-            results[2] = ptr;\n\
-            results[3] = to_private(ptr);\n\
-            results[4] = &pint;\n\
+            results[2] = (ulong)ptr;\n\
+            results[3] = (ulong)to_private(ptr);\n\
+            results[4] = (ulong)&pint;\n\
         } \n";
   const size_t global_work_size = 1;
   const size_t arrSize = global_work_size * 5;
@@ -185,16 +185,16 @@ void OCLGenericAddressSpace::test5(void) {
             if ((tid % 2) == 0) { \n\
                 results[tid*5] = *ptr;\n\
                 results[tid*5+1] = lint;\n\
-                results[tid*5+2] = ptr;\n\
-                results[tid*5+3] = to_local(ptr);\n\
-                results[tid*5+4] = &lint;\n\
+                results[tid*5+2] = (ulong)ptr;\n\
+                results[tid*5+3] = (ulong)to_local(ptr);\n\
+                results[tid*5+4] = (ulong)&lint;\n\
             } \n\
             else { \n\
                 results[tid*5] = *ptr;\n\
                 results[tid*5+1] = gint;\n\
-                results[tid*5+2] = ptr;\n\
-                results[tid*5+3] = to_global(ptr);\n\
-                results[tid*5+4] = &gint;\n\
+                results[tid*5+2] = (ulong)ptr;\n\
+                results[tid*5+3] = (ulong)to_global(ptr);\n\
+                results[tid*5+4] = (ulong)&gint;\n\
             } \n\
         } \n";
   const size_t global_work_size = 2;
@@ -290,16 +290,16 @@ void OCLGenericAddressSpace::test4(void) {
             if ((tid % 2) == 0) { \n\
                 results[tid*5] = *ptr;\n\
                 results[tid*5+1] = pint;\n\
-                results[tid*5+2] = ptr;\n\
-                results[tid*5+3] = to_private(ptr);\n\
-                results[tid*5+4] = &pint;\n\
+                results[tid*5+2] = (ulong)ptr;\n\
+                results[tid*5+3] = (ulong)to_private(ptr);\n\
+                results[tid*5+4] = (ulong)&pint;\n\
             } \n\
             else { \n\
                 results[tid*5] = *ptr;\n\
                 results[tid*5+1] = gint;\n\
-                results[tid*5+2] = ptr;\n\
-                results[tid*5+3] = to_global(ptr);\n\
-                results[tid*5+4] = &gint;\n\
+                results[tid*5+2] = (ulong)ptr;\n\
+                results[tid*5+3] = (ulong)to_global(ptr);\n\
+                results[tid*5+4] = (ulong)&gint;\n\
             } \n\
         } \n";
   const size_t global_work_size = 2;
