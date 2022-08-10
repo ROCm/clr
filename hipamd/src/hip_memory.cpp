@@ -1136,6 +1136,9 @@ hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) 
 }
 
 hipError_t ihipHostUnregister(void* hostPtr) {
+  if (hostPtr == nullptr) {
+    return hipErrorInvalidValue;
+  }
   size_t offset = 0;
   amd::Memory* mem = getMemoryObject(hostPtr, offset);
 
@@ -1163,7 +1166,7 @@ hipError_t ihipHostUnregister(void* hostPtr) {
   }
 
   LogPrintfError("Cannot unregister host_ptr: 0x%x \n", hostPtr);
-  return hipErrorInvalidValue;
+  return hipErrorHostMemoryNotRegistered;
 }
 
 
