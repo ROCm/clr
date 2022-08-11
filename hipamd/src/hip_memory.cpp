@@ -1059,6 +1059,9 @@ hipError_t hipMalloc3DArray(hipArray_t* array,
                                           hip::getArrayFormat(*desc),
                                           hip::getNumChannels(*desc),
                                           flags};
+  if(!hip::CheckArrayFormat(*desc)) {
+    return hipErrorInvalidValue;
+  }
 
   HIP_RETURN(ihipArrayCreate(array, &allocateArray, 0));
 }
