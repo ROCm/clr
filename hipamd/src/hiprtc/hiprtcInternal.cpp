@@ -485,7 +485,7 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
       data_kind = AMD_COMGR_DATA_KIND_BC;
       break;
     case HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE :
-      data_kind = AMD_COMGR_DATA_KIND_FATBIN;
+      data_kind = AMD_COMGR_DATA_KIND_BC;
       break;
     case HIPRTC_JIT_INPUT_LLVM_ARCHIVES_OF_BUNDLED_BITCODE :
       data_kind = AMD_COMGR_DATA_KIND_FATBIN;
