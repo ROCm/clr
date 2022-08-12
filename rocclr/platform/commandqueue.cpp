@@ -33,9 +33,9 @@
 
 namespace amd {
 
-HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properties properties,
+HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properties props,
                      uint queueRTCUs, Priority priority, const std::vector<uint32_t>& cuMask)
-    : CommandQueue(context, device, properties, device.info().queueProperties_, queueRTCUs,
+    : CommandQueue(context, device, props, device.info().queueProperties_, queueRTCUs,
                    priority, cuMask),
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
@@ -51,6 +51,10 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       thread_.start(this);
       queueLock_.wait();
     }
+  }
+
+  if (GPU_FORCE_QUEUE_PROFILING) {
+    properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
 }
 
