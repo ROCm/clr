@@ -2479,6 +2479,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
           // Cast ROCr value into the hip format
           *reinterpret_cast<uint32_t*>(data[idx]) =
               (static_cast<uint32_t>(it.value) > 0) ? true : false;
+          ++rocr_attr;
           break;
         // The logic should be identical for the both queries
         case amd::MemRangeAttribute::PreferredLocation:
@@ -2499,6 +2500,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
               *reinterpret_cast<int32_t*>(data[idx]) = static_cast<int32_t>(amd::CpuDeviceId);
             }
           }
+          ++rocr_attr;
           break;
         case amd::MemRangeAttribute::AccessedBy: {
           uint32_t entry = 0;
@@ -2557,6 +2559,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
             // Cast ROCr value into the hip format
             *reinterpret_cast<uint32_t*>(data[idx]) = static_cast<uint32_t>(it.value);
           }
+          ++rocr_attr;
           break;
         default:
           return false;
