@@ -2543,7 +2543,8 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
     // dst ptr is host ptr hence error
     return hipErrorInvalidValue;
   }
-  if (memory->getSize() < (offset + sizeBytes)) {
+  // Return error if sizeBytes passed to memcpy is more than the actual size allocated
+  if (sizeBytes > (memory->getSize() - offset)){
     return hipErrorInvalidValue;
   }
   return hipSuccess;
@@ -2744,7 +2745,8 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
   if (memory == nullptr) {
     return hipErrorInvalidValue;
   }
-  if ((sizeBytes + offset) > memory->getSize()) {
+  // Return error if sizeBytes passed to memcpy is more than the actual size allocated
+  if (sizeBytes > (memory->getSize() - offset)){
     return hipErrorInvalidValue;
   }
   if (pitchedDevPtr.pitch == memory->getUserData().pitch_) {
