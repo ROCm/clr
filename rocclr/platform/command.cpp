@@ -162,7 +162,9 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       releaseResources();
     }
 
-    activity_.ReportEventTimestamps(command());
+    if (profilingInfo().enabled_)
+      activity_prof::CallbacksTable::reportActivity(command());
+
     // Broadcast all the waiters.
     if (referenceCount() > 1) {
       signal();
@@ -323,7 +325,6 @@ Command::Command(HostQueue& queue, cl_command_type type,
   for (const auto &event: eventWaitList) {
     event->retain();
   }
-  if (type != 0) activity_.Initialize(type, queue.vdev()->index(), queue.device().index());
 }
 
 // ================================================================================================

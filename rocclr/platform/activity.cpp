@@ -19,50 +19,121 @@
  THE SOFTWARE. */
 
 #include "platform/activity.hpp"
+#include "platform/command.hpp"
+#include "platform/commandqueue.hpp"
 #include "platform/command_utils.hpp"
 
-ACTIVITY_PROF_INSTANCES();
+namespace activity_prof {
 
-#define CASE_STRING(X, C)  case X: case_string = #C ;break;
+#if USE_PROF_API
 
-const char* getOclCommandKindString(uint32_t op) {
-  const char* case_string;
+#if defined(__linux__)
+__thread activity_correlation_id_t correlation_id __attribute__((tls_model("initial-exec"))) = 0;
+#elif defined(_WIN32)
+__declspec(thread) activity_correlation_id_t correlation_id = 0;
+#endif  // defined(_WIN32)
 
-  switch(static_cast<cl_command_type>(op)) {
-    CASE_STRING(0, InternalMarker)
-    CASE_STRING(CL_COMMAND_MARKER, Marker)
-    CASE_STRING(CL_COMMAND_NDRANGE_KERNEL, KernelExecution)
-    CASE_STRING(CL_COMMAND_READ_BUFFER, CopyDeviceToHost)
-    CASE_STRING(CL_COMMAND_WRITE_BUFFER, CopyHostToDevice)
-    CASE_STRING(CL_COMMAND_COPY_BUFFER, CopyDeviceToDevice)
-    CASE_STRING(CL_COMMAND_READ_BUFFER_RECT, CopyDeviceToHost2D)
-    CASE_STRING(CL_COMMAND_WRITE_BUFFER_RECT, CopyHostToDevice2D)
-    CASE_STRING(CL_COMMAND_COPY_BUFFER_RECT, CopyDeviceToDevice2D)
-    CASE_STRING(CL_COMMAND_FILL_BUFFER, FillBuffer)
-    CASE_STRING(CL_COMMAND_TASK, Task)
-    CASE_STRING(CL_COMMAND_NATIVE_KERNEL, NativeKernel)
-    CASE_STRING(CL_COMMAND_READ_IMAGE, ReadImage)
-    CASE_STRING(CL_COMMAND_WRITE_IMAGE, WriteImage)
-    CASE_STRING(CL_COMMAND_COPY_IMAGE, CopyImage)
-    CASE_STRING(CL_COMMAND_COPY_IMAGE_TO_BUFFER, CopyImageToBuffer)
-    CASE_STRING(CL_COMMAND_COPY_BUFFER_TO_IMAGE, CopyBufferToImage)
-    CASE_STRING(CL_COMMAND_MAP_BUFFER, MapBuffer)
-    CASE_STRING(CL_COMMAND_MAP_IMAGE, MapImage)
-    CASE_STRING(CL_COMMAND_UNMAP_MEM_OBJECT, UnmapMemObject)
-    CASE_STRING(CL_COMMAND_ACQUIRE_GL_OBJECTS, AcquireGLObjects)
-    CASE_STRING(CL_COMMAND_RELEASE_GL_OBJECTS, ReleaseGLObjects)
-    CASE_STRING(CL_COMMAND_USER, User)
-    CASE_STRING(CL_COMMAND_BARRIER, Barrier)
-    CASE_STRING(CL_COMMAND_MIGRATE_MEM_OBJECTS, MigrateMemObjects)
-    CASE_STRING(CL_COMMAND_FILL_IMAGE, FillImage)
-    CASE_STRING(CL_COMMAND_SVM_FREE, SvmFree)
-    CASE_STRING(CL_COMMAND_SVM_MEMCPY, SvmMemcpy)
-    CASE_STRING(CL_COMMAND_SVM_MEMFILL, SvmMemFill)
-    CASE_STRING(CL_COMMAND_SVM_MAP, SvmMap)
-    CASE_STRING(CL_COMMAND_SVM_UNMAP, SvmUnmap)
-    CASE_STRING(ROCCLR_COMMAND_STREAM_WAIT_VALUE, StreamWait)
-    CASE_STRING(ROCCLR_COMMAND_STREAM_WRITE_VALUE, StreamWrite)
-    default: case_string = "Unknown command type";
+static inline size_t linearSize(const amd::Coord3D& size3d) {
+  size_t size = size3d[0];
+  if (size3d[1] != 0) size *= size3d[1];
+  if (size3d[2] != 0) size *= size3d[2];
+  return size;
+}
+
+void CallbacksTable::reportActivity(const amd::Command& command) {
+  assert(command.profilingInfo().enabled_ && "profiling must be enabled for this command");
+  auto operation_id = operationId(command.type());
+
+  if (!isEnabled(operation_id)) return;
+
+  const auto* queue = command.queue();
+  assert(queue != nullptr);
+
+  activity_record_t record{
+      ACTIVITY_DOMAIN_HIP_VDI,                  // activity domain
+      command.type(),                           // activity kind
+      operation_id,                             // operation id
+      command.profilingInfo().correlation_id_,  // activity correlation id
+      command.profilingInfo().start_,           // begin timestamp, ns
+      command.profilingInfo().end_,             // end timestamp, ns
+      {{
+          static_cast<int>(queue->device().index()),  // device id
+          queue->vdev()->index()                      // queue id
+      }},
+      {}  // copied data size for memcpy, or kernel name for dispatch
   };
-  return case_string;
+
+  switch (command.type()) {
+    case CL_COMMAND_NDRANGE_KERNEL:
+      record.kernel_name =
+          static_cast<const amd::NDRangeKernelCommand&>(command).kernel().name().c_str();
+      break;
+    case CL_COMMAND_READ_BUFFER:
+    case CL_COMMAND_READ_BUFFER_RECT:
+      record.bytes = linearSize(static_cast<const amd::ReadMemoryCommand&>(command).size());
+      break;
+    case CL_COMMAND_WRITE_BUFFER:
+    case CL_COMMAND_WRITE_BUFFER_RECT:
+      record.bytes = linearSize(static_cast<const amd::WriteMemoryCommand&>(command).size());
+      break;
+    case CL_COMMAND_COPY_BUFFER:
+    case CL_COMMAND_COPY_BUFFER_RECT:
+      record.bytes = linearSize(static_cast<const amd::CopyMemoryCommand&>(command).size());
+      break;
+    default:
+      break;
+  }
+
+  table_.activity_callback.first(operation_id, &record, table_.activity_callback.second);
+}
+
+decltype(CallbacksTable::table_) CallbacksTable::table_;
+
+#endif  // USE_PROF_API
+
+}  // namespace activity_prof
+
+#define CASE_STRING(X, C)                                                                          \
+  case X:                                                                                          \
+    return #C
+
+const char* getOclCommandKindString(cl_command_type commandType) {
+  switch (commandType) {
+    CASE_STRING(0, InternalMarker);
+    CASE_STRING(CL_COMMAND_MARKER, Marker);
+    CASE_STRING(CL_COMMAND_NDRANGE_KERNEL, KernelExecution);
+    CASE_STRING(CL_COMMAND_READ_BUFFER, CopyDeviceToHost);
+    CASE_STRING(CL_COMMAND_WRITE_BUFFER, CopyHostToDevice);
+    CASE_STRING(CL_COMMAND_COPY_BUFFER, CopyDeviceToDevice);
+    CASE_STRING(CL_COMMAND_READ_BUFFER_RECT, CopyDeviceToHost2D);
+    CASE_STRING(CL_COMMAND_WRITE_BUFFER_RECT, CopyHostToDevice2D);
+    CASE_STRING(CL_COMMAND_COPY_BUFFER_RECT, CopyDeviceToDevice2D);
+    CASE_STRING(CL_COMMAND_FILL_BUFFER, FillBuffer);
+    CASE_STRING(CL_COMMAND_TASK, Task);
+    CASE_STRING(CL_COMMAND_NATIVE_KERNEL, NativeKernel);
+    CASE_STRING(CL_COMMAND_READ_IMAGE, ReadImage);
+    CASE_STRING(CL_COMMAND_WRITE_IMAGE, WriteImage);
+    CASE_STRING(CL_COMMAND_COPY_IMAGE, CopyImage);
+    CASE_STRING(CL_COMMAND_COPY_IMAGE_TO_BUFFER, CopyImageToBuffer);
+    CASE_STRING(CL_COMMAND_COPY_BUFFER_TO_IMAGE, CopyBufferToImage);
+    CASE_STRING(CL_COMMAND_MAP_BUFFER, MapBuffer);
+    CASE_STRING(CL_COMMAND_MAP_IMAGE, MapImage);
+    CASE_STRING(CL_COMMAND_UNMAP_MEM_OBJECT, UnmapMemObject);
+    CASE_STRING(CL_COMMAND_ACQUIRE_GL_OBJECTS, AcquireGLObjects);
+    CASE_STRING(CL_COMMAND_RELEASE_GL_OBJECTS, ReleaseGLObjects);
+    CASE_STRING(CL_COMMAND_USER, User);
+    CASE_STRING(CL_COMMAND_BARRIER, Barrier);
+    CASE_STRING(CL_COMMAND_MIGRATE_MEM_OBJECTS, MigrateMemObjects);
+    CASE_STRING(CL_COMMAND_FILL_IMAGE, FillImage);
+    CASE_STRING(CL_COMMAND_SVM_FREE, SvmFree);
+    CASE_STRING(CL_COMMAND_SVM_MEMCPY, SvmMemcpy);
+    CASE_STRING(CL_COMMAND_SVM_MEMFILL, SvmMemFill);
+    CASE_STRING(CL_COMMAND_SVM_MAP, SvmMap);
+    CASE_STRING(CL_COMMAND_SVM_UNMAP, SvmUnmap);
+    CASE_STRING(ROCCLR_COMMAND_STREAM_WAIT_VALUE, StreamWait);
+    CASE_STRING(ROCCLR_COMMAND_STREAM_WRITE_VALUE, StreamWrite);
+    default:
+      break;
+  };
+  return "Unknown command kind";
 };

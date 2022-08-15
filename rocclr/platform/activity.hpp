@@ -20,170 +20,98 @@
 
 #pragma once
 
-#include "thread/monitor.hpp"
+#include "top.hpp"
 
+#include <array>
 #include <atomic>
-#include <mutex>
-#include <thread>
+#include <utility>
+
+namespace amd {
+class Command;
+}  // namespace amd
 
 #define USE_PROF_API 1
 
 #if USE_PROF_API
+
 enum OpId { OP_ID_DISPATCH = 0, OP_ID_COPY = 1, OP_ID_BARRIER = 2, OP_ID_NUMBER = 3 };
 
 #include "prof_protocol.h"
 
-// Statically allocated table of callbacks and global unique ID of each operation
-#define ACTIVITY_PROF_INSTANCES()                                                                  \
-  namespace activity_prof {                                                                        \
-  CallbacksTable::table_t CallbacksTable::table_{};                                                \
-  std::atomic<record_id_t> ActivityProf::globe_record_id_(0);                                      \
-  }  // activity_prof
-
 namespace activity_prof {
-typedef activity_correlation_id_t record_id_t;
-typedef activity_op_t op_id_t;
-typedef uint32_t command_id_t;
 
-typedef activity_id_callback_t id_callback_fun_t;
-typedef activity_async_callback_t callback_fun_t;
-typedef void* callback_arg_t;
+#if defined(__linux__)
+extern __thread activity_correlation_id_t correlation_id __attribute__((tls_model("initial-exec")));
+#elif defined(_WIN32)
+extern __declspec(thread) activity_correlation_id_t correlation_id;
+#endif  // defined(_WIN32)
 
-// Activity callbacks table
+constexpr OpId operationId(cl_command_type commandType) {
+  switch (commandType) {
+    case CL_COMMAND_NDRANGE_KERNEL:
+      return OP_ID_DISPATCH;
+    case CL_COMMAND_READ_BUFFER:
+    case CL_COMMAND_READ_BUFFER_RECT:
+    case CL_COMMAND_WRITE_BUFFER:
+    case CL_COMMAND_WRITE_BUFFER_RECT:
+    case CL_COMMAND_COPY_BUFFER:
+    case CL_COMMAND_COPY_BUFFER_RECT:
+    case CL_COMMAND_FILL_BUFFER:
+    case CL_COMMAND_READ_IMAGE:
+    case CL_COMMAND_WRITE_IMAGE:
+    case CL_COMMAND_COPY_IMAGE:
+    case CL_COMMAND_FILL_IMAGE:
+    case CL_COMMAND_COPY_BUFFER_TO_IMAGE:
+    case CL_COMMAND_COPY_IMAGE_TO_BUFFER:
+      return OP_ID_COPY;
+    case CL_COMMAND_MARKER:
+      return OP_ID_BARRIER;
+    default:
+      return OP_ID_NUMBER;
+  }
+}
+
 class CallbacksTable {
  public:
-  struct table_t {
-    id_callback_fun_t id_callback;
-    callback_fun_t op_callback;
-    callback_arg_t arg;
-    std::atomic<bool> enabled[OP_ID_NUMBER];
-  };
-
   // Initialize record id callback and activity callback
-  static void init(const id_callback_fun_t& id_callback, const callback_fun_t& op_callback,
-                   const callback_arg_t& arg) {
-    table_.id_callback = id_callback;
-    table_.op_callback = op_callback;
-    table_.arg = arg;
+  static void init(activity_async_callback_t activity_callback, void* arg) {
+    table_.activity_callback = {activity_callback, arg};
   }
 
-  static bool SetEnabled(const op_id_t& op_id, const bool& enable) {
-    bool ret = true;
-    if (op_id < OP_ID_NUMBER) {
-      table_.enabled[op_id].store(enable, std::memory_order_release);
-    } else {
-      ret = false;
-    }
-    return ret;
+  static bool setEnabled(OpId op, bool enable) {
+    if (op >= OP_ID_NUMBER) return false;
+    table_.enabled[op].store(enable, std::memory_order_release);
+    return true;
   }
 
-  static bool IsEnabled(const op_id_t& op_id) {
-    return table_.enabled[op_id].load(std::memory_order_acquire);
+  static bool isEnabled(OpId op_id) {
+    return op_id < OP_ID_NUMBER && table_.enabled[op_id].load(std::memory_order_acquire);
   }
 
-  static id_callback_fun_t get_id_callback() { return table_.id_callback; }
-  static callback_fun_t get_op_callback() { return table_.op_callback; }
-  static callback_arg_t get_arg() { return table_.arg; }
+  static void reportActivity(const amd::Command& command);
 
  private:
-  static table_t table_;
-};
-
-// Activity profile class
-class ActivityProf {
- public:
-  // Domain ID
-  static constexpr int ACTIVITY_DOMAIN_ID = ACTIVITY_DOMAIN_HIP_VDI;
-
-  ActivityProf() : command_id_(0), queue_id_(0), device_id_(0), record_id_(0), enabled_(false) {}
-
-  // Initialization
-  void Initialize(const command_id_t command_id, const uint32_t queue_id,
-                  const uint32_t device_id) {
-    activity_op_t op_id = (command_id == CL_COMMAND_NDRANGE_KERNEL) ? OP_ID_DISPATCH : OP_ID_COPY;
-    enabled_ = CallbacksTable::IsEnabled(op_id);
-    if (IsEnabled()) {
-      command_id_ = command_id;
-      queue_id_ = queue_id;
-      device_id_ = device_id;
-      record_id_ = globe_record_id_.fetch_add(1, std::memory_order_relaxed);
-      (CallbacksTable::get_id_callback())(record_id_);
-    }
-  }
-
-  template <class T> inline void ReportEventTimestamps(T& obj, const size_t bytes = 0) {
-    if (IsEnabled()) {
-      uint64_t start = obj.profilingInfo().start_;
-      uint64_t end = obj.profilingInfo().end_;
-      callback(obj.type(), start, end, bytes);
-    }
-  }
-
-  bool IsEnabled() const { return enabled_; }
-
- private:
-  // Activity callback routine
-  void callback(const command_id_t command_id,
-      const uint64_t begin_ts, const uint64_t end_ts, const size_t bytes) {
-    activity_op_t op_id = (command_id == CL_COMMAND_NDRANGE_KERNEL) ? OP_ID_DISPATCH : OP_ID_COPY;
-    activity_record_t record {
-        ACTIVITY_DOMAIN_ID,            // domain id
-        (activity_kind_t)command_id,   // activity kind
-        op_id,                         // operation id
-        record_id_,                    // activity correlation id
-        begin_ts,                      // begin timestamp, ns
-        end_ts,                        // end timestamp, ns
-        {
-          {
-            static_cast<int>(device_id_), // device id
-            queue_id_                     // queue id
-          }
-        },
-        bytes                          // copied data size, for memcpy
-    };
-    (CallbacksTable::get_op_callback())(op_id, &record, CallbacksTable::get_arg());
-  }
-
-  command_id_t command_id_; //!< Command ID, executed on the queue
-  uint32_t queue_id_;       //!< Queue ID, associated with this command
-  uint32_t device_id_;      //!< Device ID, associated with this command
-  record_id_t record_id_;   //!< Uniqueue execution ID(counter) of this command
-  bool enabled_;            //!< Activity profiling is enabled
-
-  // Global record ID
-  static std::atomic<record_id_t> globe_record_id_; //!< GLobal counter of all executed commands
+  static struct {
+    std::array<std::atomic<bool>, OP_ID_NUMBER> enabled{};
+    std::pair<activity_async_callback_t /* function */, void* /* arg */> activity_callback;
+  } table_;
 };
 
 }  // namespace activity_prof
 
-#else
-#define ACTIVITY_PROF_INSTANCES()
+#else  // !USE_PROF_API
 
 namespace activity_prof {
-typedef uint32_t op_id_t;
-typedef uint32_t command_id_t;
 
-typedef void* id_callback_fun_t;
-typedef void* callback_fun_t;
-typedef void* callback_arg_t;
-
-struct CallbacksTable {
-  static void init(const id_callback_fun_t& id_callback, const callback_fun_t& op_callback,
-                   const callback_arg_t& arg) {}
-  static bool SetEnabled(const op_id_t& op_id, const bool& enable) { return false; }
-};
-
-class ActivityProf {
+class CallbacksTable {
  public:
-  ActivityProf() {}
-  inline void Initialize(const command_id_t command_id, const uint32_t queue_id,
-                         const uint32_t device_id) {}
-  template <class T> inline void ReportEventTimestamps(T& obj, const size_t bytes = 0) {}
-  inline bool IsEnabled() { return false; }
+  static void init(activity_async_callback_t, void*) {}
+  static bool setEnabled(OpId, bool) { return false; }
+  static void reportActivity(const amd::Command&) {}
 };
 
 }  // namespace activity_prof
 
-#endif
+#endif  // !USE_PROF_API
 
-const char* getOclCommandKindString(uint32_t op);
+const char* getOclCommandKindString(cl_command_type kind);

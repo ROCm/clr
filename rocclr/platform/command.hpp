@@ -108,6 +108,7 @@ class Event : public RuntimeObject {
       if (enabled) {
         clear();
         callback_ = nullptr;
+        correlation_id_ = activity_prof::correlation_id;
       }
     }
 
@@ -118,6 +119,7 @@ class Event : public RuntimeObject {
     bool enabled_;        //!< Profiling enabled for the wave limiter
     uint32_t waves_;      //!< The number of waves used in a dispatch
     ProfilingCallback* callback_;
+    uint64_t correlation_id_;
     bool marker_ts_;      //!< TS marker
 
     void clear() {
@@ -136,8 +138,6 @@ class Event : public RuntimeObject {
       callback_ = callback;
     }
   } profilingInfo_;
-
-  activity_prof::ActivityProf activity_;  //!< Activity profiling
 
   //! Construct a new event.
   Event();
@@ -164,6 +164,7 @@ class Event : public RuntimeObject {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
     profilingInfo_.callback_ = nullptr;
+    profilingInfo_.correlation_id_ = activity_prof::correlation_id;
   }
 
  public:
