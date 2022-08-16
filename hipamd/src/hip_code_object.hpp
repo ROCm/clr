@@ -139,7 +139,7 @@ public:
   hipError_t registerStatManagedVar(Var *var);
 
   //Retrive Vars/Funcs for a given hostSidePtr(const void*), unless stated otherwise.
-  const char* getStatFuncName(const void* hostFunction) const;
+  const char* getStatFuncName(const void* hostFunction);
   hipError_t getStatFunc(hipFunction_t* hfunc, const void* hostFunction, int deviceId);
   hipError_t getStatFuncAttr(hipFuncAttributes* func_attr, const void* hostFunction, int deviceId);
   hipError_t getStatGlobalVar(const void* hostVar, int deviceId, hipDeviceptr_t* dev_ptr,
