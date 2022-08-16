@@ -41,7 +41,8 @@ int hipGetStreamDeviceId(hipStream_t stream) {
   return (s != nullptr)? s->DeviceId() : ihipGetDevice();
 }
 
-const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t) {
+const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t stream) {
+  [](auto&&...){}(stream);
   if (hostFunction == nullptr) {
     return nullptr;
   }

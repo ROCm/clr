@@ -770,7 +770,9 @@ hipError_t StatCO::registerStatFunction(const void* hostFunction, Function* func
   return hipSuccess;
 }
 
-const char* StatCO::getStatFuncName(const void* hostFunction) const {
+const char* StatCO::getStatFuncName(const void* hostFunction) {
+  amd::ScopedLock lock(sclock_);
+
   const auto it = functions_.find(hostFunction);
   if (it == functions_.end()) {
     return nullptr;

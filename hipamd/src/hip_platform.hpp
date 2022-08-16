@@ -74,7 +74,7 @@ class PlatformState {
   hipError_t registerStatGlobalVar(const void* hostVar, hip::Var* var);
   hipError_t registerStatManagedVar(hip::Var* var);
 
-  const char* getStatFuncName(const void* hostFunction) const;
+  const char* getStatFuncName(const void* hostFunction);
   hipError_t getStatFunc(hipFunction_t* hfunc, const void* hostFunction, int deviceId);
   hipError_t getStatFuncAttr(hipFuncAttributes* func_attr, const void* hostFunction, int deviceId);
   hipError_t getStatGlobalVar(const void* hostVar, int deviceId, hipDeviceptr_t* dev_ptr,

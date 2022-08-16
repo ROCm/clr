@@ -893,7 +893,7 @@ hipError_t PlatformState::registerStatManagedVar(hip::Var* var) {
   return statCO_.registerStatManagedVar(var);
 }
 
-const char* PlatformState::getStatFuncName(const void* hostFunction) const {
+const char* PlatformState::getStatFuncName(const void* hostFunction) {
   return statCO_.getStatFuncName(hostFunction);
 }
 
