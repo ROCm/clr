@@ -674,7 +674,7 @@ hipError_t hipMemGetInfo(size_t* free, size_t* total) {
   HIP_INIT_API(hipMemGetInfo, free, total);
 
   if (free == nullptr && total == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipSuccess);
   }
 
   size_t freeMemory[2];
