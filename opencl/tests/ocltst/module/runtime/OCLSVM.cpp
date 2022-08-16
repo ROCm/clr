@@ -69,7 +69,7 @@ const static char* sources[] = {
     STR(__kernel void test(__global ulong* ptr) {
       while (ptr) {
         *ptr = 0xDEADBEEF;
-        ptr = *((__global ulong*)(ptr + 1));
+        ptr = *((__global ulong* __global*)(ptr + 1));
       }
     }),
     STR(__kernel void test(__global volatile int* ptr, int numIterations) {
