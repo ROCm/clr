@@ -211,7 +211,6 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
   }
 
   ipc_evt_.ipc_shmem_->owners += 1;
-  setDeviceId(ipc_evt_.ipc_shmem_->owners_device_id.load());
   // device sets 0 to this ptr when the ipc event is completed
   hipError_t status = hipSuccess;
   status = ihipHostRegister(&ipc_evt_.ipc_shmem_->signal,
