@@ -100,9 +100,11 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   }
 
 
-#define HIP_API_PRINT(...)                                 \
-  uint64_t startTimeUs=0 ; HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s%s ( %s )%s", KGRN,    \
-          __func__, ToString( __VA_ARGS__ ).c_str(),KNRM);
+#define HIP_API_PRINT(...)                                          \
+  uint64_t startTimeUs=0;                                           \
+  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,       \
+                  "%s %s ( %s ) %s", KGRN,                          \
+                  __func__, ToString( __VA_ARGS__ ).c_str(), KNRM);
 
 #define HIP_ERROR_PRINT(err, ...)                                                  \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",                     \
@@ -131,7 +133,7 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   hip::g_lastError = ret;                                    \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,                      \
                    "%s: Returned %s : %s",                                         \
-                   __func__, ihipGetErrorName(hip::g_lastError),                    \
+                   __func__, ihipGetErrorName(hip::g_lastError),                   \
                    ToString( __VA_ARGS__ ).c_str());                               \
   return hip::g_lastError;
 
