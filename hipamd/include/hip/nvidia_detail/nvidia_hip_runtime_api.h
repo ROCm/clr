@@ -3186,6 +3186,21 @@ inline static hipError_t hipArray3DCreate(hiparray* pHandle,
     return hipCUResultTohipError(cuArray3DCreate(pHandle, pAllocateArray));
 }
 
+inline static hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc, hipExtent* extent,
+                                          unsigned int* flags, hipArray* array) {
+    return hipCUDAErrorTohipError(cudaArrayGetInfo(desc, extent, flags, array));
+}
+
+inline static hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
+                                               hipArray* array) {
+    return hipCUResultTohipError(cuArrayGetDescriptor(pArrayDescriptor, (CUarray)array));
+}
+
+inline static hipError_t hipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor,
+                                                 hipArray* array) {
+    return hipCUResultTohipError(cuArray3DGetDescriptor(pArrayDescriptor, (CUarray)array));
+}
+
 inline static hipError_t hipStreamBeginCapture(hipStream_t stream, hipStreamCaptureMode mode) {
     return hipCUDAErrorTohipError(cudaStreamBeginCapture(stream, mode));
 }
