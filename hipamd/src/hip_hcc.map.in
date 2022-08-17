@@ -517,3 +517,12 @@ global:
 local:
     *;
 } hip_5.3;
+
+hip_5.6 {
+global:
+    hipArrayGetInfo;
+    hipArrayGetDescriptor;
+    hipArray3DGetDescriptor;
+local:
+    *;
+} hip_5.5;

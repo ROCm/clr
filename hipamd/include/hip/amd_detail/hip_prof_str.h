@@ -370,10 +370,11 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphMemFreeNodeGetParams = 357,
   HIP_API_ID_hipModuleLaunchCooperativeKernel = 358,
   HIP_API_ID_hipModuleLaunchCooperativeKernelMultiDevice = 359,
-  HIP_API_ID_LAST = 359,
+  HIP_API_ID_hipArray3DGetDescriptor = 360,
+  HIP_API_ID_hipArrayGetDescriptor = 361,
+  HIP_API_ID_hipArrayGetInfo = 362,
+  HIP_API_ID_LAST = 362,
 
-  HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
-  HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipBindTexture = HIP_API_ID_NONE,
   HIP_API_ID_hipBindTexture2D = HIP_API_ID_NONE,
   HIP_API_ID_hipBindTextureToArray = HIP_API_ID_NONE,
@@ -420,8 +421,11 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID___hipPopCallConfiguration: return "__hipPopCallConfiguration";
     case HIP_API_ID___hipPushCallConfiguration: return "__hipPushCallConfiguration";
     case HIP_API_ID_hipArray3DCreate: return "hipArray3DCreate";
+    case HIP_API_ID_hipArray3DGetDescriptor: return "hipArray3DGetDescriptor";
     case HIP_API_ID_hipArrayCreate: return "hipArrayCreate";
     case HIP_API_ID_hipArrayDestroy: return "hipArrayDestroy";
+    case HIP_API_ID_hipArrayGetDescriptor: return "hipArrayGetDescriptor";
+    case HIP_API_ID_hipArrayGetInfo: return "hipArrayGetInfo";
     case HIP_API_ID_hipChooseDevice: return "hipChooseDevice";
     case HIP_API_ID_hipConfigureCall: return "hipConfigureCall";
     case HIP_API_ID_hipCreateSurfaceObject: return "hipCreateSurfaceObject";
@@ -782,8 +786,11 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("__hipPopCallConfiguration", name) == 0) return HIP_API_ID___hipPopCallConfiguration;
   if (strcmp("__hipPushCallConfiguration", name) == 0) return HIP_API_ID___hipPushCallConfiguration;
   if (strcmp("hipArray3DCreate", name) == 0) return HIP_API_ID_hipArray3DCreate;
+  if (strcmp("hipArray3DGetDescriptor", name) == 0) return HIP_API_ID_hipArray3DGetDescriptor;
   if (strcmp("hipArrayCreate", name) == 0) return HIP_API_ID_hipArrayCreate;
   if (strcmp("hipArrayDestroy", name) == 0) return HIP_API_ID_hipArrayDestroy;
+  if (strcmp("hipArrayGetDescriptor", name) == 0) return HIP_API_ID_hipArrayGetDescriptor;
+  if (strcmp("hipArrayGetInfo", name) == 0) return HIP_API_ID_hipArrayGetInfo;
   if (strcmp("hipChooseDevice", name) == 0) return HIP_API_ID_hipChooseDevice;
   if (strcmp("hipConfigureCall", name) == 0) return HIP_API_ID_hipConfigureCall;
   if (strcmp("hipCreateSurfaceObject", name) == 0) return HIP_API_ID_hipCreateSurfaceObject;
@@ -1165,6 +1172,12 @@ typedef struct hip_api_data_s {
       HIP_ARRAY3D_DESCRIPTOR pAllocateArray__val;
     } hipArray3DCreate;
     struct {
+      HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor;
+      HIP_ARRAY3D_DESCRIPTOR pArrayDescriptor__val;
+      hipArray* array;
+      hipArray array__val;
+    } hipArray3DGetDescriptor;
+    struct {
       hipArray** pHandle;
       hipArray* pHandle__val;
       const HIP_ARRAY_DESCRIPTOR* pAllocateArray;
@@ -1174,6 +1187,22 @@ typedef struct hip_api_data_s {
       hipArray* array;
       hipArray array__val;
     } hipArrayDestroy;
+    struct {
+      HIP_ARRAY_DESCRIPTOR* pArrayDescriptor;
+      HIP_ARRAY_DESCRIPTOR pArrayDescriptor__val;
+      hipArray* array;
+      hipArray array__val;
+    } hipArrayGetDescriptor;
+    struct {
+      hipChannelFormatDesc* desc;
+      hipChannelFormatDesc desc__val;
+      hipExtent* extent;
+      hipExtent extent__val;
+      unsigned int* flags;
+      unsigned int flags__val;
+      hipArray* array;
+      hipArray array__val;
+    } hipArrayGetInfo;
     struct {
       int* device;
       int device__val;
@@ -3252,6 +3281,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipArray3DCreate.array = (hipArray**)array; \
   cb_data.args.hipArray3DCreate.pAllocateArray = (const HIP_ARRAY3D_DESCRIPTOR*)pAllocateArray; \
 };
+// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+#define INIT_hipArray3DGetDescriptor_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipArray3DGetDescriptor.pArrayDescriptor = (HIP_ARRAY3D_DESCRIPTOR*)pArrayDescriptor; \
+  cb_data.args.hipArray3DGetDescriptor.array = (hipArray*)array; \
+};
 // hipArrayCreate[('hipArray**', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
 #define INIT_hipArrayCreate_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipArrayCreate.pHandle = (hipArray**)array; \
@@ -3260,6 +3294,18 @@ typedef struct hip_api_data_s {
 // hipArrayDestroy[('hipArray*', 'array')]
 #define INIT_hipArrayDestroy_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipArrayDestroy.array = (hipArray*)array; \
+};
+// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+#define INIT_hipArrayGetDescriptor_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipArrayGetDescriptor.pArrayDescriptor = (HIP_ARRAY_DESCRIPTOR*)pArrayDescriptor; \
+  cb_data.args.hipArrayGetDescriptor.array = (hipArray*)array; \
+};
+// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray*', 'array')]
+#define INIT_hipArrayGetInfo_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipArrayGetInfo.desc = (hipChannelFormatDesc*)desc; \
+  cb_data.args.hipArrayGetInfo.extent = (hipExtent*)extent; \
+  cb_data.args.hipArrayGetInfo.flags = (unsigned int*)flags; \
+  cb_data.args.hipArrayGetInfo.array = (hipArray*)array; \
 };
 // hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_t*', 'prop')]
 #define INIT_hipChooseDevice_CB_ARGS_DATA(cb_data) { \
@@ -5376,10 +5422,6 @@ typedef struct hip_api_data_s {
 #define INIT_CB_ARGS_DATA(cb_id, cb_data) INIT_##cb_id##_CB_ARGS_DATA(cb_data)
 
 // Macros for non-public API primitives
-// hipArray3DGetDescriptor()
-#define INIT_hipArray3DGetDescriptor_CB_ARGS_DATA(cb_data) {};
-// hipArrayGetDescriptor()
-#define INIT_hipArrayGetDescriptor_CB_ARGS_DATA(cb_data) {};
 // hipBindTexture()
 #define INIT_hipBindTexture_CB_ARGS_DATA(cb_data) {};
 // hipBindTexture2D()
@@ -5478,6 +5520,11 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipArray3DCreate.array) data->args.hipArray3DCreate.array__val = *(data->args.hipArray3DCreate.array);
       if (data->args.hipArray3DCreate.pAllocateArray) data->args.hipArray3DCreate.pAllocateArray__val = *(data->args.hipArray3DCreate.pAllocateArray);
       break;
+// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+    case HIP_API_ID_hipArray3DGetDescriptor:
+      if (data->args.hipArray3DGetDescriptor.pArrayDescriptor) data->args.hipArray3DGetDescriptor.pArrayDescriptor__val = *(data->args.hipArray3DGetDescriptor.pArrayDescriptor);
+      if (data->args.hipArray3DGetDescriptor.array) data->args.hipArray3DGetDescriptor.array__val = *(data->args.hipArray3DGetDescriptor.array);
+      break;
 // hipArrayCreate[('hipArray**', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
     case HIP_API_ID_hipArrayCreate:
       if (data->args.hipArrayCreate.pHandle) data->args.hipArrayCreate.pHandle__val = *(data->args.hipArrayCreate.pHandle);
@@ -5486,6 +5533,18 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipArrayDestroy[('hipArray*', 'array')]
     case HIP_API_ID_hipArrayDestroy:
       if (data->args.hipArrayDestroy.array) data->args.hipArrayDestroy.array__val = *(data->args.hipArrayDestroy.array);
+      break;
+// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+    case HIP_API_ID_hipArrayGetDescriptor:
+      if (data->args.hipArrayGetDescriptor.pArrayDescriptor) data->args.hipArrayGetDescriptor.pArrayDescriptor__val = *(data->args.hipArrayGetDescriptor.pArrayDescriptor);
+      if (data->args.hipArrayGetDescriptor.array) data->args.hipArrayGetDescriptor.array__val = *(data->args.hipArrayGetDescriptor.array);
+      break;
+// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray*', 'array')]
+    case HIP_API_ID_hipArrayGetInfo:
+      if (data->args.hipArrayGetInfo.desc) data->args.hipArrayGetInfo.desc__val = *(data->args.hipArrayGetInfo.desc);
+      if (data->args.hipArrayGetInfo.extent) data->args.hipArrayGetInfo.extent__val = *(data->args.hipArrayGetInfo.extent);
+      if (data->args.hipArrayGetInfo.flags) data->args.hipArrayGetInfo.flags__val = *(data->args.hipArrayGetInfo.flags);
+      if (data->args.hipArrayGetInfo.array) data->args.hipArrayGetInfo.array__val = *(data->args.hipArrayGetInfo.array);
       break;
 // hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_t*', 'prop')]
     case HIP_API_ID_hipChooseDevice:
@@ -6881,6 +6940,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", pAllocateArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DCreate.pAllocateArray__val); }
       oss << ")";
     break;
+    case HIP_API_ID_hipArray3DGetDescriptor:
+      oss << "hipArray3DGetDescriptor(";
+      if (data->args.hipArray3DGetDescriptor.pArrayDescriptor == NULL) oss << "pArrayDescriptor=NULL";
+      else { oss << "pArrayDescriptor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DGetDescriptor.pArrayDescriptor__val); }
+      if (data->args.hipArray3DGetDescriptor.array == NULL) oss << ", array=NULL";
+      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DGetDescriptor.array__val); }
+      oss << ")";
+    break;
     case HIP_API_ID_hipArrayCreate:
       oss << "hipArrayCreate(";
       if (data->args.hipArrayCreate.pHandle == NULL) oss << "pHandle=NULL";
@@ -6893,6 +6960,26 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << "hipArrayDestroy(";
       if (data->args.hipArrayDestroy.array == NULL) oss << "array=NULL";
       else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayDestroy.array__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipArrayGetDescriptor:
+      oss << "hipArrayGetDescriptor(";
+      if (data->args.hipArrayGetDescriptor.pArrayDescriptor == NULL) oss << "pArrayDescriptor=NULL";
+      else { oss << "pArrayDescriptor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetDescriptor.pArrayDescriptor__val); }
+      if (data->args.hipArrayGetDescriptor.array == NULL) oss << ", array=NULL";
+      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetDescriptor.array__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipArrayGetInfo:
+      oss << "hipArrayGetInfo(";
+      if (data->args.hipArrayGetInfo.desc == NULL) oss << "desc=NULL";
+      else { oss << "desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.desc__val); }
+      if (data->args.hipArrayGetInfo.extent == NULL) oss << ", extent=NULL";
+      else { oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.extent__val); }
+      if (data->args.hipArrayGetInfo.flags == NULL) oss << ", flags=NULL";
+      else { oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.flags__val); }
+      if (data->args.hipArrayGetInfo.array == NULL) oss << ", array=NULL";
+      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.array__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipChooseDevice:

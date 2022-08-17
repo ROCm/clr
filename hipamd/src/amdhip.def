@@ -103,6 +103,9 @@ hipMemPoolImportPointer
 hipArrayCreate
 hipArray3DCreate
 hipArrayDestroy
+hipArrayGetInfo
+hipArrayGetDescriptor
+hipArray3DGetDescriptor
 hipMallocArray
 hipMemAdvise
 hipMemAllocPitch

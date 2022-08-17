@@ -1047,6 +1047,7 @@ hipError_t ihipArrayCreate(hipArray** array,
   (*array)->depth = pAllocateArray->Depth;
   (*array)->Format = pAllocateArray->Format;
   (*array)->NumChannels = pAllocateArray->NumChannels;
+  (*array)->flags = pAllocateArray->Flags;
   {
     amd::ScopedLock lock(hip::hipArraySetLock);
     hip::hipArraySet.insert(*array);
@@ -3541,22 +3542,105 @@ hipError_t hipArrayDestroy(hipArray* array) {
   HIP_RETURN(ihipArrayDestroy(array));
 }
 
-hipError_t hipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor,
-                                   hipArray* array) {
-  HIP_INIT_API(hipArray3DGetDescriptor, pArrayDescriptor, array);
+hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
+                                    hipArray* array) {
+  {
+    amd::ScopedLock lock(hip::hipArraySetLock);
+    if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
+      return hipErrorInvalidHandle;
+    }
+  }
 
-  assert(false && "Unimplemented");
+  desc->Width = array->width;
+  desc->Height = array->height;
+  desc->Depth = array->depth;
+  desc->Format = array->Format;
+  desc->NumChannels = array->NumChannels;
+  desc->Flags = array->flags;
 
-  HIP_RETURN(hipSuccess);
+  return hipSuccess;
+}
+
+hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc,
+                           hipExtent* extent,
+                           unsigned int* flags,
+                           hipArray* array) {
+  HIP_INIT_API(hipArrayGetInfo, desc, extent, flags, array);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+
+  if (array == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
+  // If all output parameters are nullptr, then no need to proceed further
+  if ((desc == nullptr) && (extent == nullptr) && (flags == nullptr)) {
+    HIP_RETURN(hipSuccess);
+  }
+
+  HIP_ARRAY3D_DESCRIPTOR array3DDescriptor;
+  hipError_t status = ihipArray3DGetDescriptor(&array3DDescriptor, array);
+
+  // Fill each output parameter
+  if (status == hipSuccess) {
+    if (desc != nullptr) {
+      *desc = hip::getChannelFormatDesc(array3DDescriptor.NumChannels, array3DDescriptor.Format);
+    }
+
+    if (extent != nullptr) {
+      extent->width = array3DDescriptor.Width;
+      extent->height = array3DDescriptor.Height;
+      extent->depth = array3DDescriptor.Depth;
+    }
+
+    if (flags != nullptr) {
+      *flags = array3DDescriptor.Flags;
+    }
+  }
+
+  HIP_RETURN(status);
 }
 
 hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
                                  hipArray* array) {
   HIP_INIT_API(hipArrayGetDescriptor, pArrayDescriptor, array);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
 
-  assert(false && "Unimplemented");
+  if (array == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
 
-  HIP_RETURN(hipSuccess);
+  if (pArrayDescriptor == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_ARRAY3D_DESCRIPTOR array3DDescriptor;
+  hipError_t status = ihipArray3DGetDescriptor(&array3DDescriptor, array);
+
+  // Fill each output parameter
+  if (status == hipSuccess) {
+    pArrayDescriptor->Width = array3DDescriptor.Width;
+    pArrayDescriptor->Height = array3DDescriptor.Height;
+    pArrayDescriptor->Format = array3DDescriptor.Format;
+    pArrayDescriptor->NumChannels = array3DDescriptor.NumChannels;
+  }
+
+  HIP_RETURN(status);
+}
+
+hipError_t hipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor,
+                                   hipArray* array) {
+  HIP_INIT_API(hipArray3DGetDescriptor, pArrayDescriptor, array);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+
+  if (array == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
+  if (pArrayDescriptor == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(ihipArray3DGetDescriptor(pArrayDescriptor, array));
 }
 
 hipError_t hipMemcpyParam2DAsync(const hip_Memcpy2D* pCopy,
