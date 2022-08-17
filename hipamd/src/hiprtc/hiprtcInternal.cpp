@@ -536,7 +536,7 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
     llvm_bitcode.assign(link_file_info.begin() + co_offset,
                         link_file_info.begin() + co_offset + co_size);
   } else {
-    llvm_bitcode.assign(link_file_name.begin(), link_file_name.end());
+    llvm_bitcode.assign(link_file_info.begin(), link_file_info.end());
   }
 
   amd_comgr_data_kind_t data_kind;
