@@ -68,29 +68,30 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-# Create HIPRTC object library
 if(BUILD_SHARED_LIBS)
-  add_library(hiprtcobject OBJECT hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+  target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
 endif()
 
-set_target_properties(hiprtcobject PROPERTIES
+set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON
   CXX_EXTENSIONS OFF
   POSITION_INDEPENDENT_CODE ON)
 
-target_include_directories(hiprtcobject
+target_include_directories(hiprtc
   PRIVATE
-  ${HIP_COMMON_INCLUDE_DIR}
-  ${PROJECT_SOURCE_DIR}/include
-  ${PROJECT_BINARY_DIR}/include)
+  $<BUILD_INTERFACE:${HIP_COMMON_INCLUDE_DIR}>
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}/include>
+  PUBLIC
+  $<INSTALL_INTERFACE:include>)
 
 if(BUILD_SHARED_LIBS)
   if(WIN32)
     target_sources(hiprtc PRIVATE hiprtc.def)
   else()
-    target_link_libraries(hiprtcobject PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/hiprtc.map.in")
-    set_target_properties(hiprtcobject PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/hiprtc.map.in")
+    target_link_libraries(hiprtc PRIVATE "-Wl,--version-script=${CMAKE_CURRENT_LIST_DIR}/hiprtc.map.in")
+    set_target_properties(hiprtc PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/hiprtc.map.in")
   endif()
 endif()
 
@@ -98,16 +99,16 @@ if(WIN32)
   target_link_libraries(hiprtc PRIVATE Dbghelp.lib)
 endif()
 
-target_link_libraries(hiprtcobject PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(hiprtc PUBLIC ${CMAKE_DL_LIBS})
 
 if(BUILD_SHARED_LIBS)
-  target_link_libraries(hiprtcobject PRIVATE rocclr)
+  target_link_libraries(hiprtc PRIVATE rocclr)
 else()
-  target_compile_definitions(hiprtcobject PRIVATE $<TARGET_PROPERTY:rocclr,COMPILE_DEFINITIONS>)
-  target_include_directories(hiprtcobject PRIVATE $<TARGET_PROPERTY:rocclr,INCLUDE_DIRECTORIES>)
+  target_compile_definitions(hiprtc PRIVATE $<TARGET_PROPERTY:rocclr,COMPILE_DEFINITIONS>)
+  target_include_directories(hiprtc PRIVATE $<TARGET_PROPERTY:rocclr,INCLUDE_DIRECTORIES>)
 endif()
 
-target_compile_definitions(hiprtcobject PRIVATE __HIP_PLATFORM_AMD__)
+target_compile_definitions(hiprtc PUBLIC __HIP_PLATFORM_AMD__)
 
 add_to_config(_versionInfo HIP_PACKAGING_VERSION_PATCH)
 add_to_config(_versionInfo CPACK_DEBIAN_PACKAGE_RELEASE)
@@ -182,13 +183,9 @@ add_custom_command(
   COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
   DEPENDS clang ${HIPRTC_GEN_PREPROCESSED})
 
-target_link_libraries(hiprtcobject PRIVATE ${HIPRTC_GEN_OBJ})
-target_compile_definitions(hiprtcobject PRIVATE __HIP_ENABLE_RTC)
-target_link_libraries(hiprtc PRIVATE hiprtcobject)
+target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
+target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
-# As a temporary workaround adding hiprtc sources to amdhip64 using target_sources, to avoid
-# jenkins failure. Once, jenkins upgrades to 3.21 or higher, hiprtcobject can be appended to
-# HIPRTC_OBJECTS below which links to amdhip64
 if(NOT WIN32)
   target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
 endif()
@@ -208,3 +205,27 @@ INSTALL(TARGETS hiprtc
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+INSTALL(EXPORT hiprtc-targets NAMESPACE hiprtc:: DESTINATION ${CONFIG_RTC_PACKAGE_INSTALL_DIR})
+
+#############################
+# hiprtc-config
+#############################
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hiprtc-config-version.cmake
+  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
+  COMPATIBILITY SameMajorVersion)
+
+INSTALL(FILES ${HIP_COMMON_INCLUDE_DIR}/hip/hiprtc.h DESTINATION "include/hip")
+
+INSTALL(FILES ${HIP_COMMON_INCLUDE_DIR}/hip/hip_common.h DESTINATION "include/hip")
+
+INSTALL(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hiprtc-config.cmake
+  DESTINATION ${CONFIG_RTC_PACKAGE_INSTALL_DIR})
+
+INSTALL(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hiprtc-config-version.cmake
+  DESTINATION ${CONFIG_RTC_PACKAGE_INSTALL_DIR})
