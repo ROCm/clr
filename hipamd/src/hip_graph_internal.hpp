@@ -286,7 +286,7 @@ struct ihipGraph {
   const ihipGraph* pOriginalGraph_ = nullptr;
   static std::unordered_set<ihipGraph*> graphSet_;
   static amd::Monitor graphSetLock_;
-  static std::unordered_set<hipUserObject*> graphUserObj_;
+  std::unordered_set<hipUserObject*> graphUserObj_;
 
  public:
   ihipGraph() {
@@ -331,8 +331,7 @@ struct ihipGraph {
     graphUserObj_.insert(pUserObj);
   }
   // Check user obj resource from graph is valid
-  static bool isUserObjGraphValid(hipUserObject* pUserObj) {
-    amd::ScopedLock lock(graphSetLock_);
+  bool isUserObjGraphValid(hipUserObject* pUserObj) {
     if (graphUserObj_.find(pUserObj) == graphUserObj_.end()) {
       return false;
     }
@@ -340,7 +339,6 @@ struct ihipGraph {
   }
   // Delete user obj resource from graph
   void RemoveUserObjGraph(hipUserObject* pUserObj) {
-    amd::ScopedLock lock(graphSetLock_);
     graphUserObj_.erase(pUserObj);
   }
   // saves the original graph ptr if cloned
@@ -355,7 +353,6 @@ struct ihipGraph {
   void GetUserObjs( std::unordered_set<hipUserObject*>& graphExeUserObjs) {
     for(auto userObj : graphUserObj_)
     {
-      amd::ScopedLock lock(graphSetLock_);
       userObj->retain();
       graphExeUserObjs.insert(userObj);
     }

@@ -55,7 +55,6 @@ std::unordered_set<hipGraphExec*> hipGraphExec::graphExecSet_;
 amd::Monitor hipGraphExec::graphExecSetLock_{"Guards global exec graph set"};
 std::unordered_set<hipUserObject*> hipUserObject::ObjectSet_;
 amd::Monitor hipUserObject::UserObjectLock_{"Guards global user object"};
-std::unordered_set<hipUserObject*> ihipGraph::graphUserObj_;
 
 hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
