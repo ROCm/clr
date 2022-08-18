@@ -2075,7 +2075,7 @@ hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, un
 
 hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, unsigned int count) {
   HIP_INIT_API(hipGraphReleaseUserObject, graph, object, count);
-  if (graph == nullptr || object == nullptr || !ihipGraph::isUserObjGraphValid(object)) {
+  if (graph == nullptr || object == nullptr || !graph->isUserObjGraphValid(object)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   //! Obj is being destroyed
