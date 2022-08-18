@@ -2595,7 +2595,18 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     if (hip_error != hipSuccess) {
       break;
     }
-
+    // This is required to comply with the spec
+    // spec says hipMemset will be asynchronous when destination memory is device memory
+    // and pointer is non-offseted
+    if (isAsync == false) {
+      size_t offset = 0;
+      amd::Memory* memObj = getMemoryObject(dst, offset);
+      auto flags = memObj->getMemFlags();
+      if (offset == 0 &&
+        !(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
+        isAsync = true;
+      }
+    }
     std::vector<amd::Command*> commands;
     amd::HostQueue* queue = hip::getQueue(stream);
     hip_error = ihipMemsetCommand(commands, dst, value, valueSize, sizeBytes, queue);
@@ -2614,37 +2625,9 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
   return hip_error;
 }
 
-hipError_t checkAsync(void* dst, int value, size_t valueSize, size_t sizeBytes, bool& isAsync) {
-
-  if (sizeBytes == 0) {
-    return hipSuccess;
-  }
-
-  hipError_t hip_error = ihipMemset_validate(dst, value, valueSize, sizeBytes);
-  if (hip_error != hipSuccess) {
-    return hip_error;
-  }
-
-  // This is required to comply with the spec
-  // spec says hipMemset will be asynchronous when destination memory is device memory
-  isAsync = false;
-  size_t offset = 0;
-  amd::Memory* memObj = getMemoryObject(dst, offset);
-  auto flags = memObj->getMemFlags();
-  if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
-    isAsync = true;
-  }
-  return hipSuccess;
-}
-
 hipError_t hipMemset_common(void* dst, int value, size_t sizeBytes, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-  bool isAsync = false;
-  hipError_t status = checkAsync(dst, value, sizeof(int8_t), sizeBytes, isAsync);
-  if (status != hipSuccess) {
-    return status;
-  }
-  return ihipMemset(dst, value, sizeof(int8_t), sizeBytes, stream, isAsync);
+  return ihipMemset(dst, value, sizeof(int8_t), sizeBytes, stream);
 }
 
 hipError_t hipMemset_spt(void* dst, int value, size_t sizeBytes) {
@@ -2677,12 +2660,7 @@ hipError_t hipMemsetAsync_spt(void* dst, int value, size_t sizeBytes, hipStream_
 hipError_t hipMemsetD8(hipDeviceptr_t dst, unsigned char value, size_t count) {
   HIP_INIT_API(hipMemsetD8, dst, value, count);
   CHECK_STREAM_CAPTURING();
-  bool isAsync = false;
-  hipError_t status = checkAsync(dst, value, sizeof(int8_t), count * sizeof(int8_t), isAsync);
-  if (status != hipSuccess) {
-    return status;
-  }
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), count * sizeof(int8_t), nullptr, isAsync));
+  HIP_RETURN(ihipMemset(dst, value, sizeof(int8_t), count * sizeof(int8_t), nullptr));
 }
 
 hipError_t hipMemsetD8Async(hipDeviceptr_t dst, unsigned char value, size_t count,
@@ -2698,12 +2676,7 @@ hipError_t hipMemsetD8Async(hipDeviceptr_t dst, unsigned char value, size_t coun
 hipError_t hipMemsetD16(hipDeviceptr_t dst, unsigned short value, size_t count) {
   HIP_INIT_API(hipMemsetD16, dst, value, count);
   CHECK_STREAM_CAPTURING();
-  bool isAsync = false;
-  hipError_t status = checkAsync(dst, value, sizeof(int16_t), count * sizeof(int16_t), isAsync);
-  if (status != hipSuccess) {
-    return status;
-  }
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int16_t), count * sizeof(int16_t), nullptr, isAsync));
+  HIP_RETURN(ihipMemset(dst, value, sizeof(int16_t), count * sizeof(int16_t), nullptr));
 }
 
 hipError_t hipMemsetD16Async(hipDeviceptr_t dst, unsigned short value, size_t count,
@@ -2719,12 +2692,7 @@ hipError_t hipMemsetD16Async(hipDeviceptr_t dst, unsigned short value, size_t co
 hipError_t hipMemsetD32(hipDeviceptr_t dst, int value, size_t count) {
   HIP_INIT_API(hipMemsetD32, dst, value, count);
   CHECK_STREAM_CAPTURING();
-  bool isAsync = false;
-  hipError_t status = checkAsync(dst, value, sizeof(int32_t), count * sizeof(int32_t), isAsync);
-  if (status != hipSuccess) {
-    return status;
-  }
-  HIP_RETURN(ihipMemset(dst, value, sizeof(int32_t), count * sizeof(int32_t), nullptr, isAsync));
+  HIP_RETURN(ihipMemset(dst, value, sizeof(int32_t), count * sizeof(int32_t), nullptr));
 }
 
 hipError_t hipMemsetD32Async(hipDeviceptr_t dst, int value, size_t count,
@@ -2799,6 +2767,18 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   if (status != hipSuccess) {
     return status;
   }
+  // This is required to comply with the spec
+  // spec says hipMemset will be asynchronous when destination memory is device memory
+  // and pointer is non-offseted
+  if (isAsync == false) {
+    size_t offset = 0;
+    amd::Memory* memObj = getMemoryObject(pitchedDevPtr.ptr, offset);
+    auto flags = memObj->getMemFlags();
+    if (offset == 0 &&
+      !(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
+      isAsync = true;
+    }
+  }
   amd::HostQueue* queue = hip::getQueue(stream);
   std::vector<amd::Command*> commands;
   status = ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, queue);
@@ -2818,25 +2798,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
 hipError_t hipMemset2D_common(void* dst, size_t pitch, int value, size_t width,
                               size_t height, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-  auto sizeBytes = width * height;
-  if (sizeBytes == 0) {
-    return hipSuccess;
-  }
-  hipError_t status = ihipMemset3D_validate({dst, pitch, width, height}, value,
-                      {width, height, 1}, sizeBytes);
-  if (status != hipSuccess) {
-    return status;
-  }
-  // This is required to comply with the spec
-  // spec says hipMemset will be asynchronous when destination memory is device memory
-  bool isAsync = false;
-  size_t offset = 0;
-  amd::Memory* memObj = getMemoryObject(dst, offset);
-  auto flags = memObj->getMemFlags();
-  if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
-    isAsync = true;
-  }
-  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream, isAsync);
+  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream);
 }
 
 hipError_t hipMemset2D_spt(void* dst, size_t pitch, int value, size_t width, size_t height) {
@@ -2872,24 +2834,7 @@ hipError_t hipMemset2DAsync_spt(void* dst, size_t pitch, int value,
 
 hipError_t hipMemset3D_common(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-  auto sizeBytes = extent.width * extent.height * extent.depth;
-  if (sizeBytes == 0) {
-    return hipSuccess;
-  }
-  hipError_t status = ihipMemset3D_validate(pitchedDevPtr, value, extent, sizeBytes);
-  if (status != hipSuccess) {
-    return status;
-  }
-  // This is required to comply with the spec
-  // spec says hipMemset will be asynchronous when destination memory is device memory
-  bool isAsync = false;
-  size_t offset = 0;
-  amd::Memory* memObj = getMemoryObject(pitchedDevPtr.ptr, offset);
-  auto flags = memObj->getMemFlags();
-  if (!(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
-    isAsync = true;
-  }
-  return ihipMemset3D(pitchedDevPtr, value, extent, stream, isAsync);
+  return ihipMemset3D(pitchedDevPtr, value, extent, stream);
 }
 
 hipError_t hipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent) {
