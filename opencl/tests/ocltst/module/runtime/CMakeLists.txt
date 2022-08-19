@@ -108,6 +108,6 @@ foreach(TEST ${TESTS})
         USES_TERMINAL)
 endforeach()
 
-INSTALL(TARGETS oclruntime DESTINATION tests/ocltst)
-INSTALL(FILES oclruntime.exclude DESTINATION tests/ocltst)
+INSTALL(TARGETS oclruntime DESTINATION tests/ocltst COMPONENT ocltst)
+INSTALL(FILES oclruntime.exclude DESTINATION tests/ocltst COMPONENT ocltst)
 

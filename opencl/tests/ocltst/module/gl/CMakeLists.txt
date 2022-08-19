@@ -68,6 +68,6 @@ foreach(TEST ${TESTS})
         USES_TERMINAL)
 endforeach()
 
-INSTALL(TARGETS oclgl DESTINATION tests/ocltst)
-INSTALL(FILES oclgl.exclude DESTINATION tests/ocltst)
+INSTALL(TARGETS oclgl DESTINATION tests/ocltst COMPONENT ocltst)
+INSTALL(FILES oclgl.exclude DESTINATION tests/ocltst COMPONENT ocltst)
 
