@@ -151,7 +151,12 @@ void Timestamp::checkGpuTime() {
     }
     signals_.clear();
     if (end != 0) {
-      start_ = start * ticksToTime_;
+      // Check if it's the first execution and update start time
+      if (!accum_ena_) {
+        start_ = start * ticksToTime_;
+        accum_ena_ = true;
+      }
+      // Progress the end time always
       end_ = end * ticksToTime_;
     }
   }
