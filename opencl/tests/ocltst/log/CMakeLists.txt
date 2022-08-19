@@ -17,5 +17,5 @@ target_include_directories(TestLog
     PUBLIC
         ${OCLTST_DIR}/log)
 
-INSTALL(TARGETS TestLog DESTINATION tests/ocltst)
+INSTALL(TARGETS TestLog DESTINATION tests/ocltst COMPONENT ocltst)
 

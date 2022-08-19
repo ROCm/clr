@@ -38,5 +38,5 @@ target_link_libraries(ocltst
         OpenCL
         TestLog)
 
-INSTALL(TARGETS ocltst DESTINATION tests/ocltst)
+INSTALL(TARGETS ocltst DESTINATION tests/ocltst COMPONENT ocltst)
 
