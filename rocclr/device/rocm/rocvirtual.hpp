@@ -105,6 +105,7 @@ class Timestamp : public amd::ReferenceCountedObject {
   std::vector<ProfilingSignal*> signals_; //!< The list of all signals, associated with the TS
   hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
   amd::Monitor  lock_;            //!< Serialize timestamp update
+  bool        accum_ena_ = false; //!< If TRUE then the accumulation of execution times has started
 
   Timestamp(const Timestamp&) = delete;
   Timestamp& operator=(const Timestamp&) = delete;
