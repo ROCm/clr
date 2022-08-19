@@ -46,7 +46,6 @@ set(PAL_BUILD_GFX9          ON)
 
 find_package(AMD_PAL)
 find_package(AMD_HSA_LOADER)
-find_package(AMD_UGL)
 
 target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/pal/palappprofile.cpp
@@ -73,7 +72,6 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/pal/palvirtual.cpp)
 
 target_compile_definitions(rocclr PUBLIC WITH_PAL_DEVICE PAL_GPUOPEN_OCL)
-target_include_directories(rocclr PUBLIC ${AMD_UGL_INCLUDE_DIRS})
 target_link_libraries(rocclr PUBLIC pal amdhsaloader)
 
 # support for OGL/D3D interop
