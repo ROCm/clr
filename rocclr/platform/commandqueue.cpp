@@ -136,7 +136,6 @@ void HostQueue::finish() {
     ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
   }
-  command->release();
   if (IS_HIP) {
     ScopedLock sl(vdev()->execution());
     ScopedLock l(lastCmdLock_);
@@ -146,6 +145,7 @@ void HostQueue::finish() {
       lastEnqueueCommand_ = nullptr;
     }
   }
+  command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 
