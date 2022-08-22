@@ -439,6 +439,8 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
     } else {
       return hipErrorInvalidValue;
     }
+  } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
+    isAsync = false;
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
     isAsync = false;
   }
