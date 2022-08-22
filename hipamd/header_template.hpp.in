@@ -22,7 +22,7 @@
 #ifndef @include_guard@
 #define @include_guard@
 
-#pragma message("This file is deprecated. Use file from include path /opt/rocm-ver/include/ and prefix with hip")
+#pragma message("This file is deprecated. Use header files from HIP_PATH/include, where HIP_PATH corresponds to HIP install path")
 @include_statements@
 
 @hashzero_check@
