@@ -396,6 +396,10 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
                                  void** kernelParams, void** extra) {
   HIP_INIT_API(hipModuleLaunchKernel, f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY,
                blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
+
+  STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
+                 blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra);
+
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;

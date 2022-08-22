@@ -258,6 +258,36 @@ hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f
   return hipSuccess;
 }
 
+hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, uint32_t& gridDimX,
+                                        uint32_t& gridDimY, uint32_t& gridDimZ, uint32_t& blockDimX,
+                                        uint32_t& blockDimY, uint32_t& blockDimZ,
+                                        uint32_t& sharedMemBytes, void**& kernelParams,
+                                        void**& extra) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node module launch kernel launch on stream : %p", stream);
+  if (!hip::isValid(stream)) {
+    return hipErrorInvalidValue;
+  }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipKernelNodeParams nodeParams;
+  nodeParams.func = f;
+  nodeParams.blockDim = {blockDimX, blockDimY, blockDimZ};
+  nodeParams.extra = extra;
+  nodeParams.gridDim = {gridDimX, gridDimY, gridDimZ};
+  nodeParams.kernelParams = kernelParams;
+  nodeParams.sharedMemBytes = sharedMemBytes;
+
+  hipGraphNode_t pGraphNode;
+  hipError_t status =
+      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &nodeParams);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+  return hipSuccess;
+}
+
 hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*& p) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy3D on stream : %p",
           stream);
