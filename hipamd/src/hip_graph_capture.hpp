@@ -31,6 +31,12 @@ hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f
                                            void**& extra, hipEvent_t& startEvent,
                                            hipEvent_t& stopEvent, uint32_t& flags);
 
+hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, uint32_t& gridDimX,
+                                        uint32_t& gridDimY, uint32_t& gridDimZ, uint32_t& blockDimX,
+                                        uint32_t& blockDimY, uint32_t& blockDimZ,
+                                        uint32_t& sharedMemBytes, void**& kernelParams,
+                                        void**& extra);
+
 hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
                                    const void*& src, size_t& spitch, size_t& width, size_t& height,
                                    hipMemcpyKind& kind);
