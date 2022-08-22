@@ -1043,6 +1043,9 @@ hipError_t hipArray3DCreate(hipArray** array,
                             const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArray3DCreate, array, pAllocateArray);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  if (pAllocateArray == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   HIP_RETURN(ihipArrayCreate(array, pAllocateArray, 0 /* numMipLevels */));
 }
 
