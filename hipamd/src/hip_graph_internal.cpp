@@ -690,7 +690,7 @@ hipError_t hipGraphExec::CreateQueues(size_t numQueues) {
   for (size_t i = 0; i < numQueues; i++) {
     amd::HostQueue* queue;
     cl_command_queue_properties properties =
-        (callbacks_table.is_enabled() || HIP_FORCE_QUEUE_PROFILING) ? CL_QUEUE_PROFILING_ENABLE : 0;
+        callbacks_table.is_enabled() ? CL_QUEUE_PROFILING_ENABLE : 0;
     queue = new amd::HostQueue(*hip::getCurrentDevice()->asContext(),
                                *hip::getCurrentDevice()->devices()[0], properties,
                                amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal);

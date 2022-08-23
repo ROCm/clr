@@ -81,7 +81,7 @@ bool Stream::Create() {
   // or if we force it with env var. This would enable time stamp collection for every
   // command submitted to the stream(queue).
   bool isProfilerAttached = callbacks_table.is_enabled();
-  cl_command_queue_properties properties = (isProfilerAttached || HIP_FORCE_QUEUE_PROFILING) ?
+  cl_command_queue_properties properties = isProfilerAttached ?
                                              CL_QUEUE_PROFILING_ENABLE : 0;
   amd::CommandQueue::Priority p;
   switch (priority_) {
