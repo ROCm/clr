@@ -209,6 +209,17 @@ bool RTCCompileProgram::transformOptions() {
       i = "--offload-arch=" + val;
       continue;
     }
+
+    // Allow spaces after -I as delimiter to match nvrtc, "-I test" will be converted to "-Itest"
+    // Paths starting with leading space are not supported. eg: " test"
+    if (i.find("-I") == 0) {
+      const std::string kWhiteSpace = " \n\r\t\f\v";
+      std::string include_path = i.substr(2);
+      size_t start = include_path.find_first_not_of(kWhiteSpace);
+      if (start != std::string::npos) i = "-I" + include_path.substr(start);
+      continue;
+    }
+
     if (i == "--save-temps") {
       settings_.dumpISA = true;
       continue;
