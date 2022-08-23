@@ -227,13 +227,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     queue_ = queue;
     return hipSuccess;
   }
-  /// Method to release amd::command part of node
-  virtual void ReleaseCommand() {
-    for (auto command : commands_) {
-      command->release();
-    }
-    commands_.clear();
-  }
   /// Return node unique ID
   int GetID() const { return id_; }
   /// Returns command for graph node
@@ -605,6 +598,7 @@ struct hipChildGraphNode : public hipGraphNode {
     // enqueue child graph start command
     if (commands_.size() == 1) {
       commands_[0]->enqueue();
+      commands_[0]->release();
     }
     // enqueue nodes in child graph in level order
     for (auto& node : childGraphlevelOrder_) {
@@ -613,6 +607,7 @@ struct hipChildGraphNode : public hipGraphNode {
     // enqueue child graph end command
     if (commands_.size() == 2) {
       commands_[1]->enqueue();
+      commands_[1]->release();
     }
   }
 
@@ -1518,6 +1513,7 @@ class hipGraphEventRecordNode : public hipGraphNode {
   void EnqueueCommands(hipStream_t stream) {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
+      // command release during enqueueRecordCommand
       hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
@@ -1585,6 +1581,7 @@ class hipGraphEventWaitNode : public hipGraphNode {
                 "[hipGraph] enqueue stream wait command failed for node %p - status %d\n", this,
                 status);
       }
+      commands_[0]->release();
     }
   }
 
@@ -1630,6 +1627,10 @@ class hipGraphHostNode : public hipGraphNode {
   }
 
   hipError_t CreateCommand(amd::HostQueue* queue) {
+    hipError_t status = hipGraphNode::CreateCommand(queue);
+    if (status != hipSuccess) {
+      return status;
+    }
     amd::Command::EventWaitList waitList;
     commands_.reserve(1);
     amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
@@ -1658,6 +1659,7 @@ class hipGraphHostNode : public hipGraphNode {
       }
       block_command->enqueue();
       block_command->release();
+      commands_[0]->release();
     }
   }
 
