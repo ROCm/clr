@@ -20,8 +20,6 @@
 
 cmake_minimum_required(VERSION 3.16.8)
 project(hip_catch_tests)
-# Set default libdir to be "lib" for ROCm, distros/users can override this
-set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
 include(GNUInstallDirs)
 
 install(DIRECTORY @PROJECT_BINARY_DIR@/catch
