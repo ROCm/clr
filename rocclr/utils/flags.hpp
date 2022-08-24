@@ -247,8 +247,6 @@ release(bool, ROC_SKIP_COPY_SYNC, false,                                      \
         "Skips copy syncs if runtime can predict the same engine.")           \
 release(bool, ROC_ENABLE_PRE_VEGA, false,                                     \
         "Enable support of pre-vega ASICs in ROCm path")                      \
-release(bool, HIP_FORCE_QUEUE_PROFILING, false,                               \
-        "Force command queue profiling by default")                           \
 release(bool, GPU_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
 release(bool, HIP_MEM_POOL_SUPPORT, false,                                    \
