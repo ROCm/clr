@@ -441,11 +441,6 @@ global:
     hipMemRetainAllocationHandle;
     hipMemSetAccess;
     hipMemUnmap;
-    hipUserObjectCreate;
-    hipUserObjectRelease;
-    hipUserObjectRetain;
-    hipGraphRetainUserObject;
-    hipGraphReleaseUserObject;
 local:
     *;
 } hip_5.0;
@@ -500,6 +495,11 @@ global:
     hipMemcpy2DToArrayAsync_spt;
     hipDrvGetErrorName;
     hipDrvGetErrorString;
+    hipUserObjectCreate;
+    hipUserObjectRelease;
+    hipUserObjectRetain;
+    hipGraphRetainUserObject;
+    hipGraphReleaseUserObject;
 local:
     *;
 } hip_5.2;
