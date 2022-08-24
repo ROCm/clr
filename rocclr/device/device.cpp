@@ -565,6 +565,10 @@ bool Device::create(const Isa &isa) {
   if (nullptr == vaCacheMap_) {
     return false;
   }
+  // For OpenCl default stack size needs to be set to 16K
+  if (!amd::IS_HIP) {
+    stack_size_ = 16 * Ki;
+  }
   return true;
 }
 
