@@ -1162,6 +1162,12 @@ typedef struct cudaAccessPolicyWindow hipAccessPolicyWindow;
 
 typedef enum  cudaGraphMemAttributeType hipGraphMemAttributeType;
 
+typedef enum cudaUserObjectFlags hipUserObjectFlags;
+#define hipUserObjectNoDestructorSync cudaUserObjectNoDestructorSync
+
+typedef enum cudaUserObjectRetainFlags hipUserObjectRetainFlags;
+#define hipGraphUserObjectMove cudaGraphUserObjectMove
+
 #if CUDA_VERSION >= CUDA_11030
 typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDependenciesFlags;
 #define hipStreamAddCaptureDependencies cudaStreamAddCaptureDependencies
