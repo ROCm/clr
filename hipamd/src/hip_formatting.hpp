@@ -17,8 +17,8 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
-#include <hip/hiprtc.h>
 #include <hip/hip_runtime_api.h>
+#include <hip/hiprtc.h>
 
 inline std::ostream& operator<<(std::ostream& os, const hipTextureFilterMode& s) {
   switch (s) {
@@ -344,56 +344,80 @@ inline std::ostream& operator<<(std::ostream& os, const hiprtcResult& s) {
 
 inline std::ostream& operator<<(std::ostream& os, const hipJitOption& s) {
   switch (s) {
-    case hipJitOptionMaxRegisters:
-      os << "hipJitOptionMaxRegisters";
+    case HIPRTC_JIT_MAX_REGISTERS:
+      os << "HIPRTC_JIT_MAX_REGISTERS";
       break;
-    case hipJitOptionThreadsPerBlock:
-      os << "hipJitOptionThreadsPerBlock";
+    case HIPRTC_JIT_THREADS_PER_BLOCK:
+      os << "HIPRTC_JIT_THREADS_PER_BLOCK";
       break;
-    case hipJitOptionWallTime:
-      os << "hipJitOptionWallTime";
+    case HIPRTC_JIT_WALL_TIME:
+      os << "HIPRTC_JIT_WALL_TIME";
       break;
-    case hipJitOptionInfoLogBuffer:
-      os << "hipJitOptionInfoLogBuffer";
+    case HIPRTC_JIT_INFO_LOG_BUFFER:
+      os << "HIPRTC_JIT_INFO_LOG_BUFFER";
       break;
-    case hipJitOptionInfoLogBufferSizeBytes:
-      os << "hipJitOptionInfoLogBufferSizeBytes";
+    case HIPRTC_JIT_INFO_LOG_BUFFER_SIZE_BYTES:
+      os << "HIPRTC_JIT_ERROR_LOG_BUFFER_SIZE_BYTES";
       break;
-    case hipJitOptionErrorLogBuffer:
-      os << "hipJitOptionErrorLogBuffer";
+    case HIPRTC_JIT_ERROR_LOG_BUFFER:
+      os << "HIPRTC_JIT_ERROR_LOG_BUFFER";
       break;
-    case hipJitOptionErrorLogBufferSizeBytes:
-      os << "hipJitOptionErrorLogBufferSizeBytes";
+    case HIPRTC_JIT_ERROR_LOG_BUFFER_SIZE_BYTES:
+      os << "HIPRTC_JIT_ERROR_LOG_BUFFER_SIZE_BYTES";
       break;
-    case hipJitOptionOptimizationLevel:
-      os << "hipJitOptionOptimizationLevel";
+    case HIPRTC_JIT_OPTIMIZATION_LEVEL:
+      os << "HIPRTC_JIT_OPTIMIZATION_LEVEL";
       break;
-    case hipJitOptionTargetFromContext:
-      os << "hipJitOptionTargetFromContext";
+    case HIPRTC_JIT_TARGET_FROM_HIPCONTEXT:
+      os << "HIPRTC_JIT_TARGET_FROM_HIPCONTEXT";
       break;
-    case hipJitOptionTarget:
-      os << "hipJitOptionTarget";
+    case HIPRTC_JIT_TARGET:
+      os << "HIPRTC_JIT_TARGET";
       break;
-    case hipJitOptionFallbackStrategy:
-      os << "hipJitOptionFallbackStrategy";
+    case HIPRTC_JIT_FALLBACK_STRATEGY:
+      os << "HIPRTC_JIT_FALLBACK_STRATEGY";
       break;
-    case hipJitOptionGenerateDebugInfo:
-      os << "hipJitOptionGenerateDebugInfo";
+    case HIPRTC_JIT_GENERATE_DEBUG_INFO:
+      os << "HIPRTC_JIT_GENERATE_DEBUG_INFO";
       break;
-    case hipJitOptionCacheMode:
-      os << "hipJitOptionCacheMode";
+    case HIPRTC_JIT_CACHE_MODE:
+      os << "HIPRTC_JIT_CACHE_MODE";
       break;
-    case hipJitOptionSm3xOpt:
-      os << "hipJitOptionSm3xOpt";
+    case HIPRTC_JIT_NEW_SM3X_OPT:
+      os << "HIPRTC_JIT_NEW_SM3X_OPT";
       break;
-    case hipJitOptionFastCompile:
-      os << "hipJitOptionFastCompile";
+    case HIPRTC_JIT_FAST_COMPILE:
+      os << "HIPRTC_JIT_FAST_COMPILE";
       break;
-    case hipJitOptionNumOptions:
-      os << "hipJitOptionNumOptions";
+    case HIPRTC_JIT_GLOBAL_SYMBOL_NAMES:
+      os << "HIPRTC_JIT_GLOBAL_SYMBOL_NAMES";
+      break;
+    case HIPRTC_JIT_GLOBAL_SYMBOL_ADDRESS:
+      os << "HIPRTC_JIT_GLOBAL_SYMBOL_ADDRESS";
+      break;
+    case HIPRTC_JIT_GLOBAL_SYMBOL_COUNT:
+      os << "HIPRTC_JIT_GLOBAL_SYMBOL_COUNT";
+      break;
+    case HIPRTC_JIT_LTO:
+      os << "HIPRTC_JIT_LTO";
+      break;
+    case HIPRTC_JIT_FTZ:
+      os << "HIPRTC_JIT_FTZ";
+      break;
+    case HIPRTC_JIT_PREC_DIV:
+      os << "HIPRTC_JIT_PREC_DIV";
+      break;
+    case HIPRTC_JIT_PREC_SQRT:
+      os << "HIPRTC_JIT_PREC_SQRT";
+      break;
+    case HIPRTC_JIT_FMA:
+      os << "HIPRTC_JIT_FMA";
+      break;
+    case HIPRTC_JIT_NUM_OPTIONS:
+      os << "HIPRTC_JIT_NUM_OPTIONS";
       break;
     default:
-      os << "hipJitOptionMaxRegisters";
+      os << "HIPRTC_JIT_MAX_REGISTERS";
   };
   return os;
 }
