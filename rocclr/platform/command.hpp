@@ -143,7 +143,7 @@ class Event : public RuntimeObject {
   Event();
 
   //! Construct a new event associated to the given command \a queue.
-  Event(HostQueue& queue);
+  Event(HostQueue& queue, bool profilingEnabled = false);
 
   //! Destroy the event.
   virtual ~Event();

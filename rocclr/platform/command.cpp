@@ -26,6 +26,7 @@
  * \date   October 2008
  */
 
+#include "platform/activity.hpp"
 #include "platform/command.hpp"
 #include "platform/commandqueue.hpp"
 #include "device/device.hpp"
@@ -43,14 +44,13 @@
 namespace amd {
 
 // ================================================================================================
-Event::Event(HostQueue& queue)
+Event::Event(HostQueue& queue, bool profilingEnabled)
     : callbacks_(NULL),
       status_(CL_INT_MAX),
       hw_event_(nullptr),
       notify_event_(nullptr),
       device_(&queue.device()),
-      profilingInfo_(IS_PROFILER_ON || queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
-                     Agent::shouldPostEventEvents()),
+      profilingInfo_(profilingEnabled),
       event_scope_(Device::kCacheStateInvalid) {
   notified_.clear();
 }
@@ -313,7 +313,9 @@ const Event::EventWaitList Event::nullWaitList(0);
 // ================================================================================================
 Command::Command(HostQueue& queue, cl_command_type type,
                  const EventWaitList& eventWaitList, uint32_t commandWaitBits, const Event* waitingEvent)
-    : Event(queue),
+    : Event(queue, activity_prof::CallbacksTable::isEnabled(activity_prof::operationId(type)) ||
+                   queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
+                   Agent::shouldPostEventEvents()),
       queue_(&queue),
       next_(nullptr),
       type_(type),
