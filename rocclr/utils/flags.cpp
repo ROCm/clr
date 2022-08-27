@@ -82,7 +82,6 @@ namespace amd {
 #endif  // __APPLE__
 
 bool IS_HIP = false;
-std::atomic_bool IS_PROFILER_ON(false);
 
 #if !defined(_WIN32) && defined(WITH_PAL_DEVICE)
 bool IS_LEGACY = true;

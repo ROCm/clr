@@ -282,7 +282,6 @@ release(bool, ROC_EVENT_NO_FLUSH, false,                                      \
 namespace amd {
 
 extern bool IS_HIP;
-extern std::atomic_bool IS_PROFILER_ON;
 
 extern bool IS_LEGACY;
 
