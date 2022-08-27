@@ -44,6 +44,9 @@ class api_callbacks_table_t {
     if (id < HIP_API_ID_FIRST || id > HIP_API_ID_LAST)
       return false;
 
+    auto& entry = callbacks_table_[id];
+    std::unique_lock lock(entry.mutex);
+
     /* 'function != nullptr' indicates it is activity register call,
        increment should happen only once but client is free to call
        register CB multiple times for same API id hence the check
@@ -52,18 +55,13 @@ class api_callbacks_table_t {
        decrement should happen only once hence the check. */
 
     if (function != nullptr) {
-      if (callbacks_table_[id].activity.first == nullptr) {
-        ++enabled_api_count_;
-      }
+      if (entry.activity.first == nullptr)
+        enabled_api_count_.fetch_add(1, std::memory_order_relaxed);
     } else {
-      if (callbacks_table_[id].activity.first != nullptr) {
-        --enabled_api_count_;
-      }
+      if (entry.activity.first != nullptr)
+        enabled_api_count_.fetch_sub(1, std::memory_order_relaxed);
     }
-    amd::IS_PROFILER_ON = (enabled_api_count_ > 0);
-
-    std::unique_lock lock(callbacks_table_[id].mutex);
-    callbacks_table_[id].activity = {function, arg};
+    entry.activity = {function, arg};
 
     return true;
   }
@@ -72,32 +70,27 @@ class api_callbacks_table_t {
     if (id < HIP_API_ID_FIRST || id > HIP_API_ID_LAST)
       return false;
 
-    std::unique_lock lock(callbacks_table_[id].mutex);
-    callbacks_table_[id].user_callback = {function, arg};
+    auto& entry = callbacks_table_[id];
+    std::unique_lock lock(entry.mutex);
+    entry.user_callback = {function, arg};
 
     return true;
   }
 
   auto get(hip_api_id_t id) {
     assert(id >= HIP_API_ID_FIRST && id <= HIP_API_ID_LAST && "invalid callback id");
+
     auto& entry = callbacks_table_[id];
-
-    std::shared_lock lock(callbacks_table_[id].mutex);
-    auto ret = std::make_pair(entry.user_callback, entry.activity);
-
-    return ret;
-  }
-
-  void set_enabled(bool enabled) {
-    amd::IS_PROFILER_ON = enabled;
+    std::shared_lock lock(entry.mutex);
+    return std::make_pair(entry.user_callback, entry.activity);
   }
 
   bool is_enabled() const {
-    return amd::IS_PROFILER_ON;
+    return enabled_api_count_.load(std::memory_order_relaxed) > 0;
   }
 
  private:
-  uint32_t enabled_api_count_{0};
+  std::atomic<uint32_t> enabled_api_count_{0};
 
   // HIP API callbacks table
   struct {
@@ -122,28 +115,25 @@ class api_callbacks_spawner_t {
     if (activity_.first == nullptr)
       return;
 
-    api_data_.correlation_id = 0;
     api_data_.phase = ACTIVITY_API_PHASE_ENTER;
     activity_.first(ID, &record_, &api_data_, activity_.second);
+    activity_prof::correlation_id = api_data_.correlation_id;
 
     if (user_callback_.first) {
       init_cb_args_data(api_data_);
       user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, &api_data_, user_callback_.second);
     }
-
-    activity_prof::correlation_id = api_data_.correlation_id;
   }
 
   ~api_callbacks_spawner_t() {
     if (activity_.first == nullptr)
       return;
 
-    activity_prof::correlation_id = 0;
-
     api_data_.phase = ACTIVITY_API_PHASE_EXIT;
     if (user_callback_.first != nullptr)
       user_callback_.first(ACTIVITY_DOMAIN_HIP_API, ID, &api_data_, user_callback_.second);
 
+    activity_prof::correlation_id = 0;
     activity_.first(ID, &record_, &api_data_, activity_.second);
   }
 

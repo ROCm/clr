@@ -67,11 +67,6 @@ hipError_t hipRemoveActivityCallback(uint32_t id) {
   return callbacks_table.set_activity(static_cast<hip_api_id_t>(id), nullptr, nullptr) ? hipSuccess : hipErrorInvalidValue;
 }
 
-hipError_t hipEnableTracing(bool enabled) {
-  callbacks_table.set_enabled(enabled);
-  return hipSuccess;
-}
-
 const char* hipApiName(uint32_t id) {
   return hip_api_name(id);
 }
