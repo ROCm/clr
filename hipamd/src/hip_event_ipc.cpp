@@ -112,13 +112,14 @@ hipError_t IPCEvent::streamWaitCommand(amd::Command*& command, amd::HostQueue* q
 
 hipError_t IPCEvent::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
   auto t{new CallbackData{ipc_evt_.ipc_shmem_->read_index, ipc_evt_.ipc_shmem_}};
-  StreamCallback* cbo = new StreamCallback(
-      stream, reinterpret_cast<hipStreamCallback_t>(WaitThenDecrementSignal), t, command);
+  StreamCallback* cbo = new StreamAddCallback(
+      stream, reinterpret_cast<hipStreamCallback_t>(WaitThenDecrementSignal), t);
   if (!command->setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
     command->release();
     return hipErrorInvalidHandle;
   }
   command->enqueue();
+  command->release();
   command->awaitCompletion();
   return hipSuccess;
 }

@@ -432,4 +432,5 @@ hipUserObjectRelease
 hipUserObjectRetain
 hipGraphRetainUserObject
 hipGraphReleaseUserObject
-
+hipLaunchHostFunc
+hipLaunchHostFunc_spt

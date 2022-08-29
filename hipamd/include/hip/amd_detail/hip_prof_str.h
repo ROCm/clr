@@ -4177,6 +4177,9 @@ typedef struct hip_api_data_s {
 };
 // hipLaunchHostFunc[('hipStream_t', 'stream'), ('hipHostFn_t', 'fn'), ('void*', 'userData')]
 #define INIT_hipLaunchHostFunc_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLaunchHostFunc.stream = (hipStream_t)stream; \
+  cb_data.args.hipLaunchHostFunc.fn = (hipHostFn_t)fn; \
+  cb_data.args.hipLaunchHostFunc.userData = (void*)userData; \
 };
 // hipLaunchKernel[('const void*', 'function_address'), ('dim3', 'numBlocks'), ('dim3', 'dimBlocks'), ('void**', 'args'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'stream')]
 #define INIT_hipLaunchKernel_CB_ARGS_DATA(cb_data) { \

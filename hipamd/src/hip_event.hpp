@@ -24,17 +24,42 @@
 #include "hip_internal.hpp"
 #include "thread/monitor.hpp"
 
-
 // Internal structure for stream callback handler
 class StreamCallback {
- public:
-  StreamCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
-                 amd::Command* command)
-      : stream_(stream), callBack_(callback), userData_(userData), command_(command){};
-  hipStream_t stream_;
-  hipStreamCallback_t callBack_;
+protected:
   void* userData_;
-  amd::Command* command_;
+ public:
+  StreamCallback(void* userData)
+      : userData_(userData) {}
+  
+  virtual void CL_CALLBACK callback() = 0;
+};
+
+class StreamAddCallback : public StreamCallback {
+  hipStreamCallback_t callBack_;
+  hipStream_t stream_;
+public:
+  StreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData)
+      : StreamCallback(userData) {
+    stream_ = stream;
+    callBack_ = callback;
+  }
+
+  void CL_CALLBACK callback() {
+    hipError_t status = hipSuccess;
+    callBack_(stream_, status, userData_);
+  }
+};
+
+class LaunchHostFuncCallback : public StreamCallback {
+  hipHostFn_t callBack_;
+ public:
+  LaunchHostFuncCallback(hipHostFn_t callback, void* userData)
+      : StreamCallback(userData) {
+    callBack_ = callback;
+  }
+
+  void CL_CALLBACK callback() { callBack_(userData_); }
 };
 
 void CL_CALLBACK ihipStreamCallback(cl_event event, cl_int command_exec_status, void* user_data);
