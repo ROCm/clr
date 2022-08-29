@@ -265,10 +265,8 @@ void iHipWaitActiveStreams(amd::HostQueue* blocking_queue, bool wait_null_stream
 
 // ================================================================================================
 void CL_CALLBACK ihipStreamCallback(cl_event event, cl_int command_exec_status, void* user_data) {
-  hipError_t status = hipSuccess;
   StreamCallback* cbo = reinterpret_cast<StreamCallback*>(user_data);
-  cbo->callBack_(cbo->stream_, status, cbo->userData_);
-  cbo->command_->release();
+  cbo->callback();
   delete cbo;
 }
 
@@ -573,14 +571,7 @@ hipError_t hipStreamQuery_spt(hipStream_t stream) {
   HIP_RETURN(hipStreamQuery_common(stream));
 }
 
-// ================================================================================================
-hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t callback, void* userData,
-                                unsigned int flags) {
-  //flags - Reserved for future use, must be 0
-  if (callback == nullptr || flags != 0) {
-    return hipErrorInvalidValue;
-  }
-
+hipError_t streamCallback_common(hipStream_t stream, StreamCallback* cbo, void* userData) {
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -595,8 +586,6 @@ hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t c
   if (command == nullptr) {
     return hipErrorInvalidValue;
   }
-  StreamCallback* cbo = new StreamCallback(stream, callback, userData, command);
-
   if ((cbo == nullptr) || !command->setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
     command->release();
     if (last_command != nullptr) {
@@ -604,8 +593,6 @@ hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t c
     }
     return hipErrorInvalidHandle;
   }
-  // Retain callback command for the blocking marker
-  command->retain();
   command->enqueue();
   // @note: don't release the command here, because it will be released after HIP callback
   if (last_command != nullptr) {
@@ -627,6 +614,17 @@ hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t c
 }
 
 // ================================================================================================
+hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t callback,
+                                       void* userData, unsigned int flags) {
+  // flags - Reserved for future use, must be 0
+  if (callback == nullptr || flags != 0) {
+    return hipErrorInvalidValue;
+  }
+  StreamCallback* cbo = new StreamAddCallback(stream, callback, userData);
+  return streamCallback_common(stream, cbo, userData);
+}
+
+// ================================================================================================
 hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback, void* userData,
                                 unsigned int flags) {
   HIP_INIT_API(hipStreamAddCallback, stream, callback, userData, flags);
@@ -634,11 +632,34 @@ hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallback_t callback
 }
 
 // ================================================================================================
-hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback, void* userData,
-                                unsigned int flags) {
+hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback,
+                                    void* userData, unsigned int flags) {
   HIP_INIT_API(hipStreamAddCallback, stream, callback, userData, flags);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipStreamAddCallback_common(stream, callback, userData, flags));
+}
+
+// ================================================================================================
+hipError_t hipLaunchHostFunc_common(hipStream_t stream, hipHostFn_t fn, void* userData) {
+  STREAM_CAPTURE(hipLaunchHostFunc, stream, fn, userData);
+  if (fn == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  StreamCallback* cbo = new LaunchHostFuncCallback(fn, userData);
+  return streamCallback_common(stream, cbo, userData);
+}
+
+// ================================================================================================
+hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userData) {
+  HIP_INIT_API(hipLaunchHostFunc, stream, fn, userData);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipLaunchHostFunc_common(stream, fn, userData));
+}
+
+// ================================================================================================
+hipError_t hipLaunchHostFunc(hipStream_t stream, hipHostFn_t fn, void* userData) {
+  HIP_INIT_API(hipLaunchHostFunc, stream, fn, userData);
+  HIP_RETURN(hipLaunchHostFunc_common(stream, fn, userData));
 }
 
 // ================================================================================================

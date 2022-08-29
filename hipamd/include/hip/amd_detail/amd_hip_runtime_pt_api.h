@@ -66,6 +66,7 @@ THE SOFTWARE.
     #define hipStreamGetPriority          __HIP_API_SPT(hipStreamGetPriority)
     #define hipStreamWaitEvent            __HIP_API_SPT(hipStreamWaitEvent)
     #define hipStreamAddCallback          __HIP_API_SPT(hipStreamAddCallback)
+    #define hipLaunchHostFunc             __HIP_API_SPT(hipLaunchHostFunc)
 
     // Event APIs
     #define hipEventRecord               __HIP_API_SPT(hipEventRecord)
@@ -179,6 +180,8 @@ hipError_t hipStreamGetCaptureInfo_v2_spt(hipStream_t stream, hipStreamCaptureSt
                                       unsigned long long* id_out, hipGraph_t* graph_out,
                                       const hipGraphNode_t** dependencies_out,
                                       size_t* numDependencies_out);
+hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userData);
+
 
 #ifdef __cplusplus
 }
