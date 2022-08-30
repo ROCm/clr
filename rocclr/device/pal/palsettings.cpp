@@ -203,6 +203,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   amd::Os::getAppPathAndFileName(appName, appPathAndName);
 
   switch (palProp.revision) {
+    case Pal::AsicRevision::Raphael:
     case Pal::AsicRevision::Rembrandt:
     case Pal::AsicRevision::Navi24:
     case Pal::AsicRevision::Navi23:
