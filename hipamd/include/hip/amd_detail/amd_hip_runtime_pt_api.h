@@ -25,7 +25,7 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
 
-#if defined(__clang__) && defined(__HIP__)
+#if (defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
 
 /// hipStreamPerThread implementation
 #if defined(HIP_API_PER_THREAD_DEFAULT_STREAM)
@@ -81,6 +81,10 @@ THE SOFTWARE.
     #define hipStreamIsCapturing          __HIP_API_SPT(hipStreamIsCapturing)
     #define hipStreamGetCaptureInfo       __HIP_API_SPT(hipStreamGetCaptureInfo)
     #define hipStreamGetCaptureInfo_v2    __HIP_API_SPT(hipStreamGetCaptureInfo_v2)
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 hipError_t hipMemcpy_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
@@ -158,17 +162,12 @@ hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream);
 hipError_t hipLaunchCooperativeKernel_spt(const void* f,
                                       dim3 gridDim, dim3 blockDim,
                                       void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream);
-#ifdef __cplusplus
-extern "C" {
-#endif
+
 hipError_t hipLaunchKernel_spt(const void* function_address,
                            dim3 numBlocks,
                            dim3 dimBlocks,
                            void** args,
                            size_t sharedMemBytes, hipStream_t stream);
-#ifdef __cplusplus
-}
-#endif // extern "C"
 
 hipError_t hipGraphLaunch_spt(hipGraphExec_t graphExec, hipStream_t stream);
 hipError_t hipStreamBeginCapture_spt(hipStream_t stream, hipStreamCaptureMode mode);
@@ -181,5 +180,9 @@ hipError_t hipStreamGetCaptureInfo_v2_spt(hipStream_t stream, hipStreamCaptureSt
                                       const hipGraphNode_t** dependencies_out,
                                       size_t* numDependencies_out);
 
-#endif //defined(__clang__) && defined(__HIP__)
+#ifdef __cplusplus
+}
+#endif // extern "C"
+
+#endif //(defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
 #endif //HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
