@@ -397,10 +397,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   Timestamp* timestamp() const { return timestamp_; }
 
-  void profilerAttach(bool enable = false) { profilerAttached_ = enable; }
-
-  bool isProfilerAttached() const { return profilerAttached_; }
-
   //! Indicates the status of the callback handler. The callback would process the commands
   //! and would collect profiling data, update refcounts
   bool isHandlerPending() const { return barriers_.IsHandlerPending(); }
@@ -483,7 +479,6 @@ class VirtualGPU : public device::VirtualDevice {
       uint32_t cooperative_           : 1; //!< Cooperative launch is enabled
       uint32_t addSystemScope_        : 1; //!< Insert a system scope to the next aql
       uint32_t tracking_created_      : 1; //!< Enabled if tracking object was properly initialized
-      uint32_t profilerAttached_      : 1; //!< Indicates if profiler is attached
       uint32_t retainExternalSignals_ : 1; //!< Indicate to retain external signal array
     };
     uint32_t  state_;

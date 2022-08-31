@@ -162,8 +162,7 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       releaseResources();
     }
 
-    if (profilingInfo().enabled_)
-      activity_prof::CallbacksTable::reportActivity(command());
+    if (profilingInfo().enabled_) activity_prof::ReportActivity(command());
 
     // Broadcast all the waiters.
     if (referenceCount() > 1) {
@@ -313,9 +312,8 @@ const Event::EventWaitList Event::nullWaitList(0);
 // ================================================================================================
 Command::Command(HostQueue& queue, cl_command_type type,
                  const EventWaitList& eventWaitList, uint32_t commandWaitBits, const Event* waitingEvent)
-    : Event(queue, activity_prof::CallbacksTable::isEnabled(activity_prof::operationId(type)) ||
-                   queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
-                   Agent::shouldPostEventEvents()),
+    : Event(queue, activity_prof::IsEnabled(activity_prof::OperationId(type)) ||
+                   queue.properties().test(CL_QUEUE_PROFILING_ENABLE) || Agent::shouldPostEventEvents()),
       queue_(&queue),
       next_(nullptr),
       type_(type),

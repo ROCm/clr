@@ -22,8 +22,10 @@
 
 #include "top.hpp"
 
-#include <array>
 #include <atomic>
+#include <array>
+#include <mutex>
+#include <shared_mutex>
 #include <utility>
 
 namespace amd {
@@ -40,13 +42,16 @@ enum OpId { OP_ID_DISPATCH = 0, OP_ID_COPY = 1, OP_ID_BARRIER = 2, OP_ID_NUMBER 
 
 namespace activity_prof {
 
+extern std::atomic<int (*)(activity_domain_t domain, uint32_t operation_id, void* data)>
+    report_activity;
+
 #if defined(__linux__)
 extern __thread activity_correlation_id_t correlation_id __attribute__((tls_model("initial-exec")));
 #elif defined(_WIN32)
 extern __declspec(thread) activity_correlation_id_t correlation_id;
 #endif  // defined(_WIN32)
 
-constexpr OpId operationId(cl_command_type commandType) {
+constexpr OpId OperationId(cl_command_type commandType) {
   switch (commandType) {
     case CL_COMMAND_NDRANGE_KERNEL:
       return OP_ID_DISPATCH;
@@ -71,46 +76,14 @@ constexpr OpId operationId(cl_command_type commandType) {
   }
 }
 
-class CallbacksTable {
- public:
-  // Initialize record id callback and activity callback
-  static void init(activity_async_callback_t activity_callback, void* arg) {
-    table_.activity_callback = {activity_callback, arg};
-  }
-
-  static bool setEnabled(OpId op, bool enable) {
-    if (op >= OP_ID_NUMBER) return false;
-    table_.enabled[op].store(enable, std::memory_order_release);
-    return true;
-  }
-
-  static bool isEnabled(OpId op_id) {
-    return op_id < OP_ID_NUMBER && table_.enabled[op_id].load(std::memory_order_acquire);
-  }
-
-  static void reportActivity(const amd::Command& command);
-
- private:
-  static struct {
-    std::array<std::atomic<bool>, OP_ID_NUMBER> enabled{};
-    std::pair<activity_async_callback_t /* function */, void* /* arg */> activity_callback;
-  } table_;
-};
+bool IsEnabled(OpId operation_id);
+void ReportActivity(const amd::Command& command);
 
 }  // namespace activity_prof
 
 #else  // !USE_PROF_API
 
-namespace activity_prof {
-
-class CallbacksTable {
- public:
-  static void init(activity_async_callback_t, void*) {}
-  static bool setEnabled(OpId, bool) { return false; }
-  static void reportActivity(const amd::Command&) {}
-};
-
-}  // namespace activity_prof
+static inline void ReportActivity(const amd::Command& command) {}
 
 #endif  // !USE_PROF_API
 

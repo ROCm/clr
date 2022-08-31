@@ -23,7 +23,11 @@
 #include "platform/commandqueue.hpp"
 #include "platform/command_utils.hpp"
 
+#include <atomic>
+
 namespace activity_prof {
+
+decltype(report_activity) report_activity{nullptr};
 
 #if USE_PROF_API
 
@@ -40,17 +44,29 @@ static inline size_t linearSize(const amd::Coord3D& size3d) {
   return size;
 }
 
-void CallbacksTable::reportActivity(const amd::Command& command) {
-  assert(command.profilingInfo().enabled_ && "profiling must be enabled for this command");
-  auto operation_id = operationId(command.type());
+bool IsEnabled(OpId operation_id) {
+  if (operation_id < OP_ID_NUMBER)
+    if (auto report = report_activity.load(std::memory_order_relaxed))
+      return report(ACTIVITY_DOMAIN_HIP_OPS, operation_id, nullptr) == 0;
+  return false;
+}
 
-  if (!isEnabled(operation_id)) return;
+void ReportActivity(const amd::Command& command) {
+  assert(command.profilingInfo().enabled_ && "profiling must be enabled for this command");
+  auto operation_id = OperationId(command.type());
+  if (operation_id >= OP_ID_NUMBER)
+    // This command does not translate into a profiler activity (dispatch, memcopy, etc...), there
+    // is nothing to report to the profiler.
+    return;
+
+  auto function = report_activity.load(std::memory_order_relaxed);
+  if (!function) return;
 
   const auto* queue = command.queue();
   assert(queue != nullptr);
 
   activity_record_t record{
-      ACTIVITY_DOMAIN_HIP_VDI,                  // activity domain
+      ACTIVITY_DOMAIN_HIP_OPS,                  // activity domain
       command.type(),                           // activity kind
       operation_id,                             // operation id
       command.profilingInfo().correlation_id_,  // activity correlation id
@@ -84,10 +100,8 @@ void CallbacksTable::reportActivity(const amd::Command& command) {
       break;
   }
 
-  table_.activity_callback.first(operation_id, &record, table_.activity_callback.second);
+  function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
 }
-
-decltype(CallbacksTable::table_) CallbacksTable::table_;
 
 #endif  // USE_PROF_API
 
