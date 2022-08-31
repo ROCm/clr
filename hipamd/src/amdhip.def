@@ -205,10 +205,7 @@ hipConfigureCall
 hipSetupArgument
 hipLaunchByPtr
 hipLaunchKernel
-hipRegisterApiCallback
-hipRemoveApiCallback
-hipRegisterActivityCallback
-hipRemoveActivityCallback
+hipRegisterTracerCallback
 hipApiName
 hipKernelNameRef
 hipBindTexture
@@ -254,8 +251,6 @@ hipProfilerStart
 hipProfilerStop
 hipCreateSurfaceObject
 hipDestroySurfaceObject
-hipInitActivityCallback
-hipEnableActivityCallback
 hipGetCmdName
 hipMipmappedArrayCreate
 hipMallocMipmappedArray

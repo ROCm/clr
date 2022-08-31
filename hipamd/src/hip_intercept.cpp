@@ -25,50 +25,41 @@
 
 // HIP API callback/activity
 
-api_callbacks_table_t callbacks_table;
-
 extern const std::string& FunctionName(const hipFunction_t f);
 
 extern "C" {
-
-const char* hipKernelNameRef(const hipFunction_t f) { return FunctionName(f).c_str(); }
 
 int hipGetStreamDeviceId(hipStream_t stream) {
   if (!hip::isValid(stream)) {
     return -1;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  return (s != nullptr)? s->DeviceId() : ihipGetDevice();
+  return (s != nullptr) ? s->DeviceId() : ihipGetDevice();
 }
 
-const char* hipKernelNameRefByPtr(const void* hostFunction, hipStream_t stream) {
-  [](auto&&...){}(stream);
-  if (hostFunction == nullptr) {
-    return nullptr;
-  }
-  return PlatformState::instance().getStatFuncName(hostFunction);
+const char* hipKernelNameRef(const hipFunction_t function) {
+  return FunctionName(function).c_str();
 }
 
-hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg) {
-  return callbacks_table.set_callback(static_cast<hip_api_id_t>(id), reinterpret_cast<activity_rtapi_callback_t>(fun), arg) ?
-    hipSuccess : hipErrorInvalidValue;
+const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream) {
+  return (host_function != nullptr) ? PlatformState::instance().getStatFuncName(host_function)
+                                    : nullptr;
 }
 
-hipError_t hipRemoveApiCallback(uint32_t id) {
-  return callbacks_table.set_callback(static_cast<hip_api_id_t>(id), nullptr, nullptr) ? hipSuccess : hipErrorInvalidValue;
+void hipRegisterTracerCallback(const void* function) {
+  activity_prof::report_activity.store(
+      reinterpret_cast<decltype(activity_prof::report_activity.load())>(function),
+      std::memory_order_relaxed);
 }
 
+const char* hipApiName(uint32_t id) { return hip_api_name(id); }
+
+// Deprecated functions that need to be removed from hip_runtime_api.h
+hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg) { return hipErrorUnknown; }
+hipError_t hipRemoveApiCallback(uint32_t id) { return hipErrorUnknown; }
 hipError_t hipRegisterActivityCallback(uint32_t id, void* fun, void* arg) {
-  return callbacks_table.set_activity(static_cast<hip_api_id_t>(id), reinterpret_cast<activity_sync_callback_t>(fun), arg) ?
-    hipSuccess : hipErrorInvalidValue;
+  return hipErrorUnknown;
 }
+hipError_t hipRemoveActivityCallback(uint32_t id) { return hipErrorUnknown; }
 
-hipError_t hipRemoveActivityCallback(uint32_t id) {
-  return callbacks_table.set_activity(static_cast<hip_api_id_t>(id), nullptr, nullptr) ? hipSuccess : hipErrorInvalidValue;
-}
-
-const char* hipApiName(uint32_t id) {
-  return hip_api_name(id);
-}
-
-} // extern "C"
+}  // extern "C"

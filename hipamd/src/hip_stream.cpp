@@ -24,8 +24,6 @@
 #include "thread/monitor.hpp"
 #include "hip_prof_api.h"
 
-extern api_callbacks_table_t callbacks_table;
-
 static amd::Monitor streamSetLock{"Guards global stream set"};
 static std::unordered_set<hip::Stream*> streamSet;
 namespace hip {
@@ -77,12 +75,6 @@ hipError_t Stream::EndCapture() {
 }
 // ================================================================================================
 bool Stream::Create() {
-  // Enable queue profiling if a profiler is attached which sets the callback_table flag
-  // or if we force it with env var. This would enable time stamp collection for every
-  // command submitted to the stream(queue).
-  bool isProfilerAttached = callbacks_table.is_enabled();
-  cl_command_queue_properties properties = isProfilerAttached ?
-                                             CL_QUEUE_PROFILING_ENABLE : 0;
   amd::CommandQueue::Priority p;
   switch (priority_) {
     case Priority::High:
@@ -97,7 +89,7 @@ bool Stream::Create() {
       break;
   }
   amd::HostQueue* queue = new amd::HostQueue(*device_->asContext(), *device_->devices()[0],
-                                             properties, amd::CommandQueue::RealTimeDisabled,
+                                             0, amd::CommandQueue::RealTimeDisabled,
                                              p, cuMask_);
 
   // Create a host queue
@@ -107,7 +99,6 @@ bool Stream::Create() {
     amd::ScopedLock lock(streamSetLock);
     streamSet.insert(this);
     queue_ = queue;
-    queue->vdev()->profilerAttach(isProfilerAttached);
     device_->SaveQueue(queue);
   } else if (queue != nullptr) {
     // Queue creation has failed, and virtual device associated with the queue may not be created.
