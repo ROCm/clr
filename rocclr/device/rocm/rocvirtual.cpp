@@ -25,6 +25,7 @@
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/roccounters.hpp"
+#include "platform/activity.hpp"
 #include "platform/kernel.hpp"
 #include "platform/context.hpp"
 #include "platform/command.hpp"
@@ -172,7 +173,7 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
     return false;
   }
 
-  if (ts->gpu()->isProfilerAttached()) {
+  if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
     amd::Command* head = ts->getParsedCommand();
     if (head == nullptr) {
       head = ts->command().GetBatchHead();

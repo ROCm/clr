@@ -1246,8 +1246,6 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitStreamOperation(amd::StreamOperationCommand& cmd) { ShouldNotReachHere(); }
   virtual void submitVirtualMap(amd::VirtualMapCommand& cmd) { ShouldNotReachHere(); }
 
-  virtual void profilerAttach(bool enable) = 0;
-
   virtual address allocKernelArguments(size_t size, size_t alignment) { return nullptr; }
 
   //! Get the blit manager object
