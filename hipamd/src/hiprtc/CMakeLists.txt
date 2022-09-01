@@ -214,7 +214,7 @@ INSTALL(EXPORT hiprtc-targets NAMESPACE hiprtc:: DESTINATION ${CONFIG_RTC_PACKAG
 include(CMakePackageConfigHelpers)
 
 write_basic_package_version_file(
-  ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hiprtc-config-version.cmake
+  ${PROJECT_BINARY_DIR}/hiprtc-config-version.cmake
   VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
   COMPATIBILITY SameMajorVersion)
 
@@ -227,5 +227,5 @@ INSTALL(
   DESTINATION ${CONFIG_RTC_PACKAGE_INSTALL_DIR})
 
 INSTALL(
-  FILES ${CMAKE_CURRENT_SOURCE_DIR}/cmake/hiprtc-config-version.cmake
+  FILES ${PROJECT_BINARY_DIR}/hiprtc-config-version.cmake
   DESTINATION ${CONFIG_RTC_PACKAGE_INSTALL_DIR})
