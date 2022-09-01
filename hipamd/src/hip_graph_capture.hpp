@@ -31,6 +31,10 @@ hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f
                                            void**& extra, hipEvent_t& startEvent,
                                            hipEvent_t& stopEvent, uint32_t& flags);
 
+hipError_t capturehipExtLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
+                                     dim3& blockDim, void**& args, size_t& sharedMemBytes,
+                                     hipEvent_t& startEvent, hipEvent_t& stopEvent, int& flags);
+
 hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, uint32_t& gridDimX,
                                         uint32_t& gridDimY, uint32_t& gridDimZ, uint32_t& blockDimX,
                                         uint32_t& blockDimY, uint32_t& blockDimZ,
