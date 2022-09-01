@@ -274,10 +274,10 @@ hipError_t capturehipExtLaunchKernel(hipStream_t& stream, const void*& hostFunct
                                      hipEvent_t& startEvent, hipEvent_t& stopEvent, int& flags) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node Ext kernel launch on stream : %p", stream);
-  return ihipExtLaunchKernel(stream,
-                             reinterpret_cast<hipFunction_t>(const_cast<void*>(hostFunction)),
-                             gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y, blockDim.z,
-                             sharedMemBytes, args, nullptr, startEvent, stopEvent, flags);
+  return ihipExtLaunchKernel(
+      stream, reinterpret_cast<hipFunction_t>(const_cast<void*>(hostFunction)),
+      gridDim.x * blockDim.x, gridDim.y * blockDim.y, gridDim.z * blockDim.z, blockDim.x,
+      blockDim.y, blockDim.z, sharedMemBytes, args, nullptr, startEvent, stopEvent, flags);
 }
 
 hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, uint32_t& gridDimX,
