@@ -42,29 +42,6 @@ inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
   return hipSuccess;
 }
 
-
-hipError_t ihipValidateKernelParams(const hipKernelNodeParams* pNodeParams) {
-  hipFunction_t func = nullptr;
-  hipError_t status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
-  if (status != hipSuccess) {
-    return hipErrorInvalidDeviceFunction;
-  }
-
-  size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
-  size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
-  size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
-
-  status = ihipLaunchKernel_validate(
-      func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-      static_cast<uint32_t>(globalWorkSizeZ), pNodeParams->blockDim.x, pNodeParams->blockDim.y,
-      pNodeParams->blockDim.z, pNodeParams->sharedMemBytes, pNodeParams->kernelParams,
-      pNodeParams->extra, ihipGetDevice(), 0);
-  if (status != hipSuccess) {
-    return status;
-  }
-  return hipSuccess;
-}
-
 hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                   const hipGraphNode_t* pDependencies, size_t numDependencies,
                                   const hipKernelNodeParams* pNodeParams) {
@@ -84,13 +61,7 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return hipErrorInvalidValue;
   }
 
-  hipFunction_t func = nullptr;
-  hipError_t status = hipGraphKernelNode::getFunc(&func, *pNodeParams, ihipGetDevice());
-  if (status != hipSuccess) {
-    return hipErrorInvalidDeviceFunction;
-  }
-
-  status = ihipValidateKernelParams(pNodeParams);
+  hipError_t status = hipGraphKernelNode::validateKernelParams(pNodeParams);
   if (hipSuccess != status) {
     return status;
   }
@@ -104,7 +75,7 @@ hipError_t ihipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     return hipErrorInvalidConfiguration;
   }
 
-  *pGraphNode = new hipGraphKernelNode(pNodeParams, func);
+  *pGraphNode = new hipGraphKernelNode(pNodeParams);
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
   return status;
 }
