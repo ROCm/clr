@@ -1872,11 +1872,21 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
     amd::BufferRect rect;
     rect.create(static_cast<size_t*>(origin), static_cast<size_t*>(region),
         pitch, 0);
+
+    bool force_blit = false;
+    if (amd::IS_HIP) {
+      constexpr uint32_t kManagedAlloc = (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR);
+      // In case of HMM, use blit kernel instead of CPU memcpy
+      if ((cmd.memory().getMemFlags() & kManagedAlloc) == kManagedAlloc) {
+        force_blit = true;
+      }
+    }
+
     for (size_t slice = 0; slice < depth; slice++) {
       for (size_t row = 0; row < height; row++) {
         const size_t rowOffset = rect.offset(0, row, slice);
         if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
-            amd::Coord3D{rowOffset, 0, 0}, amd::Coord3D{width, 1, 1})) {
+            amd::Coord3D{rowOffset, 0, 0}, amd::Coord3D{width, 1, 1}, force_blit)) {
           cmd.setStatus(CL_INVALID_OPERATION);
         }
       }

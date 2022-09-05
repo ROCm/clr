@@ -2296,8 +2296,18 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(cmd);
+
+  bool force_blit = false;
+  if (amd::IS_HIP) {
+    constexpr uint32_t kManagedAlloc = (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR);
+    // In case of HMM, use blit kernel instead of CPU memcpy
+    if ((cmd.memory().getMemFlags() & kManagedAlloc) == kManagedAlloc) {
+      force_blit = true;
+    }
+  }
+
   if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
-    cmd.surface(), cmd.origin(), cmd.size())) {
+    cmd.surface(), cmd.origin(), cmd.size(), force_blit)) {
     cmd.setStatus(CL_INVALID_OPERATION);
   }
   profilingEnd(cmd);
