@@ -319,7 +319,7 @@ NOPTION(OT_CSTRING, \
         "I", NULL, \
         PP_I, \
         0, 0, 0, NULL, \
-        "Add directroy dir for header file search")
+        "Add directory dir for header file search")
 
 // -create-library
 OPTION(OT_BOOL, \
