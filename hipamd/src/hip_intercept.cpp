@@ -42,6 +42,7 @@ const char* hipKernelNameRef(const hipFunction_t function) {
 }
 
 const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream) {
+  [](auto&&...) {}(stream);
   return (host_function != nullptr) ? PlatformState::instance().getStatFuncName(host_function)
                                     : nullptr;
 }
@@ -53,13 +54,5 @@ void hipRegisterTracerCallback(const void* function) {
 }
 
 const char* hipApiName(uint32_t id) { return hip_api_name(id); }
-
-// Deprecated functions that need to be removed from hip_runtime_api.h
-hipError_t hipRegisterApiCallback(uint32_t id, void* fun, void* arg) { return hipErrorUnknown; }
-hipError_t hipRemoveApiCallback(uint32_t id) { return hipErrorUnknown; }
-hipError_t hipRegisterActivityCallback(uint32_t id, void* fun, void* arg) {
-  return hipErrorUnknown;
-}
-hipError_t hipRemoveActivityCallback(uint32_t id) { return hipErrorUnknown; }
 
 }  // extern "C"
