@@ -420,8 +420,9 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
+  bool wait = (stream == nullptr) ? true : false;
   // Wait for the current host queue
-  hip::getStream(stream)->finish();
+  hip::getStream(stream, wait)->finish();
   return hipSuccess;
 }
 
@@ -530,7 +531,9 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
-  hip::Stream* hip_stream = hip::getStream(stream);
+
+  bool wait = (stream == nullptr) ? true : false;
+  hip::Stream* hip_stream = hip::getStream(stream, wait);
 
   amd::Command* command = hip_stream->getLastQueuedCommand(true);
   if (command == nullptr) {

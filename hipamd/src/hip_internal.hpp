@@ -451,9 +451,8 @@ namespace hip {
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-   hip::Stream* NullStream(bool skip_alloc = false);
+   hip::Stream* NullStream(bool skip_alloc = false, bool wait = true);
    Stream* GetNullStream();
-
 
     bool GetActiveStatus() {
       amd::ScopedLock lock(lock_);
@@ -528,11 +527,11 @@ namespace hip {
   /// Get ROCclr queue associated with hipStream
   /// Note: This follows the CUDA spec to sync with default streams
   ///       and Blocking streams
-  extern hip::Stream* getStream(hipStream_t stream);
+  extern hip::Stream* getStream(hipStream_t stream, bool wait = true);
   /// Get default stream associated with the ROCclr context
   extern hip::Stream* getNullStream(amd::Context&);
   /// Get default stream of the thread
-  extern hip::Stream* getNullStream();
+  extern hip::Stream* getNullStream(bool wait = true);
   /// Get device ID associated with the ROCclr context
   int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid
