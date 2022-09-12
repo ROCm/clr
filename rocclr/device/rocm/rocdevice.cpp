@@ -1665,23 +1665,10 @@ device::VirtualDevice* Device::createVirtualDevice(amd::CommandQueue* queue) {
 bool Device::globalFreeMemory(size_t* freeMemory) const {
   const uint TotalFreeMemory = 0;
   const uint LargestFreeBlock = 1;
-  uint64_t globalAvailMemory;
-  // Queries memory available in bytes across all global pools owned by the agent
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(bkendDevice_,
-                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
-                         &globalAvailMemory)) {
-    LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
-  }
 
-  globalAvailMemory = globalAvailMemory / Ki;
-  if (globalAvailMemory > HIP_HIDDEN_FREE_MEM * Ki) {
-    globalAvailMemory -= HIP_HIDDEN_FREE_MEM * Ki;
-  } else {
-    globalAvailMemory = 0;
-  }
-
-  freeMemory[TotalFreeMemory] = globalAvailMemory;
+  freeMemory[TotalFreeMemory] = freeMem_ / Ki;
+  freeMemory[TotalFreeMemory] -= (freeMemory[TotalFreeMemory] > HIP_HIDDEN_FREE_MEM * Ki) ?
+                                  HIP_HIDDEN_FREE_MEM * Ki : 0;
   // since there is no memory heap on ROCm, the biggest free block is
   // equal to total free local memory
   freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
