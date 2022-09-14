@@ -60,7 +60,20 @@ endif()
 #set a name for icd file
 set(OPENCL_AMD_ICD_FILE "amdocl64.icd")
 if (DEFINED ROCM_PATCH_VERSION)
-  set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}.icd")
+  # set unique name for ICD file for each jenkins build
+  # Use ENV variable CPACK_RPM_PACKAGE_RELEASE, which is having build number
+  set(PACKAGE_RELEASE_VERSION "")
+  if(DEFINED ENV{CPACK_RPM_PACKAGE_RELEASE})
+    set(PACKAGE_RELEASE_VERSION $ENV{CPACK_RPM_PACKAGE_RELEASE})
+  endif()
+  if(PACKAGE_RELEASE_VERSION)
+    # Replace "." to "_" in package version string. So file name will have .icd as extension
+    string(REPLACE "." "_" PACKAGE_RELEASE_VERSION ${PACKAGE_RELEASE_VERSION})
+  else()
+    # set a default value
+    set(PACKAGE_RELEASE_VERSION "9999")
+  endif()
+  set(OPENCL_AMD_ICD_FILE "amdocl64_${ROCM_PATCH_VERSION}_${PACKAGE_RELEASE_VERSION}.icd")
 endif()
 
 if(BUILD_ICD)
