@@ -338,15 +338,11 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                   uint32_t flags = 0, uint32_t params = 0, uint32_t gridId = 0,
                                   uint32_t numGrids = 0, uint64_t prevGridSum = 0,
                                   uint64_t allGridSum = 0, uint32_t firstDevice = 0) {
-  HIP_INIT_API(ihipModuleLaunchKernel, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
-               startEvent, stopEvent, flags, params);
-
   int deviceId = hip::Stream::DeviceId(hStream);
   for (size_t dev = 0; dev < g_devices.size(); ++dev) {
     HIP_RETURN_ONFAIL(PlatformState::instance().initStatManagedVarDevicePtr(dev));
   }
-  
+
   if (f == nullptr) {
     LogPrintfError("%s", "Function passed is null");
     return hipErrorInvalidImage;
@@ -486,7 +482,8 @@ extern "C" hipError_t hipLaunchKernel_spt(const void* hostFunction, dim3 gridDim
 extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                          void** args, size_t sharedMemBytes, hipStream_t stream,
                                          hipEvent_t startEvent, hipEvent_t stopEvent, int flags) {
-  HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
+  HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes,
+               stream, startEvent, stopEvent, flags);
   STREAM_CAPTURE(hipExtLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes,
                  startEvent, stopEvent, flags);
   HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
