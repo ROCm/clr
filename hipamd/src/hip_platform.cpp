@@ -616,9 +616,9 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, hostFunction, deviceId);
   if ((hip_error != hipSuccess) || (func == nullptr)) {
     if (hip_error == hipErrorSharedObjectInitFailed) {
-      HIP_RETURN(hip_error);
+      return hip_error;
     } else {
-      HIP_RETURN(hipErrorInvalidDeviceFunction);
+      return hipErrorInvalidDeviceFunction;
     }
   }
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
@@ -627,12 +627,12 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
   if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-    HIP_RETURN(hipErrorInvalidConfiguration);
+    return hipErrorInvalidConfiguration;
   }
-  HIP_RETURN(ihipModuleLaunchKernel(
+  return ihipModuleLaunchKernel(
       func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
       static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y, blockDim.z, sharedMemBytes,
-      stream, args, nullptr, startEvent, stopEvent, flags));
+      stream, args, nullptr, startEvent, stopEvent, flags);
 }
 
 // conversion routines between float and half precision
