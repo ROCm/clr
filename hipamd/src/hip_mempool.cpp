@@ -28,8 +28,11 @@ extern hipError_t ihipFree(void* ptr);
 // ================================================================================================
 hipError_t hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device) {
   HIP_INIT_API(hipDeviceGetDefaultMemPool, mem_pool, device);
-  if ((mem_pool == nullptr) || (device >= g_devices.size())) {
+  if (mem_pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (device < 0 || device >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
   }
   *mem_pool = reinterpret_cast<hipMemPool_t>(g_devices[device]->GetDefaultMemoryPool());
   HIP_RETURN(hipSuccess);
