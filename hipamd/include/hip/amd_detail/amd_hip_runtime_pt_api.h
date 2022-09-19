@@ -157,8 +157,11 @@ hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags);
 
 hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback, void* userData,
                                 unsigned int flags);
-
+#ifdef __cplusplus
+hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream = NULL);
+#else
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream);
+#endif
 
 hipError_t hipLaunchCooperativeKernel_spt(const void* f,
                                       dim3 gridDim, dim3 blockDim,
