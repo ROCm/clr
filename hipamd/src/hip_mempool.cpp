@@ -44,6 +44,12 @@ hipError_t hipDeviceSetMemPool(int device, hipMemPool_t mem_pool) {
   if ((mem_pool == nullptr) || (device >= g_devices.size())) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  auto poolDevice = reinterpret_cast<hip::MemoryPool*>(mem_pool)->Device();
+  if (poolDevice->deviceId() != device) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+
   g_devices[device]->SetCurrentMemoryPool(reinterpret_cast<hip::MemoryPool*>(mem_pool));
   HIP_RETURN(hipSuccess);
 }
