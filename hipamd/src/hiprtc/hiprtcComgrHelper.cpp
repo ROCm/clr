@@ -25,6 +25,8 @@ THE SOFTWARE.
   #include <io.h>
 #endif
 
+#include "../amd_hsa_elf.hpp"
+
 namespace hiprtc {
 
 namespace helpers {
@@ -32,9 +34,15 @@ namespace helpers {
 size_t constexpr strLiteralLength(char const* str) {
   return *str ? 1 + strLiteralLength(str + 1) : 0;
 }
-constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
+
 constexpr char const* CLANG_OFFLOAD_BUNDLER_MAGIC_STR = "__CLANG_OFFLOAD_BUNDLE__";
-static constexpr size_t bundle_magic_string_size = strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
+constexpr char const* OFFLOAD_KIND_HIP = "hip";
+constexpr char const* OFFLOAD_KIND_HIPV4 = "hipv4";
+constexpr char const* OFFLOAD_KIND_HCC = "hcc";
+constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
+
+static constexpr size_t bundle_magic_string_size
+                                     = strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
 
 struct __ClangOffloadBundleInfo {
   uint64_t offset;
@@ -49,6 +57,206 @@ struct __ClangOffloadBundleHeader {
   __ClangOffloadBundleInfo desc[1];
 };
 
+uint64_t ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
+
+static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupported,
+                        bool& sramEccSupported) {
+  switch (EFlags & EF_AMDGPU_MACH) {
+    case EF_AMDGPU_MACH_AMDGCN_GFX700:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx700";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX701:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx701";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX702:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx702";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX703:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx703";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX704:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx704";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX705:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx705";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX801:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx801";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX802:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx802";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX803:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx803";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX805:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx805";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX810:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx810";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX900:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx900";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX902:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx902";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX904:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx904";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX906:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx906";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX908:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx908";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX909:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx909";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX90A:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx90a";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX90C:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx90c";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1010:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx1010";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1011:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx1011";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1012:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx1012";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1030:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1030";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1031:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1031";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1032:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1032";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1033:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1033";
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
+static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string& target_id,
+                                            unsigned& co_version) {
+  if (!code_object) return false;
+  const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(code_object);
+  if (ehdr->e_machine != EM_AMDGPU) return false;
+  if (ehdr->e_ident[EI_OSABI] != ELFOSABI_AMDGPU_HSA) return false;
+
+  bool isXnackSupported{false}, isSramEccSupported{false};
+
+  std::string proc_name;
+  if (!getProcName(ehdr->e_flags, proc_name, isXnackSupported, isSramEccSupported)) return false;
+  target_id = std::string(AMDGCN_TARGET_TRIPLE) + '-' + proc_name;
+
+  switch (ehdr->e_ident[EI_ABIVERSION]) {
+    case ELFABIVERSION_AMDGPU_HSA_V2: {
+      co_version = 2;
+      return false;
+    }
+
+    case ELFABIVERSION_AMDGPU_HSA_V3: {
+      co_version = 3;
+      if (isSramEccSupported) {
+        if (ehdr->e_flags & EF_AMDGPU_FEATURE_SRAMECC_V3)
+          target_id += ":sramecc+";
+        else
+          target_id += ":sramecc-";
+      }
+      if (isXnackSupported) {
+        if (ehdr->e_flags & EF_AMDGPU_FEATURE_XNACK_V3)
+          target_id += ":xnack+";
+        else
+          target_id += ":xnack-";
+      }
+      break;
+    }
+
+    case ELFABIVERSION_AMDGPU_HSA_V4: {
+      co_version = 4;
+      unsigned co_sram_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_SRAMECC_V4;
+      if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_OFF_V4)
+        target_id += ":sramecc-";
+      else if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_ON_V4)
+        target_id += ":sramecc+";
+
+      unsigned co_xnack_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_XNACK_V4;
+      if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_OFF_V4)
+        target_id += ":xnack-";
+      else if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_ON_V4)
+        target_id += ":xnack+";
+      break;
+    }
+
+    default: {
+      return false;
+    }
+  }
+  return true;
+}
+
 // Consumes the string 'consume_' from the starting of the given input
 // eg: input = amdgcn-amd-amdhsa--gfx908 and consume_ is amdgcn-amd-amdhsa--
 // input will become gfx908.
@@ -60,20 +268,98 @@ static bool consume(std::string& input, std::string consume_) {
   return true;
 }
 
-bool isCodeObjectCompatibleWithDevice(std::string bundleEntryId, std::string isa) {
-  // If it is a direct match then return true.
-  if (bundleEntryId == isa) {
-    return true;
+// Trim String till character, will be used to get gpuname
+// example: input is gfx908:sram-ecc+ and trim char is :
+// input will become sram-ecc+.
+static std::string trimName(std::string& input, char trim) {
+  auto pos_ = input.find(trim);
+  auto res = input;
+  if (pos_ == std::string::npos) {
+    input = "";
+  } else {
+    res = input.substr(0, pos_);
+    input = input.substr(pos_);
+  }
+  return res;
+}
+
+static char getFeatureValue(std::string& input, std::string feature) {
+  char res = ' ';
+  if (consume(input, std::move(feature))) {
+    res = input[0];
+    input = input.substr(1);
+  }
+  return res;
+}
+
+static bool getTargetIDValue(std::string& input, std::string& processor, char& sramecc_value,
+                             char& xnack_value) {
+  processor = trimName(input, ':');
+  sramecc_value = getFeatureValue(input, std::string(":sramecc"));
+  if (sramecc_value != ' ' && sramecc_value != '+' && sramecc_value != '-') return false;
+  xnack_value = getFeatureValue(input, std::string(":xnack"));
+  if (xnack_value != ' ' && xnack_value != '+' && xnack_value != '-') return false;
+  return true;
+}
+
+static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
+                              std::string& co_triple_target_id, unsigned& co_version) {
+  std::string offload_kind = trimName(bundled_co_entry_id, '-');
+  if (offload_kind != OFFLOAD_KIND_HIPV4 && offload_kind != OFFLOAD_KIND_HIP &&
+      offload_kind != OFFLOAD_KIND_HCC)
+    return false;
+
+  if (offload_kind != OFFLOAD_KIND_HIPV4)
+    return getTripleTargetIDFromCodeObject(code_object, co_triple_target_id, co_version);
+
+  // For code object V4 onwards the bundled code object entry ID correctly
+  // specifies the target tripple.
+  co_version = 4;
+  co_triple_target_id = bundled_co_entry_id.substr(1);
+  return true;
+}
+
+bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
+                                      std::string agent_triple_target_id) {
+  // Primitive Check
+  if (co_triple_target_id == agent_triple_target_id) return true;
+
+  // Parse code object triple target id
+  if (!consume(co_triple_target_id, std::string(AMDGCN_TARGET_TRIPLE) + '-')) {
+    return false;
   }
 
-  consume(bundleEntryId, std::string("hip") + '-' + std::string(AMDGCN_TARGET_TRIPLE));
-  consume(isa, std::string(AMDGCN_TARGET_TRIPLE) + '-');
-
-  if (bundleEntryId == isa) {
-    return true;
+  std::string co_processor;
+  char co_sram_ecc, co_xnack;
+  if (!getTargetIDValue(co_triple_target_id, co_processor, co_sram_ecc, co_xnack)) {
+    return false;
   }
 
-  return false;
+  if (!co_triple_target_id.empty()) return false;
+
+  // Parse agent isa triple target id
+  if (!consume(agent_triple_target_id, std::string(AMDGCN_TARGET_TRIPLE) + '-')) {
+    return false;
+  }
+
+  std::string agent_isa_processor;
+  char isa_sram_ecc, isa_xnack;
+  if (!getTargetIDValue(agent_triple_target_id, agent_isa_processor, isa_sram_ecc, isa_xnack)) {
+    return false;
+  }
+
+  if (!agent_triple_target_id.empty()) return false;
+
+  // Check for compatibility
+  if (agent_isa_processor != co_processor) return false;
+  if (co_sram_ecc != ' ') {
+    if (co_sram_ecc != isa_sram_ecc) return false;
+  }
+  if (co_xnack != ' ') {
+    if (co_xnack != isa_xnack) return false;
+  }
+
+  return true;
 }
 
 bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::string& isa,
