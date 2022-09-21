@@ -111,14 +111,13 @@ bool HostQueue::terminate() {
 
 void HostQueue::finish() {
   Command* command = nullptr;
-  bool isCacheFlushed = device().IsCacheFlushed(Device::CacheState::kCacheStateSystem);
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
-    if (AMD_DIRECT_DISPATCH && isCacheFlushed && command == nullptr) {
+    if (AMD_DIRECT_DISPATCH && command == nullptr) {
       return;
     }
   }
-  if (nullptr == command || !isCacheFlushed || vdev()->isHandlerPending()) {
+  if (nullptr == command || vdev()->isHandlerPending()) {
     if (nullptr != command) {
       command->release();
     }
@@ -127,7 +126,7 @@ void HostQueue::finish() {
     if (command == NULL) {
       return;
     }
-    ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued, Cache Flushed = %d", isCacheFlushed);
+    ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
     command->enqueue();
   }
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status

@@ -259,8 +259,6 @@ class NullDevice : public amd::Device {
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const { return false; }
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {};
-  virtual bool IsCacheFlushed(Device::CacheState state) const { return false; };
-  virtual void SetCacheState(Device::CacheState state) {};
   virtual void ReleaseGlobalSignal(void* signal) const {}
 
 #if defined(__clang__)
@@ -446,8 +444,6 @@ class Device : public NullDevice {
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
-  virtual bool IsCacheFlushed(Device::CacheState state) const;
-  virtual void SetCacheState(Device::CacheState state);
   virtual void ReleaseGlobalSignal(void* signal) const;
 
   //! Allocate host memory in terms of numa policy set by user
