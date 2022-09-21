@@ -164,11 +164,13 @@ hiprtcResult hiprtcGetLoweredName(hiprtcProgram prog, const char* name_expressio
 
 hiprtcResult hiprtcDestroyProgram(hiprtcProgram* prog) {
   HIPRTC_INIT_API(prog);
+
   if (prog == nullptr) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
   auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(*prog);
   delete rtcProgram;
+
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
 
@@ -237,6 +239,8 @@ hiprtcResult hiprtcVersion(int* major, int* minor) {
 }
 
 hiprtcResult hiprtcGetBitcode (hiprtcProgram prog, char* bitcode) {
+  HIPRTC_INIT_API(prog, bitcode);
+
   if (bitcode == nullptr) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
@@ -245,10 +249,13 @@ hiprtcResult hiprtcGetBitcode (hiprtcProgram prog, char* bitcode) {
   if (!rtcProgram->GetBitcode(bitcode)) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_PROGRAM);
   }
+
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
 
 hiprtcResult hiprtcGetBitcodeSize(hiprtcProgram prog, size_t* bitcode_size) {
+  HIPRTC_INIT_API(prog, bitcode_size);
+
   if (bitcode_size == nullptr) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
@@ -333,18 +340,18 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
   }
 
   HIPRTC_RETURN(HIPRTC_SUCCESS);
-
 }
 
 hiprtcResult hiprtcLinkComplete(hiprtcLinkState hip_link_state, void** bin_out, size_t* size_out) {
   HIPRTC_INIT_API(hip_link_state, bin_out, size_out);
+
   hiprtc::RTCLinkProgram* rtc_link_prog_ptr
     = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
   if (!rtc_link_prog_ptr->LinkComplete(bin_out, size_out)) {
     HIPRTC_RETURN(HIPRTC_ERROR_LINKING);
   }
-  HIPRTC_RETURN(HIPRTC_SUCCESS);
 
+  HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
 
 hiprtcResult hiprtcLinkDestroy(hiprtcLinkState hip_link_state) {
