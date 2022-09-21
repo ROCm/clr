@@ -533,5 +533,7 @@ class VirtualGPU : public device::VirtualDevice {
   cl_command_type copy_command_type_;   //!< Type of the copy command, used for ROC profiler
                                         //!< OCL doesn't distinguish diffrent copy types,
                                         //!< but ROC profiler expects D2H or H2D detection
+  int fence_state_;                     //!< Fence scope
+                                        //!< kUnknown/kFlushedToDevice/kFlushedToSystem
 };
 }

@@ -275,9 +275,7 @@ release(uint, ROC_SIGNAL_POOL_SIZE, 32,                                       \
 release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \
         "If true, then runtime can skip kernel arg copy")                     \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
-        "Force the stream wait memory operation to wait on CP.")              \
-release(bool, ROC_EVENT_NO_FLUSH, false,                                      \
-        "Use NOP AQL packet for event records with no explicit flags.")
+        "Force the stream wait memory operation to wait on CP.")
 
 namespace amd {
 

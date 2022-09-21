@@ -2657,18 +2657,6 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 }
 
 // ================================================================================================
-bool Device::IsCacheFlushed(Device::CacheState state) const {
-
-  return ROC_EVENT_NO_FLUSH ?
-         (static_cast<int>(state) == cache_state_.load(std::memory_order_relaxed)) : true;
-}
-
-// ================================================================================================
-void Device::SetCacheState(Device::CacheState state) {
-  cache_state_.store(static_cast<int>(state), std::memory_order_relaxed);
-}
-
-// ================================================================================================
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     // Abort on device exceptions.
