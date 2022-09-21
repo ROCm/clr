@@ -291,7 +291,7 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
       return status;
     }
   } else {
-    ShouldNotReachHere();
+    return hipErrorInvalidValue;
   }
   return hipSuccess;
 }
@@ -469,7 +469,7 @@ hipError_t hipGraphMemcpyNode::SetCommandParams(const hipMemcpy3DParms* pNodePar
     amd::CopyMemoryCommand* command = reinterpret_cast<amd::CopyMemoryCommand*>(commands_[0]);
     command->setParams(*srcImage, *dstImage, srcOrigin, dstOrigin, copyRegion);
   } else {
-    ShouldNotReachHere();
+    return hipErrorInvalidValue;
   }
   return hipSuccess;
 }
