@@ -70,8 +70,7 @@ cl_channel_type getCLChannelType(const hipArray_Format hipFormat,
     }
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -89,8 +88,7 @@ cl_channel_order getCLChannelOrder(const unsigned int hipNumChannels,
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -131,8 +129,7 @@ cl_addressing_mode getCLAddressingMode(const hipTextureAddressMode hipAddressMod
       return CL_ADDRESS_CLAMP;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -145,8 +142,7 @@ cl_filter_mode getCLFilterMode(const hipTextureFilterMode hipFilterMode) {
       return CL_FILTER_LINEAR;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -161,8 +157,7 @@ cl_mem_object_type getCLMemObjectType(const hipResourceType hipResType) {
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -205,8 +200,7 @@ size_t getElementSize(const hipArray_const_t array) {
       return 4 * array->NumChannels;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -288,8 +282,7 @@ hipChannelFormatDesc getChannelFormatDesc(int numChannels,
       }
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -356,8 +349,7 @@ hipArray_Format getArrayFormat(const hipChannelFormatDesc& desc) {
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -395,8 +387,7 @@ int getNumChannels(const hipResourceViewFormat hipFormat) {
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -439,8 +430,7 @@ hipArray_Format getArrayFormat(const hipResourceViewFormat hipFormat) {
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -535,8 +525,7 @@ hipResourceViewFormat getResourceViewFormat(const hipChannelFormatDesc& desc) {
       break;
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 
@@ -604,8 +593,7 @@ std::pair<hipMemoryType, hipMemoryType> getMemoryType(const hipMemcpyKind kind) 
       return {hipMemoryTypeUnified, hipMemoryTypeUnified};
   }
 
-  ShouldNotReachHere();
-
+  //error scenario
   return {};
 }
 

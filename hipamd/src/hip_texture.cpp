@@ -248,10 +248,9 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
     }
     break;
   }
-  case hipResourceTypeMipmappedArray: {
-    ShouldNotReachHere();
-    break;
-  }
+  case hipResourceTypeMipmappedArray:
+    return hipErrorInvalidValue;
+
   case hipResourceTypeLinear: {
     const cl_channel_order channelOrder = hip::getCLChannelOrder(hip::getNumChannels(pResDesc->res.linear.desc), pTexDesc->sRGB);
     const cl_channel_type channelType = hip::getCLChannelType(hip::getArrayFormat(pResDesc->res.linear.desc), pTexDesc->readMode);

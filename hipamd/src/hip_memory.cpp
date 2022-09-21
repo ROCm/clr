@@ -873,7 +873,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                        imageSlicePitch);
       break;
     default:
-      ShouldNotReachHere();
+      LogPrintfError("Cannot create image of imageType: 0x%x \n", imageType);
     }
   } else {
     switch (imageType) {
@@ -916,7 +916,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                        numMipLevels);
       break;
     default:
-      ShouldNotReachHere();
+      LogPrintfError("Cannot create image of imageType: 0x%x \n", imageType);
     }
   }
 
