@@ -63,20 +63,27 @@ template <typename T, typename... Args> inline std::string ToString(T first, Arg
 }  // namespace hiprtc
 
 static amd::Monitor g_hiprtcInitlock {"hiprtcInit lock"};
-#define HIPRTC_INIT_API(...)                                                                       \
+#define HIPRTC_INIT_API_INTERNAL(...)                                                              \
+  amd::Thread* thread = amd::Thread::current();                                                    \
+  if (!VDI_CHECK_THREAD(thread)) {                                                                 \
+    ClPrint(amd::LOG_INFO, amd::LOG_API, "Failed to create thread");                               \
+    HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
+  }                                                                                                \
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
   if (!amd::Flag::init()) {                                                                        \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
   }                                                                                                \
+
+#define HIPRTC_INIT_API(...)                                                                       \
+  HIPRTC_INIT_API_INTERNAL(0, __VA_ARGS__)                                                         \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s ( %s )", __func__,                                      \
           hiprtc::internal::ToString(__VA_ARGS__).c_str());
 
 #define HIPRTC_RETURN(ret)                                                                         \
-  hiprtc::tls.last_rtc_error_ = (ret);                                                                  \
+  hiprtc::tls.last_rtc_error_ = (ret);                                                             \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s", __func__,                                \
-          hiprtcGetErrorString(hiprtc::tls.last_rtc_error_));                                           \
+          hiprtcGetErrorString(hiprtc::tls.last_rtc_error_));                                      \
   return hiprtc::tls.last_rtc_error_;
-
 
 namespace hiprtc {
 
