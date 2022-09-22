@@ -1929,6 +1929,33 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
         case hipDeviceAttributeDirectManagedMemAccessFromHost:
             cdattr = cudaDevAttrDirectManagedMemAccessFromHost;
             break;
+        case hipDeviceAttributeGlobalL1CacheSupported:
+            cdattr = cudaDevAttrGlobalL1CacheSupported;
+            break;
+        case hipDeviceAttributeMaxBlocksPerMultiProcessor:
+            cdattr = cudaDevAttrMaxBlocksPerMultiprocessor;
+            break;
+        case hipDeviceAttributeMultiGpuBoardGroupID:
+            cdattr = cudaDevAttrMultiGpuBoardGroupID;
+            break;
+        case hipDeviceAttributeReservedSharedMemPerBlock:
+            cdattr = cudaDevAttrReservedSharedMemoryPerBlock;
+            break;
+        case hipDeviceAttributeSingleToDoublePrecisionPerfRatio:
+            cdattr = cudaDevAttrSingleToDoublePrecisionPerfRatio;
+            break;
+        case hipDeviceAttributeStreamPrioritiesSupported:
+            cdattr = cudaDevAttrStreamPrioritiesSupported;
+            break;
+        case hipDeviceAttributeSurfaceAlignment:
+            cdattr = cudaDevAttrSurfaceAlignment;
+            break;
+        case hipDeviceAttributeTccDriver:
+            cdattr = cudaDevAttrTccDriver;
+            break;
+        case hipDeviceAttributeUnifiedAddressing:
+            cdattr = cudaDevAttrUnifiedAddressing;
+            break;
 #if CUDA_VERSION >= CUDA_11020
         case hipDeviceAttributeMemoryPoolsSupported:
             cdattr = cudaDevAttrMemoryPoolsSupported;
@@ -1938,6 +1965,21 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
             return hipCUResultTohipError(cuDeviceGetAttribute(pi,
                                                               CU_DEVICE_ATTRIBUTE_VIRTUAL_MEMORY_MANAGEMENT_SUPPORTED,
                                                               device));
+        case hipDeviceAttributeAccessPolicyMaxWindowSize:
+            cdattr = cudaDevAttrMaxAccessPolicyWindowSize;
+            break;
+        case hipDeviceAttributeAsyncEngineCount:
+            cdattr = cudaDevAttrAsyncEngineCount;
+            break;
+        case hipDeviceAttributeCanUseHostPointerForRegisteredMem:
+            cdattr = cudaDevAttrCanUseHostPointerForRegisteredMem;
+            break;
+        case hipDeviceAttributeComputePreemptionSupported:
+            cdattr = cudaDevAttrComputePreemptionSupported;
+            break;
+        case hipDeviceAttributeHostNativeAtomicSupported:
+            cdattr = cudaDevAttrHostNativeAtomicSupported;
+            break;
         default:
             return hipCUDAErrorTohipError(cudaErrorInvalidValue);
     }
