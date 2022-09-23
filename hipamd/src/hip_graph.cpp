@@ -2059,7 +2059,7 @@ hipError_t hipDeviceGraphMemTrim(int device) {
 
 hipError_t hipUserObjectCreate(hipUserObject_t* object_out, void* ptr, hipHostFn_t destroy, unsigned int initialRefcount, unsigned int flags) {
   HIP_INIT_API(hipUserObjectCreate, object_out, ptr, destroy, initialRefcount, flags);
-  if (object_out == nullptr || flags != hipUserObjectNoDestructorSync) {
+  if (object_out == nullptr || flags != hipUserObjectNoDestructorSync || initialRefcount == 0 || destroy == nullptr || initialRefcount > INT_MAX) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -2073,8 +2073,11 @@ hipError_t hipUserObjectCreate(hipUserObject_t* object_out, void* ptr, hipHostFn
 
 hipError_t hipUserObjectRelease(hipUserObject_t object, unsigned int count) {
   HIP_INIT_API(hipUserObjectRelease, object, count);
-  if (object == nullptr || !hipUserObject::isUserObjvalid(object) || (object->referenceCount() < count)) {
+  if (object == nullptr || count == 0 || count > INT_MAX) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (object->referenceCount() < count || !hipUserObject::isUserObjvalid(object)) {
+    HIP_RETURN(hipSuccess);
   }
   object->decreaseRefCount(count);
   HIP_RETURN(hipSuccess);
@@ -2082,8 +2085,11 @@ hipError_t hipUserObjectRelease(hipUserObject_t object, unsigned int count) {
 
 hipError_t hipUserObjectRetain(hipUserObject_t object, unsigned int count) {
   HIP_INIT_API(hipUserObjectRetain, object, count);
-  if (object == nullptr || !hipUserObject::isUserObjvalid(object)) {
+  if (object == nullptr || count == 0 || count > INT_MAX) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hipUserObject::isUserObjvalid(object)) {
+    HIP_RETURN(hipSuccess);
   }
   object->increaseRefCount(count);
   HIP_RETURN(hipSuccess);
@@ -2092,14 +2098,21 @@ hipError_t hipUserObjectRetain(hipUserObject_t object, unsigned int count) {
 hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, unsigned int count, unsigned int flags) {
   HIP_INIT_API(hipGraphRetainUserObject, graph, object, count, flags);
   hipError_t status = hipSuccess;
-  if (graph == nullptr || object == nullptr || !hipUserObject::isUserObjvalid(object)) {
+  if (graph == nullptr || object == nullptr || count == 0 || count > INT_MAX ||
+      (flags != 0 && flags != hipGraphUserObjectMove)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hipUserObject::isUserObjvalid(object) && !graph->isUserObjGraphValid(object)) {
+    HIP_RETURN(hipSuccess);
   }
   if (flags != hipGraphUserObjectMove) {
     status = hipUserObjectRetain(object, count);
     if (status != hipSuccess) {
       HIP_RETURN(status);
     }
+  } else {
+    //! if flag is UserObjMove delete userobj from list
+    hipUserObject::removeUSerObj(object);
   }
   graph->addUserObjGraph(object);
   HIP_RETURN(status);
@@ -2107,11 +2120,15 @@ hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, un
 
 hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, unsigned int count) {
   HIP_INIT_API(hipGraphReleaseUserObject, graph, object, count);
-  if (graph == nullptr || object == nullptr || !graph->isUserObjGraphValid(object)) {
+  if (graph == nullptr || object == nullptr || count == 0 || count > INT_MAX) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (!graph->isUserObjGraphValid(object) || object->referenceCount() < count) {
+    HIP_RETURN(hipSuccess);
+  }
   //! Obj is being destroyed
-  if (object->referenceCount() == count) {
+  unsigned int releaseCount = (object->referenceCount() < count) ? object->referenceCount() : count;
+  if (object->referenceCount() == releaseCount) {
     graph->RemoveUserObjGraph(object);
   }
   hipError_t status = hipUserObjectRelease(object, count);
