@@ -82,6 +82,12 @@ struct hipUserObject : public amd::ReferenceCountedObject {
     return true;
   }
 
+  static void removeUSerObj(hipUserObject* pUsertObj) {
+    amd::ScopedLock lock(UserObjectLock_);
+    if (ObjectSet_.find(pUsertObj) == ObjectSet_.end()) {
+      ObjectSet_.erase(pUsertObj);
+    }
+  }
  private:
   UserCallbackDestructor callback_;
   void* data_;
