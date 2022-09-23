@@ -87,10 +87,9 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
 
-  if (memObj == nullptr || (count  > (memObj->getSize() - offset))) {
+  if ((memObj != nullptr) && (count  > (memObj->getSize() - offset))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
   if (device != hipCpuDeviceId && (static_cast<size_t>(device) >= g_devices.size())) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
@@ -98,6 +97,11 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   amd::HostQueue* queue = nullptr;
   amd::Device* dev = nullptr;
   bool cpu_access = false;
+
+  if ((memObj == nullptr) && (device != hipCpuDeviceId) &&
+      (!g_devices[device]->devices()[0]->info().hmmCpuMemoryAccessible_)) {
+    HIP_RETURN(hipErrorNotSupported);
+  }
 
   // Pick the specified stream or Null one from the provided device
   if (device == hipCpuDeviceId) {
