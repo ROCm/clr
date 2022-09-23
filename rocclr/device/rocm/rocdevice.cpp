@@ -974,23 +974,23 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           // from "fine_grain and kern_args".
           agentInfo->fine_grain_pool = pool;
         }
-        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0)
-                  && ("Memory Segment cannot be both coarse and fine grained"));
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0),
+                  "Memory Segment cannot be both coarse and fine grained");
       } else {
         // If the flag is not set to fine grained, then it is coarse_grained by default.
         agentInfo->coarse_grain_pool = pool;
-        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0)
-                  && ("Memory Segments that are not fine grained has to be coarse grained"));
-        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) == 0)
-                  && ("Memory Segment cannot be both coarse and fine grained"));
-        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) == 0)
-                  && ("Coarse grained memory segment cannot have kern_args tag"));
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0),
+                  "Memory Segments that are not fine grained has to be coarse grained");
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) == 0),
+                  "Memory Segment cannot be both coarse and fine grained");
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) == 0),
+                  "Coarse grained memory segment cannot have kern_args tag");
       }
 
       if ((global_flag & HSA_REGION_GLOBAL_FLAG_KERNARG) != 0) {
         agentInfo->kern_arg_pool = pool;
-        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0)
-                  && ("Coarse grained memory segment cannot have kern_args tag"));
+        guarantee(((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) == 0),
+                  "Coarse grained memory segment cannot have kern_args tag");
       }
 
       break;
@@ -1926,7 +1926,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
       segment = system_segment_;
       break;
     default :
-      guarantee(false && "Invalid Memory Segment");
+      guarantee(false, "Invalid Memory Segment");
       break;
   }
 
@@ -2192,7 +2192,7 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
   }
 
   //Make sure the mem_offset doesnt overflow the allocated memory
-  guarantee((mem_offset < mem_size) && "IPC mem offset greater than allocated size");
+  guarantee((mem_offset < mem_size), "IPC mem offset greater than allocated size");
 
   // Return orig_dev_ptr
   *dev_ptr = reinterpret_cast<address>(orig_dev_ptr);

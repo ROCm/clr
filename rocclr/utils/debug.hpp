@@ -94,12 +94,9 @@ extern void log_printf(LogLevel level, const char* file, int line, uint64_t *sta
 #endif  // __INTEL_COMPILER
 
 //! \brief Abort the program if the invariant \a cond is false.
-#define guarantee(cond, ...)                                                                       \
+#define guarantee(cond, message)                                                                       \
   if (!(cond)) {                                                                                   \
-    if(strlen(#__VA_ARGS__) == 0)                                                                  \
-      amd::report_fatal(__FILE__, __LINE__,  XSTR(cond) );                                         \
-    else                                                                                           \
-      amd::report_fatal(__FILE__, __LINE__,  XSTR(__VA_ARGS__) );                                  \
+    amd::report_fatal(__FILE__, __LINE__,  XSTR(message) );                                  \
     amd::breakpoint();                                                                             \
   }
 
