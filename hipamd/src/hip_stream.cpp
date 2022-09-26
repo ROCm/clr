@@ -281,55 +281,50 @@ static hipError_t ihipStreamCreate(hipStream_t* stream,
 }
 
 // ================================================================================================
-class stream_per_thread {
-private:
-  std::vector<hipStream_t> m_streams;
-public:
-  stream_per_thread() {
+
+stream_per_thread::stream_per_thread() {
+  m_streams.resize(g_devices.size());
+  for (auto &stream : m_streams) {
+    stream = nullptr;
+  }
+}
+
+stream_per_thread::~stream_per_thread() {
+  for (auto &stream:m_streams) {
+    if (stream != nullptr && hip::isValid(stream)) {
+      delete reinterpret_cast<hip::Stream*>(stream);
+      stream = nullptr;
+    }
+  }
+}
+
+hipStream_t stream_per_thread::get() {
+  hip::Device* device = hip::getCurrentDevice();
+  int currDev = device->deviceId();
+  // This is to make sure m_streams is not empty
+  if (m_streams.empty()) {
     m_streams.resize(g_devices.size());
     for (auto &stream : m_streams) {
       stream = nullptr;
     }
   }
-  stream_per_thread(const stream_per_thread& ) = delete;
-  void operator=(const stream_per_thread& ) = delete;
-  ~stream_per_thread() {
-    for (auto &stream:m_streams) {
-      if (stream != nullptr && hip::isValid(stream)) {
-        delete reinterpret_cast<hip::Stream*>(stream);
-        stream = nullptr;
-      }
+  // There is a scenario where hipResetDevice destroys stream per thread
+  // hence isValid check is required to make sure only valid stream is used
+  if (m_streams[currDev] == nullptr || !hip::isValid(m_streams[currDev])) {
+    hipError_t status = ihipStreamCreate(&m_streams[currDev], hipStreamDefault,
+                                         hip::Stream::Priority::Normal);
+    if (status != hipSuccess) {
+      DevLogError("Stream creation failed\n");
     }
   }
+  return m_streams[currDev];
+}
 
-  hipStream_t get() {
-    hip::Device* device = hip::getCurrentDevice();
-    int currDev = device->deviceId();
-    // This is to make sure m_streams is not empty
-    if (m_streams.empty()) {
-      m_streams.resize(g_devices.size());
-      for (auto &stream : m_streams) {
-        stream = nullptr;
-      }
-    }
-    // There is a scenario where hipResetDevice destroys stream per thread
-    // hence isValid check is required to make sure only valid stream is used
-    if (m_streams[currDev] == nullptr || !hip::isValid(m_streams[currDev])) {
-      hipError_t status = ihipStreamCreate(&m_streams[currDev], hipStreamDefault,
-                                           hip::Stream::Priority::Normal);
-      if (status != hipSuccess) {
-        DevLogError("Stream creation failed\n");
-      }
-    }
-    return m_streams[currDev];
-  }
-};
-thread_local stream_per_thread streamPerThreadObj;
 
 // ================================================================================================
 void getStreamPerThread(hipStream_t& stream) {
   if (stream == hipStreamPerThread) {
-    stream = streamPerThreadObj.get();
+    stream = hip::tls.stream_per_thread_obj_.get();
   }
 }
 
@@ -469,9 +464,10 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   if (g_it != g_captureStreams.end()) {
     g_captureStreams.erase(g_it);
   }
-  const auto& l_it = std::find(l_captureStreams.begin(), l_captureStreams.end(), s);
-  if (l_it != l_captureStreams.end()) {
-    l_captureStreams.erase(l_it);
+  const auto& l_it = std::find(hip::tls.capture_streams_.begin(),
+                      hip::tls.capture_streams_.end(), s);
+  if (l_it != hip::tls.capture_streams_.end()) {
+    hip::tls.capture_streams_.erase(l_it);
   }
   delete s;
 

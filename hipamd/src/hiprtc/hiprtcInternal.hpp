@@ -72,10 +72,10 @@ static amd::Monitor g_hiprtcInitlock {"hiprtcInit lock"};
           hiprtc::internal::ToString(__VA_ARGS__).c_str());
 
 #define HIPRTC_RETURN(ret)                                                                         \
-  hiprtc::g_lastRtcError = (ret);                                                                  \
+  hiprtc::tls.last_rtc_error_ = (ret);                                                                  \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s", __func__,                                \
-          hiprtcGetErrorString(hiprtc::g_lastRtcError));                                           \
-  return hiprtc::g_lastRtcError;
+          hiprtcGetErrorString(hiprtc::tls.last_rtc_error_));                                           \
+  return hiprtc::tls.last_rtc_error_;
 
 
 namespace hiprtc {
@@ -106,9 +106,9 @@ protected:
 
   // Member Functions
   bool findIsa();
-  
-  // Data Members  
-  std::string name_;  
+
+  // Data Members
+  std::string name_;
   std::string isa_;
   std::string build_log_;
   std::vector<char> executable_;
@@ -126,7 +126,7 @@ class RTCCompileProgram : public RTCProgram {
   std::string source_name_;
   std::map<std::string, std::string> stripped_names_;
   std::map<std::string, std::string> demangled_names_;
-  
+
   std::vector<std::string> compile_options_;
   std::vector<std::string> link_options_;
 
@@ -235,4 +235,15 @@ public:
   bool LinkComplete(void** bin_out, size_t* size_out);
 };
 
+// Thread Local Storage Variables Aggregator Class
+class TlsAggregator {
+public:
+  hiprtcResult last_rtc_error_;
+
+  TlsAggregator(): last_rtc_error_(HIPRTC_SUCCESS) {
+  }
+  ~TlsAggregator() {
+  }
+};
+extern thread_local TlsAggregator tls;
 }  // namespace hiprtc

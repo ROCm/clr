@@ -29,7 +29,6 @@
 
 constexpr unsigned __hipFatMAGIC2 = 0x48495046;  // "HIPF"
 
-thread_local std::stack<ihipExec_t> execStack_;
 PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
 
 // forward declaration of methods required for __hipRegisrterManagedVar
@@ -920,7 +919,7 @@ hipError_t PlatformState::initStatManagedVarDevicePtr(int deviceId) {
 }
 
 void PlatformState::setupArgument(const void* arg, size_t size, size_t offset) {
-  auto& arguments = execStack_.top().arguments_;
+  auto& arguments = hip::tls.exec_stack_.top().arguments_;
 
   if (arguments.size() < offset + size) {
     arguments.resize(offset + size);
@@ -931,10 +930,10 @@ void PlatformState::setupArgument(const void* arg, size_t size, size_t offset) {
 
 void PlatformState::configureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem,
                                   hipStream_t stream) {
-  execStack_.push(ihipExec_t{gridDim, blockDim, sharedMem, stream});
+  hip::tls.exec_stack_.push(ihipExec_t{gridDim, blockDim, sharedMem, stream});
 }
 
 void PlatformState::popExec(ihipExec_t& exec) {
-  exec = std::move(execStack_.top());
-  execStack_.pop();
+  exec = std::move(hip::tls.exec_stack_.top());
+  hip::tls.exec_stack_.pop();
 }

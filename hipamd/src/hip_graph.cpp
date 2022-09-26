@@ -27,8 +27,6 @@
 
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
-thread_local std::vector<hip::Stream*> l_captureStreams;
-thread_local hipStreamCaptureMode l_streamCaptureMode{hipStreamCaptureModeGlobal};
 
 inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                                    const hipGraphNode_t* pDependencies, size_t numDependencies) {
@@ -835,8 +833,8 @@ hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  auto oldMode = l_streamCaptureMode;
-  l_streamCaptureMode = *mode;
+  auto oldMode = hip::tls.stream_capture_mode_;
+  hip::tls.stream_capture_mode_ = *mode;
   *mode = oldMode;
 
   HIP_RETURN_DURATION(hipSuccess);
@@ -864,7 +862,7 @@ hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode
   s->SetCaptureMode(mode);
   s->SetOriginStream();
   if (mode != hipStreamCaptureModeRelaxed) {
-    l_captureStreams.push_back(s);
+    hip::tls.capture_streams_.push_back(s);
   }
   if (mode == hipStreamCaptureModeGlobal) {
     amd::ScopedLock lock(g_captureStreamsLock);
@@ -905,12 +903,13 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hipGraph_t* pGraph) {
   }
   // If mode is not hipStreamCaptureModeRelaxed, hipStreamEndCapture must be called on the stream
   // from the same thread
-  const auto& it = std::find(l_captureStreams.begin(), l_captureStreams.end(), s);
+  const auto& it = std::find(hip::tls.capture_streams_.begin(),
+                    hip::tls.capture_streams_.end(), s);
   if (s->GetCaptureMode() != hipStreamCaptureModeRelaxed) {
-    if (it == l_captureStreams.end()) {
+    if (it == hip::tls.capture_streams_.end()) {
       return hipErrorStreamCaptureWrongThread;
     }
-    l_captureStreams.erase(it);
+    hip::tls.capture_streams_.erase(it);
   }
   if (s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
     amd::ScopedLock lock(g_captureStreamsLock);

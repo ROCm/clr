@@ -24,7 +24,7 @@ THE SOFTWARE.
 #include "hiprtcInternal.hpp"
 
 namespace hiprtc {
-thread_local hiprtcResult g_lastRtcError = HIPRTC_SUCCESS;
+thread_local TlsAggregator tls;
 }
 
 const char* hiprtcGetErrorString(hiprtcResult x) {
