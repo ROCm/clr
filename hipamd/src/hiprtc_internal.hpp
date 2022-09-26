@@ -56,10 +56,10 @@ extern "C" char * __cxa_demangle(const char *mangled_name, char *output_buffer,
   HIP_INIT_VOID();
 
 #define HIPRTC_RETURN(ret)             \
-  hiprtc::g_lastRtcError = ret;        \
+  hiprtc::tls.last_rtc_error_ = ret;        \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s", __func__, \
-          hiprtcGetErrorString(hiprtc::g_lastRtcError));                 \
-  return hiprtc::g_lastRtcError;
+          hiprtcGetErrorString(hiprtc::tls.last_rtc_error_));                 \
+  return hiprtc::tls.last_rtc_error_;
 
 
 #endif // HIPRTC_SRC_HIP_INTERNAL_H

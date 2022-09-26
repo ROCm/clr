@@ -25,15 +25,15 @@
 hipError_t hipGetLastError()
 {
   HIP_INIT_API(hipGetLastError);
-  hipError_t err = hip::g_lastError;
-  hip::g_lastError = hipSuccess;
+  hipError_t err = hip::tls.last_error_;
+  hip::tls.last_error_ = hipSuccess;
   return err;
 }
 
 hipError_t hipPeekAtLastError()
 {
   HIP_INIT_API(hipPeekAtLastError);
-  hipError_t err = hip::g_lastError;
+  hipError_t err = hip::tls.last_error_;
   HIP_RETURN(err);
 }
 

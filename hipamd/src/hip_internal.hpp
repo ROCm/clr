@@ -82,8 +82,8 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
         HIP_RETURN(hipErrorInvalidDevice);                   \
       }                                                      \
     }                                                        \
-    if (hip::g_device == nullptr && g_devices.size() > 0) {  \
-      hip::g_device = g_devices[0];                          \
+    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {  \
+      hip::tls.device_ = g_devices[0];                          \
       amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
     }                                                        \
   }
@@ -93,8 +93,8 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
     if (!amd::Runtime::initialized()) {                      \
       if (hip::init()) {}                                    \
     }                                                        \
-    if (hip::g_device == nullptr && g_devices.size() > 0) {  \
-      hip::g_device = g_devices[0];                          \
+    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {  \
+      hip::tls.device_ = g_devices[0];                          \
       amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
     }                                                        \
   }
@@ -130,17 +130,17 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
 
 #define HIP_RETURN_DURATION(ret, ...)                        \
-  hip::g_lastError = ret;                                    \
+  hip::tls.last_error_ = ret;                                \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,                      \
                    "%s: Returned %s : %s",                                         \
-                   __func__, ihipGetErrorName(hip::g_lastError),                   \
+                   __func__, ihipGetErrorName(hip::tls.last_error_),               \
                    ToString( __VA_ARGS__ ).c_str());                               \
-  return hip::g_lastError;
+  return hip::tls.last_error_;
 
 #define HIP_RETURN(ret, ...)                      \
-  hip::g_lastError = ret;                         \
-  HIP_ERROR_PRINT(hip::g_lastError, __VA_ARGS__)  \
-  return hip::g_lastError;
+  hip::tls.last_error_ = ret;                         \
+  HIP_ERROR_PRINT(hip::tls.last_error_, __VA_ARGS__)  \
+  return hip::tls.last_error_;
 
 #define HIP_RETURN_ONFAIL(func)          \
   do {                                   \
@@ -161,12 +161,12 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
   } while (0);
 
 #define CHECK_STREAM_CAPTURE_SUPPORTED()                                                           \
-  if (l_streamCaptureMode == hipStreamCaptureModeThreadLocal) {                                    \
-    if (l_captureStreams.size() != 0) {                                                            \
+  if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeThreadLocal) {                          \
+    if (hip::tls.capture_streams_.size() != 0) {                                                   \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
-  } else if (l_streamCaptureMode == hipStreamCaptureModeGlobal) {                                  \
-    if (l_captureStreams.size() != 0) {                                                            \
+  } else if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeGlobal) {                        \
+    if (hip::tls.capture_streams_.size() != 0) {                                                   \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
     amd::ScopedLock lock(g_captureStreamsLock);                                                    \
@@ -205,6 +205,26 @@ namespace hc {
 class accelerator;
 class accelerator_view;
 };
+
+struct ihipExec_t {
+  dim3 gridDim_;
+  dim3 blockDim_;
+  size_t sharedMem_;
+  hipStream_t hStream_;
+  std::vector<char> arguments_;
+};
+
+class stream_per_thread {
+private:
+  std::vector<hipStream_t> m_streams;
+public:
+  stream_per_thread();
+  stream_per_thread(const stream_per_thread& ) = delete;
+  void operator=(const stream_per_thread& ) = delete;
+  ~stream_per_thread();
+  hipStream_t get();
+};
+
 namespace hip {
   class Device;
   class MemoryPool;
@@ -449,9 +469,26 @@ namespace hip {
     void RemoveStreamFromPools(Stream* stream);
   };
 
-  /// Current thread's device
-  extern thread_local Device* g_device;
-  extern thread_local hipError_t g_lastError;
+  /// Thread Local Storage Variables Aggregator Class
+  class TlsAggregator {
+  public:
+    Device* device_;
+    std::stack<Device*> ctxt_stack_;
+    hipError_t last_error_;
+    std::vector<hip::Stream*> capture_streams_;
+    hipStreamCaptureMode stream_capture_mode_;
+    std::stack<ihipExec_t> exec_stack_;
+    stream_per_thread stream_per_thread_obj_;
+
+    TlsAggregator(): device_(nullptr),
+      last_error_(hipSuccess),
+      stream_capture_mode_(hipStreamCaptureModeGlobal) {
+    }
+    ~TlsAggregator() {
+    }
+  };
+  extern thread_local TlsAggregator tls;
+
   /// Device representing the host - for pinned memory
   extern Device* host_device;
 
@@ -475,16 +512,9 @@ namespace hip {
   extern bool isValid(hipStream_t& stream);
   extern amd::Monitor hipArraySetLock;
   extern std::unordered_set<hipArray*> hipArraySet;
-};
+}; // namespace hip
 
 extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
-struct ihipExec_t {
-  dim3 gridDim_;
-  dim3 blockDim_;
-  size_t sharedMem_;
-  hipStream_t hStream_;
-  std::vector<char> arguments_;
-};
 
 /// Wait all active streams on the blocking queue. The method enqueues a wait command and
 /// doesn't stall the current thread
@@ -515,6 +545,4 @@ constexpr bool kMarkerDisableFlush = true;   //!< Avoids command batch flush in 
 
 extern std::vector<hip::Stream*> g_captureStreams;
 extern amd::Monitor g_captureStreamsLock;
-extern thread_local std::vector<hip::Stream*> l_captureStreams;
-extern thread_local hipStreamCaptureMode l_streamCaptureMode;
 #endif // HIP_SRC_HIP_INTERNAL_H
