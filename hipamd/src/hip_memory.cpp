@@ -43,13 +43,19 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
     }
     else {
       //SVM ptr or device ptr mapped from host
-      const void *devPtr = reinterpret_cast<void*>
-              (memObj->getDeviceMemory(*memObj->getContext().devices()[0])->virtualAddress());
-      if (devPtr != nullptr) {
-        offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(devPtr);
+      device::Memory* devMem = 
+              (memObj->getDeviceMemory(*memObj->getContext().devices()[0]));
+      if (devMem == nullptr) {
+        return nullptr;
       }
       else {
-        ShouldNotReachHere();
+        const void* devPtr = reinterpret_cast<void*>((devMem)->virtualAddress());
+        if (devPtr != nullptr) {
+          offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(devPtr);
+        }
+        else {
+          return nullptr;
+        }
       }
     }
   } else {
