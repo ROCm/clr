@@ -226,6 +226,9 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
   }
   size_t offset = 0; //this is ignored
   amd::Memory* memObj = getMemoryObject(*ptr, offset);
+  if (memObj == nullptr) {
+    return hipErrorMemoryAllocation;
+  }
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
