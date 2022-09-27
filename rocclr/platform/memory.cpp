@@ -329,7 +329,7 @@ bool Memory::addDeviceMemory(const Device* dev) {
     if (numDevices() == NumDevicesWithP2P()) {
       // Mark the allocation as an empty
       deviceAlloced_[dev].store(AllocInit, std::memory_order_release);
-      return false;
+      return result;
     }
     device::Memory* dm = dev->createMemory(*this);
 
@@ -349,6 +349,7 @@ bool Memory::addDeviceMemory(const Device* dev) {
       LogError("Video memory allocation failed!");
       // Mark the allocation as an empty
       deviceAlloced_[dev].store(AllocInit, std::memory_order_release);
+      return result;
     }
   }
 
