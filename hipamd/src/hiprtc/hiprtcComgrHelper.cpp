@@ -325,7 +325,8 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   if (co_triple_target_id == agent_triple_target_id) return true;
 
   // Parse code object triple target id
-  if (!consume(co_triple_target_id, std::string(AMDGCN_TARGET_TRIPLE) + '-')) {
+  if (!consume(co_triple_target_id, std::string(OFFLOAD_KIND_HIP) + "-" 
+                                    + std::string(AMDGCN_TARGET_TRIPLE))) {
     return false;
   }
 
