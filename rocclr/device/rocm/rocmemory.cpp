@@ -752,6 +752,9 @@ bool Buffer::create(bool alloc_local) {
             // AMD HMM path. Just allocate system memory and KFD will manage it
             deviceMemory_ =  amd::Os::reserveMemory(
                 0, size(), amd::Os::pageSize(), amd::Os::MEM_PROT_RW);
+            if (deviceMemory_ == NULL) {
+              return false;
+            }
             amd::Os::commitMemory(deviceMemory_, size(), amd::Os::MEM_PROT_RW);
             // Currently HMM requires cirtain initial calls to mark sysmem allocation as
             // GPU accessible or prefetch memory into GPU

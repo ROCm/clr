@@ -2254,6 +2254,10 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     }
     // if the device supports SVM FGS, return the committed CPU address directly.
     Memory* gpuMem = getRocMemory(mem);
+    if (gpuMem == nullptr) {
+      LogError("failed to create GPU memory from svm hidden buffer!");
+      return nullptr;
+    }
 
     if (mem->getSvmPtr() != nullptr) {
       // add the information to context so that we can use it later.
