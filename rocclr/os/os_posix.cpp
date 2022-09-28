@@ -201,6 +201,10 @@ static inline int memProtToOsProt(Os::MemProt prot) {
 
 address Os::reserveMemory(address start, size_t size, size_t alignment, MemProt prot) {
   size = alignUp(size, pageSize());
+  // check for invalid input size
+  if (size == 0) {
+    return NULL;
+  }
   alignment = std::max(pageSize(), alignUp(alignment, pageSize()));
   assert(isPowerOfTwo(alignment) && "not a power of 2");
 
