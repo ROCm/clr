@@ -396,6 +396,7 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
                                  const std::string& extraOptions) {
   std::vector<amd::Device*> devices;
   devices.push_back(device);
+  int32_t retval = CL_SUCCESS;
   std::string kernels(device::BlitLinearSourceCode);
   std::string image_kernels(device::BlitImageSourceCode);
 
@@ -410,6 +411,8 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   // Create a program with all blit kernels
   program_ = new Program(*context_, kernels.c_str(), Program::OpenCL_C);
   if (program_ == nullptr) {
+    DevLogPrintfError("Program creation for Kernel: %s failed\n",
+                      kernels.c_str());
     return false;
   }
 
@@ -425,9 +428,10 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   if (!GPU_DUMP_BLIT_KERNELS) {
     opt += " -fno-enable-dump";
   }
-  if (CL_SUCCESS !=
-      program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS)) {
-    DevLogPrintfError("Build failed for Kernel: %s \n", kernels.c_str());
+  if ((retval = program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS))
+      != CL_SUCCESS) {
+    DevLogPrintfError("Build failed for Kernel: %s with error code %d\n",
+                      kernels.c_str(), retval);
     return false;
   }
   if (!program_->load()) {
