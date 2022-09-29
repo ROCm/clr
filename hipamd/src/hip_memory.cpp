@@ -2909,7 +2909,7 @@ hipError_t hipIpcGetMemHandle(hipIpcMemHandle_t* handle, void* dev_ptr) {
 
   if(!device->IpcCreate(dev_ptr, &(ihandle->psize), &(ihandle->ipc_handle), &(ihandle->poffset))) {
     LogPrintfError("IPC memory creation failed for memory: 0x%x", dev_ptr);
-    HIP_RETURN(hipErrorInvalidDevicePointer);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(hipSuccess);
@@ -2964,7 +2964,7 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
 
   /* detach the memory */
   if (!device->IpcDetach(dev_ptr)){
-     HIP_RETURN(hipErrorInvalidHandle);
+     HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(hipSuccess);
