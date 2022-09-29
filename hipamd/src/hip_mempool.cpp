@@ -239,7 +239,10 @@ hipError_t hipMemPoolExportToShareableHandle(
     hipMemAllocationHandleType handle_type,
     unsigned int               flags) {
   HIP_INIT_API(hipMemPoolExportToShareableHandle, shared_handle, mem_pool, handle_type, flags);
-  HIP_RETURN(hipSuccess);
+  if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 // ================================================================================================
@@ -249,13 +252,19 @@ hipError_t hipMemPoolImportFromShareableHandle(
     hipMemAllocationHandleType handle_type,
     unsigned int               flags) {
   HIP_INIT_API(hipMemPoolImportFromShareableHandle, mem_pool, shared_handle, handle_type, flags);
-  HIP_RETURN(hipSuccess);
+  if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 // ================================================================================================
 hipError_t hipMemPoolExportPointer(hipMemPoolPtrExportData* export_data, void* ptr) {
   HIP_INIT_API(hipMemPoolExportPointer, export_data, ptr);
-  HIP_RETURN(hipSuccess);
+  if (export_data == nullptr || ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 // ================================================================================================
@@ -264,5 +273,9 @@ hipError_t hipMemPoolImportPointer(
     hipMemPool_t             mem_pool,
     hipMemPoolPtrExportData* export_data) {
   HIP_INIT_API(hipMemPoolImportPointer, ptr, mem_pool, export_data);
-  HIP_RETURN(hipSuccess);
+  if (mem_pool == nullptr || export_data == nullptr || ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(hipErrorNotSupported);
 }
