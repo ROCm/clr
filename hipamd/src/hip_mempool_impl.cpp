@@ -227,6 +227,13 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, hip::Stream* stream) {
 }
 
 // ================================================================================================
+void MemoryPool::ReleaseAllMemory() {
+  constexpr bool kSafeRelease = true;
+  free_heap_.ReleaseAllMemory(0, kSafeRelease);
+  busy_heap_.ReleaseAllMemory(0, kSafeRelease);
+}
+
+// ================================================================================================
 void MemoryPool::ReleaseFreedMemory(hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 

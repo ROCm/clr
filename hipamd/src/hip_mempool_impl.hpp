@@ -161,9 +161,10 @@ public:
       state_.internal_dependencies_ = 1;
     }
   virtual ~MemoryPool() {
-    assert(busy_heap_.IsEmpty() && "Can't destroy pool with busy allocations!");
-    constexpr bool kSafeRelease = true;
-    free_heap_.ReleaseAllMemory(0, kSafeRelease);
+    if (!busy_heap_.IsEmpty()) {
+      LogError("Shouldn't destroy pool with busy allocations!");
+    }
+    ReleaseAllMemory();
     // Remove memory pool from the list of all pool on the current device
     device_->RemoveMemoryPool(this);
   }
