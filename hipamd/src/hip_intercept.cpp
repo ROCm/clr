@@ -47,10 +47,9 @@ const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream)
                                     : nullptr;
 }
 
-void hipRegisterTracerCallback(const void* function) {
-  activity_prof::report_activity.store(
-      reinterpret_cast<decltype(activity_prof::report_activity.load())>(function),
-      std::memory_order_relaxed);
+void hipRegisterTracerCallback(int (*function)(activity_domain_t domain, uint32_t operation_id,
+                                               void* data)) {
+  activity_prof::report_activity.store(function, std::memory_order_relaxed);
 }
 
 const char* hipApiName(uint32_t id) { return hip_api_name(id); }
