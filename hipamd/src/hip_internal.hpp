@@ -428,6 +428,8 @@ namespace hip {
     }
     unsigned int getFlags() const { return flags_; }
     void setFlags(unsigned int flags) { flags_ = flags; }
+    void Reset();
+
     amd::HostQueue* NullStream(bool skip_alloc = false);
     Stream* GetNullStream();
 
