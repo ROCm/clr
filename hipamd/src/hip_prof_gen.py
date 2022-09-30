@@ -474,6 +474,7 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
       f.write('    } ' + name + ';\n')
   f.write(
   '  } args;\n' +
+  '  uint64_t *phase_data;\n' +
   '} hip_api_data_t;\n'
   )
 

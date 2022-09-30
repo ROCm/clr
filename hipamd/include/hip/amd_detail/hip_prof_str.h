@@ -3123,6 +3123,7 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } hipWaitExternalSemaphoresAsync;
   } args;
+  uint64_t *phase_data;
 } hip_api_data_t;
 
 // HIP API callbacks args data filling macros
