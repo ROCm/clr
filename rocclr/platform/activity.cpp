@@ -96,6 +96,9 @@ void ReportActivity(const amd::Command& command) {
     case CL_COMMAND_COPY_BUFFER_RECT:
       record.bytes = linearSize(static_cast<const amd::CopyMemoryCommand&>(command).size());
       break;
+    case CL_COMMAND_FILL_BUFFER:
+      record.bytes = linearSize(static_cast<const amd::FillMemoryCommand&>(command).size());
+      break;
     default:
       break;
   }
