@@ -3021,6 +3021,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       addSystemScope_ = false;
     }
 
+    // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
+    // retrieve this correlation ID to attribute waves to specific dispatch locations.
+    if (vcmd != nullptr && vcmd->profilingInfo().enabled_) {
+      dispatchPacket.reserved2 = vcmd->profilingInfo().correlation_id_;
+    }
+
     // Dispatch the packet
     if (!dispatchAqlPacket(
             &dispatchPacket, aqlHeaderWithOrder,
