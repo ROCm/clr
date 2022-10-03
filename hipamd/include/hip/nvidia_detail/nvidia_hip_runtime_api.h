@@ -3240,6 +3240,10 @@ inline static hipError_t hipDeviceGraphMemTrim(int device) {
     return hipCUDAErrorTohipError(cudaDeviceGraphMemTrim(device));
 }
 
+inline static hipError_t hipLaunchHostFunc(hipStream_t stream, hipHostFn_t fn, void* userData) {
+    return hipCUDAErrorTohipError(cudaLaunchHostFunc(stream, fn, userData));
+}
+
 inline static hipError_t hipUserObjectCreate(hipUserObject_t* object_out, void* ptr, hipHostFn_t destroy,
                                              unsigned int initialRefcount, unsigned int flags) {
     return hipCUDAErrorTohipError(cudaUserObjectCreate(object_out, ptr, destroy, initialRefcount, flags));
