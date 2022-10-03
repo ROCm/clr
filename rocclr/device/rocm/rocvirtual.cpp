@@ -825,6 +825,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   if (fence_state_ == amd::Device::kCacheStateSystem &&
       expected_fence_state == amd::Device::kCacheStateSystem) {
     header = dispatchPacketHeader_;
+    fence_dirty_ = true;
   }
 
   fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
@@ -991,6 +992,9 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
     barrier_packet_.completion_signal = signal;
   }
 
+  // Reset fence_dirty_ flag if we submit a barrier
+  fence_dirty_ = false;
+
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_barrier_and_packet_t* aql_loc =
     &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
@@ -1074,7 +1078,8 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       cuMask_(cuMask),
       priority_(priority),
       copy_command_type_(0),
-      fence_state_(Device::CacheState::kCacheStateInvalid)
+      fence_state_(Device::CacheState::kCacheStateInvalid),
+      fence_dirty_(false)
 {
   index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();

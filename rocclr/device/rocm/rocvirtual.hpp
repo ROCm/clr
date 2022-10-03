@@ -402,6 +402,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool isHandlerPending() const { return barriers_.IsHandlerPending(); }
 
   void* allocKernArg(size_t size, size_t alignment);
+  bool isFenceDirty() const { return fence_dirty_; }
   // } roc OpenCL integration
  private:
   //! Dispatches a barrier with blocking HSA signals
@@ -535,5 +536,6 @@ class VirtualGPU : public device::VirtualDevice {
                                         //!< but ROC profiler expects D2H or H2D detection
   int fence_state_;                     //!< Fence scope
                                         //!< kUnknown/kFlushedToDevice/kFlushedToSystem
+  bool fence_dirty_;                    //!< Fence modified flag
 };
 }
