@@ -360,6 +360,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   bool isHandlerPending() const { return false; }
 
+  bool isFenceDirty() const { return false; }
+
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
 
