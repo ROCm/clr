@@ -29,6 +29,8 @@
 
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
+static amd::Monitor g_streamSetLock{"StreamCaptureset"};
+std::unordered_set<hip::Stream*> g_allCapturingStreams;
 
 inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                                    const hipGraphNode_t* pDependencies, size_t numDependencies) {
@@ -959,6 +961,10 @@ hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode
     amd::ScopedLock lock(g_captureStreamsLock);
     g_captureStreams.push_back(s);
   }
+  {
+    amd::ScopedLock lock(g_streamSetLock);
+    g_allCapturingStreams.insert(s);
+  }
   return hipSuccess;
 }
 
@@ -1009,6 +1015,10 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hipGraph_t* pGraph) {
   if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
     *pGraph = nullptr;
     return hipErrorStreamCaptureInvalidated;
+  }
+  {
+    amd::ScopedLock lock(g_streamSetLock);
+    g_allCapturingStreams.erase(std::find(g_allCapturingStreams.begin(), g_allCapturingStreams.end(), s));
   }
   // check if all parallel streams have joined
   // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do

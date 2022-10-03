@@ -211,6 +211,10 @@ void Stream::destroyAllStreams(int deviceId) {
   }
 }
 
+bool Stream::StreamCaptureOngoing(void) {
+  return (g_allCapturingStreams.empty() == true) ? false : true;
+}
+
 };// hip namespace
 
 // ================================================================================================
@@ -442,6 +446,12 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
+  if (stream != nullptr) {
+    // If still capturing return error
+    if (hip::Stream::StreamCaptureOngoing() == true) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
   // Wait for the current host queue
   hip::getQueue(stream)->finish();
   return hipSuccess;
@@ -524,6 +534,12 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
     return hipErrorContextIsDestroyed;
   }
 
+  if (stream != nullptr) {
+    // If still capturing return error
+    if (hip::Stream::StreamCaptureOngoing() == true) {
+      HIP_RETURN(hipErrorStreamCaptureIsolation);
+    }
+  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   return e->streamWait(stream, flags);
 }
@@ -546,7 +562,12 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
-
+  if (stream != nullptr) {
+    // If still capturing return error
+    if (hip::Stream::StreamCaptureOngoing() == true) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
   amd::HostQueue* hostQueue = hip::getQueue(stream);
 
   amd::Command* command = hostQueue->getLastQueuedCommand(true);

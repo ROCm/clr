@@ -518,6 +518,10 @@ hipError_t hipDeviceSynchronize ( void ) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
 
+  if (hip::Stream::StreamCaptureOngoing() == true) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   queue->finish();
 
   hip::Stream::syncNonBlockingStreams(hip::getCurrentDevice()->deviceId());
