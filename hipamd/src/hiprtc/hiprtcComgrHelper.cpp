@@ -869,38 +869,41 @@ std::string handleMangledName(std::string loweredName) {
   return loweredName;
 }
 
-bool fillMangledNames(std::vector<char>& executable, std::vector<std::string>& mangledNames) {
+bool fillMangledNames(std::vector<char>& dataVec,
+                      std::vector<std::string>& mangledNames, bool isBitcode) {
   amd_comgr_data_t dataObject;
-  if (auto res = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
+  if (auto res = amd::Comgr::create_data(isBitcode ? AMD_COMGR_DATA_KIND_BC :
+                                         AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
       res != AMD_COMGR_STATUS_SUCCESS) {
     return false;
   }
 
-  if (auto res = amd::Comgr::set_data(dataObject, executable.size(), executable.data())) {
+  if (auto res = amd::Comgr::set_data(dataObject, dataVec.size(), dataVec.data())) {
     amd::Comgr::release_data(dataObject);
     return false;
   }
 
-  auto callback = [](amd_comgr_symbol_t symbol, void* data) {
-    if (data == nullptr) return AMD_COMGR_STATUS_ERROR_INVALID_ARGUMENT;
-    size_t len = 0;
-    if (auto res = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME_LENGTH, &len);
-        res != AMD_COMGR_STATUS_SUCCESS)
-      return res;
-    std::string name(len, 0);
-    if (auto res = amd::Comgr::symbol_get_info(symbol, AMD_COMGR_SYMBOL_INFO_NAME, &name[0]);
-        res != AMD_COMGR_STATUS_SUCCESS)
-      return res;
-    auto storage = reinterpret_cast<std::vector<std::string>*>(data);
-    storage->push_back(name);
-    return AMD_COMGR_STATUS_SUCCESS;
-  };
-
-  if (auto res =
-          amd::Comgr::iterate_symbols(dataObject, callback, reinterpret_cast<void*>(&mangledNames));
-      res != AMD_COMGR_STATUS_SUCCESS) {
+  size_t Count;
+  if (auto res = amd::Comgr::populate_mangled_names(dataObject, &Count)) {
     amd::Comgr::release_data(dataObject);
     return false;
+  }
+
+  for (size_t i = 0; i < Count; i++) {
+    size_t Size;
+    if (auto res = amd::Comgr::get_mangled_name(dataObject, i, &Size, NULL)) {
+      amd::Comgr::release_data(dataObject);
+      return false;
+    }
+
+    char *mName = new char[Size]();
+    if (auto res = amd::Comgr::get_mangled_name(dataObject, i, &Size, mName)) {
+      amd::Comgr::release_data(dataObject);
+      return false;
+    }
+
+    mangledNames.push_back(std::string(mName));
+    delete mName;
   }
 
   amd::Comgr::release_data(dataObject);
