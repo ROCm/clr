@@ -72,6 +72,8 @@ typedef amd_comgr_status_t (*t_amd_comgr_iterate_symbols)(amd_comgr_data_t data,
 typedef amd_comgr_status_t (*t_amd_comgr_symbol_lookup)(amd_comgr_data_t data, const char *name, amd_comgr_symbol_t *symbol);
 typedef amd_comgr_status_t (*t_amd_comgr_symbol_get_info)(amd_comgr_symbol_t symbol, amd_comgr_symbol_info_t attribute, void *value);
 typedef amd_comgr_status_t (*t_amd_comgr_demangle_symbol_name)(amd_comgr_data_t MangledSymbolName, amd_comgr_data_t* DemangledSymbolName);
+typedef amd_comgr_status_t (*t_amd_comgr_populate_mangled_names)(amd_comgr_data_t data, size_t *count);
+typedef amd_comgr_status_t (*t_amd_comgr_get_mangled_name)(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name);
 
 struct ComgrEntryPoints {
   void* handle;
@@ -121,6 +123,8 @@ struct ComgrEntryPoints {
   t_amd_comgr_symbol_lookup             amd_comgr_symbol_lookup;
   t_amd_comgr_symbol_get_info           amd_comgr_symbol_get_info;
   t_amd_comgr_demangle_symbol_name      amd_comgr_demangle_symbol_name;
+  t_amd_comgr_populate_mangled_names    amd_comgr_populate_mangled_names;
+  t_amd_comgr_get_mangled_name          amd_comgr_get_mangled_name;
 };
 
 #ifdef COMGR_DYN_DLL
@@ -290,6 +294,13 @@ public:
 #endif
     return COMGR_DYN(amd_comgr_demangle_symbol_name)(MangledSymbolName, DemangledSymbolName);
   }
+  static amd_comgr_status_t populate_mangled_names(amd_comgr_data_t data, size_t *count) {
+    return COMGR_DYN(amd_comgr_populate_mangled_names)(data, count);
+  }
+  static amd_comgr_status_t get_mangled_name(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name) {
+    return COMGR_DYN(amd_comgr_get_mangled_name)(data, index, size, mangled_name);
+  }
+
 
  private:
   static ComgrEntryPoints cep_;
