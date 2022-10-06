@@ -42,6 +42,8 @@ template <typename... All>
 static inline __device__ void printf(const char* format, All... all) {}
 #endif // __HIP_CLANG_ONLY__
 
+extern "C" __device__ unsigned long long __ockl_steadyctr_u64();
+
 /*
 Integer Intrinsics
 */
@@ -719,12 +721,7 @@ long long int  __clock() { return __clock64(); }
 __device__
 inline  __attribute__((always_inline))
 long long int wall_clock64() {
-#if __has_builtin(__builtin_amdgcn_s_memrealtime)
-  // Exists since gfx8
-  return (long long int) __builtin_amdgcn_s_memrealtime();
-#else
-  return -1; // Negative return means __builtin_amdgcn_s_memrealtime unavailable.
-#endif
+  return (long long int) __ockl_steadyctr_u64();
 }
 
 __device__
