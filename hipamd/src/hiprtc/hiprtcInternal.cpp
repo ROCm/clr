@@ -254,6 +254,16 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   }
 
   if (fgpu_rdc_) {
+    std::vector<std::string> mangledNames;
+    if (!fillMangledNames(LLVMBitcode_, mangledNames, true)) {
+      LogError("Error in hiprtc: unable to fill mangled names");
+      return false;
+    }
+
+    if (!getDemangledNames(mangledNames, demangled_names_)) {
+      LogError("Error in hiprtc: unable to get demangled names");
+      return false;
+    }
     return true;
   }
 
@@ -288,7 +298,7 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   }
 
   std::vector<std::string> mangledNames;
-  if (!fillMangledNames(executable_, mangledNames)) {
+  if (!fillMangledNames(executable_, mangledNames, false)) {
     LogError("Error in hiprtc: unable to fill mangled names");
     return false;
   }
