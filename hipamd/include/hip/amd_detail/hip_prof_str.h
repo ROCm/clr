@@ -363,7 +363,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphKernelNodeCopyAttributes = 350,
   HIP_API_ID_hipGraphNodeGetEnabled = 351,
   HIP_API_ID_hipGraphNodeSetEnabled = 352,
-  HIP_API_ID_LAST = 352,
+  HIP_API_ID_hipPointerSetAttribute = 353,
+  HIP_API_ID_LAST = 353,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -708,6 +709,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipPeekAtLastError: return "hipPeekAtLastError";
     case HIP_API_ID_hipPointerGetAttribute: return "hipPointerGetAttribute";
     case HIP_API_ID_hipPointerGetAttributes: return "hipPointerGetAttributes";
+    case HIP_API_ID_hipPointerSetAttribute: return "hipPointerSetAttribute";
     case HIP_API_ID_hipProfilerStart: return "hipProfilerStart";
     case HIP_API_ID_hipProfilerStop: return "hipProfilerStop";
     case HIP_API_ID_hipRuntimeGetVersion: return "hipRuntimeGetVersion";
@@ -1063,6 +1065,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipPeekAtLastError", name) == 0) return HIP_API_ID_hipPeekAtLastError;
   if (strcmp("hipPointerGetAttribute", name) == 0) return HIP_API_ID_hipPointerGetAttribute;
   if (strcmp("hipPointerGetAttributes", name) == 0) return HIP_API_ID_hipPointerGetAttributes;
+  if (strcmp("hipPointerSetAttribute", name) == 0) return HIP_API_ID_hipPointerSetAttribute;
   if (strcmp("hipProfilerStart", name) == 0) return HIP_API_ID_hipProfilerStart;
   if (strcmp("hipProfilerStop", name) == 0) return HIP_API_ID_hipProfilerStop;
   if (strcmp("hipRuntimeGetVersion", name) == 0) return HIP_API_ID_hipRuntimeGetVersion;
@@ -2878,6 +2881,11 @@ typedef struct hip_api_data_s {
       hipPointerAttribute_t attributes__val;
       const void* ptr;
     } hipPointerGetAttributes;
+    struct {
+      const void* value;
+      hipPointer_attribute attribute;
+      hipDeviceptr_t ptr;
+    } hipPointerSetAttribute;
     struct {
       int* runtimeVersion;
       int runtimeVersion__val;
@@ -4972,6 +4980,12 @@ typedef struct hip_api_data_s {
   cb_data.args.hipPointerGetAttributes.attributes = (hipPointerAttribute_t*)attributes; \
   cb_data.args.hipPointerGetAttributes.ptr = (const void*)ptr; \
 };
+// hipPointerSetAttribute[('const void*', 'value'), ('hipPointer_attribute', 'attribute'), ('hipDeviceptr_t', 'ptr')]
+#define INIT_hipPointerSetAttribute_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipPointerSetAttribute.value = (const void*)value; \
+  cb_data.args.hipPointerSetAttribute.attribute = (hipPointer_attribute)attribute; \
+  cb_data.args.hipPointerSetAttribute.ptr = (hipDeviceptr_t)ptr; \
+};
 // hipProfilerStart[]
 #define INIT_hipProfilerStart_CB_ARGS_DATA(cb_data) { \
 };
@@ -6487,6 +6501,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipPointerGetAttributes[('hipPointerAttribute_t*', 'attributes'), ('const void*', 'ptr')]
     case HIP_API_ID_hipPointerGetAttributes:
       if (data->args.hipPointerGetAttributes.attributes) data->args.hipPointerGetAttributes.attributes__val = *(data->args.hipPointerGetAttributes.attributes);
+      break;
+// hipPointerSetAttribute[('const void*', 'value'), ('hipPointer_attribute', 'attribute'), ('hipDeviceptr_t', 'ptr')]
+    case HIP_API_ID_hipPointerSetAttribute:
       break;
 // hipProfilerStart[]
     case HIP_API_ID_hipProfilerStart:
@@ -9063,6 +9080,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipPointerGetAttributes.attributes == NULL) oss << "attributes=NULL";
       else { oss << "attributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttributes.attributes__val); }
       oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttributes.ptr);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipPointerSetAttribute:
+      oss << "hipPointerSetAttribute(";
+      oss << "value=" << data->args.hipPointerSetAttribute.value;
+      oss << ", attribute=" << data->args.hipPointerSetAttribute.attribute;
+      oss << ", ptr=" << data->args.hipPointerSetAttribute.ptr;
       oss << ")";
     break;
     case HIP_API_ID_hipProfilerStart:
