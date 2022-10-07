@@ -2809,8 +2809,9 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
       size_t offset = 0;
       amd::Memory* memObj = getMemoryObject(dst, offset);
       auto flags = memObj->getMemFlags();
-      if (offset == 0 &&
-        !(flags & (CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER))) {
+      if ((memObj->getUserData().sync_mem_ops_) 
+           || (offset == 0 && !(flags & (CL_MEM_SVM_FINE_GRAIN_BUFFER
+                                         | CL_MEM_SVM_ATOMICS | CL_MEM_USE_HOST_PTR)))) {
         isAsync = true;
       }
     }
@@ -3241,6 +3242,25 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
 }
 
 // ================================================================================================
+hipError_t ihipPointerSetAttribute(const void* value, hipPointer_attribute attribute,
+                                   hipDeviceptr_t ptr) {
+  if (attribute != HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS) {
+    return hipErrorInvalidValue;
+  }
+
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(ptr, offset);
+  if (memObj == nullptr) {
+    return hipErrorInvalidDevicePointer;
+  }
+
+  memObj->getUserData().sync_mem_ops_
+               = static_cast<const bool>(*(reinterpret_cast<const unsigned int*>(value)));
+
+  return hipSuccess;
+}
+
+// ================================================================================================
 hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
                                     hipDeviceptr_t ptr) {
 
@@ -3437,6 +3457,19 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
 }
 
 // ================================================================================================
+hipError_t hipPointerSetAttribute(const void* value, hipPointer_attribute attribute,
+                                  hipDeviceptr_t ptr) {
+  HIP_INIT_API(hipPointerSetAttribute, value, attribute, ptr);
+
+  if (ptr == nullptr || value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(ihipPointerSetAttribute(value, attribute, ptr));
+}
+
+// ================================================================================================
+
 hipError_t hipPointerGetAttribute(void* data, hipPointer_attribute attribute, hipDeviceptr_t ptr) {
   HIP_INIT_API(hipPointerGetAttribute, data, attribute, ptr);
 

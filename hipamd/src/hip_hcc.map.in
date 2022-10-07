@@ -155,6 +155,7 @@ global:
     hipFuncGetAttribute;
     hipFuncGetAttributes;
     hipPeekAtLastError;
+    hipPointerSetAttribute;
     hipPointerGetAttributes;
     hipProfilerStart;
     hipProfilerStop;
