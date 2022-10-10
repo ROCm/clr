@@ -493,6 +493,7 @@ void ihipGraph::AddNode(const Node& node) {
 
 void ihipGraph::RemoveNode(const Node& node) {
   vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), node), vertices_.end());
+  delete node;
 }
 
 // root nodes are all vertices with 0 in-degrees

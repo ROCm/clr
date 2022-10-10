@@ -151,6 +151,7 @@ hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction
                                   dim3& blockDim, void**& args, size_t& sharedMemBytes) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node kernel launch on stream : %p", stream);
+
   if (!hip::isValid(stream)) {
     return hipErrorInvalidValue;
   }
@@ -775,7 +776,7 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
     s->SetCaptureGraph(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureGraph());
     s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
     s->SetParentStream(e->GetCaptureStream());
-    s->SetParallelCaptureStream(stream);
+    reinterpret_cast<hip::Stream*>(s->GetParentStream())->SetParallelCaptureStream(stream);
   }
   s->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
   return hipSuccess;
@@ -923,6 +924,13 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hipGraph_t* pGraph) {
   // check if all parallel streams have joined
   // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do
   // not result in hipErrorStreamCaptureUnjoined
+  // add temporary node to check if all parallel streams have joined
+  hipGraphNode_t pGraphNode;
+  pGraphNode = new hipGraphEmptyNode();
+  hipError_t status =
+      ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                       s->GetLastCapturedNodes().size());
+
   if (s->GetCaptureGraph()->GetLeafNodeCount() > 1) {
     std::vector<hipGraphNode_t> leafNodes = s->GetCaptureGraph()->GetLeafNodes();
     const std::vector<hipGraphNode_t>& removedDepNodes = s->GetRemovedDependencies();
@@ -934,9 +942,14 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hipGraph_t* pGraph) {
         }
       }
     }
+    // remove temporary node
+    s->GetCaptureGraph()->RemoveNode(pGraphNode);
     if (foundInRemovedDep == false) {
       return hipErrorStreamCaptureUnjoined;
     }
+  } else {
+    // remove temporary node
+    s->GetCaptureGraph()->RemoveNode(pGraphNode);
   }
   *pGraph = s->GetCaptureGraph();
   // end capture on all streams/events part of graph capture
@@ -1660,8 +1673,6 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   node->GetParentGraph()->RemoveNode(node);
-  // Takescare of removing its dependencies and dependent nodes
-  delete node;
   HIP_RETURN(hipSuccess);
 }
 
