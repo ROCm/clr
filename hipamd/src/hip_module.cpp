@@ -339,9 +339,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                   uint32_t numGrids = 0, uint64_t prevGridSum = 0,
                                   uint64_t allGridSum = 0, uint32_t firstDevice = 0) {
   int deviceId = hip::Stream::DeviceId(hStream);
-  for (size_t dev = 0; dev < g_devices.size(); ++dev) {
-    HIP_RETURN_ONFAIL(PlatformState::instance().initStatManagedVarDevicePtr(dev));
-  }
+  HIP_RETURN_ONFAIL(PlatformState::instance().initStatManagedVarDevicePtr(deviceId));
 
   if (f == nullptr) {
     LogPrintfError("%s", "Function passed is null");
