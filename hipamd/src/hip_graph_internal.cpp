@@ -817,7 +817,6 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     endCommand->enqueue();
     endCommand->release();
   }
-  if (stream == nullptr)  queue->finish();
   ResetQueueIndex();
   return status;
 }
