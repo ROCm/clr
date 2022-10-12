@@ -93,12 +93,34 @@ typedef enum hipMemoryAdvise {
 
 // hipDataType
 #define hipDataType cudaDataType
-#define HIP_R_16F CUDA_R_16F
-#define HIP_R_32F CUDA_R_32F
-#define HIP_R_64F CUDA_R_64F
-#define HIP_C_16F CUDA_C_16F
-#define HIP_C_32F CUDA_C_32F
-#define HIP_C_64F CUDA_C_64F
+#define HIP_R_16F  CUDA_R_16F
+#define HIP_C_16F  CUDA_C_16F
+#define HIP_R_16BF CUDA_R_16BF
+#define HIP_C_16BF CUDA_C_16BF
+#define HIP_R_32F  CUDA_R_32F
+#define HIP_C_32F  CUDA_C_32F
+#define HIP_R_64F  CUDA_R_64F
+#define HIP_C_64F  CUDA_C_64F
+#define HIP_R_4I   CUDA_R_4I
+#define HIP_C_4I   CUDA_C_4I
+#define HIP_R_4U   CUDA_R_4U
+#define HIP_C_4U   CUDA_C_4U
+#define HIP_R_8I   CUDA_R_8I
+#define HIP_C_8I   CUDA_C_8I
+#define HIP_R_8U   CUDA_R_8U
+#define HIP_C_8U   CUDA_C_8U
+#define HIP_R_16I  CUDA_R_16I
+#define HIP_C_16I  CUDA_C_16I
+#define HIP_R_16U  CUDA_R_16U
+#define HIP_C_16U  CUDA_C_16U
+#define HIP_R_32I  CUDA_R_32I
+#define HIP_C_32I  CUDA_C_32I
+#define HIP_R_32U  CUDA_R_32U
+#define HIP_C_32U  CUDA_C_32U
+#define HIP_R_64I  CUDA_R_64I
+#define HIP_C_64I  CUDA_C_64I
+#define HIP_R_64U  CUDA_R_64U
+#define HIP_C_64U  CUDA_C_64U
 
 // hip stream operation masks
 #define STREAM_OPS_WAIT_MASK_32 0xFFFFFFFF
