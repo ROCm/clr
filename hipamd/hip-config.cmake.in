@@ -197,25 +197,11 @@ if(NOT WIN32)
   find_dependency(Threads)
 endif()
 
-# From hip config directory, do three level up
-get_filename_component(_DIR "${CMAKE_CURRENT_LIST_DIR}" REALPATH)
-get_filename_component(_IMPORT_PREFIX "${_DIR}/../../../" REALPATH)
-
-# Windows doesn't need HSA
-if(NOT WIN32)
-  #if HSA is not under ROCm then provide CMAKE_PREFIX_PATH=<HSA_PATH>
-  find_path(HSA_HEADER hsa/hsa.h
-    PATHS
-      "${_IMPORT_PREFIX}/include"
-      #FILE_REORG_BACKWARD_COMPATIBILITY ${_IMPORT_PREFIX}/../include is for Backward compatibility
-      "${_IMPORT_PREFIX}/../include"
-      ${ROCM_PATH}/include
-  )
-
-  if (NOT HSA_HEADER)
-    message (FATAL_ERROR "HSA header not found! ROCM_PATH environment not set")
-  endif()
-endif()
+# Find the real path to hip-config file with symlinks resolved
+# Real Path : /opt/rocm-ver/lib/cmake/hip/hip-config.cmake
+# Go up 4 levels to get /opt/rocm-ver
+get_filename_component(_DIR "${CMAKE_CURRENT_LIST_FILE}" REALPATH)
+get_filename_component(_IMPORT_PREFIX "${_DIR}/../../../../" ABSOLUTE)
 
 # Right now this is only supported for amd platforms
 set_target_properties(hip::host PROPERTIES
@@ -224,8 +210,8 @@ set_target_properties(hip::host PROPERTIES
 
 if(HIP_RUNTIME MATCHES "rocclr")
   set_target_properties(hip::amdhip64 PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include;${HSA_HEADER}"
-    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include;${HSA_HEADER}"
+    INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
+    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
   )
 
   get_target_property(amdhip64_type hip::amdhip64 TYPE)
