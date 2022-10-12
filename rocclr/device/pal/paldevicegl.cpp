@@ -34,15 +34,12 @@
 #include "paldevice.hpp"
 //#include "cwddeci.h"
 #include <GL/gl.h>
-#include "GL/glATIInternal.h"
+#include "GL/gl_interop.h"
 #ifdef ATI_OS_LINUX
 #include <stdlib.h>
 #include <dlfcn.h>
 #include "GL/glx.h"
 #include "GL/glxext.h"
-#include "GL/glXATIPrivate.h"
-#else
-#include "GL/wglATIPrivate.h"
 #endif
 
 /**

@@ -35,7 +35,7 @@
 #include "CL/cl_d3d11.h"
 #endif  // _WIN32
 #include <GL/gl.h>
-#include "GL/glATIInternal.h"
+#include "GL/gl_interop.h"
 
 #include <string>
 #include <fstream>
