@@ -409,7 +409,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         }
         break;
       case amd::KernelParameterDescriptor::HiddenRemainderX:
-        WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(global[0] % local[0]), 
+        WriteAqlArgAt(hidden_arguments, static_cast<uint16_t>(global[0] % local[0]),
                       it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenRemainderY:
@@ -447,7 +447,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
 
   // Load all kernel arguments
   if (signature.version() == kernel.signature().version()) {
-    memcpy(aqlArgBuf, parameters, argsBufferSize());
+    memcpy(aqlArgBuf, parameters, std::min(static_cast<uint32_t>(argsBufferSize()),
+                                           signature.paramsSize()));
   }
 
   // hsa_kernel_dispatch_packet_t disp;

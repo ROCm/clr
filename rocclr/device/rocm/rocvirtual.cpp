@@ -2964,7 +2964,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       argBuffer = reinterpret_cast<address>(allocKernArg(gpuKernel.KernargSegmentByteSize(),
                                             gpuKernel.KernargSegmentAlignment()));
       // Load all kernel arguments
-      memcpy(argBuffer, parameters, gpuKernel.KernargSegmentByteSize());
+      memcpy(argBuffer, parameters, std::min(gpuKernel.KernargSegmentByteSize(),
+                                             signature.paramsSize()));
     }
 
     // Check for group memory overflow
