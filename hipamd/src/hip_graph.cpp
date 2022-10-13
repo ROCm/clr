@@ -785,7 +785,7 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
 hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*& userData) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memset2D on stream : %p",
           stream);
-  if (fn == nullptr || userData == nullptr || !hip::isValid(stream)) {
+  if (fn == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidValue;
   }
   hipHostNodeParams hostParams = {0};
@@ -1942,7 +1942,7 @@ hipError_t hipGraphHostNodeGetParams(hipGraphNode_t node, hipHostNodeParams* pNo
 
 hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node, const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphHostNodeSetParams, node, pNodeParams);
-  if (pNodeParams == nullptr || pNodeParams->fn == nullptr || pNodeParams->userData == nullptr ||
+  if (pNodeParams == nullptr || pNodeParams->fn == nullptr ||
       node == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1952,8 +1952,7 @@ hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node, const hipHostNodeParam
 hipError_t hipGraphExecHostNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                          const hipHostNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphExecHostNodeSetParams, hGraphExec, node, pNodeParams);
-  if (hGraphExec == nullptr || pNodeParams == nullptr || pNodeParams->fn == nullptr ||
-      pNodeParams->userData == nullptr || node == nullptr || !hipGraphNode::isNodeValid(node)) {
+  if (hGraphExec == nullptr || pNodeParams == nullptr || pNodeParams->fn == nullptr || node == nullptr || !hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(node);
