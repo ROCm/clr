@@ -175,7 +175,7 @@ endif()
 if(__HIP_ENABLE_PCH)
   find_package(LLVM REQUIRED CONFIG
     PATHS
-      ${ROCM_PATH}/llvm)
+      ${ROCM_PATH}/llvm ${ROCM_PATH}/lib)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
   if(NOT DEFINED HIP_LLVM_ROOT)
     set(HIP_LLVM_ROOT "${LLVM_DIR}/../../..")
