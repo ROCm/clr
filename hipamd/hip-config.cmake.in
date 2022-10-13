@@ -141,8 +141,20 @@ if(HIP_COMPILER STREQUAL "clang")
       # if using install folder
       file(TO_CMAKE_PATH "${HIP_PATH}/../lc" HIP_CLANG_ROOT)
     endif()
-  else()
+  elseif (EXISTS "${ROCM_PATH}/llvm")
+    # LLVM directory in legacy ROCm directory structure
     set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
+  else()
+    file(GLOB __rocm_llvm_dirs
+      LIST_DIRECTORIES true 
+      "${ROCM_PATH}/lib/llvm-[0-9][0-9]")
+    list(SORT __rocm_llvm_dirs ORDER DESCENDING)
+    foreach(__llvm_dir ${__rocm_llvm_dirs})
+      if (IS_DIRECTORY ${__llvm_dir})
+        set(HIP_CLANG_ROOT ${__llvm_dir})
+        break()
+      endif()
+    endforeach()
   endif()
   if(NOT HIP_CXX_COMPILER)
     set(HIP_CXX_COMPILER ${CMAKE_CXX_COMPILER})

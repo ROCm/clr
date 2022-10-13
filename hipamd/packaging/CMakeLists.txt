@@ -179,13 +179,13 @@ configure_file(hip-devel.postinst ${CMAKE_CURRENT_BINARY_DIR}/dev/postinst @ONLY
 configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
 
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), liburi-encode-perl, libfile-basedir-perl, libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), liburi-encode-perl, libfile-basedir-perl, libfile-copy-recursive-perl, libfile-find-rule-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-File-BaseDir, perl-URI-Encode, file, rocm-core")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-File-BaseDir, perl-File-Find-Rule, perl-URI-Encode, file, rocm-core")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
