@@ -1122,6 +1122,16 @@ inline static enum cudaChannelFormatKind hipChannelFormatKindToCudaChannelFormat
     }
 }
 
+typedef enum cudaExternalMemoryHandleType hipExternalMemoryHandleType;
+typedef struct cudaExternalMemoryHandleDesc hipExternalMemoryHandleDesc;
+typedef struct cudaExternalMemoryBufferDesc hipExternalMemoryBufferDesc;
+typedef cudaExternalMemory_t hipExternalMemory_t;
+typedef enum cudaExternalSemaphoreHandleType hipExternalSemaphoreHandleType;
+typedef struct cudaExternalSemaphoreHandleDesc hipExternalSemaphoreHandleDesc;
+typedef cudaExternalSemaphore_t hipExternalSemaphore_t;
+typedef struct cudaExternalSemaphoreSignalParams hipExternalSemaphoreSignalParams;
+typedef struct cudaExternalSemaphoreWaitParams hipExternalSemaphoreWaitParams;
+
 /**
  * graph types
  *
@@ -2128,7 +2138,7 @@ inline static hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(i
                                                       blockSize, dynamicSMemSize, flags));
 }
 
-inline static hipError_t hipModuleOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, 
+inline static hipError_t hipModuleOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks,
                                                                  hipFunction_t f,
                                                                  int  blockSize,
                                                                  size_t dynamicSMemSize ){
@@ -2606,6 +2616,38 @@ inline static hipError_t hipLaunchCooperativeKernel(const void* f, dim3 gridDim,
 inline static hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList,
                                                  int  numDevices, unsigned int  flags) {
     return hipCUDAErrorTohipError(cudaLaunchCooperativeKernelMultiDevice(launchParamsList, numDevices, flags));
+}
+
+inline static hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
+                                      const hipExternalSemaphoreHandleDesc* semHandleDesc) {
+  return hipCUDAErrorTohipError(cudaImportExternalSemaphore(extSem_out,(const struct cudaExternalSemaphoreHandleDesc*)semHandleDesc));
+}
+
+inline static hipError_t hipSignalExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemArray,
+                                            const hipExternalSemaphoreSignalParams* paramsArray,
+                                            unsigned int numExtSems, hipStream_t stream) {
+  return hipCUDAErrorTohipError(cudaSignalExternalSemaphoresAsync(extSemArray, (const struct cudaExternalSemaphoreSignalParams*)paramsArray, numExtSems, stream));
+}
+inline static hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemArray,
+                                              const hipExternalSemaphoreWaitParams* paramsArray,
+                                              unsigned int numExtSems, hipStream_t stream) {
+  return hipCUDAErrorTohipError(cudaWaitExternalSemaphoresAsync(extSemArray, (const struct cudaExternalSemaphoreWaitParams*)paramsArray, numExtSems, stream));
+}
+
+inline static hipError_t hipDestroyExternalSemaphore(hipExternalSemaphore_t extSem) {
+  return hipCUDAErrorTohipError(cudaDestroyExternalSemaphore(extSem));
+}
+
+inline static hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out, const hipExternalMemoryHandleDesc* memHandleDesc) {
+  return hipCUDAErrorTohipError(cudaImportExternalMemory(extMem_out, (const struct cudaExternalMemoryHandleDesc*)memHandleDesc));
+}
+
+inline static hipError_t hipExternalMemoryGetMappedBuffer(void **devPtr, hipExternalMemory_t extMem, const hipExternalMemoryBufferDesc *bufferDesc) {
+  return hipCUDAErrorTohipError(cudaExternalMemoryGetMappedBuffer(devPtr, extMem, (const struct cudaExternalMemoryBufferDesc*)bufferDesc));
+}
+
+inline static hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
+  return hipCUDAErrorTohipError(cudaDestroyExternalMemory(extMem));
 }
 
 #if CUDA_VERSION >= CUDA_11020
