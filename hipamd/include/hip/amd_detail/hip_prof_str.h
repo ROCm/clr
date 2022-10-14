@@ -6631,154 +6631,154 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID___hipPopCallConfiguration:
       oss << "__hipPopCallConfiguration(";
       if (data->args.__hipPopCallConfiguration.gridDim == NULL) oss << "gridDim=NULL";
-      else oss << "gridDim=" << data->args.__hipPopCallConfiguration.gridDim__val;
+      else { oss << "gridDim="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPopCallConfiguration.gridDim__val); }
       if (data->args.__hipPopCallConfiguration.blockDim == NULL) oss << ", blockDim=NULL";
-      else oss << ", blockDim=" << data->args.__hipPopCallConfiguration.blockDim__val;
+      else { oss << ", blockDim="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPopCallConfiguration.blockDim__val); }
       if (data->args.__hipPopCallConfiguration.sharedMem == NULL) oss << ", sharedMem=NULL";
-      else oss << ", sharedMem=" << data->args.__hipPopCallConfiguration.sharedMem__val;
+      else { oss << ", sharedMem="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPopCallConfiguration.sharedMem__val); }
       if (data->args.__hipPopCallConfiguration.stream == NULL) oss << ", stream=NULL";
-      else oss << ", stream=" << data->args.__hipPopCallConfiguration.stream__val;
+      else { oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPopCallConfiguration.stream__val); }
       oss << ")";
     break;
     case HIP_API_ID___hipPushCallConfiguration:
       oss << "__hipPushCallConfiguration(";
-      oss << "gridDim=" << data->args.__hipPushCallConfiguration.gridDim;
-      oss << ", blockDim=" << data->args.__hipPushCallConfiguration.blockDim;
-      oss << ", sharedMem=" << data->args.__hipPushCallConfiguration.sharedMem;
-      oss << ", stream=" << data->args.__hipPushCallConfiguration.stream;
+      oss << "gridDim="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPushCallConfiguration.gridDim);
+      oss << ", blockDim="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPushCallConfiguration.blockDim);
+      oss << ", sharedMem="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPushCallConfiguration.sharedMem);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.__hipPushCallConfiguration.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipArray3DCreate:
       oss << "hipArray3DCreate(";
       if (data->args.hipArray3DCreate.array == NULL) oss << "array=NULL";
-      else oss << "array=" << (void*)data->args.hipArray3DCreate.array__val;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipArray3DCreate.array__val); }
       if (data->args.hipArray3DCreate.pAllocateArray == NULL) oss << ", pAllocateArray=NULL";
-      else oss << ", pAllocateArray=" << data->args.hipArray3DCreate.pAllocateArray__val;
+      else { oss << ", pAllocateArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DCreate.pAllocateArray__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipArrayCreate:
       oss << "hipArrayCreate(";
       if (data->args.hipArrayCreate.pHandle == NULL) oss << "pHandle=NULL";
-      else oss << "pHandle=" << (void*)data->args.hipArrayCreate.pHandle__val;
+      else { oss << "pHandle="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipArrayCreate.pHandle__val); }
       if (data->args.hipArrayCreate.pAllocateArray == NULL) oss << ", pAllocateArray=NULL";
-      else oss << ", pAllocateArray=" << data->args.hipArrayCreate.pAllocateArray__val;
+      else { oss << ", pAllocateArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayCreate.pAllocateArray__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipArrayDestroy:
       oss << "hipArrayDestroy(";
       if (data->args.hipArrayDestroy.array == NULL) oss << "array=NULL";
-      else oss << "array=" << data->args.hipArrayDestroy.array__val;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayDestroy.array__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipChooseDevice:
       oss << "hipChooseDevice(";
       if (data->args.hipChooseDevice.device == NULL) oss << "device=NULL";
-      else oss << "device=" << data->args.hipChooseDevice.device__val;
+      else { oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipChooseDevice.device__val); }
       if (data->args.hipChooseDevice.prop == NULL) oss << ", prop=NULL";
-      else oss << ", prop=" << data->args.hipChooseDevice.prop__val;
+      else { oss << ", prop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipChooseDevice.prop__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipConfigureCall:
       oss << "hipConfigureCall(";
-      oss << "gridDim=" << data->args.hipConfigureCall.gridDim;
-      oss << ", blockDim=" << data->args.hipConfigureCall.blockDim;
-      oss << ", sharedMem=" << data->args.hipConfigureCall.sharedMem;
-      oss << ", stream=" << data->args.hipConfigureCall.stream;
+      oss << "gridDim="; roctracer::hip_support::detail::operator<<(oss, data->args.hipConfigureCall.gridDim);
+      oss << ", blockDim="; roctracer::hip_support::detail::operator<<(oss, data->args.hipConfigureCall.blockDim);
+      oss << ", sharedMem="; roctracer::hip_support::detail::operator<<(oss, data->args.hipConfigureCall.sharedMem);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipConfigureCall.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipCreateSurfaceObject:
       oss << "hipCreateSurfaceObject(";
       if (data->args.hipCreateSurfaceObject.pSurfObject == NULL) oss << "pSurfObject=NULL";
-      else oss << "pSurfObject=" << data->args.hipCreateSurfaceObject.pSurfObject__val;
+      else { oss << "pSurfObject="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCreateSurfaceObject.pSurfObject__val); }
       if (data->args.hipCreateSurfaceObject.pResDesc == NULL) oss << ", pResDesc=NULL";
-      else oss << ", pResDesc=" << data->args.hipCreateSurfaceObject.pResDesc__val;
+      else { oss << ", pResDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCreateSurfaceObject.pResDesc__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxCreate:
       oss << "hipCtxCreate(";
       if (data->args.hipCtxCreate.ctx == NULL) oss << "ctx=NULL";
-      else oss << "ctx=" << data->args.hipCtxCreate.ctx__val;
-      oss << ", flags=" << data->args.hipCtxCreate.flags;
-      oss << ", device=" << data->args.hipCtxCreate.device;
+      else { oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxCreate.ctx__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxCreate.flags);
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxCreate.device);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxDestroy:
       oss << "hipCtxDestroy(";
-      oss << "ctx=" << data->args.hipCtxDestroy.ctx;
+      oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxDestroy.ctx);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxDisablePeerAccess:
       oss << "hipCtxDisablePeerAccess(";
-      oss << "peerCtx=" << data->args.hipCtxDisablePeerAccess.peerCtx;
+      oss << "peerCtx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxDisablePeerAccess.peerCtx);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxEnablePeerAccess:
       oss << "hipCtxEnablePeerAccess(";
-      oss << "peerCtx=" << data->args.hipCtxEnablePeerAccess.peerCtx;
-      oss << ", flags=" << data->args.hipCtxEnablePeerAccess.flags;
+      oss << "peerCtx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxEnablePeerAccess.peerCtx);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxEnablePeerAccess.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetApiVersion:
       oss << "hipCtxGetApiVersion(";
-      oss << "ctx=" << data->args.hipCtxGetApiVersion.ctx;
+      oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetApiVersion.ctx);
       if (data->args.hipCtxGetApiVersion.apiVersion == NULL) oss << ", apiVersion=NULL";
-      else oss << ", apiVersion=" << data->args.hipCtxGetApiVersion.apiVersion__val;
+      else { oss << ", apiVersion="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetApiVersion.apiVersion__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetCacheConfig:
       oss << "hipCtxGetCacheConfig(";
       if (data->args.hipCtxGetCacheConfig.cacheConfig == NULL) oss << "cacheConfig=NULL";
-      else oss << "cacheConfig=" << data->args.hipCtxGetCacheConfig.cacheConfig__val;
+      else { oss << "cacheConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetCacheConfig.cacheConfig__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetCurrent:
       oss << "hipCtxGetCurrent(";
       if (data->args.hipCtxGetCurrent.ctx == NULL) oss << "ctx=NULL";
-      else oss << "ctx=" << data->args.hipCtxGetCurrent.ctx__val;
+      else { oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetCurrent.ctx__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetDevice:
       oss << "hipCtxGetDevice(";
       if (data->args.hipCtxGetDevice.device == NULL) oss << "device=NULL";
-      else oss << "device=" << data->args.hipCtxGetDevice.device__val;
+      else { oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetDevice.device__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetFlags:
       oss << "hipCtxGetFlags(";
       if (data->args.hipCtxGetFlags.flags == NULL) oss << "flags=NULL";
-      else oss << "flags=" << data->args.hipCtxGetFlags.flags__val;
+      else { oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetFlags.flags__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxGetSharedMemConfig:
       oss << "hipCtxGetSharedMemConfig(";
       if (data->args.hipCtxGetSharedMemConfig.pConfig == NULL) oss << "pConfig=NULL";
-      else oss << "pConfig=" << data->args.hipCtxGetSharedMemConfig.pConfig__val;
+      else { oss << "pConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxGetSharedMemConfig.pConfig__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxPopCurrent:
       oss << "hipCtxPopCurrent(";
       if (data->args.hipCtxPopCurrent.ctx == NULL) oss << "ctx=NULL";
-      else oss << "ctx=" << data->args.hipCtxPopCurrent.ctx__val;
+      else { oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxPopCurrent.ctx__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipCtxPushCurrent:
       oss << "hipCtxPushCurrent(";
-      oss << "ctx=" << data->args.hipCtxPushCurrent.ctx;
+      oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxPushCurrent.ctx);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxSetCacheConfig:
       oss << "hipCtxSetCacheConfig(";
-      oss << "cacheConfig=" << data->args.hipCtxSetCacheConfig.cacheConfig;
+      oss << "cacheConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxSetCacheConfig.cacheConfig);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxSetCurrent:
       oss << "hipCtxSetCurrent(";
-      oss << "ctx=" << data->args.hipCtxSetCurrent.ctx;
+      oss << "ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxSetCurrent.ctx);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxSetSharedMemConfig:
       oss << "hipCtxSetSharedMemConfig(";
-      oss << "config=" << data->args.hipCtxSetSharedMemConfig.config;
+      oss << "config="; roctracer::hip_support::detail::operator<<(oss, data->args.hipCtxSetSharedMemConfig.config);
       oss << ")";
     break;
     case HIP_API_ID_hipCtxSynchronize:
@@ -6787,185 +6787,185 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipDestroyExternalMemory:
       oss << "hipDestroyExternalMemory(";
-      oss << "extMem=" << data->args.hipDestroyExternalMemory.extMem;
+      oss << "extMem="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDestroyExternalMemory.extMem);
       oss << ")";
     break;
     case HIP_API_ID_hipDestroyExternalSemaphore:
       oss << "hipDestroyExternalSemaphore(";
-      oss << "extSem=" << data->args.hipDestroyExternalSemaphore.extSem;
+      oss << "extSem="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDestroyExternalSemaphore.extSem);
       oss << ")";
     break;
     case HIP_API_ID_hipDestroySurfaceObject:
       oss << "hipDestroySurfaceObject(";
-      oss << "surfaceObject=" << data->args.hipDestroySurfaceObject.surfaceObject;
+      oss << "surfaceObject="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDestroySurfaceObject.surfaceObject);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceCanAccessPeer:
       oss << "hipDeviceCanAccessPeer(";
       if (data->args.hipDeviceCanAccessPeer.canAccessPeer == NULL) oss << "canAccessPeer=NULL";
-      else oss << "canAccessPeer=" << data->args.hipDeviceCanAccessPeer.canAccessPeer__val;
-      oss << ", deviceId=" << data->args.hipDeviceCanAccessPeer.deviceId;
-      oss << ", peerDeviceId=" << data->args.hipDeviceCanAccessPeer.peerDeviceId;
+      else { oss << "canAccessPeer="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceCanAccessPeer.canAccessPeer__val); }
+      oss << ", deviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceCanAccessPeer.deviceId);
+      oss << ", peerDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceCanAccessPeer.peerDeviceId);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceComputeCapability:
       oss << "hipDeviceComputeCapability(";
       if (data->args.hipDeviceComputeCapability.major == NULL) oss << "major=NULL";
-      else oss << "major=" << data->args.hipDeviceComputeCapability.major__val;
+      else { oss << "major="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceComputeCapability.major__val); }
       if (data->args.hipDeviceComputeCapability.minor == NULL) oss << ", minor=NULL";
-      else oss << ", minor=" << data->args.hipDeviceComputeCapability.minor__val;
-      oss << ", device=" << data->args.hipDeviceComputeCapability.device;
+      else { oss << ", minor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceComputeCapability.minor__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceComputeCapability.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceDisablePeerAccess:
       oss << "hipDeviceDisablePeerAccess(";
-      oss << "peerDeviceId=" << data->args.hipDeviceDisablePeerAccess.peerDeviceId;
+      oss << "peerDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceDisablePeerAccess.peerDeviceId);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceEnablePeerAccess:
       oss << "hipDeviceEnablePeerAccess(";
-      oss << "peerDeviceId=" << data->args.hipDeviceEnablePeerAccess.peerDeviceId;
-      oss << ", flags=" << data->args.hipDeviceEnablePeerAccess.flags;
+      oss << "peerDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceEnablePeerAccess.peerDeviceId);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceEnablePeerAccess.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGet:
       oss << "hipDeviceGet(";
       if (data->args.hipDeviceGet.device == NULL) oss << "device=NULL";
-      else oss << "device=" << data->args.hipDeviceGet.device__val;
-      oss << ", ordinal=" << data->args.hipDeviceGet.ordinal;
+      else { oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGet.device__val); }
+      oss << ", ordinal="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGet.ordinal);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetAttribute:
       oss << "hipDeviceGetAttribute(";
       if (data->args.hipDeviceGetAttribute.pi == NULL) oss << "pi=NULL";
-      else oss << "pi=" << data->args.hipDeviceGetAttribute.pi__val;
-      oss << ", attr=" << data->args.hipDeviceGetAttribute.attr;
-      oss << ", deviceId=" << data->args.hipDeviceGetAttribute.deviceId;
+      else { oss << "pi="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetAttribute.pi__val); }
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetAttribute.attr);
+      oss << ", deviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetAttribute.deviceId);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetByPCIBusId:
       oss << "hipDeviceGetByPCIBusId(";
       if (data->args.hipDeviceGetByPCIBusId.device == NULL) oss << "device=NULL";
-      else oss << "device=" << data->args.hipDeviceGetByPCIBusId.device__val;
+      else { oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetByPCIBusId.device__val); }
       if (data->args.hipDeviceGetByPCIBusId.pciBusId == NULL) oss << ", pciBusId=NULL";
-      else oss << ", pciBusId=" << data->args.hipDeviceGetByPCIBusId.pciBusId__val;
+      else { oss << ", pciBusId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetByPCIBusId.pciBusId__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetCacheConfig:
       oss << "hipDeviceGetCacheConfig(";
       if (data->args.hipDeviceGetCacheConfig.cacheConfig == NULL) oss << "cacheConfig=NULL";
-      else oss << "cacheConfig=" << data->args.hipDeviceGetCacheConfig.cacheConfig__val;
+      else { oss << "cacheConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetCacheConfig.cacheConfig__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetDefaultMemPool:
       oss << "hipDeviceGetDefaultMemPool(";
       if (data->args.hipDeviceGetDefaultMemPool.mem_pool == NULL) oss << "mem_pool=NULL";
-      else oss << "mem_pool=" << data->args.hipDeviceGetDefaultMemPool.mem_pool__val;
-      oss << ", device=" << data->args.hipDeviceGetDefaultMemPool.device;
+      else { oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetDefaultMemPool.mem_pool__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetDefaultMemPool.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetGraphMemAttribute:
       oss << "hipDeviceGetGraphMemAttribute(";
-      oss << "device=" << data->args.hipDeviceGetGraphMemAttribute.device;
-      oss << ", attr=" << data->args.hipDeviceGetGraphMemAttribute.attr;
-      oss << ", value=" << data->args.hipDeviceGetGraphMemAttribute.value;
+      oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetGraphMemAttribute.device);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetGraphMemAttribute.attr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetGraphMemAttribute.value);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetLimit:
       oss << "hipDeviceGetLimit(";
       if (data->args.hipDeviceGetLimit.pValue == NULL) oss << "pValue=NULL";
-      else oss << "pValue=" << data->args.hipDeviceGetLimit.pValue__val;
-      oss << ", limit=" << data->args.hipDeviceGetLimit.limit;
+      else { oss << "pValue="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetLimit.pValue__val); }
+      oss << ", limit="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetLimit.limit);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetMemPool:
       oss << "hipDeviceGetMemPool(";
       if (data->args.hipDeviceGetMemPool.mem_pool == NULL) oss << "mem_pool=NULL";
-      else oss << "mem_pool=" << data->args.hipDeviceGetMemPool.mem_pool__val;
-      oss << ", device=" << data->args.hipDeviceGetMemPool.device;
+      else { oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetMemPool.mem_pool__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetMemPool.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetName:
       oss << "hipDeviceGetName(";
       if (data->args.hipDeviceGetName.name == NULL) oss << "name=NULL";
-      else oss << "name=" << data->args.hipDeviceGetName.name__val;
-      oss << ", len=" << data->args.hipDeviceGetName.len;
-      oss << ", device=" << data->args.hipDeviceGetName.device;
+      else { oss << "name="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetName.name__val); }
+      oss << ", len="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetName.len);
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetName.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetP2PAttribute:
       oss << "hipDeviceGetP2PAttribute(";
       if (data->args.hipDeviceGetP2PAttribute.value == NULL) oss << "value=NULL";
-      else oss << "value=" << data->args.hipDeviceGetP2PAttribute.value__val;
-      oss << ", attr=" << data->args.hipDeviceGetP2PAttribute.attr;
-      oss << ", srcDevice=" << data->args.hipDeviceGetP2PAttribute.srcDevice;
-      oss << ", dstDevice=" << data->args.hipDeviceGetP2PAttribute.dstDevice;
+      else { oss << "value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetP2PAttribute.value__val); }
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetP2PAttribute.attr);
+      oss << ", srcDevice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetP2PAttribute.srcDevice);
+      oss << ", dstDevice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetP2PAttribute.dstDevice);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetPCIBusId:
       oss << "hipDeviceGetPCIBusId(";
       if (data->args.hipDeviceGetPCIBusId.pciBusId == NULL) oss << "pciBusId=NULL";
-      else oss << "pciBusId=" << data->args.hipDeviceGetPCIBusId.pciBusId__val;
-      oss << ", len=" << data->args.hipDeviceGetPCIBusId.len;
-      oss << ", device=" << data->args.hipDeviceGetPCIBusId.device;
+      else { oss << "pciBusId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetPCIBusId.pciBusId__val); }
+      oss << ", len="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetPCIBusId.len);
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetPCIBusId.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetSharedMemConfig:
       oss << "hipDeviceGetSharedMemConfig(";
       if (data->args.hipDeviceGetSharedMemConfig.pConfig == NULL) oss << "pConfig=NULL";
-      else oss << "pConfig=" << data->args.hipDeviceGetSharedMemConfig.pConfig__val;
+      else { oss << "pConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetSharedMemConfig.pConfig__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetStreamPriorityRange:
       oss << "hipDeviceGetStreamPriorityRange(";
       if (data->args.hipDeviceGetStreamPriorityRange.leastPriority == NULL) oss << "leastPriority=NULL";
-      else oss << "leastPriority=" << data->args.hipDeviceGetStreamPriorityRange.leastPriority__val;
+      else { oss << "leastPriority="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetStreamPriorityRange.leastPriority__val); }
       if (data->args.hipDeviceGetStreamPriorityRange.greatestPriority == NULL) oss << ", greatestPriority=NULL";
-      else oss << ", greatestPriority=" << data->args.hipDeviceGetStreamPriorityRange.greatestPriority__val;
+      else { oss << ", greatestPriority="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetStreamPriorityRange.greatestPriority__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGetUuid:
       oss << "hipDeviceGetUuid(";
       if (data->args.hipDeviceGetUuid.uuid == NULL) oss << "uuid=NULL";
-      else oss << "uuid=" << data->args.hipDeviceGetUuid.uuid__val;
-      oss << ", device=" << data->args.hipDeviceGetUuid.device;
+      else { oss << "uuid="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetUuid.uuid__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGetUuid.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceGraphMemTrim:
       oss << "hipDeviceGraphMemTrim(";
-      oss << "device=" << data->args.hipDeviceGraphMemTrim.device;
+      oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceGraphMemTrim.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDevicePrimaryCtxGetState:
       oss << "hipDevicePrimaryCtxGetState(";
-      oss << "dev=" << data->args.hipDevicePrimaryCtxGetState.dev;
+      oss << "dev="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxGetState.dev);
       if (data->args.hipDevicePrimaryCtxGetState.flags == NULL) oss << ", flags=NULL";
-      else oss << ", flags=" << data->args.hipDevicePrimaryCtxGetState.flags__val;
+      else { oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxGetState.flags__val); }
       if (data->args.hipDevicePrimaryCtxGetState.active == NULL) oss << ", active=NULL";
-      else oss << ", active=" << data->args.hipDevicePrimaryCtxGetState.active__val;
+      else { oss << ", active="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxGetState.active__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDevicePrimaryCtxRelease:
       oss << "hipDevicePrimaryCtxRelease(";
-      oss << "dev=" << data->args.hipDevicePrimaryCtxRelease.dev;
+      oss << "dev="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxRelease.dev);
       oss << ")";
     break;
     case HIP_API_ID_hipDevicePrimaryCtxReset:
       oss << "hipDevicePrimaryCtxReset(";
-      oss << "dev=" << data->args.hipDevicePrimaryCtxReset.dev;
+      oss << "dev="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxReset.dev);
       oss << ")";
     break;
     case HIP_API_ID_hipDevicePrimaryCtxRetain:
       oss << "hipDevicePrimaryCtxRetain(";
       if (data->args.hipDevicePrimaryCtxRetain.pctx == NULL) oss << "pctx=NULL";
-      else oss << "pctx=" << data->args.hipDevicePrimaryCtxRetain.pctx__val;
-      oss << ", dev=" << data->args.hipDevicePrimaryCtxRetain.dev;
+      else { oss << "pctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxRetain.pctx__val); }
+      oss << ", dev="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxRetain.dev);
       oss << ")";
     break;
     case HIP_API_ID_hipDevicePrimaryCtxSetFlags:
       oss << "hipDevicePrimaryCtxSetFlags(";
-      oss << "dev=" << data->args.hipDevicePrimaryCtxSetFlags.dev;
-      oss << ", flags=" << data->args.hipDevicePrimaryCtxSetFlags.flags;
+      oss << "dev="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxSetFlags.dev);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDevicePrimaryCtxSetFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceReset:
@@ -6974,31 +6974,31 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipDeviceSetCacheConfig:
       oss << "hipDeviceSetCacheConfig(";
-      oss << "cacheConfig=" << data->args.hipDeviceSetCacheConfig.cacheConfig;
+      oss << "cacheConfig="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetCacheConfig.cacheConfig);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSetGraphMemAttribute:
       oss << "hipDeviceSetGraphMemAttribute(";
-      oss << "device=" << data->args.hipDeviceSetGraphMemAttribute.device;
-      oss << ", attr=" << data->args.hipDeviceSetGraphMemAttribute.attr;
-      oss << ", value=" << data->args.hipDeviceSetGraphMemAttribute.value;
+      oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetGraphMemAttribute.device);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetGraphMemAttribute.attr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetGraphMemAttribute.value);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSetLimit:
       oss << "hipDeviceSetLimit(";
-      oss << "limit=" << data->args.hipDeviceSetLimit.limit;
-      oss << ", value=" << data->args.hipDeviceSetLimit.value;
+      oss << "limit="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetLimit.limit);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetLimit.value);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSetMemPool:
       oss << "hipDeviceSetMemPool(";
-      oss << "device=" << data->args.hipDeviceSetMemPool.device;
-      oss << ", mem_pool=" << data->args.hipDeviceSetMemPool.mem_pool;
+      oss << "device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetMemPool.device);
+      oss << ", mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetMemPool.mem_pool);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSetSharedMemConfig:
       oss << "hipDeviceSetSharedMemConfig(";
-      oss << "config=" << data->args.hipDeviceSetSharedMemConfig.config;
+      oss << "config="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceSetSharedMemConfig.config);
       oss << ")";
     break;
     case HIP_API_ID_hipDeviceSynchronize:
@@ -7008,274 +7008,274 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipDeviceTotalMem:
       oss << "hipDeviceTotalMem(";
       if (data->args.hipDeviceTotalMem.bytes == NULL) oss << "bytes=NULL";
-      else oss << "bytes=" << data->args.hipDeviceTotalMem.bytes__val;
-      oss << ", device=" << data->args.hipDeviceTotalMem.device;
+      else { oss << "bytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceTotalMem.bytes__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDeviceTotalMem.device);
       oss << ")";
     break;
     case HIP_API_ID_hipDriverGetVersion:
       oss << "hipDriverGetVersion(";
       if (data->args.hipDriverGetVersion.driverVersion == NULL) oss << "driverVersion=NULL";
-      else oss << "driverVersion=" << data->args.hipDriverGetVersion.driverVersion__val;
+      else { oss << "driverVersion="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDriverGetVersion.driverVersion__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDrvMemcpy2DUnaligned:
       oss << "hipDrvMemcpy2DUnaligned(";
       if (data->args.hipDrvMemcpy2DUnaligned.pCopy == NULL) oss << "pCopy=NULL";
-      else oss << "pCopy=" << data->args.hipDrvMemcpy2DUnaligned.pCopy__val;
+      else { oss << "pCopy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvMemcpy2DUnaligned.pCopy__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDrvMemcpy3D:
       oss << "hipDrvMemcpy3D(";
       if (data->args.hipDrvMemcpy3D.pCopy == NULL) oss << "pCopy=NULL";
-      else oss << "pCopy=" << data->args.hipDrvMemcpy3D.pCopy__val;
+      else { oss << "pCopy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvMemcpy3D.pCopy__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipDrvMemcpy3DAsync:
       oss << "hipDrvMemcpy3DAsync(";
       if (data->args.hipDrvMemcpy3DAsync.pCopy == NULL) oss << "pCopy=NULL";
-      else oss << "pCopy=" << data->args.hipDrvMemcpy3DAsync.pCopy__val;
-      oss << ", stream=" << data->args.hipDrvMemcpy3DAsync.stream;
+      else { oss << "pCopy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvMemcpy3DAsync.pCopy__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvMemcpy3DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipDrvPointerGetAttributes:
       oss << "hipDrvPointerGetAttributes(";
-      oss << "numAttributes=" << data->args.hipDrvPointerGetAttributes.numAttributes;
+      oss << "numAttributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvPointerGetAttributes.numAttributes);
       if (data->args.hipDrvPointerGetAttributes.attributes == NULL) oss << ", attributes=NULL";
-      else oss << ", attributes=" << data->args.hipDrvPointerGetAttributes.attributes__val;
+      else { oss << ", attributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvPointerGetAttributes.attributes__val); }
       if (data->args.hipDrvPointerGetAttributes.data == NULL) oss << ", data=NULL";
-      else oss << ", data=" << data->args.hipDrvPointerGetAttributes.data__val;
-      oss << ", ptr=" << data->args.hipDrvPointerGetAttributes.ptr;
+      else { oss << ", data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvPointerGetAttributes.data__val); }
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvPointerGetAttributes.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipEventCreate:
       oss << "hipEventCreate(";
       if (data->args.hipEventCreate.event == NULL) oss << "event=NULL";
-      else oss << "event=" << data->args.hipEventCreate.event__val;
+      else { oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventCreate.event__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipEventCreateWithFlags:
       oss << "hipEventCreateWithFlags(";
       if (data->args.hipEventCreateWithFlags.event == NULL) oss << "event=NULL";
-      else oss << "event=" << data->args.hipEventCreateWithFlags.event__val;
-      oss << ", flags=" << data->args.hipEventCreateWithFlags.flags;
+      else { oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventCreateWithFlags.event__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventCreateWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipEventDestroy:
       oss << "hipEventDestroy(";
-      oss << "event=" << data->args.hipEventDestroy.event;
+      oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventDestroy.event);
       oss << ")";
     break;
     case HIP_API_ID_hipEventElapsedTime:
       oss << "hipEventElapsedTime(";
       if (data->args.hipEventElapsedTime.ms == NULL) oss << "ms=NULL";
-      else oss << "ms=" << data->args.hipEventElapsedTime.ms__val;
-      oss << ", start=" << data->args.hipEventElapsedTime.start;
-      oss << ", stop=" << data->args.hipEventElapsedTime.stop;
+      else { oss << "ms="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventElapsedTime.ms__val); }
+      oss << ", start="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventElapsedTime.start);
+      oss << ", stop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventElapsedTime.stop);
       oss << ")";
     break;
     case HIP_API_ID_hipEventQuery:
       oss << "hipEventQuery(";
-      oss << "event=" << data->args.hipEventQuery.event;
+      oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventQuery.event);
       oss << ")";
     break;
     case HIP_API_ID_hipEventRecord:
       oss << "hipEventRecord(";
-      oss << "event=" << data->args.hipEventRecord.event;
-      oss << ", stream=" << data->args.hipEventRecord.stream;
+      oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventRecord.event);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventRecord.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipEventSynchronize:
       oss << "hipEventSynchronize(";
-      oss << "event=" << data->args.hipEventSynchronize.event;
+      oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipEventSynchronize.event);
       oss << ")";
     break;
     case HIP_API_ID_hipExtGetLinkTypeAndHopCount:
       oss << "hipExtGetLinkTypeAndHopCount(";
-      oss << "device1=" << data->args.hipExtGetLinkTypeAndHopCount.device1;
-      oss << ", device2=" << data->args.hipExtGetLinkTypeAndHopCount.device2;
+      oss << "device1="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtGetLinkTypeAndHopCount.device1);
+      oss << ", device2="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtGetLinkTypeAndHopCount.device2);
       if (data->args.hipExtGetLinkTypeAndHopCount.linktype == NULL) oss << ", linktype=NULL";
-      else oss << ", linktype=" << data->args.hipExtGetLinkTypeAndHopCount.linktype__val;
+      else { oss << ", linktype="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtGetLinkTypeAndHopCount.linktype__val); }
       if (data->args.hipExtGetLinkTypeAndHopCount.hopcount == NULL) oss << ", hopcount=NULL";
-      else oss << ", hopcount=" << data->args.hipExtGetLinkTypeAndHopCount.hopcount__val;
+      else { oss << ", hopcount="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtGetLinkTypeAndHopCount.hopcount__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipExtLaunchKernel:
       oss << "hipExtLaunchKernel(";
-      oss << "function_address=" << data->args.hipExtLaunchKernel.function_address;
-      oss << ", numBlocks=" << data->args.hipExtLaunchKernel.numBlocks;
-      oss << ", dimBlocks=" << data->args.hipExtLaunchKernel.dimBlocks;
+      oss << "function_address="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.function_address);
+      oss << ", numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.numBlocks);
+      oss << ", dimBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.dimBlocks);
       if (data->args.hipExtLaunchKernel.args == NULL) oss << ", args=NULL";
-      else oss << ", args=" << data->args.hipExtLaunchKernel.args__val;
-      oss << ", sharedMemBytes=" << data->args.hipExtLaunchKernel.sharedMemBytes;
-      oss << ", stream=" << data->args.hipExtLaunchKernel.stream;
-      oss << ", startEvent=" << data->args.hipExtLaunchKernel.startEvent;
-      oss << ", stopEvent=" << data->args.hipExtLaunchKernel.stopEvent;
-      oss << ", flags=" << data->args.hipExtLaunchKernel.flags;
+      else { oss << ", args="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.args__val); }
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.sharedMemBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.stream);
+      oss << ", startEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.startEvent);
+      oss << ", stopEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.stopEvent);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchKernel.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipExtLaunchMultiKernelMultiDevice:
       oss << "hipExtLaunchMultiKernelMultiDevice(";
       if (data->args.hipExtLaunchMultiKernelMultiDevice.launchParamsList == NULL) oss << "launchParamsList=NULL";
-      else oss << "launchParamsList=" << data->args.hipExtLaunchMultiKernelMultiDevice.launchParamsList__val;
-      oss << ", numDevices=" << data->args.hipExtLaunchMultiKernelMultiDevice.numDevices;
-      oss << ", flags=" << data->args.hipExtLaunchMultiKernelMultiDevice.flags;
+      else { oss << "launchParamsList="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchMultiKernelMultiDevice.launchParamsList__val); }
+      oss << ", numDevices="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchMultiKernelMultiDevice.numDevices);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtLaunchMultiKernelMultiDevice.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipExtMallocWithFlags:
       oss << "hipExtMallocWithFlags(";
       if (data->args.hipExtMallocWithFlags.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipExtMallocWithFlags.ptr__val;
-      oss << ", sizeBytes=" << data->args.hipExtMallocWithFlags.sizeBytes;
-      oss << ", flags=" << data->args.hipExtMallocWithFlags.flags;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtMallocWithFlags.ptr__val); }
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtMallocWithFlags.sizeBytes);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtMallocWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipExtModuleLaunchKernel:
       oss << "hipExtModuleLaunchKernel(";
-      oss << "f=" << data->args.hipExtModuleLaunchKernel.f;
-      oss << ", globalWorkSizeX=" << data->args.hipExtModuleLaunchKernel.globalWorkSizeX;
-      oss << ", globalWorkSizeY=" << data->args.hipExtModuleLaunchKernel.globalWorkSizeY;
-      oss << ", globalWorkSizeZ=" << data->args.hipExtModuleLaunchKernel.globalWorkSizeZ;
-      oss << ", localWorkSizeX=" << data->args.hipExtModuleLaunchKernel.localWorkSizeX;
-      oss << ", localWorkSizeY=" << data->args.hipExtModuleLaunchKernel.localWorkSizeY;
-      oss << ", localWorkSizeZ=" << data->args.hipExtModuleLaunchKernel.localWorkSizeZ;
-      oss << ", sharedMemBytes=" << data->args.hipExtModuleLaunchKernel.sharedMemBytes;
-      oss << ", hStream=" << data->args.hipExtModuleLaunchKernel.hStream;
+      oss << "f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.f);
+      oss << ", globalWorkSizeX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.globalWorkSizeX);
+      oss << ", globalWorkSizeY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.globalWorkSizeY);
+      oss << ", globalWorkSizeZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.globalWorkSizeZ);
+      oss << ", localWorkSizeX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.localWorkSizeX);
+      oss << ", localWorkSizeY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.localWorkSizeY);
+      oss << ", localWorkSizeZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.localWorkSizeZ);
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.sharedMemBytes);
+      oss << ", hStream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.hStream);
       if (data->args.hipExtModuleLaunchKernel.kernelParams == NULL) oss << ", kernelParams=NULL";
-      else oss << ", kernelParams=" << data->args.hipExtModuleLaunchKernel.kernelParams__val;
+      else { oss << ", kernelParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.kernelParams__val); }
       if (data->args.hipExtModuleLaunchKernel.extra == NULL) oss << ", extra=NULL";
-      else oss << ", extra=" << data->args.hipExtModuleLaunchKernel.extra__val;
-      oss << ", startEvent=" << data->args.hipExtModuleLaunchKernel.startEvent;
-      oss << ", stopEvent=" << data->args.hipExtModuleLaunchKernel.stopEvent;
-      oss << ", flags=" << data->args.hipExtModuleLaunchKernel.flags;
+      else { oss << ", extra="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.extra__val); }
+      oss << ", startEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.startEvent);
+      oss << ", stopEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.stopEvent);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtModuleLaunchKernel.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipExtStreamCreateWithCUMask:
       oss << "hipExtStreamCreateWithCUMask(";
       if (data->args.hipExtStreamCreateWithCUMask.stream == NULL) oss << "stream=NULL";
-      else oss << "stream=" << data->args.hipExtStreamCreateWithCUMask.stream__val;
-      oss << ", cuMaskSize=" << data->args.hipExtStreamCreateWithCUMask.cuMaskSize;
+      else { oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamCreateWithCUMask.stream__val); }
+      oss << ", cuMaskSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamCreateWithCUMask.cuMaskSize);
       if (data->args.hipExtStreamCreateWithCUMask.cuMask == NULL) oss << ", cuMask=NULL";
-      else oss << ", cuMask=" << data->args.hipExtStreamCreateWithCUMask.cuMask__val;
+      else { oss << ", cuMask="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamCreateWithCUMask.cuMask__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipExtStreamGetCUMask:
       oss << "hipExtStreamGetCUMask(";
-      oss << "stream=" << data->args.hipExtStreamGetCUMask.stream;
-      oss << ", cuMaskSize=" << data->args.hipExtStreamGetCUMask.cuMaskSize;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamGetCUMask.stream);
+      oss << ", cuMaskSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamGetCUMask.cuMaskSize);
       if (data->args.hipExtStreamGetCUMask.cuMask == NULL) oss << ", cuMask=NULL";
-      else oss << ", cuMask=" << data->args.hipExtStreamGetCUMask.cuMask__val;
+      else { oss << ", cuMask="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtStreamGetCUMask.cuMask__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipExternalMemoryGetMappedBuffer:
       oss << "hipExternalMemoryGetMappedBuffer(";
       if (data->args.hipExternalMemoryGetMappedBuffer.devPtr == NULL) oss << "devPtr=NULL";
-      else oss << "devPtr=" << data->args.hipExternalMemoryGetMappedBuffer.devPtr__val;
-      oss << ", extMem=" << data->args.hipExternalMemoryGetMappedBuffer.extMem;
+      else { oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedBuffer.devPtr__val); }
+      oss << ", extMem="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedBuffer.extMem);
       if (data->args.hipExternalMemoryGetMappedBuffer.bufferDesc == NULL) oss << ", bufferDesc=NULL";
-      else oss << ", bufferDesc=" << data->args.hipExternalMemoryGetMappedBuffer.bufferDesc__val;
+      else { oss << ", bufferDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedBuffer.bufferDesc__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipFree:
       oss << "hipFree(";
-      oss << "ptr=" << data->args.hipFree.ptr;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFree.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipFreeArray:
       oss << "hipFreeArray(";
       if (data->args.hipFreeArray.array == NULL) oss << "array=NULL";
-      else oss << "array=" << data->args.hipFreeArray.array__val;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeArray.array__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipFreeAsync:
       oss << "hipFreeAsync(";
-      oss << "dev_ptr=" << data->args.hipFreeAsync.dev_ptr;
-      oss << ", stream=" << data->args.hipFreeAsync.stream;
+      oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeAsync.dev_ptr);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipFreeHost:
       oss << "hipFreeHost(";
-      oss << "ptr=" << data->args.hipFreeHost.ptr;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeHost.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipFreeMipmappedArray:
       oss << "hipFreeMipmappedArray(";
-      oss << "mipmappedArray=" << data->args.hipFreeMipmappedArray.mipmappedArray;
+      oss << "mipmappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeMipmappedArray.mipmappedArray);
       oss << ")";
     break;
     case HIP_API_ID_hipFuncGetAttribute:
       oss << "hipFuncGetAttribute(";
       if (data->args.hipFuncGetAttribute.value == NULL) oss << "value=NULL";
-      else oss << "value=" << data->args.hipFuncGetAttribute.value__val;
-      oss << ", attrib=" << data->args.hipFuncGetAttribute.attrib;
-      oss << ", hfunc=" << data->args.hipFuncGetAttribute.hfunc;
+      else { oss << "value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncGetAttribute.value__val); }
+      oss << ", attrib="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncGetAttribute.attrib);
+      oss << ", hfunc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncGetAttribute.hfunc);
       oss << ")";
     break;
     case HIP_API_ID_hipFuncGetAttributes:
       oss << "hipFuncGetAttributes(";
       if (data->args.hipFuncGetAttributes.attr == NULL) oss << "attr=NULL";
-      else oss << "attr=" << data->args.hipFuncGetAttributes.attr__val;
-      oss << ", func=" << data->args.hipFuncGetAttributes.func;
+      else { oss << "attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncGetAttributes.attr__val); }
+      oss << ", func="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncGetAttributes.func);
       oss << ")";
     break;
     case HIP_API_ID_hipFuncSetAttribute:
       oss << "hipFuncSetAttribute(";
-      oss << "func=" << data->args.hipFuncSetAttribute.func;
-      oss << ", attr=" << data->args.hipFuncSetAttribute.attr;
-      oss << ", value=" << data->args.hipFuncSetAttribute.value;
+      oss << "func="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetAttribute.func);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetAttribute.attr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetAttribute.value);
       oss << ")";
     break;
     case HIP_API_ID_hipFuncSetCacheConfig:
       oss << "hipFuncSetCacheConfig(";
-      oss << "func=" << data->args.hipFuncSetCacheConfig.func;
-      oss << ", config=" << data->args.hipFuncSetCacheConfig.config;
+      oss << "func="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetCacheConfig.func);
+      oss << ", config="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetCacheConfig.config);
       oss << ")";
     break;
     case HIP_API_ID_hipFuncSetSharedMemConfig:
       oss << "hipFuncSetSharedMemConfig(";
-      oss << "func=" << data->args.hipFuncSetSharedMemConfig.func;
-      oss << ", config=" << data->args.hipFuncSetSharedMemConfig.config;
+      oss << "func="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetSharedMemConfig.func);
+      oss << ", config="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFuncSetSharedMemConfig.config);
       oss << ")";
     break;
     case HIP_API_ID_hipGLGetDevices:
       oss << "hipGLGetDevices(";
       if (data->args.hipGLGetDevices.pHipDeviceCount == NULL) oss << "pHipDeviceCount=NULL";
-      else oss << "pHipDeviceCount=" << data->args.hipGLGetDevices.pHipDeviceCount__val;
+      else { oss << "pHipDeviceCount="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGLGetDevices.pHipDeviceCount__val); }
       if (data->args.hipGLGetDevices.pHipDevices == NULL) oss << ", pHipDevices=NULL";
-      else oss << ", pHipDevices=" << data->args.hipGLGetDevices.pHipDevices__val;
-      oss << ", hipDeviceCount=" << data->args.hipGLGetDevices.hipDeviceCount;
-      oss << ", deviceList=" << data->args.hipGLGetDevices.deviceList;
+      else { oss << ", pHipDevices="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGLGetDevices.pHipDevices__val); }
+      oss << ", hipDeviceCount="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGLGetDevices.hipDeviceCount);
+      oss << ", deviceList="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGLGetDevices.deviceList);
       oss << ")";
     break;
     case HIP_API_ID_hipGetChannelDesc:
       oss << "hipGetChannelDesc(";
       if (data->args.hipGetChannelDesc.desc == NULL) oss << "desc=NULL";
-      else oss << "desc=" << data->args.hipGetChannelDesc.desc__val;
-      oss << ", array=" << data->args.hipGetChannelDesc.array;
+      else { oss << "desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetChannelDesc.desc__val); }
+      oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetChannelDesc.array);
       oss << ")";
     break;
     case HIP_API_ID_hipGetDevice:
       oss << "hipGetDevice(";
       if (data->args.hipGetDevice.deviceId == NULL) oss << "deviceId=NULL";
-      else oss << "deviceId=" << data->args.hipGetDevice.deviceId__val;
+      else { oss << "deviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDevice.deviceId__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGetDeviceCount:
       oss << "hipGetDeviceCount(";
       if (data->args.hipGetDeviceCount.count == NULL) oss << "count=NULL";
-      else oss << "count=" << data->args.hipGetDeviceCount.count__val;
+      else { oss << "count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceCount.count__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGetDeviceFlags:
       oss << "hipGetDeviceFlags(";
       if (data->args.hipGetDeviceFlags.flags == NULL) oss << "flags=NULL";
-      else oss << "flags=" << data->args.hipGetDeviceFlags.flags__val;
+      else { oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceFlags.flags__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGetDeviceProperties:
       oss << "hipGetDeviceProperties(";
       if (data->args.hipGetDeviceProperties.props == NULL) oss << "props=NULL";
-      else oss << "props=" << data->args.hipGetDeviceProperties.props__val;
-      oss << ", device=" << data->args.hipGetDeviceProperties.device;
+      else { oss << "props="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceProperties.props__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceProperties.device);
       oss << ")";
     break;
     case HIP_API_ID_hipGetErrorString:
@@ -7289,1661 +7289,1661 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipGetMipmappedArrayLevel:
       oss << "hipGetMipmappedArrayLevel(";
       if (data->args.hipGetMipmappedArrayLevel.levelArray == NULL) oss << "levelArray=NULL";
-      else oss << "levelArray=" << data->args.hipGetMipmappedArrayLevel.levelArray__val;
-      oss << ", mipmappedArray=" << data->args.hipGetMipmappedArrayLevel.mipmappedArray;
-      oss << ", level=" << data->args.hipGetMipmappedArrayLevel.level;
+      else { oss << "levelArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetMipmappedArrayLevel.levelArray__val); }
+      oss << ", mipmappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetMipmappedArrayLevel.mipmappedArray);
+      oss << ", level="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetMipmappedArrayLevel.level);
       oss << ")";
     break;
     case HIP_API_ID_hipGetSymbolAddress:
       oss << "hipGetSymbolAddress(";
       if (data->args.hipGetSymbolAddress.devPtr == NULL) oss << "devPtr=NULL";
-      else oss << "devPtr=" << data->args.hipGetSymbolAddress.devPtr__val;
-      oss << ", symbol=" << data->args.hipGetSymbolAddress.symbol;
+      else { oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetSymbolAddress.devPtr__val); }
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetSymbolAddress.symbol);
       oss << ")";
     break;
     case HIP_API_ID_hipGetSymbolSize:
       oss << "hipGetSymbolSize(";
       if (data->args.hipGetSymbolSize.size == NULL) oss << "size=NULL";
-      else oss << "size=" << data->args.hipGetSymbolSize.size__val;
-      oss << ", symbol=" << data->args.hipGetSymbolSize.symbol;
+      else { oss << "size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetSymbolSize.size__val); }
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetSymbolSize.symbol);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddChildGraphNode:
       oss << "hipGraphAddChildGraphNode(";
       if (data->args.hipGraphAddChildGraphNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddChildGraphNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddChildGraphNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddChildGraphNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddChildGraphNode.graph);
       if (data->args.hipGraphAddChildGraphNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddChildGraphNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddChildGraphNode.numDependencies;
-      oss << ", childGraph=" << data->args.hipGraphAddChildGraphNode.childGraph;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddChildGraphNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddChildGraphNode.numDependencies);
+      oss << ", childGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddChildGraphNode.childGraph);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddDependencies:
       oss << "hipGraphAddDependencies(";
-      oss << "graph=" << data->args.hipGraphAddDependencies.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddDependencies.graph);
       if (data->args.hipGraphAddDependencies.from == NULL) oss << ", from=NULL";
-      else oss << ", from=" << data->args.hipGraphAddDependencies.from__val;
+      else { oss << ", from="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddDependencies.from__val); }
       if (data->args.hipGraphAddDependencies.to == NULL) oss << ", to=NULL";
-      else oss << ", to=" << data->args.hipGraphAddDependencies.to__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddDependencies.numDependencies;
+      else { oss << ", to="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddDependencies.to__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddDependencies.numDependencies);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddEmptyNode:
       oss << "hipGraphAddEmptyNode(";
       if (data->args.hipGraphAddEmptyNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddEmptyNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddEmptyNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEmptyNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEmptyNode.graph);
       if (data->args.hipGraphAddEmptyNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddEmptyNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddEmptyNode.numDependencies;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEmptyNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEmptyNode.numDependencies);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddEventRecordNode:
       oss << "hipGraphAddEventRecordNode(";
       if (data->args.hipGraphAddEventRecordNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddEventRecordNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddEventRecordNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventRecordNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventRecordNode.graph);
       if (data->args.hipGraphAddEventRecordNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddEventRecordNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddEventRecordNode.numDependencies;
-      oss << ", event=" << data->args.hipGraphAddEventRecordNode.event;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventRecordNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventRecordNode.numDependencies);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventRecordNode.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddEventWaitNode:
       oss << "hipGraphAddEventWaitNode(";
       if (data->args.hipGraphAddEventWaitNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddEventWaitNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddEventWaitNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventWaitNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventWaitNode.graph);
       if (data->args.hipGraphAddEventWaitNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddEventWaitNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddEventWaitNode.numDependencies;
-      oss << ", event=" << data->args.hipGraphAddEventWaitNode.event;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventWaitNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventWaitNode.numDependencies);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddEventWaitNode.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddHostNode:
       oss << "hipGraphAddHostNode(";
       if (data->args.hipGraphAddHostNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddHostNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddHostNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddHostNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddHostNode.graph);
       if (data->args.hipGraphAddHostNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddHostNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddHostNode.numDependencies;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddHostNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddHostNode.numDependencies);
       if (data->args.hipGraphAddHostNode.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphAddHostNode.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddHostNode.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddKernelNode:
       oss << "hipGraphAddKernelNode(";
       if (data->args.hipGraphAddKernelNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddKernelNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddKernelNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddKernelNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddKernelNode.graph);
       if (data->args.hipGraphAddKernelNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddKernelNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddKernelNode.numDependencies;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddKernelNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddKernelNode.numDependencies);
       if (data->args.hipGraphAddKernelNode.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphAddKernelNode.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddKernelNode.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddMemcpyNode:
       oss << "hipGraphAddMemcpyNode(";
       if (data->args.hipGraphAddMemcpyNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddMemcpyNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddMemcpyNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode.graph);
       if (data->args.hipGraphAddMemcpyNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddMemcpyNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddMemcpyNode.numDependencies;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode.numDependencies);
       if (data->args.hipGraphAddMemcpyNode.pCopyParams == NULL) oss << ", pCopyParams=NULL";
-      else oss << ", pCopyParams=" << data->args.hipGraphAddMemcpyNode.pCopyParams__val;
+      else { oss << ", pCopyParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode.pCopyParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddMemcpyNode1D:
       oss << "hipGraphAddMemcpyNode1D(";
       if (data->args.hipGraphAddMemcpyNode1D.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddMemcpyNode1D.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddMemcpyNode1D.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.graph);
       if (data->args.hipGraphAddMemcpyNode1D.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddMemcpyNode1D.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddMemcpyNode1D.numDependencies;
-      oss << ", dst=" << data->args.hipGraphAddMemcpyNode1D.dst;
-      oss << ", src=" << data->args.hipGraphAddMemcpyNode1D.src;
-      oss << ", count=" << data->args.hipGraphAddMemcpyNode1D.count;
-      oss << ", kind=" << data->args.hipGraphAddMemcpyNode1D.kind;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.numDependencies);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.count);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNode1D.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddMemcpyNodeFromSymbol:
       oss << "hipGraphAddMemcpyNodeFromSymbol(";
       if (data->args.hipGraphAddMemcpyNodeFromSymbol.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddMemcpyNodeFromSymbol.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddMemcpyNodeFromSymbol.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.graph);
       if (data->args.hipGraphAddMemcpyNodeFromSymbol.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddMemcpyNodeFromSymbol.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddMemcpyNodeFromSymbol.numDependencies;
-      oss << ", dst=" << data->args.hipGraphAddMemcpyNodeFromSymbol.dst;
-      oss << ", symbol=" << data->args.hipGraphAddMemcpyNodeFromSymbol.symbol;
-      oss << ", count=" << data->args.hipGraphAddMemcpyNodeFromSymbol.count;
-      oss << ", offset=" << data->args.hipGraphAddMemcpyNodeFromSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphAddMemcpyNodeFromSymbol.kind;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.numDependencies);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.dst);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.symbol);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeFromSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddMemcpyNodeToSymbol:
       oss << "hipGraphAddMemcpyNodeToSymbol(";
       if (data->args.hipGraphAddMemcpyNodeToSymbol.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddMemcpyNodeToSymbol.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddMemcpyNodeToSymbol.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.graph);
       if (data->args.hipGraphAddMemcpyNodeToSymbol.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddMemcpyNodeToSymbol.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddMemcpyNodeToSymbol.numDependencies;
-      oss << ", symbol=" << data->args.hipGraphAddMemcpyNodeToSymbol.symbol;
-      oss << ", src=" << data->args.hipGraphAddMemcpyNodeToSymbol.src;
-      oss << ", count=" << data->args.hipGraphAddMemcpyNodeToSymbol.count;
-      oss << ", offset=" << data->args.hipGraphAddMemcpyNodeToSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphAddMemcpyNodeToSymbol.kind;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.numDependencies);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.symbol);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemcpyNodeToSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphAddMemsetNode:
       oss << "hipGraphAddMemsetNode(";
       if (data->args.hipGraphAddMemsetNode.pGraphNode == NULL) oss << "pGraphNode=NULL";
-      else oss << "pGraphNode=" << data->args.hipGraphAddMemsetNode.pGraphNode__val;
-      oss << ", graph=" << data->args.hipGraphAddMemsetNode.graph;
+      else { oss << "pGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemsetNode.pGraphNode__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemsetNode.graph);
       if (data->args.hipGraphAddMemsetNode.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphAddMemsetNode.pDependencies__val;
-      oss << ", numDependencies=" << data->args.hipGraphAddMemsetNode.numDependencies;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemsetNode.pDependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemsetNode.numDependencies);
       if (data->args.hipGraphAddMemsetNode.pMemsetParams == NULL) oss << ", pMemsetParams=NULL";
-      else oss << ", pMemsetParams=" << data->args.hipGraphAddMemsetNode.pMemsetParams__val;
+      else { oss << ", pMemsetParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphAddMemsetNode.pMemsetParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphChildGraphNodeGetGraph:
       oss << "hipGraphChildGraphNodeGetGraph(";
-      oss << "node=" << data->args.hipGraphChildGraphNodeGetGraph.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphChildGraphNodeGetGraph.node);
       if (data->args.hipGraphChildGraphNodeGetGraph.pGraph == NULL) oss << ", pGraph=NULL";
-      else oss << ", pGraph=" << data->args.hipGraphChildGraphNodeGetGraph.pGraph__val;
+      else { oss << ", pGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphChildGraphNodeGetGraph.pGraph__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphClone:
       oss << "hipGraphClone(";
       if (data->args.hipGraphClone.pGraphClone == NULL) oss << "pGraphClone=NULL";
-      else oss << "pGraphClone=" << data->args.hipGraphClone.pGraphClone__val;
-      oss << ", originalGraph=" << data->args.hipGraphClone.originalGraph;
+      else { oss << "pGraphClone="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphClone.pGraphClone__val); }
+      oss << ", originalGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphClone.originalGraph);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphCreate:
       oss << "hipGraphCreate(";
       if (data->args.hipGraphCreate.pGraph == NULL) oss << "pGraph=NULL";
-      else oss << "pGraph=" << data->args.hipGraphCreate.pGraph__val;
-      oss << ", flags=" << data->args.hipGraphCreate.flags;
+      else { oss << "pGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphCreate.pGraph__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphCreate.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphDestroy:
       oss << "hipGraphDestroy(";
-      oss << "graph=" << data->args.hipGraphDestroy.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDestroy.graph);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphDestroyNode:
       oss << "hipGraphDestroyNode(";
-      oss << "node=" << data->args.hipGraphDestroyNode.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDestroyNode.node);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphEventRecordNodeGetEvent:
       oss << "hipGraphEventRecordNodeGetEvent(";
-      oss << "node=" << data->args.hipGraphEventRecordNodeGetEvent.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventRecordNodeGetEvent.node);
       if (data->args.hipGraphEventRecordNodeGetEvent.event_out == NULL) oss << ", event_out=NULL";
-      else oss << ", event_out=" << data->args.hipGraphEventRecordNodeGetEvent.event_out__val;
+      else { oss << ", event_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventRecordNodeGetEvent.event_out__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphEventRecordNodeSetEvent:
       oss << "hipGraphEventRecordNodeSetEvent(";
-      oss << "node=" << data->args.hipGraphEventRecordNodeSetEvent.node;
-      oss << ", event=" << data->args.hipGraphEventRecordNodeSetEvent.event;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventRecordNodeSetEvent.node);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventRecordNodeSetEvent.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphEventWaitNodeGetEvent:
       oss << "hipGraphEventWaitNodeGetEvent(";
-      oss << "node=" << data->args.hipGraphEventWaitNodeGetEvent.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventWaitNodeGetEvent.node);
       if (data->args.hipGraphEventWaitNodeGetEvent.event_out == NULL) oss << ", event_out=NULL";
-      else oss << ", event_out=" << data->args.hipGraphEventWaitNodeGetEvent.event_out__val;
+      else { oss << ", event_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventWaitNodeGetEvent.event_out__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphEventWaitNodeSetEvent:
       oss << "hipGraphEventWaitNodeSetEvent(";
-      oss << "node=" << data->args.hipGraphEventWaitNodeSetEvent.node;
-      oss << ", event=" << data->args.hipGraphEventWaitNodeSetEvent.event;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventWaitNodeSetEvent.node);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphEventWaitNodeSetEvent.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecChildGraphNodeSetParams:
       oss << "hipGraphExecChildGraphNodeSetParams(";
-      oss << "hGraphExec=" << data->args.hipGraphExecChildGraphNodeSetParams.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecChildGraphNodeSetParams.node;
-      oss << ", childGraph=" << data->args.hipGraphExecChildGraphNodeSetParams.childGraph;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecChildGraphNodeSetParams.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecChildGraphNodeSetParams.node);
+      oss << ", childGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecChildGraphNodeSetParams.childGraph);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecDestroy:
       oss << "hipGraphExecDestroy(";
-      oss << "graphExec=" << data->args.hipGraphExecDestroy.graphExec;
+      oss << "graphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecDestroy.graphExec);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecEventRecordNodeSetEvent:
       oss << "hipGraphExecEventRecordNodeSetEvent(";
-      oss << "hGraphExec=" << data->args.hipGraphExecEventRecordNodeSetEvent.hGraphExec;
-      oss << ", hNode=" << data->args.hipGraphExecEventRecordNodeSetEvent.hNode;
-      oss << ", event=" << data->args.hipGraphExecEventRecordNodeSetEvent.event;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventRecordNodeSetEvent.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventRecordNodeSetEvent.hNode);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventRecordNodeSetEvent.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecEventWaitNodeSetEvent:
       oss << "hipGraphExecEventWaitNodeSetEvent(";
-      oss << "hGraphExec=" << data->args.hipGraphExecEventWaitNodeSetEvent.hGraphExec;
-      oss << ", hNode=" << data->args.hipGraphExecEventWaitNodeSetEvent.hNode;
-      oss << ", event=" << data->args.hipGraphExecEventWaitNodeSetEvent.event;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventWaitNodeSetEvent.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventWaitNodeSetEvent.hNode);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecEventWaitNodeSetEvent.event);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecHostNodeSetParams:
       oss << "hipGraphExecHostNodeSetParams(";
-      oss << "hGraphExec=" << data->args.hipGraphExecHostNodeSetParams.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecHostNodeSetParams.node;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecHostNodeSetParams.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecHostNodeSetParams.node);
       if (data->args.hipGraphExecHostNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphExecHostNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecHostNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecKernelNodeSetParams:
       oss << "hipGraphExecKernelNodeSetParams(";
-      oss << "hGraphExec=" << data->args.hipGraphExecKernelNodeSetParams.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecKernelNodeSetParams.node;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecKernelNodeSetParams.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecKernelNodeSetParams.node);
       if (data->args.hipGraphExecKernelNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphExecKernelNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecKernelNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecMemcpyNodeSetParams:
       oss << "hipGraphExecMemcpyNodeSetParams(";
-      oss << "hGraphExec=" << data->args.hipGraphExecMemcpyNodeSetParams.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecMemcpyNodeSetParams.node;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams.node);
       if (data->args.hipGraphExecMemcpyNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphExecMemcpyNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecMemcpyNodeSetParams1D:
       oss << "hipGraphExecMemcpyNodeSetParams1D(";
-      oss << "hGraphExec=" << data->args.hipGraphExecMemcpyNodeSetParams1D.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecMemcpyNodeSetParams1D.node;
-      oss << ", dst=" << data->args.hipGraphExecMemcpyNodeSetParams1D.dst;
-      oss << ", src=" << data->args.hipGraphExecMemcpyNodeSetParams1D.src;
-      oss << ", count=" << data->args.hipGraphExecMemcpyNodeSetParams1D.count;
-      oss << ", kind=" << data->args.hipGraphExecMemcpyNodeSetParams1D.kind;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.node);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.count);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParams1D.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecMemcpyNodeSetParamsFromSymbol:
       oss << "hipGraphExecMemcpyNodeSetParamsFromSymbol(";
-      oss << "hGraphExec=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.node;
-      oss << ", dst=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.dst;
-      oss << ", symbol=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.symbol;
-      oss << ", count=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.count;
-      oss << ", offset=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.kind;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.node);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.dst);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.symbol);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsFromSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecMemcpyNodeSetParamsToSymbol:
       oss << "hipGraphExecMemcpyNodeSetParamsToSymbol(";
-      oss << "hGraphExec=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.node;
-      oss << ", symbol=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.symbol;
-      oss << ", src=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.src;
-      oss << ", count=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.count;
-      oss << ", offset=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.kind;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.node);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.symbol);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemcpyNodeSetParamsToSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecMemsetNodeSetParams:
       oss << "hipGraphExecMemsetNodeSetParams(";
-      oss << "hGraphExec=" << data->args.hipGraphExecMemsetNodeSetParams.hGraphExec;
-      oss << ", node=" << data->args.hipGraphExecMemsetNodeSetParams.node;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemsetNodeSetParams.hGraphExec);
+      oss << ", node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemsetNodeSetParams.node);
       if (data->args.hipGraphExecMemsetNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphExecMemsetNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecMemsetNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphExecUpdate:
       oss << "hipGraphExecUpdate(";
-      oss << "hGraphExec=" << data->args.hipGraphExecUpdate.hGraphExec;
-      oss << ", hGraph=" << data->args.hipGraphExecUpdate.hGraph;
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecUpdate.hGraphExec);
+      oss << ", hGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecUpdate.hGraph);
       if (data->args.hipGraphExecUpdate.hErrorNode_out == NULL) oss << ", hErrorNode_out=NULL";
-      else oss << ", hErrorNode_out=" << data->args.hipGraphExecUpdate.hErrorNode_out__val;
+      else { oss << ", hErrorNode_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecUpdate.hErrorNode_out__val); }
       if (data->args.hipGraphExecUpdate.updateResult_out == NULL) oss << ", updateResult_out=NULL";
-      else oss << ", updateResult_out=" << data->args.hipGraphExecUpdate.updateResult_out__val;
+      else { oss << ", updateResult_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphExecUpdate.updateResult_out__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphGetEdges:
       oss << "hipGraphGetEdges(";
-      oss << "graph=" << data->args.hipGraphGetEdges.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetEdges.graph);
       if (data->args.hipGraphGetEdges.from == NULL) oss << ", from=NULL";
-      else oss << ", from=" << data->args.hipGraphGetEdges.from__val;
+      else { oss << ", from="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetEdges.from__val); }
       if (data->args.hipGraphGetEdges.to == NULL) oss << ", to=NULL";
-      else oss << ", to=" << data->args.hipGraphGetEdges.to__val;
+      else { oss << ", to="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetEdges.to__val); }
       if (data->args.hipGraphGetEdges.numEdges == NULL) oss << ", numEdges=NULL";
-      else oss << ", numEdges=" << data->args.hipGraphGetEdges.numEdges__val;
+      else { oss << ", numEdges="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetEdges.numEdges__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphGetNodes:
       oss << "hipGraphGetNodes(";
-      oss << "graph=" << data->args.hipGraphGetNodes.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetNodes.graph);
       if (data->args.hipGraphGetNodes.nodes == NULL) oss << ", nodes=NULL";
-      else oss << ", nodes=" << data->args.hipGraphGetNodes.nodes__val;
+      else { oss << ", nodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetNodes.nodes__val); }
       if (data->args.hipGraphGetNodes.numNodes == NULL) oss << ", numNodes=NULL";
-      else oss << ", numNodes=" << data->args.hipGraphGetNodes.numNodes__val;
+      else { oss << ", numNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetNodes.numNodes__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphGetRootNodes:
       oss << "hipGraphGetRootNodes(";
-      oss << "graph=" << data->args.hipGraphGetRootNodes.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetRootNodes.graph);
       if (data->args.hipGraphGetRootNodes.pRootNodes == NULL) oss << ", pRootNodes=NULL";
-      else oss << ", pRootNodes=" << data->args.hipGraphGetRootNodes.pRootNodes__val;
+      else { oss << ", pRootNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetRootNodes.pRootNodes__val); }
       if (data->args.hipGraphGetRootNodes.pNumRootNodes == NULL) oss << ", pNumRootNodes=NULL";
-      else oss << ", pNumRootNodes=" << data->args.hipGraphGetRootNodes.pNumRootNodes__val;
+      else { oss << ", pNumRootNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphGetRootNodes.pNumRootNodes__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphHostNodeGetParams:
       oss << "hipGraphHostNodeGetParams(";
-      oss << "node=" << data->args.hipGraphHostNodeGetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphHostNodeGetParams.node);
       if (data->args.hipGraphHostNodeGetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphHostNodeGetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphHostNodeGetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphHostNodeSetParams:
       oss << "hipGraphHostNodeSetParams(";
-      oss << "node=" << data->args.hipGraphHostNodeSetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphHostNodeSetParams.node);
       if (data->args.hipGraphHostNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphHostNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphHostNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphInstantiate:
       oss << "hipGraphInstantiate(";
       if (data->args.hipGraphInstantiate.pGraphExec == NULL) oss << "pGraphExec=NULL";
-      else oss << "pGraphExec=" << data->args.hipGraphInstantiate.pGraphExec__val;
-      oss << ", graph=" << data->args.hipGraphInstantiate.graph;
+      else { oss << "pGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiate.pGraphExec__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiate.graph);
       if (data->args.hipGraphInstantiate.pErrorNode == NULL) oss << ", pErrorNode=NULL";
-      else oss << ", pErrorNode=" << data->args.hipGraphInstantiate.pErrorNode__val;
+      else { oss << ", pErrorNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiate.pErrorNode__val); }
       if (data->args.hipGraphInstantiate.pLogBuffer == NULL) oss << ", pLogBuffer=NULL";
-      else oss << ", pLogBuffer=" << data->args.hipGraphInstantiate.pLogBuffer__val;
-      oss << ", bufferSize=" << data->args.hipGraphInstantiate.bufferSize;
+      else { oss << ", pLogBuffer="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiate.pLogBuffer__val); }
+      oss << ", bufferSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiate.bufferSize);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphInstantiateWithFlags:
       oss << "hipGraphInstantiateWithFlags(";
       if (data->args.hipGraphInstantiateWithFlags.pGraphExec == NULL) oss << "pGraphExec=NULL";
-      else oss << "pGraphExec=" << data->args.hipGraphInstantiateWithFlags.pGraphExec__val;
-      oss << ", graph=" << data->args.hipGraphInstantiateWithFlags.graph;
-      oss << ", flags=" << data->args.hipGraphInstantiateWithFlags.flags;
+      else { oss << "pGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiateWithFlags.pGraphExec__val); }
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiateWithFlags.graph);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiateWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphKernelNodeGetAttribute:
       oss << "hipGraphKernelNodeGetAttribute(";
-      oss << "hNode=" << data->args.hipGraphKernelNodeGetAttribute.hNode;
-      oss << ", attr=" << data->args.hipGraphKernelNodeGetAttribute.attr;
+      oss << "hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetAttribute.hNode);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetAttribute.attr);
       if (data->args.hipGraphKernelNodeGetAttribute.value == NULL) oss << ", value=NULL";
-      else oss << ", value=" << data->args.hipGraphKernelNodeGetAttribute.value__val;
+      else { oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetAttribute.value__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphKernelNodeGetParams:
       oss << "hipGraphKernelNodeGetParams(";
-      oss << "node=" << data->args.hipGraphKernelNodeGetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetParams.node);
       if (data->args.hipGraphKernelNodeGetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphKernelNodeGetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphKernelNodeSetAttribute:
       oss << "hipGraphKernelNodeSetAttribute(";
-      oss << "hNode=" << data->args.hipGraphKernelNodeSetAttribute.hNode;
-      oss << ", attr=" << data->args.hipGraphKernelNodeSetAttribute.attr;
+      oss << "hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeSetAttribute.hNode);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeSetAttribute.attr);
       if (data->args.hipGraphKernelNodeSetAttribute.value == NULL) oss << ", value=NULL";
-      else oss << ", value=" << data->args.hipGraphKernelNodeSetAttribute.value__val;
+      else { oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeSetAttribute.value__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphKernelNodeSetParams:
       oss << "hipGraphKernelNodeSetParams(";
-      oss << "node=" << data->args.hipGraphKernelNodeSetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeSetParams.node);
       if (data->args.hipGraphKernelNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphKernelNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphLaunch:
       oss << "hipGraphLaunch(";
-      oss << "graphExec=" << data->args.hipGraphLaunch.graphExec;
-      oss << ", stream=" << data->args.hipGraphLaunch.stream;
+      oss << "graphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphLaunch.graphExec);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphLaunch.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemcpyNodeGetParams:
       oss << "hipGraphMemcpyNodeGetParams(";
-      oss << "node=" << data->args.hipGraphMemcpyNodeGetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeGetParams.node);
       if (data->args.hipGraphMemcpyNodeGetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphMemcpyNodeGetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeGetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemcpyNodeSetParams:
       oss << "hipGraphMemcpyNodeSetParams(";
-      oss << "node=" << data->args.hipGraphMemcpyNodeSetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams.node);
       if (data->args.hipGraphMemcpyNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphMemcpyNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemcpyNodeSetParams1D:
       oss << "hipGraphMemcpyNodeSetParams1D(";
-      oss << "node=" << data->args.hipGraphMemcpyNodeSetParams1D.node;
-      oss << ", dst=" << data->args.hipGraphMemcpyNodeSetParams1D.dst;
-      oss << ", src=" << data->args.hipGraphMemcpyNodeSetParams1D.src;
-      oss << ", count=" << data->args.hipGraphMemcpyNodeSetParams1D.count;
-      oss << ", kind=" << data->args.hipGraphMemcpyNodeSetParams1D.kind;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams1D.node);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams1D.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams1D.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams1D.count);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParams1D.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemcpyNodeSetParamsFromSymbol:
       oss << "hipGraphMemcpyNodeSetParamsFromSymbol(";
-      oss << "node=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.node;
-      oss << ", dst=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.dst;
-      oss << ", symbol=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.symbol;
-      oss << ", count=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.count;
-      oss << ", offset=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphMemcpyNodeSetParamsFromSymbol.kind;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.node);
+      oss << ", dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.dst);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.symbol);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsFromSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemcpyNodeSetParamsToSymbol:
       oss << "hipGraphMemcpyNodeSetParamsToSymbol(";
-      oss << "node=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.node;
-      oss << ", symbol=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.symbol;
-      oss << ", src=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.src;
-      oss << ", count=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.count;
-      oss << ", offset=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.offset;
-      oss << ", kind=" << data->args.hipGraphMemcpyNodeSetParamsToSymbol.kind;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.node);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.symbol);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.count);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemcpyNodeSetParamsToSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemsetNodeGetParams:
       oss << "hipGraphMemsetNodeGetParams(";
-      oss << "node=" << data->args.hipGraphMemsetNodeGetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemsetNodeGetParams.node);
       if (data->args.hipGraphMemsetNodeGetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphMemsetNodeGetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemsetNodeGetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphMemsetNodeSetParams:
       oss << "hipGraphMemsetNodeSetParams(";
-      oss << "node=" << data->args.hipGraphMemsetNodeSetParams.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemsetNodeSetParams.node);
       if (data->args.hipGraphMemsetNodeSetParams.pNodeParams == NULL) oss << ", pNodeParams=NULL";
-      else oss << ", pNodeParams=" << data->args.hipGraphMemsetNodeSetParams.pNodeParams__val;
+      else { oss << ", pNodeParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphMemsetNodeSetParams.pNodeParams__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphNodeFindInClone:
       oss << "hipGraphNodeFindInClone(";
       if (data->args.hipGraphNodeFindInClone.pNode == NULL) oss << "pNode=NULL";
-      else oss << "pNode=" << data->args.hipGraphNodeFindInClone.pNode__val;
-      oss << ", originalNode=" << data->args.hipGraphNodeFindInClone.originalNode;
-      oss << ", clonedGraph=" << data->args.hipGraphNodeFindInClone.clonedGraph;
+      else { oss << "pNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeFindInClone.pNode__val); }
+      oss << ", originalNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeFindInClone.originalNode);
+      oss << ", clonedGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeFindInClone.clonedGraph);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphNodeGetDependencies:
       oss << "hipGraphNodeGetDependencies(";
-      oss << "node=" << data->args.hipGraphNodeGetDependencies.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependencies.node);
       if (data->args.hipGraphNodeGetDependencies.pDependencies == NULL) oss << ", pDependencies=NULL";
-      else oss << ", pDependencies=" << data->args.hipGraphNodeGetDependencies.pDependencies__val;
+      else { oss << ", pDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependencies.pDependencies__val); }
       if (data->args.hipGraphNodeGetDependencies.pNumDependencies == NULL) oss << ", pNumDependencies=NULL";
-      else oss << ", pNumDependencies=" << data->args.hipGraphNodeGetDependencies.pNumDependencies__val;
+      else { oss << ", pNumDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependencies.pNumDependencies__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphNodeGetDependentNodes:
       oss << "hipGraphNodeGetDependentNodes(";
-      oss << "node=" << data->args.hipGraphNodeGetDependentNodes.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependentNodes.node);
       if (data->args.hipGraphNodeGetDependentNodes.pDependentNodes == NULL) oss << ", pDependentNodes=NULL";
-      else oss << ", pDependentNodes=" << data->args.hipGraphNodeGetDependentNodes.pDependentNodes__val;
+      else { oss << ", pDependentNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependentNodes.pDependentNodes__val); }
       if (data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes == NULL) oss << ", pNumDependentNodes=NULL";
-      else oss << ", pNumDependentNodes=" << data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes__val;
+      else { oss << ", pNumDependentNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphNodeGetType:
       oss << "hipGraphNodeGetType(";
-      oss << "node=" << data->args.hipGraphNodeGetType.node;
+      oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetType.node);
       if (data->args.hipGraphNodeGetType.pType == NULL) oss << ", pType=NULL";
-      else oss << ", pType=" << data->args.hipGraphNodeGetType.pType__val;
+      else { oss << ", pType="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetType.pType__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGraphReleaseUserObject:
       oss << "hipGraphReleaseUserObject(";
-      oss << "graph=" << data->args.hipGraphReleaseUserObject.graph;
-      oss << ", object=" << data->args.hipGraphReleaseUserObject.object;
-      oss << ", count=" << data->args.hipGraphReleaseUserObject.count;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphReleaseUserObject.graph);
+      oss << ", object="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphReleaseUserObject.object);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphReleaseUserObject.count);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphRemoveDependencies:
       oss << "hipGraphRemoveDependencies(";
-      oss << "graph=" << data->args.hipGraphRemoveDependencies.graph;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRemoveDependencies.graph);
       if (data->args.hipGraphRemoveDependencies.from == NULL) oss << ", from=NULL";
-      else oss << ", from=" << data->args.hipGraphRemoveDependencies.from__val;
+      else { oss << ", from="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRemoveDependencies.from__val); }
       if (data->args.hipGraphRemoveDependencies.to == NULL) oss << ", to=NULL";
-      else oss << ", to=" << data->args.hipGraphRemoveDependencies.to__val;
-      oss << ", numDependencies=" << data->args.hipGraphRemoveDependencies.numDependencies;
+      else { oss << ", to="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRemoveDependencies.to__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRemoveDependencies.numDependencies);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphRetainUserObject:
       oss << "hipGraphRetainUserObject(";
-      oss << "graph=" << data->args.hipGraphRetainUserObject.graph;
-      oss << ", object=" << data->args.hipGraphRetainUserObject.object;
-      oss << ", count=" << data->args.hipGraphRetainUserObject.count;
-      oss << ", flags=" << data->args.hipGraphRetainUserObject.flags;
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRetainUserObject.graph);
+      oss << ", object="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRetainUserObject.object);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRetainUserObject.count);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphRetainUserObject.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphUpload:
       oss << "hipGraphUpload(";
-      oss << "graphExec=" << data->args.hipGraphUpload.graphExec;
-      oss << ", stream=" << data->args.hipGraphUpload.stream;
+      oss << "graphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphUpload.graphExec);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphUpload.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsGLRegisterBuffer:
       oss << "hipGraphicsGLRegisterBuffer(";
       if (data->args.hipGraphicsGLRegisterBuffer.resource == NULL) oss << "resource=NULL";
-      else oss << "resource=" << (void*)data->args.hipGraphicsGLRegisterBuffer.resource__val;
-      oss << ", buffer=" << data->args.hipGraphicsGLRegisterBuffer.buffer;
-      oss << ", flags=" << data->args.hipGraphicsGLRegisterBuffer.flags;
+      else { oss << "resource="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipGraphicsGLRegisterBuffer.resource__val); }
+      oss << ", buffer="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsGLRegisterBuffer.buffer);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsGLRegisterBuffer.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsGLRegisterImage:
       oss << "hipGraphicsGLRegisterImage(";
       if (data->args.hipGraphicsGLRegisterImage.resource == NULL) oss << "resource=NULL";
-      else oss << "resource=" << (void*)data->args.hipGraphicsGLRegisterImage.resource__val;
-      oss << ", image=" << data->args.hipGraphicsGLRegisterImage.image;
-      oss << ", target=" << data->args.hipGraphicsGLRegisterImage.target;
-      oss << ", flags=" << data->args.hipGraphicsGLRegisterImage.flags;
+      else { oss << "resource="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipGraphicsGLRegisterImage.resource__val); }
+      oss << ", image="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsGLRegisterImage.image);
+      oss << ", target="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsGLRegisterImage.target);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsGLRegisterImage.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsMapResources:
       oss << "hipGraphicsMapResources(";
-      oss << "count=" << data->args.hipGraphicsMapResources.count;
+      oss << "count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsMapResources.count);
       if (data->args.hipGraphicsMapResources.resources == NULL) oss << ", resources=NULL";
-      else oss << ", resources=" << data->args.hipGraphicsMapResources.resources__val;
-      oss << ", stream=" << data->args.hipGraphicsMapResources.stream;
+      else { oss << ", resources="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsMapResources.resources__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsMapResources.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsResourceGetMappedPointer:
       oss << "hipGraphicsResourceGetMappedPointer(";
       if (data->args.hipGraphicsResourceGetMappedPointer.devPtr == NULL) oss << "devPtr=NULL";
-      else oss << "devPtr=" << data->args.hipGraphicsResourceGetMappedPointer.devPtr__val;
+      else { oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsResourceGetMappedPointer.devPtr__val); }
       if (data->args.hipGraphicsResourceGetMappedPointer.size == NULL) oss << ", size=NULL";
-      else oss << ", size=" << data->args.hipGraphicsResourceGetMappedPointer.size__val;
-      oss << ", resource=" << data->args.hipGraphicsResourceGetMappedPointer.resource;
+      else { oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsResourceGetMappedPointer.size__val); }
+      oss << ", resource="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsResourceGetMappedPointer.resource);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsSubResourceGetMappedArray:
       oss << "hipGraphicsSubResourceGetMappedArray(";
       if (data->args.hipGraphicsSubResourceGetMappedArray.array == NULL) oss << "array=NULL";
-      else oss << "array=" << data->args.hipGraphicsSubResourceGetMappedArray.array__val;
-      oss << ", resource=" << data->args.hipGraphicsSubResourceGetMappedArray.resource;
-      oss << ", arrayIndex=" << data->args.hipGraphicsSubResourceGetMappedArray.arrayIndex;
-      oss << ", mipLevel=" << data->args.hipGraphicsSubResourceGetMappedArray.mipLevel;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsSubResourceGetMappedArray.array__val); }
+      oss << ", resource="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsSubResourceGetMappedArray.resource);
+      oss << ", arrayIndex="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsSubResourceGetMappedArray.arrayIndex);
+      oss << ", mipLevel="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsSubResourceGetMappedArray.mipLevel);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsUnmapResources:
       oss << "hipGraphicsUnmapResources(";
-      oss << "count=" << data->args.hipGraphicsUnmapResources.count;
+      oss << "count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsUnmapResources.count);
       if (data->args.hipGraphicsUnmapResources.resources == NULL) oss << ", resources=NULL";
-      else oss << ", resources=" << data->args.hipGraphicsUnmapResources.resources__val;
-      oss << ", stream=" << data->args.hipGraphicsUnmapResources.stream;
+      else { oss << ", resources="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsUnmapResources.resources__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsUnmapResources.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphicsUnregisterResource:
       oss << "hipGraphicsUnregisterResource(";
-      oss << "resource=" << data->args.hipGraphicsUnregisterResource.resource;
+      oss << "resource="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphicsUnregisterResource.resource);
       oss << ")";
     break;
     case HIP_API_ID_hipHccModuleLaunchKernel:
       oss << "hipHccModuleLaunchKernel(";
-      oss << "f=" << data->args.hipHccModuleLaunchKernel.f;
-      oss << ", globalWorkSizeX=" << data->args.hipHccModuleLaunchKernel.globalWorkSizeX;
-      oss << ", globalWorkSizeY=" << data->args.hipHccModuleLaunchKernel.globalWorkSizeY;
-      oss << ", globalWorkSizeZ=" << data->args.hipHccModuleLaunchKernel.globalWorkSizeZ;
-      oss << ", blockDimX=" << data->args.hipHccModuleLaunchKernel.blockDimX;
-      oss << ", blockDimY=" << data->args.hipHccModuleLaunchKernel.blockDimY;
-      oss << ", blockDimZ=" << data->args.hipHccModuleLaunchKernel.blockDimZ;
-      oss << ", sharedMemBytes=" << data->args.hipHccModuleLaunchKernel.sharedMemBytes;
-      oss << ", hStream=" << data->args.hipHccModuleLaunchKernel.hStream;
+      oss << "f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.f);
+      oss << ", globalWorkSizeX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.globalWorkSizeX);
+      oss << ", globalWorkSizeY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.globalWorkSizeY);
+      oss << ", globalWorkSizeZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.globalWorkSizeZ);
+      oss << ", blockDimX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.blockDimX);
+      oss << ", blockDimY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.blockDimY);
+      oss << ", blockDimZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.blockDimZ);
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.sharedMemBytes);
+      oss << ", hStream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.hStream);
       if (data->args.hipHccModuleLaunchKernel.kernelParams == NULL) oss << ", kernelParams=NULL";
-      else oss << ", kernelParams=" << data->args.hipHccModuleLaunchKernel.kernelParams__val;
+      else { oss << ", kernelParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.kernelParams__val); }
       if (data->args.hipHccModuleLaunchKernel.extra == NULL) oss << ", extra=NULL";
-      else oss << ", extra=" << data->args.hipHccModuleLaunchKernel.extra__val;
-      oss << ", startEvent=" << data->args.hipHccModuleLaunchKernel.startEvent;
-      oss << ", stopEvent=" << data->args.hipHccModuleLaunchKernel.stopEvent;
+      else { oss << ", extra="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.extra__val); }
+      oss << ", startEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.startEvent);
+      oss << ", stopEvent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHccModuleLaunchKernel.stopEvent);
       oss << ")";
     break;
     case HIP_API_ID_hipHostAlloc:
       oss << "hipHostAlloc(";
       if (data->args.hipHostAlloc.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipHostAlloc.ptr__val;
-      oss << ", size=" << data->args.hipHostAlloc.size;
-      oss << ", flags=" << data->args.hipHostAlloc.flags;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostAlloc.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostAlloc.size);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostAlloc.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipHostFree:
       oss << "hipHostFree(";
-      oss << "ptr=" << data->args.hipHostFree.ptr;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostFree.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipHostGetDevicePointer:
       oss << "hipHostGetDevicePointer(";
       if (data->args.hipHostGetDevicePointer.devPtr == NULL) oss << "devPtr=NULL";
-      else oss << "devPtr=" << data->args.hipHostGetDevicePointer.devPtr__val;
-      oss << ", hstPtr=" << data->args.hipHostGetDevicePointer.hstPtr;
-      oss << ", flags=" << data->args.hipHostGetDevicePointer.flags;
+      else { oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostGetDevicePointer.devPtr__val); }
+      oss << ", hstPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostGetDevicePointer.hstPtr);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostGetDevicePointer.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipHostGetFlags:
       oss << "hipHostGetFlags(";
       if (data->args.hipHostGetFlags.flagsPtr == NULL) oss << "flagsPtr=NULL";
-      else oss << "flagsPtr=" << data->args.hipHostGetFlags.flagsPtr__val;
-      oss << ", hostPtr=" << data->args.hipHostGetFlags.hostPtr;
+      else { oss << "flagsPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostGetFlags.flagsPtr__val); }
+      oss << ", hostPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostGetFlags.hostPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipHostMalloc:
       oss << "hipHostMalloc(";
       if (data->args.hipHostMalloc.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipHostMalloc.ptr__val;
-      oss << ", size=" << data->args.hipHostMalloc.size;
-      oss << ", flags=" << data->args.hipHostMalloc.flags;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.size);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipHostRegister:
       oss << "hipHostRegister(";
-      oss << "hostPtr=" << data->args.hipHostRegister.hostPtr;
-      oss << ", sizeBytes=" << data->args.hipHostRegister.sizeBytes;
-      oss << ", flags=" << data->args.hipHostRegister.flags;
+      oss << "hostPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostRegister.hostPtr);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostRegister.sizeBytes);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostRegister.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipHostUnregister:
       oss << "hipHostUnregister(";
-      oss << "hostPtr=" << data->args.hipHostUnregister.hostPtr;
+      oss << "hostPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostUnregister.hostPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipImportExternalMemory:
       oss << "hipImportExternalMemory(";
       if (data->args.hipImportExternalMemory.extMem_out == NULL) oss << "extMem_out=NULL";
-      else oss << "extMem_out=" << data->args.hipImportExternalMemory.extMem_out__val;
+      else { oss << "extMem_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipImportExternalMemory.extMem_out__val); }
       if (data->args.hipImportExternalMemory.memHandleDesc == NULL) oss << ", memHandleDesc=NULL";
-      else oss << ", memHandleDesc=" << data->args.hipImportExternalMemory.memHandleDesc__val;
+      else { oss << ", memHandleDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipImportExternalMemory.memHandleDesc__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipImportExternalSemaphore:
       oss << "hipImportExternalSemaphore(";
       if (data->args.hipImportExternalSemaphore.extSem_out == NULL) oss << "extSem_out=NULL";
-      else oss << "extSem_out=" << data->args.hipImportExternalSemaphore.extSem_out__val;
+      else { oss << "extSem_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipImportExternalSemaphore.extSem_out__val); }
       if (data->args.hipImportExternalSemaphore.semHandleDesc == NULL) oss << ", semHandleDesc=NULL";
-      else oss << ", semHandleDesc=" << data->args.hipImportExternalSemaphore.semHandleDesc__val;
+      else { oss << ", semHandleDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipImportExternalSemaphore.semHandleDesc__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipInit:
       oss << "hipInit(";
-      oss << "flags=" << data->args.hipInit.flags;
+      oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipInit.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipIpcCloseMemHandle:
       oss << "hipIpcCloseMemHandle(";
-      oss << "devPtr=" << data->args.hipIpcCloseMemHandle.devPtr;
+      oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcCloseMemHandle.devPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipIpcGetEventHandle:
       oss << "hipIpcGetEventHandle(";
       if (data->args.hipIpcGetEventHandle.handle == NULL) oss << "handle=NULL";
-      else oss << "handle=" << data->args.hipIpcGetEventHandle.handle__val;
-      oss << ", event=" << data->args.hipIpcGetEventHandle.event;
+      else { oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcGetEventHandle.handle__val); }
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcGetEventHandle.event);
       oss << ")";
     break;
     case HIP_API_ID_hipIpcGetMemHandle:
       oss << "hipIpcGetMemHandle(";
       if (data->args.hipIpcGetMemHandle.handle == NULL) oss << "handle=NULL";
-      else oss << "handle=" << data->args.hipIpcGetMemHandle.handle__val;
-      oss << ", devPtr=" << data->args.hipIpcGetMemHandle.devPtr;
+      else { oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcGetMemHandle.handle__val); }
+      oss << ", devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcGetMemHandle.devPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipIpcOpenEventHandle:
       oss << "hipIpcOpenEventHandle(";
       if (data->args.hipIpcOpenEventHandle.event == NULL) oss << "event=NULL";
-      else oss << "event=" << data->args.hipIpcOpenEventHandle.event__val;
-      oss << ", handle=" << data->args.hipIpcOpenEventHandle.handle;
+      else { oss << "event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcOpenEventHandle.event__val); }
+      oss << ", handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcOpenEventHandle.handle);
       oss << ")";
     break;
     case HIP_API_ID_hipIpcOpenMemHandle:
       oss << "hipIpcOpenMemHandle(";
       if (data->args.hipIpcOpenMemHandle.devPtr == NULL) oss << "devPtr=NULL";
-      else oss << "devPtr=" << data->args.hipIpcOpenMemHandle.devPtr__val;
-      oss << ", handle=" << data->args.hipIpcOpenMemHandle.handle;
-      oss << ", flags=" << data->args.hipIpcOpenMemHandle.flags;
+      else { oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcOpenMemHandle.devPtr__val); }
+      oss << ", handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcOpenMemHandle.handle);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipIpcOpenMemHandle.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchByPtr:
       oss << "hipLaunchByPtr(";
-      oss << "hostFunction=" << data->args.hipLaunchByPtr.hostFunction;
+      oss << "hostFunction="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchByPtr.hostFunction);
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchCooperativeKernel:
       oss << "hipLaunchCooperativeKernel(";
-      oss << "f=" << data->args.hipLaunchCooperativeKernel.f;
-      oss << ", gridDim=" << data->args.hipLaunchCooperativeKernel.gridDim;
-      oss << ", blockDimX=" << data->args.hipLaunchCooperativeKernel.blockDimX;
+      oss << "f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.f);
+      oss << ", gridDim="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.gridDim);
+      oss << ", blockDimX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.blockDimX);
       if (data->args.hipLaunchCooperativeKernel.kernelParams == NULL) oss << ", kernelParams=NULL";
-      else oss << ", kernelParams=" << data->args.hipLaunchCooperativeKernel.kernelParams__val;
-      oss << ", sharedMemBytes=" << data->args.hipLaunchCooperativeKernel.sharedMemBytes;
-      oss << ", stream=" << data->args.hipLaunchCooperativeKernel.stream;
+      else { oss << ", kernelParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.kernelParams__val); }
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.sharedMemBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernel.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice:
       oss << "hipLaunchCooperativeKernelMultiDevice(";
       if (data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList == NULL) oss << "launchParamsList=NULL";
-      else oss << "launchParamsList=" << data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val;
-      oss << ", numDevices=" << data->args.hipLaunchCooperativeKernelMultiDevice.numDevices;
-      oss << ", flags=" << data->args.hipLaunchCooperativeKernelMultiDevice.flags;
+      else { oss << "launchParamsList="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernelMultiDevice.launchParamsList__val); }
+      oss << ", numDevices="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernelMultiDevice.numDevices);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchCooperativeKernelMultiDevice.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchHostFunc:
       oss << "hipLaunchHostFunc(";
-      oss << "stream=" << data->args.hipLaunchHostFunc.stream;
-      oss << ", fn=" << data->args.hipLaunchHostFunc.fn;
-      oss << ", userData=" << data->args.hipLaunchHostFunc.userData;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchHostFunc.stream);
+      oss << ", fn="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchHostFunc.fn);
+      oss << ", userData="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchHostFunc.userData);
       oss << ")";
     break;
     case HIP_API_ID_hipLaunchKernel:
       oss << "hipLaunchKernel(";
-      oss << "function_address=" << data->args.hipLaunchKernel.function_address;
-      oss << ", numBlocks=" << data->args.hipLaunchKernel.numBlocks;
-      oss << ", dimBlocks=" << data->args.hipLaunchKernel.dimBlocks;
+      oss << "function_address="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.function_address);
+      oss << ", numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.numBlocks);
+      oss << ", dimBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.dimBlocks);
       if (data->args.hipLaunchKernel.args == NULL) oss << ", args=NULL";
-      else oss << ", args=" << data->args.hipLaunchKernel.args__val;
-      oss << ", sharedMemBytes=" << data->args.hipLaunchKernel.sharedMemBytes;
-      oss << ", stream=" << data->args.hipLaunchKernel.stream;
+      else { oss << ", args="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.args__val); }
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.sharedMemBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMalloc:
       oss << "hipMalloc(";
       if (data->args.hipMalloc.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipMalloc.ptr__val;
-      oss << ", size=" << data->args.hipMalloc.size;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc.size);
       oss << ")";
     break;
     case HIP_API_ID_hipMalloc3D:
       oss << "hipMalloc3D(";
       if (data->args.hipMalloc3D.pitchedDevPtr == NULL) oss << "pitchedDevPtr=NULL";
-      else oss << "pitchedDevPtr=" << data->args.hipMalloc3D.pitchedDevPtr__val;
-      oss << ", extent=" << data->args.hipMalloc3D.extent;
+      else { oss << "pitchedDevPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3D.pitchedDevPtr__val); }
+      oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3D.extent);
       oss << ")";
     break;
     case HIP_API_ID_hipMalloc3DArray:
       oss << "hipMalloc3DArray(";
       if (data->args.hipMalloc3DArray.array == NULL) oss << "array=NULL";
-      else oss << "array=" << data->args.hipMalloc3DArray.array__val;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3DArray.array__val); }
       if (data->args.hipMalloc3DArray.desc == NULL) oss << ", desc=NULL";
-      else oss << ", desc=" << data->args.hipMalloc3DArray.desc__val;
-      oss << ", extent=" << data->args.hipMalloc3DArray.extent;
-      oss << ", flags=" << data->args.hipMalloc3DArray.flags;
+      else { oss << ", desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3DArray.desc__val); }
+      oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3DArray.extent);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMalloc3DArray.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocArray:
       oss << "hipMallocArray(";
       if (data->args.hipMallocArray.array == NULL) oss << "array=NULL";
-      else oss << "array=" << (void*)data->args.hipMallocArray.array__val;
+      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipMallocArray.array__val); }
       if (data->args.hipMallocArray.desc == NULL) oss << ", desc=NULL";
-      else oss << ", desc=" << data->args.hipMallocArray.desc__val;
-      oss << ", width=" << data->args.hipMallocArray.width;
-      oss << ", height=" << data->args.hipMallocArray.height;
-      oss << ", flags=" << data->args.hipMallocArray.flags;
+      else { oss << ", desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocArray.desc__val); }
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocArray.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocArray.height);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocArray.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocAsync:
       oss << "hipMallocAsync(";
       if (data->args.hipMallocAsync.dev_ptr == NULL) oss << "dev_ptr=NULL";
-      else oss << "dev_ptr=" << data->args.hipMallocAsync.dev_ptr__val;
-      oss << ", size=" << data->args.hipMallocAsync.size;
-      oss << ", stream=" << data->args.hipMallocAsync.stream;
+      else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocAsync.dev_ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocAsync.size);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocFromPoolAsync:
       oss << "hipMallocFromPoolAsync(";
       if (data->args.hipMallocFromPoolAsync.dev_ptr == NULL) oss << "dev_ptr=NULL";
-      else oss << "dev_ptr=" << data->args.hipMallocFromPoolAsync.dev_ptr__val;
-      oss << ", size=" << data->args.hipMallocFromPoolAsync.size;
-      oss << ", mem_pool=" << data->args.hipMallocFromPoolAsync.mem_pool;
-      oss << ", stream=" << data->args.hipMallocFromPoolAsync.stream;
+      else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocFromPoolAsync.dev_ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocFromPoolAsync.size);
+      oss << ", mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocFromPoolAsync.mem_pool);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocFromPoolAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocHost:
       oss << "hipMallocHost(";
       if (data->args.hipMallocHost.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipMallocHost.ptr__val;
-      oss << ", size=" << data->args.hipMallocHost.size;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocHost.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocHost.size);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocManaged:
       oss << "hipMallocManaged(";
       if (data->args.hipMallocManaged.dev_ptr == NULL) oss << "dev_ptr=NULL";
-      else oss << "dev_ptr=" << data->args.hipMallocManaged.dev_ptr__val;
-      oss << ", size=" << data->args.hipMallocManaged.size;
-      oss << ", flags=" << data->args.hipMallocManaged.flags;
+      else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocManaged.dev_ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocManaged.size);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocManaged.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocMipmappedArray:
       oss << "hipMallocMipmappedArray(";
       if (data->args.hipMallocMipmappedArray.mipmappedArray == NULL) oss << "mipmappedArray=NULL";
-      else oss << "mipmappedArray=" << data->args.hipMallocMipmappedArray.mipmappedArray__val;
+      else { oss << "mipmappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocMipmappedArray.mipmappedArray__val); }
       if (data->args.hipMallocMipmappedArray.desc == NULL) oss << ", desc=NULL";
-      else oss << ", desc=" << data->args.hipMallocMipmappedArray.desc__val;
-      oss << ", extent=" << data->args.hipMallocMipmappedArray.extent;
-      oss << ", numLevels=" << data->args.hipMallocMipmappedArray.numLevels;
-      oss << ", flags=" << data->args.hipMallocMipmappedArray.flags;
+      else { oss << ", desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocMipmappedArray.desc__val); }
+      oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocMipmappedArray.extent);
+      oss << ", numLevels="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocMipmappedArray.numLevels);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocMipmappedArray.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMallocPitch:
       oss << "hipMallocPitch(";
       if (data->args.hipMallocPitch.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipMallocPitch.ptr__val;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocPitch.ptr__val); }
       if (data->args.hipMallocPitch.pitch == NULL) oss << ", pitch=NULL";
-      else oss << ", pitch=" << data->args.hipMallocPitch.pitch__val;
-      oss << ", width=" << data->args.hipMallocPitch.width;
-      oss << ", height=" << data->args.hipMallocPitch.height;
+      else { oss << ", pitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocPitch.pitch__val); }
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocPitch.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMallocPitch.height);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAddressFree:
       oss << "hipMemAddressFree(";
-      oss << "devPtr=" << data->args.hipMemAddressFree.devPtr;
-      oss << ", size=" << data->args.hipMemAddressFree.size;
+      oss << "devPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressFree.devPtr);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressFree.size);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAddressReserve:
       oss << "hipMemAddressReserve(";
       if (data->args.hipMemAddressReserve.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipMemAddressReserve.ptr__val;
-      oss << ", size=" << data->args.hipMemAddressReserve.size;
-      oss << ", alignment=" << data->args.hipMemAddressReserve.alignment;
-      oss << ", addr=" << data->args.hipMemAddressReserve.addr;
-      oss << ", flags=" << data->args.hipMemAddressReserve.flags;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressReserve.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressReserve.size);
+      oss << ", alignment="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressReserve.alignment);
+      oss << ", addr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressReserve.addr);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAddressReserve.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAdvise:
       oss << "hipMemAdvise(";
-      oss << "dev_ptr=" << data->args.hipMemAdvise.dev_ptr;
-      oss << ", count=" << data->args.hipMemAdvise.count;
-      oss << ", advice=" << data->args.hipMemAdvise.advice;
-      oss << ", device=" << data->args.hipMemAdvise.device;
+      oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.dev_ptr);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.count);
+      oss << ", advice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.advice);
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.device);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAllocHost:
       oss << "hipMemAllocHost(";
       if (data->args.hipMemAllocHost.ptr == NULL) oss << "ptr=NULL";
-      else oss << "ptr=" << data->args.hipMemAllocHost.ptr__val;
-      oss << ", size=" << data->args.hipMemAllocHost.size;
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocHost.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocHost.size);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAllocPitch:
       oss << "hipMemAllocPitch(";
       if (data->args.hipMemAllocPitch.dptr == NULL) oss << "dptr=NULL";
-      else oss << "dptr=" << data->args.hipMemAllocPitch.dptr__val;
+      else { oss << "dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocPitch.dptr__val); }
       if (data->args.hipMemAllocPitch.pitch == NULL) oss << ", pitch=NULL";
-      else oss << ", pitch=" << data->args.hipMemAllocPitch.pitch__val;
-      oss << ", widthInBytes=" << data->args.hipMemAllocPitch.widthInBytes;
-      oss << ", height=" << data->args.hipMemAllocPitch.height;
-      oss << ", elementSizeBytes=" << data->args.hipMemAllocPitch.elementSizeBytes;
+      else { oss << ", pitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocPitch.pitch__val); }
+      oss << ", widthInBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocPitch.widthInBytes);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocPitch.height);
+      oss << ", elementSizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAllocPitch.elementSizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemCreate:
       oss << "hipMemCreate(";
       if (data->args.hipMemCreate.handle == NULL) oss << "handle=NULL";
-      else oss << "handle=" << data->args.hipMemCreate.handle__val;
-      oss << ", size=" << data->args.hipMemCreate.size;
+      else { oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemCreate.handle__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemCreate.size);
       if (data->args.hipMemCreate.prop == NULL) oss << ", prop=NULL";
-      else oss << ", prop=" << data->args.hipMemCreate.prop__val;
-      oss << ", flags=" << data->args.hipMemCreate.flags;
+      else { oss << ", prop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemCreate.prop__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemCreate.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemExportToShareableHandle:
       oss << "hipMemExportToShareableHandle(";
-      oss << "shareableHandle=" << data->args.hipMemExportToShareableHandle.shareableHandle;
-      oss << ", handle=" << data->args.hipMemExportToShareableHandle.handle;
-      oss << ", handleType=" << data->args.hipMemExportToShareableHandle.handleType;
-      oss << ", flags=" << data->args.hipMemExportToShareableHandle.flags;
+      oss << "shareableHandle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemExportToShareableHandle.shareableHandle);
+      oss << ", handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemExportToShareableHandle.handle);
+      oss << ", handleType="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemExportToShareableHandle.handleType);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemExportToShareableHandle.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemGetAccess:
       oss << "hipMemGetAccess(";
       if (data->args.hipMemGetAccess.flags == NULL) oss << "flags=NULL";
-      else oss << "flags=" << data->args.hipMemGetAccess.flags__val;
+      else { oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAccess.flags__val); }
       if (data->args.hipMemGetAccess.location == NULL) oss << ", location=NULL";
-      else oss << ", location=" << data->args.hipMemGetAccess.location__val;
-      oss << ", ptr=" << data->args.hipMemGetAccess.ptr;
+      else { oss << ", location="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAccess.location__val); }
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAccess.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipMemGetAddressRange:
       oss << "hipMemGetAddressRange(";
       if (data->args.hipMemGetAddressRange.pbase == NULL) oss << "pbase=NULL";
-      else oss << "pbase=" << data->args.hipMemGetAddressRange.pbase__val;
+      else { oss << "pbase="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAddressRange.pbase__val); }
       if (data->args.hipMemGetAddressRange.psize == NULL) oss << ", psize=NULL";
-      else oss << ", psize=" << data->args.hipMemGetAddressRange.psize__val;
-      oss << ", dptr=" << data->args.hipMemGetAddressRange.dptr;
+      else { oss << ", psize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAddressRange.psize__val); }
+      oss << ", dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAddressRange.dptr);
       oss << ")";
     break;
     case HIP_API_ID_hipMemGetAllocationGranularity:
       oss << "hipMemGetAllocationGranularity(";
       if (data->args.hipMemGetAllocationGranularity.granularity == NULL) oss << "granularity=NULL";
-      else oss << "granularity=" << data->args.hipMemGetAllocationGranularity.granularity__val;
+      else { oss << "granularity="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAllocationGranularity.granularity__val); }
       if (data->args.hipMemGetAllocationGranularity.prop == NULL) oss << ", prop=NULL";
-      else oss << ", prop=" << data->args.hipMemGetAllocationGranularity.prop__val;
-      oss << ", option=" << data->args.hipMemGetAllocationGranularity.option;
+      else { oss << ", prop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAllocationGranularity.prop__val); }
+      oss << ", option="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAllocationGranularity.option);
       oss << ")";
     break;
     case HIP_API_ID_hipMemGetAllocationPropertiesFromHandle:
       oss << "hipMemGetAllocationPropertiesFromHandle(";
       if (data->args.hipMemGetAllocationPropertiesFromHandle.prop == NULL) oss << "prop=NULL";
-      else oss << "prop=" << data->args.hipMemGetAllocationPropertiesFromHandle.prop__val;
-      oss << ", handle=" << data->args.hipMemGetAllocationPropertiesFromHandle.handle;
+      else { oss << "prop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAllocationPropertiesFromHandle.prop__val); }
+      oss << ", handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetAllocationPropertiesFromHandle.handle);
       oss << ")";
     break;
     case HIP_API_ID_hipMemGetInfo:
       oss << "hipMemGetInfo(";
       if (data->args.hipMemGetInfo.free == NULL) oss << "free=NULL";
-      else oss << "free=" << data->args.hipMemGetInfo.free__val;
+      else { oss << "free="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetInfo.free__val); }
       if (data->args.hipMemGetInfo.total == NULL) oss << ", total=NULL";
-      else oss << ", total=" << data->args.hipMemGetInfo.total__val;
+      else { oss << ", total="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemGetInfo.total__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemImportFromShareableHandle:
       oss << "hipMemImportFromShareableHandle(";
       if (data->args.hipMemImportFromShareableHandle.handle == NULL) oss << "handle=NULL";
-      else oss << "handle=" << data->args.hipMemImportFromShareableHandle.handle__val;
-      oss << ", osHandle=" << data->args.hipMemImportFromShareableHandle.osHandle;
-      oss << ", shHandleType=" << data->args.hipMemImportFromShareableHandle.shHandleType;
+      else { oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemImportFromShareableHandle.handle__val); }
+      oss << ", osHandle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemImportFromShareableHandle.osHandle);
+      oss << ", shHandleType="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemImportFromShareableHandle.shHandleType);
       oss << ")";
     break;
     case HIP_API_ID_hipMemMap:
       oss << "hipMemMap(";
-      oss << "ptr=" << data->args.hipMemMap.ptr;
-      oss << ", size=" << data->args.hipMemMap.size;
-      oss << ", offset=" << data->args.hipMemMap.offset;
-      oss << ", handle=" << data->args.hipMemMap.handle;
-      oss << ", flags=" << data->args.hipMemMap.flags;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMap.ptr);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMap.size);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMap.offset);
+      oss << ", handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMap.handle);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMap.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemMapArrayAsync:
       oss << "hipMemMapArrayAsync(";
       if (data->args.hipMemMapArrayAsync.mapInfoList == NULL) oss << "mapInfoList=NULL";
-      else oss << "mapInfoList=" << data->args.hipMemMapArrayAsync.mapInfoList__val;
-      oss << ", count=" << data->args.hipMemMapArrayAsync.count;
-      oss << ", stream=" << data->args.hipMemMapArrayAsync.stream;
+      else { oss << "mapInfoList="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMapArrayAsync.mapInfoList__val); }
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMapArrayAsync.count);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemMapArrayAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolCreate:
       oss << "hipMemPoolCreate(";
       if (data->args.hipMemPoolCreate.mem_pool == NULL) oss << "mem_pool=NULL";
-      else oss << "mem_pool=" << data->args.hipMemPoolCreate.mem_pool__val;
+      else { oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolCreate.mem_pool__val); }
       if (data->args.hipMemPoolCreate.pool_props == NULL) oss << ", pool_props=NULL";
-      else oss << ", pool_props=" << data->args.hipMemPoolCreate.pool_props__val;
+      else { oss << ", pool_props="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolCreate.pool_props__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolDestroy:
       oss << "hipMemPoolDestroy(";
-      oss << "mem_pool=" << data->args.hipMemPoolDestroy.mem_pool;
+      oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolDestroy.mem_pool);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolExportPointer:
       oss << "hipMemPoolExportPointer(";
       if (data->args.hipMemPoolExportPointer.export_data == NULL) oss << "export_data=NULL";
-      else oss << "export_data=" << data->args.hipMemPoolExportPointer.export_data__val;
-      oss << ", dev_ptr=" << data->args.hipMemPoolExportPointer.dev_ptr;
+      else { oss << "export_data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportPointer.export_data__val); }
+      oss << ", dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportPointer.dev_ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolExportToShareableHandle:
       oss << "hipMemPoolExportToShareableHandle(";
-      oss << "shared_handle=" << data->args.hipMemPoolExportToShareableHandle.shared_handle;
-      oss << ", mem_pool=" << data->args.hipMemPoolExportToShareableHandle.mem_pool;
-      oss << ", handle_type=" << data->args.hipMemPoolExportToShareableHandle.handle_type;
-      oss << ", flags=" << data->args.hipMemPoolExportToShareableHandle.flags;
+      oss << "shared_handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportToShareableHandle.shared_handle);
+      oss << ", mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportToShareableHandle.mem_pool);
+      oss << ", handle_type="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportToShareableHandle.handle_type);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolExportToShareableHandle.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolGetAccess:
       oss << "hipMemPoolGetAccess(";
       if (data->args.hipMemPoolGetAccess.flags == NULL) oss << "flags=NULL";
-      else oss << "flags=" << data->args.hipMemPoolGetAccess.flags__val;
-      oss << ", mem_pool=" << data->args.hipMemPoolGetAccess.mem_pool;
+      else { oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAccess.flags__val); }
+      oss << ", mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAccess.mem_pool);
       if (data->args.hipMemPoolGetAccess.location == NULL) oss << ", location=NULL";
-      else oss << ", location=" << data->args.hipMemPoolGetAccess.location__val;
+      else { oss << ", location="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAccess.location__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolGetAttribute:
       oss << "hipMemPoolGetAttribute(";
-      oss << "mem_pool=" << data->args.hipMemPoolGetAttribute.mem_pool;
-      oss << ", attr=" << data->args.hipMemPoolGetAttribute.attr;
-      oss << ", value=" << data->args.hipMemPoolGetAttribute.value;
+      oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAttribute.mem_pool);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAttribute.attr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolGetAttribute.value);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolImportFromShareableHandle:
       oss << "hipMemPoolImportFromShareableHandle(";
       if (data->args.hipMemPoolImportFromShareableHandle.mem_pool == NULL) oss << "mem_pool=NULL";
-      else oss << "mem_pool=" << data->args.hipMemPoolImportFromShareableHandle.mem_pool__val;
-      oss << ", shared_handle=" << data->args.hipMemPoolImportFromShareableHandle.shared_handle;
-      oss << ", handle_type=" << data->args.hipMemPoolImportFromShareableHandle.handle_type;
-      oss << ", flags=" << data->args.hipMemPoolImportFromShareableHandle.flags;
+      else { oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportFromShareableHandle.mem_pool__val); }
+      oss << ", shared_handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportFromShareableHandle.shared_handle);
+      oss << ", handle_type="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportFromShareableHandle.handle_type);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportFromShareableHandle.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolImportPointer:
       oss << "hipMemPoolImportPointer(";
       if (data->args.hipMemPoolImportPointer.dev_ptr == NULL) oss << "dev_ptr=NULL";
-      else oss << "dev_ptr=" << data->args.hipMemPoolImportPointer.dev_ptr__val;
-      oss << ", mem_pool=" << data->args.hipMemPoolImportPointer.mem_pool;
+      else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportPointer.dev_ptr__val); }
+      oss << ", mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportPointer.mem_pool);
       if (data->args.hipMemPoolImportPointer.export_data == NULL) oss << ", export_data=NULL";
-      else oss << ", export_data=" << data->args.hipMemPoolImportPointer.export_data__val;
+      else { oss << ", export_data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolImportPointer.export_data__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolSetAccess:
       oss << "hipMemPoolSetAccess(";
-      oss << "mem_pool=" << data->args.hipMemPoolSetAccess.mem_pool;
+      oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAccess.mem_pool);
       if (data->args.hipMemPoolSetAccess.desc_list == NULL) oss << ", desc_list=NULL";
-      else oss << ", desc_list=" << data->args.hipMemPoolSetAccess.desc_list__val;
-      oss << ", count=" << data->args.hipMemPoolSetAccess.count;
+      else { oss << ", desc_list="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAccess.desc_list__val); }
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAccess.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolSetAttribute:
       oss << "hipMemPoolSetAttribute(";
-      oss << "mem_pool=" << data->args.hipMemPoolSetAttribute.mem_pool;
-      oss << ", attr=" << data->args.hipMemPoolSetAttribute.attr;
-      oss << ", value=" << data->args.hipMemPoolSetAttribute.value;
+      oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAttribute.mem_pool);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAttribute.attr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolSetAttribute.value);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPoolTrimTo:
       oss << "hipMemPoolTrimTo(";
-      oss << "mem_pool=" << data->args.hipMemPoolTrimTo.mem_pool;
-      oss << ", min_bytes_to_hold=" << data->args.hipMemPoolTrimTo.min_bytes_to_hold;
+      oss << "mem_pool="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolTrimTo.mem_pool);
+      oss << ", min_bytes_to_hold="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPoolTrimTo.min_bytes_to_hold);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPrefetchAsync:
       oss << "hipMemPrefetchAsync(";
-      oss << "dev_ptr=" << data->args.hipMemPrefetchAsync.dev_ptr;
-      oss << ", count=" << data->args.hipMemPrefetchAsync.count;
-      oss << ", device=" << data->args.hipMemPrefetchAsync.device;
-      oss << ", stream=" << data->args.hipMemPrefetchAsync.stream;
+      oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPrefetchAsync.dev_ptr);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPrefetchAsync.count);
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPrefetchAsync.device);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPrefetchAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemPtrGetInfo:
       oss << "hipMemPtrGetInfo(";
-      oss << "ptr=" << data->args.hipMemPtrGetInfo.ptr;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPtrGetInfo.ptr);
       if (data->args.hipMemPtrGetInfo.size == NULL) oss << ", size=NULL";
-      else oss << ", size=" << data->args.hipMemPtrGetInfo.size__val;
+      else { oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemPtrGetInfo.size__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemRangeGetAttribute:
       oss << "hipMemRangeGetAttribute(";
-      oss << "data=" << data->args.hipMemRangeGetAttribute.data;
-      oss << ", data_size=" << data->args.hipMemRangeGetAttribute.data_size;
-      oss << ", attribute=" << data->args.hipMemRangeGetAttribute.attribute;
-      oss << ", dev_ptr=" << data->args.hipMemRangeGetAttribute.dev_ptr;
-      oss << ", count=" << data->args.hipMemRangeGetAttribute.count;
+      oss << "data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttribute.data);
+      oss << ", data_size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttribute.data_size);
+      oss << ", attribute="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttribute.attribute);
+      oss << ", dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttribute.dev_ptr);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttribute.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemRangeGetAttributes:
       oss << "hipMemRangeGetAttributes(";
       if (data->args.hipMemRangeGetAttributes.data == NULL) oss << "data=NULL";
-      else oss << "data=" << data->args.hipMemRangeGetAttributes.data__val;
+      else { oss << "data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.data__val); }
       if (data->args.hipMemRangeGetAttributes.data_sizes == NULL) oss << ", data_sizes=NULL";
-      else oss << ", data_sizes=" << data->args.hipMemRangeGetAttributes.data_sizes__val;
+      else { oss << ", data_sizes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.data_sizes__val); }
       if (data->args.hipMemRangeGetAttributes.attributes == NULL) oss << ", attributes=NULL";
-      else oss << ", attributes=" << data->args.hipMemRangeGetAttributes.attributes__val;
-      oss << ", num_attributes=" << data->args.hipMemRangeGetAttributes.num_attributes;
-      oss << ", dev_ptr=" << data->args.hipMemRangeGetAttributes.dev_ptr;
-      oss << ", count=" << data->args.hipMemRangeGetAttributes.count;
+      else { oss << ", attributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.attributes__val); }
+      oss << ", num_attributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.num_attributes);
+      oss << ", dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.dev_ptr);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRangeGetAttributes.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemRelease:
       oss << "hipMemRelease(";
-      oss << "handle=" << data->args.hipMemRelease.handle;
+      oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRelease.handle);
       oss << ")";
     break;
     case HIP_API_ID_hipMemRetainAllocationHandle:
       oss << "hipMemRetainAllocationHandle(";
       if (data->args.hipMemRetainAllocationHandle.handle == NULL) oss << "handle=NULL";
-      else oss << "handle=" << data->args.hipMemRetainAllocationHandle.handle__val;
-      oss << ", addr=" << data->args.hipMemRetainAllocationHandle.addr;
+      else { oss << "handle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRetainAllocationHandle.handle__val); }
+      oss << ", addr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemRetainAllocationHandle.addr);
       oss << ")";
     break;
     case HIP_API_ID_hipMemSetAccess:
       oss << "hipMemSetAccess(";
-      oss << "ptr=" << data->args.hipMemSetAccess.ptr;
-      oss << ", size=" << data->args.hipMemSetAccess.size;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemSetAccess.ptr);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemSetAccess.size);
       if (data->args.hipMemSetAccess.desc == NULL) oss << ", desc=NULL";
-      else oss << ", desc=" << data->args.hipMemSetAccess.desc__val;
-      oss << ", count=" << data->args.hipMemSetAccess.count;
+      else { oss << ", desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemSetAccess.desc__val); }
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemSetAccess.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemUnmap:
       oss << "hipMemUnmap(";
-      oss << "ptr=" << data->args.hipMemUnmap.ptr;
-      oss << ", size=" << data->args.hipMemUnmap.size;
+      oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemUnmap.ptr);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemUnmap.size);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy:
       oss << "hipMemcpy(";
-      oss << "dst=" << data->args.hipMemcpy.dst;
-      oss << ", src=" << data->args.hipMemcpy.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpy.sizeBytes;
-      oss << ", kind=" << data->args.hipMemcpy.kind;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy.sizeBytes);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2D:
       oss << "hipMemcpy2D(";
-      oss << "dst=" << data->args.hipMemcpy2D.dst;
-      oss << ", dpitch=" << data->args.hipMemcpy2D.dpitch;
-      oss << ", src=" << data->args.hipMemcpy2D.src;
-      oss << ", spitch=" << data->args.hipMemcpy2D.spitch;
-      oss << ", width=" << data->args.hipMemcpy2D.width;
-      oss << ", height=" << data->args.hipMemcpy2D.height;
-      oss << ", kind=" << data->args.hipMemcpy2D.kind;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.dst);
+      oss << ", dpitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.dpitch);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.src);
+      oss << ", spitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.spitch);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2D.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2DAsync:
       oss << "hipMemcpy2DAsync(";
-      oss << "dst=" << data->args.hipMemcpy2DAsync.dst;
-      oss << ", dpitch=" << data->args.hipMemcpy2DAsync.dpitch;
-      oss << ", src=" << data->args.hipMemcpy2DAsync.src;
-      oss << ", spitch=" << data->args.hipMemcpy2DAsync.spitch;
-      oss << ", width=" << data->args.hipMemcpy2DAsync.width;
-      oss << ", height=" << data->args.hipMemcpy2DAsync.height;
-      oss << ", kind=" << data->args.hipMemcpy2DAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpy2DAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.dst);
+      oss << ", dpitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.dpitch);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.src);
+      oss << ", spitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.spitch);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2DFromArray:
       oss << "hipMemcpy2DFromArray(";
-      oss << "dst=" << data->args.hipMemcpy2DFromArray.dst;
-      oss << ", dpitch=" << data->args.hipMemcpy2DFromArray.dpitch;
-      oss << ", src=" << data->args.hipMemcpy2DFromArray.src;
-      oss << ", wOffset=" << data->args.hipMemcpy2DFromArray.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpy2DFromArray.hOffset;
-      oss << ", width=" << data->args.hipMemcpy2DFromArray.width;
-      oss << ", height=" << data->args.hipMemcpy2DFromArray.height;
-      oss << ", kind=" << data->args.hipMemcpy2DFromArray.kind;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.dst);
+      oss << ", dpitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.dpitch);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.src);
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.hOffset);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArray.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2DFromArrayAsync:
       oss << "hipMemcpy2DFromArrayAsync(";
-      oss << "dst=" << data->args.hipMemcpy2DFromArrayAsync.dst;
-      oss << ", dpitch=" << data->args.hipMemcpy2DFromArrayAsync.dpitch;
-      oss << ", src=" << data->args.hipMemcpy2DFromArrayAsync.src;
-      oss << ", wOffset=" << data->args.hipMemcpy2DFromArrayAsync.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpy2DFromArrayAsync.hOffset;
-      oss << ", width=" << data->args.hipMemcpy2DFromArrayAsync.width;
-      oss << ", height=" << data->args.hipMemcpy2DFromArrayAsync.height;
-      oss << ", kind=" << data->args.hipMemcpy2DFromArrayAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpy2DFromArrayAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.dst);
+      oss << ", dpitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.dpitch);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.src);
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.hOffset);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DFromArrayAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2DToArray:
       oss << "hipMemcpy2DToArray(";
       if (data->args.hipMemcpy2DToArray.dst == NULL) oss << "dst=NULL";
-      else oss << "dst=" << data->args.hipMemcpy2DToArray.dst__val;
-      oss << ", wOffset=" << data->args.hipMemcpy2DToArray.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpy2DToArray.hOffset;
-      oss << ", src=" << data->args.hipMemcpy2DToArray.src;
-      oss << ", spitch=" << data->args.hipMemcpy2DToArray.spitch;
-      oss << ", width=" << data->args.hipMemcpy2DToArray.width;
-      oss << ", height=" << data->args.hipMemcpy2DToArray.height;
-      oss << ", kind=" << data->args.hipMemcpy2DToArray.kind;
+      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.dst__val); }
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.hOffset);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.src);
+      oss << ", spitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.spitch);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy2DToArrayAsync:
       oss << "hipMemcpy2DToArrayAsync(";
       if (data->args.hipMemcpy2DToArrayAsync.dst == NULL) oss << "dst=NULL";
-      else oss << "dst=" << data->args.hipMemcpy2DToArrayAsync.dst__val;
-      oss << ", wOffset=" << data->args.hipMemcpy2DToArrayAsync.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpy2DToArrayAsync.hOffset;
-      oss << ", src=" << data->args.hipMemcpy2DToArrayAsync.src;
-      oss << ", spitch=" << data->args.hipMemcpy2DToArrayAsync.spitch;
-      oss << ", width=" << data->args.hipMemcpy2DToArrayAsync.width;
-      oss << ", height=" << data->args.hipMemcpy2DToArrayAsync.height;
-      oss << ", kind=" << data->args.hipMemcpy2DToArrayAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpy2DToArrayAsync.stream;
+      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.dst__val); }
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.hOffset);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.src);
+      oss << ", spitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.spitch);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.height);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy3D:
       oss << "hipMemcpy3D(";
       if (data->args.hipMemcpy3D.p == NULL) oss << "p=NULL";
-      else oss << "p=" << data->args.hipMemcpy3D.p__val;
+      else { oss << "p="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3D.p__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpy3DAsync:
       oss << "hipMemcpy3DAsync(";
       if (data->args.hipMemcpy3DAsync.p == NULL) oss << "p=NULL";
-      else oss << "p=" << data->args.hipMemcpy3DAsync.p__val;
-      oss << ", stream=" << data->args.hipMemcpy3DAsync.stream;
+      else { oss << "p="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DAsync.p__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyAsync:
       oss << "hipMemcpyAsync(";
-      oss << "dst=" << data->args.hipMemcpyAsync.dst;
-      oss << ", src=" << data->args.hipMemcpyAsync.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyAsync.sizeBytes;
-      oss << ", kind=" << data->args.hipMemcpyAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpyAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.sizeBytes);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyAtoH:
       oss << "hipMemcpyAtoH(";
-      oss << "dst=" << data->args.hipMemcpyAtoH.dst;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.dst);
       if (data->args.hipMemcpyAtoH.srcArray == NULL) oss << ", srcArray=NULL";
-      else oss << ", srcArray=" << data->args.hipMemcpyAtoH.srcArray__val;
-      oss << ", srcOffset=" << data->args.hipMemcpyAtoH.srcOffset;
-      oss << ", count=" << data->args.hipMemcpyAtoH.count;
+      else { oss << ", srcArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.srcArray__val); }
+      oss << ", srcOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.srcOffset);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyDtoD:
       oss << "hipMemcpyDtoD(";
-      oss << "dst=" << data->args.hipMemcpyDtoD.dst;
-      oss << ", src=" << data->args.hipMemcpyDtoD.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyDtoD.sizeBytes;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoD.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoD.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoD.sizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyDtoDAsync:
       oss << "hipMemcpyDtoDAsync(";
-      oss << "dst=" << data->args.hipMemcpyDtoDAsync.dst;
-      oss << ", src=" << data->args.hipMemcpyDtoDAsync.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyDtoDAsync.sizeBytes;
-      oss << ", stream=" << data->args.hipMemcpyDtoDAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoDAsync.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoDAsync.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoDAsync.sizeBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoDAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyDtoH:
       oss << "hipMemcpyDtoH(";
-      oss << "dst=" << data->args.hipMemcpyDtoH.dst;
-      oss << ", src=" << data->args.hipMemcpyDtoH.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyDtoH.sizeBytes;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoH.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoH.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoH.sizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyDtoHAsync:
       oss << "hipMemcpyDtoHAsync(";
-      oss << "dst=" << data->args.hipMemcpyDtoHAsync.dst;
-      oss << ", src=" << data->args.hipMemcpyDtoHAsync.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyDtoHAsync.sizeBytes;
-      oss << ", stream=" << data->args.hipMemcpyDtoHAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoHAsync.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoHAsync.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoHAsync.sizeBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyDtoHAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyFromArray:
       oss << "hipMemcpyFromArray(";
-      oss << "dst=" << data->args.hipMemcpyFromArray.dst;
-      oss << ", srcArray=" << data->args.hipMemcpyFromArray.srcArray;
-      oss << ", wOffset=" << data->args.hipMemcpyFromArray.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpyFromArray.hOffset;
-      oss << ", count=" << data->args.hipMemcpyFromArray.count;
-      oss << ", kind=" << data->args.hipMemcpyFromArray.kind;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.dst);
+      oss << ", srcArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.srcArray);
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.hOffset);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.count);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromArray.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyFromSymbol:
       oss << "hipMemcpyFromSymbol(";
-      oss << "dst=" << data->args.hipMemcpyFromSymbol.dst;
-      oss << ", symbol=" << data->args.hipMemcpyFromSymbol.symbol;
-      oss << ", sizeBytes=" << data->args.hipMemcpyFromSymbol.sizeBytes;
-      oss << ", offset=" << data->args.hipMemcpyFromSymbol.offset;
-      oss << ", kind=" << data->args.hipMemcpyFromSymbol.kind;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbol.dst);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbol.symbol);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbol.sizeBytes);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyFromSymbolAsync:
       oss << "hipMemcpyFromSymbolAsync(";
-      oss << "dst=" << data->args.hipMemcpyFromSymbolAsync.dst;
-      oss << ", symbol=" << data->args.hipMemcpyFromSymbolAsync.symbol;
-      oss << ", sizeBytes=" << data->args.hipMemcpyFromSymbolAsync.sizeBytes;
-      oss << ", offset=" << data->args.hipMemcpyFromSymbolAsync.offset;
-      oss << ", kind=" << data->args.hipMemcpyFromSymbolAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpyFromSymbolAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.dst);
+      oss << ", symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.symbol);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.sizeBytes);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyFromSymbolAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyHtoA:
       oss << "hipMemcpyHtoA(";
       if (data->args.hipMemcpyHtoA.dstArray == NULL) oss << "dstArray=NULL";
-      else oss << "dstArray=" << data->args.hipMemcpyHtoA.dstArray__val;
-      oss << ", dstOffset=" << data->args.hipMemcpyHtoA.dstOffset;
-      oss << ", srcHost=" << data->args.hipMemcpyHtoA.srcHost;
-      oss << ", count=" << data->args.hipMemcpyHtoA.count;
+      else { oss << "dstArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.dstArray__val); }
+      oss << ", dstOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.dstOffset);
+      oss << ", srcHost="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.srcHost);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyHtoD:
       oss << "hipMemcpyHtoD(";
-      oss << "dst=" << data->args.hipMemcpyHtoD.dst;
-      oss << ", src=" << data->args.hipMemcpyHtoD.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyHtoD.sizeBytes;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoD.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoD.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoD.sizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyHtoDAsync:
       oss << "hipMemcpyHtoDAsync(";
-      oss << "dst=" << data->args.hipMemcpyHtoDAsync.dst;
-      oss << ", src=" << data->args.hipMemcpyHtoDAsync.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyHtoDAsync.sizeBytes;
-      oss << ", stream=" << data->args.hipMemcpyHtoDAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoDAsync.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoDAsync.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoDAsync.sizeBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoDAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyParam2D:
       oss << "hipMemcpyParam2D(";
       if (data->args.hipMemcpyParam2D.pCopy == NULL) oss << "pCopy=NULL";
-      else oss << "pCopy=" << data->args.hipMemcpyParam2D.pCopy__val;
+      else { oss << "pCopy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyParam2D.pCopy__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyParam2DAsync:
       oss << "hipMemcpyParam2DAsync(";
       if (data->args.hipMemcpyParam2DAsync.pCopy == NULL) oss << "pCopy=NULL";
-      else oss << "pCopy=" << data->args.hipMemcpyParam2DAsync.pCopy__val;
-      oss << ", stream=" << data->args.hipMemcpyParam2DAsync.stream;
+      else { oss << "pCopy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyParam2DAsync.pCopy__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyParam2DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyPeer:
       oss << "hipMemcpyPeer(";
-      oss << "dst=" << data->args.hipMemcpyPeer.dst;
-      oss << ", dstDeviceId=" << data->args.hipMemcpyPeer.dstDeviceId;
-      oss << ", src=" << data->args.hipMemcpyPeer.src;
-      oss << ", srcDeviceId=" << data->args.hipMemcpyPeer.srcDeviceId;
-      oss << ", sizeBytes=" << data->args.hipMemcpyPeer.sizeBytes;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeer.dst);
+      oss << ", dstDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeer.dstDeviceId);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeer.src);
+      oss << ", srcDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeer.srcDeviceId);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeer.sizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyPeerAsync:
       oss << "hipMemcpyPeerAsync(";
-      oss << "dst=" << data->args.hipMemcpyPeerAsync.dst;
-      oss << ", dstDeviceId=" << data->args.hipMemcpyPeerAsync.dstDeviceId;
-      oss << ", src=" << data->args.hipMemcpyPeerAsync.src;
-      oss << ", srcDevice=" << data->args.hipMemcpyPeerAsync.srcDevice;
-      oss << ", sizeBytes=" << data->args.hipMemcpyPeerAsync.sizeBytes;
-      oss << ", stream=" << data->args.hipMemcpyPeerAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.dst);
+      oss << ", dstDeviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.dstDeviceId);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.src);
+      oss << ", srcDevice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.srcDevice);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.sizeBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyPeerAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyToArray:
       oss << "hipMemcpyToArray(";
       if (data->args.hipMemcpyToArray.dst == NULL) oss << "dst=NULL";
-      else oss << "dst=" << data->args.hipMemcpyToArray.dst__val;
-      oss << ", wOffset=" << data->args.hipMemcpyToArray.wOffset;
-      oss << ", hOffset=" << data->args.hipMemcpyToArray.hOffset;
-      oss << ", src=" << data->args.hipMemcpyToArray.src;
-      oss << ", count=" << data->args.hipMemcpyToArray.count;
-      oss << ", kind=" << data->args.hipMemcpyToArray.kind;
+      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.dst__val); }
+      oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.wOffset);
+      oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.hOffset);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.src);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.count);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyToSymbol:
       oss << "hipMemcpyToSymbol(";
-      oss << "symbol=" << data->args.hipMemcpyToSymbol.symbol;
-      oss << ", src=" << data->args.hipMemcpyToSymbol.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyToSymbol.sizeBytes;
-      oss << ", offset=" << data->args.hipMemcpyToSymbol.offset;
-      oss << ", kind=" << data->args.hipMemcpyToSymbol.kind;
+      oss << "symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbol.symbol);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbol.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbol.sizeBytes);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbol.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbol.kind);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyToSymbolAsync:
       oss << "hipMemcpyToSymbolAsync(";
-      oss << "symbol=" << data->args.hipMemcpyToSymbolAsync.symbol;
-      oss << ", src=" << data->args.hipMemcpyToSymbolAsync.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyToSymbolAsync.sizeBytes;
-      oss << ", offset=" << data->args.hipMemcpyToSymbolAsync.offset;
-      oss << ", kind=" << data->args.hipMemcpyToSymbolAsync.kind;
-      oss << ", stream=" << data->args.hipMemcpyToSymbolAsync.stream;
+      oss << "symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.symbol);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.sizeBytes);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.offset);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToSymbolAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyWithStream:
       oss << "hipMemcpyWithStream(";
-      oss << "dst=" << data->args.hipMemcpyWithStream.dst;
-      oss << ", src=" << data->args.hipMemcpyWithStream.src;
-      oss << ", sizeBytes=" << data->args.hipMemcpyWithStream.sizeBytes;
-      oss << ", kind=" << data->args.hipMemcpyWithStream.kind;
-      oss << ", stream=" << data->args.hipMemcpyWithStream.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyWithStream.dst);
+      oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyWithStream.src);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyWithStream.sizeBytes);
+      oss << ", kind="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyWithStream.kind);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyWithStream.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemset:
       oss << "hipMemset(";
-      oss << "dst=" << data->args.hipMemset.dst;
-      oss << ", value=" << data->args.hipMemset.value;
-      oss << ", sizeBytes=" << data->args.hipMemset.sizeBytes;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset.dst);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset.value);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset.sizeBytes);
       oss << ")";
     break;
     case HIP_API_ID_hipMemset2D:
       oss << "hipMemset2D(";
-      oss << "dst=" << data->args.hipMemset2D.dst;
-      oss << ", pitch=" << data->args.hipMemset2D.pitch;
-      oss << ", value=" << data->args.hipMemset2D.value;
-      oss << ", width=" << data->args.hipMemset2D.width;
-      oss << ", height=" << data->args.hipMemset2D.height;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2D.dst);
+      oss << ", pitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2D.pitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2D.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2D.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2D.height);
       oss << ")";
     break;
     case HIP_API_ID_hipMemset2DAsync:
       oss << "hipMemset2DAsync(";
-      oss << "dst=" << data->args.hipMemset2DAsync.dst;
-      oss << ", pitch=" << data->args.hipMemset2DAsync.pitch;
-      oss << ", value=" << data->args.hipMemset2DAsync.value;
-      oss << ", width=" << data->args.hipMemset2DAsync.width;
-      oss << ", height=" << data->args.hipMemset2DAsync.height;
-      oss << ", stream=" << data->args.hipMemset2DAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.dst);
+      oss << ", pitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.pitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.height);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset2DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemset3D:
       oss << "hipMemset3D(";
-      oss << "pitchedDevPtr=" << data->args.hipMemset3D.pitchedDevPtr;
-      oss << ", value=" << data->args.hipMemset3D.value;
-      oss << ", extent=" << data->args.hipMemset3D.extent;
+      oss << "pitchedDevPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3D.pitchedDevPtr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3D.value);
+      oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3D.extent);
       oss << ")";
     break;
     case HIP_API_ID_hipMemset3DAsync:
       oss << "hipMemset3DAsync(";
-      oss << "pitchedDevPtr=" << data->args.hipMemset3DAsync.pitchedDevPtr;
-      oss << ", value=" << data->args.hipMemset3DAsync.value;
-      oss << ", extent=" << data->args.hipMemset3DAsync.extent;
-      oss << ", stream=" << data->args.hipMemset3DAsync.stream;
+      oss << "pitchedDevPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3DAsync.pitchedDevPtr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3DAsync.value);
+      oss << ", extent="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3DAsync.extent);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemset3DAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetAsync:
       oss << "hipMemsetAsync(";
-      oss << "dst=" << data->args.hipMemsetAsync.dst;
-      oss << ", value=" << data->args.hipMemsetAsync.value;
-      oss << ", sizeBytes=" << data->args.hipMemsetAsync.sizeBytes;
-      oss << ", stream=" << data->args.hipMemsetAsync.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetAsync.dst);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetAsync.value);
+      oss << ", sizeBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetAsync.sizeBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD16:
       oss << "hipMemsetD16(";
-      oss << "dest=" << data->args.hipMemsetD16.dest;
-      oss << ", value=" << data->args.hipMemsetD16.value;
-      oss << ", count=" << data->args.hipMemsetD16.count;
+      oss << "dest="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16.dest);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD16Async:
       oss << "hipMemsetD16Async(";
-      oss << "dest=" << data->args.hipMemsetD16Async.dest;
-      oss << ", value=" << data->args.hipMemsetD16Async.value;
-      oss << ", count=" << data->args.hipMemsetD16Async.count;
-      oss << ", stream=" << data->args.hipMemsetD16Async.stream;
+      oss << "dest="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.dest);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.count);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD32:
       oss << "hipMemsetD32(";
-      oss << "dest=" << data->args.hipMemsetD32.dest;
-      oss << ", value=" << data->args.hipMemsetD32.value;
-      oss << ", count=" << data->args.hipMemsetD32.count;
+      oss << "dest="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32.dest);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD32Async:
       oss << "hipMemsetD32Async(";
-      oss << "dst=" << data->args.hipMemsetD32Async.dst;
-      oss << ", value=" << data->args.hipMemsetD32Async.value;
-      oss << ", count=" << data->args.hipMemsetD32Async.count;
-      oss << ", stream=" << data->args.hipMemsetD32Async.stream;
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32Async.dst);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32Async.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32Async.count);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD32Async.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD8:
       oss << "hipMemsetD8(";
-      oss << "dest=" << data->args.hipMemsetD8.dest;
-      oss << ", value=" << data->args.hipMemsetD8.value;
-      oss << ", count=" << data->args.hipMemsetD8.count;
+      oss << "dest="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8.dest);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8.count);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD8Async:
       oss << "hipMemsetD8Async(";
-      oss << "dest=" << data->args.hipMemsetD8Async.dest;
-      oss << ", value=" << data->args.hipMemsetD8Async.value;
-      oss << ", count=" << data->args.hipMemsetD8Async.count;
-      oss << ", stream=" << data->args.hipMemsetD8Async.stream;
+      oss << "dest="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8Async.dest);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8Async.value);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8Async.count);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD8Async.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMipmappedArrayCreate:
       oss << "hipMipmappedArrayCreate(";
       if (data->args.hipMipmappedArrayCreate.pHandle == NULL) oss << "pHandle=NULL";
-      else oss << "pHandle=" << data->args.hipMipmappedArrayCreate.pHandle__val;
+      else { oss << "pHandle="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayCreate.pHandle__val); }
       if (data->args.hipMipmappedArrayCreate.pMipmappedArrayDesc == NULL) oss << ", pMipmappedArrayDesc=NULL";
-      else oss << ", pMipmappedArrayDesc=" << data->args.hipMipmappedArrayCreate.pMipmappedArrayDesc__val;
-      oss << ", numMipmapLevels=" << data->args.hipMipmappedArrayCreate.numMipmapLevels;
+      else { oss << ", pMipmappedArrayDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayCreate.pMipmappedArrayDesc__val); }
+      oss << ", numMipmapLevels="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayCreate.numMipmapLevels);
       oss << ")";
     break;
     case HIP_API_ID_hipMipmappedArrayDestroy:
       oss << "hipMipmappedArrayDestroy(";
-      oss << "hMipmappedArray=" << data->args.hipMipmappedArrayDestroy.hMipmappedArray;
+      oss << "hMipmappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayDestroy.hMipmappedArray);
       oss << ")";
     break;
     case HIP_API_ID_hipMipmappedArrayGetLevel:
       oss << "hipMipmappedArrayGetLevel(";
       if (data->args.hipMipmappedArrayGetLevel.pLevelArray == NULL) oss << "pLevelArray=NULL";
-      else oss << "pLevelArray=" << data->args.hipMipmappedArrayGetLevel.pLevelArray__val;
-      oss << ", hMipMappedArray=" << data->args.hipMipmappedArrayGetLevel.hMipMappedArray;
-      oss << ", level=" << data->args.hipMipmappedArrayGetLevel.level;
+      else { oss << "pLevelArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayGetLevel.pLevelArray__val); }
+      oss << ", hMipMappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayGetLevel.hMipMappedArray);
+      oss << ", level="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMipmappedArrayGetLevel.level);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleGetFunction:
       oss << "hipModuleGetFunction(";
       if (data->args.hipModuleGetFunction.function == NULL) oss << "function=NULL";
-      else oss << "function=" << data->args.hipModuleGetFunction.function__val;
-      oss << ", module=" << data->args.hipModuleGetFunction.module;
+      else { oss << "function="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetFunction.function__val); }
+      oss << ", module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetFunction.module);
       if (data->args.hipModuleGetFunction.kname == NULL) oss << ", kname=NULL";
-      else oss << ", kname=" << data->args.hipModuleGetFunction.kname__val;
+      else { oss << ", kname="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetFunction.kname__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleGetGlobal:
       oss << "hipModuleGetGlobal(";
       if (data->args.hipModuleGetGlobal.dptr == NULL) oss << "dptr=NULL";
-      else oss << "dptr=" << data->args.hipModuleGetGlobal.dptr__val;
+      else { oss << "dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetGlobal.dptr__val); }
       if (data->args.hipModuleGetGlobal.bytes == NULL) oss << ", bytes=NULL";
-      else oss << ", bytes=" << data->args.hipModuleGetGlobal.bytes__val;
-      oss << ", hmod=" << data->args.hipModuleGetGlobal.hmod;
+      else { oss << ", bytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetGlobal.bytes__val); }
+      oss << ", hmod="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetGlobal.hmod);
       if (data->args.hipModuleGetGlobal.name == NULL) oss << ", name=NULL";
-      else oss << ", name=" << data->args.hipModuleGetGlobal.name__val;
+      else { oss << ", name="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetGlobal.name__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleGetTexRef:
       oss << "hipModuleGetTexRef(";
       if (data->args.hipModuleGetTexRef.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << (void*)data->args.hipModuleGetTexRef.texRef__val;
-      oss << ", hmod=" << data->args.hipModuleGetTexRef.hmod;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipModuleGetTexRef.texRef__val); }
+      oss << ", hmod="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetTexRef.hmod);
       if (data->args.hipModuleGetTexRef.name == NULL) oss << ", name=NULL";
-      else oss << ", name=" << data->args.hipModuleGetTexRef.name__val;
+      else { oss << ", name="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleGetTexRef.name__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleLaunchKernel:
       oss << "hipModuleLaunchKernel(";
-      oss << "f=" << data->args.hipModuleLaunchKernel.f;
-      oss << ", gridDimX=" << data->args.hipModuleLaunchKernel.gridDimX;
-      oss << ", gridDimY=" << data->args.hipModuleLaunchKernel.gridDimY;
-      oss << ", gridDimZ=" << data->args.hipModuleLaunchKernel.gridDimZ;
-      oss << ", blockDimX=" << data->args.hipModuleLaunchKernel.blockDimX;
-      oss << ", blockDimY=" << data->args.hipModuleLaunchKernel.blockDimY;
-      oss << ", blockDimZ=" << data->args.hipModuleLaunchKernel.blockDimZ;
-      oss << ", sharedMemBytes=" << data->args.hipModuleLaunchKernel.sharedMemBytes;
-      oss << ", stream=" << data->args.hipModuleLaunchKernel.stream;
+      oss << "f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.f);
+      oss << ", gridDimX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.gridDimX);
+      oss << ", gridDimY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.gridDimY);
+      oss << ", gridDimZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.gridDimZ);
+      oss << ", blockDimX="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.blockDimX);
+      oss << ", blockDimY="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.blockDimY);
+      oss << ", blockDimZ="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.blockDimZ);
+      oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.sharedMemBytes);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.stream);
       if (data->args.hipModuleLaunchKernel.kernelParams == NULL) oss << ", kernelParams=NULL";
-      else oss << ", kernelParams=" << data->args.hipModuleLaunchKernel.kernelParams__val;
+      else { oss << ", kernelParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.kernelParams__val); }
       if (data->args.hipModuleLaunchKernel.extra == NULL) oss << ", extra=NULL";
-      else oss << ", extra=" << data->args.hipModuleLaunchKernel.extra__val;
+      else { oss << ", extra="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.extra__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleLoad:
       oss << "hipModuleLoad(";
       if (data->args.hipModuleLoad.module == NULL) oss << "module=NULL";
-      else oss << "module=" << data->args.hipModuleLoad.module__val;
+      else { oss << "module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoad.module__val); }
       if (data->args.hipModuleLoad.fname == NULL) oss << ", fname=NULL";
-      else oss << ", fname=" << data->args.hipModuleLoad.fname__val;
+      else { oss << ", fname="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoad.fname__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleLoadData:
       oss << "hipModuleLoadData(";
       if (data->args.hipModuleLoadData.module == NULL) oss << "module=NULL";
-      else oss << "module=" << data->args.hipModuleLoadData.module__val;
-      oss << ", image=" << data->args.hipModuleLoadData.image;
+      else { oss << "module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadData.module__val); }
+      oss << ", image="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadData.image);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleLoadDataEx:
       oss << "hipModuleLoadDataEx(";
       if (data->args.hipModuleLoadDataEx.module == NULL) oss << "module=NULL";
-      else oss << "module=" << data->args.hipModuleLoadDataEx.module__val;
-      oss << ", image=" << data->args.hipModuleLoadDataEx.image;
-      oss << ", numOptions=" << data->args.hipModuleLoadDataEx.numOptions;
+      else { oss << "module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadDataEx.module__val); }
+      oss << ", image="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadDataEx.image);
+      oss << ", numOptions="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadDataEx.numOptions);
       if (data->args.hipModuleLoadDataEx.options == NULL) oss << ", options=NULL";
-      else oss << ", options=" << data->args.hipModuleLoadDataEx.options__val;
+      else { oss << ", options="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadDataEx.options__val); }
       if (data->args.hipModuleLoadDataEx.optionsValues == NULL) oss << ", optionsValues=NULL";
-      else oss << ", optionsValues=" << data->args.hipModuleLoadDataEx.optionsValues__val;
+      else { oss << ", optionsValues="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadDataEx.optionsValues__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipModuleOccupancyMaxActiveBlocksPerMultiprocessor:
       oss << "hipModuleOccupancyMaxActiveBlocksPerMultiprocessor(";
       if (data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks == NULL) oss << "numBlocks=NULL";
-      else oss << "numBlocks=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks__val;
-      oss << ", f=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.f;
-      oss << ", blockSize=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.blockSize;
-      oss << ", dynSharedMemPerBlk=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.dynSharedMemPerBlk;
+      else { oss << "numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.f);
+      oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.blockSize);
+      oss << ", dynSharedMemPerBlk="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessor.dynSharedMemPerBlk);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
       oss << "hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(";
       if (data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks == NULL) oss << "numBlocks=NULL";
-      else oss << "numBlocks=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks__val;
-      oss << ", f=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.f;
-      oss << ", blockSize=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.blockSize;
-      oss << ", dynSharedMemPerBlk=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.dynSharedMemPerBlk;
-      oss << ", flags=" << data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.flags;
+      else { oss << "numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.f);
+      oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.blockSize);
+      oss << ", dynSharedMemPerBlk="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.dynSharedMemPerBlk);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleOccupancyMaxPotentialBlockSize:
       oss << "hipModuleOccupancyMaxPotentialBlockSize(";
       if (data->args.hipModuleOccupancyMaxPotentialBlockSize.gridSize == NULL) oss << "gridSize=NULL";
-      else oss << "gridSize=" << data->args.hipModuleOccupancyMaxPotentialBlockSize.gridSize__val;
+      else { oss << "gridSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSize.gridSize__val); }
       if (data->args.hipModuleOccupancyMaxPotentialBlockSize.blockSize == NULL) oss << ", blockSize=NULL";
-      else oss << ", blockSize=" << data->args.hipModuleOccupancyMaxPotentialBlockSize.blockSize__val;
-      oss << ", f=" << data->args.hipModuleOccupancyMaxPotentialBlockSize.f;
-      oss << ", dynSharedMemPerBlk=" << data->args.hipModuleOccupancyMaxPotentialBlockSize.dynSharedMemPerBlk;
-      oss << ", blockSizeLimit=" << data->args.hipModuleOccupancyMaxPotentialBlockSize.blockSizeLimit;
+      else { oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSize.blockSize__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSize.f);
+      oss << ", dynSharedMemPerBlk="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSize.dynSharedMemPerBlk);
+      oss << ", blockSizeLimit="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSize.blockSizeLimit);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleOccupancyMaxPotentialBlockSizeWithFlags:
       oss << "hipModuleOccupancyMaxPotentialBlockSizeWithFlags(";
       if (data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.gridSize == NULL) oss << "gridSize=NULL";
-      else oss << "gridSize=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.gridSize__val;
+      else { oss << "gridSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.gridSize__val); }
       if (data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.blockSize == NULL) oss << ", blockSize=NULL";
-      else oss << ", blockSize=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.blockSize__val;
-      oss << ", f=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.f;
-      oss << ", dynSharedMemPerBlk=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.dynSharedMemPerBlk;
-      oss << ", blockSizeLimit=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.blockSizeLimit;
-      oss << ", flags=" << data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.flags;
+      else { oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.blockSize__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.f);
+      oss << ", dynSharedMemPerBlk="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.dynSharedMemPerBlk);
+      oss << ", blockSizeLimit="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.blockSizeLimit);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleOccupancyMaxPotentialBlockSizeWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleUnload:
       oss << "hipModuleUnload(";
-      oss << "module=" << data->args.hipModuleUnload.module;
+      oss << "module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleUnload.module);
       oss << ")";
     break;
     case HIP_API_ID_hipOccupancyMaxActiveBlocksPerMultiprocessor:
       oss << "hipOccupancyMaxActiveBlocksPerMultiprocessor(";
       if (data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks == NULL) oss << "numBlocks=NULL";
-      else oss << "numBlocks=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks__val;
-      oss << ", f=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.f;
-      oss << ", blockSize=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.blockSize;
-      oss << ", dynamicSMemSize=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.dynamicSMemSize;
+      else { oss << "numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.numBlocks__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.f);
+      oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.blockSize);
+      oss << ", dynamicSMemSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessor.dynamicSMemSize);
       oss << ")";
     break;
     case HIP_API_ID_hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags:
       oss << "hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(";
       if (data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks == NULL) oss << "numBlocks=NULL";
-      else oss << "numBlocks=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks__val;
-      oss << ", f=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.f;
-      oss << ", blockSize=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.blockSize;
-      oss << ", dynamicSMemSize=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.dynamicSMemSize;
-      oss << ", flags=" << data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.flags;
+      else { oss << "numBlocks="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.numBlocks__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.f);
+      oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.blockSize);
+      oss << ", dynamicSMemSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.dynamicSMemSize);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipOccupancyMaxPotentialBlockSize:
       oss << "hipOccupancyMaxPotentialBlockSize(";
       if (data->args.hipOccupancyMaxPotentialBlockSize.gridSize == NULL) oss << "gridSize=NULL";
-      else oss << "gridSize=" << data->args.hipOccupancyMaxPotentialBlockSize.gridSize__val;
+      else { oss << "gridSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxPotentialBlockSize.gridSize__val); }
       if (data->args.hipOccupancyMaxPotentialBlockSize.blockSize == NULL) oss << ", blockSize=NULL";
-      else oss << ", blockSize=" << data->args.hipOccupancyMaxPotentialBlockSize.blockSize__val;
-      oss << ", f=" << data->args.hipOccupancyMaxPotentialBlockSize.f;
-      oss << ", dynSharedMemPerBlk=" << data->args.hipOccupancyMaxPotentialBlockSize.dynSharedMemPerBlk;
-      oss << ", blockSizeLimit=" << data->args.hipOccupancyMaxPotentialBlockSize.blockSizeLimit;
+      else { oss << ", blockSize="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxPotentialBlockSize.blockSize__val); }
+      oss << ", f="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxPotentialBlockSize.f);
+      oss << ", dynSharedMemPerBlk="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxPotentialBlockSize.dynSharedMemPerBlk);
+      oss << ", blockSizeLimit="; roctracer::hip_support::detail::operator<<(oss, data->args.hipOccupancyMaxPotentialBlockSize.blockSizeLimit);
       oss << ")";
     break;
     case HIP_API_ID_hipPeekAtLastError:
@@ -8952,16 +8952,16 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipPointerGetAttribute:
       oss << "hipPointerGetAttribute(";
-      oss << "data=" << data->args.hipPointerGetAttribute.data;
-      oss << ", attribute=" << data->args.hipPointerGetAttribute.attribute;
-      oss << ", ptr=" << data->args.hipPointerGetAttribute.ptr;
+      oss << "data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttribute.data);
+      oss << ", attribute="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttribute.attribute);
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttribute.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipPointerGetAttributes:
       oss << "hipPointerGetAttributes(";
       if (data->args.hipPointerGetAttributes.attributes == NULL) oss << "attributes=NULL";
-      else oss << "attributes=" << data->args.hipPointerGetAttributes.attributes__val;
-      oss << ", ptr=" << data->args.hipPointerGetAttributes.ptr;
+      else { oss << "attributes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttributes.attributes__val); }
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipPointerGetAttributes.ptr);
       oss << ")";
     break;
     case HIP_API_ID_hipProfilerStart:
@@ -8975,374 +8975,374 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipRuntimeGetVersion:
       oss << "hipRuntimeGetVersion(";
       if (data->args.hipRuntimeGetVersion.runtimeVersion == NULL) oss << "runtimeVersion=NULL";
-      else oss << "runtimeVersion=" << data->args.hipRuntimeGetVersion.runtimeVersion__val;
+      else { oss << "runtimeVersion="; roctracer::hip_support::detail::operator<<(oss, data->args.hipRuntimeGetVersion.runtimeVersion__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipSetDevice:
       oss << "hipSetDevice(";
-      oss << "deviceId=" << data->args.hipSetDevice.deviceId;
+      oss << "deviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetDevice.deviceId);
       oss << ")";
     break;
     case HIP_API_ID_hipSetDeviceFlags:
       oss << "hipSetDeviceFlags(";
-      oss << "flags=" << data->args.hipSetDeviceFlags.flags;
+      oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetDeviceFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipSetupArgument:
       oss << "hipSetupArgument(";
-      oss << "arg=" << data->args.hipSetupArgument.arg;
-      oss << ", size=" << data->args.hipSetupArgument.size;
-      oss << ", offset=" << data->args.hipSetupArgument.offset;
+      oss << "arg="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetupArgument.arg);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetupArgument.size);
+      oss << ", offset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetupArgument.offset);
       oss << ")";
     break;
     case HIP_API_ID_hipSignalExternalSemaphoresAsync:
       oss << "hipSignalExternalSemaphoresAsync(";
       if (data->args.hipSignalExternalSemaphoresAsync.extSemArray == NULL) oss << "extSemArray=NULL";
-      else oss << "extSemArray=" << data->args.hipSignalExternalSemaphoresAsync.extSemArray__val;
+      else { oss << "extSemArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSignalExternalSemaphoresAsync.extSemArray__val); }
       if (data->args.hipSignalExternalSemaphoresAsync.paramsArray == NULL) oss << ", paramsArray=NULL";
-      else oss << ", paramsArray=" << data->args.hipSignalExternalSemaphoresAsync.paramsArray__val;
-      oss << ", numExtSems=" << data->args.hipSignalExternalSemaphoresAsync.numExtSems;
-      oss << ", stream=" << data->args.hipSignalExternalSemaphoresAsync.stream;
+      else { oss << ", paramsArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSignalExternalSemaphoresAsync.paramsArray__val); }
+      oss << ", numExtSems="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSignalExternalSemaphoresAsync.numExtSems);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSignalExternalSemaphoresAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamAddCallback:
       oss << "hipStreamAddCallback(";
-      oss << "stream=" << data->args.hipStreamAddCallback.stream;
-      oss << ", callback=" << data->args.hipStreamAddCallback.callback;
-      oss << ", userData=" << data->args.hipStreamAddCallback.userData;
-      oss << ", flags=" << data->args.hipStreamAddCallback.flags;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAddCallback.stream);
+      oss << ", callback="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAddCallback.callback);
+      oss << ", userData="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAddCallback.userData);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAddCallback.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamAttachMemAsync:
       oss << "hipStreamAttachMemAsync(";
-      oss << "stream=" << data->args.hipStreamAttachMemAsync.stream;
-      oss << ", dev_ptr=" << data->args.hipStreamAttachMemAsync.dev_ptr;
-      oss << ", length=" << data->args.hipStreamAttachMemAsync.length;
-      oss << ", flags=" << data->args.hipStreamAttachMemAsync.flags;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAttachMemAsync.stream);
+      oss << ", dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAttachMemAsync.dev_ptr);
+      oss << ", length="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAttachMemAsync.length);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamAttachMemAsync.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamBeginCapture:
       oss << "hipStreamBeginCapture(";
-      oss << "stream=" << data->args.hipStreamBeginCapture.stream;
-      oss << ", mode=" << data->args.hipStreamBeginCapture.mode;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.stream);
+      oss << ", mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.mode);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamCreate:
       oss << "hipStreamCreate(";
       if (data->args.hipStreamCreate.stream == NULL) oss << "stream=NULL";
-      else oss << "stream=" << data->args.hipStreamCreate.stream__val;
+      else { oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreate.stream__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamCreateWithFlags:
       oss << "hipStreamCreateWithFlags(";
       if (data->args.hipStreamCreateWithFlags.stream == NULL) oss << "stream=NULL";
-      else oss << "stream=" << data->args.hipStreamCreateWithFlags.stream__val;
-      oss << ", flags=" << data->args.hipStreamCreateWithFlags.flags;
+      else { oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreateWithFlags.stream__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreateWithFlags.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamCreateWithPriority:
       oss << "hipStreamCreateWithPriority(";
       if (data->args.hipStreamCreateWithPriority.stream == NULL) oss << "stream=NULL";
-      else oss << "stream=" << data->args.hipStreamCreateWithPriority.stream__val;
-      oss << ", flags=" << data->args.hipStreamCreateWithPriority.flags;
-      oss << ", priority=" << data->args.hipStreamCreateWithPriority.priority;
+      else { oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreateWithPriority.stream__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreateWithPriority.flags);
+      oss << ", priority="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamCreateWithPriority.priority);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamDestroy:
       oss << "hipStreamDestroy(";
-      oss << "stream=" << data->args.hipStreamDestroy.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamDestroy.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamEndCapture:
       oss << "hipStreamEndCapture(";
-      oss << "stream=" << data->args.hipStreamEndCapture.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamEndCapture.stream);
       if (data->args.hipStreamEndCapture.pGraph == NULL) oss << ", pGraph=NULL";
-      else oss << ", pGraph=" << data->args.hipStreamEndCapture.pGraph__val;
+      else { oss << ", pGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamEndCapture.pGraph__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamGetCaptureInfo:
       oss << "hipStreamGetCaptureInfo(";
-      oss << "stream=" << data->args.hipStreamGetCaptureInfo.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo.stream);
       if (data->args.hipStreamGetCaptureInfo.pCaptureStatus == NULL) oss << ", pCaptureStatus=NULL";
-      else oss << ", pCaptureStatus=" << data->args.hipStreamGetCaptureInfo.pCaptureStatus__val;
+      else { oss << ", pCaptureStatus="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo.pCaptureStatus__val); }
       if (data->args.hipStreamGetCaptureInfo.pId == NULL) oss << ", pId=NULL";
-      else oss << ", pId=" << data->args.hipStreamGetCaptureInfo.pId__val;
+      else { oss << ", pId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo.pId__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamGetCaptureInfo_v2:
       oss << "hipStreamGetCaptureInfo_v2(";
-      oss << "stream=" << data->args.hipStreamGetCaptureInfo_v2.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo_v2.stream);
       if (data->args.hipStreamGetCaptureInfo_v2.captureStatus_out == NULL) oss << ", captureStatus_out=NULL";
-      else oss << ", captureStatus_out=" << data->args.hipStreamGetCaptureInfo_v2.captureStatus_out__val;
+      else { oss << ", captureStatus_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo_v2.captureStatus_out__val); }
       if (data->args.hipStreamGetCaptureInfo_v2.id_out == NULL) oss << ", id_out=NULL";
-      else oss << ", id_out=" << data->args.hipStreamGetCaptureInfo_v2.id_out__val;
+      else { oss << ", id_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo_v2.id_out__val); }
       if (data->args.hipStreamGetCaptureInfo_v2.graph_out == NULL) oss << ", graph_out=NULL";
-      else oss << ", graph_out=" << data->args.hipStreamGetCaptureInfo_v2.graph_out__val;
+      else { oss << ", graph_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo_v2.graph_out__val); }
       if (data->args.hipStreamGetCaptureInfo_v2.dependencies_out == NULL) oss << ", dependencies_out=NULL";
-      else oss << ", dependencies_out=" << (void*)data->args.hipStreamGetCaptureInfo_v2.dependencies_out__val;
+      else { oss << ", dependencies_out="; roctracer::hip_support::detail::operator<<(oss, (void*)data->args.hipStreamGetCaptureInfo_v2.dependencies_out__val); }
       if (data->args.hipStreamGetCaptureInfo_v2.numDependencies_out == NULL) oss << ", numDependencies_out=NULL";
-      else oss << ", numDependencies_out=" << data->args.hipStreamGetCaptureInfo_v2.numDependencies_out__val;
+      else { oss << ", numDependencies_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo_v2.numDependencies_out__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamGetFlags:
       oss << "hipStreamGetFlags(";
-      oss << "stream=" << data->args.hipStreamGetFlags.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetFlags.stream);
       if (data->args.hipStreamGetFlags.flags == NULL) oss << ", flags=NULL";
-      else oss << ", flags=" << data->args.hipStreamGetFlags.flags__val;
+      else { oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetFlags.flags__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamGetPriority:
       oss << "hipStreamGetPriority(";
-      oss << "stream=" << data->args.hipStreamGetPriority.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetPriority.stream);
       if (data->args.hipStreamGetPriority.priority == NULL) oss << ", priority=NULL";
-      else oss << ", priority=" << data->args.hipStreamGetPriority.priority__val;
+      else { oss << ", priority="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetPriority.priority__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamIsCapturing:
       oss << "hipStreamIsCapturing(";
-      oss << "stream=" << data->args.hipStreamIsCapturing.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamIsCapturing.stream);
       if (data->args.hipStreamIsCapturing.pCaptureStatus == NULL) oss << ", pCaptureStatus=NULL";
-      else oss << ", pCaptureStatus=" << data->args.hipStreamIsCapturing.pCaptureStatus__val;
+      else { oss << ", pCaptureStatus="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamIsCapturing.pCaptureStatus__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamQuery:
       oss << "hipStreamQuery(";
-      oss << "stream=" << data->args.hipStreamQuery.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamQuery.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamSynchronize:
       oss << "hipStreamSynchronize(";
-      oss << "stream=" << data->args.hipStreamSynchronize.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamSynchronize.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamUpdateCaptureDependencies:
       oss << "hipStreamUpdateCaptureDependencies(";
-      oss << "stream=" << data->args.hipStreamUpdateCaptureDependencies.stream;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamUpdateCaptureDependencies.stream);
       if (data->args.hipStreamUpdateCaptureDependencies.dependencies == NULL) oss << ", dependencies=NULL";
-      else oss << ", dependencies=" << data->args.hipStreamUpdateCaptureDependencies.dependencies__val;
-      oss << ", numDependencies=" << data->args.hipStreamUpdateCaptureDependencies.numDependencies;
-      oss << ", flags=" << data->args.hipStreamUpdateCaptureDependencies.flags;
+      else { oss << ", dependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamUpdateCaptureDependencies.dependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamUpdateCaptureDependencies.numDependencies);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamUpdateCaptureDependencies.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamWaitEvent:
       oss << "hipStreamWaitEvent(";
-      oss << "stream=" << data->args.hipStreamWaitEvent.stream;
-      oss << ", event=" << data->args.hipStreamWaitEvent.event;
-      oss << ", flags=" << data->args.hipStreamWaitEvent.flags;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitEvent.stream);
+      oss << ", event="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitEvent.event);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitEvent.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamWaitValue32:
       oss << "hipStreamWaitValue32(";
-      oss << "stream=" << data->args.hipStreamWaitValue32.stream;
-      oss << ", ptr=" << data->args.hipStreamWaitValue32.ptr;
-      oss << ", value=" << data->args.hipStreamWaitValue32.value;
-      oss << ", flags=" << data->args.hipStreamWaitValue32.flags;
-      oss << ", mask=" << data->args.hipStreamWaitValue32.mask;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue32.stream);
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue32.ptr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue32.value);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue32.flags);
+      oss << ", mask="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue32.mask);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamWaitValue64:
       oss << "hipStreamWaitValue64(";
-      oss << "stream=" << data->args.hipStreamWaitValue64.stream;
-      oss << ", ptr=" << data->args.hipStreamWaitValue64.ptr;
-      oss << ", value=" << data->args.hipStreamWaitValue64.value;
-      oss << ", flags=" << data->args.hipStreamWaitValue64.flags;
-      oss << ", mask=" << data->args.hipStreamWaitValue64.mask;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue64.stream);
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue64.ptr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue64.value);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue64.flags);
+      oss << ", mask="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWaitValue64.mask);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamWriteValue32:
       oss << "hipStreamWriteValue32(";
-      oss << "stream=" << data->args.hipStreamWriteValue32.stream;
-      oss << ", ptr=" << data->args.hipStreamWriteValue32.ptr;
-      oss << ", value=" << data->args.hipStreamWriteValue32.value;
-      oss << ", flags=" << data->args.hipStreamWriteValue32.flags;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue32.stream);
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue32.ptr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue32.value);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue32.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamWriteValue64:
       oss << "hipStreamWriteValue64(";
-      oss << "stream=" << data->args.hipStreamWriteValue64.stream;
-      oss << ", ptr=" << data->args.hipStreamWriteValue64.ptr;
-      oss << ", value=" << data->args.hipStreamWriteValue64.value;
-      oss << ", flags=" << data->args.hipStreamWriteValue64.flags;
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.stream);
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.ptr);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.value);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetAddress:
       oss << "hipTexRefGetAddress(";
       if (data->args.hipTexRefGetAddress.dev_ptr == NULL) oss << "dev_ptr=NULL";
-      else oss << "dev_ptr=" << data->args.hipTexRefGetAddress.dev_ptr__val;
+      else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetAddress.dev_ptr__val); }
       if (data->args.hipTexRefGetAddress.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetAddress.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetAddress.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetFlags:
       oss << "hipTexRefGetFlags(";
       if (data->args.hipTexRefGetFlags.pFlags == NULL) oss << "pFlags=NULL";
-      else oss << "pFlags=" << data->args.hipTexRefGetFlags.pFlags__val;
+      else { oss << "pFlags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetFlags.pFlags__val); }
       if (data->args.hipTexRefGetFlags.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetFlags.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetFlags.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetFormat:
       oss << "hipTexRefGetFormat(";
       if (data->args.hipTexRefGetFormat.pFormat == NULL) oss << "pFormat=NULL";
-      else oss << "pFormat=" << data->args.hipTexRefGetFormat.pFormat__val;
+      else { oss << "pFormat="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetFormat.pFormat__val); }
       if (data->args.hipTexRefGetFormat.pNumChannels == NULL) oss << ", pNumChannels=NULL";
-      else oss << ", pNumChannels=" << data->args.hipTexRefGetFormat.pNumChannels__val;
+      else { oss << ", pNumChannels="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetFormat.pNumChannels__val); }
       if (data->args.hipTexRefGetFormat.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetFormat.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetFormat.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetMaxAnisotropy:
       oss << "hipTexRefGetMaxAnisotropy(";
       if (data->args.hipTexRefGetMaxAnisotropy.pmaxAnsio == NULL) oss << "pmaxAnsio=NULL";
-      else oss << "pmaxAnsio=" << data->args.hipTexRefGetMaxAnisotropy.pmaxAnsio__val;
+      else { oss << "pmaxAnsio="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMaxAnisotropy.pmaxAnsio__val); }
       if (data->args.hipTexRefGetMaxAnisotropy.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetMaxAnisotropy.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMaxAnisotropy.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetMipMappedArray:
       oss << "hipTexRefGetMipMappedArray(";
       if (data->args.hipTexRefGetMipMappedArray.pArray == NULL) oss << "pArray=NULL";
-      else oss << "pArray=" << data->args.hipTexRefGetMipMappedArray.pArray__val;
+      else { oss << "pArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipMappedArray.pArray__val); }
       if (data->args.hipTexRefGetMipMappedArray.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetMipMappedArray.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipMappedArray.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetMipmapLevelBias:
       oss << "hipTexRefGetMipmapLevelBias(";
       if (data->args.hipTexRefGetMipmapLevelBias.pbias == NULL) oss << "pbias=NULL";
-      else oss << "pbias=" << data->args.hipTexRefGetMipmapLevelBias.pbias__val;
+      else { oss << "pbias="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipmapLevelBias.pbias__val); }
       if (data->args.hipTexRefGetMipmapLevelBias.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetMipmapLevelBias.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipmapLevelBias.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetMipmapLevelClamp:
       oss << "hipTexRefGetMipmapLevelClamp(";
       if (data->args.hipTexRefGetMipmapLevelClamp.pminMipmapLevelClamp == NULL) oss << "pminMipmapLevelClamp=NULL";
-      else oss << "pminMipmapLevelClamp=" << data->args.hipTexRefGetMipmapLevelClamp.pminMipmapLevelClamp__val;
+      else { oss << "pminMipmapLevelClamp="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipmapLevelClamp.pminMipmapLevelClamp__val); }
       if (data->args.hipTexRefGetMipmapLevelClamp.pmaxMipmapLevelClamp == NULL) oss << ", pmaxMipmapLevelClamp=NULL";
-      else oss << ", pmaxMipmapLevelClamp=" << data->args.hipTexRefGetMipmapLevelClamp.pmaxMipmapLevelClamp__val;
+      else { oss << ", pmaxMipmapLevelClamp="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipmapLevelClamp.pmaxMipmapLevelClamp__val); }
       if (data->args.hipTexRefGetMipmapLevelClamp.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefGetMipmapLevelClamp.texRef__val;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetMipmapLevelClamp.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetAddress:
       oss << "hipTexRefSetAddress(";
       if (data->args.hipTexRefSetAddress.ByteOffset == NULL) oss << "ByteOffset=NULL";
-      else oss << "ByteOffset=" << data->args.hipTexRefSetAddress.ByteOffset__val;
+      else { oss << "ByteOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress.ByteOffset__val); }
       if (data->args.hipTexRefSetAddress.texRef == NULL) oss << ", texRef=NULL";
-      else oss << ", texRef=" << data->args.hipTexRefSetAddress.texRef__val;
-      oss << ", dptr=" << data->args.hipTexRefSetAddress.dptr;
-      oss << ", bytes=" << data->args.hipTexRefSetAddress.bytes;
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress.texRef__val); }
+      oss << ", dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress.dptr);
+      oss << ", bytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress.bytes);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetAddress2D:
       oss << "hipTexRefSetAddress2D(";
       if (data->args.hipTexRefSetAddress2D.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetAddress2D.texRef__val;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress2D.texRef__val); }
       if (data->args.hipTexRefSetAddress2D.desc == NULL) oss << ", desc=NULL";
-      else oss << ", desc=" << data->args.hipTexRefSetAddress2D.desc__val;
-      oss << ", dptr=" << data->args.hipTexRefSetAddress2D.dptr;
-      oss << ", Pitch=" << data->args.hipTexRefSetAddress2D.Pitch;
+      else { oss << ", desc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress2D.desc__val); }
+      oss << ", dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress2D.dptr);
+      oss << ", Pitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetAddress2D.Pitch);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetArray:
       oss << "hipTexRefSetArray(";
       if (data->args.hipTexRefSetArray.tex == NULL) oss << "tex=NULL";
-      else oss << "tex=" << data->args.hipTexRefSetArray.tex__val;
-      oss << ", array=" << data->args.hipTexRefSetArray.array;
-      oss << ", flags=" << data->args.hipTexRefSetArray.flags;
+      else { oss << "tex="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetArray.tex__val); }
+      oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetArray.array);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetArray.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetBorderColor:
       oss << "hipTexRefSetBorderColor(";
       if (data->args.hipTexRefSetBorderColor.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetBorderColor.texRef__val;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetBorderColor.texRef__val); }
       if (data->args.hipTexRefSetBorderColor.pBorderColor == NULL) oss << ", pBorderColor=NULL";
-      else oss << ", pBorderColor=" << data->args.hipTexRefSetBorderColor.pBorderColor__val;
+      else { oss << ", pBorderColor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetBorderColor.pBorderColor__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetFlags:
       oss << "hipTexRefSetFlags(";
       if (data->args.hipTexRefSetFlags.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetFlags.texRef__val;
-      oss << ", Flags=" << data->args.hipTexRefSetFlags.Flags;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetFlags.texRef__val); }
+      oss << ", Flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetFlags.Flags);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetFormat:
       oss << "hipTexRefSetFormat(";
       if (data->args.hipTexRefSetFormat.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetFormat.texRef__val;
-      oss << ", fmt=" << data->args.hipTexRefSetFormat.fmt;
-      oss << ", NumPackedComponents=" << data->args.hipTexRefSetFormat.NumPackedComponents;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetFormat.texRef__val); }
+      oss << ", fmt="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetFormat.fmt);
+      oss << ", NumPackedComponents="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetFormat.NumPackedComponents);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetMaxAnisotropy:
       oss << "hipTexRefSetMaxAnisotropy(";
       if (data->args.hipTexRefSetMaxAnisotropy.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetMaxAnisotropy.texRef__val;
-      oss << ", maxAniso=" << data->args.hipTexRefSetMaxAnisotropy.maxAniso;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMaxAnisotropy.texRef__val); }
+      oss << ", maxAniso="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMaxAnisotropy.maxAniso);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetMipmapLevelBias:
       oss << "hipTexRefSetMipmapLevelBias(";
       if (data->args.hipTexRefSetMipmapLevelBias.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetMipmapLevelBias.texRef__val;
-      oss << ", bias=" << data->args.hipTexRefSetMipmapLevelBias.bias;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmapLevelBias.texRef__val); }
+      oss << ", bias="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmapLevelBias.bias);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetMipmapLevelClamp:
       oss << "hipTexRefSetMipmapLevelClamp(";
       if (data->args.hipTexRefSetMipmapLevelClamp.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetMipmapLevelClamp.texRef__val;
-      oss << ", minMipMapLevelClamp=" << data->args.hipTexRefSetMipmapLevelClamp.minMipMapLevelClamp;
-      oss << ", maxMipMapLevelClamp=" << data->args.hipTexRefSetMipmapLevelClamp.maxMipMapLevelClamp;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmapLevelClamp.texRef__val); }
+      oss << ", minMipMapLevelClamp="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmapLevelClamp.minMipMapLevelClamp);
+      oss << ", maxMipMapLevelClamp="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmapLevelClamp.maxMipMapLevelClamp);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefSetMipmappedArray:
       oss << "hipTexRefSetMipmappedArray(";
       if (data->args.hipTexRefSetMipmappedArray.texRef == NULL) oss << "texRef=NULL";
-      else oss << "texRef=" << data->args.hipTexRefSetMipmappedArray.texRef__val;
+      else { oss << "texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmappedArray.texRef__val); }
       if (data->args.hipTexRefSetMipmappedArray.mipmappedArray == NULL) oss << ", mipmappedArray=NULL";
-      else oss << ", mipmappedArray=" << data->args.hipTexRefSetMipmappedArray.mipmappedArray__val;
-      oss << ", Flags=" << data->args.hipTexRefSetMipmappedArray.Flags;
+      else { oss << ", mipmappedArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmappedArray.mipmappedArray__val); }
+      oss << ", Flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefSetMipmappedArray.Flags);
       oss << ")";
     break;
     case HIP_API_ID_hipThreadExchangeStreamCaptureMode:
       oss << "hipThreadExchangeStreamCaptureMode(";
       if (data->args.hipThreadExchangeStreamCaptureMode.mode == NULL) oss << "mode=NULL";
-      else oss << "mode=" << data->args.hipThreadExchangeStreamCaptureMode.mode__val;
+      else { oss << "mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipThreadExchangeStreamCaptureMode.mode__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipUserObjectCreate:
       oss << "hipUserObjectCreate(";
       if (data->args.hipUserObjectCreate.object_out == NULL) oss << "object_out=NULL";
-      else oss << "object_out=" << data->args.hipUserObjectCreate.object_out__val;
-      oss << ", ptr=" << data->args.hipUserObjectCreate.ptr;
-      oss << ", destroy=" << data->args.hipUserObjectCreate.destroy;
-      oss << ", initialRefcount=" << data->args.hipUserObjectCreate.initialRefcount;
-      oss << ", flags=" << data->args.hipUserObjectCreate.flags;
+      else { oss << "object_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectCreate.object_out__val); }
+      oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectCreate.ptr);
+      oss << ", destroy="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectCreate.destroy);
+      oss << ", initialRefcount="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectCreate.initialRefcount);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectCreate.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipUserObjectRelease:
       oss << "hipUserObjectRelease(";
-      oss << "object=" << data->args.hipUserObjectRelease.object;
-      oss << ", count=" << data->args.hipUserObjectRelease.count;
+      oss << "object="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectRelease.object);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectRelease.count);
       oss << ")";
     break;
     case HIP_API_ID_hipUserObjectRetain:
       oss << "hipUserObjectRetain(";
-      oss << "object=" << data->args.hipUserObjectRetain.object;
-      oss << ", count=" << data->args.hipUserObjectRetain.count;
+      oss << "object="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectRetain.object);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipUserObjectRetain.count);
       oss << ")";
     break;
     case HIP_API_ID_hipWaitExternalSemaphoresAsync:
       oss << "hipWaitExternalSemaphoresAsync(";
       if (data->args.hipWaitExternalSemaphoresAsync.extSemArray == NULL) oss << "extSemArray=NULL";
-      else oss << "extSemArray=" << data->args.hipWaitExternalSemaphoresAsync.extSemArray__val;
+      else { oss << "extSemArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipWaitExternalSemaphoresAsync.extSemArray__val); }
       if (data->args.hipWaitExternalSemaphoresAsync.paramsArray == NULL) oss << ", paramsArray=NULL";
-      else oss << ", paramsArray=" << data->args.hipWaitExternalSemaphoresAsync.paramsArray__val;
-      oss << ", numExtSems=" << data->args.hipWaitExternalSemaphoresAsync.numExtSems;
-      oss << ", stream=" << data->args.hipWaitExternalSemaphoresAsync.stream;
+      else { oss << ", paramsArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipWaitExternalSemaphoresAsync.paramsArray__val); }
+      oss << ", numExtSems="; roctracer::hip_support::detail::operator<<(oss, data->args.hipWaitExternalSemaphoresAsync.numExtSems);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipWaitExternalSemaphoresAsync.stream);
       oss << ")";
     break;
     default: oss << "unknown";

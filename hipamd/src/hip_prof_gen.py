@@ -559,13 +559,13 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
       line_shift = '      '
       f.write(line_shift)
       if ptr_type != '':
-        f.write('if (' + var_name + ' == NULL) ' + oss_stream + 'NULL";\n' + line_shift + 'else ')
+        f.write('if (' + var_name + ' == NULL) ' + oss_stream + 'NULL";\n' + line_shift + 'else { ')
         if pointer_ck(ptr_type) != '':
-          f.write(oss_stream + '" << (void*)' + var_name + '__val' + ';\n')
+          f.write(oss_stream + '"; roctracer::hip_support::detail::operator<<(oss, (void*)' + var_name + '__val' + '); }\n')
         else:
-          f.write(oss_stream + '" << ' + var_name + '__val' + ';\n')
+          f.write(oss_stream + '"; roctracer::hip_support::detail::operator<<(oss, ' + var_name + '__val' + '); }\n')
       else:
-        f.write(oss_stream + '" << ' + var_name + ';\n')
+        f.write(oss_stream + '"; roctracer::hip_support::detail::operator<<(oss, ' + var_name + ');\n')
     f.write('      oss << ")";\n')
     f.write('    break;\n')
   f.write('    default: oss << "unknown";\n')
