@@ -621,7 +621,7 @@ void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
             GetGraphNodeTypeString((*it)->GetType()), *it, (*it)->GetLevel());
   }
   while (!q.empty()) {
-    Node& node = q.front();
+    Node node = q.front();
     q.pop();
     levelOrder.push_back(node);
     for (const auto& i : node->GetEdges()) {
@@ -763,7 +763,12 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
       first = false;
       continue;
     }
-    graphLastCmdWaitList.push_back(singleList.back()->GetCommands().back());
+    if (!singleList.empty()) {
+      auto commands = singleList.back()->GetCommands();
+      if (!commands.empty()) {
+        graphLastCmdWaitList.push_back(commands.back());
+      }
+    }
   }
   if (!graphLastCmdWaitList.empty()) {
     endCommand = new amd::Marker(*queue, false, graphLastCmdWaitList);
