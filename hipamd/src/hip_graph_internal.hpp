@@ -265,6 +265,9 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     dependencies_.erase(std::remove(dependencies_.begin(), dependencies_.end(), node),
                         dependencies_.end());
   }
+  void RemoveEdge(const Node& childNode) {
+    edges_.erase(std::remove(edges_.begin(), edges_.end(), childNode), edges_.end());
+  }
   /// Return graph node children
   const std::vector<Node>& GetEdges() const { return edges_; }
   /// Updates graph node children
@@ -280,6 +283,12 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
       edge->UpdateEdgeLevel();
     }
   }
+  void ReduceEdgeLevel() {
+    for (auto edge: edges_) {
+      edge->SetLevel(std::min(edge->GetLevel(),GetLevel() + 1));
+      edge->ReduceEdgeLevel();
+    }
+  }
   /// Add edge, update parent node outdegree, child node indegree, level and dependency
   void AddEdge(const Node& childNode) {
     edges_.push_back(childNode);
@@ -290,7 +299,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     childNode->AddDependency(this);
   }
   /// Remove edge, update parent node outdegree, child node indegree, level and dependency
-  bool RemoveEdge(const Node& childNode) {
+  bool RemoveUpdateEdge(const Node& childNode) {
     // std::remove changes the end() hence saving it before hand for validation
     auto currEdgeEnd = edges_.end();
     auto it = std::remove(edges_.begin(), edges_.end(), childNode);
@@ -301,15 +310,20 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     edges_.erase(it, edges_.end());
     outDegree_--;
     childNode->SetInDegree(childNode->GetInDegree() - 1);
+    childNode->RemoveDependency(this);
     const std::vector<Node>& dependencies = childNode->GetDependencies();
     int32_t level = 0;
     int32_t parentLevel = 0;
+    uint32_t origLevel = 0;
     for (auto parent : dependencies) {
       parentLevel = parent->GetLevel();
       level = std::max(level, (parentLevel + 1));
     }
+    origLevel = childNode->GetLevel();
     childNode->SetLevel(level);
-    childNode->RemoveDependency(this);
+    if (level < origLevel) {
+      childNode->ReduceEdgeLevel();
+    }
     return true;
   }
   /// Get Runlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
