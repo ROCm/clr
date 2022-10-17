@@ -53,12 +53,15 @@ if(HIP_PLATFORM STREQUAL "amd" )
 #TODO:This do not belong in BINARY package.
 #Keeping it as is for now
 install(FILES ${CMAKE_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+
 install(FILES ${CMAKE_BINARY_DIR}/hip-config.cmake ${CMAKE_BINARY_DIR}/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT binary)
 install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
 
 install(FILES ${CMAKE_BINARY_DIR}/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT binary)
-
 install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
+
+install(FILES ${PROJECT_SOURCE_DIR}/src/hiprtc/cmake/hiprtc-config.cmake ${CMAKE_BINARY_DIR}/hiprtc-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc COMPONENT binary)
+install ( EXPORT hiprtc-targets  FILE hiprtc-targets.cmake NAMESPACE hiprtc:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc  COMPONENT binary)
 
 endif()#End HIP_PLATFORM = "amd"
 #End bianry files install
