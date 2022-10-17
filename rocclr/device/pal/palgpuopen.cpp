@@ -540,10 +540,8 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* gpu) {
   }
 
   if (result == Pal::Result::Success) {
-    // Remember which queue started the trace
-    trace_.prepare_queue_ = gpu;
-    trace_.begin_queue_ = nullptr;
 
+    trace_.begin_queue_ = nullptr;
     trace_.status_ = TraceStatus::Preparing;
   } else {
     // We failed to prepare for the trace so abort it.
@@ -571,13 +569,6 @@ Pal::Result RgpCaptureMgr::BeginRGPTrace(VirtualGPU* gpu) {
   // resources against this new one if the device is changing.
   Pal::Result result = Pal::Result::Success;
 
-  if (result == Pal::Result::Success) {
-    // Only allow trace to start if the queue family at prep-time matches the queue
-    // family at begin time because the command buffer engine type must match
-    if (trace_.prepare_queue_ != gpu) {
-      result = Pal::Result::ErrorIncompatibleQueue;
-    }
-  }
 
   // Start a GPA tracing sample with SQTT enabled
   if (result == Pal::Result::Success) {
@@ -711,14 +702,32 @@ Pal::Result RgpCaptureMgr::EndRGPTrace(VirtualGPU* gpu) {
 // This function resets and possibly cancels a currently active (between begin/end) RGP trace.
 // It frees any dependent resources.
 void RgpCaptureMgr::FinishRGPTrace(VirtualGPU* gpu, bool aborted) {
-  if (trace_.prepare_queue_ == nullptr) {
+  // Make sure current queue matches the capture queue
+  if ((trace_.begin_queue_ == nullptr) || (trace_.begin_queue_ != gpu)) {
     return;
   }
 
-  // Finish the trace if the queue was destroyed before
-  // OCL reached the number of captured dispatches
-  if ((trace_.sqtt_disp_count_ != 0) && (gpu != nullptr)) {
-    EndRGPHardwareTrace(gpu);
+  // Finish the trace if the queue was destroyed before OCL reached
+  // the number of captured dispatches
+  if (trace_.sqtt_disp_count_ != 0) {
+    if (EndRGPHardwareTrace(gpu) != Pal::Result::Success) {
+      aborted = true;
+    }
+  }
+  // If the trace was aborted, then make sure the current results are sent to RGP server
+  if (aborted) {
+    if (trace_.status_ == TraceStatus::WaitingForSqtt) {
+      auto result = EndRGPTrace(gpu);
+      // The logic always checks for the trace status below and error can be ignored, since
+      // runtime aborts the trace
+    }
+    // Check if runtime is waiting for the final trace results
+    if (trace_.status_ == TraceStatus::WaitingForResults) {
+      // If results are ready, then finish the trace
+      if (CheckForTraceResults() == Pal::Result::Success) {
+        rgp_server_->EndTrace();
+      }
+    }
   }
 
   // Inform RGP protocol that we're done with the trace, either by aborting it or finishing normally
@@ -727,17 +736,14 @@ void RgpCaptureMgr::FinishRGPTrace(VirtualGPU* gpu, bool aborted) {
   } else {
     rgp_server_->EndTrace();
   }
-
   if (trace_.gpa_session_ != nullptr) {
     trace_.gpa_session_->Reset();
   }
-
   // Reset tracing state to idle
   trace_.prepared_disp_count_ = 0;
   trace_.sqtt_disp_count_ = 0;
   trace_.gpa_sample_id_ = 0;
   trace_.status_ = TraceStatus::Idle;
-  trace_.prepare_queue_ = nullptr;
   trace_.begin_queue_ = nullptr;
 }
 
