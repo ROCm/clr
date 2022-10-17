@@ -191,7 +191,7 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
 #endif
     HIP_RETURN(hipSuccess);
   }
-  HIP_RETURN(hipErrorInvalidValue);
+  HIP_RETURN(hipErrorNotSupported);
 }
 
 
