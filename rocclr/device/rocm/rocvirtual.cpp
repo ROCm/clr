@@ -475,8 +475,12 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
 // ================================================================================================
 std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine) {
   bool explicit_wait = false;
+  bool sdma_wait = false;
   // Reset all current waiting signals
   waiting_signals_.clear();
+
+  if(engine != HwQueueEngine::Compute)
+    sdma_wait = true;
 
   // Does runtime switch the active engine?
   if (engine != engine_) {
@@ -518,7 +522,7 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
       if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
         const Settings& settings = gpu_.dev().settings();
         // Actively wait on CPU to avoid extra overheads of signal tracking on GPU
-        if (!WaitForSignal<true>(external_signals_[i]->signal_)) {
+        if (!WaitForSignal<true>(external_signals_[i]->signal_, false, sdma_wait)) {
           if (settings.cpu_wait_for_signal_) {
             // Wait on CPU for completion if requested
             CpuWaitForSignal(external_signals_[i]);
