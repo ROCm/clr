@@ -44,15 +44,20 @@ constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
+// Active wait time out incase same sdma engine is used again,
+// then just wait instead of adding dependency wait signal.
+constexpr static uint64_t kSDMAEngineTimeout = 10;
+
 template <bool active_wait_timeout = false>
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool sdma_wait = false) {
   if (hsa_signal_load_relaxed(signal) > 0) {
     uint64_t timeout = kTimeout100us;
     if (active_wait) {
       timeout = kUnlimitedWait;
     }
     if (active_wait_timeout) {
-      timeout = ROC_ACTIVE_WAIT_TIMEOUT * K;
+      // If diff engine, wait to 10 ms. Otherwise no wait
+      timeout = (sdma_wait ? kSDMAEngineTimeout : ROC_ACTIVE_WAIT_TIMEOUT) * K;
       if (timeout == 0) {
         return false;
       }
