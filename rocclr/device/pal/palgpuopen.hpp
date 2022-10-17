@@ -361,7 +361,6 @@ class RgpCaptureMgr {
     GpuEvent end_sqtt_event_;    // Event that is signaled when a trace-end cmdbuf retires
     GpuEvent end_event_;         // Event that is signaled when a trace-end cmdbuf retires
 
-    VirtualGPU* prepare_queue_;  // The queue that triggered the full start of a trace
     VirtualGPU* begin_queue_;    // The queue that triggered starting SQTT
 
     GpuUtil::GpaSession* gpa_session_;  // GPA session helper object for building RGP data
