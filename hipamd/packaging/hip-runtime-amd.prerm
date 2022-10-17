@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2016 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2016 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@ ROCMDIR=@ROCM_PATH@
 HIPDIR=$ROCMDIR/hip
 HIPCMAKEDIR=$ROCMDIR/hip/lib/cmake/hip
 HIPLANGCMAKEDIR=$ROCMDIR/hip/lib/cmake/hip-lang
+HIPRTCCMAKEDIR=$ROCMDIR/hip/lib/cmake/hiprtc
 CURRENTDIR=`pwd`
 ([ ! -d $ROCMDIR ] || [ ! -d $HIPDIR ]) && exit 0
 
@@ -48,5 +49,18 @@ done
 
 cd $CURRENTDIR
 
+([ ! -d $HIPRTCCMAKEDIR ] ) && exit 0
+# Remove soft-links to hiprtc-target
+HIPRTCTARGETFILES=$(ls -A $HIPRTCCMAKEDIR | grep "^hiprtc-targets")
+
+cd  $HIPRTCCMAKEDIR
+for f in $HIPRTCTARGETFILES; do
+    [ -e $f ] || continue
+    rm $(basename $f)
+done
+
+cd $CURRENTDIR
+
 rmdir --ignore-fail-on-non-empty $HIPCMAKEDIR
 rmdir --ignore-fail-on-non-empty $HIPLANGCMAKEDIR
+rmdir --ignore-fail-on-non-empty $HIPRTCCMAKEDIR

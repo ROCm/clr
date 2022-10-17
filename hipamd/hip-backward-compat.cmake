@@ -167,7 +167,7 @@ endfunction()
 
 function(create_cmake_symlink)
   file(MAKE_DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip)
-  #create symlink to  all config files
+  #create symlink to all hip config files
   file(GLOB config_files ${HIP_BUILD_DIR}/hip-config*)
   foreach(config_name ${config_files})
     get_filename_component(file_name ${config_name} NAME)
@@ -176,7 +176,7 @@ function(create_cmake_symlink)
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
                   ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip/${file_name})
   endforeach()
-  #create symlink to  hip-lang
+  #create symlink to hip-lang
   unset(config_files)
   file(MAKE_DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang)
   file(GLOB config_files ${HIP_BUILD_DIR}/src/hip-lang-config*)
@@ -187,6 +187,24 @@ function(create_cmake_symlink)
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
                   ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hip-lang/${file_name})
   endforeach()
+
+  unset(config_files)
+
+  #create symlink to hiprtc config files
+  file(MAKE_DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hiprtc)
+  file(GLOB config_files ${HIP_BUILD_DIR}/hiprtc-config*)
+  foreach(config_name ${config_files})
+    get_filename_component(file_name ${config_name} NAME)
+    add_custom_target(link_${file_name} ALL
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMAND ${CMAKE_COMMAND} -E create_symlink
+                  ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc/${file_name} ${HIP_WRAPPER_CMAKE_DIR}/hiprtc/${file_name})
+  endforeach()
+
+  add_custom_target(link_target ALL
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMAND ${CMAKE_COMMAND} -E create_symlink
+                  ../../../../${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc/hiprtc-config.cmake ${HIP_WRAPPER_CMAKE_DIR}/hiprtc/hiprtc-config.cmake)
 
   unset(config_files)
   file(MAKE_DIRECTORY ${HIP_WRAPPER_FINDHIP_DIR}/FindHIP)

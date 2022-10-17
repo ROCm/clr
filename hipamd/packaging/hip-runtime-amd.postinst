@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2020 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2020 - 2022 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,6 +26,7 @@ CURRENTDIR=`pwd`
 
 mkdir -p $HIPCMAKEDIR/hip
 mkdir -p $HIPCMAKEDIR/hip-lang
+mkdir -p $HIPCMAKEDIR/hiprtc
 
 HIPTARGETFILES=$(ls -A $ROCMCMAKEDIR/hip | grep  "^hip-targets")
 cd $HIPCMAKEDIR/hip
@@ -40,5 +41,13 @@ cd $HIPCMAKEDIR/hip-lang
 for f in $HIPLANGTARGETFILES
 do
     ln -s -r -f $ROCMCMAKEDIR/hip-lang/$f $(basename $f)
+done
+cd $CURRENTDIR
+
+HIPRTCTARGETFILES=$(ls -A $ROCMCMAKEDIR/hiprtc | grep  "^hiprtc-targets")
+cd $HIPCMAKEDIR/hiprtc
+for f in $HIPRTCTARGETFILES
+do
+    ln -s -r -f $ROCMCMAKEDIR/hiprtc/$f $(basename $f)
 done
 cd $CURRENTDIR
