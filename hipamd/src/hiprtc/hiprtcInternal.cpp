@@ -231,7 +231,6 @@ bool RTCCompileProgram::transformOptions() {
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
 
 bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
-  amd::ScopedLock lock(lock_); // Lock, because LLVM is not multi threaded
 
   if (!addSource_impl()) {
     LogError("Error in hiprtc: unable to add source code");
@@ -500,7 +499,6 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
 }
 
 bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
-  amd::ScopedLock lock(lock_);
   std::vector<char> llvm_bitcode;
 
   // Get the file size.
@@ -555,7 +553,6 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
 
 bool RTCLinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                                    hiprtcJITInputType input_type) {
-  amd::ScopedLock lock(lock_);
   char* image_char_buf = reinterpret_cast<char*>(image_ptr);
   std::vector<char> llvm_bitcode;
 
@@ -593,7 +590,6 @@ bool RTCLinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::stri
 }
 
 bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
-  amd::ScopedLock lock(lock_);
 
   if (!findIsa()) {
     return false;
