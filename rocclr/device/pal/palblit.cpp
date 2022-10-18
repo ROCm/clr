@@ -1038,7 +1038,7 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index, si
         break;
     }
 
-  switch (desc.size_) {
+  switch (argSize) {
     case sizeof(uint32_t):
       *static_cast<uint32_t*>(param) = uint32_value;
       break;
