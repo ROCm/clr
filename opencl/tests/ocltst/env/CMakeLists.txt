@@ -1,6 +1,7 @@
 add_executable(ocltst)
 
 target_sources(ocltst PRIVATE
+    ${OCLTST_DIR}/env/oclTestLog.cpp
     ${OCLTST_DIR}/env/oclsysinfo.cpp
     ${OCLTST_DIR}/env/ocltst.cpp
     ${OCLTST_DIR}/env/pfm.cpp
@@ -36,7 +37,7 @@ target_include_directories(ocltst
 target_link_libraries(ocltst
     PRIVATE
         OpenCL
-        TestLog)
+        )
 
 INSTALL(TARGETS ocltst DESTINATION tests/ocltst COMPONENT ocltst)
 
