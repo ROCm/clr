@@ -6,7 +6,6 @@ find_package(OpenGL)
 find_package(GLEW)
 
 add_subdirectory(module/common)
-add_subdirectory(log)
 add_subdirectory(env)
 if(OPENGL_FOUND AND GLEW_FOUND)
     add_subdirectory(module/gl)
