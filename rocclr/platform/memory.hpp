@@ -156,6 +156,8 @@ class Memory : public amd::RuntimeObject {
      size_t width_ = 0;               //!< Width value in bytes
      size_t height_ = 0;              //!< Height value
      size_t depth_ = 0;               //!< Depth value
+
+     bool sync_mem_ops_ = false;   //!< Memops sync, when set synchronize all mem operations.
   };
 
  protected:
