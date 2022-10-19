@@ -1179,6 +1179,13 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(info_.globalMemChannels_ > 0);
 
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(bkendDevice_,
+                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_DRIVER_NODE_ID),
+                         &info_.driverNodeId_)) {
+    return false;
+  }
+
   setupCpuAgent();
 
   checkAtomicSupport();

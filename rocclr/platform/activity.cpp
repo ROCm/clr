@@ -73,8 +73,8 @@ void ReportActivity(const amd::Command& command) {
       command.profilingInfo().start_,           // begin timestamp, ns
       command.profilingInfo().end_,             // end timestamp, ns
       {{
-          static_cast<int>(queue->device().index()),  // device id
-          queue->vdev()->index()                      // queue id
+          static_cast<int>(queue->device().info().driverNodeId_),  // device id
+          queue->vdev()->index()                                   // queue id
       }},
       {}  // copied data size for memcpy, or kernel name for dispatch
   };

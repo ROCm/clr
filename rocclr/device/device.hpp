@@ -613,6 +613,8 @@ struct Info : public amd::EmbeddedObject {
 
   bool virtualMemoryManagement_; //!< Virtual memory management support
   size_t virtualMemAllocGranularity_; //!< virtual memory allocation size/addr granularity
+
+  uint32_t driverNodeId_;
 };
 
 //! Device settings
