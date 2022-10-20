@@ -110,12 +110,16 @@ bool Flag::init() {
     // For all environment variables:
     std::string var = str;
     size_t pos = var.find('=');
-    if ((pos == std::string::npos) || ((pos + 1) >= var.size())) {
+    if ((pos == std::string::npos) || ((pos + 1) > var.size())) {
       continue;
     }
 
     std::string name = var.substr(0, pos);
-    vars.insert(std::make_pair(name, &str[pos + 1]));
+    if ((pos + 1) == var.size()) {
+      vars.insert(std::make_pair(name, " "));
+    } else {
+      vars.insert(std::make_pair(name, &str[pos + 1]));
+    }
   }
 #else  // !_WIN32
 #ifdef __APPLE__
@@ -128,12 +132,16 @@ bool Flag::init() {
   for (const char** p = const_cast<const char**>(environ); *p != NULL; ++p) {
     std::string var = *p;
     size_t pos = var.find('=');
-    if ((pos == std::string::npos) || ((pos + 1) >= var.size())) {
+    if ((pos == std::string::npos) || ((pos + 1) > var.size())) {
       continue;
     }
 
     std::string name = var.substr(0, pos);
-    vars.insert(std::make_pair(name, &(*p)[pos + 1]));
+    if ((pos + 1) == var.size()) {
+      vars.insert(std::make_pair(name, " "));
+    } else {
+      vars.insert(std::make_pair(name, &(*p)[pos + 1]));
+    }
   }
 #endif  // !_WIN32
 
