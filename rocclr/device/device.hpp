@@ -228,7 +228,7 @@ inline void WriteAqlArgAt(unsigned char* dst, //!< The write pointer to the buff
                           uint size,          //!< The size in bytes to copy
                           size_t offset       //!< The alignment to follow while writing to the buffer
 ) {
-  assert(sizeof(T) == size && "Argument's size mismatches ABI!");
+  assert(sizeof(T) <= size && "Argument's size mismatches ABI!");
   *(reinterpret_cast<T*>(dst + offset)) = src;
 }
 
