@@ -20,6 +20,7 @@
 
 #include <string>
 #include <map>
+#include <numeric>
 #include <cstring>
 #include <cstdlib>
 #include <sstream>
@@ -1445,12 +1446,12 @@ Options::setPerBuildInfo(
 
 // HashString - Hash function for strings.
 // This is the Bernstein hash function.
-static inline unsigned HashString(std::string Str, unsigned Result = 0)
+static inline unsigned HashString(std::string::const_iterator it, std::string::const_iterator end)
 {
-    for (size_t i = 0, e = Str.size(); i != e; ++i) {
-        Result = Result * 33 + (unsigned char)Str[i];
-    }
-    return Result;
+    auto Bernstein = [](unsigned Result, unsigned char c) {
+        return Result * 33 + c;
+    };
+    return std::accumulate(it, end, 0U, Bernstein);
 }
 
 static inline std::string to_string(unsigned number)
@@ -1526,13 +1527,11 @@ static std::string getValidDumpBaseName(const std::string &path, const std::stri
         return file;
     }
 
-    std::string truncName;
     // HashString returns unsigned, and the max lengh of unsighed is
     // 10 digits, anything over origDigits will be replaced with its hash value
     size_t origDigits = basename_max - 10 - ext.size();
-    truncName = file.substr(0, origDigits);
-    std::string remainStr = file.substr(origDigits);
-    unsigned hashVal = HashString(remainStr);
+    std::string truncName = file.substr(0, origDigits);
+    unsigned hashVal = HashString(file.begin() + origDigits, file.end());
 
     return truncName + to_string(hashVal);
 }
