@@ -201,7 +201,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
 
     const device::Program* same_dev_prog = nullptr;
     if ((amd::IS_HIP) && (same_prog != nullptr)) {
-      auto same_dev_prog_map_ = same_prog->devicePrograms();
+      const auto &same_dev_prog_map_ = same_prog->devicePrograms();
       guarantee(same_dev_prog_map_.size() == 1, "For same_prog, devicePrograms size != 1");
       same_dev_prog = same_dev_prog_map_.begin()->second;
     }
@@ -356,7 +356,7 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
       if (inputProgram.language_ == SPIRV) {
         parsedOptions.oVariables->BinaryIsSpirv = true;
       }
-      deviceprograms_t inputDevProgs = inputProgram.devicePrograms();
+      const deviceprograms_t &inputDevProgs = inputProgram.devicePrograms();
       const auto findIt = inputDevProgs.find(it);
       if (findIt == inputDevProgs.cend()) {
         if (found) break;
