@@ -385,8 +385,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     std::string dumpFileName;
-    if (requiredDump && amdOptions != nullptr &&
-        amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+    if (requiredDump || amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
       dumpFileName = amdOptions->getDumpFileName("_linked.bc");
     }
     status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData,
@@ -491,8 +490,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     std::string outFileName;
-    if (amdOptions->isDumpFlagSet(amd::option::DUMP_BC_ORIGINAL)) {
-       outFileName = amdOptions->getDumpFileName("_original.bc");
+    if (amdOptions->isDumpFlagSet(amd::option::DUMP_BC_OPTIMIZED)) {
+       outFileName = amdOptions->getDumpFileName("_optimized.bc");
     }
     status = extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, outFileName, binaryData,
                                    binarySize);
