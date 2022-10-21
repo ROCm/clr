@@ -192,6 +192,9 @@ enum DumpFlags {
 
     // For a release product, can only dump the following
     DUMP_PRODUCT_FLAGS = (DUMP_CL | DUMP_I | DUMP_S | DUMP_O | DUMP_DLL |
+                          // handling DUMP_BC_ORIGINAL would require a fair amount of work,
+                          // since the output of comgr is already optimized
+                          DUMP_BC_OPTIMIZED | DUMP_BC_LINKED |
                           DUMP_IL |DUMP_CGIL | DUMP_DEBUGIL |
                           DUMP_ISA | DUMP_BIF),
 
