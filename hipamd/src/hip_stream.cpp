@@ -587,17 +587,10 @@ hipError_t streamCallback_common(hipStream_t stream, StreamCallback* cbo, void* 
   if (last_command != nullptr) {
     last_command->release();
   }
-  // Add the new barrier to stall the stream, until the callback is done
-  eventWaitList.clear();
-  eventWaitList.push_back(command);
-  amd::Command* block_command = new amd::Marker(*hostQueue, !kMarkerDisableFlush, eventWaitList);
-  if (block_command == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  block_command->enqueue();
-  block_command->release();
   // Release the callback marker
   command->release();
+  // Notify the command queue about a possible waiter for the calback
+  command->notifyCmdQueue();
 
   return hipSuccess;
 }
