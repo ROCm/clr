@@ -446,9 +446,13 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
       return hipErrorInvalidValue;
     }
   } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
-    isAsync = false;
+    if (AMD_DIRECT_DISPATCH) {
+      isAsync = false;
+    }
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
-    isAsync = false;
+    if (AMD_DIRECT_DISPATCH) {
+      isAsync = false;
+    }
   }
   amd::Command* command = nullptr;
   status = ihipMemcpyCommand(command, dst, src, sizeBytes, kind, queue);
