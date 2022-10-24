@@ -576,7 +576,7 @@ hipError_t hipSetDeviceFlags ( unsigned int  flags ) {
 
   if (((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleSpin) && ((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleYield)
       && ((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleBlockingSync)
-      && ((scheduleFlag & hipDeviceScheduleAuto) != hipDeviceScheduleAuto)) {
+      && ((scheduleFlag & mutualExclusiveFlags) != hipDeviceScheduleAuto)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
