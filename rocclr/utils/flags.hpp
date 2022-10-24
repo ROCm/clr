@@ -277,7 +277,9 @@ release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
         "Force the stream wait memory operation to wait on CP.")              \
 release(bool, HIP_USE_RUNTIME_UNBUNDLER, false,                               \
-        "Use HIP runtime unbundler")                                          \
+        "Force this to use Runtime code object unbundler.")                   \
+release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
+        "Set this to true to force runtime unbundler in hiprtc.")             \
 
 namespace amd {
 
