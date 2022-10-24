@@ -3365,16 +3365,13 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     if (!profileRef->initialize()) {
       LogError("Failed to initialize performance counter");
       vcmd.setStatus(CL_INVALID_OPERATION);
-    }
-
-    // create the AQL packet for start profiling
-    if (profileRef->createStartPacket() == nullptr) {
+    } else if (profileRef->createStartPacket() == nullptr) {
       LogError("Failed to create AQL packet for start profiling");
       vcmd.setStatus(CL_INVALID_OPERATION);
+    } else {
+        dispatchCounterAqlPacket(profileRef->prePacket(), counter->gfxVersion(), false,
+                                 profileRef->api());
     }
-
-    dispatchCounterAqlPacket(profileRef->prePacket(), counter->gfxVersion(), false,
-                             profileRef->api());
 
     profileRef->release();
   } else if (vcmd.getState() == amd::PerfCounterCommand::End) {
