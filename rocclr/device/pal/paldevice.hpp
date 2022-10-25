@@ -617,8 +617,8 @@ class Device : public NullDevice {
 
   virtual bool findLinkInfo(const amd::Device& other_device,
                             std::vector<LinkAttrType>* link_attr) {
-    // Not implemented in PAL yet
-    ShouldNotReachHere();
+    // Unsupported in PAL
+    LogPrintfError("The function is unsupported on Windows");
     return false;
   }
 
