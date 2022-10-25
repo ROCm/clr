@@ -1928,7 +1928,6 @@ class Device : public RuntimeObject {
   //! Returns value for LinkAttribute for lost of vectors
   virtual bool findLinkInfo(const amd::Device& other_device,
                             std::vector<LinkAttrType>* link_attr) {
-    ShouldNotReachHere();
     return false;
   }
 
