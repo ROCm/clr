@@ -864,7 +864,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
             "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
             "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
             "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
-            gpu_queue_, header,
+            gpu_queue_->base_address, header,
             extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
             extractAqlBits(header, HSA_PACKET_HEADER_BARRIER,
                            HSA_PACKET_HEADER_WIDTH_BARRIER),
@@ -1006,7 +1006,7 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
           "HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
           " release=%d), "
           "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
-          gpu_queue_, packetHeader,
+          gpu_queue_->base_address, packetHeader,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
                          HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER,
