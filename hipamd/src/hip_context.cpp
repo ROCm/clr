@@ -143,6 +143,10 @@ using namespace hip;
 hipError_t hipInit(unsigned int flags) {
   HIP_INIT_API(hipInit, flags);
 
+  if (flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(hipSuccess);
 }
 
