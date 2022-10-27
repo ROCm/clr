@@ -68,7 +68,7 @@ class VirtualGPU : public device::VirtualDevice {
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
 
-    static Queue* Create(const VirtualGPU& gpu,                 //!< OCL virtual GPU object
+    static Queue* Create(VirtualGPU& gpu,                       //!< ROCCLR virtual GPU object
                          Pal::QueueType queueType,              //!< PAL queue type
                          uint engineIdx,                        //!< Select particular engine index
                          Pal::ICmdAllocator* cmdAlloc,          //!< PAL CMD buffer allocator
@@ -78,7 +78,7 @@ class VirtualGPU : public device::VirtualDevice {
                          uint max_command_buffers  //!< Number of allocated command buffers
     );
 
-    Queue(const VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit,
+    Queue(VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit,
           uint max_command_buffers)
         : lock_(nullptr),
           iQueue_(nullptr),
@@ -177,7 +177,7 @@ class VirtualGPU : public device::VirtualDevice {
 
    private:
     void DumpMemoryReferences() const;
-    const VirtualGPU& gpu_;  //!< OCL virtual GPU object
+    VirtualGPU& gpu_;        //!< ROCCLR virtual GPU object
     Pal::IDevice* iDev_;     //!< PAL device
     uint cmdBufIdSlot_;      //!< Command buffer ID slot for submissions
     uint cmdBufIdCurrent_;   //!< Current global command buffer ID
@@ -227,7 +227,6 @@ class VirtualGPU : public device::VirtualDevice {
       uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
       uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
       uint imageBufferWrtBack_ : 1;  //!< Enable image buffer write back
-      uint hasPendingDispatch_ : 1;  //!< A kernel dispatch is outstanding
     };
     uint value_;
     State() : value_(0) {}
@@ -562,14 +561,22 @@ class VirtualGPU : public device::VirtualDevice {
     }
   }
 
+  //! Waits for idle on SDMA engine
+  void WaitForIdleSdma() {
+    if (events_[SdmaEngine].isValid()) {
+      queues_[events_[SdmaEngine].engineId_]->waitForEvent(events_[SdmaEngine].id_);
+      events_[SdmaEngine].invalidate();
+    }
+  }
+
   void* getOrCreateHostcallBuffer();
 
   //! Waits on an outstanding kernel.
-  void releaseGpuMemoryFence();
-
-  //! Returns true if a dispatch is pending.
-  bool isPendingDispatch() const { return state_.hasPendingDispatch_; }
-
+  void releaseGpuMemoryFence() {
+    if (amd::IS_HIP) {
+      WaitForIdleCompute();
+    }
+  }
 
  protected:
   void profileEvent(EngineType engine, bool type) const;

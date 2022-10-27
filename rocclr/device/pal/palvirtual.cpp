@@ -61,7 +61,8 @@ uint32_t VirtualGPU::Queue::AllocedQueues(const VirtualGPU& gpu, Pal::EngineType
   return allocedQueues;
 }
 
-VirtualGPU::Queue* VirtualGPU::Queue::Create(const VirtualGPU& gpu, Pal::QueueType queueType,
+// ================================================================================================
+VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType queueType,
                                              uint engineIdx, Pal::ICmdAllocator* cmdAllocator,
                                              uint rtCU, amd::CommandQueue::Priority priority,
                                              uint64_t residency_limit, uint max_command_buffers) {
@@ -341,6 +342,7 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
   palDoppRefs_.push_back(doppRef);
 }
 
+// ================================================================================================
 bool VirtualGPU::Queue::flush() {
   if (!gpu_.dev().settings().alwaysResident_ && palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
@@ -381,6 +383,13 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.fenceCount           = 1;
   submitInfo.ppFences             = &iCmdFences_[cmdBufIdSlot_];
 
+  if (amd::IS_HIP) {
+    // HIP disables per resource tracking, because the app may embed SVM ptr into other buffers.
+    // Force CPU sync if there are pending operations on SDMA, until OS fences will be added
+    if (iQueue_->Type() == Pal::QueueTypeCompute) {
+      gpu_.WaitForIdleSdma();
+    }
+  }
   // Submit command buffer to OS
   Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
@@ -2695,9 +2704,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dev().rgpCaptureMgr()->PostDispatch(this);
   }
 
-  // Mark the flag indicating if a dispatch is outstanding.
-  state_.hasPendingDispatch_ = true;
-
   return true;
 }
 
@@ -3951,14 +3957,6 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
     return nullptr;
   }
   return hostcallBuffer_;
-}
-
-void VirtualGPU::releaseGpuMemoryFence() {
-  if (isPendingDispatch() && amd::IS_HIP) {
-    WaitForIdleCompute();
-    // Reset the status.
-    state_.hasPendingDispatch_ = false;
-  }
 }
 
 }  // namespace pal
