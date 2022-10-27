@@ -128,14 +128,14 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     return hipErrorNotReady;
   }
 
-  if (event_ == eStop.event_ && recorded_ && eStop.isRecorded()) {
+  if (event_ == eStop.event_) {
     // Events are the same, which indicates the stream is empty and likely
     // eventRecord is called on another stream. For such cases insert and measure a
     // marker.
     amd::Command* command = new amd::Marker(*event_->command().queue(), kMarkerDisableFlush);
     command->enqueue();
     command->awaitCompletion();
-    ms = static_cast<float>(static_cast<int64_t>(command->event().profilingInfo().end_) - time()) /
+    ms = static_cast<float>(static_cast<int64_t>(command->event().profilingInfo().end_) - time(false)) /
         1000000.f;
     command->release();
   } else {
@@ -143,32 +143,37 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     // Hence for now make sure CPU status is updated by calling awaitCompletion();
     awaitEventCompletion();
     eStop.awaitEventCompletion();
-    ms = static_cast<float>(eStop.time() - time()) / 1000000.f;
+    if (unrecorded_ && eStop.isUnRecorded()) {
+      // Both the events are not recorded, just need the end and start of stop event
+      ms = static_cast<float>(eStop.time(false) - eStop.time(true)) / 1000000.f;
+    } else {
+      ms = static_cast<float>(eStop.time(false) - time(false)) / 1000000.f;
+    }
   }
   return hipSuccess;
 }
 
-int64_t Event::time() const {
+int64_t Event::time(bool getStartTs) const {
   assert(event_ != nullptr);
-  if (recorded_) {
-    return static_cast<int64_t>(event_->profilingInfo().end_);
-  } else {
+  if (getStartTs) {
     return static_cast<int64_t>(event_->profilingInfo().start_);
+  } else {
+    return static_cast<int64_t>(event_->profilingInfo().end_);
   }
 }
 
-int64_t EventDD::time() const {
+int64_t EventDD::time(bool getStartTs) const {
   uint64_t start = 0, end = 0;
   assert(event_ != nullptr);
   g_devices[deviceId()]->devices()[0]->getHwEventTime(*event_, &start, &end);
   // FIXME: This is only needed if the command had to wait CL_COMPLETE status
   if (start == 0 || end == 0) {
-    return Event::time();
+    return Event::time(getStartTs);
   }
-  if (recorded_) {
-    return static_cast<int64_t>(end);
-  } else {
+  if (getStartTs) {
     return static_cast<int64_t>(start);
+  } else {
+    return static_cast<int64_t>(end);
   }
 }
 
@@ -238,7 +243,7 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
     event_->release();
   }
   event_ = &command->event();
-  recorded_ = record;
+  unrecorded_ = !record;
 
   return hipSuccess;
 }

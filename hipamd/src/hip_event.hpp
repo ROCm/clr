@@ -99,7 +99,7 @@ class Event {
 
  public:
   Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
-                              event_(nullptr), recorded_(false), stream_(nullptr) {
+                              event_(nullptr), unrecorded_(false), stream_(nullptr) {
     // No need to init event_ here as addMarker does that
     onCapture_ = false;
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
@@ -131,11 +131,11 @@ class Event {
       event_->release();
     }
     event_ = &command.event();
-    recorded_ = record;
+    unrecorded_ = !record;
     command.retain();
   }
 
-  bool isRecorded() const { return recorded_; }
+  bool isUnRecorded() const { return unrecorded_; }
   amd::Monitor& lock() { return lock_; }
   const int deviceId() const { return device_id_; }
   void setDeviceId(int id) { device_id_ = id; }
@@ -171,17 +171,17 @@ class Event {
   }
   virtual bool awaitEventCompletion();
   virtual bool ready();
-  virtual int64_t time() const;
+  virtual int64_t time(bool getStartTs) const;
 
  protected:
   amd::Monitor lock_;
   amd::HostQueue* stream_;
   amd::Event* event_;
   int device_id_;
-  //! Flag to indicate hipEventRecord has been called. This is needed except for
+  //! Flag to indicate hipEventRecord has not been called. This is needed for
   //! hip*ModuleLaunchKernel API which takes start and stop events so no
   //! hipEventRecord is called. Cleanup needed once those APIs are deprecated.
-  bool recorded_;
+  bool unrecorded_;
 };
 
 class EventDD : public Event {
@@ -191,7 +191,7 @@ class EventDD : public Event {
 
   virtual bool awaitEventCompletion();
   virtual bool ready();
-  virtual int64_t time() const;
+  virtual int64_t time(bool getStartTs) const;
 };
 
 class IPCEvent : public Event {
