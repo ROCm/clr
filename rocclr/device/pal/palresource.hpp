@@ -209,6 +209,7 @@ class Resource : public amd::HeapObject {
         uint isAllocExecute_ : 1;  //!< SVM resource allocation attribute for shader\cmdbuf
         uint isDoppTexture_ : 1;   //!< PAL resource is for a DOPP desktop texture
         uint gl2CacheDisabled_ : 1;//!< PAL resource is allocated with GPU L2 cache disabled.
+        uint reserved_va_ : 1;     //!< PAL resource was allocated for a reserved VA
       };
       uint state_;
     };
