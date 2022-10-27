@@ -141,8 +141,8 @@ hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
 }
 
 hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue, uint32_t flags) {
-  bool recorded = isRecorded();
-  if (!recorded) {
+  bool unrecorded = isUnRecorded();
+  if (unrecorded) {
     command = new amd::Marker(*queue, kMarkerDisableFlush);
   } else {
     return Event::recordCommand(command, queue);
@@ -152,8 +152,8 @@ hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue
 
 hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
   amd::HostQueue* queue = hip::getQueue(stream);
-  bool recorded = isRecorded();
-  if (!recorded) {
+  bool unrecorded = isUnRecorded();
+  if (unrecorded) {
     amd::Event& tEvent = command->event();
     createIpcEventShmemIfNeeded();
     int write_index = ipc_evt_.ipc_shmem_->write_index++;
