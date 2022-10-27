@@ -47,8 +47,6 @@ inline Memory& DmaBlitManager::gpuMem(device::Memory& mem) const {
 bool DmaBlitManager::readMemoryStaged(Memory& srcMemory, void* dstHost, Memory** xferBuf,
                                       size_t origin, size_t& offset, size_t& totalSize,
                                       size_t xferSize) const {
-  gpu().releaseGpuMemoryFence();
-
   amd::Coord3D dst(0, 0, 0);
   size_t tmpSize;
   uint idxWrite = 0;
@@ -120,11 +118,10 @@ bool DmaBlitManager::readMemoryStaged(Memory& srcMemory, void* dstHost, Memory**
 bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ ||
       (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(srcMemory).isCacheable())) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire);
   } else {
     size_t srcSize = size[0];
@@ -210,11 +207,10 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
                                     const amd::BufferRect& bufRect, const amd::BufferRect& hostRect,
                                     const amd::Coord3D& size, bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
       (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(srcMemory).isCacheable())) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire);
   } else {
     Memory& xferBuf = dev().xferRead().acquire();
@@ -293,7 +289,7 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
   } else {
     chunkSize = std::min(amd::alignUp(xferSize / 4, 256), gpu().xferWrite().MaxSize());
     chunkSize = std::max(chunkSize, 64 * Ki);
-    flushDMA = true;
+    flushDMA = (xferSize > chunkSize);
   }
   size_t srcOffset = 0;
   uint32_t flags = Resource::NoWait;
@@ -332,13 +328,12 @@ bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, M
 bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBuffer_ ||
       (gpuMem(dstMemory).isHostMemDirectAccess() &&
        (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire);
   } else {
     size_t dstSize = size[0];
@@ -401,12 +396,12 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
       }
     }
 
-    if (dstSize != 0) {
-      Memory& xferBuf = gpu().xferWrite().Acquire(dstSize);
-
+    while (dstSize > 0) {
+      auto xfer_size = std::min(dstSize, gpu().xferWrite().MaxSize());
+      Memory& xferBuf = gpu().xferWrite().Acquire(xfer_size);
       // Write memory using a staged resource
       if (!writeMemoryStaged(srcHost, gpuMem(dstMemory), xferBuf, origin[0], offset, dstSize,
-                             dstSize)) {
+                             xfer_size)) {
         LogError("DmaBlitManager::writeBuffer failed!");
         return false;
       }
@@ -422,13 +417,12 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
                                      const amd::BufferRect& hostRect,
                                      const amd::BufferRect& bufRect, const amd::Coord3D& size,
                                      bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   // Use host copy if memory has direct access or it's persistent
   if (setup_.disableWriteBufferRect_ ||
       (dstMemory.isHostMemDirectAccess() &&
        (gpuMem(dstMemory).memoryType() != Resource::ExternalPhysical)) ||
       gpuMem(dstMemory).isPersistentDirectMap()) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire);
   } else {
     Memory& xferBuf = gpu().xferWrite().Acquire(std::min(gpu().xferWrite().MaxSize(), size[0]));
@@ -481,7 +475,6 @@ bool DmaBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 size_t rowPitch, size_t slicePitch, bool entire) const {
   gpu().releaseGpuMemoryFence();
-
   if (setup_.disableWriteImage_) {
     return HostBlitManager::writeImage(srcHost, dstMemory, origin, size, rowPitch, slicePitch,
                                        entire);
@@ -497,11 +490,10 @@ bool DmaBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
 bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                 const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
                                 const amd::Coord3D& size, bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   if (setup_.disableCopyBuffer_ ||
       (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(srcMemory).isCacheable() &&
        !dev().settings().apuSystem_ && gpuMem(dstMemory).isHostMemDirectAccess())) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size);
   } else {
     return gpuMem(srcMemory).partialMemCopyTo(gpu(), srcOrigin, dstOrigin, size, gpuMem(dstMemory));
@@ -513,11 +505,10 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
 bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& dstMemory,
                                     const amd::BufferRect& srcRect, const amd::BufferRect& dstRect,
                                     const amd::Coord3D& size, bool entire) const {
-  gpu().releaseGpuMemoryFence();
-
   if (setup_.disableCopyBufferRect_ ||
       (gpuMem(srcMemory).isHostMemDirectAccess() && gpuMem(srcMemory).isCacheable() &&
        gpuMem(dstMemory).isHostMemDirectAccess())) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire);
   } else {
     size_t srcOffset;
@@ -591,10 +582,8 @@ bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
   bool result = false;
-  gpu().releaseGpuMemoryFence();
-
-
   if (setup_.disableCopyImageToBuffer_) {
+    gpu().releaseGpuMemoryFence();
     result = HostBlitManager::copyImageToBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size,
                                                 entire, rowPitch, slicePitch);
   } else {
@@ -604,6 +593,7 @@ bool DmaBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory
 
     // Check if a HostBlit transfer is required
     if (completeOperation_ && !result) {
+      gpu().releaseGpuMemoryFence();
       result = HostBlitManager::copyImageToBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size,
                                                   entire, rowPitch, slicePitch);
     }
@@ -617,10 +607,8 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
                                        const amd::Coord3D& size, bool entire, size_t rowPitch,
                                        size_t slicePitch) const {
   bool result = false;
-  gpu().releaseGpuMemoryFence();
-
-
   if (setup_.disableCopyBufferToImage_) {
+    gpu().releaseGpuMemoryFence();
     result = HostBlitManager::copyBufferToImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size,
                                                 entire, rowPitch, slicePitch);
   } else {
@@ -630,6 +618,7 @@ bool DmaBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memory
 
     // Check if a HostBlit transfer is required
     if (completeOperation_ && !result) {
+      gpu().releaseGpuMemoryFence();
       result = HostBlitManager::copyBufferToImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size,
                                                   entire, rowPitch, slicePitch);
     }

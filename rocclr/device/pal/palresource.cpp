@@ -1430,6 +1430,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     // Make sure compute is done before CP DMA start
     gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
   } else {
+    gpu.releaseGpuMemoryFence();
     gpu.engineID_ = SdmaEngine;
   }
 
