@@ -1250,6 +1250,38 @@ THE SOFTWARE.
             inline
             __HOST_DEVICE__
             bool __hbgtu2(__half2 x, __half2 y) { return __hbgt2(x, y); }
+            inline
+            __device__
+            __half __hmax(const __half x, const __half y) {
+              return __half_raw{__ocml_fmax_f16(static_cast<__half_raw>(x).data,
+                                   static_cast<__half_raw>(y).data)};
+            }
+            inline
+            __device__
+            __half __hmax_nan(const __half x, const __half y) {
+                if(__ocml_isnan_f16(x)) {
+                  return x;
+                } else if (__ocml_isnan_f16(y)) {
+                  return y;
+                }
+                return __hmax(x, y);
+            }
+            inline
+            __device__
+            __half __hmin(const __half x, const __half y) {
+              return __half_raw{__ocml_fmin_f16(static_cast<__half_raw>(x).data,
+                                   static_cast<__half_raw>(y).data)};
+            }
+            inline
+            __device__
+            __half __hmin_nan(const __half x, const __half y) {
+                if(__ocml_isnan_f16(x)) {
+                  return x;
+                } else if (__ocml_isnan_f16(y)) {
+                  return y;
+                }
+                return __hmin(x, y);
+            }
 
             // Arithmetic
             inline
