@@ -24,7 +24,7 @@
 
 namespace pal {
 
-static constexpr std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
+static constexpr std::array<PCIndexSelect, 50> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // CPF
     PCIndexSelect::ShaderEngine,             // IA
     PCIndexSelect::ShaderEngine,             // VGT
@@ -74,6 +74,7 @@ static constexpr std::array<PCIndexSelect, 49> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // GeDist
     PCIndexSelect::ShaderEngine,             // GeSe
     PCIndexSelect::None,                     // Df
+    PCIndexSelect::ComputeUnit,              // SqWgp
 }};
 
 PalCounterReference* PalCounterReference::Create(VirtualGPU& gpu) {
@@ -521,7 +522,7 @@ static constexpr std::array<std::pair<int, int>, 123> gfx9BlockIdPal = {{
     {0x1F, 7},     // RMI7      - 122
 }};
 
-static constexpr std::array<std::pair<int, int>, 139> gfx10BlockIdPal = {{
+static constexpr std::array<std::pair<int, int>, 140> gfx10BlockIdPal = {{
     {0x0E, 0},     // CB0       - 0
     {0x0E, 1},     // CB1       - 1
     {0x0E, 2},     // CB2       - 2
@@ -660,7 +661,8 @@ static constexpr std::array<std::pair<int, int>, 139> gfx10BlockIdPal = {{
     {0x2A, 0},     // GUS       - 135
     {0x2B, 0},     // GCR       - 136
     {0x2C, 0},     // PH        - 137
-    {0x2C, 0},     // UTCL1     - 138
+    {0x2D, 0},     // UTCL1     - 138
+    {0x31, 0},     // SqWgp     - 139  For Navi3x
 }};
 
 void PerfCounter::convertInfo() {
@@ -688,6 +690,7 @@ void PerfCounter::convertInfo() {
       break;
     case Pal::GfxIpLevel::GfxIp10_1:
     case Pal::GfxIpLevel::GfxIp10_3:
+    case Pal::GfxIpLevel::GfxIp11_0:
       if (info_.blockIndex_ < gfx10BlockIdPal.size()) {
         auto p = gfx10BlockIdPal[info_.blockIndex_];
         info_.blockIndex_ = std::get<0>(p);
