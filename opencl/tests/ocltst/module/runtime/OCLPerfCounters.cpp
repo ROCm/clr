@@ -46,6 +46,21 @@ struct DeviceCounterInfo {
 };
 
 static const DeviceCounterInfo DeviceInfo[]{
+#ifdef _WIN32
+    // GFX11 supports performance counter on Windows only.
+    {"gfx1100",
+     11,
+     {{139, 0, 4}, {74, 0, 13}}},  // {SQWGP, reg 0, SQ_PERF_SEL_WAVES}, {CPC,
+                                   // reg 0, Me1 busy for packet decode}
+    {"gfx1101",
+     11,
+     {{139, 0, 4}, {74, 0, 13}}},  // {SQWGP, reg 0, SQ_PERF_SEL_WAVES}, {CPC,
+                                   // reg 0, Me1 busy for packet decode}
+    {"gfx1102",
+     11,
+     {{139, 0, 4}, {74, 0, 13}}},  // {SQWGP, reg 0, SQ_PERF_SEL_WAVES}, {CPC,
+                                   // reg 0, Me1 busy for packet decode}
+#endif
     // GFX10
     {"gfx1000",
      10,
