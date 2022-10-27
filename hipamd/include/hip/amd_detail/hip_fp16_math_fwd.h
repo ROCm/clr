@@ -25,7 +25,6 @@ THE SOFTWARE.
 // /*
 // Half Math Functions
 // */
-
 #include "host_defines.h"
 #if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 extern "C"
@@ -51,6 +50,8 @@ extern "C"
     __device__ _Float16 __ocml_sin_f16(_Float16);
     __device__ __attribute__((const)) _Float16 __ocml_sqrt_f16(_Float16);
     __device__ __attribute__((const)) _Float16 __ocml_trunc_f16(_Float16);
+    __device__ __attribute__((const)) _Float16 __ocml_fmax_f16(_Float16, _Float16);
+    __device__ __attribute__((const)) _Float16 __ocml_fmin_f16(_Float16, _Float16);
 
     typedef _Float16 __2f16 __attribute__((ext_vector_type(2)));
     typedef short __2i16 __attribute__((ext_vector_type(2)));
@@ -84,3 +85,8 @@ extern "C"
     __device__ __attribute__((const)) __2f16 __ocml_trunc_2f16(__2f16);
 }
 #endif // !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
+//TODO: remove these after they get into clang header __clang_hip_libdevice_declares.h'
+extern "C" {
+    __device__ __attribute__((const)) _Float16 __ocml_fmax_f16(_Float16, _Float16);
+    __device__ __attribute__((const)) _Float16 __ocml_fmin_f16(_Float16, _Float16);
+}
