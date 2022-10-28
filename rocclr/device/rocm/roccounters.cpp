@@ -536,6 +536,7 @@ bool PerfCounterProfile::initialize() {
   profile_.output_buffer = {nullptr, 0};
 
   if (api_.hsa_ven_amd_aqlprofile_start(&profile_, nullptr) != HSA_STATUS_SUCCESS) {
+    LogError("Start hsa aql profile counter failed");
     return false;
   }
 
@@ -553,6 +554,7 @@ bool PerfCounterProfile::initialize() {
       profile_.command_buffer.ptr = buf_ptr;
     }
     else {
+      LogError("Failed to allocate profile counter command buffer");
       return false;
     }
   }
@@ -570,12 +572,14 @@ bool PerfCounterProfile::initialize() {
     }
     else {
       roc_device_.hostFree(profile_.command_buffer.ptr, profile_.command_buffer.size);
+      LogError("Failed to allocate profile counter output buffer");
       return false;
     }
   }
 
   // create the completion signal
   if (hsa_signal_create(1, 0, nullptr, &completionSignal_) != HSA_STATUS_SUCCESS) {
+    LogError("Failed to create signal for profile counter");
     return false;
   }
 
