@@ -229,6 +229,22 @@ device::Program* Program::getDeviceProgram(const Device& device) const {
 
 Monitor Program::buildLock_("OCL build program", true);
 
+static bool adjustOptionsOnIgnoreEnv(std::string &cppstr) {
+  // if there is a -ignore-env,  adjust options.
+  bool optionChangable = true;
+  if (cppstr.size() > 0) {
+    // Set the options to be the string after -ignore-env
+    const char ignore_env[] = "-ignore-env";
+    size_t pos = cppstr.find(ignore_env);
+    if (pos != std::string::npos) {
+      cppstr = cppstr.substr(pos + sizeof(ignore_env));
+      optionChangable = false;
+    }
+    remove_g_option(cppstr);
+  }
+  return optionChangable;
+}
+
 int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
                         const std::vector<const Program*>& headerPrograms,
                         const char** headerIncludeNames, const char* options,
@@ -243,17 +259,7 @@ int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
 
   // Process build options.
   std::string cppstr(options ? options : "");
-
-  // if there is a -ignore-env,  adjust options.
-  if (cppstr.size() > 0) {
-    // Set the options to be the string after -ignore-env
-    size_t pos = cppstr.find("-ignore-env");
-    if (pos != std::string::npos) {
-      cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
-      optionChangable = false;
-    }
-    remove_g_option(cppstr);
-  }
+  optionChangable &= adjustOptionsOnIgnoreEnv(cppstr);
 
   std::vector<const std::string*> headers(numHeaders);
   for (size_t i = 0; i < numHeaders; ++i) {
@@ -330,17 +336,7 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
 
   // Process build options.
   std::string cppstr(options ? options : "");
-
-  // if there is a -ignore-env,  adjust options.
-  if (cppstr.size() > 0) {
-    // Set the options to be the string after -ignore-env
-    size_t pos = cppstr.find("-ignore-env");
-    if (pos != std::string::npos) {
-      cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
-      optionChangable = false;
-    }
-    remove_g_option(cppstr);
-  }
+  optionChangable &= adjustOptionsOnIgnoreEnv(cppstr);
 
   // Link the program programs associated with the given devices.
   for (const auto& it : devices) {
@@ -515,17 +511,7 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
 
   // Process build options.
   std::string cppstr(options ? options : "");
-
-  // if there is a -ignore-env,  adjust options.
-  if (cppstr.size() > 0) {
-    // Set the options to be the string after -ignore-env
-    size_t pos = cppstr.find("-ignore-env");
-    if (pos != std::string::npos) {
-      cppstr = cppstr.substr(pos + sizeof("-ignore-env"));
-      optionChangable = false;
-    }
-    remove_g_option(cppstr);
-  }
+  optionChangable &= adjustOptionsOnIgnoreEnv(cppstr);
 
   // Build the program programs associated with the given devices.
   for (const auto& it : devices) {
