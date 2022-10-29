@@ -685,7 +685,8 @@ class hipGraphKernelNode : public hipGraphNode {
   }
 
   void GetParams(hipKernelNodeParams* params) {
-    std::memcpy(params, pKernelParams_, sizeof(hipKernelNodeParams));
+    *params = *pKernelParams_;
+
   }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
@@ -693,6 +694,13 @@ class hipGraphKernelNode : public hipGraphNode {
     hipError_t status = validateKernelParams(params);
     if (hipSuccess != status) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to validateKernelParams");
+      return status;
+    }
+    if (pKernelParams_ && ((pKernelParams_->kernelParams
+        && pKernelParams_->kernelParams == params->kernelParams)
+        || (pKernelParams_->extra && pKernelParams_->extra == params->extra))) {
+      // params is copied from pKernelParams_ and then updated, so just copy it back
+      *pKernelParams_ = *params;
       return status;
     }
     freeParams();
