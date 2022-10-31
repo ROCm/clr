@@ -1425,7 +1425,9 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     }
   }
 
-  bool cp_dma = dev().settings().disableSdma_;
+  bool cp_dma = dev().settings().disableSdma_ ||
+      (!enableCopyRect && desc().buffer_ && dstResource.desc().buffer_ &&
+       (size[0] < dev().settings().cpDmaCopySizeMax_));
   if (cp_dma) {
     // Make sure compute is done before CP DMA start
     gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);

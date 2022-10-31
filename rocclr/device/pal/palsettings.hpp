@@ -107,6 +107,7 @@ class Settings : public device::Settings {
   size_t stagedXferSize_;        //!< Staged buffer size
   size_t pinnedXferSize_;        //!< Pinned buffer size for transfer
   size_t pinnedMinXferSize_;     //!< Minimal buffer size for pinned transfer
+  size_t cpDmaCopySizeMax_;      //!< Threshold for CP DMA path in copy
   size_t resourceCacheSize_;     //!< Resource cache size in MB
   size_t numMemDependencies_;    //!< The array size for memory dependencies tracking
   uint64_t maxAllocSize_;        //!< Maximum single allocation size
