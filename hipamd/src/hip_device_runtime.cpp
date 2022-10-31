@@ -430,7 +430,8 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
 
-  if (pciBusId == nullptr || len <= 0) {
+  //pciBusId should be large enough to store 13 characters including the NULL-terminator.
+  if (pciBusId == nullptr || len <= 12) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
