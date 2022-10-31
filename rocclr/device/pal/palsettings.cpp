@@ -171,6 +171,7 @@ Settings::Settings() {
   mallPolicy_ = 0;
   alwaysResident_ = amd::IS_HIP ? true : false;
   prepinnedMinSize_ = 0;
+  cpDmaCopySizeMax_ = GPU_CP_DMA_COPY_SIZE * Ki;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,

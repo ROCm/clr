@@ -62,6 +62,8 @@ release(cstring, GPU_DEVICE_ORDINAL, "",                                      \
         "Select the device ordinal (comma seperated list of available devices)") \
 release(bool, REMOTE_ALLOC, false,                                            \
         "Use remote memory for the global heap allocation")                   \
+release(uint, GPU_CP_DMA_COPY_SIZE, 1,                                        \
+        "Set maximum size of CP DMA copy in KiB")                             \
 release(uint, GPU_MAX_HEAP_SIZE, 100,                                         \
         "Set maximum size of the GPU heap to % of board memory")              \
 release(uint, GPU_STAGING_BUFFER_SIZE, 1024,                                  \
