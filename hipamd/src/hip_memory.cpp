@@ -43,7 +43,7 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
     }
     else {
       //SVM ptr or device ptr mapped from host
-      device::Memory* devMem = 
+      device::Memory* devMem =
               (memObj->getDeviceMemory(*memObj->getContext().devices()[0]));
       if (devMem == nullptr) {
         return nullptr;
@@ -1119,17 +1119,17 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
       return hipErrorInvalidValue;
     }
 
+    amd::MemObjMap::AddMemObj(hostPtr, mem);
     for (const auto& device : g_devices) {
       // Since the amd::Memory object is shared between all devices
       // it's fine to have multiple addresses mapped to it
       const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
       void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
-      if (amd::MemObjMap::FindMemObj(vAddr) == nullptr) {
+      if ((hostPtr != vAddr) && (amd::MemObjMap::FindMemObj(vAddr) == nullptr)) {
         amd::MemObjMap::AddMemObj(vAddr, mem);
       }
     }
 
-    amd::MemObjMap::AddMemObj(hostPtr, mem);
     if (mem != nullptr) {
       mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
       // Save the HIP memory flags so that they can be accessed later
@@ -1161,16 +1161,16 @@ hipError_t ihipHostUnregister(void* hostPtr) {
       queue->finish();
     }
 
+    amd::MemObjMap::RemoveMemObj(hostPtr);
     for (const auto& device: g_devices) {
       const device::Memory* devMem = mem->getDeviceMemory(*device->devices()[0]);
       if (devMem != nullptr) {
         void* vAddr = reinterpret_cast<void*>(devMem->virtualAddress());
-        if (amd::MemObjMap::FindMemObj(vAddr)) {
+        if ((vAddr != hostPtr) && amd::MemObjMap::FindMemObj(vAddr)) {
           amd::MemObjMap::RemoveMemObj(vAddr);
         }
       }
     }
-    amd::MemObjMap::RemoveMemObj(hostPtr);
     mem->release();
     return hipSuccess;
   }
