@@ -640,7 +640,6 @@ THE SOFTWARE.
                 return r;
             }
 
-            // TODO: rounding behaviour is not correct.
             // float -> half | half2
             inline
             __HOST_DEVICE__
@@ -654,23 +653,44 @@ THE SOFTWARE.
             {
                 return __half_raw{static_cast<_Float16>(x)};
             }
+            #if !defined(__HIPCC_RTC__)
+            // TODO: rounding behaviour is not correct for host functions.
             inline
-            __HOST_DEVICE__
+            __host__
             __half __float2half_rz(float x)
             {
                 return __half_raw{static_cast<_Float16>(x)};
             }
             inline
-            __HOST_DEVICE__
+            __host__
             __half __float2half_rd(float x)
             {
                 return __half_raw{static_cast<_Float16>(x)};
             }
             inline
-            __HOST_DEVICE__
+            __host__
             __half __float2half_ru(float x)
             {
                 return __half_raw{static_cast<_Float16>(x)};
+            }
+            #endif
+            inline
+            __device__
+            __half __float2half_rz(float x)
+            {
+                return __half_raw{__ocml_cvtrtz_f16_f32(x)};
+            }
+            inline
+            __device__
+            __half __float2half_rd(float x)
+            {
+                return __half_raw{__ocml_cvtrtn_f16_f32(x)};
+            }
+            inline
+            __device__
+            __half __float2half_ru(float x)
+            {
+                return __half_raw{__ocml_cvtrtp_f16_f32(x)};
             }
             inline
             __HOST_DEVICE__
