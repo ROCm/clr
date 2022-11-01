@@ -221,7 +221,6 @@ Device::~Device() {
 #ifdef WITH_AMDGPU_PRO
   delete pro_device_;
 #endif
-
   // Release cached map targets
   for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
     if ((*mapCache_)[i] != nullptr) {
@@ -243,6 +242,23 @@ Device::~Device() {
       glb_ctx_->release();
       glb_ctx_ = nullptr;
   }
+
+  for (auto& it : queuePool_) {
+    for (auto& qIter : it) {
+      hsa_queue_t* queue = qIter.first;
+      auto& qInfo = qIter.second;
+      if (qInfo.hostcallBuffer_) {
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
+                qInfo.hostcallBuffer_, qIter.first);
+        disableHostcalls(qInfo.hostcallBuffer_);
+        context().svmFree(qInfo.hostcallBuffer_);
+      }
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
+      it.erase(queue);
+      hsa_queue_destroy(queue);
+    }
+  }
+  queuePool_.clear();
 
   // Destroy temporary buffers for read/write
   delete xferRead_;
@@ -2705,20 +2721,29 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
 
 // ================================================================================================
 hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
-  if (qIndex < QueuePriority::Total && queuePool_[qIndex].size() > 0) {
-    typedef decltype(queuePool_)::value_type::const_reference PoolRef;
-    auto lowest = std::min_element(queuePool_[qIndex].begin(),
-        queuePool_[qIndex].end(), [] (PoolRef A, PoolRef B) {
-          return A.second.refCount < B.second.refCount;
-        });
-    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
-        "selected queue with least refCount: %p (%d)", lowest->first,
-        lowest->second.refCount);
-    lowest->second.refCount++;
-    return lowest->first;
+  // Check if queue with refCount 0 is available to use
+  if (queuePool_[qIndex].size() < GPU_MAX_HW_QUEUES) {
+    for (auto it = queuePool_[qIndex].begin(); it != queuePool_[qIndex].end(); it++) {
+      if (it->second.refCount == 0) {
+        it->second.refCount++;
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)\n", it->first,
+                it->second.refCount);
+        return it->first;
+      }
+    }
   } else {
-    return nullptr;
+    if (qIndex < QueuePriority::Total && queuePool_[qIndex].size() > 0) {
+      typedef decltype(queuePool_)::value_type::const_reference PoolRef;
+      auto lowest = std::min_element(
+          queuePool_[qIndex].begin(), queuePool_[qIndex].end(),
+          [](PoolRef A, PoolRef B) { return A.second.refCount < B.second.refCount; });
+      lowest->second.refCount++;
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)", lowest->first,
+              lowest->second.refCount);
+      return lowest->first;
+    }
   }
+  return nullptr;
 }
 
 hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
@@ -2756,8 +2781,12 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   // If we have reached the max number of queues, reuse an existing queue with the matching queue priority,
   // choosing the one with the least number of users.
   // Note: Don't attempt to reuse the cooperative queue, since it's single per device
-  if (!coop_queue && (cuMask.size() == 0) && (queuePool_[qIndex].size() == GPU_MAX_HW_QUEUES)) {
-    return getQueueFromPool(qIndex);
+  if (!coop_queue && (cuMask.size() == 0) &&
+      ((queuePool_[qIndex].size() == GPU_MAX_HW_QUEUES) || queuePool_[qIndex].size() > 0)) {
+    hsa_queue_t* queue = getQueueFromPool(qIndex);
+    if (queue != nullptr) {
+      return queue;
+    }
   }
 
   // Else create a new queue. This also includes the initial state where there
@@ -2869,6 +2898,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   assert(result.second && "QueueInfo already exists");
   auto &qInfo = result.first->second;
   qInfo.refCount = 1;
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)\n", result.first->first,
+          result.first->second.refCount);
   return queue;
 }
 
@@ -2879,27 +2910,10 @@ void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMas
       auto &qInfo = qIter->second;
       assert(qInfo.refCount > 0);
       qInfo.refCount--;
-      if (qInfo.refCount != 0) {
-        return;
-      }
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
-          "deleting hardware queue %p with refCount 0", queue);
-
-      if (qInfo.hostcallBuffer_) {
-        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
-            "deleting hostcall buffer %p for hardware queue %p",
-            qInfo.hostcallBuffer_, queue);
-        disableHostcalls(qInfo.hostcallBuffer_);
-        context().svmFree(qInfo.hostcallBuffer_);
-      }
-
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
-          "deleting hardware queue %p with refCount 0", queue);
-      it.erase(qIter);
-      break;
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)\n", qIter->first,
+              qIter->second.refCount);
     }
   }
-  hsa_queue_destroy(queue);
 }
 
 void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
