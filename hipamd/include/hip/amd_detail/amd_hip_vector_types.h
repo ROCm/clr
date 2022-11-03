@@ -631,8 +631,14 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
                 for (auto i = 0u; i != 3u; ++i) d[i] <<= x_.d[i];
                 return *this;
             }
-
+#if defined (__INTEL_COMPILER)
+            typedef struct {
+              int values[4];
+            } _Vec3_cmp;
+            using Vec3_cmp = _Vec3_cmp;
+#else
             using Vec3_cmp = int __attribute__((vector_size(4 * sizeof(int))));
+#endif //INTEL
             __HOST_DEVICE__
             Vec3_cmp operator==(const Native_vec_& x_) const noexcept
             {
