@@ -146,7 +146,7 @@ void Timestamp::checkGpuTime() {
         start = std::min(time.start, start);
         end = std::max(time.end, end);
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
-          "end = %ld", it->signal_.handle, start, end);
+          "end = %ld time taken= %ld ns", it->signal_.handle, start, end, end - start);
       }
       it->done_ = true;
     }
