@@ -1812,12 +1812,15 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize) {
-    if ((dstMemory.owner()->getHostMem() == nullptr) && (dstMemory.owner()->getSvmPtr() != nullptr)) {
+    if ((dstMemory.owner()->getHostMem() == nullptr) &&
+        (dstMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host memcpy for map wait_event");
       gpu().releaseGpuMemoryFence();
       char* dst = reinterpret_cast<char*>(dstMemory.owner()->getSvmPtr());
       std::memcpy(dst + origin[0], srcHost, size[0]);
-      // Set hasPendingDispatch_ flag. Then releaseGpuMemoryFence() will use barrier to invalidate cache
+      // Set hasPendingDispatch_ flag. Then releaseGpuMemoryFence() will use barrier
+      // to invalidate cache
       gpu().hasPendingDispatch();
       gpu().releaseGpuMemoryFence();
       return true;
