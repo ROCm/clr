@@ -241,7 +241,7 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
 
   // Report 512MB for all offline devices
   Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount];
-  heaps[Pal::GpuHeapLocal].heapSize = heaps[Pal::GpuHeapLocal].physicalHeapSize = 512 * Mi;
+  heaps[Pal::GpuHeapLocal].logicalSize = heaps[Pal::GpuHeapLocal].physicalSize = 512 * Mi;
 
   Pal::WorkStationCaps wscaps = {};
 
@@ -388,38 +388,38 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   uint64_t localRAM;
   if (GPU_ADD_HBCC_SIZE) {
-    localRAM = heaps[Pal::GpuHeapLocal].heapSize + heaps[Pal::GpuHeapInvisible].heapSize;
+    localRAM = heaps[Pal::GpuHeapLocal].logicalSize + heaps[Pal::GpuHeapInvisible].logicalSize;
   } else {
     localRAM =
-        heaps[Pal::GpuHeapLocal].physicalHeapSize + heaps[Pal::GpuHeapInvisible].physicalHeapSize;
+        heaps[Pal::GpuHeapLocal].physicalSize + heaps[Pal::GpuHeapInvisible].physicalSize;
   }
 
   info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
                           static_cast<uint64_t>(localRAM) / 100u);
 
   uint uswcPercentAvailable =
-      ((static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) / Mi) > 1536 && IS_WINDOWS)
+      ((static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) / Mi) > 1536 && IS_WINDOWS)
       ? 75
       : 50;
   if (settings().apuSystem_) {
-    info_.globalMemSize_ +=
-        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100;
+    info_.globalMemSize_ += (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) *
+      uswcPercentAvailable) / 100;
   }
 
   // Find the largest heap form FB memory
   if (GPU_ADD_HBCC_SIZE) {
-    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].heapSize),
-                                      uint64_t(heaps[Pal::GpuHeapInvisible].heapSize));
+    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].logicalSize),
+                                      uint64_t(heaps[Pal::GpuHeapInvisible].logicalSize));
   } else {
-    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].physicalHeapSize),
-                                      uint64_t(heaps[Pal::GpuHeapInvisible].physicalHeapSize));
+    info_.maxMemAllocSize_ = std::max(uint64_t(heaps[Pal::GpuHeapLocal].physicalSize),
+                                      uint64_t(heaps[Pal::GpuHeapInvisible].physicalSize));
   }
 
 #if defined(ATI_OS_WIN)
   if (settings().apuSystem_) {
-    info_.maxMemAllocSize_ = std::max(
-        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].heapSize) * uswcPercentAvailable) / 100,
-        info_.maxMemAllocSize_);
+    info_.maxMemAllocSize_ =
+      std::max((static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) *
+               uswcPercentAvailable) / 100, info_.maxMemAllocSize_);
   }
 #endif
   info_.maxMemAllocSize_ =
@@ -627,7 +627,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.cooperativeGroups_ = settings().enableCoopGroups_;
     info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
 
-    if (heaps[Pal::GpuHeapInvisible].heapSize == 0) {
+    if (heaps[Pal::GpuHeapInvisible].logicalSize == 0) {
       info_.largeBar_ = true;
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Resizable bar enabled");
     }
@@ -1876,10 +1876,10 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   // Fill free memory info
   freeMemory[TotalFreeMemory] = (total_alloced > info().globalMemSize_ ) ? 0 :
       static_cast<size_t>((info().globalMemSize_ - total_alloced) / Ki);
-  if (invisible >= heaps_[Pal::GpuHeapInvisible].heapSize) {
+  if (invisible >= heaps_[Pal::GpuHeapInvisible].logicalSize) {
     invisible = 0;
   } else {
-    invisible = heaps_[Pal::GpuHeapInvisible].heapSize - invisible;
+    invisible = heaps_[Pal::GpuHeapInvisible].logicalSize - invisible;
   }
   freeMemory[LargestFreeBlock] = static_cast<size_t>(invisible) / Ki;
 
