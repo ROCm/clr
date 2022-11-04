@@ -1259,9 +1259,9 @@ THE SOFTWARE.
             inline
             __device__
             __half __hmax_nan(const __half x, const __half y) {
-                if(__ocml_isnan_f16(x)) {
+                if(__ocml_isnan_f16(static_cast<__half_raw>(x).data)) {
                   return x;
-                } else if (__ocml_isnan_f16(y)) {
+                } else if (__ocml_isnan_f16(static_cast<__half_raw>(y).data)) {
                   return y;
                 }
                 return __hmax(x, y);
@@ -1275,9 +1275,9 @@ THE SOFTWARE.
             inline
             __device__
             __half __hmin_nan(const __half x, const __half y) {
-                if(__ocml_isnan_f16(x)) {
+                if(__ocml_isnan_f16(static_cast<__half_raw>(x).data)) {
                   return x;
-                } else if (__ocml_isnan_f16(y)) {
+                } else if (__ocml_isnan_f16(static_cast<__half_raw>(y).data)) {
                   return y;
                 }
                 return __hmin(x, y);
