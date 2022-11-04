@@ -3166,9 +3166,6 @@ void Device::ReleaseGlobalSignal(void* signal) const {
 
 // ================================================================================================
 bool Device::IsValidAllocation(const void* dev_ptr, size_t size) const {
-  //! @todo Temporarily disable pointer detection feature,
-  //! until the new interfaces will be accepted in HIP API
-  return false;
   hsa_amd_pointer_info_t ptr_info = {};
   ptr_info.size = sizeof(hsa_amd_pointer_info_t);
   // Query ptr type to see if it's a HMM allocation
