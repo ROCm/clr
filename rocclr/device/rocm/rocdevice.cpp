@@ -2670,8 +2670,22 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
     // Abort on device exceptions.
     const char* errorMsg = 0;
     hsa_status_string(status, &errorMsg);
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
-            "Device::callbackQueue aborting with error : %s code: 0x%x", errorMsg, status);
+    if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
+      size_t global_available_mem = 0;
+      Device* dev = reinterpret_cast<Device*>(data);
+      if (HSA_STATUS_SUCCESS != hsa_agent_get_info(dev->getBackendDevice(),
+                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
+                         &global_available_mem)) {
+        LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
+      }
+      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
+              "Callback: Queue %p Aborting with error : %s Code: 0x%x Available Free mem : %zu MB",
+              queue->base_address, errorMsg, status, global_available_mem/Mi);
+    } else {
+      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
+        "Callback: Queue %p aborting with error : %s code: 0x%x", queue->base_address,
+        errorMsg, status);
+    }
     abort();
   }
 }
