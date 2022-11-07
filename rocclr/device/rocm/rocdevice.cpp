@@ -2209,8 +2209,7 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
     return false;
   }
 
-  // Pass the pointer and memory size to retrieve the handle
-  hsa_status = hsa_amd_ipc_memory_create(orig_dev_ptr, amd::alignUp(*mem_size, alloc_granularity()),
+  hsa_status = hsa_amd_ipc_memory_create(orig_dev_ptr, *mem_size,
                                          reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
 
   if (hsa_status != HSA_STATUS_SUCCESS) {
