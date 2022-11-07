@@ -126,9 +126,6 @@ class Program : public RuntimeObject {
   //! Clears the program object if the app attempts to rebuild the program
   void clear();
 
-  //! Global build lock (remove when LLVM is thread-safe).
-  static Monitor buildLock_;
-
  public:
   //! Construct a new program to be compiled from the given source code.
   Program(Context& context, const std::string& sourceCode, Language language,
