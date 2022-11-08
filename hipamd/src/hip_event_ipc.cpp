@@ -189,7 +189,7 @@ hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* comm
 
 hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
   if (!createIpcEventShmemIfNeeded()) {
-    return hipErrorInvalidConfiguration;
+    return hipErrorInvalidValue;
   }
   ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
   ipc_evt_.ipc_shmem_->owners_process_id = getpid();
