@@ -338,8 +338,14 @@ namespace hip {
     void SetCaptureGraph(hipGraph_t pGraph) {
       pCaptureGraph_ = pGraph;
       captureStatus_ = hipStreamCaptureStatusActive;
+    }
+    void SetCaptureId() {
       // ID is generated in Begin Capture i.e.. when capture status is active
       captureID_ = GenerateCaptureID();
+    }
+    void SetCaptureId(unsigned long long captureId) {
+      // ID is given from parent stream
+      captureID_ = captureId;
     }
     /// reset capture parameters
     hipError_t EndCapture();

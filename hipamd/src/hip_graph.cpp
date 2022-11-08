@@ -774,6 +774,7 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
   }
   if (!s->IsOriginStream()) {
     s->SetCaptureGraph(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureGraph());
+    s->SetCaptureId(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureID());
     s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
     s->SetParentStream(e->GetCaptureStream());
     reinterpret_cast<hip::Stream*>(s->GetParentStream())->SetParallelCaptureStream(stream);
@@ -863,6 +864,7 @@ hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode
   }
 
   s->SetCaptureGraph(new ihipGraph());
+  s->SetCaptureId();
   s->SetCaptureMode(mode);
   s->SetOriginStream();
   if (mode != hipStreamCaptureModeRelaxed) {
