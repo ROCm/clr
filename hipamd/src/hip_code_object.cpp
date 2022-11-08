@@ -67,6 +67,11 @@ struct __ClangOffloadBundleHeader {
 
 namespace hip {
 
+bool CodeObject::IsClangOffloadMagicBundle(const void* data) {
+  std::string magic(reinterpret_cast<const char*>(data), bundle_magic_string_size);
+  return magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR) ? false : true;
+}
+
 uint64_t CodeObject::ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupported,

@@ -39,6 +39,7 @@ public:
   ~FatBinaryInfo();
 
   // Loads Fat binary from file or image, unbundles COs for devices.
+  hipError_t ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices);
   hipError_t ExtractFatBinary(const std::vector<hip::Device*>& devices);
   hipError_t AddDevProgram(const int device_id);
   hipError_t BuildProgram(const int device_id);
@@ -71,9 +72,11 @@ private:
   std::string fname_;        // File name
   amd::Os::FileDesc fdesc_;  // File descriptor
   size_t fsize_;             // Total file size
+  size_t foffset_;           // File Offset where the fat binary is present.
 
   // Even when file is passed image will be mmapped till ~desctructor.
   const void* image_;        // Image
+  bool image_mapped_;        // flag to detect if image is mapped
 
   // Only used for FBs where image is directly passed
   std::string uri_;          // Uniform resource indicator
