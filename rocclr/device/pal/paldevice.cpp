@@ -1296,6 +1296,7 @@ bool Device::init() {
 
   // PAL init
   if (Pal::Result::Success != Pal::CreatePlatform(info, platformObj_, &platform_)) {
+    LogError("Pal::CreatePlatform failed!");
     return false;
   }
 
