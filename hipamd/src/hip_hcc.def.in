@@ -443,3 +443,8 @@ hipGraphRetainUserObject
 hipGraphReleaseUserObject
 hipLaunchHostFunc
 hipLaunchHostFunc_spt
+hipGraphDebugDotPrint
+hipGraphKernelNodeCopyAttributes
+hipGraphNodeGetEnabled
+hipGraphNodeSetEnabled
+hipGraphUpload
