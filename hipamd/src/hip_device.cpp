@@ -216,13 +216,11 @@ hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
   const auto& info = deviceHandle->info();
   const auto nameLen = ::strlen(info.boardName_);
 
-  // Make sure that the size of `dest` is big enough to hold `src` including
+  // Only copy partial name if size of `dest` is smaller than size of `src` including
   // trailing zero byte
-  if (nameLen <= 0) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  ::memcpy(name, info.boardName_, (nameLen + 1));
+  auto memcpySize = (len <= (nameLen + 1) ? (len - 1) : nameLen);
+  ::memcpy(name, info.boardName_, memcpySize);
+  name[memcpySize] = '\0';
 
   HIP_RETURN(hipSuccess);
 }
