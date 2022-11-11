@@ -47,6 +47,7 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 };
 
 int hipGraphNode::nextID = 0;
+int ihipGraph::nextID = 0;
 std::unordered_set<hipGraphNode*> hipGraphNode::nodeSet_;
 amd::Monitor hipGraphNode::nodeSetLock_{"Guards global node set"};
 std::unordered_set<ihipGraph*> ihipGraph::graphSet_;

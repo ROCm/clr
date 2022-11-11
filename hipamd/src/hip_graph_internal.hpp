@@ -97,7 +97,60 @@ struct hipUserObject : public amd::ReferenceCountedObject {
   //! Disable copy constructor
   hipUserObject(const hipUserObject& obj) = delete;
 };
-struct hipGraphNode {
+
+struct hipGraphNodeDOTAttribute {
+ protected:
+  std::string style_;
+  std::string shape_;
+  std::string label_;
+
+  hipGraphNodeDOTAttribute(std::string style, std::string shape, std::string label) {
+    style_ = style;
+    shape_ = shape;
+    label_ = label;
+  }
+
+  hipGraphNodeDOTAttribute() {
+    style_ = "solid";
+    shape_ = "rectangle";
+    label_ = "";
+  }
+
+  hipGraphNodeDOTAttribute(const hipGraphNodeDOTAttribute& node) {
+    style_ = node.style_;
+    shape_ = node.shape_;
+    label_ = node.label_;
+  }
+
+  void SetStyle(std::string style) { style_ = style; }
+
+  void SetShape(std::string shape) { shape_ = shape; }
+
+  virtual std::string GetShape(hipGraphDebugDotFlags flag) { return shape_; }
+
+  void SetLabel(std::string label) { label_ = label; }
+
+  virtual std::string GetLabel(hipGraphDebugDotFlags flag) { return label_; }
+
+  virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
+    out << "[";
+    out << "style";
+    out << "=\"";
+    out << style_;
+    out << "\"";
+    out << "shape";
+    out << "=\"";
+    out << GetShape(flag);
+    out << "\"";
+    out << "label";
+    out << "=\"";
+    out << GetLabel(flag);
+    out << "\"";
+    out << "];";
+  }
+};
+
+struct hipGraphNode : public hipGraphNodeDOTAttribute {
  protected:
   amd::HostQueue* queue_;
   uint32_t level_;
@@ -118,20 +171,22 @@ struct hipGraphNode {
   hipKernelNodeAttrValue kernelAttr_;
 
  public:
-  hipGraphNode(hipGraphNodeType type)
+  hipGraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
+               std::string label = "")
       : type_(type),
         level_(0),
         visited_(false),
         inDegree_(0),
         outDegree_(0),
         id_(nextID++),
-        parentGraph_(nullptr) {
+        parentGraph_(nullptr),
+        hipGraphNodeDOTAttribute(style, shape, label) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
     memset(&kernelAttr_, 0, sizeof(kernelAttr_));
   }
   /// Copy Constructor
-  hipGraphNode(const hipGraphNode& node) {
+  hipGraphNode(const hipGraphNode& node) : hipGraphNodeDOTAttribute(node) {
     level_ = node.level_;
     type_ = node.type_;
     inDegree_ = node.inDegree_;
@@ -284,6 +339,25 @@ struct hipGraphNode {
   virtual ihipGraph* GetChildGraph() { return nullptr; }
   void SetParentGraph(ihipGraph* graph) { parentGraph_ = graph; }
   virtual hipError_t SetParams(hipGraphNode* node) { return hipSuccess; }
+  virtual void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {}
+  virtual void GenerateDOTNode(size_t graphId, std::ostream& fout, hipGraphDebugDotFlags flag) {
+    fout << "\n";
+    std::string nodeName = "graph_" + std::to_string(graphId) + "_node_" + std::to_string(GetID());
+    fout << "\"" << nodeName << "\"";
+    PrintAttributes(fout, flag);
+    fout << "\n";
+  }
+  virtual void GenerateDOTNodeEdges(size_t graphId, std::ostream& fout,
+                                    hipGraphDebugDotFlags flag) {
+    for (auto node : edges_) {
+      std::string toNodeName =
+          "graph_" + std::to_string(graphId) + "_node_" + std::to_string(node->GetID());
+      std::string fromNodeName =
+          "graph_" + std::to_string(graphId) + "_node_" + std::to_string(GetID());
+      fout << "\"" << fromNodeName << "\" -> \"" << toNodeName << "\"" << std::endl;
+    }
+  }
+  virtual std::string GetLabel() { return (std::to_string(id_) + "\n" + label_); }
 };
 
 struct ihipGraph {
@@ -292,9 +366,11 @@ struct ihipGraph {
   static std::unordered_set<ihipGraph*> graphSet_;
   static amd::Monitor graphSetLock_;
   std::unordered_set<hipUserObject*> graphUserObj_;
+  unsigned int id_;
+  static int nextID;
 
  public:
-  ihipGraph() {
+  ihipGraph() : id_(nextID++) {
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.insert(this);
   };
@@ -309,6 +385,9 @@ struct ihipGraph {
       userobj->release();
     }
   };
+
+  /// Return graph unique ID
+  int GetID() const { return id_; }
 
   // check graphs validity
   static bool isGraphValid(ihipGraph* pGraph);
@@ -364,6 +443,21 @@ struct ihipGraph {
   }
   ihipGraph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
   ihipGraph* clone() const;
+  void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
+    fout << "subgraph cluster_" << GetID() << " {" << std::endl;
+    fout << "graph[style=\"dashed\" label=\"graph_" << GetID() << "\"];\n";
+    for (auto node : vertices_) {
+      node->GenerateDOTNode(GetID(), fout, flag);
+    }
+    fout<<"\n";
+    for (auto& node : vertices_) {
+      node->GenerateDOTNodeEdges(GetID(), fout, flag);
+    }
+    fout << "}" << std::endl;
+    for (auto node : vertices_) {
+      node->GenerateDOT(fout, flag);
+    }
+  }
 };
 
 struct hipGraphExec {
@@ -429,6 +523,7 @@ struct hipGraphExec {
   hipError_t CreateQueues(size_t numQueues);
   hipError_t Run(hipStream_t stream);
 };
+
 struct hipChildGraphNode : public hipGraphNode {
   struct ihipGraph* childGraph_;
   std::vector<Node> childGraphlevelOrder_;
@@ -437,7 +532,7 @@ struct hipChildGraphNode : public hipGraphNode {
   amd::Command* lastEnqueuedCommand_;
 
  public:
-  hipChildGraphNode(ihipGraph* g) : hipGraphNode(hipGraphNodeTypeGraph) {
+  hipChildGraphNode(ihipGraph* g) : hipGraphNode(hipGraphNodeTypeGraph, "solid", "rectangle") {
     childGraph_ = g->clone();
     lastEnqueuedCommand_ = nullptr;
   }
@@ -537,6 +632,14 @@ struct hipChildGraphNode : public hipGraphNode {
     const hipChildGraphNode* childGraphNode = static_cast<hipChildGraphNode const*>(node);
     return SetParams(childGraphNode->childGraph_);
   }
+
+  std::string GetLabel(hipGraphDebugDotFlags flag) {
+    return std::to_string(GetID()) + "\n" + "graph_" + std::to_string(childGraph_->GetID());
+  }
+
+  virtual void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
+    childGraph_->GenerateDOT(fout, flag);
+  }
 };
 
 class hipGraphKernelNode : public hipGraphNode {
@@ -544,6 +647,39 @@ class hipGraphKernelNode : public hipGraphNode {
   unsigned int numParams_;
 
  public:
+  std::string GetLabel(hipGraphDebugDotFlags flag) {
+    hipFunction_t func = getFunc(*pKernelParams_, ihipGetDevice());
+    hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+    std::string label;
+    if (flag == hipGraphDebugDotFlagsKernelNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      char buffer[500];
+      sprintf(buffer,
+              "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
+              "handle | func handle} | {%p | %p}}\n| {accessPolicyWindow | {base_ptr | num_bytes | "
+              "hitRatio | hitProp | missProp} | {%p | %ld | %f | %d | %d}}\n| {cooperative | "
+              "%u}\n| {priority | 0}\n}",
+              label_.c_str(), GetID(), function->name().c_str(), pKernelParams_->gridDim.x,
+              pKernelParams_->gridDim.y, pKernelParams_->gridDim.z, pKernelParams_->blockDim.x,
+              pKernelParams_->blockDim.y, pKernelParams_->blockDim.z,
+              pKernelParams_->sharedMemBytes, this, pKernelParams_->func,
+              kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
+              kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
+              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative);
+      label = buffer;
+    } else {
+      label = std::to_string(GetID()) + "\n" + function->name();
+    }
+    return label;
+  }
+
+  std::string GetShape(hipGraphDebugDotFlags flag) {
+    if (flag == hipGraphDebugDotFlagsKernelNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      return "record";
+    } else {
+      return shape_;
+    }
+  }
+
   static hipFunction_t getFunc(const hipKernelNodeParams& params,
                             unsigned int device) {
     hipFunction_t func = nullptr;
@@ -612,7 +748,7 @@ class hipGraphKernelNode : public hipGraphNode {
   }
 
   hipGraphKernelNode(const hipKernelNodeParams* pNodeParams)
-      : hipGraphNode(hipGraphNodeTypeKernel) {
+      : hipGraphNode(hipGraphNodeTypeKernel, "bold", "octagon", "KERNEL") {
     pKernelParams_ = new hipKernelNodeParams(*pNodeParams);
     if (copyParams(pNodeParams) != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to copy params");
@@ -802,7 +938,8 @@ class hipGraphMemcpyNode : public hipGraphNode {
   hipMemcpy3DParms* pCopyParams_;
 
  public:
-  hipGraphMemcpyNode(const hipMemcpy3DParms* pCopyParams) : hipGraphNode(hipGraphNodeTypeMemcpy) {
+  hipGraphMemcpyNode(const hipMemcpy3DParms* pCopyParams)
+      : hipGraphNode(hipGraphNodeTypeMemcpy, "solid", "trapezium", "MEMCPY") {
     pCopyParams_ = new hipMemcpy3DParms(*pCopyParams);
   }
   ~hipGraphMemcpyNode() { delete pCopyParams_; }
@@ -845,6 +982,85 @@ class hipGraphMemcpyNode : public hipGraphNode {
   // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(const hipMemcpy3DParms* pNodeParams);
   hipError_t ValidateParams(const hipMemcpy3DParms* pNodeParams);
+  std::string GetLabel(hipGraphDebugDotFlags flag) {
+    const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pCopyParams_);
+    hipMemoryType srcMemoryType = pCopy.srcMemoryType;
+    if (srcMemoryType == hipMemoryTypeUnified) {
+      srcMemoryType =
+          amd::MemObjMap::FindMemObj(pCopy.srcDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    }
+    hipMemoryType dstMemoryType = pCopy.dstMemoryType;
+    if (dstMemoryType == hipMemoryTypeUnified) {
+      dstMemoryType =
+          amd::MemObjMap::FindMemObj(pCopy.dstDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    }
+
+    // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
+    // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
+    if (srcMemoryType == hipMemoryTypeHost) {
+      amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.srcHost);
+      srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    }
+    if (dstMemoryType == hipMemoryTypeHost) {
+      amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.dstHost);
+      dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    }
+    std::string memcpyDirection;
+    if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeDevice)) {
+      // Host to Device.
+      memcpyDirection = "HtoD";
+    } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeHost)) {
+      // Device to Host.
+      memcpyDirection = "DtoH";
+    } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
+      // Device to Device.
+      memcpyDirection = "DtoD";
+    } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
+      memcpyDirection = "HtoA";
+    } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
+      // Image to Host.
+      memcpyDirection = "AtoH";
+    } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeArray)) {
+      // Device to Image.
+      memcpyDirection = "DtoA";
+    } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeDevice)) {
+      // Image to Device.
+      memcpyDirection = "AtoD";
+    } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeArray)) {
+      memcpyDirection = "AtoA";
+    }
+    std::string label;
+    if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      char buffer[500];
+      sprintf(
+          buffer,
+          "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
+          "{pitch "
+          "| ptr | xsize | ysize | pitch | ptr | xsize | size} | {%zu | %p | %zu | %zu | %zu | %p "
+          "| %zu "
+          "| %zu}}\n| {{srcPos | {{x | %zu} | {y | %zu} | {z | %zu}}} | {dstPos | {{x | %zu} | {y "
+          "| "
+          "%zu} | {z | %zu}}} | {Extent | {{Width | %zu} | {Height | %zu} | {Depth | %zu}}}}\n}",
+          label_.c_str(), GetID(), this, memcpyDirection.c_str(), pCopyParams_->srcPtr.pitch,
+          pCopyParams_->srcPtr.ptr, pCopyParams_->srcPtr.xsize, pCopyParams_->srcPtr.ysize,
+          pCopyParams_->dstPtr.pitch, pCopyParams_->dstPtr.ptr, pCopyParams_->dstPtr.xsize,
+          pCopyParams_->dstPtr.ysize, pCopyParams_->srcPos.x, pCopyParams_->srcPos.y,
+          pCopyParams_->srcPos.z, pCopyParams_->dstPos.x, pCopyParams_->dstPos.y,
+          pCopyParams_->dstPos.z, pCopyParams_->extent.width, pCopyParams_->extent.height,
+          pCopyParams_->extent.depth);
+      label = buffer;
+    } else {
+      label = std::to_string(GetID()) + "\nMEMCPY\n(" + memcpyDirection + ")";
+    }
+    return label;
+  }
+  std::string GetShape(hipGraphDebugDotFlags flag) {
+    if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      return "record";
+    } else {
+      return shape_;
+    }
+  }
 };
 
 class hipGraphMemcpyNode1D : public hipGraphNode {
@@ -857,7 +1073,12 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
  public:
   hipGraphMemcpyNode1D(void* dst, const void* src, size_t count, hipMemcpyKind kind,
                        hipGraphNodeType type = hipGraphNodeTypeMemcpy)
-      : hipGraphNode(type), dst_(dst), src_(src), count_(count), kind_(kind) {}
+      : hipGraphNode(type, "solid", "trapezium", "MEMCPY"),
+        dst_(dst),
+        src_(src),
+        count_(count),
+        kind_(kind) {
+  }
 
   ~hipGraphMemcpyNode1D() {}
 
@@ -940,6 +1161,45 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
   // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
   hipError_t ValidateParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
+  std::string GetLabel(hipGraphDebugDotFlags flag) {
+    size_t sOffsetOrig = 0;
+    amd::Memory* origSrcMemory = getMemoryObject(src_, sOffsetOrig);
+    size_t dOffsetOrig = 0;
+    amd::Memory* origDstMemory = getMemoryObject(dst_, dOffsetOrig);
+
+    size_t sOffset = 0;
+    amd::Memory* srcMemory = getMemoryObject(src_, sOffset);
+    size_t dOffset = 0;
+    amd::Memory* dstMemory = getMemoryObject(dst_, dOffset);
+    std::string memcpyDirection;
+    if ((srcMemory == nullptr) && (dstMemory != nullptr)) {  // host to device
+      memcpyDirection = "HtoD";
+    } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {  // device to host
+      memcpyDirection = "DtoH";
+    } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
+      memcpyDirection = "DtoD";
+    }
+    std::string label;
+    if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      char buffer[500];
+      sprintf(buffer,
+              "{\n%s\n| {{ID | node handle | dst | src | count | kind } | {%u | %p | %p | %p | "
+              "%zu | %s}}}",
+              label_.c_str(), GetID(), this, dst_, src_, count_, memcpyDirection.c_str());
+      label = buffer;
+    } else {
+      label = std::to_string(GetID()) + "\n" + label_ + "\n(" + memcpyDirection + "," +
+          std::to_string(count_) + ")";
+    }
+    return label;
+  }
+  std::string GetShape(hipGraphDebugDotFlags flag) {
+    if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      return "record";
+    } else {
+      return shape_;
+    }
+  }
 };
 
 class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
@@ -986,7 +1246,7 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
                        hipMemcpyKind kind) {
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
-    // check to see if dst is also a symbol (cuda negative test case)
+    // check to see if dst is also a symbol (hip negative test case)
     hipError_t status = ihipMemcpySymbol_validate(dst, count, offset, sym_size, device_ptr);
     if (status == hipSuccess) {
       return hipErrorInvalidValue;
@@ -1076,7 +1336,7 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
                        hipMemcpyKind kind) {
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
-    // check to see if src is also a symbol (cuda negative test case)
+    // check to see if src is also a symbol (hip negative test case)
     hipError_t status = ihipMemcpySymbol_validate(src, count, offset, sym_size, device_ptr);
     if (status == hipSuccess) {
       return hipErrorInvalidValue;
@@ -1126,9 +1386,17 @@ class hipGraphMemsetNode : public hipGraphNode {
   hipMemsetParams* pMemsetParams_;
 
  public:
-  hipGraphMemsetNode(const hipMemsetParams* pMemsetParams) : hipGraphNode(hipGraphNodeTypeMemset) {
+  hipGraphMemsetNode(const hipMemsetParams* pMemsetParams)
+      : hipGraphNode(hipGraphNodeTypeMemset, "solid", "invtrapezium", "MEMSET") {
     pMemsetParams_ = new hipMemsetParams(*pMemsetParams);
+    size_t sizeBytes = 0;
+    if (pMemsetParams_->height == 1) {
+      sizeBytes = pMemsetParams_->width * pMemsetParams_->elementSize;
+    } else {
+      sizeBytes = pMemsetParams_->width * pMemsetParams_->height;
+    }
   }
+
   ~hipGraphMemsetNode() { delete pMemsetParams_; }
   // Copy constructor
   hipGraphMemsetNode(const hipGraphMemsetNode& memsetNode) : hipGraphNode(memsetNode) {
@@ -1139,44 +1407,76 @@ class hipGraphMemsetNode : public hipGraphNode {
     return new hipGraphMemsetNode(static_cast<hipGraphMemsetNode const&>(*this));
   }
 
+  std::string GetLabel(hipGraphDebugDotFlags flag) {
+    std::string label;
+    if (flag == hipGraphDebugDotFlagsMemsetNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      char buffer[500];
+      sprintf(buffer,
+              "{\n%s\n| {{ID | node handle | dptr | pitch | value | elementSize | width | "
+              "height} | {%u | %p | %p | %zu | %u | %u | %zu | %zu}}}",
+              label_.c_str(), GetID(), this, pMemsetParams_->dst, pMemsetParams_->pitch, pMemsetParams_->value,
+              pMemsetParams_->elementSize, pMemsetParams_->width, pMemsetParams_->height);
+      label = buffer;
+    } else {
+      size_t sizeBytes;
+      if (pMemsetParams_->height == 1) {
+        sizeBytes = pMemsetParams_->width * pMemsetParams_->elementSize;
+      } else {
+        sizeBytes = pMemsetParams_->width * pMemsetParams_->height;
+      }
+      label = std::to_string(GetID()) + "\n"+label_+"\n(" + std::to_string(pMemsetParams_->value) +
+          "," + std::to_string(sizeBytes) + ")";
+    }
+    return label;
+  }
+
+  std::string GetShape(hipGraphDebugDotFlags flag) {
+    if (flag == hipGraphDebugDotFlagsMemsetNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
+      return "record";
+    } else {
+      return shape_;
+    }
+  }
+
   hipError_t CreateCommand(amd::HostQueue* queue) {
     hipError_t status = hipGraphNode::CreateCommand(queue);
     if (status != hipSuccess) {
       return status;
     }
     if (pMemsetParams_->height == 1) {
-      return ihipMemsetCommand(commands_, pMemsetParams_->dst, pMemsetParams_->value,
-                               pMemsetParams_->elementSize,
-                               pMemsetParams_->width * pMemsetParams_->elementSize, queue);
+      size_t sizeBytes = pMemsetParams_->width * pMemsetParams_->elementSize;
+      hipError_t status = ihipMemsetCommand(commands_, pMemsetParams_->dst, pMemsetParams_->value,
+                                            pMemsetParams_->elementSize, sizeBytes, queue);
     } else {
-      return ihipMemset3DCommand(commands_,
-                                 {pMemsetParams_->dst, pMemsetParams_->pitch, pMemsetParams_->width,
-                                  pMemsetParams_->height},
-                                 pMemsetParams_->elementSize,
-                                 {pMemsetParams_->width, pMemsetParams_->height, 1}, queue);
+      hipError_t status = ihipMemset3DCommand(
+          commands_,
+          {pMemsetParams_->dst, pMemsetParams_->pitch, pMemsetParams_->width,
+           pMemsetParams_->height},
+          pMemsetParams_->value, {pMemsetParams_->width, pMemsetParams_->height, 1}, queue);
     }
-    return hipSuccess;
+    return status;
   }
 
   void GetParams(hipMemsetParams* params) {
     std::memcpy(params, pMemsetParams_, sizeof(hipMemsetParams));
   }
+
   hipError_t SetParams(const hipMemsetParams* params) {
     hipError_t hip_error = hipSuccess;
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
     }
+    size_t sizeBytes;
     if (params->height == 1) {
-      hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize,
-                                      params->width * params->elementSize);
+      sizeBytes = params->width * params->elementSize;
+      hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize, sizeBytes);
     } else {
-      auto sizeBytes = params->width * params->height * 1;
+      sizeBytes = params->width * params->height * 1;
       hip_error =
-        ihipMemset3D_validate({params->dst, params->pitch, params->width, params->height},
-                              params->value, {params->width, params->height, 1}, sizeBytes);
+          ihipMemset3D_validate({params->dst, params->pitch, params->width, params->height},
+                                params->value, {params->width, params->height, 1}, sizeBytes);
     }
-
     if (hip_error != hipSuccess) {
       return hip_error;
     }
@@ -1195,7 +1495,7 @@ class hipGraphEventRecordNode : public hipGraphNode {
 
  public:
   hipGraphEventRecordNode(hipEvent_t event)
-      : hipGraphNode(hipGraphNodeTypeEventRecord), event_(event) {}
+      : hipGraphNode(hipGraphNodeTypeEventRecord, "solid", "rectangle", "EVENT_RECORD"), event_(event) {}
   ~hipGraphEventRecordNode() {}
 
   hipGraphNode* clone() const {
@@ -1256,7 +1556,7 @@ class hipGraphEventWaitNode : public hipGraphNode {
 
  public:
   hipGraphEventWaitNode(hipEvent_t event)
-      : hipGraphNode(hipGraphNodeTypeWaitEvent), event_(event) {}
+      : hipGraphNode(hipGraphNodeTypeWaitEvent, "solid", "rectangle", "EVENT_WAIT"), event_(event) {}
   ~hipGraphEventWaitNode() {}
 
   hipGraphNode* clone() const {
@@ -1315,7 +1615,8 @@ class hipGraphHostNode : public hipGraphNode {
   hipHostNodeParams* pNodeParams_;
 
  public:
-  hipGraphHostNode(const hipHostNodeParams* pNodeParams) : hipGraphNode(hipGraphNodeTypeHost) {
+  hipGraphHostNode(const hipHostNodeParams* pNodeParams)
+      : hipGraphNode(hipGraphNodeTypeHost, "solid", "rectangle", "HOST") {
     pNodeParams_ = new hipHostNodeParams(*pNodeParams);
   }
   ~hipGraphHostNode() { delete pNodeParams_; }
@@ -1378,7 +1679,7 @@ class hipGraphHostNode : public hipGraphNode {
 
 class hipGraphEmptyNode : public hipGraphNode {
  public:
-  hipGraphEmptyNode() : hipGraphNode(hipGraphNodeTypeEmpty) {}
+  hipGraphEmptyNode() : hipGraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "EMPTY") {}
   ~hipGraphEmptyNode() {}
 
   hipGraphNode* clone() const {

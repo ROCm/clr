@@ -2144,9 +2144,26 @@ hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t 
   HIP_RETURN(hipErrorNotSupported);
 }
 
+hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
+  if (graph == nullptr || path == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  std::ofstream fout;
+  fout.open(path, std::ios::out);
+  if (fout.fail()) {
+    ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Error during opening of file : %s", path);
+    return hipErrorOperatingSystem;
+  }
+  fout << "digraph dot {" << std::endl;
+  graph->GenerateDOT(fout, (hipGraphDebugDotFlags)flags);
+  fout << "}" << std::endl;
+  fout.close();
+  return hipSuccess;
+}
+
 hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
   HIP_INIT_API(hipGraphDebugDotPrint, graph, path, flags);
-  HIP_RETURN(hipErrorNotSupported);
+  HIP_RETURN(ihipGraphDebugDotPrint(graph, path, flags));
 }
 
 hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
