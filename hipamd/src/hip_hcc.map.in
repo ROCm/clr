@@ -497,6 +497,11 @@ global:
     hipLaunchHostFunc;
     hipLaunchHostFunc_spt;
     hipRegisterTracerCallback;
+    hipGraphDebugDotPrint;
+    hipGraphKernelNodeCopyAttributes;
+    hipGraphNodeGetEnabled;
+    hipGraphNodeSetEnabled;
+    hipGraphUpload;
 local:
     *;
 } hip_5.2;

@@ -359,7 +359,11 @@ enum hip_api_id_t {
   HIP_API_ID_hipUserObjectRetain = 346,
   HIP_API_ID_hipGraphRetainUserObject = 347,
   HIP_API_ID_hipGraphReleaseUserObject = 348,
-  HIP_API_ID_LAST = 348,
+  HIP_API_ID_hipGraphDebugDotPrint = 349,
+  HIP_API_ID_hipGraphKernelNodeCopyAttributes = 350,
+  HIP_API_ID_hipGraphNodeGetEnabled = 351,
+  HIP_API_ID_hipGraphNodeSetEnabled = 352,
+  HIP_API_ID_LAST = 352,
 
   HIP_API_ID_hipArray3DGetDescriptor = HIP_API_ID_NONE,
   HIP_API_ID_hipArrayGetDescriptor = HIP_API_ID_NONE,
@@ -521,6 +525,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphChildGraphNodeGetGraph: return "hipGraphChildGraphNodeGetGraph";
     case HIP_API_ID_hipGraphClone: return "hipGraphClone";
     case HIP_API_ID_hipGraphCreate: return "hipGraphCreate";
+    case HIP_API_ID_hipGraphDebugDotPrint: return "hipGraphDebugDotPrint";
     case HIP_API_ID_hipGraphDestroy: return "hipGraphDestroy";
     case HIP_API_ID_hipGraphDestroyNode: return "hipGraphDestroyNode";
     case HIP_API_ID_hipGraphEventRecordNodeGetEvent: return "hipGraphEventRecordNodeGetEvent";
@@ -546,6 +551,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphHostNodeSetParams: return "hipGraphHostNodeSetParams";
     case HIP_API_ID_hipGraphInstantiate: return "hipGraphInstantiate";
     case HIP_API_ID_hipGraphInstantiateWithFlags: return "hipGraphInstantiateWithFlags";
+    case HIP_API_ID_hipGraphKernelNodeCopyAttributes: return "hipGraphKernelNodeCopyAttributes";
     case HIP_API_ID_hipGraphKernelNodeGetAttribute: return "hipGraphKernelNodeGetAttribute";
     case HIP_API_ID_hipGraphKernelNodeGetParams: return "hipGraphKernelNodeGetParams";
     case HIP_API_ID_hipGraphKernelNodeSetAttribute: return "hipGraphKernelNodeSetAttribute";
@@ -561,7 +567,9 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGraphNodeFindInClone: return "hipGraphNodeFindInClone";
     case HIP_API_ID_hipGraphNodeGetDependencies: return "hipGraphNodeGetDependencies";
     case HIP_API_ID_hipGraphNodeGetDependentNodes: return "hipGraphNodeGetDependentNodes";
+    case HIP_API_ID_hipGraphNodeGetEnabled: return "hipGraphNodeGetEnabled";
     case HIP_API_ID_hipGraphNodeGetType: return "hipGraphNodeGetType";
+    case HIP_API_ID_hipGraphNodeSetEnabled: return "hipGraphNodeSetEnabled";
     case HIP_API_ID_hipGraphReleaseUserObject: return "hipGraphReleaseUserObject";
     case HIP_API_ID_hipGraphRemoveDependencies: return "hipGraphRemoveDependencies";
     case HIP_API_ID_hipGraphRetainUserObject: return "hipGraphRetainUserObject";
@@ -872,6 +880,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphChildGraphNodeGetGraph", name) == 0) return HIP_API_ID_hipGraphChildGraphNodeGetGraph;
   if (strcmp("hipGraphClone", name) == 0) return HIP_API_ID_hipGraphClone;
   if (strcmp("hipGraphCreate", name) == 0) return HIP_API_ID_hipGraphCreate;
+  if (strcmp("hipGraphDebugDotPrint", name) == 0) return HIP_API_ID_hipGraphDebugDotPrint;
   if (strcmp("hipGraphDestroy", name) == 0) return HIP_API_ID_hipGraphDestroy;
   if (strcmp("hipGraphDestroyNode", name) == 0) return HIP_API_ID_hipGraphDestroyNode;
   if (strcmp("hipGraphEventRecordNodeGetEvent", name) == 0) return HIP_API_ID_hipGraphEventRecordNodeGetEvent;
@@ -897,6 +906,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphHostNodeSetParams", name) == 0) return HIP_API_ID_hipGraphHostNodeSetParams;
   if (strcmp("hipGraphInstantiate", name) == 0) return HIP_API_ID_hipGraphInstantiate;
   if (strcmp("hipGraphInstantiateWithFlags", name) == 0) return HIP_API_ID_hipGraphInstantiateWithFlags;
+  if (strcmp("hipGraphKernelNodeCopyAttributes", name) == 0) return HIP_API_ID_hipGraphKernelNodeCopyAttributes;
   if (strcmp("hipGraphKernelNodeGetAttribute", name) == 0) return HIP_API_ID_hipGraphKernelNodeGetAttribute;
   if (strcmp("hipGraphKernelNodeGetParams", name) == 0) return HIP_API_ID_hipGraphKernelNodeGetParams;
   if (strcmp("hipGraphKernelNodeSetAttribute", name) == 0) return HIP_API_ID_hipGraphKernelNodeSetAttribute;
@@ -912,7 +922,9 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGraphNodeFindInClone", name) == 0) return HIP_API_ID_hipGraphNodeFindInClone;
   if (strcmp("hipGraphNodeGetDependencies", name) == 0) return HIP_API_ID_hipGraphNodeGetDependencies;
   if (strcmp("hipGraphNodeGetDependentNodes", name) == 0) return HIP_API_ID_hipGraphNodeGetDependentNodes;
+  if (strcmp("hipGraphNodeGetEnabled", name) == 0) return HIP_API_ID_hipGraphNodeGetEnabled;
   if (strcmp("hipGraphNodeGetType", name) == 0) return HIP_API_ID_hipGraphNodeGetType;
+  if (strcmp("hipGraphNodeSetEnabled", name) == 0) return HIP_API_ID_hipGraphNodeSetEnabled;
   if (strcmp("hipGraphReleaseUserObject", name) == 0) return HIP_API_ID_hipGraphReleaseUserObject;
   if (strcmp("hipGraphRemoveDependencies", name) == 0) return HIP_API_ID_hipGraphRemoveDependencies;
   if (strcmp("hipGraphRetainUserObject", name) == 0) return HIP_API_ID_hipGraphRetainUserObject;
@@ -1717,6 +1729,12 @@ typedef struct hip_api_data_s {
     } hipGraphCreate;
     struct {
       hipGraph_t graph;
+      const char* path;
+      char path__val;
+      unsigned int flags;
+    } hipGraphDebugDotPrint;
+    struct {
+      hipGraph_t graph;
     } hipGraphDestroy;
     struct {
       hipGraphNode_t node;
@@ -1865,6 +1883,10 @@ typedef struct hip_api_data_s {
       unsigned long long flags;
     } hipGraphInstantiateWithFlags;
     struct {
+      hipGraphNode_t hSrc;
+      hipGraphNode_t hDst;
+    } hipGraphKernelNodeCopyAttributes;
+    struct {
       hipGraphNode_t hNode;
       hipKernelNodeAttrID attr;
       hipKernelNodeAttrValue* value;
@@ -1954,10 +1976,21 @@ typedef struct hip_api_data_s {
       size_t pNumDependentNodes__val;
     } hipGraphNodeGetDependentNodes;
     struct {
+      hipGraphExec_t hGraphExec;
+      hipGraphNode_t hNode;
+      unsigned int* isEnabled;
+      unsigned int isEnabled__val;
+    } hipGraphNodeGetEnabled;
+    struct {
       hipGraphNode_t node;
       hipGraphNodeType* pType;
       hipGraphNodeType pType__val;
     } hipGraphNodeGetType;
+    struct {
+      hipGraphExec_t hGraphExec;
+      hipGraphNode_t hNode;
+      unsigned int isEnabled;
+    } hipGraphNodeSetEnabled;
     struct {
       hipGraph_t graph;
       hipUserObject_t object;
@@ -3750,6 +3783,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphCreate.pGraph = (hipGraph_t*)pGraph; \
   cb_data.args.hipGraphCreate.flags = (unsigned int)flags; \
 };
+// hipGraphDebugDotPrint[('hipGraph_t', 'graph'), ('const char*', 'path'), ('unsigned int', 'flags')]
+#define INIT_hipGraphDebugDotPrint_CB_ARGS_DATA(cb_data) { \
+};
 // hipGraphDestroy[('hipGraph_t', 'graph')]
 #define INIT_hipGraphDestroy_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphDestroy.graph = (hipGraph_t)graph; \
@@ -3903,6 +3939,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphInstantiateWithFlags.graph = (hipGraph_t)graph; \
   cb_data.args.hipGraphInstantiateWithFlags.flags = (unsigned long long)flags; \
 };
+// hipGraphKernelNodeCopyAttributes[('hipGraphNode_t', 'hSrc'), ('hipGraphNode_t', 'hDst')]
+#define INIT_hipGraphKernelNodeCopyAttributes_CB_ARGS_DATA(cb_data) { \
+};
 // hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
 #define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphKernelNodeGetAttribute.hNode = (hipGraphNode_t)hNode; \
@@ -3994,10 +4033,16 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphNodeGetDependentNodes.pDependentNodes = (hipGraphNode_t*)pDependentNodes; \
   cb_data.args.hipGraphNodeGetDependentNodes.pNumDependentNodes = (size_t*)pNumDependentNodes; \
 };
+// hipGraphNodeGetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int*', 'isEnabled')]
+#define INIT_hipGraphNodeGetEnabled_CB_ARGS_DATA(cb_data) { \
+};
 // hipGraphNodeGetType[('hipGraphNode_t', 'node'), ('hipGraphNodeType*', 'pType')]
 #define INIT_hipGraphNodeGetType_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphNodeGetType.node = (hipGraphNode_t)node; \
   cb_data.args.hipGraphNodeGetType.pType = (hipGraphNodeType*)pType; \
+};
+// hipGraphNodeSetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int', 'isEnabled')]
+#define INIT_hipGraphNodeSetEnabled_CB_ARGS_DATA(cb_data) { \
 };
 // hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
 #define INIT_hipGraphReleaseUserObject_CB_ARGS_DATA(cb_data) { \
@@ -5734,6 +5779,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphCreate:
       if (data->args.hipGraphCreate.pGraph) data->args.hipGraphCreate.pGraph__val = *(data->args.hipGraphCreate.pGraph);
       break;
+// hipGraphDebugDotPrint[('hipGraph_t', 'graph'), ('const char*', 'path'), ('unsigned int', 'flags')]
+    case HIP_API_ID_hipGraphDebugDotPrint:
+      if (data->args.hipGraphDebugDotPrint.path) data->args.hipGraphDebugDotPrint.path__val = *(data->args.hipGraphDebugDotPrint.path);
+      break;
 // hipGraphDestroy[('hipGraph_t', 'graph')]
     case HIP_API_ID_hipGraphDestroy:
       break;
@@ -5830,6 +5879,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphInstantiateWithFlags:
       if (data->args.hipGraphInstantiateWithFlags.pGraphExec) data->args.hipGraphInstantiateWithFlags.pGraphExec__val = *(data->args.hipGraphInstantiateWithFlags.pGraphExec);
       break;
+// hipGraphKernelNodeCopyAttributes[('hipGraphNode_t', 'hSrc'), ('hipGraphNode_t', 'hDst')]
+    case HIP_API_ID_hipGraphKernelNodeCopyAttributes:
+      break;
 // hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
     case HIP_API_ID_hipGraphKernelNodeGetAttribute:
       if (data->args.hipGraphKernelNodeGetAttribute.value) data->args.hipGraphKernelNodeGetAttribute.value__val = *(data->args.hipGraphKernelNodeGetAttribute.value);
@@ -5888,9 +5940,16 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipGraphNodeGetDependentNodes.pDependentNodes) data->args.hipGraphNodeGetDependentNodes.pDependentNodes__val = *(data->args.hipGraphNodeGetDependentNodes.pDependentNodes);
       if (data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes) data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes__val = *(data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes);
       break;
+// hipGraphNodeGetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int*', 'isEnabled')]
+    case HIP_API_ID_hipGraphNodeGetEnabled:
+      if (data->args.hipGraphNodeGetEnabled.isEnabled) data->args.hipGraphNodeGetEnabled.isEnabled__val = *(data->args.hipGraphNodeGetEnabled.isEnabled);
+      break;
 // hipGraphNodeGetType[('hipGraphNode_t', 'node'), ('hipGraphNodeType*', 'pType')]
     case HIP_API_ID_hipGraphNodeGetType:
       if (data->args.hipGraphNodeGetType.pType) data->args.hipGraphNodeGetType.pType__val = *(data->args.hipGraphNodeGetType.pType);
+      break;
+// hipGraphNodeSetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int', 'isEnabled')]
+    case HIP_API_ID_hipGraphNodeSetEnabled:
       break;
 // hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
     case HIP_API_ID_hipGraphReleaseUserObject:
@@ -7474,6 +7533,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphCreate.flags);
       oss << ")";
     break;
+    case HIP_API_ID_hipGraphDebugDotPrint:
+      oss << "hipGraphDebugDotPrint(";
+      oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDebugDotPrint.graph);
+      if (data->args.hipGraphDebugDotPrint.path == NULL) oss << ", path=NULL";
+      else { oss << ", path="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDebugDotPrint.path__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDebugDotPrint.flags);
+      oss << ")";
+    break;
     case HIP_API_ID_hipGraphDestroy:
       oss << "hipGraphDestroy(";
       oss << "graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphDestroy.graph);
@@ -7673,6 +7740,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphInstantiateWithFlags.flags);
       oss << ")";
     break;
+    case HIP_API_ID_hipGraphKernelNodeCopyAttributes:
+      oss << "hipGraphKernelNodeCopyAttributes(";
+      oss << "hSrc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeCopyAttributes.hSrc);
+      oss << ", hDst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeCopyAttributes.hDst);
+      oss << ")";
+    break;
     case HIP_API_ID_hipGraphKernelNodeGetAttribute:
       oss << "hipGraphKernelNodeGetAttribute(";
       oss << "hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphKernelNodeGetAttribute.hNode);
@@ -7792,11 +7865,26 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", pNumDependentNodes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetDependentNodes.pNumDependentNodes__val); }
       oss << ")";
     break;
+    case HIP_API_ID_hipGraphNodeGetEnabled:
+      oss << "hipGraphNodeGetEnabled(";
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetEnabled.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetEnabled.hNode);
+      if (data->args.hipGraphNodeGetEnabled.isEnabled == NULL) oss << ", isEnabled=NULL";
+      else { oss << ", isEnabled="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetEnabled.isEnabled__val); }
+      oss << ")";
+    break;
     case HIP_API_ID_hipGraphNodeGetType:
       oss << "hipGraphNodeGetType(";
       oss << "node="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetType.node);
       if (data->args.hipGraphNodeGetType.pType == NULL) oss << ", pType=NULL";
       else { oss << ", pType="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeGetType.pType__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGraphNodeSetEnabled:
+      oss << "hipGraphNodeSetEnabled(";
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeSetEnabled.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeSetEnabled.hNode);
+      oss << ", isEnabled="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGraphNodeSetEnabled.isEnabled);
       oss << ")";
     break;
     case HIP_API_ID_hipGraphReleaseUserObject:
