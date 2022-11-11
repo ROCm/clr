@@ -180,6 +180,16 @@ void Stream::syncNonBlockingStreams(int deviceId) {
   }
 }
 
+bool Stream::StreamCaptureBlocking() {
+  amd::ScopedLock lock(streamSetLock);
+  for (auto& it : streamSet) {
+    if (it->GetCaptureStatus() == hipStreamCaptureStatusActive && it->Flags() != hipStreamNonBlocking) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Stream::destroyAllStreams(int deviceId) {
   std::vector<Stream*> toBeDeleted;
   {
