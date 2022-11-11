@@ -295,6 +295,9 @@ namespace hip {
     /// Sync all non-blocking streams
     static void syncNonBlockingStreams(int deviceId);
 
+    /// Check whether any blocking stream running
+    static bool StreamCaptureBlocking();
+
     /// Destroy all streams on a given device
     static void destroyAllStreams(int deviceId);
 

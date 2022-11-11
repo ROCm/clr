@@ -807,6 +807,9 @@ hipError_t hipStreamIsCapturing_common(hipStream_t stream, hipStreamCaptureStatu
   if (pCaptureStatus == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidValue;
   }
+  if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
+    return hipErrorStreamCaptureImplicit;
+  }
   if (stream == nullptr) {
     *pCaptureStatus = hipStreamCaptureStatusNone;
   } else {
