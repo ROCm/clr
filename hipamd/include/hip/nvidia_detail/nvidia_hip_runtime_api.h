@@ -1026,8 +1026,10 @@ inline static enum cudaMemcpyKind hipMemcpyKindToCudaMemcpyKind(hipMemcpyKind ki
             return cudaMemcpyDeviceToHost;
         case hipMemcpyDeviceToDevice:
             return cudaMemcpyDeviceToDevice;
-        default:
+        case hipMemcpyDefault:
             return cudaMemcpyDefault;
+        default:
+            return (hipMemcpyKind)-1;
     }
 }
 
@@ -1043,7 +1045,7 @@ inline static enum cudaTextureAddressMode hipTextureAddressModeToCudaTextureAddr
         case hipAddressModeBorder:
             return cudaAddressModeBorder;
         default:
-            return cudaAddressModeWrap;
+            return (hipTextureAddressMode)-1;
     }
 }
 
@@ -1059,7 +1061,7 @@ inline static enum cudaMemRangeAttribute hipMemRangeAttributeToCudaMemRangeAttri
        case hipMemRangeAttributeLastPrefetchLocation:
            return cudaMemRangeAttributeLastPrefetchLocation;
        default:
-           return cudaMemRangeAttributeReadMostly;
+           return (hipMemRangeAttribute)-1;
    }
 }
 
@@ -1079,7 +1081,7 @@ inline static enum cudaMemoryAdvise hipMemoryAdviseTocudaMemoryAdvise(
        case hipMemAdviseUnsetAccessedBy:
            return cudaMemAdviseUnsetAccessedBy;
        default:
-           return cudaMemAdviseSetReadMostly;
+           return (enum cudaMemoryAdvise)-1;
    }
 }
 
@@ -1091,7 +1093,7 @@ inline static enum cudaTextureFilterMode hipTextureFilterModeToCudaTextureFilter
         case hipFilterModeLinear:
             return cudaFilterModeLinear;
         default:
-            return cudaFilterModePoint;
+            return (hipTextureFilterMode)-1;
     }
 }
 
@@ -1102,7 +1104,7 @@ inline static enum cudaTextureReadMode hipTextureReadModeToCudaTextureReadMode(h
         case hipReadModeNormalizedFloat:
             return cudaReadModeNormalizedFloat;
         default:
-            return cudaReadModeElementType;
+            return (hipTextureReadMode)-1;
     }
 }
 
@@ -1118,7 +1120,7 @@ inline static enum cudaChannelFormatKind hipChannelFormatKindToCudaChannelFormat
         case hipChannelFormatKindNone:
             return cudaChannelFormatKindNone;
         default:
-            return cudaChannelFormatKindNone;
+            return (hipChannelFormatKind)-1;
     }
 }
 
