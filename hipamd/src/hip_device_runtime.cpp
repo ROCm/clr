@@ -319,6 +319,12 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributePageableMemoryAccessUsesHostPageTables:
     *pi = prop.pageableMemoryAccessUsesHostPageTables;
     break;
+  case hipDeviceAttributeUnifiedAddressing:
+    // HIP runtime always uses SVM for host memory allocations.
+    // Note: Host registered memory isn't covered by this feature
+    // and still requires hipMemHostGetDevicePointer() call
+    *pi = true;
+    break;
   case hipDeviceAttributeCanUseStreamWaitValue:
     // hipStreamWaitValue64() and hipStreamWaitValue32() support
     *pi = g_devices[device]->devices()[0]->info().aqlBarrierValue_;
