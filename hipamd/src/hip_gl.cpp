@@ -222,10 +222,10 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
                                       unsigned int flags) {
   HIP_INIT_API(hipGraphicsGLRegisterImage, resource, image, target, flags);
 
-    if (!((flags == hipGraphicsRegisterFlagsNone) || (flags == hipGraphicsRegisterFlagsReadOnly) ||
-        (flags == hipGraphicsRegisterFlagsWriteDiscard) ||
-        (flags == hipGraphicsRegisterFlagsSurfaceLoadStore) ||
-        (flags == hipGraphicsRegisterFlagsTextureGather))) {
+    if (!((flags == hipGraphicsRegisterFlagsNone) || (flags & hipGraphicsRegisterFlagsReadOnly) ||
+        (flags & hipGraphicsRegisterFlagsWriteDiscard) ||
+          (flags & hipGraphicsRegisterFlagsSurfaceLoadStore) ||
+            (flags & hipGraphicsRegisterFlagsTextureGather))) {
     LogError("invalid parameter \"flags\"");
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -531,10 +531,8 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
                                        unsigned int flags) {
   HIP_INIT_API(hipGraphicsGLRegisterBuffer, resource, buffer, flags);
 
-  if (!((flags == hipGraphicsRegisterFlagsNone) || (flags == hipGraphicsRegisterFlagsReadOnly) ||
-        (flags == hipGraphicsRegisterFlagsWriteDiscard) ||
-        (flags == hipGraphicsRegisterFlagsSurfaceLoadStore) ||
-        (flags == hipGraphicsRegisterFlagsTextureGather))) {
+  if (!((flags == hipGraphicsRegisterFlagsNone) || (flags & hipGraphicsRegisterFlagsReadOnly) ||
+        (flags & hipGraphicsRegisterFlagsWriteDiscard))) {
     LogError("invalid parameter \"flags\"");
     HIP_RETURN(hipErrorInvalidValue);
   }
