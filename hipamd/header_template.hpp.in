@@ -22,7 +22,12 @@
 #ifndef @include_guard@
 #define @include_guard@
 
+#if defined(__GNUC__)
+#warning "This file is deprecated. Use header files from HIP_PATH/include, where HIP_PATH corresponds to HIP install path"
+#else
 #pragma message("This file is deprecated. Use header files from HIP_PATH/include, where HIP_PATH corresponds to HIP install path")
+#endif
+
 @include_statements@
 
 @hashzero_check@
