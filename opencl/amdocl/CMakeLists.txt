@@ -75,7 +75,6 @@ target_sources(amdocl PRIVATE
   cl_d3d9.cpp
   cl_d3d10.cpp
   cl_d3d11.cpp
-  cl_debugger_amd.cpp
   cl_device.cpp
   cl_event.cpp
   cl_execute.cpp
