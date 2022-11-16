@@ -34,7 +34,6 @@
 #include "cl_platform_amd.h"
 #include "cl_sdi_amd.h"
 #include "cl_thread_trace_amd.h"
-#include "cl_debugger_amd.h"
 #include "cl_lqdflash_amd.h"
 #include "cl_p2p_amd.h"
 
@@ -538,34 +537,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
 #if cl_amd_liquid_flash
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
 #endif  // cl_amd_liquid_flash
-      break;
-    case 'H':
-#ifdef _WIN32
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackFunctionsAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetCallBackArgumentsAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgFlushCacheAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetExceptionPolicyAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetExceptionPolicyAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetKernelExecutionModeAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelExecutionModeAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgCreateEventAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaitEventAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgDestroyEventAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgRegisterDebuggerAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnregisterDebuggerAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetAclBinaryAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgWaveControlAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgAddressWatchAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetAqlPacketInfoAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetDispatchDebugInfoAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapKernelCodeAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapKernelCodeAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgMapScratchRingAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgUnmapScratchRingAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgGetKernelParamMemAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgSetGlobalMemoryAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clHwDbgInstallTrapAMD);
-#endif  //_WIN32
       break;
     case 'I':
       CL_EXTENSION_ENTRYPOINT_CHECK(clIcdGetPlatformIDsKHR);
