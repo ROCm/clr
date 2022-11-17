@@ -41,22 +41,6 @@ enum PalGpuMemoryType {
   PAL_TEXTURE_BUFFER,    ///< "buffer" texture inside VBO
 };
 
-struct HwDbgKernelInfo {
-  uint64_t scratchBufAddr;          ///< Handle of GPU local memory for kernel private scratch space
-  size_t scratchBufferSizeInBytes;  ///< size of memory pointed to by pScratchBuffer,
-  uint64_t heapBufAddr;             ///< Address of the global heap base
-  const void* pAqlDispatchPacket;   ///< Pointer to the dispatch packet
-  const void* pAqlQueuePtr;         ///< pointer to the AQL Queue
-  void* trapHandler;                ///< address of the trap handler (TBA)
-  void* trapHandlerBuffer;          ///< address of the trap handler buffer (TMA)
-  uint32_t excpEn;                  ///< exception mask
-  bool trapPresent;                 ///< trap present flag
-  bool sqDebugMode;                 ///< debug mode flag (GPU single step mode)
-  uint32_t mgmtSe0Mask;             ///< mask for SE0 (reserving CU for display)
-  uint32_t mgmtSe1Mask;             ///< mask for SE1 (reserving CU for display)
-  uint32_t cacheDisableMask;        ///< cache disable mask
-};
-
 //! Engine types
 enum EngineType { MainEngine = 0, SdmaEngine, AllEngines };
 

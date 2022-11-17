@@ -57,7 +57,6 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/pal/palblit.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palconstbuf.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palcounters.cpp
-  ${ROCCLR_SRC_DIR}/device/pal/paldebugmanager.cpp
   ${ROCCLR_SRC_DIR}/device/pal/paldevice.cpp
   ${ROCCLR_SRC_DIR}/device/pal/paldeviced3d10.cpp
   ${ROCCLR_SRC_DIR}/device/pal/paldeviced3d11.cpp

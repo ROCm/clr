@@ -26,7 +26,6 @@
 #include "device/pal/palprintf.hpp"
 #include "device/pal/paltimestamp.hpp"
 #include "device/pal/palsched.hpp"
-#include "device/pal/paldebugger.hpp"
 #include "device/pal/palgpuopen.hpp"
 #include "platform/commandqueue.hpp"
 #include "device/blit.hpp"
@@ -632,16 +631,6 @@ class VirtualGPU : public device::VirtualDevice {
                   const amd::Coord3D& size,        //!< copy size
                   const amd::BufferRect& srcRect,  //!< region of source for copy
                   const amd::BufferRect& dstRect   //!< region of destination for copy
-  );
-
-  void buildKernelInfo(const HSAILKernel& hsaKernel,          //!< hsa kernel
-                       hsa_kernel_dispatch_packet_t* aqlPkt,  //!< aql packet for dispatch
-                       HwDbgKernelInfo& kernelInfo,           //!< kernel info for the dispatch
-                       amd::Event* enqueueEvent  //!< Event provided in the enqueue kernel command
-  );
-
-  void assignDebugTrapHandler(const DebugToolInfo& dbgSetting,  //!< debug settings
-                              HwDbgKernelInfo& kernelInfo       //!< kernel info for the dispatch
   );
 
   void PrintChildren(const HSAILKernel& hsaKernel,  //!< The parent HSAIL kernel

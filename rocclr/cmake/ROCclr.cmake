@@ -67,7 +67,6 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/devprogram.cpp
   ${ROCCLR_SRC_DIR}/device/devwavelimiter.cpp
   ${ROCCLR_SRC_DIR}/device/hsailctx.cpp
-  ${ROCCLR_SRC_DIR}/device/hwdebug.cpp
   ${ROCCLR_SRC_DIR}/elf/elf.cpp
   ${ROCCLR_SRC_DIR}/os/alloc.cpp
   ${ROCCLR_SRC_DIR}/os/os_posix.cpp

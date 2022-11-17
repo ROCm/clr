@@ -88,7 +88,7 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
   }
 
   if (!amd_mem_obj->create(nullptr)) {
-    LogError("[OCL] failed to create a svm hidden buffer!");
+    LogError("[OCL] fisThreadAliveailed to create a svm hidden buffer!");
     amd_mem_obj->release();
     return false;
   }

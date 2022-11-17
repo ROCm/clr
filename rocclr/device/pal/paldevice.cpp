@@ -31,7 +31,6 @@
 #include "device/pal/palprogram.hpp"
 #include "device/pal/palsettings.hpp"
 #include "device/pal/palblit.hpp"
-#include "device/pal/paldebugmanager.hpp"
 #include "palLib.h"
 #include "palPlatform.h"
 #include "palDevice.h"
@@ -761,10 +760,6 @@ Device::Device()
       rgpCaptureMgr_(nullptr) {}
 
 Device::~Device() {
-  // remove the HW debug manager
-  delete hwDebugMgr_;
-  hwDebugMgr_ = nullptr;
-
   if (p2p_stage_ != nullptr) {
     p2p_stage_->release();
     p2p_stage_ = nullptr;
@@ -1023,11 +1018,6 @@ bool Device::create(Pal::IDevice* device) {
   srdManager_ = new SrdManager(*this, std::max(HsaImageObjectSize, HsaSamplerObjectSize), 64 * Ki);
   if (srdManager_ == nullptr) {
     return false;
-  }
-
-  // create the HW debug manager if needed
-  if (settings().enableHwDebug_) {
-    hwDebugMgr_ = new GpuDebugManager(this);
   }
 
   if ((glb_ctx_ == nullptr) && (gNumDevices > 1) && (device == gDeviceList[gNumDevices - 1])) {
@@ -2509,17 +2499,6 @@ void Device::SrdManager::fillResourceList(VirtualGPU& gpu) {
   for (uint i = 0; i < pool_.size(); ++i) {
     gpu.addVmMemory(pool_[i].buf_);
   }
-}
-
-int32_t Device::hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
-  int32_t status = hwDebugMgr_->registerDebugger(context, messageStorage);
-
-  if (CL_SUCCESS != status) {
-    delete hwDebugMgr_;
-    hwDebugMgr_ = nullptr;
-  }
-
-  return status;
 }
 
 bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,

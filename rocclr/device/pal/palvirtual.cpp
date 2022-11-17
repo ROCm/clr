@@ -30,7 +30,6 @@
 #include "device/pal/palthreadtrace.hpp"
 #include "device/pal/paltimestamp.hpp"
 #include "device/pal/palblit.hpp"
-#include "device/pal/paldebugger.hpp"
 #include "device/appprofile.hpp"
 #include "device/devhostcall.hpp"
 #include "hsa.h"
@@ -1024,11 +1023,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     // Fall through ...
     case Settings::BlitEngineCAL:
     case Settings::BlitEngineKernel:
-      // use host blit for HW debug
-      if (dev().settings().enableHwDebug_) {
-        blitSetup.disableCopyImageToBuffer_ = true;
-        blitSetup.disableCopyBufferToImage_ = true;
-      }
       blitMgr_ = new KernelBlitManager(*this, blitSetup);
       break;
   }
@@ -3717,141 +3711,6 @@ void VirtualGPU::writeVQueueHeader(VirtualGPU& hostQ, const Memory* kernelTable)
   }
 
   virtualQueue_->writeRawData(hostQ, 0, sizeof(AmdVQueueHeader), vqHeader_, true);
-}
-
-void VirtualGPU::buildKernelInfo(const HSAILKernel& hsaKernel, hsa_kernel_dispatch_packet_t* aqlPkt,
-                                 HwDbgKernelInfo& kernelInfo, amd::Event* enqueueEvent) {
-#if defined(WITH_COMPILER_LIB)
-  amd::HwDebugManager* dbgManager = dev().hwDebugMgr();
-  assert(dbgManager && "No HW Debug Manager!");
-
-  // Initialize structure with default values
-
-  if (hsaKernel.prog().maxScratchRegs() > 0) {
-    pal::Memory* scratchBuf = dev().scratch(hwRing())->memObj_;
-    kernelInfo.scratchBufAddr = scratchBuf->vmAddress();
-    kernelInfo.scratchBufferSizeInBytes = scratchBuf->size();
-
-    // Get the address of the scratch buffer and its size for CPU access
-    address scratchRingAddr = static_cast<address>(scratchBuf->map(nullptr, 0));
-    dbgManager->setScratchRing(scratchRingAddr, scratchBuf->size());
-    scratchBuf->unmap(nullptr);
-  } else {
-    kernelInfo.scratchBufAddr = 0;
-    kernelInfo.scratchBufferSizeInBytes = 0;
-    dbgManager->setScratchRing(nullptr, 0);
-  }
-
-  //! @todo:  need to verify what is wanted for the global memory
-  Unimplemented();
-  kernelInfo.heapBufAddr = 0;
-
-  kernelInfo.pAqlDispatchPacket = aqlPkt;
-  kernelInfo.pAqlQueuePtr = reinterpret_cast<void*>(hsaQueueMem_->vmAddress());
-
-  // Get the address of the kernel code and its size for CPU access
-  /*    pal::Memory* aqlCode = hsaKernel.gpuAqlCode();
-      if (nullptr != aqlCode) {
-          address aqlCodeAddr = static_cast<address>(aqlCode->map(nullptr, 0));
-          dbgManager->setKernelCodeInfo(aqlCodeAddr, hsaKernel.aqlCodeSize());
-          aqlCode->unmap(nullptr);
-      }
-      else {
-          dbgManager->setKernelCodeInfo(nullptr, 0);
-      }
-  */
-  kernelInfo.trapPresent = false;
-  kernelInfo.trapHandler = nullptr;
-  kernelInfo.trapHandlerBuffer = nullptr;
-
-  kernelInfo.excpEn = 0;
-  kernelInfo.cacheDisableMask = 0;
-  kernelInfo.sqDebugMode = 0;
-
-  kernelInfo.mgmtSe0Mask = 0xFFFFFFFF;
-  kernelInfo.mgmtSe1Mask = 0xFFFFFFFF;
-
-  // set kernel info for HW debug and call the callback function
-  if (nullptr != dbgManager->preDispatchCallBackFunc()) {
-    DebugToolInfo dbgSetting = {0};
-    dbgSetting.scratchAddress_ = kernelInfo.scratchBufAddr;
-    dbgSetting.scratchSize_ = kernelInfo.scratchBufferSizeInBytes;
-    dbgSetting.globalAddress_ = kernelInfo.heapBufAddr;
-    dbgSetting.aclBinary_ = hsaKernel.prog().binaryElf();
-    dbgSetting.event_ = enqueueEvent;
-
-    // Execute the pre-dispatch call back function
-    dbgManager->executePreDispatchCallBack(reinterpret_cast<void*>(aqlPkt), &dbgSetting);
-
-    // assign the debug TMA and TBA for kernel dispatch
-    if (nullptr != dbgSetting.trapHandler_ && nullptr != dbgSetting.trapBuffer_) {
-      assignDebugTrapHandler(dbgSetting, kernelInfo);
-    }
-
-    kernelInfo.trapPresent = (kernelInfo.trapHandler) ? true : false;
-
-    // Exception policy
-    kernelInfo.excpEn = dbgSetting.exceptionMask_;
-    kernelInfo.cacheDisableMask = dbgSetting.cacheDisableMask_;
-    kernelInfo.sqDebugMode = dbgSetting.gpuSingleStepMode_;
-
-    // Compute the mask for reserved CUs. These two dwords correspond to
-    // two registers used for reserving CUs for display. In the current
-    // implementation, the number of CUs reserved can be 0 to 7, and it
-    // is set by debugger users.
-    if (dbgSetting.monitorMode_) {
-      uint32_t i = dbgSetting.reservedCuNum_ / 2;
-      kernelInfo.mgmtSe0Mask <<= i;
-      i = dbgSetting.reservedCuNum_ - i;
-      kernelInfo.mgmtSe1Mask <<= i;
-    }
-    Unimplemented();
-    /*
-            // flush/invalidate the instruction, data, L1 and L2 caches
-            InvalidateSqCaches();
-    */
-  }
-#endif
-}
-
-void VirtualGPU::assignDebugTrapHandler(const DebugToolInfo& dbgSetting,
-                                        HwDbgKernelInfo& kernelInfo) {
-  // setup the runtime trap handler code and trap buffer to be assigned before kernel dispatching
-  //
-  Memory* rtTrapHandlerMem = static_cast<Memory*>(dev().hwDebugMgr()->runtimeTBA());
-  Memory* rtTrapBufferMem = static_cast<Memory*>(dev().hwDebugMgr()->runtimeTMA());
-
-  kernelInfo.trapHandler = reinterpret_cast<void*>(rtTrapHandlerMem->vmAddress() + TbaStartOffset);
-  // With the TMA corruption hw bug workaround, the trap handler buffer can be set to zero.
-  // However, by setting the runtime trap buffer (TMA) correct, the runtime trap hander
-  // without the workaround can still function correctly.
-  kernelInfo.trapHandlerBuffer = reinterpret_cast<void*>(rtTrapBufferMem->vmAddress());
-
-  address rtTrapBufferAddress = static_cast<address>(rtTrapBufferMem->map(this));
-
-  Memory* trapHandlerMem = dev().getGpuMemory(dbgSetting.trapHandler_);
-  Memory* trapBufferMem = dev().getGpuMemory(dbgSetting.trapBuffer_);
-
-  // Address of the trap handler code/buffer should be 256-byte aligned
-  uint64_t tbaAddress = trapHandlerMem->vmAddress();
-  uint64_t tmaAddress = trapBufferMem->vmAddress();
-  if ((tbaAddress & 0xFF) != 0 || (tmaAddress & 0xFF) != 0) {
-    assert(false && "Trap handler/buffer is not 256-byte aligned");
-  }
-
-  // The addresses of the debug trap handler code (TBA) and buffer (TMA) are
-  // stored in the runtime trap handler buffer with offset location of 0x18-19
-  // and 0x20-21, respectively.
-  uint64_t* rtTmaPtr = reinterpret_cast<uint64_t*>(rtTrapBufferAddress + 0x18);
-  rtTmaPtr[0] = tbaAddress;
-  rtTmaPtr[1] = tmaAddress;
-
-  rtTrapBufferMem->unmap(nullptr);
-  // Add GPU mem handles to the memory list for VidMM
-  addVmMemory(trapHandlerMem);
-  addVmMemory(trapBufferMem);
-  addVmMemory(rtTrapHandlerMem);
-  addVmMemory(rtTrapBufferMem);
 }
 
 bool VirtualGPU::validateSdmaOverlap(const Resource& src, const Resource& dst) {

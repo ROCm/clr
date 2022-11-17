@@ -502,7 +502,6 @@ Device::Device()
       online_(true),
       activeWait_(false),
       blitProgram_(nullptr),
-      hwDebugMgr_(nullptr),
       context_(nullptr),
       heap_buffer_(nullptr),
       arena_mem_obj_(nullptr),
@@ -791,7 +790,6 @@ Settings::Settings() : value_(0) {
   customHostAllocator_ = false;
   waitCommand_ = AMD_OCL_WAIT_COMMAND;
   supportDepthsRGB_ = false;
-  enableHwDebug_ = false;
   commandQueues_ = 200;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for default
 

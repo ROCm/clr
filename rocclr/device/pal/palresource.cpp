@@ -1157,17 +1157,14 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     } else {
       memType = Local;
     }
-    // force to use remote memory for HW DEBUG or use
-    // local memory once we determine if FGS is supported
-    // memType = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
   }
 
   // Get the element size
   elementSize_ = Pal::Formats::BytesPerPixel(format);
   desc_.type_ = memType;
   if (memType == Scratch) {
-    // use local memory for scratch buffer unless it is using HW DEBUG
-    desc_.type_ = (!dev().settings().enableHwDebug_) ? Local : RemoteUSWC;
+    // use local memory for scratch buffer
+    desc_.type_ = Local;
     desc_.scratch_ = true;
   }
 
