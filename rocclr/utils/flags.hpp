@@ -66,8 +66,8 @@ release(uint, GPU_CP_DMA_COPY_SIZE, 1,                                        \
         "Set maximum size of CP DMA copy in KiB")                             \
 release(uint, GPU_MAX_HEAP_SIZE, 100,                                         \
         "Set maximum size of the GPU heap to % of board memory")              \
-release(uint, GPU_STAGING_BUFFER_SIZE, 1024,                                  \
-        "Size of the GPU staging buffer in KiB")                              \
+release(uint, GPU_STAGING_BUFFER_SIZE, 4,                                     \
+        "Size of the GPU staging buffer in MiB")                              \
 release(bool, GPU_DUMP_BLIT_KERNELS, false,                                   \
         "Dump the kernels for blit manager")                                  \
 release(uint, GPU_BLIT_ENGINE_TYPE, 0x0,                                      \
@@ -93,9 +93,9 @@ debug(cstring, AMD_OCL_SUBST_OBJFILE, 0,                                      \
 debug(bool, AMD_OCL_ENABLE_MESSAGE_BOX, false,                                \
         "Enable the error dialog on Windows")                                 \
 release(size_t, GPU_PINNED_XFER_SIZE, 32,                                     \
-        "The pinned buffer size for pinning in read/write transfers")         \
-release(size_t, GPU_PINNED_MIN_XFER_SIZE, 1024,                               \
-        "The minimal buffer size for pinned read/write transfers in KBytes")  \
+        "The pinned buffer size for pinning in read/write transfers in MiB")  \
+release(size_t, GPU_PINNED_MIN_XFER_SIZE, 128,                                \
+        "The minimal buffer size for pinned read/write transfers in MiB")     \
 release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
 release(size_t, GPU_MAX_SUBALLOC_SIZE, 4096,                                  \
