@@ -54,7 +54,7 @@ Settings::Settings() {
 
   stagedXferRead_ = true;
   stagedXferWrite_ = true;
-  stagedXferSize_ = GPU_STAGING_BUFFER_SIZE * Ki;
+  stagedXferSize_ = GPU_STAGING_BUFFER_SIZE * Mi;
 
   // We will enable staged read/write if we use local memory
   disablePersistent_ = false;
@@ -78,14 +78,9 @@ Settings::Settings() {
 
   // By default use host blit
   blitEngine_ = BlitEngineHost;
-  constexpr size_t MaxPinnedXferSize = 64;
-  pinnedXferSize_ = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
-
-  constexpr size_t PinnedMinXferSize = 4 * Mi;
+  pinnedXferSize_ = GPU_PINNED_MIN_XFER_SIZE * Mi;
   pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
-      ? PinnedMinXferSize
-      : GPU_PINNED_MIN_XFER_SIZE * Ki;
-  pinnedMinXferSize_ = std::min(pinnedMinXferSize_, pinnedXferSize_);
+    ? 128 * Mi : GPU_PINNED_MIN_XFER_SIZE * Mi;
 
   // Disable FP_FAST_FMA defines by default
   reportFMAF_ = false;

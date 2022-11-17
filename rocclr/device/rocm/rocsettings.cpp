@@ -62,14 +62,15 @@ Settings::Settings() {
 
   stagedXferRead_ = true;
   stagedXferWrite_ = true;
-  stagedXferSize_ = GPU_STAGING_BUFFER_SIZE * Ki;
+  stagedXferSize_ = flagIsDefault(GPU_STAGING_BUFFER_SIZE)
+      ? 1 * Mi : GPU_STAGING_BUFFER_SIZE * Mi;
 
   // Initialize transfer buffer size to 1MB by default
   xferBufSize_ = 1024 * Ki;
 
-  const static size_t MaxPinnedXferSize = 128;
-  pinnedXferSize_ = std::min(GPU_PINNED_XFER_SIZE, MaxPinnedXferSize) * Mi;
-  pinnedMinXferSize_ = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
+  pinnedXferSize_ = GPU_PINNED_MIN_XFER_SIZE * Mi;
+  pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
+    ? 1 * Mi : GPU_PINNED_MIN_XFER_SIZE * Mi;
 
   sdmaCopyThreshold_ = GPU_FORCE_BLIT_COPY_SIZE * Ki;
 
