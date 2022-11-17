@@ -154,8 +154,6 @@ release(uint, OCL_SET_SVM_SIZE, 4*16384,                                      \
         "set SVM space size for discrete GPU")                                \
 debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
         "Use flag to change the minimum requirement of system memory not to downgrade")        \
-debug(bool, GPU_ENABLE_HW_DEBUG, false,                                       \
-        "Enable HW DEBUG for GPU")                                            \
 release(uint, GPU_WAVES_PER_SIMD, 0,                                          \
         "Force the number of waves per SIMD (1-10)")                          \
 release(bool, GPU_WAVE_LIMIT_ENABLE, false,                                   \

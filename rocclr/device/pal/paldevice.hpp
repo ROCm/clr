@@ -533,9 +533,6 @@ class Device : public NullDevice {
   //! Returns SRD manger object
   SrdManager& srds() const { return *srdManager_; }
 
-  //! Initial the Hardware Debug Manager
-  int32_t hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage);
-
   //! Returns PAL device properties
   const Pal::DeviceProperties& properties() const { return properties_; }
 

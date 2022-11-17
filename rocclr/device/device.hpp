@@ -37,7 +37,6 @@
 #if defined(WITH_COMPILER_LIB)
 #include "hsailctx.hpp"
 #endif
-#include "hwdebug.hpp"
 #include "devsignal.hpp"
 
 #if defined(__clang__)
@@ -94,7 +93,6 @@ class TransferBufferFileCommand;
 class StreamOperationCommand;
 class VirtualMapCommand;
 class ExternalSemaphoreCmd;
-class HwDebugManager;
 class Isa;
 class Device;
 struct KernelParameterDescriptor;
@@ -630,7 +628,6 @@ class Settings : public amd::HeapObject {
       uint customHostAllocator_ : 1;  //!< True if device has custom host allocator
                                       //  that replaces generic OS allocation routines
       uint supportDepthsRGB_ : 1;     //!< Support DEPTH and sRGB channel order format
-      uint enableHwDebug_ : 1;        //!< Enable HW debug support
       uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
       uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
@@ -644,7 +641,7 @@ class Settings : public amd::HeapObject {
       uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
-      uint reserved_ : 10;
+      uint reserved_ : 11;
     };
     uint value_;
   };
@@ -1844,17 +1841,6 @@ class Device : public RuntimeObject {
   //! Returns app profile
   static const AppProfile* appProfile() { return &appProfile_; }
 
-  //! Register a hardware debugger manager
-  HwDebugManager* hwDebugMgr() const { return hwDebugMgr_; }
-
-  //! Initialize the Hardware Debug Manager
-  virtual int32_t hwDebugManagerInit(amd::Context* context, uintptr_t messageStorage) {
-    return CL_SUCCESS;
-  }
-
-  //! Remove the Hardware Debug Manager
-  virtual void hwDebugManagerRemove() {}
-
   //! Adds GPU memory to the VA cache list
   void addVACache(device::Memory* memory) const;
 
@@ -1963,7 +1949,6 @@ class Device : public RuntimeObject {
 
   BlitProgram* blitProgram_;      //!< Blit program info
   static AppProfile appProfile_;  //!< application profile
-  HwDebugManager* hwDebugMgr_;    //!< Hardware Debug manager
   amd::Context* context_;         //!< Context
 
   static amd::Context* glb_ctx_;      //!< Global context with all devices
