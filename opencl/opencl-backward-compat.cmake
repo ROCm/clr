@@ -48,7 +48,20 @@ function(create_header_template)
     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
    THE SOFTWARE.
-   */\n\n#ifndef @include_guard@\n#define @include_guard@ \n\n#pragma message(\"This file is deprecated. Use file from include path /opt/rocm-ver/include/ and prefix with CL\")\n@include_statements@ \n\n#endif")
+   */
+
+#ifndef @include_guard@
+#define @include_guard@
+
+#if defined(_MSC_VER)
+#pragma message(\"This file is deprecated. Use file from include path /opt/rocm-ver/include/ and prefix with CL\")
+#elif defined(__GNUC__)
+#warning \"This file is deprecated. Use file from include path /opt/rocm-ver/include/ and prefix with CL\"
+#endif
+
+@include_statements@
+
+#endif")
 endfunction()
 
 
