@@ -949,7 +949,7 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
  public:
   hipGraphMemcpyNodeFromSymbol(void* dst, const void* symbol, size_t count, size_t offset,
                                hipMemcpyKind kind)
-      : hipGraphMemcpyNode1D(dst, nullptr, count, kind, hipGraphNodeTypeMemcpyFromSymbol),
+      : hipGraphMemcpyNode1D(dst, nullptr, count, kind, hipGraphNodeTypeMemcpy),
         symbol_(symbol),
         offset_(offset) {}
 
@@ -1040,7 +1040,7 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
  public:
   hipGraphMemcpyNodeToSymbol(const void* symbol, const void* src, size_t count, size_t offset,
                              hipMemcpyKind kind)
-      : hipGraphMemcpyNode1D(nullptr, src, count, kind, hipGraphNodeTypeMemcpyToSymbol),
+      : hipGraphMemcpyNode1D(nullptr, src, count, kind, hipGraphNodeTypeMemcpy),
         symbol_(symbol),
         offset_(offset) {}
 
