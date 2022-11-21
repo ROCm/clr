@@ -381,6 +381,7 @@ typedef enum cudaResourceViewFormat hipResourceViewFormat;
 #define hipIpcMemLazyEnablePeerAccess cudaIpcMemLazyEnablePeerAccess
 
 #define hipOccupancyDefault cudaOccupancyDefault
+#define hipOccupancyDisableCachingOverride cudaOccupancyDisableCachingOverride
 
 #define hipCooperativeLaunchMultiDeviceNoPreSync    \
         cudaCooperativeLaunchMultiDeviceNoPreSync
@@ -2810,6 +2811,17 @@ inline static hipError_t hipOccupancyMaxPotentialBlockSize(int* minGridSize, int
                                                            int blockSizeLimit = 0) {
     return hipCUDAErrorTohipError(cudaOccupancyMaxPotentialBlockSize(minGridSize, blockSize, func,
                                                            dynamicSMemSize, blockSizeLimit));
+}
+
+template <typename UnaryFunction, class T>
+inline static hipError_t hipOccupancyMaxPotentialBlockSizeVariableSMemWithFlags(int* min_grid_size,
+                                                                                int* block_size,
+                                                                                T func,
+                                                                                UnaryFunction block_size_to_dynamic_smem_size,
+                                                                                int block_size_limit = 0,
+                                                                                unsigned int flags = 0) {
+    return hipCUDAErrorTohipError(cudaOccupancyMaxPotentialBlockSizeVariableSMemWithFlags(min_grid_size, block_size, func,
+                                                    block_size_to_dynamic_smem_size, block_size_limit,flags));
 }
 
 template <class T>
