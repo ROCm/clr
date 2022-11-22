@@ -261,13 +261,6 @@ global:
     hipTexObjectGetResourceDesc;
     hipTexObjectGetResourceViewDesc;
     hipTexObjectGetTextureDesc;
-    extern "C++" {
-    hip_impl::hipLaunchKernelGGLImpl*;
-    hip_impl::demangle*;
-    hipCreateSurfaceObject*;
-    hipDestroySurfaceObject*;
-    hipHccModuleLaunchKernel*;
-    hipExtModuleLaunchKernel*;
     hipGetCmdName*;
     hipExtStreamCreateWithCUMask;
     hipStreamGetPriority;
@@ -278,6 +271,12 @@ global:
     hipMemcpyParam2DAsync;
     __hipGetPCH;
     hipExtStreamGetCUMask;
+    extern "C++" {
+    hipCreateSurfaceObject*;
+    hipDestroySurfaceObject*;
+    hipHccModuleLaunchKernel*;
+    hipExtModuleLaunchKernel*;
+
     };
 local:
     *;
