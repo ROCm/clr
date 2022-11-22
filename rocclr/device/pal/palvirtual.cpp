@@ -89,6 +89,9 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
   } else if (amd::CommandQueue::RealTimeDisabled != rtCU) {
     qCreateInfo.numReservedCu = amd::alignDown(rtCU,
       gpu.dev().properties().engineProperties[Pal::EngineTypeCompute].dedicatedCuGranularity);
+    if (qCreateInfo.numReservedCu == 0) {
+      return nullptr;
+    }
     if ((priority == amd::CommandQueue::Priority::Medium)  &&
          // If Windows HWS is enabled, then the both real time queues are allocated
          // on the same engine
