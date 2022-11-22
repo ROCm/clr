@@ -564,49 +564,6 @@ hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks,
 }
 }
 
-
-#if defined(ATI_OS_LINUX)
-
-namespace hip_impl {
-
-void hipLaunchKernelGGLImpl(uintptr_t function_address, const dim3& numBlocks,
-                            const dim3& dimBlocks, uint32_t sharedMemBytes, hipStream_t stream,
-                            void** kernarg) {
-  HIP_INIT_VOID();
-
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  int deviceId = (s != nullptr) ? s->DeviceId() : ihipGetDevice();
-  if (deviceId == -1) {
-    LogPrintfError("Wrong Device Id: %d \n", deviceId);
-  }
-
-  hipFunction_t func = nullptr;
-  hipError_t hip_error = PlatformState::instance().getStatFunc(
-      &func, reinterpret_cast<void*>(function_address), deviceId);
-  if ((hip_error != hipSuccess) || (func == nullptr)) {
-    LogPrintfError("Cannot find the static function: 0x%x", function_address);
-  }
-
-  hip_error =
-      hipModuleLaunchKernel(func, numBlocks.x, numBlocks.y, numBlocks.z, dimBlocks.x, dimBlocks.y,
-                            dimBlocks.z, sharedMemBytes, stream, nullptr, kernarg);
-  assert(hip_error == hipSuccess);
-}
-
-void hipLaunchCooperativeKernelGGLImpl(uintptr_t function_address, const dim3& numBlocks,
-                                       const dim3& dimBlocks, uint32_t sharedMemBytes,
-                                       hipStream_t stream, void** kernarg) {
-  HIP_INIT_VOID();
-
-  hipError_t err = hipLaunchCooperativeKernel(reinterpret_cast<void*>(function_address), numBlocks,
-                                              dimBlocks, kernarg, sharedMemBytes, stream);
-  assert(err == hipSuccess);
-}
-
-}  // namespace hip_impl
-
-#endif  // defined(ATI_OS_LINUX)
-
 hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim, void** args,
                             size_t sharedMemBytes, hipStream_t stream, hipEvent_t startEvent,
                             hipEvent_t stopEvent, int flags) {
