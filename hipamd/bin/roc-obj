@@ -137,16 +137,7 @@ find_rocm_executable_or_fail() {
   local -r command="$1"; shift
   local file
   local searched=()
-
-  # Look for LLVM directory in ROCm's directory structure
-  local rocm_llvm_dir_root=`realpath $BASE_DIR/../lib`
-  local llvm_dir=`find "$rocm_llvm_dir_root" -maxdepth 1 -regextype posix-extended -regex ".*/llvm-[0-9]{2,}" -type d,l | sort -r`
-  local llvm_bin_dir=()
-  for d in $llvm_dir; do
-	  llvm_bin_dir+=("$d/bin")
-  done
-
-  for dir in "$BASE_DIR" "${HIP_CLANG_PATH:-"$BASE_DIR/../../llvm/bin"}" ${llvm_bin_dir[*]}; do
+  for dir in "$BASE_DIR" "${HIP_CLANG_PATH:-"$BASE_DIR/../../llvm/bin"}"; do
     file="$dir/$command"
     if [[ -x $file ]]; then
       printf "%s" "$file"
