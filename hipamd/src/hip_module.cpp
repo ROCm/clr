@@ -226,7 +226,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   const amd::Device* device = g_devices[deviceId]->devices()[0];
   // Make sure dispatch doesn't exceed max workgroup size limit
   if (blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
-    return hipErrorInvalidConfiguration;
+    return hipErrorInvalidValue;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
@@ -273,7 +273,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   if (extra != nullptr) {
     if (extra[0] != HIP_LAUNCH_PARAM_BUFFER_POINTER || extra[2] != HIP_LAUNCH_PARAM_BUFFER_SIZE ||
         extra[4] != HIP_LAUNCH_PARAM_END) {
-      return hipErrorNotInitialized;
+      return hipErrorInvalidValue;
     }
     kernargs = reinterpret_cast<address>(extra[1]);
   }
@@ -349,7 +349,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 
   if (f == nullptr) {
     LogPrintfError("%s", "Function passed is null");
-    return hipErrorInvalidImage;
+    return hipErrorInvalidResourceHandle;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
@@ -512,14 +512,17 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
   hipFunction_t func = nullptr;
   int deviceId = hip::Stream::DeviceId(hStream);
   HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&func, f, deviceId));
+  const amd::Device* device = g_devices[deviceId]->devices()[0];
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;
   if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-    return hipErrorInvalidConfiguration;
+      globalWorkSizeZ > std::numeric_limits<uint32_t>::max() ||
+      (blockDim.x * blockDim.y * blockDim.z > device->info().maxWorkGroupSize_)) {
+    return HIP_RETURN(hipErrorInvalidConfiguration);
   }
+
   return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
                                 static_cast<uint32_t>(globalWorkSizeY),
                                 static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y,
