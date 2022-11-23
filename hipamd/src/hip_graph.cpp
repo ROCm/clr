@@ -2136,3 +2136,30 @@ hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, u
   hipError_t status = hipUserObjectRelease(object, count);
   HIP_RETURN(status);
 }
+
+hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t hDst) {
+  HIP_INIT_API(hipGraphKernelNodeCopyAttributes, hSrc, hDst);
+  HIP_RETURN(hipErrorNotSupported);
+}
+
+hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
+  HIP_INIT_API(hipGraphDebugDotPrint, graph, path, flags);
+  HIP_RETURN(hipErrorNotSupported);
+}
+
+hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                  unsigned int isEnabled) {
+  HIP_INIT_API(hipGraphNodeSetEnabled, hGraphExec, hNode, isEnabled);
+  HIP_RETURN(hipErrorNotSupported);
+}
+
+hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                  unsigned int* isEnabled) {
+  HIP_INIT_API(hipGraphNodeGetEnabled, hGraphExec, hNode, isEnabled);
+  HIP_RETURN(hipErrorNotSupported);
+}
+
+hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
+  HIP_INIT_API(hipGraphUpload, graphExec, stream);
+  HIP_RETURN(hipErrorNotSupported);
+}
