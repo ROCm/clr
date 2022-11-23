@@ -133,261 +133,6 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
 #endif // defined(__HIPCC_RTC__)
 
     namespace hip_impl {
-        template<typename, typename, unsigned int> struct Scalar_accessor;
-    } // Namespace hip_impl.
-
-    namespace std {
-        template<typename T, typename U, unsigned int n>
-        struct is_integral<hip_impl::Scalar_accessor<T, U, n>>
-            : std::is_integral<T> {};
-        template<typename T, typename U, unsigned int n>
-        struct is_floating_point<hip_impl::Scalar_accessor<T, U, n>>
-            : std::is_floating_point<T> {};
-    } // Namespace std.
-
-    namespace hip_impl {
-        template<typename T, typename Vector, unsigned int idx>
-        struct Scalar_accessor {
-            struct Address {
-                const Scalar_accessor* p;
-
-                __HOST_DEVICE__
-                operator const T*() const noexcept {
-                    return &reinterpret_cast<const T*>(p)[idx];
-                }
-                __HOST_DEVICE__
-                operator const T*() const volatile noexcept {
-                    return &reinterpret_cast<const T*>(p)[idx];
-                }
-                __HOST_DEVICE__
-                operator T*() noexcept {
-                    return &reinterpret_cast<T*>(
-                        const_cast<Scalar_accessor*>(p))[idx];
-                }
-                __HOST_DEVICE__
-                operator T*() volatile noexcept {
-                    return &reinterpret_cast<T*>(
-                        const_cast<Scalar_accessor*>(p))[idx];
-                }
-            };
-
-            friend
-            inline
-            std::ostream& operator<<(std::ostream& os,
-                                     const Scalar_accessor& x) noexcept {
-                return os << x.data[idx];
-            }
-            friend
-            inline
-            std::istream& operator>>(std::istream& is,
-                                     Scalar_accessor& x) noexcept {
-                T tmp;
-                is >> tmp;
-                x.data[idx] = tmp;
-
-                return is;
-            }
-
-            // Idea from https://t0rakka.silvrback.com/simd-scalar-accessor
-	    /* Copyright (c) 2012-2019 Twilight Finland 3D Oy Ltd. All rights reserved.
-
-               This software is provided 'as-is', without any express or implied
-               warranty. In no event will the authors be held liable for any damages
-               arising from the use of this software.
-
-               Permission is granted to anyone to use this software for any purpose,
-               including commercial applications, and to alter it and redistribute it
-               freely, subject to the following restrictions:
-
-               1. The origin of this software must not be misrepresented; you must not
-               claim that you wrote the original software. If you use this software
-               in a product, an acknowledgment in the product documentation would be
-               appreciated but is not required.
-               2. Altered source versions must be plainly marked as such, and must not be
-               misrepresented as being the original software.
-               3. This notice may not be removed or altered from any source distribution.*/
-            Vector data;
-
-            __HOST_DEVICE__
-            operator T() const noexcept { return data[idx]; }
-            __HOST_DEVICE__
-            operator T() const volatile noexcept { return data[idx]; }
-
-#ifdef __HIP_ENABLE_VECTOR_SCALAR_ACCESSORY_ENUM_CONVERSION__
-            // The conversions to enum are fairly ghastly, but unfortunately used in
-            // some pre-existing, difficult to modify, code.
-            template<
-                typename U,
-                typename std::enable_if<
-                    !std::is_same<U, T>{} &&
-                    std::is_enum<U>{} &&
-                    std::is_convertible<
-                        T, typename std::enable_if<std::is_enum<U>::value, std::underlying_type<U>>::type::type>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            operator U() const noexcept { return static_cast<U>(data[idx]); }
-            template<
-                typename U,
-                typename std::enable_if<
-                    !std::is_same<U, T>{} &&
-                    std::is_enum<U>{} &&
-                    std::is_convertible<
-                        T, typename std::enable_if<std::is_enum<U>::value, std::underlying_type<U>>::type::type>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            operator U() const volatile noexcept { return static_cast<U>(data[idx]); }
-#endif
-
-            __HOST_DEVICE__
-            operator T&() noexcept {
-                return reinterpret_cast<
-                    T (&)[sizeof(Vector) / sizeof(T)]>(data)[idx];
-            }
-            __HOST_DEVICE__
-            operator volatile T&() volatile noexcept {
-                return reinterpret_cast<
-                    volatile T (&)[sizeof(Vector) / sizeof(T)]>(data)[idx];
-            }
-
-            __HOST_DEVICE__
-            Address operator&() const noexcept { return Address{this}; }
-
-            __HOST_DEVICE__
-            Scalar_accessor& operator=(const Scalar_accessor& x) noexcept {
-                data[idx] = x.data[idx];
-
-                return *this;
-            }
-            __HOST_DEVICE__
-            Scalar_accessor& operator=(T x) noexcept {
-                data[idx] = x;
-
-                return *this;
-            }
-            __HOST_DEVICE__
-            volatile Scalar_accessor& operator=(T x) volatile noexcept {
-                data[idx] = x;
-
-                return *this;
-            }
-
-            __HOST_DEVICE__
-            Scalar_accessor& operator++() noexcept {
-                ++data[idx];
-                return *this;
-            }
-            __HOST_DEVICE__
-            T operator++(int) noexcept {
-                auto r{data[idx]};
-                ++data[idx];
-                return *this;
-            }
-            __HOST_DEVICE__
-            Scalar_accessor& operator--() noexcept {
-                --data[idx];
-                return *this;
-            }
-            __HOST_DEVICE__
-            T operator--(int) noexcept {
-                auto r{data[idx]};
-                --data[idx];
-                return *this;
-            }
-
-            // TODO: convertibility is too restrictive, constraint should be on
-            //       the operator being invocable with a value of type U.
-            template<
-                typename U,
-                typename std::enable_if<
-                    std::is_convertible<U, T>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator+=(U x) noexcept {
-                data[idx] += x;
-                return *this;
-            }
-            template<
-                typename U,
-                typename std::enable_if<
-                    std::is_convertible<U, T>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator-=(U x) noexcept {
-                data[idx] -= x;
-                return *this;
-            }
-
-            template<
-                typename U,
-                typename std::enable_if<
-                    std::is_convertible<U, T>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator*=(U x) noexcept {
-                data[idx] *= x;
-                return *this;
-            }
-            template<
-                typename U,
-                typename std::enable_if<
-                    std::is_convertible<U, T>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator/=(U x) noexcept {
-                data[idx] /= x;
-                return *this;
-            }
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator%=(U x) noexcept {
-                data[idx] %= x;
-                return *this;
-            }
-
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator>>=(U x) noexcept {
-                data[idx] >>= x;
-                return *this;
-            }
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator<<=(U x) noexcept {
-                data[idx] <<= x;
-                return *this;
-            }
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator&=(U x) noexcept {
-                data[idx] &= x;
-                return *this;
-            }
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator|=(U x) noexcept {
-                data[idx] |= x;
-                return *this;
-            }
-            template<
-                typename U = T,
-                typename std::enable_if<std::is_convertible<U, T>{} &&
-                                        std::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Scalar_accessor& operator^=(U x) noexcept {
-                data[idx] ^= x;
-                return *this;
-            }
-        };
-
         inline
         constexpr
         unsigned int next_pot(unsigned int x) {
@@ -404,13 +149,9 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
 
         union {
             Native_vec_ data;
-#if __HIP_CLANG_ONLY__
             struct {
                 T x;
             };
-#else
-            hip_impl::Scalar_accessor<T, Native_vec_, 0> x;
-#endif
         };
 
         using value_type = T;
@@ -429,22 +170,8 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_base(HIP_vector_base&&) = default;
         __HOST_DEVICE__
         ~HIP_vector_base() = default;
-
-        #if __HIP_CLANG_ONLY__
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base&) = default;
-        #else
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base& x_) noexcept {
-                #if __has_attribute(ext_vector_type)
-                    data = x_.data;
-                #else
-                    data[0] = x_.data[0];
-                #endif
-
-                return *this;
-            }
-        #endif
+        __HOST_DEVICE__
+        HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
     template<typename T>
@@ -457,15 +184,10 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         #endif
         {
             Native_vec_ data;
-#if __HIP_CLANG_ONLY__
             struct {
                 T x;
                 T y;
             };
-#else
-            hip_impl::Scalar_accessor<T, Native_vec_, 0> x;
-            hip_impl::Scalar_accessor<T, Native_vec_, 1> y;
-#endif
         };
 
         using value_type = T;
@@ -487,23 +209,8 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_base(HIP_vector_base&&) = default;
         __HOST_DEVICE__
         ~HIP_vector_base() = default;
-
-        #if __HIP_CLANG_ONLY__
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base&) = default;
-        #else
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base& x_) noexcept {
-                #if __has_attribute(ext_vector_type)
-                    data = x_.data;
-                #else
-                    data[0] = x_.data[0];
-                    data[1] = x_.data[1];
-                #endif
-
-                return *this;
-            }
-        #endif
+        __HOST_DEVICE__
+        HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
     template<typename T>
@@ -701,19 +408,12 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         #endif
         {
             Native_vec_ data;
-#if __HIP_CLANG_ONLY__
             struct {
                 T x;
                 T y;
                 T z;
                 T w;
             };
-#else
-            hip_impl::Scalar_accessor<T, Native_vec_, 0> x;
-            hip_impl::Scalar_accessor<T, Native_vec_, 1> y;
-            hip_impl::Scalar_accessor<T, Native_vec_, 2> z;
-            hip_impl::Scalar_accessor<T, Native_vec_, 3> w;
-#endif
         };
 
         using value_type = T;
@@ -735,25 +435,8 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_base(HIP_vector_base&&) = default;
         __HOST_DEVICE__
         ~HIP_vector_base() = default;
-
-        #if __HIP_CLANG_ONLY__
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base&) = default;
-        #else
-            __HOST_DEVICE__
-            HIP_vector_base& operator=(const HIP_vector_base& x_) noexcept {
-                #if __has_attribute(ext_vector_type)
-                    data = x_.data;
-                #else
-                    data[0] = x_.data[0];
-                    data[1] = x_.data[1];
-                    data[2] = x_.data[2];
-                    data[3] = x_.data[3];
-                #endif
-
-                return *this;
-            }
-         #endif
+        __HOST_DEVICE__
+        HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
     template<typename T, unsigned int rank>
