@@ -3785,6 +3785,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphDebugDotPrint[('hipGraph_t', 'graph'), ('const char*', 'path'), ('unsigned int', 'flags')]
 #define INIT_hipGraphDebugDotPrint_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphDebugDotPrint.graph = (hipGraph_t)graph; \
+  cb_data.args.hipGraphDebugDotPrint.path = (path) ? strdup(path) : NULL; \
+  cb_data.args.hipGraphDebugDotPrint.flags = (unsigned int)flags; \
 };
 // hipGraphDestroy[('hipGraph_t', 'graph')]
 #define INIT_hipGraphDestroy_CB_ARGS_DATA(cb_data) { \
@@ -3941,6 +3944,8 @@ typedef struct hip_api_data_s {
 };
 // hipGraphKernelNodeCopyAttributes[('hipGraphNode_t', 'hSrc'), ('hipGraphNode_t', 'hDst')]
 #define INIT_hipGraphKernelNodeCopyAttributes_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphKernelNodeCopyAttributes.hSrc = (hipGraphNode_t)hSrc; \
+  cb_data.args.hipGraphKernelNodeCopyAttributes.hDst = (hipGraphNode_t)hDst; \
 };
 // hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
 #define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
@@ -4035,6 +4040,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphNodeGetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int*', 'isEnabled')]
 #define INIT_hipGraphNodeGetEnabled_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphNodeGetEnabled.hGraphExec = (hipGraphExec_t)hGraphExec; \
+  cb_data.args.hipGraphNodeGetEnabled.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipGraphNodeGetEnabled.isEnabled = (unsigned int*)isEnabled; \
 };
 // hipGraphNodeGetType[('hipGraphNode_t', 'node'), ('hipGraphNodeType*', 'pType')]
 #define INIT_hipGraphNodeGetType_CB_ARGS_DATA(cb_data) { \
@@ -4043,6 +4051,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphNodeSetEnabled[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('unsigned int', 'isEnabled')]
 #define INIT_hipGraphNodeSetEnabled_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphNodeSetEnabled.hGraphExec = (hipGraphExec_t)hGraphExec; \
+  cb_data.args.hipGraphNodeSetEnabled.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipGraphNodeSetEnabled.isEnabled = (unsigned int)isEnabled; \
 };
 // hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
 #define INIT_hipGraphReleaseUserObject_CB_ARGS_DATA(cb_data) { \
@@ -4066,6 +4077,8 @@ typedef struct hip_api_data_s {
 };
 // hipGraphUpload[('hipGraphExec_t', 'graphExec'), ('hipStream_t', 'stream')]
 #define INIT_hipGraphUpload_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphUpload.graphExec = (hipGraphExec_t)graphExec; \
+  cb_data.args.hipGraphUpload.stream = (hipStream_t)stream; \
 };
 // hipGraphicsGLRegisterBuffer[('hipGraphicsResource**', 'resource'), ('GLuint', 'buffer'), ('unsigned int', 'flags')]
 #define INIT_hipGraphicsGLRegisterBuffer_CB_ARGS_DATA(cb_data) { \
