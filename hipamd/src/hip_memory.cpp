@@ -2240,8 +2240,28 @@ hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffs
                                      const void* src, size_t spitch, size_t width,
                                      size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-  if (spitch == 0) {
+  if (spitch == 0 || spitch < width) {
     HIP_RETURN(hipErrorInvalidPitchValue);
+  }
+  if (src == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (dst == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+  int FormatSize = hip::getElementSize(dst);
+  if ((width + wOffset) > (dst->width * FormatSize)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (dst->height == 0) {//1D hipArray
+    if (height + hOffset > 1) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  } else if ((height + hOffset) > (dst->height)) {//2D hipArray
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (kind < hipMemcpyHostToHost || kind > hipMemcpyDefault) {
+    HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
   return ihipMemcpy2DToArray(dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
 }
@@ -3336,8 +3356,28 @@ hipError_t hipMemcpy2DFromArray_common(void* dst, size_t dpitch, hipArray_const_
                                        size_t wOffsetSrc, size_t hOffset, size_t width,
                                        size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
-  if (dpitch == 0) {
+  if (dpitch == 0 || dpitch < width) {
     HIP_RETURN(hipErrorInvalidPitchValue);
+  }
+  if (src == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+  if (dst == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  int FormatSize = hip::getElementSize(src);
+  if ((width + wOffsetSrc) > (src->width * FormatSize)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (src->height == 0) {//1D hipArray
+    if (height + hOffset > 1) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  } else if ((height + hOffset) > (src->height)) {//2D hipArray
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (kind < hipMemcpyHostToHost || kind > hipMemcpyDefault) {
+    HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
   return ihipMemcpy2DFromArray(dst, dpitch, src, wOffsetSrc, hOffset, width, height, kind, stream);
 }
