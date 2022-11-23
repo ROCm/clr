@@ -547,7 +547,7 @@ extern int ihipGetDevice();
 
 extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
 extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size = 0);
-extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size);
+extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size = 0);
 extern void getStreamPerThread(hipStream_t& stream);
 extern hipStream_t getPerThreadDefaultStream();
 extern hipError_t ihipUnbindTexture(textureReference* texRef);

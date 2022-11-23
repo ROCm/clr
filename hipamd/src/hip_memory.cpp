@@ -68,7 +68,7 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
 
 // ================================================================================================
 amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size) {
-  size_t offset;
+  size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(ptr, offset);
 
   if (memObj != nullptr) {
@@ -683,11 +683,9 @@ hipError_t hipMemGetAddressRange(hipDeviceptr_t* pbase, size_t* psize, hipDevice
 
   // Since we are using SVM buffer DevicePtr and HostPtr is the same
   void* ptr = dptr;
-  size_t offset = 0;
-  amd::Memory* svmMem = getMemoryObject(ptr, offset);
-
+  amd::Memory* svmMem = getMemoryObjectWithOffset(ptr);
   if (svmMem == nullptr) {
-    HIP_RETURN(hipErrorInvalidDevicePointer);
+    HIP_RETURN(hipErrorNotFound);
   }
 
   *pbase = svmMem->getSvmPtr();
