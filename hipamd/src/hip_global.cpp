@@ -135,6 +135,14 @@ hipError_t Function::getDynFunc(hipFunction_t* hfunc, hipModule_t hmod) {
   return hipSuccess;
 }
 
+bool Function::isValidDynFunc(const hipFunction_t& hfunc) {
+  guarantee((dFunc_.size() == g_devices.size()), "dFunc Size mismatch");
+  if (dFunc_[ihipGetDevice()] == nullptr) {
+    return false;
+  }
+  return (dFunc_[ihipGetDevice()]->asHipFunction() == hfunc);
+}
+
 hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
   guarantee(modules_ != nullptr, "Module not initialized");
 

@@ -497,7 +497,15 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
 
   hipFunction_t func = nullptr;
   int deviceId = hip::Stream::DeviceId(hStream);
-  HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&func, f, deviceId));
+  hipError_t status = PlatformState::instance().getStatFunc(&func, f, deviceId);
+  if (status != hipSuccess) {
+    // Check if its a dynamic function
+    if (!PlatformState::instance().isValidDynFunc(hipFunction_t(f))) {
+      return status;
+    }
+    func = (hipFunction_t)f;
+  }
+
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;

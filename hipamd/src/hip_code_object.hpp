@@ -92,6 +92,9 @@ public:
   hipError_t getDynFunc(hipFunction_t* hfunc, std::string func_name);
   hipError_t getDeviceVar(DeviceVar** dvar, std::string var_name);
 
+  // Verify whether the dynamic function is present or not
+  bool isValidDynFunc(const hipFunction_t& hfunc);
+
   hipError_t getManagedVarPointer(std::string name, void** pointer, size_t* size_ptr) const {
     auto it = vars_.find(name);
     if (it != vars_.end() && it->second->getVarKind() == Var::DVK_Managed) {
