@@ -562,6 +562,20 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   return it->second->getDynFunc(hfunc, module());
 }
 
+bool DynCO::isValidDynFunc(const hipFunction_t& hfunc) {
+  amd::ScopedLock lock(dclock_);
+
+  CheckDeviceIdMatch();
+
+  for (auto it : functions_) {
+    if (it.second->isValidDynFunc(hfunc)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
   amd::ScopedLock lock(dclock_);
   DeviceVar* dvar;

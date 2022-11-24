@@ -47,6 +47,8 @@ class PlatformState {
   hipError_t unloadModule(hipModule_t hmod);
 
   hipError_t getDynFunc(hipFunction_t* hfunc, hipModule_t hmod, const char* func_name);
+  // Verify whether the dynamic function is present or not
+  bool isValidDynFunc(const hipFunction_t& hfunc);
   hipError_t getDynGlobalVar(const char* hostVar, hipModule_t hmod, hipDeviceptr_t* dev_ptr,
                              size_t* size_ptr);
   hipError_t getDynTexRef(const char* hostVar, hipModule_t hmod, textureReference** texRef);
