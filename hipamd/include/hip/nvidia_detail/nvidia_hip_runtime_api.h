@@ -36,6 +36,7 @@ THE SOFTWARE.
 #define CUDA_11020 11020
 #define CUDA_11030 11030
 #define CUDA_11040 11040
+#define CUDA_11060 11060
 
 #ifdef __cplusplus
 extern "C" {
@@ -1207,6 +1208,21 @@ typedef enum cudaStreamUpdateCaptureDependenciesFlags hipStreamUpdateCaptureDepe
 #define hipStreamAddCaptureDependencies cudaStreamAddCaptureDependencies
 #define hipStreamSetCaptureDependencies cudaStreamSetCaptureDependencies
 #endif
+
+#if CUDA_VERSION >= CUDA_11030
+typedef enum cudaGraphDebugDotFlags hipGraphDebugDotFlags;
+#define hipGraphDebugDotFlagsVerbose cudaGraphDebugDotFlagsVerbose
+#define hipGraphDebugDotFlagsKernelNodeParams cudaGraphDebugDotFlagsKernelNodeParams
+#define hipGraphDebugDotFlagsMemcpyNodeParams cudaGraphDebugDotFlagsMemcpyNodeParams
+#define hipGraphDebugDotFlagsMemsetNodeParams cudaGraphDebugDotFlagsMemsetNodeParams
+#define hipGraphDebugDotFlagsHostNodeParams cudaGraphDebugDotFlagsHostNodeParams
+#define hipGraphDebugDotFlagsEventNodeParams cudaGraphDebugDotFlagsEventNodeParams
+#define hipGraphDebugDotFlagsExtSemasSignalNodeParams cudaGraphDebugDotFlagsExtSemasSignalNodeParams
+#define hipGraphDebugDotFlagsExtSemasWaitNodeParams cudaGraphDebugDotFlagsExtSemasWaitNodeParams
+#define hipGraphDebugDotFlagsKernelNodeAttributes cudaGraphDebugDotFlagsKernelNodeAttributes
+#define hipGraphDebugDotFlagsHandles cudaGraphDebugDotFlagsHandles
+#endif
+
 #if CUDA_VERSION >= CUDA_10020
 #define hipMemAllocationGranularityMinimum CU_MEM_ALLOC_GRANULARITY_MINIMUM
 #define hipMemAllocationGranularityRecommended CU_MEM_ALLOC_GRANULARITY_RECOMMENDED
@@ -3380,7 +3396,34 @@ inline static hipError_t hipGraphHostNodeSetParams(hipGraphNode_t node,
                                                    const hipHostNodeParams* pNodeParams) {
     return hipCUDAErrorTohipError(cudaGraphHostNodeSetParams(node, pNodeParams));
 }
+#if CUDA_VERSION >= CUDA_11030
+inline static hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path,
+                                               unsigned int flags) {
+    return hipCUDAErrorTohipError(cudaGraphDebugDotPrint(graph, path, flags));
+}
+#endif
+#if CUDA_VERSION >= CUDA_11000
+inline static hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc,
+                                                          hipGraphNode_t hDst) {
+    return hipCUDAErrorTohipError(cudaGraphKernelNodeCopyAttributes(hSrc, hDst));
+}
+#endif
+#if CUDA_VERSION >= CUDA_11060
+inline static hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                                unsigned int isEnabled) {
+    return hipCUDAErrorTohipError(cudaGraphNodeSetEnabled(hGraphExec, hNode, isEnabled));
+}
 
+inline static hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                                unsigned int* isEnabled) {
+    return hipCUDAErrorTohipError(cudaGraphNodeGetEnabled(hGraphExec, hNode, isEnabled));
+}
+#endif
+#if CUDA_VERSION >= CUDA_11010
+inline static hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
+    return hipCUDAErrorTohipError(cudaGraphUpload(graphExec, stream));
+}
+#endif
 #endif  //__CUDACC__
 
 #endif  // HIP_INCLUDE_HIP_NVIDIA_DETAIL_HIP_RUNTIME_API_H
