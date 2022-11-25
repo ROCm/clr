@@ -679,9 +679,14 @@ class hipGraphKernelNode : public hipGraphNode {
                             unsigned int device) {
     hipFunction_t func = nullptr;
     hipError_t status = PlatformState::instance().getStatFunc(&func, params.func, device);
-    if (status != hipSuccess) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,"[hipGraph] getStatFunc() Failed with err %d",
+    if (status == hipErrorInvalidSymbol) {
+      // capturehipExtModuleLaunchKernel() mixes host function with hipFunction_t, so we convert
+      // here. If it's wrong, later functions will fail
+      func = static_cast<hipFunction_t>(params.func);
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE,"[hipGraph] capturehipExtModuleLaunchKernel() should be called",
               status);
+    } else if (status != hipSuccess) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,"[hipGraph] getStatFunc() failed with err %d", status);
     }
     return func;
   }
