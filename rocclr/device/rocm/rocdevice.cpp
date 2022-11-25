@@ -2242,6 +2242,11 @@ bool Device::IpcDetach (void* dev_ptr) const {
     return false;
   }
 
+  if (!amd_mem_obj->ipcShared()) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
+    return false;
+  }
+
   // Get the original pointer from the amd::Memory object
   void* orig_dev_ptr = nullptr;
   if (amd_mem_obj->getSvmPtr() != nullptr) {
