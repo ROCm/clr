@@ -169,6 +169,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   static std::unordered_set<hipGraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
   hipKernelNodeAttrValue kernelAttr_;
+  unsigned int isEnabled_;
 
  public:
   hipGraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -180,6 +181,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
         outDegree_(0),
         id_(nextID++),
         parentGraph_(nullptr),
+        isEnabled_(1),
         hipGraphNodeDOTAttribute(style, shape, label) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
@@ -196,6 +198,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     parentGraph_ = nullptr;
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
+    isEnabled_ = node.isEnabled_;
   }
 
   virtual ~hipGraphNode() {
@@ -323,9 +326,22 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   virtual size_t GetNumParallelQueues() { return 0; }
   /// Enqueue commands part of the node
   virtual void EnqueueCommands(hipStream_t stream) {
-    for (auto& command : commands_) {
-      command->enqueue();
-      command->release();
+    // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
+    // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
+    if (isEnabled_) {
+      for (auto& command : commands_) {
+        command->enqueue();
+        command->release();
+      }
+    } else {
+      if (type_ == hipGraphNodeTypeKernel || type_ == hipGraphNodeTypeMemcpy ||
+          type_ == hipGraphNodeTypeMemset) {
+        amd::Command::EventWaitList waitList;
+        amd::HostQueue* queue = hip::getQueue(stream);
+        amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
+        command->enqueue();
+        command->release();
+      }
     }
   }
   ihipGraph* GetParentGraph() { return parentGraph_; }
@@ -351,6 +367,8 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     }
   }
   virtual std::string GetLabel() { return (std::to_string(id_) + "\n" + label_); }
+  unsigned int GetEnabled() const { return isEnabled_; }
+  void SetEnabled(unsigned int isEnabled) { isEnabled_ = isEnabled; }
 };
 
 struct ihipGraph {
@@ -1102,42 +1120,49 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
     if (commands_.empty()) return;
     // commands_ should have just 1 item
     assert(commands_.size() == 1 && "Invalid command size in hipGraphMemcpyNode1D");
+    if (isEnabled_) {
+      amd::Command* command = commands_[0];
+      amd::HostQueue* cmdQueue = command->queue();
+      amd::HostQueue* queue = hip::getQueue(stream);
 
-    amd::Command* command = commands_[0];
-    amd::HostQueue* cmdQueue = command->queue();
-    amd::HostQueue* queue = hip::getQueue(stream);
+      if (cmdQueue == queue) {
+        command->enqueue();
+        command->release();
+        return;
+      }
 
-    if (cmdQueue == queue) {
+      amd::Command::EventWaitList waitList;
+      amd::Command* depdentMarker = nullptr;
+      amd::Command* cmd = queue->getLastQueuedCommand(true);
+      if (cmd != nullptr) {
+        waitList.push_back(cmd);
+        amd::Command* depdentMarker = new amd::Marker(*cmdQueue, true, waitList);
+        if (depdentMarker != nullptr) {
+          depdentMarker->enqueue();  // Make sure command synced with last command of queue
+          depdentMarker->release();
+        }
+        cmd->release();
+      }
       command->enqueue();
       command->release();
-      return;
-    }
 
-    amd::Command::EventWaitList waitList;
-    amd::Command* depdentMarker = nullptr;
-    amd::Command* cmd = queue->getLastQueuedCommand(true);
-    if (cmd != nullptr) {
-      waitList.push_back(cmd);
-      amd::Command* depdentMarker = new amd::Marker(*cmdQueue, true, waitList);
-      if (depdentMarker != nullptr) {
-        depdentMarker->enqueue(); // Make sure command synced with last command of queue
-        depdentMarker->release();
+      cmd = cmdQueue->getLastQueuedCommand(true);  // should be command
+      if (cmd != nullptr) {
+        waitList.clear();
+        waitList.push_back(cmd);
+        amd::Command* depdentMarker = new amd::Marker(*queue, true, waitList);
+        if (depdentMarker != nullptr) {
+          depdentMarker->enqueue();  // Make sure future commands of queue synced with command
+          depdentMarker->release();
+        }
+        cmd->release();
       }
-      cmd->release();
-    }
-    command->enqueue();
-    command->release();
-
-    cmd = cmdQueue->getLastQueuedCommand(true);  // should be command
-    if (cmd != nullptr) {
-      waitList.clear();
-      waitList.push_back(cmd);
-      amd::Command* depdentMarker = new amd::Marker(*queue, true, waitList);
-      if (depdentMarker != nullptr) {
-        depdentMarker->enqueue();  // Make sure future commands of queue synced with command
-        depdentMarker->release();
-      }
-      cmd->release();
+    } else {
+      amd::Command::EventWaitList waitList;
+      amd::HostQueue* queue = hip::getQueue(stream);
+      amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
+      command->enqueue();
+      command->release();
     }
   }
 
