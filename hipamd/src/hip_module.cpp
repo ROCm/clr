@@ -53,7 +53,6 @@ hipError_t hipModuleLoad(hipModule_t* module, const char* fname) {
 
 hipError_t hipModuleLoadData(hipModule_t* module, const void* image) {
   HIP_INIT_API(hipModuleLoadData, module, image);
-
   HIP_RETURN(PlatformState::instance().loadModule(module, 0, image));
 }
 
@@ -61,7 +60,6 @@ hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned 
                                hipJitOption* options, void** optionsValues) {
   /* TODO: Pass options to Program */
   HIP_INIT_API(hipModuleLoadDataEx, module, image);
-
   HIP_RETURN(PlatformState::instance().loadModule(module, 0, image));
 }
 
@@ -72,8 +70,11 @@ extern hipError_t __hipExtractCodeObjectFromFatBinary(
 hipError_t hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const char* name) {
   HIP_INIT_API(hipModuleGetFunction, hfunc, hmod, name);
 
-  if (hfunc == nullptr || name == nullptr) {
+  if (hfunc == nullptr || name == nullptr || strlen(name) == 0) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (hmod == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
   }
 
   if (hipSuccess != PlatformState::instance().getDynFunc(hfunc, hmod, name)) {
