@@ -244,7 +244,7 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
       return hipErrorFileNotFound;
     }
     if (fsize_ == 0) {
-      return hipErrorInvalidKernelFile;
+      return hipErrorInvalidImage;
     }
 
     // Extract the code object from file
