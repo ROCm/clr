@@ -168,7 +168,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   struct ihipGraph* parentGraph_;
   static std::unordered_set<hipGraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
-  hipKernelNodeAttrValue kernelAttr_;
   unsigned int isEnabled_;
 
  public:
@@ -185,7 +184,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
         hipGraphNodeDOTAttribute(style, shape, label) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
-    memset(&kernelAttr_, 0, sizeof(kernelAttr_));
   }
   /// Copy Constructor
   hipGraphNode(const hipGraphNode& node) : hipGraphNodeDOTAttribute(node) {
@@ -658,6 +656,8 @@ struct hipChildGraphNode : public hipGraphNode {
 class hipGraphKernelNode : public hipGraphNode {
   hipKernelNodeParams* pKernelParams_;
   unsigned int numParams_;
+  hipKernelNodeAttrValue kernelAttr_;
+  hipKernelNodeAttrID kernelAttrInUse_;
 
  public:
   std::string GetLabel(hipGraphDebugDotFlags flag) {
@@ -693,18 +693,17 @@ class hipGraphKernelNode : public hipGraphNode {
     }
   }
 
-  static hipFunction_t getFunc(const hipKernelNodeParams& params,
-                            unsigned int device) {
+  static hipFunction_t getFunc(const hipKernelNodeParams& params, unsigned int device) {
     hipFunction_t func = nullptr;
     hipError_t status = PlatformState::instance().getStatFunc(&func, params.func, device);
     if (status == hipErrorInvalidSymbol) {
       // capturehipExtModuleLaunchKernel() mixes host function with hipFunction_t, so we convert
       // here. If it's wrong, later functions will fail
       func = static_cast<hipFunction_t>(params.func);
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE,"[hipGraph] capturehipExtModuleLaunchKernel() should be called",
-              status);
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE,
+              "[hipGraph] capturehipExtModuleLaunchKernel() should be called", status);
     } else if (status != hipSuccess) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,"[hipGraph] getStatFunc() failed with err %d", status);
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] getStatFunc() failed with err %d", status);
     }
     return func;
   }
@@ -771,6 +770,7 @@ class hipGraphKernelNode : public hipGraphNode {
     if (copyParams(pNodeParams) != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to copy params");
     }
+    memset(&kernelAttr_, 0, sizeof(kernelAttr_));
   }
 
   ~hipGraphKernelNode() {
@@ -808,6 +808,10 @@ class hipGraphKernelNode : public hipGraphNode {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
               "[hipGraph] Failed to allocate memory to copy params");
     }
+    status = CopyAttr(&rhs);
+    if (status != hipSuccess) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to during copy attrs");
+    }
   }
 
   hipGraphNode* clone() const {
@@ -838,10 +842,7 @@ class hipGraphKernelNode : public hipGraphNode {
     return status;
   }
 
-  void GetParams(hipKernelNodeParams* params) {
-    *params = *pKernelParams_;
-
-  }
+  void GetParams(hipKernelNodeParams* params) { *params = *pKernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
     // updates kernel params
@@ -883,23 +884,43 @@ class hipGraphKernelNode : public hipGraphNode {
       kernelAttr_.accessPolicyWindow.hitRatio = params->accessPolicyWindow.hitRatio;
       kernelAttr_.accessPolicyWindow.missProp = params->accessPolicyWindow.missProp;
       kernelAttr_.accessPolicyWindow.num_bytes = params->accessPolicyWindow.num_bytes;
-    } else if (attr == hipKernelNodeAttributeCooperative)
-    {
+    } else if (attr == hipKernelNodeAttributeCooperative) {
       kernelAttr_.cooperative = params->cooperative;
     }
+    kernelAttrInUse_ = attr;
     return hipSuccess;
   }
   hipError_t GetAttrParams(hipKernelNodeAttrID attr, hipKernelNodeAttrValue* params) {
     // Get kernel attr params
+    if (kernelAttrInUse_ != attr) return hipErrorInvalidValue;
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
       params->accessPolicyWindow.base_ptr = kernelAttr_.accessPolicyWindow.base_ptr;
       params->accessPolicyWindow.hitProp = kernelAttr_.accessPolicyWindow.hitProp;
       params->accessPolicyWindow.hitRatio = kernelAttr_.accessPolicyWindow.hitRatio;
       params->accessPolicyWindow.missProp = kernelAttr_.accessPolicyWindow.missProp;
       params->accessPolicyWindow.num_bytes = kernelAttr_.accessPolicyWindow.num_bytes;
-    } else if (attr == hipKernelNodeAttributeCooperative)
-    {
+    } else if (attr == hipKernelNodeAttributeCooperative) {
       params->cooperative = kernelAttr_.cooperative;
+    }
+    return hipSuccess;
+  }
+  hipError_t CopyAttr(const hipGraphKernelNode* srcNode) {
+    if(srcNode->kernelAttrInUse_ != kernelAttrInUse_) {
+      return hipErrorInvalidContext;
+    }
+    switch (kernelAttrInUse_) {
+      case hipKernelNodeAttributeAccessPolicyWindow:
+        kernelAttr_.accessPolicyWindow.base_ptr = srcNode->kernelAttr_.accessPolicyWindow.base_ptr;
+        kernelAttr_.accessPolicyWindow.hitProp = srcNode->kernelAttr_.accessPolicyWindow.hitProp;
+        kernelAttr_.accessPolicyWindow.hitRatio = srcNode->kernelAttr_.accessPolicyWindow.hitRatio;
+        kernelAttr_.accessPolicyWindow.missProp = srcNode->kernelAttr_.accessPolicyWindow.missProp;
+        kernelAttr_.accessPolicyWindow.num_bytes = srcNode->kernelAttr_.accessPolicyWindow.num_bytes;
+        break;
+      case hipKernelNodeAttributeCooperative:
+        kernelAttr_.cooperative = srcNode->kernelAttr_.cooperative;
+        break;
+      default:
+        return hipErrorInvalidValue;
     }
     return hipSuccess;
   }

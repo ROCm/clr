@@ -2141,7 +2141,11 @@ hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, u
 
 hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t hDst) {
   HIP_INIT_API(hipGraphKernelNodeCopyAttributes, hSrc, hDst);
-  HIP_RETURN(hipErrorNotSupported);
+  if(hSrc == nullptr || hDst == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hipGraphKernelNode*>(hDst)->CopyAttr(
+      reinterpret_cast<hipGraphKernelNode*>(hSrc)));
 }
 
 hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
