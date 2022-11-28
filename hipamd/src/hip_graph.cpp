@@ -1460,7 +1460,8 @@ hipError_t hipStreamGetCaptureInfo_common(hipStream_t stream,
     return hipErrorStreamCaptureImplicit;
   }
   if (stream == nullptr) {
-    return hipErrorUnknown;
+    *pCaptureStatus = hipStreamCaptureStatusNone;
+    return hipSuccess;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   *pCaptureStatus = s->GetCaptureStatus();
@@ -1495,7 +1496,8 @@ hipError_t hipStreamGetCaptureInfo_v2_common(hipStream_t stream,
     return hipErrorStreamCaptureImplicit;
   }
   if (stream == nullptr) {
-    return hipErrorUnknown;
+    *captureStatus_out = hipStreamCaptureStatusNone;
+    return hipSuccess;
   }
   if (!hip::isValid(stream)) {
     return hipErrorInvalidValue;
