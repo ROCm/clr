@@ -50,12 +50,13 @@
 
 /*! IHIP IPC MEMORY Structure */
 #define IHIP_IPC_MEM_HANDLE_SIZE   32
-#define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(24,16)
+#define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
 
 typedef struct ihipIpcMemHandle_st {
   char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
   size_t psize;
   size_t poffset;
+  int owners_process_id;
   char reserved[IHIP_IPC_MEM_RESERVED_SIZE];
 } ihipIpcMemHandle_t;
 
@@ -67,10 +68,6 @@ typedef struct ihipIpcEventHandle_st {
     //char reserved[IHIP_IPC_EVENT_RESERVED_SIZE];
     char shmem_name[IHIP_IPC_EVENT_HANDLE_SIZE];
 }ihipIpcEventHandle_t;
-
-#ifdef _WIN32
-  inline int getpid() { return _getpid(); }
-#endif
 
 const char* ihipGetErrorName(hipError_t hip_error);
 

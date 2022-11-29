@@ -2943,6 +2943,7 @@ hipError_t hipIpcGetMemHandle(hipIpcMemHandle_t* handle, void* dev_ptr) {
     LogPrintfError("IPC memory creation failed for memory: 0x%x", dev_ptr);
     HIP_RETURN(hipErrorInvalidValue);
   }
+  ihandle->owners_process_id = amd::Os::getProcessId();
 
   HIP_RETURN(hipSuccess);
 }
@@ -2964,6 +2965,10 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
 
   if (ihandle->psize == 0) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (ihandle->owners_process_id == amd::Os::getProcessId()) {
+    HIP_RETURN(hipErrorInvalidContext);
   }
 
   if(!device->IpcAttach(&(ihandle->ipc_handle), ihandle->psize,
