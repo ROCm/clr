@@ -40,7 +40,15 @@ THE SOFTWARE.
 #if defined(__clang__) && defined(__HIP__)
 
 namespace __hip_internal {
+typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned long long uint64_t;
+typedef signed char int8_t;
+typedef signed short int16_t;
+typedef signed int int32_t;
+typedef signed long long int64_t;
+
 template <class _Tp, _Tp __v> struct integral_constant {
   static constexpr const _Tp value = __v;
   typedef _Tp value_type;
@@ -124,7 +132,14 @@ template<typename _Tp>
     : public integral_constant<bool, __is_trivial(_Tp)>
     { };
 }
+typedef __hip_internal::uint8_t __hip_uint8_t;
 typedef __hip_internal::uint16_t __hip_uint16_t;
+typedef __hip_internal::uint32_t __hip_uint32_t;
+typedef __hip_internal::uint64_t __hip_uint64_t;
+typedef __hip_internal::int8_t __hip_int8_t;
+typedef __hip_internal::int16_t __hip_int16_t;
+typedef __hip_internal::int32_t __hip_int32_t;
+typedef __hip_internal::int64_t __hip_int64_t;
 
 #if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 #define __host__ __attribute__((host))
