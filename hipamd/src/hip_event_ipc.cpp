@@ -192,7 +192,7 @@ hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
     return hipErrorInvalidValue;
   }
   ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
-  ipc_evt_.ipc_shmem_->owners_process_id = getpid();
+  ipc_evt_.ipc_shmem_->owners_process_id = amd::Os::getProcessId();
   memset(handle->shmem_name, 0, HIP_IPC_HANDLE_SIZE);
   ipc_evt_.ipc_name_.copy(handle->shmem_name, std::string::npos);
   return hipSuccess;
@@ -206,7 +206,7 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
     return hipErrorInvalidValue;
   }
 
-  if (getpid() == ipc_evt_.ipc_shmem_->owners_process_id.load()) {
+  if (amd::Os::getProcessId() == ipc_evt_.ipc_shmem_->owners_process_id.load()) {
     // If this is in the same process, return error.
     return hipErrorInvalidContext;
   }
