@@ -2200,5 +2200,10 @@ hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
 
 hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   HIP_INIT_API(hipGraphUpload, graphExec, stream);
-  HIP_RETURN(hipErrorNotSupported);
+  if (graphExec == nullptr || !hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // TODO: stream is known before launch, do preperatory work with graph optimizations. pre-allocate
+  // memory for memAlloc nodes if any when support is added with mempool feature
+  HIP_RETURN(hipSuccess);
 }
