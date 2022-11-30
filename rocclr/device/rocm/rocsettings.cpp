@@ -100,6 +100,8 @@ Settings::Settings() {
 
   // Use coarse grain system memory for kernel arguments by default (to keep GPU cache)
   fgs_kernel_arg_ = false;
+  // by default for asics < gfx940 old single grid sync path is followed
+  coop_sync_ = false;
 }
 
 // ================================================================================================
@@ -171,6 +173,10 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
   }
   if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
+  }
+
+  if (gfxipMajor >= 9 && gfxipMinor >= 4 && gfxStepping >= 0) {
+    coop_sync_ = true;
   }
 
   lcWavefrontSize64_ = !enableWave32Mode_;

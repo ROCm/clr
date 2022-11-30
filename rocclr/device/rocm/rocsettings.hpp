@@ -53,7 +53,8 @@ class Settings : public device::Settings {
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint skip_copy_sync_ : 1;         //!< Ignore explicit HSA signal waits for copy functionality
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
-      uint reserved_ : 20;
+      uint coop_sync_ : 1;              //!< grid and multi-grid sync for gfx940+
+      uint reserved_ : 19;
     };
     uint value_;
   };

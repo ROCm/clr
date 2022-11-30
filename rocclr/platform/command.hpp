@@ -1050,7 +1050,8 @@ class NDRangeKernelCommand : public Command {
   uint32_t numGrids_;       //!< Total number of grids in multi GPU launch
   uint64_t prevGridSum_;    //!< A sum of previous grids to the current launch
   uint64_t allGridSum_;     //!< A sum of all grids in multi GPU launch
-  uint32_t firstDevice_;    //!< Device index of the first device in the grid
+  uint32_t firstDevice_;    //!< Device index of the first device in the gridc
+  uint32_t numWorkgroups_;  //!< Total number of workgroups in the current launch
 
  public:
   enum {
@@ -1118,8 +1119,21 @@ class NDRangeKernelCommand : public Command {
   //! Return the index of the first device in multi GPU launch
   uint64_t firstDevice() const { return firstDevice_; }
 
+  uint32_t numWorkgroups() const { return numWorkgroups_; }
+
   //! Set the local work size.
   void setLocalWorkSize(const NDRange& local) { sizes_.local() = local; }
+
+  //! Set the number of workgroups
+  void setNumWorkgroups() {
+    uint32_t numWorkgroups = 1;
+    for (uint i = 0; i < sizes().dimensions(); i++) {
+      if (sizes().local()[i] != 0) {
+        numWorkgroups *= (sizes().global()[i] / sizes().local()[i]);
+      }
+    }
+    numWorkgroups_ = numWorkgroups;
+  }
 
   int32_t captureAndValidate();
 };
