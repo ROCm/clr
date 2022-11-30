@@ -428,6 +428,9 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   profilingInfo_.setCallback(devKernel->getProfilingCallback(
     queue.vdev()), devKernel->getWavesPerSH(queue.vdev()));
+  if (cooperativeGroups()) {
+    setNumWorkgroups();
+  }
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();

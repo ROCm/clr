@@ -1533,6 +1533,8 @@ class Device : public RuntimeObject {
     uint32_t num_grids;
     uint64_t prev_sum;
     uint64_t all_sum;
+    struct MGSyncData sgs;
+    uint num_wg;
   };
 
   //Attributes that could be retrived from hsa_amd_memory_pool_link_info_t.
@@ -1561,6 +1563,7 @@ class Device : public RuntimeObject {
   static constexpr size_t kP2PStagingSize = 4 * Mi;
   static constexpr size_t kMGSyncDataSize = sizeof(MGSyncData);
   static constexpr size_t kMGInfoSizePerDevice = kMGSyncDataSize + sizeof(MGSyncInfo);
+  static constexpr size_t kSGInfoSize = kMGSyncDataSize;
 
   typedef std::list<CommandQueue*> CommandQueues;
 

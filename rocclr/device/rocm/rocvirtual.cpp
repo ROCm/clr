@@ -2901,21 +2901,30 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         case amd::KernelParameterDescriptor::HiddenMultiGridSync: {
           uint64_t gridSync = coopGroups ? 1 : 0;
           bool multiGrid = (vcmd != nullptr) ? vcmd->cooperativeMultiDeviceGroups() : false;
+          Device::MGSyncInfo* syncInfo = nullptr;
           if (multiGrid) {
             // Find CPU pointer to the right sync info structure. It should be after MGSyncData
-            Device::MGSyncInfo* syncInfo = reinterpret_cast<Device::MGSyncInfo*>(
-                dev().MGSync() + Device::kMGInfoSizePerDevice * dev().index() + Device::kMGSyncDataSize);
+            syncInfo = reinterpret_cast<Device::MGSyncInfo*>(
+              dev().MGSync() + Device::kMGInfoSizePerDevice * dev().index() + Device::kMGSyncDataSize);
             // Update sync data address. Use the offset adjustment to the right location
             syncInfo->mgs = reinterpret_cast<Device::MGSyncData*>(dev().MGSync() +
-              Device::kMGInfoSizePerDevice * vcmd->firstDevice());
-            // Fill all sync info fields
-            syncInfo->grid_id = vcmd->gridId();
-            syncInfo->num_grids = vcmd->numGrids();
-            syncInfo->prev_sum = vcmd->prevGridSum();
-            syncInfo->all_sum = vcmd->allGridSum();
-            // Update GPU address for grid sync info. Use the offset adjustment for the right location
-            gridSync = reinterpret_cast<uint64_t>(syncInfo);
+                            Device::kMGInfoSizePerDevice * vcmd->firstDevice());
           }
+          else {
+            syncInfo = reinterpret_cast<Device::MGSyncInfo*>(allocKernArg(Device::kSGInfoSize, 64));
+            syncInfo->mgs = nullptr;
+          }
+          // Update sync data address.
+          syncInfo->sgs = {0};
+          // Fill all sync info fields
+          syncInfo->grid_id = vcmd->gridId();
+          syncInfo->num_grids = vcmd->numGrids();
+          syncInfo->prev_sum = vcmd->prevGridSum();
+          syncInfo->all_sum = vcmd->allGridSum();
+          syncInfo->num_wg = vcmd->numWorkgroups();
+          // Update GPU address for grid sync info. Use the offset adjustment for the right
+          // location
+          gridSync = reinterpret_cast<uint64_t>(syncInfo);
           WriteAqlArgAt(hidden_arguments, gridSync, it.size_, it.offset_);
           break;
         }
@@ -3128,7 +3137,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
  */
  // ================================================================================================
 void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
-  if (vcmd.cooperativeGroups() || vcmd.cooperativeMultiDeviceGroups()) {
+  if (vcmd.cooperativeGroups()) {
     // Wait for the execution on the current queue, since the coop groups will use the device queue
     releaseGpuMemoryFence(kSkipCpuWait);
 
@@ -3148,15 +3157,8 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     // Add a dependency into the device queue on the current queue
     queue->Barriers().AddExternalSignal(Barriers().GetLastSignal());
 
-    if (vcmd.cooperativeGroups()) {
-      // Initialize GWS if it's cooperative groups launch
-      uint32_t workgroups = 1;
-      for (uint i = 0; i < vcmd.sizes().dimensions(); i++) {
-        if (vcmd.sizes().local()[i] != 0) {
-          workgroups *= (vcmd.sizes().global()[i] / vcmd.sizes().local()[i]);
-        }
-      }
-
+    if (!Settings().coop_sync_) {
+      uint32_t workgroups = vcmd.numWorkgroups();
       static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups - 1);
     }
 
