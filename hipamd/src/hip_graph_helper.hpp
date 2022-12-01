@@ -5,7 +5,7 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
 
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
-                             hipMemcpyKind kind, amd::HostQueue& queue);
+                             hipMemcpyKind kind, amd::HostQueue& queue, bool isAsync = false);
 
 hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
                                      uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
