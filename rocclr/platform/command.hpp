@@ -235,6 +235,25 @@ class Event : public RuntimeObject {
   void setEventScope(int32_t scope) { event_scope_ = scope; }
 };
 
+union CopyMetadata {
+
+  enum CopyEnginePreference {
+    NONE = 0,
+    BLIT = 1,
+    SDMA = 2,
+    CPDMA = 3
+  };
+
+  struct {
+    uint32_t isAsync_ : 1;
+    uint32_t copyEnginePreference_ : 2;
+  };
+  uint32_t flags_;
+  CopyMetadata() : flags_(0){}
+  CopyMetadata(bool isAsync, CopyEnginePreference copyEnginePreference)
+      : isAsync_(isAsync), copyEnginePreference_(copyEnginePreference){}
+};
+
 /*! \brief An operation that is submitted to a command queue.
  *
  *  %Command is the abstract base type of all OpenCL operations
@@ -463,18 +482,20 @@ class ReadMemoryCommand : public OneMemoryArgCommand {
 
   BufferRect bufRect_;   //!< Buffer rectangle information
   BufferRect hostRect_;  //!< Host memory rectangle information
-
+  amd::CopyMetadata copyMetadata_;
  public:
   //! Construct a new ReadMemoryCommand
   ReadMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                     Memory& memory, Coord3D origin, Coord3D size, void* hostPtr,
-                    size_t rowPitch = 0, size_t slicePitch = 0)
+                    size_t rowPitch = 0, size_t slicePitch = 0,
+                    amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         origin_(origin),
         size_(size),
         hostPtr_(hostPtr),
         rowPitch_(rowPitch),
-        slicePitch_(slicePitch) {
+        slicePitch_(slicePitch),
+        copyMetadata_(copyMetadata) {
     // Sanity checks
     assert(hostPtr != NULL && "hostPtr cannot be null");
     assert(size.c[0] > 0 && "invalid");
@@ -483,7 +504,8 @@ class ReadMemoryCommand : public OneMemoryArgCommand {
   //! Construct a new ReadMemoryCommand
   ReadMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                     Memory& memory, Coord3D origin, Coord3D size, void* hostPtr,
-                    const BufferRect& bufRect, const BufferRect& hostRect)
+                    const BufferRect& bufRect, const BufferRect& hostRect,
+                    amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         origin_(origin),
         size_(size),
@@ -491,7 +513,8 @@ class ReadMemoryCommand : public OneMemoryArgCommand {
         rowPitch_(0),
         slicePitch_(0),
         bufRect_(bufRect),
-        hostRect_(hostRect) {
+        hostRect_(hostRect),
+        copyMetadata_(copyMetadata) {
     // Sanity checks
     assert(hostPtr != NULL && "hostPtr cannot be null");
     assert(size.c[0] > 0 && "invalid");
@@ -517,7 +540,8 @@ class ReadMemoryCommand : public OneMemoryArgCommand {
   const BufferRect& bufRect() const { return bufRect_; }
   //! Return the host rectangle information
   const BufferRect& hostRect() const { return hostRect_; }
-
+  //! Return the copy MetaData
+  amd::CopyMetadata copyMetadata() const { return copyMetadata_; }
   //! Updates the host memory to read from
   void setSource(Memory& memory) { memory_ = &memory; }
   //! Updates the host memory to write to
@@ -580,17 +604,20 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
 
   BufferRect bufRect_;   //!< Buffer rectangle information
   BufferRect hostRect_;  //!< Host memory rectangle information
+  amd::CopyMetadata copyMetadata_;
 
  public:
   WriteMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                      Memory& memory, Coord3D origin, Coord3D size, const void* hostPtr,
-                     size_t rowPitch = 0, size_t slicePitch = 0)
+                     size_t rowPitch = 0, size_t slicePitch = 0,
+                     amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         origin_(origin),
         size_(size),
         hostPtr_(hostPtr),
         rowPitch_(rowPitch),
-        slicePitch_(slicePitch) {
+        slicePitch_(slicePitch),
+        copyMetadata_(copyMetadata){
     // Sanity checks
     assert(hostPtr != NULL && "hostPtr cannot be null");
     assert(size.c[0] > 0 && "invalid");
@@ -598,7 +625,8 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
 
   WriteMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                      Memory& memory, Coord3D origin, Coord3D size, const void* hostPtr,
-                     const BufferRect& bufRect, const BufferRect& hostRect)
+                     const BufferRect& bufRect, const BufferRect& hostRect,
+                     amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : OneMemoryArgCommand(queue, cmdType, eventWaitList, memory),
         origin_(origin),
         size_(size),
@@ -606,7 +634,8 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
         rowPitch_(0),
         slicePitch_(0),
         bufRect_(bufRect),
-        hostRect_(hostRect) {
+        hostRect_(hostRect),
+        copyMetadata_(copyMetadata){
     // Sanity checks
     assert(hostPtr != NULL && "hostPtr cannot be null");
     assert(size.c[0] > 0 && "invalid");
@@ -632,7 +661,8 @@ class WriteMemoryCommand : public OneMemoryArgCommand {
   const BufferRect& bufRect() const { return bufRect_; }
   //! Return the host rectangle information
   const BufferRect& hostRect() const { return hostRect_; }
-
+  //! Return the copy MetaData
+  amd::CopyMetadata copyMetadata() const { return copyMetadata_; }
   //! Updates the host memory to read from
   void setSource(const void* hostPtr) { hostPtr_ = hostPtr; }
   //! Updates the host memory to write to
@@ -831,28 +861,31 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
 
   BufferRect srcRect_;  //!< Source buffer rectangle information
   BufferRect dstRect_;  //!< Destination buffer rectangle information
-
+  amd::CopyMetadata copyMetadata_;
  public:
   CopyMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                     Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
-                    Coord3D size)
+                    Coord3D size, amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : TwoMemoryArgsCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory),
         srcOrigin_(srcOrigin),
         dstOrigin_(dstOrigin),
-        size_(size) {
+        size_(size), 
+        copyMetadata_(copyMetadata){
     // Sanity checks
     assert(size.c[0] > 0 && "invalid");
   }
 
   CopyMemoryCommand(HostQueue& queue, cl_command_type cmdType, const EventWaitList& eventWaitList,
                     Memory& srcMemory, Memory& dstMemory, Coord3D srcOrigin, Coord3D dstOrigin,
-                    Coord3D size, const BufferRect& srcRect, const BufferRect& dstRect)
+                    Coord3D size, const BufferRect& srcRect, const BufferRect& dstRect,
+                    amd::CopyMetadata copyMetadata = amd::CopyMetadata())
       : TwoMemoryArgsCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory),
         srcOrigin_(srcOrigin),
         dstOrigin_(dstOrigin),
         size_(size),
         srcRect_(srcRect),
-        dstRect_(dstRect) {
+        dstRect_(dstRect),
+        copyMetadata_(copyMetadata) {
     // Sanity checks
     assert(size.c[0] > 0 && "invalid");
   }
@@ -875,7 +908,8 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
   const BufferRect& srcRect() const { return srcRect_; }
   //! Return the destination buffer rectangle information
   const BufferRect& dstRect() const { return dstRect_; }
-
+  //! Return the copy MetaData
+  amd::CopyMetadata copyMetadata() const { return copyMetadata_; }
   //! Updates the host memory to read from
   void setSource(Memory& srcMemory) { memory1_ = &srcMemory; }
   //! Updates the memory object to write to.

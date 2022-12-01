@@ -470,7 +470,9 @@ class VirtualGPU : public device::VirtualDevice {
                   const amd::Coord3D& dstOrigin,   //!< destination memory object
                   const amd::Coord3D& size,        //!< copy size
                   const amd::BufferRect& srcRect,  //!< region of source for copy
-                  const amd::BufferRect& dstRect   //!< region of destination for copy
+                  const amd::BufferRect& dstRect,   //!< region of destination for copy
+                  amd::CopyMetadata copyMetadata =
+                           amd::CopyMetadata()      //!< Memory copy MetaData
                   );
 
   //! Updates AQL header for the upcomming dispatch

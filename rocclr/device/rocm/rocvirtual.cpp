@@ -1534,9 +1534,9 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
         // Accelerated transfer without pinning
         amd::Coord3D dstOrigin(offset);
         result = blitMgr().copyBuffer(*devMem, *hostMemory, origin, dstOrigin, size,
-                                      cmd.isEntireMemory());
+                                      cmd.isEntireMemory(), cmd.copyMetadata());
       } else {
-        result = blitMgr().readBuffer(*devMem, dst, origin, size, cmd.isEntireMemory());
+        result = blitMgr().readBuffer(*devMem, dst, origin, size, cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1548,10 +1548,10 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
                             cmd.hostRect().slicePitch_);
       if (hostMemory != nullptr) {
         result = blitMgr().copyBufferRect(*devMem, *hostMemory, cmd.bufRect(), hostbufferRect,
-                                          size, cmd.isEntireMemory());
+                                          size, cmd.isEntireMemory(), cmd.copyMetadata());
       } else {
         result = blitMgr().readBufferRect(*devMem, dst, cmd.bufRect(), cmd.hostRect(), size,
-                                          cmd.isEntireMemory());
+                                          cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1576,10 +1576,10 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
         amd::Coord3D dstOrigin(offset);
         result =
             blitMgr().copyImageToBuffer(*devMem, *hostMemory, cmd.origin(), dstOrigin, size,
-                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch());
+                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch(), cmd.copyMetadata());
       } else {
         result = blitMgr().readImage(*devMem, dst, cmd.origin(), size, cmd.rowPitch(),
-                                     cmd.slicePitch(), cmd.isEntireMemory());
+                                     cmd.slicePitch(), cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1641,9 +1641,9 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
         // Accelerated transfer without pinning
         amd::Coord3D srcOrigin(offset);
         result = blitMgr().copyBuffer(*hostMemory, *devMem, srcOrigin, origin, size,
-                                      cmd.isEntireMemory());
+                                      cmd.isEntireMemory(), cmd.copyMetadata());
       } else {
-        result = blitMgr().writeBuffer(src, *devMem, origin, size, cmd.isEntireMemory());
+        result = blitMgr().writeBuffer(src, *devMem, origin, size, cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1655,10 +1655,10 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
                             cmd.hostRect().slicePitch_);
       if (hostMemory != nullptr) {
         result = blitMgr().copyBufferRect(*hostMemory, *devMem, hostbufferRect, cmd.bufRect(),
-                                          size, cmd.isEntireMemory());
+                                          size, cmd.isEntireMemory(), cmd.copyMetadata());
       } else {
         result = blitMgr().writeBufferRect(src, *devMem, cmd.hostRect(), cmd.bufRect(), size,
-                                          cmd.isEntireMemory());
+                                          cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1668,10 +1668,11 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
         amd::Coord3D srcOrigin(offset);
         result =
             blitMgr().copyBufferToImage(*hostMemory, *devMem, srcOrigin, cmd.origin(), size,
-                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch());
+                                        cmd.isEntireMemory(), cmd.rowPitch(), cmd.slicePitch(),
+                                        cmd.copyMetadata());
       } else {
         result = blitMgr().writeImage(src, *devMem, cmd.origin(), size, cmd.rowPitch(),
-                                      cmd.slicePitch(), cmd.isEntireMemory());
+                                      cmd.slicePitch(), cmd.isEntireMemory(), cmd.copyMetadata());
       }
       break;
     }
@@ -1752,7 +1753,8 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
 bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memory& dstMem,
                             bool entire, const amd::Coord3D& srcOrigin,
                             const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
-                            const amd::BufferRect& srcRect, const amd::BufferRect& dstRect) {
+                            const amd::BufferRect& srcRect, const amd::BufferRect& dstRect,
+                            amd::CopyMetadata copyMetadata) {
   Memory* srcDevMem = dev().getRocMemory(&srcMem);
   Memory* dstDevMem = dev().getRocMemory(&dstMem);
 
@@ -1796,23 +1798,28 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
         realSize.c[0] *= elemSize;
       }
 
-      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, realSrcOrigin, realDstOrigin, realSize, entire);
+      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, realSrcOrigin, realDstOrigin, 
+                                    realSize, entire, copyMetadata);
       break;
     }
     case CL_COMMAND_COPY_BUFFER_RECT: {
-      result = blitMgr().copyBufferRect(*srcDevMem, *dstDevMem, srcRect, dstRect, size, entire);
+      result = blitMgr().copyBufferRect(*srcDevMem, *dstDevMem, srcRect, dstRect, size, entire,
+                                        copyMetadata);
       break;
     }
     case CL_COMMAND_COPY_IMAGE: {
-      result = blitMgr().copyImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
+      result = blitMgr().copyImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire,
+                                   copyMetadata);
       break;
     }
     case CL_COMMAND_COPY_IMAGE_TO_BUFFER: {
-      result = blitMgr().copyImageToBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
+      result = blitMgr().copyImageToBuffer(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire,
+                                           0UL, 0UL, copyMetadata);
       break;
     }
     case CL_COMMAND_COPY_BUFFER_TO_IMAGE: {
-      result = blitMgr().copyBufferToImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire);
+      result = blitMgr().copyBufferToImage(*srcDevMem, *dstDevMem, srcOrigin, dstOrigin, size, entire,
+                                           0UL, 0UL, copyMetadata);
       break;
     }
     default:
@@ -1841,7 +1848,7 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   bool entire = cmd.isEntireMemory();
 
   if (!copyMemory(type, cmd.source(), cmd.destination(), entire, cmd.srcOrigin(),
-                  cmd.dstOrigin(), cmd.size(), cmd.srcRect(), cmd.dstRect())) {
+                  cmd.dstOrigin(), cmd.size(), cmd.srcRect(), cmd.dstRect(), cmd.copyMetadata())) {
     cmd.setStatus(CL_INVALID_OPERATION);
   }
 
