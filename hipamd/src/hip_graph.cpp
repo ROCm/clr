@@ -2187,12 +2187,17 @@ hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned in
 hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                   unsigned int isEnabled) {
   HIP_INIT_API(hipGraphNodeSetEnabled, hGraphExec, hNode, isEnabled);
-  if (hGraphExec == nullptr || hNode == nullptr) {
+  if (hGraphExec == nullptr || hNode == nullptr || !hipGraphExec::isGraphExecValid(hGraphExec) ||
+      !hipGraphNode::isNodeValid(hNode)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(hNode);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!(hNode->GetType() == hipGraphNodeTypeKernel || hNode->GetType() == hipGraphNodeTypeMemcpy ||
+        hNode->GetType() == hipGraphNodeTypeMemset)) {
+    return HIP_RETURN(hipErrorInvalidValue);
   }
   clonedNode->SetEnabled(isEnabled);
   HIP_RETURN(hipSuccess);
@@ -2201,12 +2206,17 @@ hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
 hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                   unsigned int* isEnabled) {
   HIP_INIT_API(hipGraphNodeGetEnabled, hGraphExec, hNode, isEnabled);
-  if (hGraphExec == nullptr || hNode == nullptr || isEnabled == nullptr) {
+  if (hGraphExec == nullptr || hNode == nullptr || isEnabled == nullptr ||
+      !hipGraphExec::isGraphExecValid(hGraphExec) || !hipGraphNode::isNodeValid(hNode)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hipGraphNode_t clonedNode = hGraphExec->GetClonedNode(hNode);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!(hNode->GetType() == hipGraphNodeTypeKernel || hNode->GetType() == hipGraphNodeTypeMemcpy ||
+        hNode->GetType() == hipGraphNodeTypeMemset)) {
+    return HIP_RETURN(hipErrorInvalidValue);
   }
   *isEnabled = clonedNode->GetEnabled();
   HIP_RETURN(hipSuccess);
