@@ -89,6 +89,7 @@ class EventMarker : public amd::Marker {
   }
 };
 
+enum eventType { Query, StreamWait, ElapsedTime };
 class Event {
   /// event recorded on stream where capture is active
   bool onCapture_;
@@ -96,6 +97,16 @@ class Event {
   hipStream_t captureStream_ = nullptr;
   /// Previous captured nodes before event record
   std::vector<hipGraphNode_t> nodesPrevToRecorded_;
+ protected:
+  bool CheckHwEvent(eventType type) {
+    bool ready;
+    if (type == Query) {
+      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReadyForcedWait(*event_);
+    } else {
+      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_);
+    }
+    return ready;
+  }
 
  public:
   Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
@@ -170,7 +181,7 @@ class Event {
     return hipErrorInvalidConfiguration;
   }
   virtual bool awaitEventCompletion();
-  virtual bool ready();
+  virtual bool ready(eventType type);
   virtual int64_t time(bool getStartTs) const;
 
  protected:
@@ -190,7 +201,7 @@ class EventDD : public Event {
   virtual ~EventDD() {}
 
   virtual bool awaitEventCompletion();
-  virtual bool ready();
+  virtual bool ready(eventType type);
   virtual int64_t time(bool getStartTs) const;
 };
 
