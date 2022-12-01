@@ -424,8 +424,13 @@ class VirtualGPU : public device::VirtualDevice {
                              hsa_signal_t signal = hsa_signal_t{0});
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
-  void dispatchBarrierValuePacket(const hsa_amd_barrier_value_packet_t* packet,
-                                  hsa_amd_vendor_packet_header_t header);
+  void dispatchBarrierValuePacket(uint16_t packetHeader,
+                                  hsa_signal_t signal = hsa_signal_t{0},
+                                  hsa_signal_value_t value = 0,
+                                  hsa_signal_value_t mask = 0,
+                                  hsa_signal_condition32_t cond = HSA_SIGNAL_CONDITION_EQ,
+                                  bool skipTs = false,
+                                  hsa_signal_t completionSignal = hsa_signal_t{0});
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet,
                                 amd::NDRangeContainer& sizes);
 
