@@ -30,21 +30,21 @@ namespace hip {
 static amd::Monitor eventSetLock{"Guards global event set"};
 static std::unordered_set<hipEvent_t> eventSet;
 
-bool Event::ready() {
+bool Event::ready(eventType type) {
   if (event_->status() != CL_COMPLETE) {
     event_->notifyCmdQueue();
   }
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
-  bool ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_);
+  bool ready = CheckHwEvent(type);
   if (!ready) {
     ready = (event_->status() == CL_COMPLETE);
   }
   return ready;
 }
 
-bool EventDD::ready() {
+bool EventDD::ready(eventType type) {
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
-  bool ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_);
+  bool ready = CheckHwEvent(type);
   // FIXME: Remove status check entirely
   if (!ready) {
     ready = (event_->status() == CL_COMPLETE);
@@ -60,7 +60,7 @@ hipError_t Event::query() {
     return hipSuccess;
   }
 
-  return ready() ? hipSuccess : hipErrorNotReady;
+  return ready(Query) ? hipSuccess : hipErrorNotReady;
 }
 
 hipError_t Event::synchronize() {
@@ -108,7 +108,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
       return hipErrorInvalidHandle;
     }
 
-    if (!ready()) {
+    if (!ready(ElapsedTime)) {
       return hipErrorNotReady;
     }
 
@@ -124,7 +124,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     return hipErrorInvalidHandle;
   }
 
-  if (!ready() || !eStop.ready()) {
+  if (!ready(ElapsedTime) || !eStop.ready(ElapsedTime)) {
     return hipErrorNotReady;
   }
 
@@ -199,7 +199,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   hip::Stream* hip_stream = hip::getStream(stream);
   // Access to event_ object must be lock protected
   amd::ScopedLock lock(lock_);
-  if ((event_ == nullptr) || (event_->command().queue() == hip_stream) || ready()) {
+  if ((event_ == nullptr) || (event_->command().queue() == hip_stream) || ready(StreamWait)) {
     return hipSuccess;
   }
   if (!event_->notifyCmdQueue()) {
