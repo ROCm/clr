@@ -547,7 +547,8 @@ bool compileToBitCode(const amd_comgr_data_set_t compileInputs, const std::strin
   }
 
   if (auto res =
-          amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC, action, input, output);
+          amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_WITH_DEVICE_LIBS_TO_BC,
+                                action, input, output);
       res != AMD_COMGR_STATUS_SUCCESS) {
     extractBuildLog(output, buildLog);
     amd::Comgr::destroy_action_info(action);
