@@ -635,8 +635,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadBuffer,
     return err;
   }
 
+  amd::CopyMetadata copyMetadata(!blocking_read, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::ReadMemoryCommand* command = new amd::ReadMemoryCommand(
-      hostQueue, CL_COMMAND_READ_BUFFER, eventWaitList, *srcBuffer, srcOffset, srcSize, ptr);
+      hostQueue, CL_COMMAND_READ_BUFFER, eventWaitList, *srcBuffer, srcOffset, srcSize,
+      ptr, 0, 0, copyMetadata);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -775,8 +777,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBuffer,
     return err;
   }
 
+  amd::CopyMetadata copyMetadata(!blocking_write, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::WriteMemoryCommand* command = new amd::WriteMemoryCommand(
-      hostQueue, CL_COMMAND_WRITE_BUFFER, eventWaitList, *dstBuffer, dstOffset, dstSize, ptr);
+      hostQueue, CL_COMMAND_WRITE_BUFFER, eventWaitList, *dstBuffer, dstOffset, dstSize,
+      ptr, 0, 0, copyMetadata);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -1088,9 +1092,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadBufferRect,
   }
 
   amd::Coord3D size(region[0], region[1], region[2]);
+  amd::CopyMetadata copyMetadata(!blocking_read, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::ReadMemoryCommand* command =
       new amd::ReadMemoryCommand(hostQueue, CL_COMMAND_READ_BUFFER_RECT, eventWaitList, *srcBuffer,
-                                 srcStart, size, ptr, bufRect, hostRect);
+                                 srcStart, size, ptr, bufRect, hostRect, copyMetadata);
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
   }
@@ -1272,9 +1277,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteBufferRect,
   }
 
   amd::Coord3D size(region[0], region[1], region[2]);
+  amd::CopyMetadata copyMetadata(!blocking_write, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::WriteMemoryCommand* command =
       new amd::WriteMemoryCommand(hostQueue, CL_COMMAND_WRITE_BUFFER_RECT, eventWaitList,
-                                  *dstBuffer, dstStart, size, ptr, bufRect, hostRect);
+                                  *dstBuffer, dstStart, size, ptr, bufRect, hostRect, copyMetadata);
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
   }
@@ -2222,9 +2228,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueReadImage,
     return err;
   }
 
+  amd::CopyMetadata copyMetadata(!blocking_read, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::ReadMemoryCommand* command =
       new amd::ReadMemoryCommand(hostQueue, CL_COMMAND_READ_IMAGE, eventWaitList, *srcImage,
-                                 srcOrigin, srcRegion, ptr, row_pitch, slice_pitch);
+                                 srcOrigin, srcRegion, ptr, row_pitch, slice_pitch, copyMetadata);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
@@ -2404,9 +2411,11 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage,
     return err;
   }
 
+  amd::CopyMetadata copyMetadata(!blocking_write, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::WriteMemoryCommand* command =
       new amd::WriteMemoryCommand(hostQueue, CL_COMMAND_WRITE_IMAGE, eventWaitList, *dstImage,
-                                  dstOrigin, dstRegion, ptr, input_row_pitch, input_slice_pitch);
+                                  dstOrigin, dstRegion, ptr, input_row_pitch, input_slice_pitch,
+                                  copyMetadata);
 
   if (command == NULL) {
     return CL_OUT_OF_HOST_MEMORY;
