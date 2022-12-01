@@ -1786,9 +1786,14 @@ class Device : public RuntimeObject {
 
   // Returns the status of HW event, associated with amd::Event
   virtual bool IsHwEventReady(
-      const amd::Event& event,  //!< AMD event for HW status validation
-      bool wait = false         //!< If true then forces the event completion
-      ) const {
+      const amd::Event& event,    //!< AMD event for HW status validation
+      bool wait = false) const {  //!< If true then forces the event completion
+    return false;
+  };
+
+  // Returns the status of HW event, associated with amd::Event
+  virtual bool IsHwEventReadyForcedWait(
+      const amd::Event& event) const {  //!< AMD event for HW status validation
     return false;
   };
 
