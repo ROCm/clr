@@ -1219,7 +1219,8 @@ hipError_t hipGraphGetNodes(hipGraph_t graph, hipGraphNode_t* nodes, size_t* num
   if (graph == nullptr || numNodes == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  const std::vector<hipGraphNode_t>& graphNodes = graph->GetNodes();
+  std::vector<hipGraphNode_t> graphNodes;
+  graph->LevelOrder(graphNodes);
   if (nodes == nullptr) {
     *numNodes = graphNodes.size();
     HIP_RETURN(hipSuccess);
