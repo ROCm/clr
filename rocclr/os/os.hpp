@@ -317,6 +317,9 @@ class Os : AllStatic {
 
   //! Uninstall SIGFPE handler for CPU device
   static void uninstallSigfpeHandler();
+
+  //! Return the current process id
+  static int getProcessId();
 };
 
 /*@}*/
