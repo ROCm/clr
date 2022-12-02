@@ -227,6 +227,10 @@ device::Program* Program::getDeviceProgram(const Device& device) const {
   return it->second;
 }
 
+#if defined(WITH_COMPILER_LIB)
+Monitor Program::buildLock_("OCL build program", true);
+#endif
+
 static bool adjustOptionsOnIgnoreEnv(std::string &cppstr) {
   // if there is a -ignore-env,  adjust options.
   bool optionChangable = true;
@@ -248,6 +252,9 @@ int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
                         const char** headerIncludeNames, const char* options,
                         void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                         bool optionChangable) {
+#if defined(WITH_COMPILER_LIB)
+  ScopedLock sl(!amd::IS_HIP && useHsail(devices) ? &buildLock_ : nullptr);
+#endif
   int32_t retval = CL_SUCCESS;
 
   // Clear the program object
@@ -317,6 +324,9 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
                      const std::vector<Program*>& inputPrograms, const char* options,
                      void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                      bool optionChangable) {
+#if defined(WITH_COMPILER_LIB)
+  ScopedLock sl(!amd::IS_HIP && useHsail(devices) ? &buildLock_ : nullptr);
+#endif
   int32_t retval = CL_SUCCESS;
 
   if (symbolTable_ == NULL) {
@@ -484,6 +494,9 @@ void Program::StubProgramSource(const std::string& app_name) {
 int32_t Program::build(const std::vector<Device*>& devices, const char* options,
                       void(CL_CALLBACK* notifyFptr)(cl_program, void*), void* data,
                       bool optionChangable, bool newDevProg) {
+#if defined(WITH_COMPILER_LIB)
+  ScopedLock sl(!amd::IS_HIP && useHsail(devices) ? &buildLock_ : nullptr);
+#endif
   int32_t retval = CL_SUCCESS;
 
   if (symbolTable_ == NULL) {
@@ -590,6 +603,10 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
 }
 
 bool Program::load(const std::vector<Device*>& devices) {
+#if defined(WITH_COMPILER_LIB)
+  ScopedLock sl(!amd::IS_HIP && useHsail(devices) ? &buildLock_ : nullptr);
+#endif
+
   for (const auto& it : devicePrograms_) {
     const Device& device = *(it.first);
 

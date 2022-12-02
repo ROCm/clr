@@ -126,6 +126,19 @@ class Program : public RuntimeObject {
   //! Clears the program object if the app attempts to rebuild the program
   void clear();
 
+#if defined(WITH_COMPILER_LIB)
+  //! Global HSAIL build lock (remove when HSAIL is thread-safe).
+  static Monitor buildLock_;
+
+  //! Check if any device uses HSAIL
+  bool useHsail(const std::vector<Device*>& devices) const {
+    for (const auto& it : devices) {
+      if (!it->settings().useLightning_) return true;
+    }
+    return false;
+  }
+#endif
+
  public:
   //! Construct a new program to be compiled from the given source code.
   Program(Context& context, const std::string& sourceCode, Language language,
