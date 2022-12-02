@@ -41,7 +41,9 @@ static uint64_t ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 hipError_t hipModuleUnload(hipModule_t hmod) {
   HIP_INIT_API(hipModuleUnload, hmod);
-
+  if (hmod == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
   HIP_RETURN(PlatformState::instance().unloadModule(hmod));
 }
 
@@ -91,10 +93,13 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
 
   if (dptr == nullptr || bytes == nullptr) {
     // If either is nullptr, ignore it
-    return hipSuccess;
+    HIP_RETURN(hipSuccess);
   }
-  if (name == nullptr) {
-    return hipErrorInvalidValue;
+  if ((dptr == nullptr && bytes == nullptr) || name == nullptr || strlen(name) == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (hmod == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
   }
   /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynGlobalVar(name, hmod, dptr, bytes)) {
@@ -669,6 +674,10 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
   if ((texRef == nullptr) || (name == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (hmod == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
   if (!info.imageSupport_) {
