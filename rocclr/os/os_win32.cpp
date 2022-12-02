@@ -941,6 +941,10 @@ bool Os::FindFileNameFromAddress(const void* image, std::string* fname_ptr, size
   return false;
 }
 
+int Os::getProcessId() {
+  return ::_getpid();
+}
+
 }  // namespace amd
 
 #endif  // _WIN32 || __CYGWIN__

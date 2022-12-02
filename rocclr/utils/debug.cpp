@@ -106,7 +106,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
   fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %-5d: [tid:0x%s] %s\n", level, file, line,
-    timeUs/1ULL, getpid(), str_thrd_id.str().c_str(), message);
+    timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message);
   fflush(outFile);
 }
 
@@ -123,10 +123,10 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
   if (start == 0 || *start == 0) {
      fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %-5d: [tid:0x%s] %s\n", level, file, line,
-      timeUs/1ULL, getpid(), str_thrd_id.str().c_str(), message);
+      timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message);
   } else {
      fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: %-5d: [tid:0x%s] %s: duration: %lld us\n",
-      level, file, line, timeUs/1ULL, getpid(), str_thrd_id.str().c_str(), message,
+      level, file, line, timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message,
       (timeUs - *start)/1ULL);
   }
   fflush(outFile);
