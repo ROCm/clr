@@ -158,6 +158,8 @@ hipModuleGetGlobal
 hipModuleGetTexRef
 hipModuleLaunchKernel
 hipModuleLaunchKernelExt
+hipModuleLaunchCooperativeKernel
+hipModuleLaunchCooperativeKernelMultiDevice
 hipLaunchCooperativeKernel
 hipLaunchCooperativeKernelMultiDevice
 hipHccModuleLaunchKernel
