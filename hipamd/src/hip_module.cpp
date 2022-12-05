@@ -473,6 +473,158 @@ hipError_t hipModuleLaunchKernelExt(hipFunction_t f, uint32_t globalWorkSizeX,
                                     extra, startEvent, stopEvent));
 }
 
+hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDimX,
+                                            unsigned int gridDimY, unsigned int gridDimZ,
+                                            unsigned int blockDimX, unsigned int blockDimY,
+                                            unsigned int blockDimZ, unsigned int sharedMemBytes,
+                                            hipStream_t stream, void** kernelParams) {
+  HIP_INIT_API(hipModuleLaunchCooperativeKernel, f, gridDimX, gridDimY, gridDimZ, blockDimX,
+               blockDimY, blockDimZ, sharedMemBytes, stream, kernelParams);
+
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
+  size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
+  size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;
+  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+  HIP_RETURN(ihipModuleLaunchKernel(f, static_cast<uint32_t>(globalWorkSizeX),
+                  static_cast<uint32_t>(globalWorkSizeY),
+                  static_cast<uint32_t>(globalWorkSizeZ), blockDimX, blockDimY,
+                  blockDimZ, sharedMemBytes, stream, kernelParams, nullptr, nullptr,
+                  nullptr, 0, amd::NDRangeKernelCommand::CooperativeGroups));
+}
+
+hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
+                                                       unsigned int  numDevices,
+                                                       unsigned int  flags,
+                                                       uint32_t extFlags) {
+  int numActiveGPUs = 0;
+  hipError_t result = hipSuccess;
+  result = ihipDeviceGetCount(&numActiveGPUs);
+
+  if (numDevices > numActiveGPUs) {
+    return hipErrorInvalidValue;
+  }
+
+  uint64_t allGridSize = 0;
+  std::vector<const amd::Device*> mgpu_list(numDevices);
+
+  for (int i = 0; i < numDevices; ++i) {
+    uint32_t blockDims = 0;
+    const hipFunctionLaunchParams& launch = launchParamsList[i];
+    blockDims = launch.blockDimX * launch.blockDimY * launch.blockDimZ;
+    allGridSize += launch.gridDimX * launch.gridDimY * launch.gridDimZ * blockDims;
+
+    // Make sure block dimensions are valid
+    if (0 == blockDims) {
+      return hipErrorInvalidConfiguration;
+    }
+    if (launch.hStream != nullptr) {
+      // Validate devices to make sure it dosn't have duplicates
+      amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(launch.hStream)->asHostQueue();
+      auto device = &queue->vdev()->device();
+      for (int j = 0; j < numDevices; ++j) {
+        if (mgpu_list[j] == device) {
+          return hipErrorInvalidDevice;
+        }
+      }
+      mgpu_list[i] = device;
+    } else {
+      return hipErrorInvalidResourceHandle;
+    }
+  }
+  uint64_t prevGridSize = 0;
+  uint32_t firstDevice = 0;
+
+  // Sync the execution streams on all devices
+  if ((flags & hipCooperativeLaunchMultiDeviceNoPreSync) == 0) {
+    for (int i = 0; i < numDevices; ++i) {
+      amd::HostQueue* queue =
+          reinterpret_cast<hip::Stream*>(launchParamsList[i].hStream)->asHostQueue();
+      queue->finish();
+    }
+  }
+
+  for (int i = 0; i < numDevices; ++i) {
+    const hipFunctionLaunchParams& launch = launchParamsList[i];
+    amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(launch.hStream)->asHostQueue();
+
+    if (i == 0) {
+      // The order of devices in the launch may not match the order in the global array
+      for (size_t dev = 0; dev < g_devices.size(); ++dev) {
+        // Find the matching device
+        if (&queue->vdev()->device() == g_devices[dev]->devices()[0]) {
+          // Save ROCclr index of the first device in the launch
+          firstDevice = queue->vdev()->device().index();
+          break;
+        }
+      }
+    }
+
+    size_t globalWorkSizeX = static_cast<size_t>(launch.gridDimX) * launch.blockDimX;
+    size_t globalWorkSizeY = static_cast<size_t>(launch.gridDimY) * launch.blockDimY;
+    size_t globalWorkSizeZ = static_cast<size_t>(launch.gridDimZ) * launch.blockDimZ;
+    if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
+        globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
+        globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+      return hipErrorInvalidConfiguration;
+    }
+    result = ihipModuleLaunchKernel(
+        launch.function, static_cast<uint32_t>(globalWorkSizeX),
+        static_cast<uint32_t>(globalWorkSizeY),
+        static_cast<uint32_t>(globalWorkSizeZ), launch.blockDimX, launch.blockDimY,
+        launch.blockDimZ, launch.sharedMemBytes, launch.hStream, launch.kernelParams,
+        nullptr, nullptr, nullptr, flags, extFlags,
+        i, numDevices, prevGridSize, allGridSize, firstDevice);
+    if (result != hipSuccess) {
+      break;
+    }
+    prevGridSize += globalWorkSizeX * globalWorkSizeY * globalWorkSizeZ;
+  }
+
+  // Sync the execution streams on all devices
+  if ((flags & hipCooperativeLaunchMultiDeviceNoPostSync) == 0) {
+    for (int i = 0; i < numDevices; ++i) {
+      amd::HostQueue* queue =
+          reinterpret_cast<hip::Stream*>(launchParamsList[i].hStream)->asHostQueue();
+      queue->finish();
+    }
+  }
+
+  return result;
+}
+
+hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
+                                                       unsigned int  numDevices,
+                                                       unsigned int  flags) {
+  HIP_INIT_API(hipModuleLaunchCooperativeKernelMultiDevice, launchParamsList, numDevices, flags);
+
+  if (launchParamsList == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // Validate all streams passed by user
+  for (int i = 0; i < numDevices; ++i) {
+    if (!hip::isValid(launchParamsList[i].hStream)) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
+  HIP_RETURN(ihipModuleLaunchCooperativeKernelMultiDevice(
+      launchParamsList,
+      numDevices,
+      flags,
+      (amd::NDRangeKernelCommand::CooperativeGroups |
+      amd::NDRangeKernelCommand::CooperativeMultiDeviceGroups)));
+
+}
+
 extern "C" hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                              void** args, size_t sharedMemBytes,
                                              hipStream_t stream) {
@@ -557,61 +709,19 @@ hipError_t hipLaunchCooperativeKernel_spt(const void* f, dim3 gridDim, dim3 bloc
 
 hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList, int numDevices,
                                                   unsigned int flags, uint32_t extFlags) {
-  int numActiveGPUs = 0;
-  hipError_t result = hipSuccess;
-  result = ihipDeviceGetCount(&numActiveGPUs);
-
-  if ((numDevices > numActiveGPUs) || (launchParamsList == nullptr)) {
+  if (launchParamsList == nullptr) {
     return hipErrorInvalidValue;
   }
-  // Validate all streams passed by user
+
+  std::vector<hipFunctionLaunchParams> functionLaunchParamsList(numDevices);
+  // Convert hipLaunchParams to hipFunctionLaunchParams
   for (int i = 0; i < numDevices; ++i) {
-    if (!hip::isValid(launchParamsList[i].stream)) {
+    hipLaunchParams& launch = launchParamsList[i];
+    // Validate stream passed by user
+    if (!hip::isValid(launch.stream)) {
       return hipErrorInvalidValue;
     }
-  }
 
-  uint64_t allGridSize = 0;
-  std::vector<const amd::Device*> mgpu_list(numDevices);
-
-  for (int i = 0; i < numDevices; ++i) {
-    uint32_t blockDims = 0;
-    const hipLaunchParams& launch = launchParamsList[i];
-    blockDims = launch.blockDim.x * launch.blockDim.y * launch.blockDim.z;
-    allGridSize += launch.gridDim.x * launch.gridDim.y * launch.gridDim.z * blockDims;
-
-    // Make sure block dimensions are valid
-    if (0 == blockDims) {
-      return hipErrorInvalidConfiguration;
-    }
-    if (launch.stream != nullptr) {
-      // Validate devices to make sure it dosn't have duplicates
-      amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(launch.stream)->asHostQueue();
-      auto device = &queue->vdev()->device();
-      for (int j = 0; j < numDevices; ++j) {
-        if (mgpu_list[j] == device) {
-          return hipErrorInvalidDevice;
-        }
-      }
-      mgpu_list[i] = device;
-    } else {
-      return hipErrorInvalidResourceHandle;
-    }
-  }
-  uint64_t prevGridSize = 0;
-  uint32_t firstDevice = 0;
-
-  // Sync the execution streams on all devices
-  if ((flags & hipCooperativeLaunchMultiDeviceNoPreSync) == 0) {
-    for (int i = 0; i < numDevices; ++i) {
-      amd::HostQueue* queue =
-          reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
-      queue->finish();
-    }
-  }
-
-  for (int i = 0; i < numDevices; ++i) {
-    const hipLaunchParams& launch = launchParamsList[i];
     amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(launch.stream)->asHostQueue();
     hipFunction_t func = nullptr;
     // The order of devices in the launch may not match the order in the global array
@@ -619,46 +729,29 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
       // Find the matching device and request the kernel function
       if (&queue->vdev()->device() == g_devices[dev]->devices()[0]) {
         IHIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&func, launch.func, dev));
-        // Save ROCclr index of the first device in the launch
-        if (i == 0) {
-          firstDevice = queue->vdev()->device().index();
-        }
         break;
       }
     }
     if (func == nullptr) {
-      result = hipErrorInvalidDeviceFunction;
-      HIP_RETURN(result);
+      return hipErrorInvalidDeviceFunction;
     }
-    size_t globalWorkSizeX = static_cast<size_t>(launch.gridDim.x) * launch.blockDim.x;
-    size_t globalWorkSizeY = static_cast<size_t>(launch.gridDim.y) * launch.blockDim.y;
-    size_t globalWorkSizeZ = static_cast<size_t>(launch.gridDim.z) * launch.blockDim.z;
-    if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-        globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-        globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-      HIP_RETURN(hipErrorInvalidConfiguration);
-    }
-    result = ihipModuleLaunchKernel(
-        func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-        static_cast<uint32_t>(globalWorkSizeZ), launch.blockDim.x, launch.blockDim.y,
-        launch.blockDim.z, launch.sharedMem, launch.stream, launch.args, nullptr, nullptr, nullptr,
-        flags, extFlags, i, numDevices, prevGridSize, allGridSize, firstDevice);
-    if (result != hipSuccess) {
-      break;
-    }
-    prevGridSize += globalWorkSizeX * globalWorkSizeY * globalWorkSizeZ;
+
+    functionLaunchParamsList[i].function = func;
+    functionLaunchParamsList[i].gridDimX = launch.gridDim.x;
+    functionLaunchParamsList[i].gridDimY = launch.gridDim.y;
+    functionLaunchParamsList[i].gridDimZ = launch.gridDim.z;
+    functionLaunchParamsList[i].blockDimX = launch.blockDim.x;
+    functionLaunchParamsList[i].blockDimY = launch.blockDim.y;
+    functionLaunchParamsList[i].blockDimZ = launch.blockDim.z;
+    functionLaunchParamsList[i].sharedMemBytes = launch.sharedMem;
+    functionLaunchParamsList[i].hStream = launch.stream;
+    functionLaunchParamsList[i].kernelParams = launch.args;
   }
 
-  // Sync the execution streams on all devices
-  if ((flags & hipCooperativeLaunchMultiDeviceNoPostSync) == 0) {
-    for (int i = 0; i < numDevices; ++i) {
-      amd::HostQueue* queue =
-          reinterpret_cast<hip::Stream*>(launchParamsList[i].stream)->asHostQueue();
-      queue->finish();
-    }
-  }
-
-  return result;
+  return ihipModuleLaunchCooperativeKernelMultiDevice(functionLaunchParamsList.data(),
+                                                      functionLaunchParamsList.size(),
+                                                      flags,
+                                                      extFlags);
 }
 
 hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList, int numDevices,

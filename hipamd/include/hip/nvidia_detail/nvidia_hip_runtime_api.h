@@ -437,6 +437,7 @@ typedef struct cudaArray* hipArray_t;
 typedef struct cudaArray* hipArray_const_t;
 typedef struct cudaFuncAttributes hipFuncAttributes;
 typedef struct cudaLaunchParams hipLaunchParams;
+typedef CUDA_LAUNCH_PARAMS hipFunctionLaunchParams;
 #define hipFunction_attribute CUfunction_attribute
 #define hipPointer_attribute CUpointer_attribute
 #define hip_Memcpy2D CUDA_MEMCPY2D
@@ -2807,9 +2808,27 @@ inline static hipError_t hipLaunchCooperativeKernel(const void* f, dim3 gridDim,
             cudaLaunchCooperativeKernel(f, gridDim, blockDim, kernelParams, sharedMemBytes, stream));
 }
 
+inline static hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDimX,
+                                            unsigned int gridDimY, unsigned int gridDimZ,
+                                            unsigned int blockDimX, unsigned int blockDimY,
+                                            unsigned int blockDimZ, unsigned int sharedMemBytes,
+                                            hipStream_t stream, void** kernelParams) {
+    return hipCUResultTohipError(cuLaunchCooperativeKernel(f, gridDimX, gridDimY, gridDimZ,
+                                                           blockDimX, blockDimY, blockDimZ,
+                                                           sharedMemBytes, stream,kernelParams));
+}
+
 inline static hipError_t hipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsList,
                                                  int  numDevices, unsigned int  flags) {
     return hipCUDAErrorTohipError(cudaLaunchCooperativeKernelMultiDevice(launchParamsList, numDevices, flags));
+}
+
+inline static hipError_t hipModuleLaunchCooperativeKernelMultiDevice(
+                                                       hipFunctionLaunchParams* launchParamsList,
+                                                       unsigned int  numDevices,
+                                                       unsigned int  flags) {
+    return hipCUResultTohipError(cuLaunchCooperativeKernelMultiDevice(launchParamsList,
+                                                                      numDevices, flags));
 }
 
 inline static hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,

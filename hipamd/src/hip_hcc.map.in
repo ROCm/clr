@@ -505,3 +505,11 @@ global:
 local:
     *;
 } hip_5.2;
+
+hip_5.5 {
+global:
+    hipModuleLaunchCooperativeKernel;
+    hipModuleLaunchCooperativeKernelMultiDevice;
+local:
+    *;
+} hip_5.3;
