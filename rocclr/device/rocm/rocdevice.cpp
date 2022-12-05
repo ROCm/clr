@@ -2081,8 +2081,10 @@ bool Device::allowPeerAccess(device::Memory* memory) const {
   return true;
 }
 
-void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
-  const hsa_amd_memory_pool_t& pool = (atomics)? gpu_fine_grained_segment_ : gpuvm_segment_;
+void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
+  const hsa_amd_memory_pool_t& pool = (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
+  uint32_t hsa_mem_flags = (atomics && pseudo_fine_grain) ? HSA_AMD_MEMORY_POOL_PCIE_FLAG
+                                                          : HSA_AMD_MEMORY_POOL_STANDARD_FLAG;
 
   if (pool.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
     DevLogPrintfError("Invalid argument, pool_handle: 0x%x , max_alloc: %u \n",
@@ -2091,7 +2093,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics) const {
   }
 
   void* ptr = nullptr;
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, hsa_mem_flags, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa device memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation local memory");
