@@ -60,6 +60,10 @@ static const DeviceCounterInfo DeviceInfo[]{
      11,
      {{139, 0, 4}, {74, 0, 13}}},  // {SQWGP, reg 0, SQ_PERF_SEL_WAVES}, {CPC,
                                    // reg 0, Me1 busy for packet decode}
+    {"gfx1103",
+     11,
+     {{139, 0, 4}, {74, 0, 13}}},  // {SQWGP, reg 0, SQ_PERF_SEL_WAVES}, {CPC,
+                                   // reg 0, Me1 busy for packet decode}
 #endif
     // GFX10
     {"gfx1000",
