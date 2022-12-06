@@ -32,8 +32,9 @@ THE SOFTWARE.
 #define HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_HELPER_H
 
 #if __cplusplus
+#if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_device_functions.h>
-#include <bitset>
+#endif
 #if !defined(__align__)
 #define __align__(x) __attribute__((aligned(x)))
 #endif
@@ -50,12 +51,9 @@ THE SOFTWARE.
 #define _CG_STATIC_CONST_DECL_ static constexpr
 #endif
 
-#if !defined(WAVEFRONT_SIZE)
-#if __gfx1010__ || __gfx1011__ || __gfx1012__ || __gfx1030__ || __gfx1031__
-#define WAVEFRONT_SIZE 32
+#if __AMDGCN_WAVEFRONT_SIZE == 32
 using lane_mask = unsigned int;
 #else
-#define WAVEFRONT_SIZE 64
 using lane_mask = unsigned long long int;
 #endif
 
@@ -66,7 +64,7 @@ template <unsigned int size>
 using is_power_of_2 = std::integral_constant<bool, (size & (size - 1)) == 0>;
 
 template <unsigned int size>
-using is_valid_wavefront = std::integral_constant<bool, (size <= WAVEFRONT_SIZE)>;
+using is_valid_wavefront = std::integral_constant<bool, (size <= __AMDGCN_WAVEFRONT_SIZE)>;
 
 template <unsigned int size>
 using is_valid_tile_size =
@@ -191,7 +189,7 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 // have i-th bit of x set and come before the current thread.
 __device__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
   int counter=0;
-    #if WAVEFRONT_SIZE == 32
+    #if __AMDGCN_WAVEFRONT_SIZE == 32
       counter = __builtin_amdgcn_mbcnt_lo(x, add);
     #else
       counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
@@ -210,4 +208,3 @@ __device__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
 
 #endif  // __cplusplus
 #endif  // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_HELPER_H
-#endif
