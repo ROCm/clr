@@ -54,7 +54,8 @@ class Settings : public device::Settings {
       uint skip_copy_sync_ : 1;         //!< Ignore explicit HSA signal waits for copy functionality
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint coop_sync_ : 1;              //!< grid and multi-grid sync for gfx940+
-      uint reserved_ : 19;
+      uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
+      uint reserved_ : 18;
     };
     uint value_;
   };
