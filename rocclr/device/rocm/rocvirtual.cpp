@@ -3214,12 +3214,21 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     } else {
       profilingBegin(vcmd);
       if (timestamp_ != nullptr) {
+        const Settings& settings = dev().settings();
         int32_t releaseFlags = vcmd.getEventScope();
         if (releaseFlags == Device::CacheState::kCacheStateAgent) {
-          dispatchBarrierPacket(kBarrierPacketAgentScopeHeader, false);
+          if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
+            dispatchBarrierValuePacket(kBarrierPacketAgentScopeHeader);
+          } else {
+            dispatchBarrierPacket(kBarrierPacketAgentScopeHeader, false);
+          }
         } else {
           // Submit a barrier with a cache flushes.
-          dispatchBarrierPacket(kBarrierPacketHeader, false);
+          if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
+            dispatchBarrierValuePacket(kBarrierPacketHeader);
+          } else {
+            dispatchBarrierPacket(kBarrierPacketHeader, false);
+          }
           hasPendingDispatch_ = false;
         }
       }
