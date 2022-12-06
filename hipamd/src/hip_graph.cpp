@@ -101,7 +101,7 @@ hipError_t ihipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph
       (numDependencies > 0 && pDependencies == nullptr)) {
     return hipErrorInvalidValue;
   }
-  hipError_t status = ihipMemcpy_validate(dst, src, count, kind);
+  hipError_t status = hipGraphMemcpyNode1D::ValidateParams(dst, src, count, kind);
   if (status != hipSuccess) {
     return status;
   }

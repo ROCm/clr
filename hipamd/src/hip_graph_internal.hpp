@@ -1201,7 +1201,7 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
   }
   // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t SetCommandParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
-  hipError_t ValidateParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
+  static hipError_t ValidateParams(void* dst, const void* src, size_t count, hipMemcpyKind kind);
   std::string GetLabel(hipGraphDebugDotFlags flag) {
     size_t sOffsetOrig = 0;
     amd::Memory* origSrcMemory = getMemoryObject(src_, sOffsetOrig);
