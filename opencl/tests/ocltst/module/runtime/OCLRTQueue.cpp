@@ -80,6 +80,7 @@ void OCLRTQueue::open(unsigned int test, char* units, double& conversion,
   cl_uint rtQueues;
 #define CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD 0x404D
 #define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_AMD 0x404E
+#define CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_GRANULARITY_AMD 0x403A
   error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId],
                                      CL_DEVICE_MAX_REAL_TIME_COMPUTE_QUEUES_AMD,
                                      sizeof(rtQueues), &rtQueues, 0);
@@ -97,6 +98,11 @@ void OCLRTQueue::open(unsigned int test, char* units, double& conversion,
   error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId],
                                      CL_DEVICE_MAX_COMPUTE_UNITS,
                                      sizeof(maxCUs_), &maxCUs_, 0);
+  CHECK_RESULT(error_ != CL_SUCCESS, "clGetDeviceInfo failed");
+
+  error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId],
+                                     CL_DEVICE_MAX_REAL_TIME_COMPUTE_UNITS_GRANULARITY_AMD,
+                                     sizeof(rtCUsGranularity_), &rtCUsGranularity_, 0);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetDeviceInfo failed");
 
   program_ = _wrapper->clCreateProgramWithSource(context_, 1, &strKernel, NULL,
@@ -147,6 +153,12 @@ void OCLRTQueue::run(void) {
   } else {
     cu_ = rtCUs_;
   }
+
+  if (cu_ < rtCUsGranularity_) {
+    printf("The num of CUs is less than granularity, skipping...\n");
+    return;
+  }
+
   // Create a real time queue
 #define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD 0x404f
   const cl_queue_properties cprops[] = {

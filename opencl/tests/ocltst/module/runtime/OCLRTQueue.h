@@ -43,6 +43,7 @@ class OCLRTQueue : public OCLTestImp {
   cl_uint cu_;
   cl_uint maxCUs_;
   cl_uint rtCUs_;
+  cl_uint rtCUsGranularity_;
 };
 
 #endif  // _OCL_RT_QUEUE_H_
