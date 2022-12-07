@@ -724,7 +724,7 @@ with open(OUTPUT, 'w') as f:
   generate_prof_header(f, api_map, api_callback_ids, opts_map)
 
 if not filecmp.cmp(INPUT, OUTPUT):
-  fatal("\"" + INPUT + "\" needs to be re-generated and checked-in with the current changes")
+  message("Warning: \"" + INPUT + "\" needs to be re-generated and checked-in with the current changes")
 
 # Successfull exit
 sys.exit(0)
