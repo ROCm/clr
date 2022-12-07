@@ -357,7 +357,7 @@ hipError_t hipDrvGetErrorName(hipError_t hip_error, const char** errStr)
     return hipErrorInvalidValue;
   }
   *errStr = ihipGetErrorName(hip_error);
-  if (!strcmp( *errStr, "hipErrorUnknown")) {
+  if (strcmp( *errStr, "hipErrorUnknown") != 0) {
     return hipSuccess;
   } else {
     return hipErrorInvalidValue;
@@ -370,7 +370,7 @@ hipError_t hipDrvGetErrorString(hipError_t hip_error, const char** errStr)
     return hipErrorInvalidValue;
   }
   *errStr = ihipGetErrorString(hip_error);
-  if (!strcmp( *errStr, "unkown error")) {
+  if (strcmp( *errStr, "unknown error") != 0) {
     return hipSuccess;
   } else {
     return hipErrorInvalidValue;
