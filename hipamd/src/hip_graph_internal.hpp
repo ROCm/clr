@@ -656,7 +656,7 @@ class hipGraphKernelNode : public hipGraphNode {
   hipKernelNodeParams* pKernelParams_;
   unsigned int numParams_;
   hipKernelNodeAttrValue kernelAttr_;
-  hipKernelNodeAttrID kernelAttrInUse_;
+  unsigned int kernelAttrInUse_;
 
  public:
   std::string GetLabel(hipGraphDebugDotFlags flag) {
@@ -770,6 +770,7 @@ class hipGraphKernelNode : public hipGraphNode {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to copy params");
     }
     memset(&kernelAttr_, 0, sizeof(kernelAttr_));
+    kernelAttrInUse_ = 0;
   }
 
   ~hipGraphKernelNode() { freeParams(); }
@@ -901,10 +902,14 @@ class hipGraphKernelNode : public hipGraphNode {
     return hipSuccess;
   }
   hipError_t CopyAttr(const hipGraphKernelNode* srcNode) {
-    if (srcNode->kernelAttrInUse_ != kernelAttrInUse_) {
+    if (kernelAttrInUse_ == 0 && srcNode->kernelAttrInUse_ == 0) {
+      return hipSuccess;
+    }
+    if (kernelAttrInUse_ != 0 && srcNode->kernelAttrInUse_ != kernelAttrInUse_) {
       return hipErrorInvalidContext;
     }
-    switch (kernelAttrInUse_) {
+    kernelAttrInUse_ = srcNode->kernelAttrInUse_;
+    switch (srcNode->kernelAttrInUse_) {
       case hipKernelNodeAttributeAccessPolicyWindow:
         kernelAttr_.accessPolicyWindow.base_ptr = srcNode->kernelAttr_.accessPolicyWindow.base_ptr;
         kernelAttr_.accessPolicyWindow.hitProp = srcNode->kernelAttr_.accessPolicyWindow.hitProp;
