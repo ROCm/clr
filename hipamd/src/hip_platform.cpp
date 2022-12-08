@@ -586,7 +586,9 @@ hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks,
   if (numBlocks == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  if (flags != hipOccupancyDefault && flags != hipOccupancyDisableCachingOverride) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   hipFunction_t func = nullptr;
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, f, ihipGetDevice());
   if ((hip_error != hipSuccess) || (func == nullptr)) {
