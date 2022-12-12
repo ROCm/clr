@@ -1833,11 +1833,21 @@ inline static const char* hipGetErrorName(hipError_t error) {
 }
 
 inline static hipError_t hipDrvGetErrorString(hipError_t error, const char** errorString) {
-    return hipCUResultTohipError(cuGetErrorString(hipErrorToCUResult(error), errorString));
+    CUresult err = hipErrorToCUResult(error);
+    if( err == CUDA_ERROR_UNKNOWN ) {
+       return hipCUResultTohipError(cuGetErrorString((CUresult)error, errorString));
+    } else {
+       return hipCUResultTohipError(cuGetErrorString(err, errorString));
+    }
 }
 
 inline static hipError_t hipDrvGetErrorName(hipError_t error, const char** errorString) {
-    return hipCUResultTohipError(cuGetErrorName(hipErrorToCUResult(error), errorString));
+    CUresult err = hipErrorToCUResult(error);
+    if( err == CUDA_ERROR_UNKNOWN ) {
+       return hipCUResultTohipError(cuGetErrorName((CUresult)error, errorString));
+    } else {
+       return hipCUResultTohipError(cuGetErrorName(err, errorString));
+    }
 }
 
 inline static hipError_t hipGetDeviceCount(int* count) {
