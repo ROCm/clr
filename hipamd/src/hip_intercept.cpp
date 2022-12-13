@@ -38,7 +38,7 @@ int hipGetStreamDeviceId(hipStream_t stream) {
 }
 
 const char* hipKernelNameRef(const hipFunction_t function) {
-  return FunctionName(function).c_str();
+  return (function != nullptr) ? FunctionName(function).c_str() : nullptr;
 }
 
 const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream) {
