@@ -327,20 +327,19 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   virtual void EnqueueCommands(hipStream_t stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
-    if (isEnabled_) {
-      for (auto& command : commands_) {
-        command->enqueue();
-        command->release();
-      }
-    } else {
-      if (type_ == hipGraphNodeTypeKernel || type_ == hipGraphNodeTypeMemcpy ||
-          type_ == hipGraphNodeTypeMemset) {
-        amd::Command::EventWaitList waitList;
-        amd::HostQueue* queue = hip::getQueue(stream);
-        amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
-        command->enqueue();
-        command->release();
-      }
+    if (!isEnabled_ &&
+        (type_ == hipGraphNodeTypeKernel || type_ == hipGraphNodeTypeMemcpy ||
+         type_ == hipGraphNodeTypeMemset)) {
+      amd::Command::EventWaitList waitList;
+      amd::HostQueue* queue = hip::getQueue(stream);
+      amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
+      command->enqueue();
+      command->release();
+      return;
+    }
+    for (auto& command : commands_) {
+      command->enqueue();
+      command->release();
     }
   }
   ihipGraph* GetParentGraph() { return parentGraph_; }
