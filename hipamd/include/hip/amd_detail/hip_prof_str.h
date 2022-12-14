@@ -3792,9 +3792,19 @@ typedef struct hip_api_data_s {
 };
 // hipGraphAddMemAllocNode[('hipGraphNode_t*', 'pGraphNode'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'pDependencies'), ('size_t', 'numDependencies'), ('hipMemAllocNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphAddMemAllocNode_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphAddMemAllocNode.pGraphNode = (hipGraphNode_t*)pGraphNode; \
+  cb_data.args.hipGraphAddMemAllocNode.graph = (hipGraph_t)graph; \
+  cb_data.args.hipGraphAddMemAllocNode.pDependencies = (const hipGraphNode_t*)pDependencies; \
+  cb_data.args.hipGraphAddMemAllocNode.numDependencies = (size_t)numDependencies; \
+  cb_data.args.hipGraphAddMemAllocNode.pNodeParams = (hipMemAllocNodeParams*)pNodeParams; \
 };
 // hipGraphAddMemFreeNode[('hipGraphNode_t*', 'pGraphNode'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'pDependencies'), ('size_t', 'numDependencies'), ('void*', 'dev_ptr')]
 #define INIT_hipGraphAddMemFreeNode_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphAddMemFreeNode.pGraphNode = (hipGraphNode_t*)pGraphNode; \
+  cb_data.args.hipGraphAddMemFreeNode.graph = (hipGraph_t)graph; \
+  cb_data.args.hipGraphAddMemFreeNode.pDependencies = (const hipGraphNode_t*)pDependencies; \
+  cb_data.args.hipGraphAddMemFreeNode.numDependencies = (size_t)numDependencies; \
+  cb_data.args.hipGraphAddMemFreeNode.dev_ptr = (void*)dev_ptr; \
 };
 // hipGraphAddMemcpyNode[('hipGraphNode_t*', 'pGraphNode'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'pDependencies'), ('size_t', 'numDependencies'), ('const hipMemcpy3DParms*', 'pCopyParams')]
 #define INIT_hipGraphAddMemcpyNode_CB_ARGS_DATA(cb_data) { \
@@ -4055,9 +4065,13 @@ typedef struct hip_api_data_s {
 };
 // hipGraphMemAllocNodeGetParams[('hipGraphNode_t', 'node'), ('hipMemAllocNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphMemAllocNodeGetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphMemAllocNodeGetParams.node = (hipGraphNode_t)node; \
+  cb_data.args.hipGraphMemAllocNodeGetParams.pNodeParams = (hipMemAllocNodeParams*)pNodeParams; \
 };
 // hipGraphMemFreeNodeGetParams[('hipGraphNode_t', 'node'), ('void*', 'dev_ptr')]
 #define INIT_hipGraphMemFreeNodeGetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphMemFreeNodeGetParams.node = (hipGraphNode_t)node; \
+  cb_data.args.hipGraphMemFreeNodeGetParams.dev_ptr = (void*)dev_ptr; \
 };
 // hipGraphMemcpyNodeGetParams[('hipGraphNode_t', 'node'), ('hipMemcpy3DParms*', 'pNodeParams')]
 #define INIT_hipGraphMemcpyNodeGetParams_CB_ARGS_DATA(cb_data) { \

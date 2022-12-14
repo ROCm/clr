@@ -32,6 +32,7 @@
 #include "hip_graph_helper.hpp"
 #include "hip_event.hpp"
 #include "hip_platform.hpp"
+#include "hip_mempool_impl.hpp"
 
 typedef hipGraphNode* Node;
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
@@ -377,11 +378,26 @@ struct ihipGraph {
   std::unordered_set<hipUserObject*> graphUserObj_;
   unsigned int id_;
   static int nextID;
+  hip::Device* device_;       //!< HIP device object
+  hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
 
  public:
-  ihipGraph() : id_(nextID++) {
+  ihipGraph(hip::Device* device, const ihipGraph* original = nullptr)
+      : pOriginalGraph_(original)
+      , id_(nextID++)
+      , device_(device) {
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.insert(this);
+    if (original == nullptr) {
+      // Create memory pool, associated with the graph
+      mem_pool_ = new hip::MemoryPool(device);
+      uint64_t max_size = std::numeric_limits<uint64_t>::max();
+      // Note: the call for the threshold is always successful
+      auto error = mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
+    } else {
+      mem_pool_ = original->mem_pool_;
+      mem_pool_->retain();
+    }
   };
 
   ~ihipGraph() {
@@ -393,6 +409,10 @@ struct ihipGraph {
     for (auto userobj : graphUserObj_) {
       userobj->release();
     }
+    if (mem_pool_ != nullptr) {
+      mem_pool_->release();
+    }
+
   };
 
   /// Return graph unique ID
@@ -417,7 +437,7 @@ struct ihipGraph {
   /// returns all the edges in the graph
   std::vector<std::pair<Node, Node>> GetEdges() const;
   // returns the original graph ptr if cloned
-  const ihipGraph* getOriginalGraph() const;
+  const ihipGraph* getOriginalGraph() const { return pOriginalGraph_; }
   // Add user obj resource to graph
   void addUserObjGraph(hipUserObject* pUserObj) {
     amd::ScopedLock lock(graphSetLock_);
@@ -432,8 +452,6 @@ struct ihipGraph {
   }
   // Delete user obj resource from graph
   void RemoveUserObjGraph(hipUserObject* pUserObj) { graphUserObj_.erase(pUserObj); }
-  // saves the original graph ptr if cloned
-  void setOriginalGraph(const ihipGraph* pOriginalGraph);
 
   void GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
                       std::vector<Node>& singleList, std::vector<std::vector<Node>>& parallelLists,
@@ -463,6 +481,31 @@ struct ihipGraph {
     for (auto node : vertices_) {
       node->GenerateDOT(fout, flag);
     }
+  }
+
+  void* AllocateMemory(size_t size, hip::Stream* stream, void* dptr) const {
+    auto ptr = mem_pool_->AllocateMemory(size, stream, dptr);
+    return ptr;
+  }
+
+  void FreeMemory(void* dev_ptr, hip::Stream* stream) const {
+    size_t offset = 0;
+    auto memory = getMemoryObject(dev_ptr, offset);
+    if (memory != nullptr) {
+      auto device_id = memory->getUserData().deviceId;
+      if (!g_devices[device_id]->FreeMemory(memory, stream)) {
+        LogError("Memory didn't belong to any pool!");
+      }
+    }
+  }
+
+  bool ProbeMemory(void* dev_ptr) const {
+    size_t offset = 0;
+    auto memory = getMemoryObject(dev_ptr, offset);
+    if (memory != nullptr) {
+      return mem_pool_->IsBusyMemory(memory);
+    }
+    return false;
   }
 };
 
@@ -804,6 +847,8 @@ class hipGraphKernelNode : public hipGraphNode {
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to allocate memory to copy params");
     }
+    memset(&kernelAttr_, 0, sizeof(kernelAttr_));
+    kernelAttrInUse_ = 0;
     status = CopyAttr(&rhs);
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to during copy attrs");
@@ -1751,5 +1796,82 @@ class hipGraphEmptyNode : public hipGraphNode {
     amd::Command* command = new amd::Marker(*queue, !kMarkerDisableFlush, waitList);
     commands_.emplace_back(command);
     return hipSuccess;
+  }
+};
+
+class hipGraphMemAllocNode : public hipGraphNode {
+  hipMemAllocNodeParams node_params_; // Node parameters for memory allocation
+
+ public:
+  hipGraphMemAllocNode(const hipMemAllocNodeParams* node_params)
+      : hipGraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "MEM_ALLOC") {
+        node_params_ = *node_params;
+      }
+  ~hipGraphMemAllocNode() {}
+
+  hipGraphNode* clone() const {
+    return new hipGraphMemAllocNode(static_cast<hipGraphMemAllocNode const&>(*this));
+  }
+
+  virtual hipError_t CreateCommand(amd::HostQueue* queue) {
+    auto error = hipGraphNode::CreateCommand(queue);
+    // Note: memory pool can work with hip::Streams only. It can't accept amd::HostQueue.
+    // Resource tracking is disabled!
+    auto ptr = Execute();
+    return error;
+  }
+
+  void* Execute(hip::Stream* stream = nullptr) {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      // The node creation requires to return a valid address, however FreeNode can't
+      // free memory on creation because it doesn't have any execution point yet. Thus
+      // the code below makes sure memory won't be recreated on the first execution of the graph
+      if ((node_params_.dptr == nullptr) || !graph->ProbeMemory(node_params_.dptr)) {
+        auto dptr = graph->AllocateMemory(node_params_.bytesize, stream, node_params_.dptr);
+        if ((node_params_.dptr != nullptr) && (node_params_.dptr != dptr)) {
+          LogPrintfError("Ptr mismatch in graph mem alloc %p != %p", node_params_.dptr, dptr);
+        }
+        node_params_.dptr = dptr;
+      }
+    }
+    return node_params_.dptr;
+  }
+
+  void GetParams(hipMemAllocNodeParams* params) const {
+    std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));
+  }
+};
+
+class hipGraphMemFreeNode : public hipGraphNode {
+  void* device_ptr_;    // Device pointer of the freed memory
+
+ public:
+  hipGraphMemFreeNode(void* dptr)
+    : hipGraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "MEM_FREE")
+    , device_ptr_(dptr) {}
+  ~hipGraphMemFreeNode() {}
+
+  hipGraphNode* clone() const {
+    return new hipGraphMemFreeNode(static_cast<hipGraphMemFreeNode const&>(*this));
+  }
+
+  virtual hipError_t CreateCommand(amd::HostQueue* queue) {
+    auto error = hipGraphNode::CreateCommand(queue);
+    // Note: memory pool can work with hip::Streams only. It can't accept amd::HostQueue.
+    // Resource tracking is disabled!
+    Execute();
+    return error;
+  }
+
+  void Execute(hip::Stream* stream = nullptr) {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      graph->FreeMemory(device_ptr_, stream);
+    }
+  }
+
+  void GetParams(void** params) const {
+    *params = device_ptr_;
   }
 };

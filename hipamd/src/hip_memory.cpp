@@ -108,7 +108,10 @@ hipError_t ihipFree(void *ptr) {
       queue->finish();
     }
     hip::Stream::syncNonBlockingStreams(device_id);
-    amd::SvmBuffer::free(memory_object->getContext(), ptr);
+    // Find out if memory belongs to any memory pool
+    if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
+      amd::SvmBuffer::free(memory_object->getContext(), ptr);
+    }
     return hipSuccess;
   }
   return hipErrorInvalidValue;

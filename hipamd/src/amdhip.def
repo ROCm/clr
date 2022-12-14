@@ -436,3 +436,7 @@ hipGraphKernelNodeCopyAttributes
 hipGraphNodeGetEnabled
 hipGraphNodeSetEnabled
 hipGraphUpload
+hipGraphAddMemAllocNode
+hipGraphMemAllocNodeGetParams
+hipGraphAddMemFreeNode
+hipGraphMemFreeNodeGetParams

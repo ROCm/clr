@@ -636,13 +636,8 @@ void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
   }
 }
 
-const ihipGraph* ihipGraph::getOriginalGraph() const { return pOriginalGraph_; }
-void ihipGraph::setOriginalGraph(const ihipGraph* pOriginalGraph) {
-  pOriginalGraph_ = pOriginalGraph;
-}
-
 ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
-  ihipGraph* newGraph = new ihipGraph();
+  ihipGraph* newGraph = new ihipGraph(device_, this);
   for (auto entry : vertices_) {
     hipGraphNode* node = entry->clone();
     node->SetParentGraph(newGraph);
@@ -668,7 +663,6 @@ ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     }
     clonedNodes[node]->SetDependencies(clonedDependencies);
   }
-  newGraph->setOriginalGraph(this);
   return newGraph;
 }
 

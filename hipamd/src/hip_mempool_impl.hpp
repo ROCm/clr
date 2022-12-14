@@ -93,7 +93,7 @@ public:
   void AddMemory(amd::Memory* memory, const MemoryTimestamp& ts);
 
   /// Finds memory object with the specified size
-  amd::Memory* FindMemory(size_t size, hip::Stream* stream, bool opportunistic);
+  amd::Memory* FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr = nullptr);
 
   /// Removes allocation from the map
   bool RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts = nullptr);
@@ -131,6 +131,11 @@ public:
   /// Erases single allocation form the heap's map
   std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator EraseAllocaton(
     std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator& it);
+
+  /// Checks if memory belongs to this heap
+  bool IsActiveMemory(amd::Memory* memory) const {
+    return (allocations_.find(memory) != allocations_.end());
+  }
 
 private:
   Heap() = delete;
@@ -170,10 +175,15 @@ public:
   }
 
   /// The same stream can reuse memory without HIP event validation
-  void* AllocateMemory(size_t size, hip::Stream* stream);
+  void* AllocateMemory(size_t size, hip::Stream* stream, void* dptr = nullptr);
 
   /// Frees memory by placing memory object with HIP event into free_heap_
   bool FreeMemory(amd::Memory* memory, hip::Stream* stream);
+
+  /// Check if memory is active and belongs to the busy heap
+  bool IsBusyMemory(amd::Memory* memory) const {
+    return busy_heap_.IsActiveMemory(memory);
+  }
 
   /// Releases all allocations from free_heap_. It can be called on Stream or Device synchronization
   /// @note The caller must make sure it's safe to release memory
