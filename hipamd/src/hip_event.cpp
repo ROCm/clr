@@ -344,6 +344,9 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
+  if (e->GetCaptureStream() != nullptr) {
+    reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->EraseCaptureEvent(event);
+  }
   delete e;
   HIP_RETURN(hipSuccess);
 }

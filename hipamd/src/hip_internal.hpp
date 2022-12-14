@@ -250,7 +250,7 @@ namespace hip {
     bool originStream_;
     /// Origin sream has no parent. Parent stream for the derived captured streams with event
     /// dependencies
-    hipStream_t parentStream_;
+    hipStream_t parentStream_ = nullptr;
     /// Last graph node captured in the stream
     std::vector<hipGraphNode_t> lastCapturedNodes_;
     /// dependencies removed via API hipStreamUpdateCaptureDependencies
@@ -258,7 +258,7 @@ namespace hip {
     /// Derived streams/Paralell branches from the origin stream
     std::vector<hipStream_t> parallelCaptureStreams_;
     /// Capture events
-    std::vector<hipEvent_t> captureEvents_;
+    std::unordered_set<hipEvent_t> captureEvents_;
     unsigned long long captureID_;
   public:
     Stream(Device* dev, Priority p = Priority::Normal, unsigned int f = 0, bool null_stream = false,
@@ -361,8 +361,20 @@ namespace hip {
     }
     /// Get Capture ID
     unsigned long long GetCaptureID() { return captureID_; }
-    void SetCaptureEvent(hipEvent_t e) { captureEvents_.push_back(e); }
+    void SetCaptureEvent(hipEvent_t e) { captureEvents_.emplace(e); }
+    void EraseCaptureEvent(hipEvent_t e) {
+      auto it = captureEvents_.find(e);
+      if (it != captureEvents_.end()) {
+        captureEvents_.erase(it);
+      }
+    }
     void SetParallelCaptureStream(hipStream_t s) { parallelCaptureStreams_.push_back(s); }
+    void EraseParallelCaptureStream(hipStream_t s) {
+      auto it = std::find(parallelCaptureStreams_.begin(), parallelCaptureStreams_.end(), s);
+      if (it != parallelCaptureStreams_.end()) {
+        parallelCaptureStreams_.erase(it);
+      }
+    }
   };
 
   /// HIP Device class

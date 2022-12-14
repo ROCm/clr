@@ -53,6 +53,7 @@ Stream::~Stream() {
   }
 }
 
+// ================================================================================================
 hipError_t Stream::EndCapture() {
   for (auto event : captureEvents_) {
     hip::Event* e = reinterpret_cast<hip::Event*>(event);
@@ -73,6 +74,7 @@ hipError_t Stream::EndCapture() {
 
   return hipSuccess;
 }
+
 // ================================================================================================
 bool Stream::Create() {
   amd::CommandQueue::Priority p;
@@ -468,7 +470,12 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-
+  if (s->GetCaptureStatus() != hipStreamCaptureStatusNone) {
+    if (s->GetParentStream() != nullptr) {
+      reinterpret_cast<hip::Stream*>(s->GetParentStream())->EraseParallelCaptureStream(stream);
+    }
+    auto error = s->EndCapture();
+  }
   s->GetDevice()->RemoveStreamFromPools(s);
 
   amd::ScopedLock lock(g_captureStreamsLock);
@@ -486,6 +493,7 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data) {
   CallbackData* data =  reinterpret_cast<CallbackData*>(user_data);
   int offset = data->previous_read_index % IPC_SIGNALS_PER_EVENT;
