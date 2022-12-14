@@ -1583,9 +1583,14 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   bool result = false;
   bool rejected = false;
 
+  // Use copyEnginePreference from the copyMetadata if we have HMM enabled as top level may have
+  // more info on where the buffer resides
+  bool useCopyHint = (copyMetadata.copyEnginePreference_ == amd::CopyMetadata::SDMA) &&
+                     dev().info().hmmSupported_;
+
   // Fall into the ROC path for rejected transfers
   if (dev().info().pcie_atomics_ && (setup_.disableCopyBufferRect_ ||
-      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess())) {
+      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess() || useCopyHint)) {
     result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire,
                                            copyMetadata);
 
@@ -1708,7 +1713,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
-  if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize) {
+  if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize && !copyMetadata.isAsync_) {
     if ((srcMemory.owner()->getHostMem() == nullptr) &&
         (srcMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory and force barrier to make sure L2 flush
@@ -1831,7 +1836,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
-  if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize) {
+  if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize && !copyMetadata.isAsync_) {
     if ((dstMemory.owner()->getHostMem() == nullptr) &&
         (dstMemory.owner()->getSvmPtr() != nullptr)) {
       // CPU read ahead, hence release GPU memory
@@ -2186,9 +2191,15 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   asan = true;
 #endif
 #endif
+
+  // Use copyEnginePreference from the copyMetadata if we have HMM enabled as top level may have
+  // more info on where the buffer resides
+  bool useCopyHint = (copyMetadata.copyEnginePreference_ == amd::CopyMetadata::SDMA) &&
+                     dev().info().hmmSupported_;
+
   if (setup_.disableHwlCopyBuffer_ ||
       (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
-       !(p2p || asan) && !ipcShared)) {
+       !(p2p || asan) && !ipcShared && !useCopyHint)) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
