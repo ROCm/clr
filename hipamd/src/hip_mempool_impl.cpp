@@ -37,11 +37,13 @@ void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
 }
 
 // ================================================================================================
-amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic) {
+amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr) {
   amd::Memory* memory = nullptr;
   for (auto it = allocations_.begin(); it != allocations_.end();) {
+    bool check_address = (dptr == nullptr) || (it->first->getSvmPtr() == dptr);
     // Check if size can match and it's safe to use this resource
-    if ((it->first->getSize() >= size) && (it->second.IsSafeFind(stream, opportunistic))) {
+    if ((it->first->getSize() >= size) && check_address &&
+       (it->second.IsSafeFind(stream, opportunistic))) {
       memory = it->first;
       total_size_ -= memory->getSize();
       // Remove found allocation from the map
@@ -147,11 +149,11 @@ void Heap::SetAccess(hip::Device* device, bool enable) {
 }
 
 // ================================================================================================
-void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream) {
+void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   void* dev_ptr = nullptr;
-  amd::Memory* memory = free_heap_.FindMemory(size, stream, Opportunistic());
+  amd::Memory* memory = free_heap_.FindMemory(size, stream, Opportunistic(), dptr);
   if (memory == nullptr) {
     amd::Context* context = device_->asContext();
     const auto& dev_info = context->devices()[0]->info();
@@ -203,20 +205,26 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   MemoryTimestamp ts;
-  // Remove memory object fro the busy pool
+  // Remove memory object from the busy pool
   if (!busy_heap_.RemoveMemory(memory, &ts)) {
     // This pool doesn't contain memory
     return false;
   }
-  // The stream of destruction is a safe stream, because the app must handle sync
-  ts.AddSafeStream(stream);
 
-  // Add a marker to the stream to trace availability of this memory
-  Event* e = new hip::Event(0);
-  if (e != nullptr) {
-    if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
-      ts.SetEvent(e);
+  if (stream != nullptr) {
+    // The stream of destruction is a safe stream, because the app must handle sync
+    ts.AddSafeStream(stream);
+
+    // Add a marker to the stream to trace availability of this memory
+    Event* e = new hip::Event(0);
+    if (e != nullptr) {
+      if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
+        ts.SetEvent(e);
+      }
     }
+  } else {
+    // Assume a safe release from hipFree() if stream is nullptr
+    ts.SetEvent(nullptr);
   }
   free_heap_.AddMemory(memory, ts);
 

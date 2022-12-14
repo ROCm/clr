@@ -18,12 +18,14 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
+#include "top.hpp"
 #include "hip_graph_internal.hpp"
 #include "platform/command.hpp"
 #include "hip_conversions.hpp"
 #include "hip_platform.hpp"
 #include "hip_event.hpp"
-#include "top.hpp"
+#include "hip_mempool_impl.hpp"
+
 
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
@@ -832,6 +834,59 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
   return hipSuccess;
 }
 
+// ================================================================================================
+hipError_t capturehipMallocAsync(hipStream_t stream, hipMemPool_t mem_pool,
+                                 size_t size, void** dev_ptr) {
+  auto s = reinterpret_cast<hip::Stream*>(stream);
+  auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+
+  hipMemAllocNodeParams node_params{};
+
+  node_params.poolProps.allocType = hipMemAllocationTypePinned;
+  node_params.poolProps.location.id = mpool->Device()->deviceId();
+  node_params.poolProps.location.type = hipMemLocationTypeDevice;
+
+  std::vector<hipMemAccessDesc> descs;
+  for (const auto device : g_devices ) {
+    hipMemLocation  location{hipMemLocationTypeDevice, device->deviceId()};
+    hipMemAccessFlags flags{};
+    mpool->GetAccess(device, &flags);
+    descs.push_back({location, flags});
+  }
+
+  node_params.accessDescs = &descs[0];
+  node_params.accessDescCount = descs.size();
+  node_params.bytesize = size;
+
+  auto mem_alloc_node = new hipGraphMemAllocNode(&node_params);
+  auto status = ihipGraphAddNode(mem_alloc_node, s->GetCaptureGraph(),
+      s->GetLastCapturedNodes().data(), s->GetLastCapturedNodes().size());
+  if (status != hipSuccess) {
+    return status;
+  }
+  // Execute the node during capture, so runtime can return a valid device pointer
+  *dev_ptr = mem_alloc_node->Execute(s);
+  s->SetLastCapturedNode(mem_alloc_node);
+
+  return hipSuccess;
+}
+
+// ================================================================================================
+hipError_t capturehipFreeAsync(hipStream_t stream, void* dev_ptr) {
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  auto mem_free_node = new hipGraphMemFreeNode(dev_ptr);
+  auto status = ihipGraphAddNode(mem_free_node, s->GetCaptureGraph(),
+      s->GetLastCapturedNodes().data(), s->GetLastCapturedNodes().size());
+  if (status != hipSuccess) {
+    return status;
+  }
+  // Execute the node during capture, so runtime can release memory into cache
+  mem_free_node->Execute(s);
+  s->SetLastCapturedNode(mem_free_node);
+  return hipSuccess;
+}
+
+// ================================================================================================
 hipError_t hipStreamIsCapturing_common(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus) {
   if (pCaptureStatus == nullptr) {
     return hipErrorInvalidValue;
@@ -893,7 +948,7 @@ hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode
     return hipErrorIllegalState;
   }
 
-  s->SetCaptureGraph(new ihipGraph());
+  s->SetCaptureGraph(new ihipGraph(s->GetDevice()));
   s->SetCaptureId();
   s->SetCaptureMode(mode);
   s->SetOriginStream();
@@ -1006,7 +1061,7 @@ hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags) {
   if ((pGraph == nullptr) || (flags != 0)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  *pGraph = new ihipGraph();
+  *pGraph = new ihipGraph(hip::getCurrentDevice());
   HIP_RETURN(hipSuccess);
 }
 
@@ -1022,7 +1077,6 @@ hipError_t hipGraphDestroy(hipGraph_t graph) {
   delete graph;
   HIP_RETURN(hipSuccess);
 }
-
 
 hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
@@ -2064,6 +2118,61 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
+hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+    const hipGraphNode_t* pDependencies, size_t numDependencies,
+    hipMemAllocNodeParams* pNodeParams) {
+  HIP_INIT_API(hipGraphAddMemAllocNode, pGraphNode, graph,
+      pDependencies, numDependencies, pNodeParams);
+  if (pGraphNode == nullptr || graph == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // Clear the pointer to allocated memory because it may contain stale/uninitialized data
+  pNodeParams->dptr = nullptr;
+  auto mem_alloc_node = new hipGraphMemAllocNode(pNodeParams);
+  *pGraphNode = mem_alloc_node;
+  auto status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  // The address must be provided during the node creation time
+  pNodeParams->dptr = mem_alloc_node->Execute();
+  HIP_RETURN(status);
+}
+
+// ================================================================================================
+hipError_t hipGraphMemAllocNodeGetParams(hipGraphNode_t node, hipMemAllocNodeParams* pNodeParams) {
+  HIP_INIT_API(hipGraphMemAllocNodeGetParams, node, pNodeParams);
+  if (node == nullptr || pNodeParams == nullptr || !hipGraphNode::isNodeValid(node)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphMemAllocNode*>(node)->GetParams(pNodeParams);
+  HIP_RETURN(hipSuccess);
+}
+
+// ================================================================================================
+hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+    const hipGraphNode_t* pDependencies, size_t numDependencies, void* dev_ptr) {
+  HIP_INIT_API(hipGraphAddMemFreeNode, pGraphNode, graph, pDependencies, numDependencies, dev_ptr);
+  if (pGraphNode == nullptr || graph == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || dev_ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  auto mem_free_node = new hipGraphMemFreeNode(dev_ptr);
+  *pGraphNode = mem_free_node;
+  auto status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
+}
+
+// ================================================================================================
+hipError_t hipGraphMemFreeNodeGetParams(hipGraphNode_t node, void* dev_ptr) {
+  HIP_INIT_API(hipGraphMemFreeNodeGetParams, node, dev_ptr);
+  if (node == nullptr || dev_ptr == nullptr || !hipGraphNode::isNodeValid(node)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hipGraphMemFreeNode*>(node)->GetParams(reinterpret_cast<void**>(dev_ptr));
+  HIP_RETURN(hipSuccess);
+}
+
+// ================================================================================================
 hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
   HIP_INIT_API(hipDeviceGetGraphMemAttribute, device, attr, value);
   if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0 || value == nullptr) {

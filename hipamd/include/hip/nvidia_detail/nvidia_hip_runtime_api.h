@@ -1340,6 +1340,10 @@ typedef struct cudaHostNodeParams hipHostNodeParams;
 typedef struct cudaKernelNodeParams hipKernelNodeParams;
 typedef struct cudaMemsetParams hipMemsetParams;
 
+#if CUDA_VERSION >= CUDA_11040
+typedef struct cudaMemAllocNodeParams hipMemAllocNodeParams;
+#endif
+
 typedef enum cudaGraphExecUpdateResult hipGraphExecUpdateResult;
 #define hipGraphExecUpdateSuccess cudaGraphExecUpdateSuccess
 #define hipGraphExecUpdateError cudaGraphExecUpdateError
@@ -3207,6 +3211,30 @@ inline static hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGrap
 inline static hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                                       unsigned long long flags) {
     return hipCUDAErrorTohipError(cudaGraphInstantiateWithFlags(pGraphExec, graph, flags));
+}
+
+inline hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                          const hipGraphNode_t* pDependencies,
+                                          size_t numDependencies,
+                                          hipMemAllocNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphAddMemAllocNode(
+        pGraphNode, graph, pDependencies, numDependencies, pNodeParams));
+}
+
+inline hipError_t hipGraphMemAllocNodeGetParams(hipGraphNode_t node,
+                                                hipMemAllocNodeParams* pNodeParams) {
+    return hipCUDAErrorTohipError(cudaGraphMemAllocNodeGetParams(node, pNodeParams));
+}
+
+inline hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                         const hipGraphNode_t* pDependencies,
+                                         size_t numDependencies, void* dev_ptr) {
+    return hipCUDAErrorTohipError(cudaGraphAddMemFreeNode(
+        pGraphNode, graph, pDependencies, numDependencies, dev_ptr));
+}
+
+inline hipError_t hipGraphMemFreeNodeGetParams(hipGraphNode_t node, void* dev_ptr) {
+    return hipCUDAErrorTohipError(cudaGraphMemFreeNodeGetParams(node, dev_ptr));
 }
 #endif
 inline static hipError_t hipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {

@@ -510,6 +510,10 @@ hip_5.5 {
 global:
     hipModuleLaunchCooperativeKernel;
     hipModuleLaunchCooperativeKernelMultiDevice;
+    hipGraphAddMemAllocNode;
+    hipGraphMemAllocNodeGetParams;
+    hipGraphAddMemFreeNode;
+    hipGraphMemFreeNodeGetParams;
 local:
     *;
 } hip_5.3;
