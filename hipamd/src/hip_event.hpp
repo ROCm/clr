@@ -31,7 +31,7 @@ protected:
  public:
   StreamCallback(void* userData)
       : userData_(userData) {}
-  
+
   virtual void CL_CALLBACK callback() = 0;
 };
 
@@ -93,7 +93,7 @@ class Event {
   /// event recorded on stream where capture is active
   bool onCapture_;
   /// capture stream where event is recorded
-  hipStream_t captureStream_;
+  hipStream_t captureStream_ = nullptr;
   /// Previous captured nodes before event record
   std::vector<hipGraphNode_t> nodesPrevToRecorded_;
 
