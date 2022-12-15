@@ -29,10 +29,13 @@
 #ifndef _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_BFLOAT16_H_
 #define _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_BFLOAT16_H_
 
+#include "host_defines.h"
 #if defined(__HIPCC_RTC__)
     #define __HOST_DEVICE__ __device__
+    #define HIP_OSTREAM __hip_internal::ostream
 #else
     #define __HOST_DEVICE__ __host__ __device__
+    #define HIP_OSTREAM std::ostream
 #endif
 
 #if __cplusplus < 201103L || !defined(__HIPCC__)
@@ -49,7 +52,7 @@ typedef struct
 
 #else // __cplusplus < 201103L || !defined(__HIPCC__)
 
-#include "host_defines.h"
+#include <hip/hip_runtime.h>
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -179,10 +182,12 @@ static_assert(sizeof(hip_bfloat16) == sizeof(hip_bfloat16_public)
                   && offsetof(hip_bfloat16, data) == offsetof(hip_bfloat16_public, data),
               "internal hip_bfloat16 does not match public hip_bfloat16");
 #endif
-inline __hip_internal::ostream& operator<<(__hip_internal::ostream& os, const hip_bfloat16& bf16)
+
+inline HIP_OSTREAM& operator<<(HIP_OSTREAM& os, const hip_bfloat16& bf16)
 {
     return os << bf16;
 }
+
 inline __HOST_DEVICE__ hip_bfloat16 operator+(hip_bfloat16 a)
 {
     return a;
