@@ -230,6 +230,9 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
+  if (!kernel->getDeviceKernel(*device)) {
+    return hipErrorInvalidDevice;
+  }
   // Make sure the launch params are not larger than if specified launch_bounds
   // If it exceeds, then return a failure
   if (blockDimX * blockDimY * blockDimZ >
