@@ -1484,14 +1484,16 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
     case CL_COMMAND_COPY_BUFFER_RECT:
       result = blitMgr().copyBufferRect(*srcMemory, *dstMemory, srcRect, dstRect, size, entire, copyMetadata);
       break;
-    case CL_COMMAND_COPY_IMAGE_TO_BUFFER:
-      result =
-          blitMgr().copyImageToBuffer(*srcMemory, *dstMemory, srcOrigin, dstOrigin, size, entire, 0UL, 0UL, copyMetadata);
+    case CL_COMMAND_COPY_IMAGE_TO_BUFFER: {
+        result =
+          blitMgr().copyImageToBuffer(*srcMemory, *dstMemory, srcOrigin, dstOrigin, size, entire, dstRect.rowPitch_, dstRect.slicePitch_, copyMetadata);
       break;
-    case CL_COMMAND_COPY_BUFFER_TO_IMAGE:
-      result =
-          blitMgr().copyBufferToImage(*srcMemory, *dstMemory, srcOrigin, dstOrigin, size, entire, 0UL, 0UL, copyMetadata);
+    }
+    case CL_COMMAND_COPY_BUFFER_TO_IMAGE: {
+        result =
+          blitMgr().copyBufferToImage(*srcMemory, *dstMemory, srcOrigin, dstOrigin, size, entire, srcRect.rowPitch_, srcRect.slicePitch_, copyMetadata);
       break;
+    }
     case CL_COMMAND_COPY_IMAGE:
       result = blitMgr().copyImage(*srcMemory, *dstMemory, srcOrigin, dstOrigin, size, entire, copyMetadata);
       break;
