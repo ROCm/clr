@@ -1,4 +1,4 @@
-# Copyright (c) 2021 - 2022 Advanced Micro Devices, Inc. All Rights Reserved.
+# Copyright (c) 2021 - 2023 Advanced Micro Devices, Inc. All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
   set(${HIPRTC_DEFINES}
 "#pragma clang diagnostic push\n\
 #pragma clang diagnostic ignored \"-Wreserved-id-macro\"\n\
+#pragma clang diagnostic ignored \"-Wc++98-compat-pedantic\"\n\
 #define __device__ __attribute__((device))\n\
 #define __host__ __attribute__((host))\n\
 #define __global__ __attribute__((global))\n\
@@ -51,7 +52,10 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #pragma clang diagnostic pop\n\
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_H\n\
 #define HIP_INCLUDE_HIP_HIP_FP16_H\n\
+#pragma clang diagnostic push\n\
+#pragma clang diagnostic ignored \"-Wreserved-macro-identifier\"\n\
 #define _HIP_BFLOAT16_H_\n\
+#pragma clang diagnostic pop\n\
 #define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
@@ -63,12 +67,15 @@ if(HIPRTC_ADD_MACROS)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_DEFINES}")
   FILE(READ "${HIPRTC_WARP_HEADER_FILE}" HIPRTC_WARP_HEADER)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_WARP_HEADER}")
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
   FILE(READ "${HIPRTC_COOP_HELPER_FILE}" HIPRTC_COOP_HELPER)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_COOP_HELPER}")
   FILE(READ "${HIPRTC_COOP_HEADER_FILE}" HIPRTC_COOP_HEADER)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_COOP_HEADER}")
   FILE(READ "${HIPRTC_UNSAFE_ATOMICS_FILE}" HIPRTC_UNSAFE_ATOMICS)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_UNSAFE_ATOMICS}")
+#pragma clang diagnostic pop
 endif()
 
 macro(generate_hiprtc_header HiprtcHeader)

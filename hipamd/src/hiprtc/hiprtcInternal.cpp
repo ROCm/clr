@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 - Present Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2022 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -135,6 +135,8 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back("hiprtc_runtime.h");
   compile_options_.push_back("-std=c++14");
   compile_options_.push_back("-nogpuinc");
+  compile_options_.push_back("-Wno-gnu-line-marker");
+  compile_options_.push_back("-Wno-missing-prototypes");
 #ifdef _WIN32
   compile_options_.push_back("-target");
   compile_options_.push_back("x86_64-pc-windows-msvc");
