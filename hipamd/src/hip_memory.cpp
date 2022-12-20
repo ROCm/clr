@@ -2012,7 +2012,7 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
     amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy->dstHost);
     dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
     if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstDevice);
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
     }
   }
 
