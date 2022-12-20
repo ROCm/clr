@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,13 @@ THE SOFTWARE.
  */
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_H
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
+#pragma clang diagnostic ignored "-Wpadded"
 
 #if __cplusplus
 #if !defined(__HIPCC_RTC__)
@@ -69,8 +76,8 @@ class thread_group {
   // only when the group is supposed to contain only the calling the thread
   // (throurh the API - `this_thread()`), and in all other cases, this thread
   // group object is a sub-object of some other derived thread group object
-  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size = (uint64_t)0,
-                                uint64_t mask = (uint64_t)0) {
+  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size = static_cast<uint64_t>(0),
+                                uint64_t mask = static_cast<uint64_t>(0)) {
     _type = type;
     _size = size;
     _mask = mask;
@@ -199,7 +206,7 @@ class thread_block : public thread_group {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
     // Invalid tile size, assert
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
-      __hip_assert(false && "invalid tile size");
+      __hip_assert(false && "invalid tile size")
     }
 
     thread_group tiledGroup = thread_group(internal::cg_tiled_group, tile_size);
@@ -246,7 +253,7 @@ class tiled_group : public thread_group {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
 
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
-      __hip_assert(false && "invalid tile size");
+      __hip_assert(false && "invalid tile size")
     }
 
     if (size() <= tile_size) {
@@ -282,7 +289,6 @@ class tiled_group : public thread_group {
  *  \details Represents a active thread group in a wavefront.
  *           This group type also supports sub-wave level intrinsics.
  */
-
 class coalesced_group : public thread_group {
  private:
   friend __CG_QUALIFIER__ coalesced_group coalesced_threads();
@@ -300,8 +306,8 @@ class coalesced_group : public thread_group {
     // prepare a mask for further partitioning it so that it stays coalesced.
     if (coalesced_info.tiled_info.is_tiled) {
       unsigned int base_offset = (thread_rank() & (~(tile_size - 1)));
-      unsigned int masklength = min((unsigned int)size() - base_offset, tile_size);
-      lane_mask member_mask = (lane_mask)(-1) >> (__AMDGCN_WAVEFRONT_SIZE - masklength);
+      unsigned int masklength = min(static_cast<unsigned int>(size()) - base_offset, tile_size);
+      lane_mask member_mask = static_cast<lane_mask>(-1) >> (__AMDGCN_WAVEFRONT_SIZE - masklength);
 
       member_mask <<= (__lane_id() & ~(tile_size - 1));
       coalesced_group coalesced_tile = coalesced_group(member_mask);
@@ -358,7 +364,7 @@ class coalesced_group : public thread_group {
   __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
     static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
-    srcRank = srcRank % size();
+    srcRank = srcRank % static_cast<int>(size());
 
     int lane = (size() == __AMDGCN_WAVEFRONT_SIZE) ? srcRank
              : (__AMDGCN_WAVEFRONT_SIZE == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
@@ -452,7 +458,7 @@ __CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
       return (static_cast<const coalesced_group*>(this)->thread_rank());
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type");
+      __hip_assert(false && "invalid cooperative group type")
       return -1;
     }
   }
@@ -476,7 +482,7 @@ __CG_QUALIFIER__ bool thread_group::is_valid() const {
       return (static_cast<const coalesced_group*>(this)->is_valid());
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type");
+      __hip_assert(false && "invalid cooperative group type")
       return false;
     }
   }
@@ -505,7 +511,7 @@ __CG_QUALIFIER__ void thread_group::sync() const {
       break;
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type");
+      __hip_assert(false && "invalid cooperative group type")
     }
   }
 }
@@ -697,6 +703,6 @@ __CG_QUALIFIER__ thread_block_tile<size, ParentCGTy> tiled_partition(const Paren
   return impl::tiled_partition_internal<size, ParentCGTy>(g);
 }
 }  // namespace cooperative_groups
-
+#pragma clang diagnostic pop
 #endif  // __cplusplus
 #endif  // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_H

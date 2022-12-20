@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,12 @@ THE SOFTWARE.
 #if !defined(__align__)
 #define __align__(x) __attribute__((aligned(x)))
 #endif
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
 
 #if !defined(__CG_QUALIFIER__)
 #define __CG_QUALIFIER__ __device__ __forceinline__
@@ -92,15 +98,18 @@ typedef enum {
  */
 namespace multi_grid {
 
-__CG_STATIC_QUALIFIER__ uint32_t num_grids() { return (uint32_t)__ockl_multi_grid_num_grids(); }
+__CG_STATIC_QUALIFIER__ uint32_t num_grids() {
+  return static_cast<uint32_t>(__ockl_multi_grid_num_grids()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t grid_rank() { return (uint32_t)__ockl_multi_grid_grid_rank(); }
+__CG_STATIC_QUALIFIER__ uint32_t grid_rank() {
+  return static_cast<uint32_t>(__ockl_multi_grid_grid_rank()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t size() { return (uint32_t)__ockl_multi_grid_size(); }
+__CG_STATIC_QUALIFIER__ uint32_t size() { return static_cast<uint32_t>(__ockl_multi_grid_size()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() { return (uint32_t)__ockl_multi_grid_thread_rank(); }
+__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
+  return static_cast<uint32_t>(__ockl_multi_grid_thread_rank()); }
 
-__CG_STATIC_QUALIFIER__ bool is_valid() { return (bool)__ockl_multi_grid_is_valid(); }
+__CG_STATIC_QUALIFIER__ bool is_valid() { return static_cast<bool>(__ockl_multi_grid_is_valid()); }
 
 __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
 
@@ -112,28 +121,28 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
 namespace grid {
 
 __CG_STATIC_QUALIFIER__ uint32_t size() {
-  return (uint32_t)((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
+  return static_cast<uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
                     (blockDim.x * gridDim.x));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
   // Compute global id of the workgroup to which the current thread belongs to
-  uint32_t blkIdx = (uint32_t)((blockIdx.z * gridDim.y * gridDim.x) +
+  uint32_t blkIdx = static_cast<uint32_t>((blockIdx.z * gridDim.y * gridDim.x) +
                                (blockIdx.y * gridDim.x) + (blockIdx.x));
 
   // Compute total number of threads being passed to reach current workgroup
   // within grid
   uint32_t num_threads_till_current_workgroup =
-      (uint32_t)(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
+      static_cast<uint32_t>(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
 
   // Compute thread local rank within current workgroup
-  uint32_t local_thread_rank = (uint32_t)((threadIdx.z * blockDim.y * blockDim.x) +
+  uint32_t local_thread_rank = static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                                           (threadIdx.y * blockDim.x) + (threadIdx.x));
 
   return (num_threads_till_current_workgroup + local_thread_rank);
 }
 
-__CG_STATIC_QUALIFIER__ bool is_valid() { return (bool)__ockl_grid_is_valid(); }
+__CG_STATIC_QUALIFIER__ bool is_valid() { return static_cast<bool>(__ockl_grid_is_valid()); }
 
 __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 
@@ -146,19 +155,21 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 namespace workgroup {
 
 __CG_STATIC_QUALIFIER__ dim3 group_index() {
-  return (dim3((uint32_t)blockIdx.x, (uint32_t)blockIdx.y, (uint32_t)blockIdx.z));
+  return (dim3(static_cast<uint32_t>(blockIdx.x), static_cast<uint32_t>(blockIdx.y),
+               static_cast<uint32_t>(blockIdx.z)));
 }
 
 __CG_STATIC_QUALIFIER__ dim3 thread_index() {
-  return (dim3((uint32_t)threadIdx.x, (uint32_t)threadIdx.y, (uint32_t)threadIdx.z));
+  return (dim3(static_cast<uint32_t>(threadIdx.x), static_cast<uint32_t>(threadIdx.y),
+               static_cast<uint32_t>(threadIdx.z)));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t size() {
-  return ((uint32_t)(blockDim.x * blockDim.y * blockDim.z));
+  return (static_cast<uint32_t>(blockDim.x * blockDim.y * blockDim.z));
 }
 
 __CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return ((uint32_t)((threadIdx.z * blockDim.y * blockDim.x) +
+  return (static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                      (threadIdx.y * blockDim.x) + (threadIdx.x)));
 }
 
@@ -187,8 +198,8 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 //
 // For each thread, this function returns the number of active threads which
 // have i-th bit of x set and come before the current thread.
-__device__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
-  int counter=0;
+__CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
+  unsigned int counter=0;
     #if __AMDGCN_WAVEFRONT_SIZE == 32
       counter = __builtin_amdgcn_mbcnt_lo(x, add);
     #else
@@ -206,5 +217,6 @@ __device__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
 
 }  // namespace cooperative_groups
 
+#pragma clang diagnostic pop
 #endif  // __cplusplus
 #endif  // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_HELPER_H
