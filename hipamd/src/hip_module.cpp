@@ -114,7 +114,7 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
 hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunction_t hfunc) {
   HIP_INIT_API(hipFuncGetAttribute, value, attrib, hfunc);
 
-  if ((value == nullptr) || (hfunc == nullptr)) {
+  if ((value == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 

@@ -860,8 +860,11 @@ hipError_t PlatformState::getStatFunc(hipFunction_t* hfunc, const void* hostFunc
 
 hipError_t PlatformState::getStatFuncAttr(hipFuncAttributes* func_attr, const void* hostFunction,
                                           int deviceId) {
-  if (func_attr == nullptr || hostFunction == nullptr) {
+  if (func_attr == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (hostFunction == nullptr) {
+    return hipErrorInvalidDeviceFunction;
   }
   return statCO_.getStatFuncAttr(func_attr, hostFunction, deviceId);
 }
