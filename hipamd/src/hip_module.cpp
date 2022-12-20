@@ -496,6 +496,11 @@ extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction, dim3 gridDim,
                                          hipEvent_t startEvent, hipEvent_t stopEvent, int flags) {
   HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes,
                stream, startEvent, stopEvent, flags);
+
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   STREAM_CAPTURE(hipExtLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes,
                  startEvent, stopEvent, flags);
   HIP_RETURN(ihipLaunchKernel(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream,
