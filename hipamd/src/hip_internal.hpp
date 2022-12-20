@@ -516,6 +516,7 @@ namespace hip {
   int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid
   extern bool isValid(hipStream_t& stream);
+  extern bool isValid(hipEvent_t event);
   extern amd::Monitor hipArraySetLock;
   extern std::unordered_set<hipArray*> hipArraySet;
 }; // namespace hip
