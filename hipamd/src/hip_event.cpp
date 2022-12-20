@@ -260,6 +260,21 @@ hipError_t Event::addMarker(hipStream_t stream, amd::Command* command, bool reco
   return status;
 }
 
+// ================================================================================================
+bool isValid(hipEvent_t event) {
+  // NULL event is always valid
+  if (event == nullptr) {
+    return true;
+  }
+
+  amd::ScopedLock lock(eventSetLock);
+  if (eventSet.find(event) == eventSet.end()) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace hip
 // ================================================================================================
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
