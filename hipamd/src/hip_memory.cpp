@@ -2748,6 +2748,11 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
   if (pNodeParams == nullptr) {
     return hipErrorInvalidValue;
   }
+
+  if (pNodeParams->width == 0) {
+    return hipErrorInvalidValue;
+  }
+
   if (pNodeParams->elementSize != 1 && pNodeParams->elementSize != 2 && pNodeParams->elementSize != 4) {
     return hipErrorInvalidValue;
   }
