@@ -1764,7 +1764,8 @@ hipError_t ihipMemcpyHtoDCommand(amd::Command*& command, const void* srcHost, vo
 
 hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
-                          size_t srcSlicePitch, size_t dstRowPitch, size_t dstSlicePitch) {
+                          size_t srcSlicePitch, size_t dstRowPitch, size_t dstSlicePitch,
+                          amd::HostQueue* queue) {
   if ((srcHost == nullptr) || (dstHost == nullptr)) {
     return hipErrorInvalidValue;
   }
@@ -1779,6 +1780,10 @@ hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOr
   if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
                       dstRowPitch, dstSlicePitch)) {
     return hipErrorInvalidValue;
+  }
+
+  if (queue) {
+    queue->finish();
   }
 
   for (size_t slice = 0; slice < copyRegion[2]; slice++) {
@@ -2126,14 +2131,22 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
     amd::Coord3D dstOrigin = {pCopy->dstXInBytes, pCopy->dstY, pCopy->dstZ};
     amd::Coord3D copyRegion = {pCopy->WidthInBytes, (pCopy->Height != 0) ? pCopy->Height : 1,
                                (pCopy->Depth != 0) ? pCopy->Depth : 1};
+
     // Host to Host.
     return ihipMemcpyHtoH(pCopy->srcHost, pCopy->dstHost, srcOrigin, dstOrigin, copyRegion,
                           pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight, pCopy->dstPitch,
-                          pCopy->dstPitch * pCopy->dstHeight);
+                          pCopy->dstPitch * pCopy->dstHeight, hip::getQueue(stream));
   } else {
     amd::Command* command;
     status = ihipGetMemcpyParam3DCommand(command, pCopy, hip::getQueue(stream));
     if (status != hipSuccess) return status;
+
+    // Transfers from device memory to pageable host memory and transfers from any host memory to any host memory
+    // are synchronous with respect to the host.
+    if (dstMemoryType == hipMemoryTypeHost ||
+    ((pCopy->srcMemoryType == hipMemoryTypeHost) && (pCopy->dstMemoryType == hipMemoryTypeHost))) {
+         isAsync = false;
+    }
     return ihipMemcpyCmdEnqueue(command, isAsync);
   }
 }
