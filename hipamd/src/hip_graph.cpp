@@ -153,7 +153,7 @@ hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction
           "[hipGraph] current capture node kernel launch on stream : %p", stream);
 
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipKernelNodeParams nodeParams;
@@ -182,7 +182,7 @@ hipError_t ihipExtLaunchKernel(hipStream_t stream, hipFunction_t f, uint32_t glo
                                void** extra, hipEvent_t startEvent, hipEvent_t stopEvent,
                                uint32_t flags) {
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
 
@@ -258,7 +258,7 @@ hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, u
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node module launch kernel launch on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipKernelNodeParams nodeParams;
@@ -284,7 +284,7 @@ hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*&
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy3D on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -303,8 +303,11 @@ hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpit
                                    hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy2D on stream : %p",
           stream);
-  if (dst == nullptr || src == nullptr || !hip::isValid(stream)) {
+  if (dst == nullptr || src == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -338,8 +341,11 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
                                             hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr || !hip::isValid(stream)) {
+  if (src == nullptr || dst == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -370,8 +376,11 @@ hipError_t capturehipMemcpyFromArrayAsync(hipStream_t& stream, void*& dst, hipAr
                                           hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr || !hip::isValid(stream)) {
+  if (src == nullptr || dst == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -405,8 +414,11 @@ hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, s
                                           size_t& width, size_t& height, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr || !hip::isValid(stream)) {
+  if (src == nullptr || dst == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -437,8 +449,11 @@ hipError_t capturehipMemcpyToArrayAsync(hipStream_t& stream, hipArray_t& dst, si
                                         hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr || !hip::isValid(stream)) {
+  if (src == nullptr || dst == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -471,7 +486,7 @@ hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -519,8 +534,11 @@ hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArr
                                      size_t& srcOffset, size_t& ByteCount) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
-  if (srcArray == nullptr || dstHost == nullptr || !hip::isValid(stream)) {
+  if (srcArray == nullptr || dstHost == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -544,8 +562,11 @@ hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, s
                                      const void*& srcHost, size_t& ByteCount) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyParam2D on stream : %p", stream);
-  if (dstArray == nullptr || srcHost == nullptr || !hip::isValid(stream)) {
+  if (dstArray == nullptr || srcHost == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hipGraphNode_t pGraphNode;
@@ -568,7 +589,7 @@ hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, s
 hipError_t capturehipMemcpy(hipStream_t stream, void* dst, const void* src, size_t sizeBytes,
                             hipMemcpyKind kind) {
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   std::vector<hipGraphNode_t> pDependencies = s->GetLastCapturedNodes();
@@ -592,7 +613,7 @@ hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& s
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memcpy1D on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return capturehipMemcpy(stream, dst, src, sizeBytes, kind);
 }
@@ -602,7 +623,7 @@ hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDev
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node MemcpyHtoD on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return capturehipMemcpy(stream, dstDevice, srcHost, ByteCount, kind);
 }
@@ -613,7 +634,7 @@ hipError_t capturehipMemcpyDtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDev
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node hipMemcpyDtoD on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return capturehipMemcpy(stream, dstDevice, srcDevice, ByteCount, kind);
 }
@@ -623,7 +644,7 @@ hipError_t capturehipMemcpyDtoHAsync(hipStream_t& stream, void*& dstHost, hipDev
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node hipMemcpyDtoH on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return capturehipMemcpy(stream, dstHost, srcDevice, ByteCount, kind);
 }
@@ -633,7 +654,7 @@ hipError_t capturehipMemcpyFromSymbolAsync(hipStream_t& stream, void*& dst, cons
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyFromSymbolNode on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
@@ -659,7 +680,7 @@ hipError_t capturehipMemcpyToSymbolAsync(hipStream_t& stream, const void*& symbo
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] current capture node MemcpyToSymbolNode on stream : %p", stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   size_t sym_size = 0;
   hipDeviceptr_t device_ptr = nullptr;
@@ -683,7 +704,7 @@ hipError_t capturehipMemsetAsync(hipStream_t& stream, void*& dst, int& value, si
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memset1D on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hipMemsetParams memsetParams = {0};
   memsetParams.dst = dst;
@@ -710,7 +731,7 @@ hipError_t capturehipMemset2DAsync(hipStream_t& stream, void*& dst, size_t& pitc
           stream);
   hipMemsetParams memsetParams = {0};
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   memsetParams.dst = dst;
   memsetParams.value = value;
@@ -734,7 +755,7 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memset3D on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return hipSuccess;
 }
@@ -746,7 +767,7 @@ hipError_t capturehipEventRecord(hipStream_t& stream, hipEvent_t& event) {
     return hipErrorInvalidHandle;
   }
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   e->StartCapture(stream);
@@ -764,7 +785,7 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
           "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
           event);
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
@@ -786,8 +807,11 @@ hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, uns
 hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*& userData) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node Memset2D on stream : %p",
           stream);
-  if (fn == nullptr || !hip::isValid(stream)) {
+  if (fn == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hipHostNodeParams hostParams = {0};
   hostParams.fn = fn;
@@ -805,8 +829,11 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
 }
 
 hipError_t hipStreamIsCapturing_common(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus) {
-  if (pCaptureStatus == nullptr || !hip::isValid(stream)) {
+  if (pCaptureStatus == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
     return hipErrorStreamCaptureImplicit;
@@ -847,7 +874,7 @@ hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
 
 hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode mode) {
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   // capture cannot be initiated on legacy stream
   if (stream == nullptr) {
@@ -1161,14 +1188,17 @@ hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
 
 hipError_t ihipGraphLaunch(hipGraphExec_t graphExec, hipStream_t stream) {
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   return graphExec->Run(stream);
 }
 
 hipError_t hipGraphLaunch_common(hipGraphExec_t graphExec, hipStream_t stream) {
-  if (graphExec == nullptr || !hip::isValid(stream) || !hipGraphExec::isGraphExecValid(graphExec)) {
+  if (graphExec == nullptr || !hipGraphExec::isGraphExecValid(graphExec)) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   return ihipGraphLaunch(graphExec, stream);
 }
@@ -1453,8 +1483,11 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
 hipError_t hipStreamGetCaptureInfo_common(hipStream_t stream,
                                           hipStreamCaptureStatus* pCaptureStatus,
                                           unsigned long long* pId) {
-  if (pCaptureStatus == nullptr || !hip::isValid(stream)) {
+  if (pCaptureStatus == nullptr) {
     return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
     return hipErrorStreamCaptureImplicit;
@@ -1500,7 +1533,7 @@ hipError_t hipStreamGetCaptureInfo_v2_common(hipStream_t stream,
     return hipSuccess;
   }
   if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   *captureStatus_out = s->GetCaptureStatus();
@@ -1547,7 +1580,7 @@ hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t
                                               size_t numDependencies, unsigned int flags) {
   HIP_INIT_API(hipStreamUpdateCaptureDependencies, stream, dependencies, numDependencies, flags);
   if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
@@ -2226,8 +2259,11 @@ hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
 
 hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   HIP_INIT_API(hipGraphUpload, graphExec, stream);
-  if (graphExec == nullptr || !hip::isValid(stream)) {
+  if (graphExec == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   // TODO: stream is known before launch, do preperatory work with graph optimizations. pre-allocate
   // memory for memAlloc nodes if any when support is added with mempool feature
