@@ -2496,6 +2496,11 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
       (hip::getElementSize(p->dstArray) != hip::getElementSize(p->dstArray))) {
     return hipErrorInvalidValue;
   }
+
+  // Pitch should not be less than width for both src and dst.
+  if (p->srcPtr.pitch < p->srcPtr.xsize || p->dstPtr.pitch < p->dstPtr.xsize) {
+    return hipErrorInvalidPitchValue;
+  }
   return hipSuccess;
 }
 
