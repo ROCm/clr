@@ -1967,6 +1967,8 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
         opts << "-D"
           << "CL_DEVICE_MAX_GLOBAL_VARIABLE_SIZE=" << device().info().maxGlobalVariableSize_;
         optionsVec.push_back(opts.str());
+      } else {
+        options->oVariables->UniformWorkGroupSize = true;
       }
 
     if (!device().settings().useLightning_) {
