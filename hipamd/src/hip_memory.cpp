@@ -150,14 +150,16 @@ hipError_t hipExternalMemoryGetMappedBuffer(
     const hipExternalMemoryBufferDesc *bufferDesc) {
   HIP_INIT_API(hipExternalMemoryGetMappedBuffer, devPtr, extMem, bufferDesc);
 
-  if (extMem == nullptr) {
+  if (devPtr == nullptr || extMem == nullptr || bufferDesc == nullptr || bufferDesc->flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   amd::BufferVk *buf = reinterpret_cast<amd::BufferVk*>(extMem);
   const device::Memory* devMem = buf->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
-  if (devMem != nullptr) {
-    *devPtr = reinterpret_cast<void*>(devMem->virtualAddress());
+
+  if (devMem == nullptr || ((bufferDesc->offset + bufferDesc->size) > devMem->size())) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
+  *devPtr = reinterpret_cast<void*>(devMem->virtualAddress() + bufferDesc->offset);
 
   HIP_RETURN(hipSuccess);
 }
