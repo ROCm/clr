@@ -53,7 +53,7 @@ const static char* strKernel =
     "}                                                                      \n";
 
 OCLPartialWrkgrp::OCLPartialWrkgrp() {
-  _numSubTests = 2;
+  _numSubTests = 3;
   isOCL2_ = true;
 }
 
@@ -70,7 +70,7 @@ void OCLPartialWrkgrp::open(unsigned int test, char* units, double& conversion,
   _wrapper->clGetDeviceInfo(devices_[deviceId], CL_DEVICE_VERSION,
                             sizeof(version), version, NULL);
 
-  if (_openTest == 1 && strstr(version, "OpenCL 2.0") == NULL) {
+  if (_openTest != 0 && strstr(version, "OpenCL 2.0") == NULL) {
     isOCL2_ = false;
     return;
   }
@@ -88,6 +88,11 @@ void OCLPartialWrkgrp::open(unsigned int test, char* units, double& conversion,
       error_ = _wrapper->clBuildProgram(
           program_, 1, &devices_[deviceId],
           "-cl-uniform-work-group-size -cl-std=CL2.0", NULL, NULL);
+      break;
+    case 2:
+      error_ = _wrapper->clBuildProgram(
+          program_, 1, &devices_[deviceId],
+          "-cl-std=CL2.0", NULL, NULL);
       break;
     default:
       CHECK_RESULT(false, "Invalid test number > _numSubTests");
@@ -143,8 +148,9 @@ void OCLPartialWrkgrp::run(void) {
                                             NULL, gws, lws, 0, NULL, NULL);
 
   switch (_openTest) {
-    case 0:
+    case 2:
       if (error_ != CL_SUCCESS) {
+        CHECK_RESULT(false, "clEnqueueNDRangeKernel() failed");
         return;
       }
       error_ = _wrapper->clEnqueueReadBuffer(
@@ -161,9 +167,11 @@ void OCLPartialWrkgrp::run(void) {
       }
       break;
     case 1:
+    case 0:
       CHECK_RESULT((error_ != CL_INVALID_WORK_GROUP_SIZE),
                    "clEnqueueNDRangeKernel(): "
                    "Expected to fail for non-uniform work group sizes!");
+      break;
     default:
       CHECK_RESULT(false, "Invalid test number > _numSubTests");
       return;
@@ -194,8 +202,9 @@ void OCLPartialWrkgrp::run(void) {
                                             NULL, gws2, lws2, 0, NULL, NULL);
 
   switch (_openTest) {
-    case 0:
+    case 2:
       if (error_ != CL_SUCCESS) {
+        CHECK_RESULT(false, "clEnqueueNDRangeKernel() failed");
         return;
       }
       error_ = _wrapper->clEnqueueReadBuffer(
@@ -217,6 +226,7 @@ void OCLPartialWrkgrp::run(void) {
       }
       break;
     case 1:
+    case 0:
       CHECK_RESULT((error_ != CL_INVALID_WORK_GROUP_SIZE),
                    "clEnqueueNDRangeKernel(): "
                    "Expected to fail for non-uniform work group sizes!");
@@ -250,8 +260,9 @@ void OCLPartialWrkgrp::run(void) {
   error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 3,
                                             NULL, gws3, lws3, 0, NULL, NULL);
   switch (_openTest) {
-    case 0:
+    case 2:
       if (error_ != CL_SUCCESS) {
+        CHECK_RESULT(false, "clEnqueueNDRangeKernel() failed");
         return;
       }
       error_ = _wrapper->clEnqueueReadBuffer(
@@ -277,6 +288,7 @@ void OCLPartialWrkgrp::run(void) {
       }
       break;
     case 1:
+    case 0:
       CHECK_RESULT((error_ != CL_INVALID_WORK_GROUP_SIZE),
                    "clEnqueueNDRangeKernel(): "
                    "Expected fail for non-uniform work group sizes!");
