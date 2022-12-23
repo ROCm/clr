@@ -35,7 +35,4 @@ THE SOFTWARE.
 __device__
 unsigned __llvm_amdgcn_groupstaticsize() __asm("llvm.amdgcn.groupstaticsize");
 
-__device__
-int __llvm_amdgcn_ds_swizzle(int index, int pattern) __asm("llvm.amdgcn.ds.swizzle");
-
 #endif
