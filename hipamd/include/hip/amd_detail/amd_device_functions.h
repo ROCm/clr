@@ -33,7 +33,6 @@ THE SOFTWARE.
 
 #include <hip/hip_vector_types.h>
 #include <hip/amd_detail/device_library_decls.h>
-#include <hip/amd_detail/llvm_intrinsics.h>
 
 #if __HIP_CLANG_ONLY__
 extern "C" __device__ int printf(const char *fmt, ...);
@@ -758,7 +757,7 @@ inline
 void* __get_dynamicgroupbaseptr()
 {
     // Get group segment base pointer.
-    return (char*)__local_to_generic((void*)__to_local(__llvm_amdgcn_groupstaticsize()));
+    return (char*)__local_to_generic((void*)__to_local(__builtin_amdgcn_groupstaticsize()));
 }
 #else
 __device__
