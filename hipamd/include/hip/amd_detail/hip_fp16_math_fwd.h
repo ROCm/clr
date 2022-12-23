@@ -73,11 +73,6 @@ extern "C"
     __device__ __attribute__((pure)) __2f16 __ocml_log_2f16(__2f16);
     __device__ __attribute__((pure)) __2f16 __ocml_log10_2f16(__2f16);
     __device__ __attribute__((pure)) __2f16 __ocml_log2_2f16(__2f16);
-    __device__ inline
-    __2f16 __llvm_amdgcn_rcp_2f16(__2f16 x) // Not currently exposed by ROCDL.
-    {
-        return __2f16{__llvm_amdgcn_rcp_f16(x.x), __llvm_amdgcn_rcp_f16(x.y)};
-    }
     __device__ __attribute__((const)) __2f16 __ocml_rint_2f16(__2f16);
     __device__ __attribute__((const)) __2f16 __ocml_rsqrt_2f16(__2f16);
     __device__ __2f16 __ocml_sin_2f16(__2f16);

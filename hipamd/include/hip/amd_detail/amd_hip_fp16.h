@@ -1672,7 +1672,10 @@ THE SOFTWARE.
             __half2 h2log10(__half2 x) { return __ocml_log10_2f16(x); }
             inline
             __HOST_DEVICE__
-            __half2 h2rcp(__half2 x) { return __llvm_amdgcn_rcp_2f16(x); }
+            __half2 h2rcp(__half2 x) {
+                return _Float16_2{__llvm_amdgcn_rcp_f16(x.x),
+                                  __llvm_amdgcn_rcp_f16(x.y)};
+            }
             inline
             __HOST_DEVICE__
             __half2 h2rsqrt(__half2 x) { return __ocml_rsqrt_2f16(x); }
