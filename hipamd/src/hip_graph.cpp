@@ -134,7 +134,10 @@ hipError_t ihipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
         ihipMemset_validate(pMemsetParams->dst, pMemsetParams->value, pMemsetParams->elementSize,
                             pMemsetParams->width * pMemsetParams->elementSize);
   } else {
-    auto sizeBytes = pMemsetParams->width * pMemsetParams->height * 1;
+    if (pMemsetParams->pitch < (pMemsetParams->width * pMemsetParams->elementSize)) {
+      return hipErrorInvalidValue;
+    }
+    auto sizeBytes = pMemsetParams->width * pMemsetParams->height * pMemsetParams->elementSize * 1;
     status = ihipMemset3D_validate(
         {pMemsetParams->dst, pMemsetParams->pitch, pMemsetParams->width, pMemsetParams->height},
         pMemsetParams->value, {pMemsetParams->width, pMemsetParams->height, 1}, sizeBytes);
@@ -1362,6 +1365,9 @@ hipError_t hipGraphMemsetNodeSetParams(hipGraphNode_t node, const hipMemsetParam
   HIP_INIT_API(hipGraphMemsetNodeSetParams, node, pNodeParams);
   if (node == nullptr || pNodeParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (pNodeParams->height > 1 && pNodeParams->pitch < (pNodeParams->width * pNodeParams->elementSize)) {
+    return hipErrorInvalidValue;
   }
   HIP_RETURN(reinterpret_cast<hipGraphMemsetNode*>(node)->SetParams(pNodeParams));
 }
