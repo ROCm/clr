@@ -34,7 +34,7 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
                              size_t valueSize, size_t sizeBytes, amd::HostQueue* queue);
 
 hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedPtr pitchedDevPtr,
-                               int value, hipExtent extent, amd::HostQueue* queue);
+                               int value, hipExtent extent, amd::HostQueue* queue, size_t elementSize = 1);
 
 hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset,
                                      size_t& sym_size, hipDeviceptr_t& device_ptr);

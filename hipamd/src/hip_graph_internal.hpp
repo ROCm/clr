@@ -1438,7 +1438,7 @@ class hipGraphMemsetNode : public hipGraphNode {
     if (pMemsetParams_->height == 1) {
       sizeBytes = pMemsetParams_->width * pMemsetParams_->elementSize;
     } else {
-      sizeBytes = pMemsetParams_->width * pMemsetParams_->height;
+      sizeBytes = pMemsetParams_->width * pMemsetParams_->height * pMemsetParams_->elementSize;
     }
   }
 
@@ -1468,7 +1468,7 @@ class hipGraphMemsetNode : public hipGraphNode {
       if (pMemsetParams_->height == 1) {
         sizeBytes = pMemsetParams_->width * pMemsetParams_->elementSize;
       } else {
-        sizeBytes = pMemsetParams_->width * pMemsetParams_->height;
+        sizeBytes = pMemsetParams_->width * pMemsetParams_->height * pMemsetParams_->elementSize;
       }
       label = std::to_string(GetID()) + "\n" + label_ + "\n(" +
           std::to_string(pMemsetParams_->value) + "," + std::to_string(sizeBytes) + ")";
@@ -1496,9 +1496,9 @@ class hipGraphMemsetNode : public hipGraphNode {
     } else {
       hipError_t status = ihipMemset3DCommand(
           commands_,
-          {pMemsetParams_->dst, pMemsetParams_->pitch, pMemsetParams_->width,
+          {pMemsetParams_->dst, pMemsetParams_->pitch, pMemsetParams_->width * pMemsetParams_->elementSize,
            pMemsetParams_->height},
-          pMemsetParams_->value, {pMemsetParams_->width, pMemsetParams_->height, 1}, queue);
+          pMemsetParams_->value, {pMemsetParams_->width * pMemsetParams_->elementSize, pMemsetParams_->height, 1}, queue, pMemsetParams_->elementSize);
     }
     return status;
   }
@@ -1520,8 +1520,8 @@ class hipGraphMemsetNode : public hipGraphNode {
     } else {
       sizeBytes = params->width * params->height * 1;
       hip_error =
-          ihipMemset3D_validate({params->dst, params->pitch, params->width, params->height},
-                                params->value, {params->width, params->height, 1}, sizeBytes);
+          ihipMemset3D_validate({params->dst, params->pitch, params->width * params->elementSize, params->height},
+                                params->value, {params->width * params->elementSize, params->height, 1}, sizeBytes);
     }
     if (hip_error != hipSuccess) {
       return hip_error;
