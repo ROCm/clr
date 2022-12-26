@@ -682,7 +682,7 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
   HIP_INIT_API(hipModuleGetTexRef, texRef, hmod, name);
 
   /* input args check */
-  if ((texRef == nullptr) || (name == nullptr)) {
+  if ((texRef == nullptr) || (name == nullptr) || (strlen(name) == 0)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   if (hmod == nullptr) {
