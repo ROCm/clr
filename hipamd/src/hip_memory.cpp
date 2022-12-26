@@ -2920,12 +2920,12 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
 }
 
 hipError_t ihipMemset3DCommand(std::vector<amd::Command*> &commands, hipPitchedPtr pitchedDevPtr,
-                               int value, hipExtent extent, amd::HostQueue* queue) {
+                               int value, hipExtent extent, amd::HostQueue* queue, size_t elementSize = 1) {
   size_t offset = 0;
   auto sizeBytes = extent.width * extent.height * extent.depth;
   amd::Memory* memory = getMemoryObject(pitchedDevPtr.ptr, offset);
   if (pitchedDevPtr.pitch == extent.width) {
-    return ihipMemsetCommand(commands, pitchedDevPtr.ptr, value, sizeof(int8_t),
+    return ihipMemsetCommand(commands, pitchedDevPtr.ptr, value, elementSize,
                                   static_cast<size_t>(sizeBytes), queue);
   }
   // Workaround for cases when pitch > row until fill kernel will be updated to support pitch.
@@ -2943,7 +2943,7 @@ hipError_t ihipMemset3DCommand(std::vector<amd::Command*> &commands, hipPitchedP
   amd::FillMemoryCommand* command;
   command = new amd::FillMemoryCommand(
       *queue, CL_COMMAND_FILL_BUFFER, amd::Command::EventWaitList{}, *memory->asBuffer(),
-      &value, sizeof(int8_t), origin, region, surface);
+      &value, elementSize, origin, region, surface);
   commands.push_back(command);
   return hipSuccess;
 }
