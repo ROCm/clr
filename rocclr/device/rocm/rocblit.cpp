@@ -2093,8 +2093,8 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
     return result;
   } else {
     uint fillType = FillBufferAligned2D;
-    uint64_t fillSizeX = size[0]/patternSize;
-    uint64_t fillSizeY = size[1]/patternSize;
+    uint64_t fillSizeX = (size[0]/patternSize) == 0 ? 1 : (size[0]/patternSize);
+    uint64_t fillSizeY = size[1];
 
     size_t globalWorkOffset[3] = {0, 0, 0};
     size_t globalWorkSize[3] = {amd::alignUp(fillSizeX, 16),
@@ -2145,6 +2145,7 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
 
     patternSize/= alignment;
     mem_origin /= alignment;
+    pitch /= alignment;
 
     setArgument(kernels_[fillType], 5, sizeof(uint32_t), &patternSize);
     setArgument(kernels_[fillType], 6, sizeof(mem_origin), &mem_origin);
