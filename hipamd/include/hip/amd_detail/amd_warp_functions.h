@@ -24,7 +24,17 @@ THE SOFTWARE.
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
 #if !defined(__HIPCC_RTC__)
-#include "hip/hip_fp16.h"
+  #if !defined(HIP_NO_HALF)
+    #define HIP_NO_HALF
+  #elif
+    #define ALREADY_DEFINED
+  #endif
+
+  #include "hip/hip_fp16.h"
+
+  #if !defined(ALREADY_DEFINED)
+    #undef HIP_NO_HALF
+  #endif
 #endif
 
 static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
