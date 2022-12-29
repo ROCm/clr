@@ -53,6 +53,8 @@ const char* hiprtcGetErrorString(hiprtcResult x) {
       return "HIPRTC_ERROR_NAME_EXPRESSION_NOT_VALID";
     case HIPRTC_ERROR_INTERNAL_ERROR:
       return "HIPRTC_ERROR_INTERNAL_ERROR";
+    case HIPRTC_ERROR_LINKING:
+      return "HIPRTC_ERROR_LINKING";
     default:
       LogPrintfError("Invalid HIPRTC error code: %d \n", x);
       return nullptr;
