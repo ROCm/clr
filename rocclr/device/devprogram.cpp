@@ -385,7 +385,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     std::string dumpFileName;
-    if (requiredDump || amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+    if (requiredDump && amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
       dumpFileName = amdOptions->getDumpFileName("_linked.bc");
     }
     status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData,
