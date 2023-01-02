@@ -321,7 +321,18 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   return hipSuccess;
 }
-
+bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(src, sOffset);
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+  if (src && dst && srcMemory == nullptr && dstMemory == nullptr) {
+    if (kind != hipMemcpyHostToHost && kind != hipMemcpyDefault) {
+      return false;
+    }
+  }
+  return true;
+}
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
                                       hipMemcpyKind kind) {
   if (dst == nullptr || src == nullptr) {
@@ -335,6 +346,10 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   // Return error if sizeBytes passed to memcpy is more than the actual size allocated
   if ((dstMemory && sizeBytes > (dstMemory->getSize() - dOffset)) ||
       (srcMemory && sizeBytes > (srcMemory->getSize() - sOffset))) {
+    return hipErrorInvalidValue;
+  }
+  //If src and dst ptr are null then kind must be either h2h or def.
+  if (!IsHtoHMemcpyValid(dst, src, kind)) {
     return hipErrorInvalidValue;
   }
   return hipSuccess;
@@ -431,7 +446,22 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   }
   return hipSuccess;
 }
-
+bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind) {
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(src, sOffset);
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+  if (srcMemory == nullptr && dstMemory == nullptr) {
+    if (kind == hipMemcpyHostToHost || kind == hipMemcpyDefault) {
+      return true;
+    }
+  }
+  return false;
+}
+void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, amd::HostQueue& queue) {
+  queue.finish();
+  memcpy(dst, src, sizeBytes);
+}
 // ================================================================================================
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                       amd::HostQueue& queue, bool isAsync = false) {
@@ -451,14 +481,9 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
-  if ((srcMemory == nullptr) && (dstMemory == nullptr)) {
-    if ((kind == hipMemcpyHostToHost) || (kind == hipMemcpyDefault)) {
-      queue.finish();
-      memcpy(dst, src, sizeBytes);
-      return hipSuccess;
-    } else {
-      return hipErrorInvalidValue;
-    }
+  if (srcMemory == nullptr && dstMemory == nullptr) {
+    ihipHtoHMemcpy(dst, src, sizeBytes, queue);
+    return hipSuccess;
   } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
     isAsync = false;
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
@@ -2631,7 +2656,10 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   if (p->kind < hipMemcpyHostToHost || p->kind > hipMemcpyDefault) {
     return hipErrorInvalidMemcpyDirection;
   }
-
+  //If src and dst ptr are null then kind must be either h2h or def.
+  if (!IsHtoHMemcpyValid(p->dstPtr.ptr, p->srcPtr.ptr, p->kind)) {
+    return hipErrorInvalidValue;
+  }
   return hipSuccess;
 }
 

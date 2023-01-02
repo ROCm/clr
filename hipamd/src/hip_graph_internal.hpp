@@ -1037,6 +1037,9 @@ class hipGraphMemcpyNode : public hipGraphNode {
   }
 
   hipError_t CreateCommand(amd::HostQueue* queue) {
+    if (IsHtoHMemcpy(pCopyParams_->dstPtr.ptr, pCopyParams_->srcPtr.ptr, pCopyParams_->kind)) {
+      return hipSuccess;
+    }
     hipError_t status = hipGraphNode::CreateCommand(queue);
     if (status != hipSuccess) {
       return status;
@@ -1046,6 +1049,16 @@ class hipGraphMemcpyNode : public hipGraphNode {
     status = ihipMemcpy3DCommand(command, pCopyParams_, queue);
     commands_.emplace_back(command);
     return status;
+  }
+
+  void EnqueueCommands(hipStream_t stream) override {
+    if (isEnabled_ && IsHtoHMemcpy(pCopyParams_->dstPtr.ptr, pCopyParams_->srcPtr.ptr, pCopyParams_->kind)) {
+      ihipHtoHMemcpy(pCopyParams_->dstPtr.ptr, pCopyParams_->srcPtr.ptr,
+                     pCopyParams_->extent.width * pCopyParams_->extent.height *
+                     pCopyParams_->extent.depth, *hip::getQueue(stream));
+      return;
+    }
+    hipGraphNode::EnqueueCommands(stream);
   }
 
   void GetParams(hipMemcpy3DParms* params) {
@@ -1170,6 +1183,9 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
   }
 
   virtual hipError_t CreateCommand(amd::HostQueue* queue) {
+    if (IsHtoHMemcpy(dst_, src_, kind_)) {
+      return hipSuccess;
+    }
     hipError_t status = hipGraphNode::CreateCommand(queue);
     if (status != hipSuccess) {
       return status;
@@ -1182,10 +1198,18 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
   }
 
   void EnqueueCommands(hipStream_t stream) {
-    if (commands_.empty()) return;
-    // commands_ should have just 1 item
-    assert(commands_.size() == 1 && "Invalid command size in hipGraphMemcpyNode1D");
+    bool isH2H = IsHtoHMemcpy(dst_, src_, kind_);
+    if (!isH2H) {
+      if (commands_.empty()) return;
+      // commands_ should have just 1 item
+      assert(commands_.size() == 1 && "Invalid command size in hipGraphMemcpyNode1D");
+    }
     if (isEnabled_) {
+      //HtoH
+      if (isH2H) {
+        ihipHtoHMemcpy(dst_, src_, count_, *hip::getQueue(stream));
+        return;
+      }
       amd::Command* command = commands_[0];
       amd::HostQueue* cmdQueue = command->queue();
       amd::HostQueue* queue = hip::getQueue(stream);
