@@ -566,6 +566,9 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
     case KernelField::Kind:
       kernel->SetKernelKind(buf);
       break;
+    case KernelField::WgpMode:
+      kernel->SetWGPMode(buf.compare("true") == 0);
+      break;
     default:
       return AMD_COMGR_STATUS_ERROR;
   }

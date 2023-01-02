@@ -241,7 +241,8 @@ enum class KernelField : uint8_t {
   MaxFlatWorkGroupSize    = 12,
   NumSpilledSGPRs         = 13,
   NumSpilledVGPRs         = 14,
-  Kind                    = 15
+  Kind                    = 15,
+  WgpMode                = 16
 };
 
 static const std::map<std::string,ArgField> ArgFieldMapV3 =
@@ -327,7 +328,8 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
   {".max_flat_workgroup_size",    KernelField::MaxFlatWorkGroupSize},
   {".sgpr_spill_count",           KernelField::NumSpilledSGPRs},
   {".vgpr_spill_count",           KernelField::NumSpilledVGPRs},
-  {".kind",                       KernelField::Kind}
+  {".kind",                       KernelField::Kind},
+  {".workgroup_processor_mode",   KernelField::WgpMode}
 };
 
 #endif  // defined(USE_COMGR_LIBRARY)
@@ -385,7 +387,8 @@ class Kernel : public amd::HeapObject {
     bool uniformWorkGroupSize_;       //!< uniform work group size option
     size_t wavesPerSimdHint_;         //!< waves per simd hit
     int maxOccupancyPerCu_;           //!< Max occupancy per compute unit in threads
-    size_t constMemSize_;           //!< size of user-allocated constant memory 
+    size_t constMemSize_;           //!< size of user-allocated constant memory
+    bool isWGPMode_;                  //!< kernel compiled in WGP/cumode
   };
 
   //! Default constructor
@@ -511,6 +514,10 @@ class Kernel : public amd::HeapObject {
 
   void SetKernelKind(const std::string& kind) {
     kind_ = (kind == "init") ? Init : ((kind == "fini") ? Fini : Normal);
+  }
+
+  void SetWGPMode(bool wgpMode) {
+    workGroupInfo_.isWGPMode_ = wgpMode;
   }
 
   bool isInitKernel() const { return kind_ == Init; }
