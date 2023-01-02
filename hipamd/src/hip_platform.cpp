@@ -352,8 +352,9 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     const size_t SgprWaves = maxSGPRs / amd::alignUp(wrkGrpInfo->usedSGPRs_, 16);
     GprWaves = std::min(VgprWaves, SgprWaves);
   }
-
-  const size_t alu_occupancy = device.info().simdPerCU_ * std::min(MaxWavesPerSimd, GprWaves);
+  uint32_t simdPerCU = (device.isa().versionMajor() <= 9) ? device.info().simdPerCU_
+                                                          : (wrkGrpInfo->isWGPMode_ ? 4 : 2);
+  const size_t alu_occupancy = simdPerCU * std::min(MaxWavesPerSimd, GprWaves);
   const int alu_limited_threads = alu_occupancy * wrkGrpInfo->wavefrontSize_;
 
   int lds_occupancy_wgs = INT_MAX;
