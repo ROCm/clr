@@ -2760,6 +2760,14 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
   if (pNodeParams->height <= 0) {
     return hipErrorInvalidValue;
   }
+
+  amd::Memory *memObj = amd::MemObjMap::FindMemObj(pNodeParams->dst);
+  if (memObj != nullptr) {
+    if ((pNodeParams->pitch * pNodeParams->height) > memObj->getSize()) {
+      return hipErrorInvalidValue;
+    }
+  }
+
   return hipSuccess;
 }
 
