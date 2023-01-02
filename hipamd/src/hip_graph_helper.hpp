@@ -7,6 +7,10 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hip
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
                              hipMemcpyKind kind, amd::HostQueue& queue, bool isAsync = false);
 
+void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, amd::HostQueue& queue);
+
+bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind);
+
 hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
                                      uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                      uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
