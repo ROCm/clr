@@ -276,7 +276,7 @@ release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \
         "If true, then runtime can skip kernel arg copy")                     \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
         "Force the stream wait memory operation to wait on CP.")              \
-release(bool, HIP_USE_RUNTIME_UNBUNDLER, false,                               \
+release(bool, HIP_USE_RUNTIME_UNBUNDLER, true,                                \
         "Force this to use Runtime code object unbundler.")                   \
 release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
         "Set this to true to force runtime unbundler in hiprtc.")             \
