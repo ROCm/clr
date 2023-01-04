@@ -2343,15 +2343,22 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
 
 // ================================================================================================
 void Device::HiddenHeapAlloc() {
-  auto HeapAlloc = [this]()->bool {
+  auto HeapAlloc = [this]() -> bool {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
+    if (initial_heap_size_ != 0) {
+      initial_heap_size_ = amd::alignUp(initial_heap_size_, 2 * Mi);
+      initial_heap_buffer_ = createMemory(initial_heap_size_);
+    }
     if (heap_buffer_ == nullptr) {
       LogError("Heap buffer allocation failed!");
       return false;
     }
-    return true;
+    bool result = static_cast<const KernelBlitManager&>(xferMgr()).initHeap(
+        heap_buffer_, initial_heap_buffer_, HeapBufferSize, initial_heap_size_ / (2 * Mi));
+
+    return result;
   };
   std::call_once(heap_initialized_, HeapAlloc);
 }

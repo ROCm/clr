@@ -239,6 +239,12 @@ class BlitManager : public amd::HeapObject {
   //! Returns Xfer queue lock
   virtual amd::Monitor* lockXfer() const { return nullptr; }
 
+  virtual bool initHeap(device::Memory* heap_to_initialize,
+                        device::Memory* initial_blocks,
+                        uint heap_size,
+                        uint number_of_initial_blocks
+                        ) const = 0;
+
  protected:
   const Setup setup_;   //!< HW accelerated blit requested
   bool syncOperation_;  //!< Blit operations are synchronized

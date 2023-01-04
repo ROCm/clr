@@ -2520,10 +2520,33 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
   return result;
 }
 
+// ================================================================================================
+bool KernelBlitManager::initHeap(device::Memory* heap_to_initialize, device::Memory* initial_blocks,
+                                 uint heap_size, uint number_of_initial_blocks) const {
+  bool result;
+  // Clear memory to 0 for device library logic and set
+  size_t globalWorkOffset[1] = {0};
+  size_t globalWorkSize[1] = {256};
+  size_t localWorkSize[1] = {256};
 
+  // Create ND range object for the kernel's execution
+  amd::NDRangeContainer ndrange(1, globalWorkOffset, globalWorkSize, localWorkSize);
+  uint blitType = InitHeap;
+  uint64_t management_heap_va = heap_to_initialize->virtualAddress();
+  uint64_t initial_heap_va = 0;
+  if (initial_blocks != nullptr) {
+    initial_heap_va = initial_blocks->virtualAddress();
+  }
+  setArgument(kernels_[blitType], 0, sizeof(cl_ulong), &management_heap_va);
+  setArgument(kernels_[blitType], 1, sizeof(cl_ulong), &initial_heap_va);
+  setArgument(kernels_[blitType], 2, sizeof(uint), &heap_size);
+  setArgument(kernels_[blitType], 3, sizeof(uint), &number_of_initial_blocks);
+  address parameters = kernels_[blitType]->parameters().values();
+  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters);
+  synchronize();
 
-
-
+  return result;
+}
 
 bool KernelBlitManager::runScheduler(device::Memory& vqueue, device::Memory& params, uint paramIdx,
                                      uint threads) const {

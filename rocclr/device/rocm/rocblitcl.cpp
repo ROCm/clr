@@ -27,8 +27,9 @@ const char* rocBlitLinearSourceCode = BLIT_KERNEL(
   // Extern
   extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong, ulong);
 
-  extern void __amd_streamOpsWait(__global uint*,__global ulong*, ulong, ulong, ulong);
+  extern void __amd_streamOpsWait(__global uint*, __global ulong*, ulong, ulong, ulong);
 
+  extern void __ockl_dm_init_v1(ulong, ulong, uint, uint);
   // Implementation
   __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
                                             ulong value, ulong sizeBytes) {
@@ -39,6 +40,12 @@ const char* rocBlitLinearSourceCode = BLIT_KERNEL(
                                            ulong value, ulong flags, ulong mask) {
     __amd_streamOpsWait(ptrInt, ptrUlong, value, flags, mask);
   }
+
+  __kernel void __amd_rocclr_initHeap(ulong heap_to_initialize, ulong initial_blocks,
+                                      uint heap_size, uint number_of_initial_blocks) {
+    __ockl_dm_init_v1(heap_to_initialize, initial_blocks, heap_size, number_of_initial_blocks);
+  }
+
 );
 
 const char* SchedulerSourceCode = BLIT_KERNEL(

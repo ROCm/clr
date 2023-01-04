@@ -180,28 +180,32 @@ class DmaBlitManager : public device::HostBlitManager {
                          ) const;
 
   //! Stream memory write operation - Write a 'value' at 'memory'.
-  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
-                             uint64_t value,
-                             size_t offset,
-                             size_t sizeBytes
-  ) const {
+  virtual bool streamOpsWrite(device::Memory& memory,  //!< Memory to write the 'value'
+                              uint64_t value,
+                              size_t offset,
+                              size_t sizeBytes) const {
     assert(!"Unimplemented");
     return false;
   }
 
   //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
-  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+  virtual bool streamOpsWait(device::Memory& memory,  //!< Memory to compare the 'value' against
                              uint64_t value,
                              size_t offset,
                              size_t sizeBytes,
                              uint64_t flags,
-                             uint64_t mask
-  ) const {
+                             uint64_t mask) const {
     assert(!"Unimplemented");
     return false;
   }
 
-
+  virtual bool initHeap(device::Memory* heap_to_initialize,
+                        device::Memory* initial_blocks,
+                        uint heap_size,
+                        uint number_of_initial_blocks) const {
+    assert(!"Unimplemented");
+    return false;
+  }
 
  protected:
   static constexpr uint MaxPinnedBuffers = 4;
@@ -292,6 +296,7 @@ class KernelBlitManager : public DmaBlitManager {
     BlitCopyImage1DA,
     BlitCopyImageToBuffer,
     BlitCopyBufferToImage,
+    InitHeap,
     BlitTotal
   };
 
@@ -512,6 +517,12 @@ class KernelBlitManager : public DmaBlitManager {
 
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
+  virtual bool initHeap(device::Memory* heap_to_initialize,
+                        device::Memory* initial_blocks,
+                        uint heap_size,
+                        uint number_of_initial_blocks
+                        ) const;
+
  private:
   static constexpr size_t MaxXferBuffers = 2;
   static constexpr uint TransferSplitSize = 1;
@@ -586,7 +597,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
   "__amd_rocclr_copyBufferRectAligned", "__amd_rocclr_streamOpsWrite", "__amd_rocclr_streamOpsWait",
   "__amd_rocclr_scheduler", "__amd_rocclr_gwsInit", "__amd_rocclr_fillImage",
   "__amd_rocclr_copyImage", "__amd_rocclr_copyImage1DA", "__amd_rocclr_copyImageToBuffer",
-  "__amd_rocclr_copyBufferToImage"
+  "__amd_rocclr_copyBufferToImage", "__amd_rocclr_initHeap"
 };
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
