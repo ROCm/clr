@@ -1068,7 +1068,7 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, hsa_signal_t 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
 
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-          "HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x ",
+          "HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x "
           "(type=%d, barrier=%d, acquire=%d, release=%d), "
           "completion_signal=0x%zx value = 0x%llx mask = 0x%llx cond: %d (GTE: %d EQ: %d NE: %d)",
           gpu_queue_, packetHeader, rest,
