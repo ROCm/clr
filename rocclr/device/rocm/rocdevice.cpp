@@ -3209,19 +3209,22 @@ bool Device::IsValidAllocation(const void* dev_ptr, size_t size) const {
 
 // ================================================================================================
 void Device::HiddenHeapAlloc() {
-  auto HeapAllocZeroOut = [this]()->bool {
+  auto HeapAllocZeroOut = [this]() -> bool {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
-    // Clear memory to 0 for device library logic
-    if ((heap_buffer_ == nullptr) ||
-        (HSA_STATUS_SUCCESS != hsa_amd_memory_fill(
-      reinterpret_cast<void*>(HeapBuffer()->virtualAddress()), 0,
-      HeapBufferSize / sizeof(uint32_t)))) {
+    if (initial_heap_size_ != 0) {
+      initial_heap_size_ = amd::alignUp(initial_heap_size_, 2 * Mi);
+      initial_heap_buffer_ = createMemory(initial_heap_size_);
+    }
+    if (heap_buffer_ == nullptr) {
       LogError("Heap buffer allocation failed!");
       return false;
     }
-    return true;
+    bool result = static_cast<const KernelBlitManager&>(xferMgr()).initHeap(
+        heap_buffer_, initial_heap_buffer_, HeapBufferSize, initial_heap_size_ / (2 * Mi));
+
+    return result;
   };
   std::call_once(heap_initialized_, HeapAllocZeroOut);
 }

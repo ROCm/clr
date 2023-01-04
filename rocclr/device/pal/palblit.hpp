@@ -178,28 +178,32 @@ class DmaBlitManager : public device::HostBlitManager {
                          ) const;
 
   //! Stream memory write operation - Write a 'value' at 'memory'.
-  virtual bool streamOpsWrite(device::Memory& memory, //!< Memory to write the 'value'
-                             uint64_t value,
-                             size_t offset,
-                             size_t sizeBytes
-  ) const {
+  virtual bool streamOpsWrite(device::Memory& memory,  //!< Memory to write the 'value'
+                              uint64_t value,
+                              size_t offset,
+                              size_t sizeBytes) const {
     assert(!"Unimplemented");
     return false;
-  };
+  }
 
   //! Stream memory ops- Waits for a 'value' at 'memory' and wait is released based on compare op.
-  virtual bool streamOpsWait(device::Memory& memory, //!< Memory contents to compare the 'value' against
+  virtual bool streamOpsWait(device::Memory& memory,  //!< Memory to compare the 'value' against
                              uint64_t value,
                              size_t offset,
                              size_t sizeBytes,
                              uint64_t flags,
-                             uint64_t mask
-  ) const {
+                             uint64_t mask) const {
     assert(!"Unimplemented");
     return false;
-  };
+  }
 
-
+  virtual bool initHeap(device::Memory* heap_to_initialize,
+                        device::Memory* initial_blocks,
+                        uint heap_size,
+                        uint number_of_initial_blocks) const {
+    assert(!"Unimplemented");
+    return false;
+  }
 
  protected:
   static constexpr uint MaxPinnedBuffers = 4;
@@ -271,6 +275,7 @@ class KernelBlitManager : public DmaBlitManager {
     GwsInit,
     StreamOpsWrite,
     StreamOpsWait,
+    InitHeap,
     BlitTotal,
   };
 
@@ -464,6 +469,11 @@ class KernelBlitManager : public DmaBlitManager {
                              uint64_t mask
   ) const;
 
+  virtual bool initHeap(device::Memory* heap_to_initialize,
+                        device::Memory* initial_blocks,
+                        uint heap_size,
+                        uint number_of_initial_blocks
+                        ) const;
 
  private:
   static constexpr size_t MaxXferBuffers = 2;
@@ -530,7 +540,7 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyBufferAligned", "__amd_rocclr_fillBufferAligned",
     "__amd_rocclr_fillImage", "__amd_rocclr_scheduler",
     "__amd_rocclr_gwsInit", "__amd_rocclr_streamOpsWrite",
-    "__amd_rocclr_streamOpsWait"
+    "__amd_rocclr_streamOpsWait", "__amd_rocclr_initHeap"
 };
 
 /*@}*/  // namespace pal

@@ -1905,6 +1905,12 @@ class Device : public RuntimeObject {
   //! Sets the stack size of the device
   bool UpdateStackSize(uint64_t stackSize);
 
+  //! Returns initial heap size
+  uint64_t InitialHeapSize() const { return initial_heap_size_; }
+
+  //! Sets the heap size of the device
+  bool UpdateInitialHeapSize(uint64_t initialHeapSize);
+
   //! Does this device allow P2P access?
   bool P2PAccessAllowed() const { return (p2p_access_devices_.size() > 0) ? true : false; }
 
@@ -1964,7 +1970,8 @@ class Device : public RuntimeObject {
 
   amd::Memory* arena_mem_obj_;      //!< Arena memory object
   uint64_t stack_size_{1024};       //!< Device stack size
-
+  device::Memory* initial_heap_buffer_;   //!< Initial heap buffer
+  uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
  private:
   const Isa *isa_;                //!< Device isa
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

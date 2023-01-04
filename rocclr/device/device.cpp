@@ -755,6 +755,14 @@ bool Device::UpdateStackSize(uint64_t stackSize) {
   return true;
 }
 
+bool Device::UpdateInitialHeapSize(uint64_t initialHeapSize) {
+  if (initialHeapSize >= info().globalMemSize_) {
+    return false;
+  }
+  initial_heap_size_ = initialHeapSize;
+  return true;
+}
+
 char* Device::getExtensionString() {
   std::stringstream extStream;
   size_t size;
