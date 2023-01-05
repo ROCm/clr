@@ -103,6 +103,11 @@ hipError_t hipImportExternalMemory(
     hipExternalMemory_t* extMem_out,
     const hipExternalMemoryHandleDesc* memHandleDesc) {
   HIP_INIT_API(hipImportExternalMemory, extMem_out, memHandleDesc);
+  if (extMem_out == nullptr || memHandleDesc == nullptr ||
+      (memHandleDesc->flags != 0 && memHandleDesc->flags != hipExternalMemoryDedicated) ||
+      memHandleDesc->size == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   size_t sizeBytes = memHandleDesc->size;
   amd::Context& amdContext = *hip::getCurrentDevice()->asContext();
