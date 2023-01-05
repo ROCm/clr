@@ -41,10 +41,10 @@ const static char* strKernel =
     "   {                                                               \n"
     "       factorial *= i;                                             \n"
     "   }                                                               \n"
-    "    out[id] = factorial;                                            \n"
+    "    out[id] = factorial;                                           \n"
     "}                                                                  \n";
 
-OCLRTQueue::OCLRTQueue() : rtQueue_(NULL), rtQueue1_(NULL), kernel2_(NULL) {
+OCLRTQueue::OCLRTQueue(): rtQueue_(NULL), rtQueue1_(NULL), kernel2_(NULL) {
 #ifndef CL_VERSION_2_0
   _numSubTests = 0;
   testID_ = 0;
@@ -58,8 +58,7 @@ OCLRTQueue::OCLRTQueue() : rtQueue_(NULL), rtQueue1_(NULL), kernel2_(NULL) {
 
 OCLRTQueue::~OCLRTQueue() {}
 
-void OCLRTQueue::open(unsigned int test, char* units, double& conversion,
-                      unsigned int deviceId) {
+void OCLRTQueue::open(unsigned int test, char* units, double& conversion, unsigned int deviceId) {
 #ifdef CL_VERSION_2_0
   OCLTestImp::open(test, units, conversion, deviceId);
   CHECK_RESULT((error_ != CL_SUCCESS), "Error opening test");
@@ -70,8 +69,8 @@ void OCLRTQueue::open(unsigned int test, char* units, double& conversion,
                                      0, &param_size);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetDeviceInfo failed");
   strVersion = new char[param_size];
-  error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId], CL_DEVICE_VERSION,
-                                     param_size, strVersion, 0);
+  error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId], CL_DEVICE_VERSION, param_size,
+                                     strVersion, 0);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetDeviceInfo failed");
   if (strVersion[7] < '2') {
     failed_ = true;
@@ -130,7 +129,6 @@ void OCLRTQueue::open(unsigned int test, char* units, double& conversion,
     CHECK_RESULT((error_ != CL_SUCCESS), "clCreateBuffer() failed");
     buffers_.push_back(buffer);
   }
-
   buffer = _wrapper->clCreateBuffer(context_, CL_MEM_ALLOC_HOST_PTR,
                                     BufSize * sizeof(cl_uint), NULL, &error_);
   CHECK_RESULT((error_ != CL_SUCCESS), "clCreateBuffer() failed");
@@ -148,43 +146,12 @@ void OCLRTQueue::run(void) {
     return;
   }
 
-  if (testID_ == 0) {
-    cu_ = rtCUs_ >> 1;
-  } else {
-    cu_ = rtCUs_;
-  }
-
-  if (cu_ < rtCUsGranularity_) {
-    printf("The num of CUs is less than granularity, skipping...\n");
-    return;
-  }
-
-  // Create a real time queue
-#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD 0x404f
-  const cl_queue_properties cprops[] = {
-      CL_QUEUE_PROPERTIES, static_cast<cl_queue_properties>(0),
-      CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD, cu_, 0};
-  rtQueue_ = _wrapper->clCreateCommandQueueWithProperties(
-      context_, devices_[_deviceId], cprops, &error_);
-  CHECK_RESULT((error_ != CL_SUCCESS),
-               "clCreateCommandQueueWithProperties() failed");
-
-#define CL_QUEUE_MEDIUM_PRIORITY_AMD 0x4050
-  const cl_queue_properties cprops2[] = {CL_QUEUE_PROPERTIES,
-                                         static_cast<cl_queue_properties>(0),
-                                         CL_QUEUE_MEDIUM_PRIORITY_AMD, 0, 0};
-  rtQueue1_ = _wrapper->clCreateCommandQueueWithProperties(
-      context_, devices_[_deviceId], cprops2, &error_);
-  CHECK_RESULT((error_ != CL_SUCCESS),
-               "clCreateCommandQueueWithProperties() failed");
-
   void* values;
   CPerfCounter timer;
   cl_mem mapBuffer = buffers()[MaxBuffers];
 
-  values = _wrapper->clEnqueueMapBuffer(
-      cmdQueues_[_deviceId], mapBuffer, true, (CL_MAP_READ | CL_MAP_WRITE), 0,
-      BufSize * sizeof(cl_uint), 0, NULL, NULL, &error_);
+  values = _wrapper->clEnqueueMapBuffer(cmdQueues_[_deviceId], mapBuffer, true,
+      (CL_MAP_READ | CL_MAP_WRITE), 0, BufSize * sizeof(cl_uint), 0, NULL, NULL, &error_);
 
   cl_mem buffer = buffers()[0];
   error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
@@ -223,6 +190,32 @@ void OCLRTQueue::run(void) {
   printf("\n Generic Queue(CUs: %d) Time:               %.3fs\n", maxCUs_, sec);
 
   // SubTest: 2
+  bool test_rtq1 = true;
+  if (testID_ == 0) {
+    cu_ = rtCUs_ >> 1;
+  } else {
+    cu_ = rtCUs_;
+    test_rtq1 = false;
+  }
+  if (cu_ == 0) {
+    cu_ = rtCUs_;
+    test_rtq1 = false;
+  }
+
+  if (cu_ < rtCUsGranularity_) {
+    printf("The num of CUs is less than granularity, skipping...\n");
+    return;
+  }
+
+  // Create a real time queue
+#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD 0x404f
+  const cl_queue_properties cprops[] = {
+      CL_QUEUE_PROPERTIES, static_cast<cl_queue_properties>(0),
+      CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD, cu_, 0};
+  rtQueue_ = _wrapper->clCreateCommandQueueWithProperties(
+      context_, devices_[_deviceId], cprops, &error_);
+  CHECK_RESULT((error_ != CL_SUCCESS), "clCreateCommandQueueWithProperties() failed");
+
   error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue_, kernel_, 1, NULL, gws,
                                             NULL, 0, NULL, NULL);
   CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
@@ -248,34 +241,47 @@ void OCLRTQueue::run(void) {
 
   printf(" RT Queue0 (CUs: %2d) Time:                  %.3fs\n", cu_, sec);
 
-  // SubTest: 2
-
-  error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
-                                            NULL, 0, NULL, NULL);
-  CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
-  _wrapper->clFinish(rtQueue1_);
-
-  timer.Reset();
-  timer.Start();
-  for (x = 0; x < 1; x++) {
-    error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
-
+  rtQueue1_ = nullptr;
+  if (test_rtq1) {
+#define CL_QUEUE_MEDIUM_PRIORITY_AMD 0x4050
+    const cl_queue_properties cprops2[] = {CL_QUEUE_PROPERTIES,
+                                           static_cast<cl_queue_properties>(0),
+                                           CL_QUEUE_MEDIUM_PRIORITY_AMD, cu_, 0};
+    rtQueue1_ = _wrapper->clCreateCommandQueueWithProperties(
+        context_, devices_[_deviceId], cprops2, &error_);
+    CHECK_RESULT((error_ != CL_SUCCESS), "clCreateCommandQueueWithProperties() failed");
+  }
+  if (rtQueue1_) {
     error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
                                               NULL, 0, NULL, NULL);
-
     CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    _wrapper->clFinish(rtQueue1_);
+
+    timer.Reset();
+    timer.Start();
+    for (x = 0; x < 1; x++) {
+      error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
+
+      error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
+                                                NULL, 0, NULL, NULL);
+
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+    _wrapper->clFinish(rtQueue1_);
+
+    timer.Stop();
+
+    sec = timer.GetElapsedTime();
+    // Buffer read bandwidth in GB/s
+    perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
+
+    printf(" RT Queue1 (CUs: %2d) Time:                  %.3fs\n", cu_, sec);
+  } else {
+    if (testID_ == 0) {
+      printf(" RT Queue1 test was skipped. Not enough CUs - %2d)", cu_);
+    }
   }
-  _wrapper->clFinish(rtQueue1_);
-
-  timer.Stop();
-
-  sec = timer.GetElapsedTime();
-  // Buffer read bandwidth in GB/s
-  perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
-
-  printf(" Medium Queue (CUs: %2d) Time:                  %.3fs\n",
-         maxCUs_ - cu_, sec);
 
   // SubTest: 3
   timer.Reset();
@@ -296,8 +302,7 @@ void OCLRTQueue::run(void) {
   // Buffer read bandwidth in GB/s
   perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
 
-  printf(" Generic Queue(CUs: %d) Time:               %.3fs\n", maxCUs_ - cu_,
-         sec);
+  printf(" Generic Queue(CUs: %d) Time:               %.3fs\n", maxCUs_ - rtCUs_, sec);
 
   // SubTest: 4
   for (x = 0; x < Iterations / 10; x++) {
@@ -328,83 +333,90 @@ void OCLRTQueue::run(void) {
   // Buffer read bandwidth in GB/s
   perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
 
-  printf(" Async RT(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n", cu_,
-         maxCUs_ - cu_, sec);
+  printf(" Async RT0(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n", cu_, maxCUs_ - rtCUs_, sec);
 
   // SubTest: 5
-  for (x = 0; x < Iterations / 10; x++) {
-    error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
+  if (rtQueue1_) {
+    for (x = 0; x < Iterations / 10; x++) {
+      error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
 
-    error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 1,
-                                              NULL, gws, NULL, 0, NULL, NULL);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+      error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 1,
+                                                NULL, gws, NULL, 0, NULL, NULL);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+    _wrapper->clFlush(cmdQueues_[_deviceId]);
+    timer.Reset();
+    timer.Start();
+    for (x = 0; x < 1; x++) {
+      error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
+
+      error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
+                                                NULL, 0, NULL, NULL);
+
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+    _wrapper->clFinish(rtQueue1_);
+
+    timer.Stop();
+    _wrapper->clFinish(cmdQueues_[_deviceId]);
+
+    sec = timer.GetElapsedTime();
+    // Buffer read bandwidth in GB/s
+    perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
+
+    printf(" Async RT1(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n", cu_, maxCUs_ - rtCUs_, sec);
+  } else {
+    if (testID_ == 0) {
+      printf(" RT Queue1 test was skipped. Not enough CUs - %2d)", cu_);
+    }
   }
-  _wrapper->clFlush(cmdQueues_[_deviceId]);
-  timer.Reset();
-  timer.Start();
-  for (x = 0; x < 1; x++) {
-    error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
-
-    error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
-                                              NULL, 0, NULL, NULL);
-
-    CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
-  }
-  _wrapper->clFinish(rtQueue1_);
-
-  timer.Stop();
-  _wrapper->clFinish(cmdQueues_[_deviceId]);
-
-  sec = timer.GetElapsedTime();
-  // Buffer read bandwidth in GB/s
-  perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
-
-  printf(" Async Medium(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n",
-         maxCUs_ - cu_, maxCUs_ - cu_, sec);
-
   // SubTest: 6
-  for (x = 0; x < Iterations / 10; x++) {
-    error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
+  if (rtQueue1_) {
+    for (x = 0; x < Iterations / 10; x++) {
+      error_ = _wrapper->clSetKernelArg(kernel_, 0, sizeof(cl_mem), &buffer);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clSetKernelArg() failed");
 
-    error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 1,
-                                              NULL, gws, NULL, 0, NULL, NULL);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+      error_ = _wrapper->clEnqueueNDRangeKernel(cmdQueues_[_deviceId], kernel_, 1,
+                                                NULL, gws, NULL, 0, NULL, NULL);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+    _wrapper->clFlush(cmdQueues_[_deviceId]);
+    timer.Reset();
+    timer.Start();
+    for (x = 0; x < 1; x++) {
+      error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue_, kernel_, 1, NULL, gws,
+                                                NULL, 0, NULL, NULL);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+    _wrapper->clFlush(rtQueue_);
+    for (x = 0; x < 1; x++) {
+      error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
+                                                NULL, 0, NULL, NULL);
+      CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
+    }
+
+    _wrapper->clFlush(rtQueue1_);
+    _wrapper->clFinish(rtQueue_);
+    _wrapper->clFinish(rtQueue1_);
+    timer.Stop();
+    _wrapper->clFlush(cmdQueues_[_deviceId]);
+
+    sec = timer.GetElapsedTime();
+    // Buffer read bandwidth in GB/s
+    perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
+
+    printf(" Async RT0(CUs: %d) + RT1(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n",
+           cu_, cu_, maxCUs_ - rtCUs_, sec);
+    error_ = _wrapper->clEnqueueUnmapMemObject(cmdQueues_[_deviceId], mapBuffer,
+                                               values, 0, NULL, NULL);
+    _wrapper->clFinish(cmdQueues_[_deviceId]);
+  } else {
+    if (testID_ == 0) {
+      printf(" RT Queue1 test was skipped. Not enough CUs - %2d)", cu_);
+    }
   }
-  _wrapper->clFlush(cmdQueues_[_deviceId]);
-  timer.Reset();
-  timer.Start();
-  for (x = 0; x < 1; x++) {
-    error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue_, kernel_, 1, NULL, gws,
-                                              NULL, 0, NULL, NULL);
-    CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
-  }
-  _wrapper->clFlush(rtQueue_);
-  for (x = 0; x < 1; x++) {
-    error_ = _wrapper->clEnqueueNDRangeKernel(rtQueue1_, kernel_, 1, NULL, gws,
-                                              NULL, 0, NULL, NULL);
-
-    CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueNDRangeKernel() failed");
-  }
-
-  _wrapper->clFlush(rtQueue1_);
-  _wrapper->clFinish(rtQueue_);
-  _wrapper->clFinish(rtQueue1_);
-  timer.Stop();
-  _wrapper->clFlush(cmdQueues_[_deviceId]);
-
-  sec = timer.GetElapsedTime();
-  // Buffer read bandwidth in GB/s
-  perf = ((double)BufSize * sizeof(cl_uint) * x * (double)(1e-09)) / sec;
-
-  printf(
-      " Async RT0(CUs: %d) + Medium(CUs: %d) + Generic(CUs: %d) Time: %.3fs\n",
-      cu_, maxCUs_ - cu_, maxCUs_ - cu_, sec);
-  error_ = _wrapper->clEnqueueUnmapMemObject(cmdQueues_[_deviceId], mapBuffer,
-                                             values, 0, NULL, NULL);
-  _wrapper->clFinish(cmdQueues_[_deviceId]);
 #endif
 }
 
