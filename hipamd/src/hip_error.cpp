@@ -335,6 +335,10 @@ const char *ihipGetErrorString(hipError_t hip_error) {
             return "attempt to terminate a thread-local capture sequence from another thread";
         case hipErrorGraphExecUpdateFailure:
             return "the graph update was not performed because it included changes which violated constraints specific to instantiated graph update";
+        case hipErrorRuntimeMemory:
+            return "runtime memory call returned error";
+        case hipErrorRuntimeOther:
+            return "runtime call other than memory returned error";
         case hipErrorUnknown:
         default:
             return "unknown error";
