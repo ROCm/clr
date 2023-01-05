@@ -117,6 +117,11 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.reserve(20);  // count of options below
   compile_options_.push_back("-O3");
 
+#ifdef HIPRTC_EARLY_INLINE
+  compile_options_.push_back("-mllvm");
+  compile_options_.push_back("-amdgpu-early-inline-all");
+#endif
+
   if (GPU_ENABLE_WGP_MODE) compile_options_.push_back("-mcumode");
 
   if (!GPU_ENABLE_WAVE32_MODE) compile_options_.push_back("-mwavefrontsize64");
@@ -181,23 +186,7 @@ bool RTCCompileProgram::addBuiltinHeader() {
   return true;
 }
 
-bool RTCCompileProgram::findLLVMOptions(const std::vector<std::string>& options,
-                                        std::vector<std::string>& llvm_options) {
-  for (size_t i = 0; i < options.size(); ++i) {
-    if (options[i] == "-mllvm") {
-      if (options.size() == (i+1)) {
-        LogInfo(
-          "-mllvm option passed by the app, it comes as a pair but there is no option after this");
-        return false;
-      }
-      llvm_options.push_back(options[i]);
-      llvm_options.push_back(options[i + 1]);
-    }
-  }
-  return true;
-}
-
-bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_options) {
+bool RTCCompileProgram::transformOptions() {
   auto getValueOf = [](const std::string& option) {
     std::string res;
     auto f = std::find(option.begin(), option.end(), '=');
@@ -205,7 +194,7 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
     return res;
   };
 
-  for (auto& i : compile_options) {
+  for (auto& i : compile_options_) {
     if (i == "-hip-pch") {
       LogInfo(
           "-hip-pch is deprecated option, has no impact on execution of new hiprtc programs, it "
@@ -227,9 +216,9 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
   }
 
   if (auto res = std::find_if(
-          compile_options.begin(), compile_options.end(),
+          compile_options_.begin(), compile_options_.end(),
           [](const std::string& str) { return str.find("--offload-arch=") != std::string::npos; });
-      res != compile_options.end()) {
+      res != compile_options_.end()) {
     auto isaName = getValueOf(*res);
     isa_ = "amdgcn-amd-amdhsa--" + isaName;
     settings_.offloadArchProvided = true;
@@ -251,21 +240,15 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   fgpu_rdc_ = fgpu_rdc;
 
   // Append compile options
-  std::vector<std::string> compileOpts(compile_options_);
-  compileOpts.reserve(compile_options_.size() + options.size() + 2);
-  compileOpts.insert(compileOpts.end(), options.begin(), options.end());
+  compile_options_.reserve(compile_options_.size() + options.size());
+  compile_options_.insert(compile_options_.end(), options.begin(), options.end());
 
-  if (!fgpu_rdc_) {
-    compileOpts.push_back("-Xclang");
-    compileOpts.push_back("-disable-llvm-passes");
-  }
-
-  if (!transformOptions(compileOpts)) {
+  if (!transformOptions()) {
     LogError("Error in hiprtc: unable to transform options");
     return false;
   }
 
-  if (!compileToBitCode(compile_input_, isa_, compileOpts, build_log_, LLVMBitcode_)) {
+  if (!compileToBitCode(compile_input_, isa_, compile_options_, build_log_, LLVMBitcode_)) {
     LogError("Error in hiprtc: unable to compile source to bitcode");
     return false;
   }
@@ -292,24 +275,14 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
     return false;
   }
 
-  std::vector<std::string> llvmOptions;
-  if (!findLLVMOptions(options, llvmOptions)) {
-    LogError("Error in hiprtc: unable to match -mllvm options");
-    return false;
-  }
-
-  std::vector<std::string> exe_options(exe_options_);
-  exe_options.reserve(exe_options.size() + llvmOptions.size());
-  exe_options.insert(exe_options.end(), llvmOptions.begin(), llvmOptions.end());
-
   if (settings_.dumpISA) {
-    if (!dumpIsaFromBC(exec_input_, isa_, exe_options, name_, build_log_)) {
+    if (!dumpIsaFromBC(exec_input_, isa_, exe_options_, name_, build_log_)) {
       LogError("Error in hiprtc: unable to dump isa code");
       return false;
     }
   }
 
-  if (!createExecutable(exec_input_, isa_, exe_options, build_log_, executable_)) {
+  if (!createExecutable(exec_input_, isa_, exe_options_, build_log_, executable_)) {
     LogError("Error in hiprtc: unable to create executable");
     return false;
   }

@@ -146,9 +146,7 @@ class RTCCompileProgram : public RTCProgram {
   // Private Member functions
   bool addSource_impl();
   bool addBuiltinHeader();
-  bool transformOptions(std::vector<std::string>& compile_options);
-  bool findLLVMOptions(const std::vector<std::string>& options,
-                       std::vector<std::string>& llvm_options);
+  bool transformOptions();
 
   RTCCompileProgram() = delete;
   RTCCompileProgram(RTCCompileProgram&) = delete;
