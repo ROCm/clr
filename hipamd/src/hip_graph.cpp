@@ -36,11 +36,16 @@ inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                                    const hipGraphNode_t* pDependencies, size_t numDependencies,
                                    bool capture = true) {
   graph->AddNode(graphNode);
+  std::unordered_set<hipGraphNode_t> DuplicateDep;
   for (size_t i = 0; i < numDependencies; i++) {
     if ((!hipGraphNode::isNodeValid(pDependencies[i])) ||
         (graph != pDependencies[i]->GetParentGraph())) {
       return hipErrorInvalidValue;
     }
+    if (DuplicateDep.find(pDependencies[i]) != DuplicateDep.end()) {
+      return hipErrorInvalidValue;
+    }
+    DuplicateDep.insert(pDependencies[i]);
     pDependencies[i]->AddEdge(graphNode);
   }
   if (capture == false) {
