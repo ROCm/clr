@@ -1615,11 +1615,12 @@ hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t
 hipError_t hipGraphRemoveDependencies(hipGraph_t graph, const hipGraphNode_t* from,
                                       const hipGraphNode_t* to, size_t numDependencies) {
   HIP_INIT_API(hipGraphRemoveDependencies, graph, from, to, numDependencies);
-  if (graph == nullptr || from == nullptr || to == nullptr) {
+  if (graph == nullptr || (numDependencies > 0 && (from == nullptr || to == nullptr))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   for (size_t i = 0; i < numDependencies; i++) {
-    if (from[i]->RemoveEdge(to[i]) == false) {
+    if (to[i]->GetParentGraph() != graph || from[i]->GetParentGraph() != graph ||
+        from[i]->RemoveEdge(to[i]) == false) {
       HIP_RETURN(hipErrorInvalidValue);
     }
   }
