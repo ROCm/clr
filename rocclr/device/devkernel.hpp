@@ -385,6 +385,7 @@ class Kernel : public amd::HeapObject {
     bool uniformWorkGroupSize_;       //!< uniform work group size option
     size_t wavesPerSimdHint_;         //!< waves per simd hit
     int maxOccupancyPerCu_;           //!< Max occupancy per compute unit in threads
+    size_t constMemSize_;           //!< size of user-allocated constant memory 
   };
 
   //! Default constructor
