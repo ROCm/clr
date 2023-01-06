@@ -48,8 +48,12 @@ Stream::~Stream() {
     amd::ScopedLock lock(streamSetLock);
     streamSet.erase(this);
 
-    queue_->release();
-    queue_ = nullptr;
+    // Skip queue destruction for null stream in MT. Queue worker thread can be destroyed on
+    // the app exit, during the stream destruction, causing a race condition.
+    if (!null_ || AMD_DIRECT_DISPATCH) {
+      queue_->release();
+      queue_ = nullptr;
+    }
   }
 }
 
