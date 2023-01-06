@@ -406,7 +406,7 @@ namespace hip {
     Device(amd::Context* ctx, int devId): context_(ctx),
         deviceId_(devId),
         null_stream_(this, Stream::Priority::Normal, 0, true),
-         flags_(hipDeviceScheduleSpin),
+        flags_(hipDeviceScheduleSpin),
         isActive_(false),
         default_mem_pool_(nullptr),
         current_mem_pool_(nullptr)
