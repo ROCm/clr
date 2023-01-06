@@ -158,6 +158,28 @@ bool LightningKernel::postLoad() {
   }
   assert(wavefront_size > 0);
 
+  size_t const_size_bytes = 0;
+  hsa_executable_iterate_symbols(
+      program()->hsaExecutable(),
+      [](hsa_executable_t executable, hsa_executable_symbol_t symbol,
+         void *const_size_bytes) -> hsa_status_t {
+        bool variable_is_const = false;
+        hsa_status_t hsaStat = hsa_executable_symbol_get_info(
+            symbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_IS_CONST, &variable_is_const);
+
+        if (hsaStat == HSA_STATUS_SUCCESS && variable_is_const) {
+          uint32_t variable_size = 0;
+          if (hsa_executable_symbol_get_info(
+                  symbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
+                  &variable_size) == HSA_STATUS_SUCCESS) {
+            *(static_cast<size_t *>(const_size_bytes)) += variable_size;
+          }
+        }
+
+        return HSA_STATUS_SUCCESS;
+      },
+      &const_size_bytes);
+
   workGroupInfo_.privateMemSize_ = workitemPrivateSegmentByteSize_;
   workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
@@ -165,6 +187,7 @@ bool LightningKernel::postLoad() {
   workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   workGroupInfo_.wavefrontPerSIMD_ = program()->rocDevice().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
+  workGroupInfo_.constMemSize_ = const_size_bytes;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }

@@ -609,6 +609,7 @@ Kernel::Kernel(const amd::Device& dev, const std::string& name, const Program& p
   workGroupInfo_.compileVecTypeHint_ = "";
   workGroupInfo_.uniformWorkGroupSize_ = false;
   workGroupInfo_.wavesPerSimdHint_ = 0;
+  workGroupInfo_.constMemSize_ = 0;
 }
 
 // ================================================================================================
