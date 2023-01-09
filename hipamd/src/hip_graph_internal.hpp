@@ -214,7 +214,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   // check node validity
   static bool isNodeValid(hipGraphNode* pGraphNode) {
     amd::ScopedLock lock(nodeSetLock_);
-    if (nodeSet_.find(pGraphNode) == nodeSet_.end()) {
+    if (pGraphNode == nullptr || nodeSet_.find(pGraphNode) == nodeSet_.end()) {
       return false;
     }
     return true;
