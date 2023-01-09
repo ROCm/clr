@@ -1578,6 +1578,8 @@ class hipGraphMemsetNode : public hipGraphNode {
 
   hipError_t SetParams(const hipMemsetParams* params) {
     hipError_t hip_error = hipSuccess;
+    hipMemsetParams origParams = {};
+    GetParams(&origParams);
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
@@ -1585,9 +1587,15 @@ class hipGraphMemsetNode : public hipGraphNode {
     size_t sizeBytes;
     if (params->height == 1) {
       sizeBytes = params->width * params->elementSize;
+      if (sizeBytes != origParams.width * origParams.elementSize) {
+        return hipErrorInvalidValue;
+      }
       hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize, sizeBytes);
     } else {
       sizeBytes = params->width * params->height * 1;
+      if (sizeBytes != origParams.width * origParams.height * 1) {
+        return hipErrorInvalidValue;
+      }
       hip_error =
           ihipMemset3D_validate({params->dst, params->pitch, params->width * params->elementSize, params->height},
                                 params->value, {params->width * params->elementSize, params->height, 1}, sizeBytes);
