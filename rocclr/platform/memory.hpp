@@ -41,7 +41,7 @@
 #define ROCCLR_MEM_HSA_SIGNAL_MEMORY                (1u << 30)
 #define ROCCLR_MEM_INTERNAL_MEMORY                  (1u << 29)
 #define CL_MEM_VA_RANGE_AMD                         (1u << 28)
-#define ROCCLR_MEM_HSA_PSEUDO_FINE_GRAIN            (1u << 27)
+#define ROCCLR_MEM_HSA_UNCACHED                     (1u << 27)
 
 namespace device {
 class Memory;

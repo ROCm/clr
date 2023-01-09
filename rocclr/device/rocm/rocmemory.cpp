@@ -788,7 +788,7 @@ bool Buffer::create(bool alloc_local) {
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
         deviceMemory_ = dev().deviceLocalAlloc(size(), (memFlags & CL_MEM_SVM_ATOMICS) != 0,
-                                               (memFlags & ROCCLR_MEM_HSA_PSEUDO_FINE_GRAIN) != 0);
+                                               (memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0);
       }
       owner()->setSvmPtr(deviceMemory_);
     } else {
