@@ -23,20 +23,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
-#if !defined(__HIPCC_RTC__)
-  #if !defined(HIP_NO_HALF)
-    #define HIP_NO_HALF
-  #elif
-    #define ALREADY_DEFINED
-  #endif
-
-  #include "hip/hip_fp16.h"
-
-  #if !defined(ALREADY_DEFINED)
-    #undef HIP_NO_HALF
-  #endif
-#endif
-
 static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
 
 __device__
@@ -59,20 +45,6 @@ float __shfl(float var, int src_lane, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl(tmp.i, src_lane, width);
     return tmp.f;
-}
-__device__
-inline
-__half __shfl(__half var, int src_lane, int width = warpSize) {
-    union { int i; __half h; } tmp; tmp.h = var;
-    tmp.i = __shfl(tmp.i, src_lane, width);
-    return tmp.h;
-}
-__device__
-inline
-__half2 __shfl(__half2 var, int src_lane, int width = warpSize) {
-    union { int i; __half2 h; } tmp; tmp.h = var;
-    tmp.i = __shfl(tmp.i, src_lane, width);
-    return tmp.h;
 }
 __device__
 inline
@@ -178,20 +150,6 @@ float __shfl_up(float var, unsigned int lane_delta, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl_up(tmp.i, lane_delta, width);
     return tmp.f;
-}
-__device__
-inline
-__half __shfl_up(__half var, unsigned int lane_delta, int width = warpSize) {
-    union { int i; __half h; } tmp; tmp.h = var;
-    tmp.i = __shfl_up(tmp.i, lane_delta, width);
-    return tmp.h;
-}
-__device__
-inline
-__half2 __shfl_up(__half2 var, unsigned int lane_delta, int width = warpSize) {
-    union { int i; __half2 h; } tmp; tmp.h = var;
-    tmp.i = __shfl_up(tmp.i, lane_delta, width);
-    return tmp.h;
 }
 __device__
 inline
@@ -301,20 +259,6 @@ float __shfl_down(float var, unsigned int lane_delta, int width = warpSize) {
 }
 __device__
 inline
-__half __shfl_down(__half var, unsigned int lane_delta, int width = warpSize) {
-    union { int i; __half h; } tmp; tmp.h = var;
-    tmp.i = __shfl_down(tmp.i, lane_delta, width);
-    return tmp.h;
-}
-__device__
-inline
-__half2 __shfl_down(__half2 var, unsigned int lane_delta, int width = warpSize) {
-    union { int i; __half2 h; } tmp; tmp.h = var;
-    tmp.i = __shfl_down(tmp.i, lane_delta, width);
-    return tmp.h;
-}
-__device__
-inline
 double __shfl_down(double var, unsigned int lane_delta, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
     static_assert(sizeof(double) == sizeof(uint64_t), "");
@@ -415,20 +359,6 @@ float __shfl_xor(float var, int lane_mask, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl_xor(tmp.i, lane_mask, width);
     return tmp.f;
-}
-__device__
-inline
-__half __shfl_xor(__half var,  int lane_mask, int width = warpSize) {
-    union { int i; __half h; } tmp; tmp.h = var;
-    tmp.i = __shfl_xor(tmp.i, lane_mask, width);
-    return tmp.h;
-}
-__device__
-inline
-__half2 __shfl_xor(__half2 var,  int lane_mask, int width = warpSize) {
-    union { int i; __half2 h; } tmp; tmp.h = var;
-    tmp.i = __shfl_xor(tmp.i, lane_mask, width);
-    return tmp.h;
 }
 __device__
 inline
