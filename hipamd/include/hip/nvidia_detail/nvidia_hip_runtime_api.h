@@ -27,6 +27,8 @@ THE SOFTWARE.
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <cuda_fp16.h>
+#include <cuda_gl_interop.h>
+
 #include <stdio.h>
 
 #define CUDA_9000 9000
@@ -1293,6 +1295,21 @@ typedef struct cudaExternalSemaphoreHandleDesc hipExternalSemaphoreHandleDesc;
 typedef cudaExternalSemaphore_t hipExternalSemaphore_t;
 typedef struct cudaExternalSemaphoreSignalParams hipExternalSemaphoreSignalParams;
 typedef struct cudaExternalSemaphoreWaitParams hipExternalSemaphoreWaitParams;
+
+typedef enum cudaGLDeviceList hipGLDeviceList;
+#define hipGLDeviceListAll cudaGLDeviceListAll
+#define hipGLDeviceListCurrentFrame  cudaGLDeviceListCurrentFrame
+#define hipGLDeviceListNextFrame  cudaGLDeviceListNextFrame
+
+typedef struct cudaGraphicsResource hipGraphicsResource;
+typedef cudaGraphicsResource_t hipGraphicsResource_t;
+
+typedef enum cudaGraphicsRegisterFlags hipGraphicsRegisterFlags;
+#define hipGraphicsRegisterFlagsNone cudaGraphicsRegisterFlagsNone
+#define hipGraphicsRegisterFlagsReadOnly cudaGraphicsRegisterFlagsReadOnly
+#define hipGraphicsRegisterFlagsWriteDiscard cudaGraphicsRegisterFlagsWriteDiscard
+#define hipGraphicsRegisterFlagsSurfaceLoadStore cudaGraphicsRegisterFlagsSurfaceLoadStore
+#define hipGraphicsRegisterFlagsTextureGather cudaGraphicsRegisterFlagsTextureGather
 
 /**
  * graph types
@@ -2861,6 +2878,40 @@ inline static hipError_t hipExternalMemoryGetMappedBuffer(void **devPtr, hipExte
 
 inline static hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
   return hipCUDAErrorTohipError(cudaDestroyExternalMemory(extMem));
+}
+
+inline static hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices, unsigned int hipDeviceCount,
+                                         hipGLDeviceList deviceList) {
+  return hipCUDAErrorTohipError(cudaGLGetDevices(pHipDeviceCount, pHipDevices, hipDeviceCount, deviceList));
+}
+
+inline static hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint buffer, unsigned int flags) {
+  return hipCUDAErrorTohipError(cudaGraphicsGLRegisterBuffer(resource, buffer, flags));
+}
+
+inline static hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint image, GLenum target, unsigned int flags) {
+  return hipCUDAErrorTohipError(cudaGraphicsGLRegisterImage(resource, image, target, flags));
+}
+
+inline static hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources, hipStream_t stream  __dparm(0)) {
+  return hipCUDAErrorTohipError(cudaGraphicsMapResources(count, resources, stream));
+}
+
+inline static hipError_t hipGraphicsSubResourceGetMappedArray(hipArray_t* array, hipGraphicsResource_t resource, unsigned int arrayIndex,
+                                                              unsigned int mipLevel) {
+  return hipCUDAErrorTohipError(cudaGraphicsSubResourceGetMappedArray(array, resource, arrayIndex, mipLevel));
+}
+
+inline static hipError_t hipGraphicsResourceGetMappedPointer(void** devPtr, size_t* size, hipGraphicsResource_t resource) {
+  return hipCUDAErrorTohipError(cudaGraphicsResourceGetMappedPointer(devPtr, size, resource));
+}
+
+inline static hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources, hipStream_t stream  __dparm(0)) {
+  return hipCUDAErrorTohipError(cudaGraphicsUnmapResources(count, resources, stream));
+}
+
+inline static hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
+  return hipCUDAErrorTohipError(cudaGraphicsUnregisterResource(resource));
 }
 
 #if CUDA_VERSION >= CUDA_11020
