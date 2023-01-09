@@ -23,6 +23,56 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
+__device__ static inline unsigned __hip_ds_bpermute(int index, unsigned src) {
+    union { int i; unsigned u; float f; } tmp; tmp.u = src;
+    tmp.i = __builtin_amdgcn_ds_bpermute(index, tmp.i);
+    return tmp.u;
+}
+
+__device__ static inline float __hip_ds_bpermutef(int index, float src) {
+    union { int i; unsigned u; float f; } tmp; tmp.f = src;
+    tmp.i = __builtin_amdgcn_ds_bpermute(index, tmp.i);
+    return tmp.f;
+}
+
+__device__ static inline unsigned __hip_ds_permute(int index, unsigned src) {
+    union { int i; unsigned u; float f; } tmp; tmp.u = src;
+    tmp.i = __builtin_amdgcn_ds_permute(index, tmp.i);
+    return tmp.u;
+}
+
+__device__ static inline float __hip_ds_permutef(int index, float src) {
+    union { int i; unsigned u; float f; } tmp; tmp.f = src;
+    tmp.i = __builtin_amdgcn_ds_permute(index, tmp.i);
+    return tmp.f;
+}
+
+#define __hip_ds_swizzle(src, pattern)  __hip_ds_swizzle_N<(pattern)>((src))
+#define __hip_ds_swizzlef(src, pattern) __hip_ds_swizzlef_N<(pattern)>((src))
+
+template <int pattern>
+__device__ static inline unsigned __hip_ds_swizzle_N(unsigned int src) {
+    union { int i; unsigned u; float f; } tmp; tmp.u = src;
+    tmp.i = __builtin_amdgcn_ds_swizzle(tmp.i, pattern);
+    return tmp.u;
+}
+
+template <int pattern>
+__device__ static inline float __hip_ds_swizzlef_N(float src) {
+    union { int i; unsigned u; float f; } tmp; tmp.f = src;
+    tmp.i = __builtin_amdgcn_ds_swizzle(tmp.i, pattern);
+    return tmp.f;
+}
+
+#define __hip_move_dpp(src, dpp_ctrl, row_mask, bank_mask, bound_ctrl) \
+  __hip_move_dpp_N<(dpp_ctrl), (row_mask), (bank_mask), (bound_ctrl)>((src))
+
+template <int dpp_ctrl, int row_mask, int bank_mask, bool bound_ctrl>
+__device__ static inline int __hip_move_dpp_N(int src) {
+    return __builtin_amdgcn_mov_dpp(src, dpp_ctrl, row_mask, bank_mask,
+                                    bound_ctrl);
+}
+
 static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
 
 __device__
