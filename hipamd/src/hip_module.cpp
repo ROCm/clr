@@ -224,6 +224,10 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
 
   const amd::Device* device = g_devices[deviceId]->devices()[0];
+  const auto& info = device->info();
+  if (sharedMemBytes > info.localMemSizePerCU_) { //sharedMemPerBlock
+    return hipErrorInvalidValue;
+  }
   // Make sure dispatch doesn't exceed max workgroup size limit
   if (blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
     return hipErrorInvalidValue;
