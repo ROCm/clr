@@ -805,6 +805,7 @@ bool Buffer::create(bool alloc_local) {
       if (owner()->getSvmPtr() == reinterpret_cast<void*>(amd::Memory::MemoryType
                                                           ::kArenaMemoryPtr)) {
         kind_ = MEMORY_KIND_ARENA;
+        flags_ |= HostMemoryDirectAccess;
       } else {
         kind_ = MEMORY_KIND_PTRGIVEN;
       }
