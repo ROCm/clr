@@ -103,6 +103,11 @@ static constexpr uint16_t kBarrierVendorPacketHeader =
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
+static constexpr uint16_t kBarrierVendorPacketAgentScopeHeader =
+    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+
 static constexpr hsa_barrier_and_packet_t kBarrierAcquirePacket = {
     kBarrierPacketAcquireHeader, 0, 0, {{0}}, 0, {0}};
 
@@ -1032,10 +1037,10 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
 }
 
 // ================================================================================================
-void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, hsa_signal_t signal,
-                                            hsa_signal_value_t value, hsa_signal_value_t mask,
-                                            hsa_signal_condition32_t cond, bool skipTs,
-                                            hsa_signal_t completionSignal) {
+void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveDepSignal,
+                                            hsa_signal_t signal, hsa_signal_value_t value,
+                                            hsa_signal_value_t mask, hsa_signal_condition32_t cond,
+                                            bool skipTs, hsa_signal_t completionSignal) {
   hsa_amd_barrier_value_packet_t barrier_value_packet_ = {0};
   uint16_t rest = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
   const uint32_t queueSize = gpu_queue_->size;
@@ -1045,6 +1050,18 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, hsa_signal_t 
   barrier_value_packet_.value = value;
   barrier_value_packet_.mask = mask;
   barrier_value_packet_.cond = cond;
+
+  // Dependent signal and external signal cant be true at the same time
+  assert(resolveDepSignal & (signal.handle != 0) == 0);
+  if (resolveDepSignal) {
+    auto wait_signal = Barriers().WaitingSignal();
+    assert(wait_signal.size() < 2 && "Only one dep signal allowed for BarrierValue");
+
+    barrier_value_packet_.signal = wait_signal[0];
+    barrier_value_packet_.value = kInitSignalValueOne;
+    barrier_value_packet_.mask = std::numeric_limits<int64_t>::max();
+    barrier_value_packet_.cond = HSA_SIGNAL_CONDITION_LT;
+  }
 
   if (completionSignal.handle == 0) {
     // Get active signal for current dispatch if profiling is necessary
@@ -1070,18 +1087,19 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, hsa_signal_t 
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x "
           "(type=%d, barrier=%d, acquire=%d, release=%d), "
-          "completion_signal=0x%zx value = 0x%llx mask = 0x%llx cond: %d (GTE: %d EQ: %d NE: %d)",
+          "signal=0x%zx, value = 0x%llx mask = 0x%llx cond: %s, completion_signal=0x%zx",
           gpu_queue_, packetHeader, rest,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
                          HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
           cache_state,
-          barrier_value_packet_.completion_signal,
+          barrier_value_packet_.signal,
           barrier_value_packet_.value,
           barrier_value_packet_.mask,
-          barrier_value_packet_.cond,
-          HSA_SIGNAL_CONDITION_GTE, HSA_SIGNAL_CONDITION_EQ, HSA_SIGNAL_CONDITION_NE);
+          barrier_value_packet_.cond == 0 ? "EQ" : barrier_value_packet_.cond == 1 ?
+                                        "NE" : barrier_value_packet_.cond == 2 ? "LT" : "GTE",
+          barrier_value_packet_.completion_signal);
 }
 
 // ================================================================================================
@@ -2421,23 +2439,23 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
       // the comparision defiend by 'condition'
       switch (flags) {
         case ROCCLR_STREAM_WAIT_VALUE_GTE: {
-          dispatchBarrierValuePacket(header, signal, value, mask,
+          dispatchBarrierValuePacket(header, false, signal, value, mask,
                                      HSA_SIGNAL_CONDITION_GTE, true);
           break;
         }
         case ROCCLR_STREAM_WAIT_VALUE_EQ: {
-          dispatchBarrierValuePacket(header, signal, value, mask,
+          dispatchBarrierValuePacket(header,false, signal, value, mask,
                                      HSA_SIGNAL_CONDITION_EQ, true);
           break;
         }
         case ROCCLR_STREAM_WAIT_VALUE_AND: {
-          dispatchBarrierValuePacket(header, signal, 0, (value & mask),
+          dispatchBarrierValuePacket(header, false, signal, 0, (value & mask),
                                      HSA_SIGNAL_CONDITION_NE, true);
           break;
         }
         case ROCCLR_STREAM_WAIT_VALUE_NOR: {
           uint64_t norValue = ~value & mask;
-          dispatchBarrierValuePacket(header, signal, norValue, norValue,
+          dispatchBarrierValuePacket(header, false, signal, norValue, norValue,
                                     HSA_SIGNAL_CONDITION_NE, true);
           break;
         }
@@ -3225,14 +3243,14 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
         int32_t releaseFlags = vcmd.getEventScope();
         if (releaseFlags == Device::CacheState::kCacheStateAgent) {
           if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
-            dispatchBarrierValuePacket(kBarrierPacketAgentScopeHeader);
+            dispatchBarrierValuePacket(kBarrierVendorPacketAgentScopeHeader, true);
           } else {
             dispatchBarrierPacket(kBarrierPacketAgentScopeHeader, false);
           }
         } else {
           // Submit a barrier with a cache flushes.
           if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
-            dispatchBarrierValuePacket(kBarrierPacketHeader);
+            dispatchBarrierValuePacket(kBarrierVendorPacketHeader, true);
           } else {
             dispatchBarrierPacket(kBarrierPacketHeader, false);
           }
