@@ -380,6 +380,7 @@ struct ihipGraph {
   static int nextID;
   hip::Device* device_;       //!< HIP device object
   hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
+  std::unordered_set<hipGraphNode*> capturedNodes_;
 
  public:
   ihipGraph(hip::Device* device, const ihipGraph* original = nullptr)
@@ -414,6 +415,14 @@ struct ihipGraph {
     }
 
   };
+
+  void AddManualNodeDuringCapture(hipGraphNode* node) { capturedNodes_.insert(node); }
+
+  std::unordered_set<hipGraphNode*> GetManualNodesDuringCapture() { return capturedNodes_; }
+
+  void RemoveManualNodesDuringCapture() {
+    capturedNodes_.erase(capturedNodes_.begin(), capturedNodes_.end());
+  }
 
   /// Return graph unique ID
   int GetID() const { return id_; }
