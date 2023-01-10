@@ -508,7 +508,11 @@ hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams*
   hipError_t result = hipSuccess;
   result = ihipDeviceGetCount(&numActiveGPUs);
 
-  if (numDevices > numActiveGPUs) {
+  if ((numDevices == 0) || (numDevices > numActiveGPUs)) {
+    return hipErrorInvalidValue;
+  }
+
+  if ((flags < 0) || (flags > hipCooperativeLaunchMultiDeviceNoPostSync)) {
     return hipErrorInvalidValue;
   }
 
