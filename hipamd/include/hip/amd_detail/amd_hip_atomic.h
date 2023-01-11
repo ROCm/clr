@@ -35,7 +35,9 @@ THE SOFTWARE.
 #define __HIP_MEMORY_SCOPE_SYSTEM 5
 #endif
 
+#if !defined(__HIPCC_RTC__)
 #include "amd_hip_unsafe_atomics.h"
+#endif
 
 __device__
 inline
