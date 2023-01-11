@@ -176,8 +176,7 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
         // Copy data from device to host - line by line
         address dst = reinterpret_cast<address>(dstHost) + dstOffset;
-        src += srcOffset;
-        bool retval = hsaCopyStaged(src, dst, size[0], staging, false);
+        bool retval = hsaCopyStaged(src + srcOffset, dst, size[0], staging, false);
         if (!retval) {
           return retval;
         }
@@ -337,9 +336,8 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
         dstOffset = bufRect.offset(0, y, z);
 
         // Copy data from host to device - line by line
-        dst += dstOffset;
         const_address src = reinterpret_cast<const_address>(srcHost) + srcOffset;
-        bool retval = hsaCopyStaged(src, dst, size[0], staging, true);
+        bool retval = hsaCopyStaged(src, dst + dstOffset, size[0], staging, true);
         if (!retval) {
           return retval;
         }
@@ -670,8 +668,9 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   // Use SDMA to transfer the data
   ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-          "HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx",
-          (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
+          "HSA Asycn Copy dst=0x%zx, src=0x%zx, size=%d, wait_event=0x%zx, "
+          "completion_signal=0x%zx",
+          dst, src, (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
 
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
       size[0], wait_events.size(), wait_events.data(), active);
@@ -726,10 +725,12 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
       memcpy(hsaBuffer, hostSrc + offset, size);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-              "HSA Async Copy completion_signal=0x%zx", active.handle);
       status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
                                          srcAgent, size, 0, nullptr, active);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+          "HSA Async Copy staged H2D dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
+          hostDst + offset, hsaBuffer, size, active.handle);
+
       if (status != HSA_STATUS_SUCCESS) {
         gpu().Barriers().ResetCurrentSignal();
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
@@ -755,10 +756,12 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
     // Copy data from Device to Host
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA Async Copy completion_signal=0x%zx", active.handle);
     status = hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
         dev().getBackendDevice(), size, 0, nullptr, active);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+            "HSA Async Copy staged D2H dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
+            hsaBuffer, hostSrc + offset, size, active.handle);
+
     if (status == HSA_STATUS_SUCCESS) {
       gpu().Barriers().WaitCurrent();
       memcpy(hostDst + offset, hsaBuffer, size);
