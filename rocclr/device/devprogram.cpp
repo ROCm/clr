@@ -344,7 +344,7 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
 }
 
 bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
-                              const std::vector<std::string>& options, const bool requiredDump,
+                              const std::vector<std::string>& options,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
                               char* binaryData[], size_t* binarySize, const bool link_dev_libs) {
 
@@ -385,7 +385,7 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     std::string dumpFileName;
-    if (requiredDump && amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
+    if (amdOptions->isDumpFlagSet(amd::option::DUMP_BC_LINKED)) {
       dumpFileName = amdOptions->getDumpFileName("_linked.bc");
     }
     status = extractByteCodeBinary(*output, AMD_COMGR_DATA_KIND_BC, dumpFileName, binaryData,
@@ -971,7 +971,7 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   size_t binarySize = 0;
   std::vector<std::string> linkOptions;
   constexpr bool kLinkDevLibs = false;
-  bool ret = linkLLVMBitcode(inputs, linkOptions, false, options, &output, &binaryData,
+  bool ret = linkLLVMBitcode(inputs, linkOptions, options, &output, &binaryData,
                              &binarySize, kLinkDevLibs);
 
   amd::Comgr::destroy_data_set(output);
@@ -1222,7 +1222,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
     bool ret = (status == AMD_COMGR_STATUS_SUCCESS);
     if (ret) {
       hasLinkedBC = true;
-      ret = linkLLVMBitcode(inputs, linkOptions, true, options, &linked_bc);
+      ret = linkLLVMBitcode(inputs, linkOptions, options, &linked_bc);
     }
 
     amd::Comgr::destroy_data_set(inputs);
