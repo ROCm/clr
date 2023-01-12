@@ -32,7 +32,8 @@ inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
                                    const hipGraphNode_t* pDependencies, size_t numDependencies) {
   graph->AddNode(graphNode);
   for (size_t i = 0; i < numDependencies; i++) {
-    if (!hipGraphNode::isNodeValid(pDependencies[i])) {
+    if ((!hipGraphNode::isNodeValid(pDependencies[i])) ||
+        (graph != pDependencies[i]->GetParentGraph())) {
       return hipErrorInvalidValue;
     }
     pDependencies[i]->AddEdge(graphNode);
