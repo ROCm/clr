@@ -71,9 +71,8 @@ bool HostQueue::terminate() {
   } else {
     if (Os::isThreadAlive(thread_)) {
       Command* marker = nullptr;
-
       // Send a finish if the queue is still accepting commands.
-      {
+      if (lastEnqueueCommand_ != nullptr || !amd::IS_HIP) {
         ScopedLock sl(queueLock_);
         if (thread_.acceptingCommands_) {
           marker = new Marker(*this, false);
@@ -84,7 +83,11 @@ bool HostQueue::terminate() {
         }
       }
       if (marker != nullptr) {
-        marker->awaitCompletion();
+        if (marker->notifyCmdQueue()) {
+          while (marker->status() > CL_COMPLETE && Os::isThreadAlive(thread_)) {
+            amd::Os::yield();
+          }
+        }
         marker->release();
       }
 
@@ -96,7 +99,7 @@ bool HostQueue::terminate() {
       }
 
       // FIXME_lmoriche: fix termination handshake
-      while (thread_.state() < Thread::FINISHED) {
+      while (thread_.state() < Thread::FINISHED && Os::isThreadAlive(thread_)) {
         Os::yield();
       }
     }
