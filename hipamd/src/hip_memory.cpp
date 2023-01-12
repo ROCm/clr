@@ -110,7 +110,13 @@ hipError_t ihipFree(void *ptr) {
     hip::Stream::syncNonBlockingStreams(device_id);
     // Find out if memory belongs to any memory pool
     if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
-      amd::SvmBuffer::free(memory_object->getContext(), ptr);
+      // External mem is not svm.
+      if (memory_object->isInterop()) {
+        amd::MemObjMap::RemoveMemObj(ptr);
+        memory_object->release();
+      } else {
+        amd::SvmBuffer::free(memory_object->getContext(), ptr);
+      }
     }
     return hipSuccess;
   }
@@ -163,7 +169,8 @@ hipError_t hipExternalMemoryGetMappedBuffer(
     HIP_RETURN(hipErrorInvalidValue);
   }
   *devPtr = reinterpret_cast<void*>(devMem->virtualAddress() + bufferDesc->offset);
-
+  amd::MemObjMap::AddMemObj(*devPtr, buf);
+  buf->retain();
   HIP_RETURN(hipSuccess);
 }
 
