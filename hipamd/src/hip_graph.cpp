@@ -1674,13 +1674,19 @@ hipError_t hipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t
   if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
     HIP_RETURN(hipErrorIllegalState);
   }
-  if ((numDependencies > 0 && dependencies == nullptr) ||
+  if ((s->GetCaptureGraph()->GetNodeCount() < numDependencies) ||
+      (numDependencies > 0 && dependencies == nullptr) ||
       (flags != 0 && flags != hipStreamAddCaptureDependencies &&
        flags != hipStreamSetCaptureDependencies)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   std::vector<hipGraphNode_t> depNodes;
+  const std::vector<hipGraphNode_t>& graphNodes = s->GetCaptureGraph()->GetNodes();
   for (int i = 0; i < numDependencies; i++) {
+    if ((dependencies[i] == nullptr) ||
+        std::find(std::begin(graphNodes), std::end(graphNodes), dependencies[i]) == std::end(graphNodes)) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
     depNodes.push_back(dependencies[i]);
   }
   if (flags == hipStreamAddCaptureDependencies) {
