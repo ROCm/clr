@@ -32,33 +32,8 @@ std::unordered_set<hipArray*> hip::hipArraySet;
 
 // ================================================================================================
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
-  amd::Memory *memObj = amd::MemObjMap::FindMemObj(ptr);
-  if (memObj != nullptr) {
-    const char* hostPtr = reinterpret_cast<const char*>(ptr);
-    const char* hostMem = reinterpret_cast<const char*>(memObj->getHostMem());
-    //Prepinned memory
-    if ((hostMem != nullptr) &&
-        (hostPtr >= hostMem && hostPtr <= (hostMem + memObj->getSize()))) {
-      offset = reinterpret_cast<size_t>(hostPtr) - reinterpret_cast<size_t>(hostMem);
-    }
-    else {
-      //SVM ptr or device ptr mapped from host
-      device::Memory* devMem =
-              (memObj->getDeviceMemory(*memObj->getContext().devices()[0]));
-      if (devMem == nullptr) {
-        return nullptr;
-      }
-      else {
-        const void* devPtr = reinterpret_cast<void*>((devMem)->virtualAddress());
-        if (devPtr != nullptr) {
-          offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(devPtr);
-        }
-        else {
-          return nullptr;
-        }
-      }
-    }
-  } else {
+  auto memObj = amd::MemObjMap::FindMemObj(ptr, &offset);
+  if (memObj == nullptr) {
     // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM and Xnack is disabled.
     memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(
         ptr, offset, size);
@@ -2405,7 +2380,7 @@ hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffs
                                      size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr,
                                      bool isAsync = false) {
 
-  hipError_t validateParams = hipSuccess, validateSrc = hipSuccess, validateDst = hipSuccess; 
+  hipError_t validateParams = hipSuccess, validateSrc = hipSuccess, validateDst = hipSuccess;
   if ((validateParams = hipMemcpy2DValidateParams(kind,stream)) != hipSuccess) {
     return validateParams;
   }
@@ -2845,7 +2820,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
       size_t offset = 0;
       amd::Memory* memObj = getMemoryObject(dst, offset);
       auto flags = memObj->getMemFlags();
-      if ((memObj->getUserData().sync_mem_ops_) 
+      if ((memObj->getUserData().sync_mem_ops_)
            || (offset == 0 && !(flags & (CL_MEM_SVM_FINE_GRAIN_BUFFER
                                          | CL_MEM_SVM_ATOMICS | CL_MEM_USE_HOST_PTR)))) {
         isAsync = true;
@@ -3617,7 +3592,7 @@ hipError_t hipMemcpy2DFromArray_common(void* dst, size_t dpitch, hipArray_const_
                                        size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr,
                                        bool isAsync=false) {
 
-  hipError_t validateParam = hipSuccess, validateSrc = hipSuccess, validateDst = hipSuccess; 
+  hipError_t validateParam = hipSuccess, validateSrc = hipSuccess, validateDst = hipSuccess;
   if ((validateParam = hipMemcpy2DValidateParams(kind,stream)) != hipSuccess) {
     return validateParam;
   }
