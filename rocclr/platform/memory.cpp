@@ -305,11 +305,6 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
         LogPrintfError("Can't allocate memory size - 0x%08X bytes!", getSize());
         return false;
       }
-      if (amd::IS_HIP && isInterop()) {
-        // Interop resources dont' have svm allocations, we use device address for mapping.
-        amd::MemObjMap::AddMemObj(
-            reinterpret_cast<void*>(static_cast<uintptr_t>(mem->virtualAddress())), this);
-      }
     }
   }
 
@@ -423,10 +418,6 @@ Memory::~Memory() {
   if (NULL != deviceMemories_) {
     // Destroy all device memory objects
     for (uint i = 0; i < numDevices_; ++i) {
-      if (amd::IS_HIP && isInterop() && deviceMemories_[i].value_ != nullptr) {
-        amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(
-            static_cast<uintptr_t>(deviceMemories_[i].value_->virtualAddress())));
-      }
       delete deviceMemories_[i].value_;
     }
   }
