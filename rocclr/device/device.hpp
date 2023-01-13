@@ -1294,7 +1294,8 @@ class MemObjMap : public AllStatic {
                         amd::Memory* v);  //!< add the host mem pointer and buffer in the container
   static void RemoveMemObj(const void* k);  //!< Remove an entry of mem object from the container
   static amd::Memory* FindMemObj(
-      const void* k);  //!< find the mem object based on the input pointer
+      const void* k,              //!< find the mem object based on the input pointer
+      size_t* offset = nullptr);  //!< Offset in the memory location
   static void UpdateAccess(amd::Device *peerDev);
   static void Purge(amd::Device* dev); //!< Purge all user allocated memories on the given device
 
