@@ -296,7 +296,7 @@ void MemObjMap::RemoveMemObj(const void* k) {
   }
 }
 
-amd::Memory* MemObjMap::FindMemObj(const void* k) {
+amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
   amd::ScopedLock lock(AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
   auto it = MemObjMap_.upper_bound(key);
@@ -307,6 +307,9 @@ amd::Memory* MemObjMap::FindMemObj(const void* k) {
   --it;
   amd::Memory* mem = it->second;
   if (key >= it->first && key < (it->first + mem->getSize())) {
+    if (offset != nullptr) {
+      *offset = key - it->first;
+    }
     // the k is in the range
     return mem;
   } else {
