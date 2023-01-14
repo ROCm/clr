@@ -103,7 +103,7 @@ hipError_t ihipGraphAddMemcpyNode1D(hipGraphNode_t* pGraphNode, hipGraph_t graph
                                     const hipGraphNode_t* pDependencies, size_t numDependencies,
                                     void* dst, const void* src, size_t count, hipMemcpyKind kind) {
   if (pGraphNode == nullptr || graph == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr)) {
+      (numDependencies > 0 && pDependencies == nullptr) || count ==0) {
     return hipErrorInvalidValue;
   }
   hipError_t status = hipGraphMemcpyNode1D::ValidateParams(dst, src, count, kind);
