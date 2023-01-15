@@ -543,6 +543,12 @@ typedef CUDA_RESOURCE_VIEW_DESC HIP_RESOURCE_VIEW_DESC;
 #define HIP_POINTER_ATTRIBUTE_ACCESS_FLAGS      CU_POINTER_ATTRIBUTE_ACCESS_FLAGS
 #define HIP_POINTER_ATTRIBUTE_MEMPOOL_HANDLE    CU_POINTER_ATTRIBUTE_MEMPOOL_HANDLE
 
+typedef enum cudaGraphInstantiateFlags hipGraphInstantiateFlags;
+#define hipGraphInstantiateFlagAutoFreeOnLaunch cudaGraphInstantiateFlagAutoFreeOnLaunch
+#define hipGraphInstantiateFlagUpload cudaGraphInstantiateFlagUpload
+#define hipGraphInstantiateFlagDeviceLaunch cudaGraphInstantiateFlagDeviceLaunch
+#define hipGraphInstantiateFlagUseNodePriority cudaGraphInstantiateFlagUseNodePriority
+
 #if CUDA_VERSION >= CUDA_9000
 #define __shfl(...)      __shfl_sync(0xffffffff, __VA_ARGS__)
 #define __shfl_up(...)   __shfl_up_sync(0xffffffff, __VA_ARGS__)
