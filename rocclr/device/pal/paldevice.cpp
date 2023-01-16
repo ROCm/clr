@@ -1511,10 +1511,13 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
           // GPU will be reading from this host memory buffer,
           // so assume Host write into it
           type = Resource::RemoteUSWC;
+          remoteAlloc = true;
         } else {
+#ifndef ATI_BITS_32
           type = Resource::Remote;
+          remoteAlloc = true;
+#endif
         }
-        remoteAlloc = true;
       }
       // Make sure owner has a valid hostmem pointer and it's not COPY
       if (!remoteAlloc && (owner.getHostMem() != nullptr)) {
