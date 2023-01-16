@@ -2219,6 +2219,7 @@ bool Device::deviceAllowAccess(void* ptr) const {
 
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
+  constexpr bool kForceAllocation = true;
   alignment = std::max(alignment, static_cast<size_t>(info_.memBaseAddrAlign_));
 
   amd::Memory* mem = nullptr;
@@ -2236,7 +2237,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
       return nullptr;
     }
 
-    if (!mem->create(nullptr, false)) {
+    if (!mem->create(nullptr, false, false, kForceAllocation)) {
       LogError("failed to create a svm hidden buffer!");
       mem->release();
       return nullptr;
