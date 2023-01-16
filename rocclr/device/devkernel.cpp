@@ -1095,8 +1095,6 @@ bool Kernel::GetAttrCodePropMetadata() {
     return false;
   }
 
-  InitParameters(kernelMetaNode);
-
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = device().info().localMemSizePerCU_;
   workGroupInfo_.availableSGPRs_ = 104;
@@ -1144,11 +1142,12 @@ bool Kernel::GetAttrCodePropMetadata() {
                                                 static_cast<void*>(this));
   }
 
-
   if (status != AMD_COMGR_STATUS_SUCCESS) {
     LogError("Comgr Api failed with Status: \n");
     return false;
   }
+
+  InitParameters(kernelMetaNode);
 
   return true;
 }

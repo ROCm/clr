@@ -315,7 +315,7 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
 {
   {".symbol",                     KernelField::SymbolName},
   {".reqd_workgroup_size",        KernelField::ReqdWorkGroupSize},
-  {".workgorup_size_hint",        KernelField::WorkGroupSizeHint},
+  {".workgroup_size_hint",        KernelField::WorkGroupSizeHint},
   {".vec_type_hint",              KernelField::VecTypeHint},
   {".device_enqueue_symbol",      KernelField::DeviceEnqueueSymbol},
   {".kernarg_segment_size",       KernelField::KernargSegmentSize},
