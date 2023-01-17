@@ -1648,7 +1648,63 @@ bool Device::populateOCLDeviceConstants() {
 
   info_.globalCUMask_ = {};
   info_.virtualMemoryManagement_ = false;
+  switch (isa().versionMajor()) {
+    case (11):
+      if (isa().versionMinor() == 0) {
+        switch (isa().versionStepping()) {
+          case (0):
+          case (1):
+            info_.vgprAllocGranularity_ = 24;
+            info_.vgprsPerSimd_ = 1536;
+            break;
+          case (2):
+          case (3):
+          default:
+            info_.vgprAllocGranularity_ = 16;
+            info_.vgprsPerSimd_ = 1024;
+            break;
+        }
+      }
+      break;
+    case (10):
+      switch (isa().versionMinor()) {
+        case (0):
+        case (1):
+          info_.vgprAllocGranularity_ = 8;
+          info_.vgprsPerSimd_ = 1024;
+          break;
+        case (3):
+        default:
+          info_.vgprAllocGranularity_ = 16;
+          info_.vgprsPerSimd_ = 1024;
+          break;
+      }
+      break;
+    case (9):
+      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
+          (isa().versionMinor() == 4 && isa().versionStepping() == 0)) {
+        info_.vgprAllocGranularity_ = 8;
+        info_.vgprsPerSimd_ = 512;
+      } else {
+        info_.vgprAllocGranularity_ = 4;
+        info_.vgprsPerSimd_ = 256;
+      }
+      break;
+    default:
+      // For gfx<=8
+      info_.vgprAllocGranularity_ = 4;
+      info_.vgprsPerSimd_ = 256;
+      break;
+  }
 
+  if (isa().versionMajor() < 8) {
+    info_.sgprsPerSimd_ = 512;
+  } else if (isa().versionMajor() < 10) {
+    info_.sgprsPerSimd_ = 800;
+  } else {
+    info_.sgprsPerSimd_ =
+        std::numeric_limits<uint32_t>::max();  // gfx10+ does not share SGPRs between waves
+  }
   return true;
 }
 
