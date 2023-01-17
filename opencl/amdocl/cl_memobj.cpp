@@ -2368,6 +2368,10 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage,
     return CL_INVALID_OPERATION;
   }
 
+  if (dstImage->getDims() == 2 && origin[2] != 0) {
+    return CL_INVALID_VALUE;
+  }
+
   amd::HostQueue* queue = as_amd(command_queue)->asHostQueue();
   if (NULL == queue) {
     return CL_INVALID_COMMAND_QUEUE;
