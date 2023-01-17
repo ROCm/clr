@@ -1125,10 +1125,6 @@ hipError_t hipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipMemcpy3DParms* pCopyParams) {
   HIP_INIT_API(hipGraphAddMemcpyNode, pGraphNode, graph, pDependencies, numDependencies,
                pCopyParams);
-  if (pGraphNode == nullptr || graph == nullptr || pCopyParams == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr)) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
 
   HIP_RETURN_DURATION(ihipGraphAddMemcpyNode(pGraphNode, graph, pDependencies, numDependencies,
                                              pCopyParams, false));
@@ -1857,7 +1853,7 @@ hipError_t hipGraphAddMemcpyNodeFromSymbol(hipGraphNode_t* pGraphNode, hipGraph_
                                            size_t count, size_t offset, hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphAddMemcpyNodeFromSymbol, pGraphNode, graph, pDependencies, numDependencies,
                dst, symbol, count, offset, kind);
-  if (graph == nullptr || pGraphNode == nullptr ||
+  if (graph == nullptr || pGraphNode == nullptr || count == 0 ||
       (numDependencies > 0 && pDependencies == nullptr) || dst == nullptr ||
       !ihipGraph::isGraphValid(graph)) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1916,7 +1912,7 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
                                          hipMemcpyKind kind) {
   HIP_INIT_API(hipGraphAddMemcpyNodeToSymbol, pGraphNode, graph, pDependencies, numDependencies,
                symbol, src, count, offset, kind);
-  if (pGraphNode == nullptr || graph == nullptr || src == nullptr ||
+  if (pGraphNode == nullptr || graph == nullptr || src == nullptr || count == 0 ||
       !ihipGraph::isGraphValid(graph) || (pDependencies == nullptr && numDependencies > 0)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
