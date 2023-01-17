@@ -622,6 +622,10 @@ hipError_t hipMemcpyWithStream(void* dst, const void* src, size_t sizeBytes,
                                hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpyWithStream, dst, src, sizeBytes, kind, stream);
   STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
   amd::HostQueue* queue = hip::getQueue(stream);
   if (queue == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
