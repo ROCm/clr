@@ -795,3 +795,27 @@ hipError_t hipExtStreamGetCUMask(hipStream_t stream, uint32_t cuMaskSize, uint32
   }
   HIP_RETURN(hipSuccess);
 }
+
+// ================================================================================================
+hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
+  HIP_INIT_API(hipStreamGetDevice, stream, device);
+
+  if (device == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::isValid(stream)) {
+    return HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
+  if (stream == nullptr) {  // handle null stream
+    // null stream is associated with current device, return the device id associated with the
+    // current device
+    *device = hip::getCurrentDevice()->deviceId();
+  } else {
+    getStreamPerThread(stream);
+    *device = reinterpret_cast<hip::Stream*>(stream)->DeviceId();
+  }
+
+  HIP_RETURN(hipSuccess);
+}

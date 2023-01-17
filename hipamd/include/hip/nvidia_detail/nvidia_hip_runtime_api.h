@@ -2507,6 +2507,20 @@ inline static hipError_t hipStreamAddCallback(hipStream_t stream, hipStreamCallb
         cudaStreamAddCallback(stream, (cudaStreamCallback_t)callback, userData, flags));
 }
 
+inline static hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
+    hipCtx_t context;
+    auto err = hipCUResultTohipError(cuStreamGetCtx(stream, &context));
+    if (err != hipSuccess) return err;
+
+    err = hipCUResultTohipError(cuCtxPushCurrent(context));
+    if (err != hipSuccess) return err;
+
+    err = hipCUResultTohipError(cuCtxGetDevice(device));
+    if (err != hipSuccess) return err;
+
+    return hipCUResultTohipError(cuCtxPopCurrent(&context));
+}
+
 inline static hipError_t hipDriverGetVersion(int* driverVersion) {
     return hipCUDAErrorTohipError(cudaDriverGetVersion(driverVersion));
 }

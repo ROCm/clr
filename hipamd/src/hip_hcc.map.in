@@ -169,6 +169,7 @@ global:
     hipStreamCreateWithFlags;
     hipStreamCreateWithPriority;
     hipStreamDestroy;
+    hipStreamGetDevice;
     hipStreamGetFlags;
     hipStreamQuery;
     hipStreamSynchronize;
