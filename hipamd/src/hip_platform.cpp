@@ -333,62 +333,14 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     MaxWavesPerSimd = 16;
   }
   size_t VgprWaves = MaxWavesPerSimd;
-  uint32_t VgprGranularity = 0;
-  size_t maxVGPRs = 0;
+  uint32_t VgprGranularity = device.info().vgprAllocGranularity_;
+  size_t maxVGPRs = device.info().vgprsPerSimd_;
   size_t wavefrontSize = wrkGrpInfo->wavefrontSize_;
-  switch (device.isa().versionMajor()) {
-    case (11):
-      if (device.isa().versionMinor() == 0) {
-        switch (device.isa().versionStepping()) {
-          case (0):
-          case (1):
-            VgprGranularity = (wavefrontSize == 32) ? 24 : 12;
-            maxVGPRs = (wavefrontSize == 32) ? 1536 : 768;
-            break;
-          case (2):
-          case (3):
-            VgprGranularity = (wavefrontSize == 32) ? 16 : 8;
-            maxVGPRs = (wavefrontSize == 32) ? 1024 : 512;
-            break;
-          default:
-            VgprGranularity = 8;
-            maxVGPRs = 1024;
-            break;
-        }
-      }
-      break;
-    case (10):
-      switch (device.isa().versionMinor()) {
-        case (0):
-        case (1):
-          VgprGranularity = (wavefrontSize == 32) ? 8 : 4;
-          maxVGPRs = (wavefrontSize == 32) ? 1024 : 512;
-          break;
-        case (3):
-          VgprGranularity = (wavefrontSize == 32) ? 16 : 8;
-          maxVGPRs = (wavefrontSize == 32) ? 1024 : 512;
-          break;
-        default:
-          VgprGranularity = 8;
-          maxVGPRs = 1024;
-          break;
-      }
-      break;
-    case (9):
-      if ((device.isa().versionMinor() == 0 && device.isa().versionStepping() == 10) ||
-          (device.isa().versionMinor() == 4 && device.isa().versionStepping() == 0)) {
-        VgprGranularity = 8;
-        maxVGPRs = 512;
-      } else {
-        VgprGranularity = 4;
-        maxVGPRs = 256;
-      }
-      break;
-    default:
-      // For gfx<=8
-      VgprGranularity = 4;
-      maxVGPRs = 256;
-      break;
+  if (device.isa().versionMajor() >= 10) {
+    if (wavefrontSize == 64) {
+      maxVGPRs = maxVGPRs >> 1;
+      VgprGranularity = VgprGranularity >> 1;
+    }
   }
   if (wrkGrpInfo->usedSGPRs_ > 0) {
     VgprWaves = maxVGPRs / amd::alignUp(wrkGrpInfo->usedVGPRs_, VgprGranularity);
@@ -396,14 +348,7 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
 
   size_t GprWaves = VgprWaves;
   if (wrkGrpInfo->usedSGPRs_ > 0) {
-    size_t maxSGPRs;
-    if (device.isa().versionMajor() < 8) {
-      maxSGPRs = 512;
-    } else if (device.isa().versionMajor() < 10) {
-      maxSGPRs = 800;
-    } else {
-      maxSGPRs = SIZE_MAX;  // gfx10+ does not share SGPRs between waves
-    }
+    size_t maxSGPRs = device.info().sgprsPerSimd_;
     const size_t SgprWaves = maxSGPRs / amd::alignUp(wrkGrpInfo->usedSGPRs_, 16);
     GprWaves = std::min(VgprWaves, SgprWaves);
   }
