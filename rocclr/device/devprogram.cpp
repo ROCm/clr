@@ -346,7 +346,7 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
 bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                               const std::vector<std::string>& options,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
-                              char* binaryData[], size_t* binarySize, const bool link_dev_libs) {
+                              char* binaryData[], size_t* binarySize) {
 
   amd_comgr_language_t langver;
   setLanguage(amdOptions->oVariables->CLStd, &langver);
@@ -358,28 +358,13 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   //  Create the action for linking
   amd_comgr_action_info_t action;
-  amd_comgr_data_set_t dataSetDevLibs;
   bool hasAction = false;
-  bool hasDataSetDevLibs = false;
 
   amd_comgr_status_t status = createAction(langver, options, &action, &hasAction);
 
-  if (link_dev_libs) {
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd::Comgr::create_data_set(&dataSetDevLibs);
-    }
-
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      hasDataSetDevLibs = true;
-      status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
-                                    dataSetDevLibs);
-      extractBuildLog(dataSetDevLibs);
-    }
-  }
-
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action,
-      (link_dev_libs) ? dataSetDevLibs : inputs, *output);
+                                   inputs, *output);
     extractBuildLog(*output);
   }
 
@@ -396,17 +381,14 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     amd::Comgr::destroy_action_info(action);
   }
 
-  if (hasDataSetDevLibs) {
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
-  }
-
   return (status == AMD_COMGR_STATUS_SUCCESS);
 }
 
 bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
                                    const std::vector<std::string>& options,
                                    amd::option::Options* amdOptions,
-                                   char* binaryData[], size_t* binarySize) {
+                                   char* binaryData[], size_t* binarySize,
+                                   const bool link_dev_libs) {
 
   amd_comgr_language_t langver;
   setLanguage(amdOptions->oVariables->CLStd, &langver);
@@ -483,8 +465,12 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
 
   //  Compiling the source codes with precompiled headers or directly compileInputs
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
-                                 action, input, output);
+    if (link_dev_libs)
+      status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_WITH_DEVICE_LIBS_TO_BC,
+                                     action, input, output);
+    else
+      status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
+                                     action, input, output);
     extractBuildLog(output);
   }
 
@@ -970,9 +956,8 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   char* binaryData = nullptr;
   size_t binarySize = 0;
   std::vector<std::string> linkOptions;
-  constexpr bool kLinkDevLibs = false;
   bool ret = linkLLVMBitcode(inputs, linkOptions, options, &output, &binaryData,
-                             &binarySize, kLinkDevLibs);
+                             &binarySize);
 
   amd::Comgr::destroy_data_set(output);
   amd::Comgr::destroy_data_set(inputs);
