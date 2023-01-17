@@ -3374,11 +3374,7 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       size_t dstSize = amd::TransferBufferFileCommand::StagingBufferSize;
       dstSize = std::min(dstSize, copySize);
       void* dstBuffer = staging->cpuMap(*this);
-      if (!cmd.file()->transferBlock(writeBuffer, dstBuffer, staging->size(), fileOffset, 0,
-                                     dstSize)) {
-        cmd.setStatus(CL_INVALID_OPERATION);
-        return;
-      }
+
       staging->cpuUnmap(*this);
 
       bool result = blitMgr().copyBuffer(*staging, *mem, 0, dstOffset, dstSize, false);
@@ -3395,11 +3391,7 @@ void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cm
       bool result = blitMgr().copyBuffer(*mem, *staging, srcOffset, 0, srcSize, false);
 
       void* srcBuffer = staging->cpuMap(*this);
-      if (!cmd.file()->transferBlock(writeBuffer, srcBuffer, staging->size(), fileOffset, 0,
-                                     srcSize)) {
-        cmd.setStatus(CL_INVALID_OPERATION);
-        return;
-      }
+
       staging->cpuUnmap(*this);
 
       fileOffset += srcSize;
