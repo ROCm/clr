@@ -613,6 +613,11 @@ struct Info : public amd::EmbeddedObject {
   size_t virtualMemAllocGranularity_; //!< virtual memory allocation size/addr granularity
 
   uint32_t driverNodeId_;
+  //! Number of Physical SGPRs per SIMD
+  uint32_t sgprsPerSimd_;
+  //! Number of VGPRs per SIMD
+  uint32_t vgprsPerSimd_;
+  uint32_t vgprAllocGranularity_;
 };
 
 //! Device settings

@@ -632,7 +632,11 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     }
   }
   info_.virtualMemoryManagement_ = true;
-  info_.virtualMemAllocGranularity_ = static_cast<size_t>(palProp.gpuMemoryProperties.virtualMemAllocGranularity);
+  info_.virtualMemAllocGranularity_ =
+      static_cast<size_t>(palProp.gpuMemoryProperties.virtualMemAllocGranularity);
+  info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
+  info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
+  info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
 }
 
 Device::XferBuffers::~XferBuffers() {
