@@ -440,14 +440,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   // Enable some platform extensions
   enableExtension(ClAmdDeviceAttributeQuery);
 
-
-#ifdef ATI_OS_LINUX
-  if (palProp.gpuMemoryProperties.busAddressableMemSize > 0)
-#endif
-  {
-    enableExtension(ClAMDLiquidFlash);
-  }
-
   if (hwLDSSize_ == 0) {
     // Use hardcoded values for now, since PAL properties aren't available with offline devices
     hwLDSSize_ = (IS_LINUX || amd::IS_HIP || gfx10Plus_) ? 64 * Ki: 32 * Ki;

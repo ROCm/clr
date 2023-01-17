@@ -751,11 +751,6 @@ void TransferBufferFileCommand::submit(device::VirtualDevice& device) {
     }
     // Make HD transfer to the host accessible memory
     bool writeBuffer(type() == CL_COMMAND_READ_SSG_FILE_AMD);
-    if (!file()->transferBlock(writeBuffer, srcDstBuffer, mem->size(), fileOffset(), origin()[0],
-                               size()[0])) {
-      setStatus(CL_INVALID_OPERATION);
-      return;
-    }
     if (memory_->getMemFlags() & CL_MEM_USE_PERSISTENT_MEM_AMD) {
       // Lock protected multiple maps for persistent memory
       amd::ScopedLock lock(mem->owner()->lockMemoryOps());
