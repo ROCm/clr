@@ -613,8 +613,14 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.numRTQueues_ = numExclusiveComputeRings;
 
     const auto& engineProp = palProp.engineProperties[Pal::EngineTypeCompute];
-    info_.numRTCUs_ = engineProp.maxNumDedicatedCu;
-    info_.granularityRTCUs_ = engineProp.dedicatedCuGranularity;
+
+    if (settings().enableWgpMode_) {
+      info_.numRTCUs_ = engineProp.maxNumDedicatedCu / 2;
+      info_.granularityRTCUs_ = engineProp.dedicatedCuGranularity / 2;
+    } else {
+      info_.numRTCUs_ = engineProp.maxNumDedicatedCu;
+      info_.granularityRTCUs_ = engineProp.dedicatedCuGranularity;
+    }
 
     info_.threadTraceEnable_ = settings().threadTraceEnable_;
 

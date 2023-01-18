@@ -87,6 +87,9 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
     cmdCreateInfo.engineType = qCreateInfo.engineType = Pal::EngineTypeCompute;
     qCreateInfo.priority = Pal::QueuePriority::Medium;
   } else if (amd::CommandQueue::RealTimeDisabled != rtCU) {
+    if (gpu.dev().settings().enableWgpMode_) {
+      rtCU = rtCU * 2;
+    }
     qCreateInfo.numReservedCu = amd::alignDown(rtCU,
       gpu.dev().properties().engineProperties[Pal::EngineTypeCompute].dedicatedCuGranularity);
     if (qCreateInfo.numReservedCu == 0) {
