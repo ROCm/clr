@@ -103,6 +103,7 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   if (status != hipSuccess) {
     return status;
   }
+  size_t offset = 0;
   const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pNodeParams);
   // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
   // (unified virtual address space) base address of the source data and the bytes per row to apply.
@@ -110,36 +111,42 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   hipMemoryType srcMemoryType = pCopy.srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
     srcMemoryType =
-        amd::MemObjMap::FindMemObj(pCopy.srcDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+        getMemoryObject(pCopy.srcDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
     if (srcMemoryType == hipMemoryTypeHost) {
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
       // memory.
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcHost = pCopy.srcDevice;
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
     }
   }
+  offset = 0;
   hipMemoryType dstMemoryType = pCopy.dstMemoryType;
   if (dstMemoryType == hipMemoryTypeUnified) {
     dstMemoryType =
-        amd::MemObjMap::FindMemObj(pCopy.dstDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+        getMemoryObject(pCopy.dstDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
     if (srcMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstHost = pCopy.dstDevice;
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
     }
   }
-
+  offset = 0;
   // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
   // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
   if (srcMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.srcHost);
+    amd::Memory* mem = getMemoryObject(pCopy.srcHost, offset);
     srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
     }
   }
+  offset = 0;
   if (dstMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.dstHost);
+    amd::Memory* mem = getMemoryObject(pCopy.dstHost, offset);
     dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
+      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
     }
   }
 
@@ -254,7 +261,6 @@ bool ihipGraph::isGraphValid(ihipGraph* pGraph) {
   }
   return true;
 }
-
 
 void ihipGraph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
