@@ -457,7 +457,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
 
       // Copy memory line by line
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-              "HSA Asycn Copy Rect  wait_event=0x%zx, completion_signal=0x%zx",
+              "HSA Async Copy Rect  wait_event=0x%zx, completion_signal=0x%zx",
               (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
       hsa_status_t status = hsa_amd_memory_async_copy_rect(&dstMem, &offset,
           &srcMem, &offset, &dim, agent, direction, wait_events.size(), wait_events.data(), active);
@@ -478,7 +478,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
 
           // Copy memory line by line
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-                  "HSA Asycn Copy wait_event=0x%zx, completion_signal=0x%zx",
+                  "HSA Async Copy wait_event=0x%zx, completion_signal=0x%zx",
                   (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
           hsa_status_t status = hsa_amd_memory_async_copy(
               (reinterpret_cast<address>(dst) + dstOffset), dstAgent,
@@ -668,9 +668,8 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   // Use SDMA to transfer the data
   ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-          "HSA Asycn Copy dst=0x%zx, src=0x%zx, size=%d, wait_event=0x%zx, "
-          "completion_signal=0x%zx",
-          dst, src, (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
+          "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, completion_signal=0x%zx",
+          dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
 
   status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
       size[0], wait_events.size(), wait_events.data(), active);
