@@ -97,7 +97,6 @@ endif()
 
 target_sources(amdhip64 PRIVATE
   cl_gl.cpp
-  cl_lqdflash_amd.cpp
   fixme.cpp
   hip_activity.cpp
   hip_code_object.cpp
