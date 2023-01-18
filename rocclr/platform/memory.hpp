@@ -663,7 +663,13 @@ class SvmBuffer : AllStatic {
   static Monitor AllocatedLock_;
 };
 
-//! Liquid flash extension
+#ifndef CL_COMMAND_READ_SSG_FILE_AMD
+#define CL_COMMAND_READ_SSG_FILE_AMD 1
+#endif
+#ifndef cl_file_flags_amd
+typedef uint32_t cl_file_flags_amd;
+#endif
+    //! Liquid flash extension
 class LiquidFlashFile : public RuntimeObject {
  private:
   std::wstring name_;
