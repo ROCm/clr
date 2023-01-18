@@ -1126,28 +1126,33 @@ class hipGraphMemcpyNode : public hipGraphNode {
     const hipGraphMemcpyNode* memcpyNode = static_cast<hipGraphMemcpyNode const*>(node);
     return SetParams(memcpyNode->pCopyParams_);
   }
+  // ToDo: use this when commands are cloned and command params are to be updated
   hipError_t ValidateParams(const hipMemcpy3DParms* pNodeParams);
+
   std::string GetLabel(hipGraphDebugDotFlags flag) {
+    size_t offset = 0;
     const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pCopyParams_);
     hipMemoryType srcMemoryType = pCopy.srcMemoryType;
     if (srcMemoryType == hipMemoryTypeUnified) {
       srcMemoryType =
-          amd::MemObjMap::FindMemObj(pCopy.srcDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+          getMemoryObject(pCopy.srcDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
     }
+    offset = 0;
     hipMemoryType dstMemoryType = pCopy.dstMemoryType;
     if (dstMemoryType == hipMemoryTypeUnified) {
       dstMemoryType =
-          amd::MemObjMap::FindMemObj(pCopy.dstDevice) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+          getMemoryObject(pCopy.dstDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
     }
 
     // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
     // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
+    offset = 0;
     if (srcMemoryType == hipMemoryTypeHost) {
-      amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.srcHost);
+      amd::Memory* mem = getMemoryObject(pCopy.srcHost, offset);
       srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
     }
     if (dstMemoryType == hipMemoryTypeHost) {
-      amd::Memory* mem = amd::MemObjMap::FindMemObj(pCopy.dstHost);
+      amd::Memory* mem = getMemoryObject(pCopy.dstHost, offset);
       dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
     }
     std::string memcpyDirection;
