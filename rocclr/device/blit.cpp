@@ -729,14 +729,16 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
                                            std::vector<FillBufferInfo>& packed_info) {
 
   // 1. Validate input arguments
-  guarantee(fill_size >= pattern_size, "Pattern Size cannot be greater than fill size");
-  guarantee(fill_size <= memory.size(), "Cannot fill more than the mem object size");
+  guarantee(fill_size >= pattern_size, "Pattern Size: %u cannot be greater than fill size: %u \n",
+                                        pattern_size, fill_size);
+  guarantee(fill_size <= memory.size(), "Cannot fill: %u more than the mem object size:%u \n",
+                                        fill_size, memory.size());
 
   // 2. Calculate the next closest dword aligned address for faster processing
   size_t dst_addr = memory.virtualAddress() + fill_origin;
   size_t aligned_dst_addr = amd::alignUp(dst_addr, sizeof(size_t));
-  guarantee(aligned_dst_addr >= dst_addr, "Aligned address cannot be greater than destination"
-                                          "address");
+  guarantee(aligned_dst_addr >= dst_addr, "Aligned address: %u cannot be greater than destination"
+                                          "address :%u \n", aligned_dst_addr, dst_addr);
 
   // 3. If given address is not aligned calculate head and tail size.
   size_t head_size = std::min(aligned_dst_addr - dst_addr, fill_size);

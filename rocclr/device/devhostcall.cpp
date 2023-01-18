@@ -84,7 +84,7 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
       if (!messages.handlePayload(service, payload)) {
         ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: invalid request for service \"%d\".",
                 service);
-        amd::report_fatal(__FILE__, __LINE__, "Hostcall: invalid service request.");
+        guarantee(false, "Hostcall: invalid service request %d \n", service);
       }
       return;
     case SERVICE_DEVMEM: {
@@ -114,9 +114,7 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
       return;
     }
     default:
-      ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: no handler found for service ID \"%d\".",
-              service);
-      amd::report_fatal(__FILE__, __LINE__, "Hostcall service not supported.");
+      guarantee(false, "Hostcall: no handler found for service ID %d \n", service);
       return;
   }
 }
