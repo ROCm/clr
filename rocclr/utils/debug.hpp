@@ -66,9 +66,6 @@ extern FILE* outFile;
 extern "C" void breakpoint();
 //! \endcond
 
-//! \brief Report a Fatal exception message and abort.
-extern void report_fatal(const char* file, int line, const char* message);
-
 //! \brief Display a warning message.
 extern void report_warning(const char* message);
 
@@ -94,10 +91,10 @@ extern void log_printf(LogLevel level, const char* file, int line, uint64_t *sta
 #endif  // __INTEL_COMPILER
 
 //! \brief Abort the program if the invariant \a cond is false.
-#define guarantee(cond, message)                                                                       \
+#define guarantee(cond, format, ...)                                                               \
   if (!(cond)) {                                                                                   \
-    amd::report_fatal(__FILE__, __LINE__,  XSTR(message) );                                  \
-    amd::breakpoint();                                                                             \
+    amd::log_printf(amd::LOG_NONE, __FILE__, __LINE__, format, ##__VA_ARGS__);                     \
+    ::abort();                                                                                     \
   }
 
 #define fixme_guarantee(cond, ...) guarantee(cond, __VA_ARGS__)

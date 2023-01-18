@@ -289,11 +289,8 @@ void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
 void MemObjMap::RemoveMemObj(const void* k) {
   amd::ScopedLock lock(AllocatedLock_);
   auto rval = MemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
-  if (rval != 1) {
-    DevLogPrintfError("Memobj map does not have ptr: 0x%x",
-                      reinterpret_cast<uintptr_t>(k));
-    guarantee(false, "Memobj map does not have ptr");
-  }
+  guarantee(rval == 1, "Memobj map does not have ptr: 0x%x",
+                        reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
@@ -328,11 +325,8 @@ void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
 void MemObjMap::RemoveVirtualMemObj(const void* k) {
   amd::ScopedLock lock(AllocatedLock_);
   auto rval = VirtualMemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
-  if (rval != 1) {
-    DevLogPrintfError("Virtual Memobj map does not have ptr: 0x%x",
-                      reinterpret_cast<uintptr_t>(k));
-    guarantee(false, "VirtualMemobj map does not have ptr");
-  }
+  guarantee(rval == 1, "Virtual Memobj map does not have ptr: 0x%x",
+                       reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {

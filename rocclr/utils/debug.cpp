@@ -50,17 +50,6 @@ extern "C" void breakpoint(void) {
 //! \endcond
 
 // ================================================================================================
-void report_fatal(const char* file, int line, const char* message) {
-  // FIXME_lmoriche: Obfuscate the message string
-  #if (defined(DEBUG))
-    fprintf(outFile, "%s:%d: %s\n", file, line, message);
-  #else
-    fprintf(outFile, "%s\n", message);
-  #endif
-  ::abort();
-}
-
-// ================================================================================================
 void report_warning(const char* message) { fprintf(outFile, "Warning: %s\n", message); }
 
 // ================================================================================================
