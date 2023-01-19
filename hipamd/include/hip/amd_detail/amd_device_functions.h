@@ -775,21 +775,21 @@ __device__
 inline
 static void __threadfence()
 {
-    __builtin_amdgcn_fence(__ATOMIC_SEQ_CST, "agent");
+  __atomic_work_item_fence(0, __memory_order_seq_cst, __memory_scope_device);
 }
 
 __device__
 inline
 static void __threadfence_block()
 {
-    __builtin_amdgcn_fence(__ATOMIC_SEQ_CST, "workgroup");
+  __atomic_work_item_fence(0, __memory_order_seq_cst, __memory_scope_work_group);
 }
 
 __device__
 inline
 static void __threadfence_system()
 {
-    __builtin_amdgcn_fence(__ATOMIC_SEQ_CST, "");
+  __atomic_work_item_fence(0, __memory_order_seq_cst, __memory_scope_all_svm_devices);
 }
 
 // abort
@@ -862,11 +862,14 @@ void __assertfail()
 }
 #endif /* defined(_WIN32) || defined(_WIN64) */
 
-__device__ inline static void __work_group_barrier(__cl_mem_fence_flags flags) {
+__device__
+inline
+static void __work_group_barrier(__cl_mem_fence_flags flags, __memory_scope scope)
+{
     if (flags) {
-        __builtin_amdgcn_fence(__ATOMIC_RELEASE, "workgroup");
+        __atomic_work_item_fence(flags, __memory_order_release, scope);
         __builtin_amdgcn_s_barrier();
-        __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "workgroup");
+        __atomic_work_item_fence(flags, __memory_order_acquire, scope);
     } else {
         __builtin_amdgcn_s_barrier();
     }
@@ -876,7 +879,7 @@ __device__
 inline
 static void __barrier(int n)
 {
-  __work_group_barrier((__cl_mem_fence_flags)n);
+  __work_group_barrier((__cl_mem_fence_flags)n, __memory_scope_work_group);
 }
 
 __device__
