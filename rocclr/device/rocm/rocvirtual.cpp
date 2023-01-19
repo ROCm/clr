@@ -1055,12 +1055,13 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   assert(resolveDepSignal & (signal.handle != 0) == 0);
   if (resolveDepSignal) {
     auto wait_signal = Barriers().WaitingSignal();
-    assert(wait_signal.size() < 2 && "Only one dep signal allowed for BarrierValue");
-
-    barrier_value_packet_.signal = wait_signal[0];
-    barrier_value_packet_.value = kInitSignalValueOne;
-    barrier_value_packet_.mask = std::numeric_limits<int64_t>::max();
-    barrier_value_packet_.cond = HSA_SIGNAL_CONDITION_LT;
+    if (wait_signal.size() > 0) {
+      assert(wait_signal.size() == 1 && "Only one dep signal allowed for BarrierValue");
+      barrier_value_packet_.signal = wait_signal[0];
+      barrier_value_packet_.value = kInitSignalValueOne;
+      barrier_value_packet_.mask = std::numeric_limits<int64_t>::max();
+      barrier_value_packet_.cond = HSA_SIGNAL_CONDITION_LT;
+    }
   }
 
   if (completionSignal.handle == 0) {
