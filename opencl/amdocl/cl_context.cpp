@@ -34,7 +34,6 @@
 #include "cl_platform_amd.h"
 #include "cl_sdi_amd.h"
 #include "cl_thread_trace_amd.h"
-#include "cl_lqdflash_amd.h"
 #include "cl_p2p_amd.h"
 
 #include <GL/gl.h>
@@ -489,9 +488,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
 #if cl_amd_assembly_program
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateProgramWithAssemblyAMD);
 #endif  // cl_amd_assembly_program
-#if cl_amd_liquid_flash
-      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateSsgFileObjectAMD);
-#endif  // cl_amd_liquid_flash
       break;
     case 'D':
       break;
@@ -511,13 +507,9 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWaitSignalAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSignalAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueMakeBuffersResidentAMD);
-#if cl_amd_liquid_flash
-      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueReadSsgFileAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueWriteSsgFileAMD);
-#endif  // cl_amd_liquid_flash
 #if cl_amd_copy_buffer_p2p
       CL_EXTENSION_ENTRYPOINT_CHECK(clEnqueueCopyBufferP2PAMD);
-#endif  // cl_amd_liquid_flash
+#endif  // cl_amd_copy_buffer_p2p
       break;
     case 'G':
       CL_EXTENSION_ENTRYPOINT_CHECK(clGetKernelInfoAMD);
@@ -534,9 +526,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
 #if defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
       CL_EXTENSION_ENTRYPOINT_CHECK2(clGetKernelSubGroupInfoKHR,clGetKernelSubGroupInfo);
 #endif // defined(cl_khr_sub_groups) || defined(CL_VERSION_2_1)
-#if cl_amd_liquid_flash
-      CL_EXTENSION_ENTRYPOINT_CHECK(clGetSsgFileObjectInfoAMD);
-#endif  // cl_amd_liquid_flash
       break;
     case 'I':
       CL_EXTENSION_ENTRYPOINT_CHECK(clIcdGetPlatformIDsKHR);
@@ -546,10 +535,6 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainPerfCounterAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseThreadTraceAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clRetainThreadTraceAMD);
-#if cl_amd_liquid_flash
-      CL_EXTENSION_ENTRYPOINT_CHECK(clRetainSsgFileObjectAMD);
-      CL_EXTENSION_ENTRYPOINT_CHECK(clReleaseSsgFileObjectAMD);
-#endif  // cl_amd_liquid_flash
       break;
     case 'S':
       CL_EXTENSION_ENTRYPOINT_CHECK(clSetThreadTraceParamAMD);

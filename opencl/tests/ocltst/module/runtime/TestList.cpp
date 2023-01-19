@@ -44,7 +44,6 @@
 #include "OCLKernelBinary.h"
 #include "OCLLDS32K.h"
 #include "OCLLinearFilter.h"
-#include "OCLLiquidFlash.h"
 #include "OCLMapCount.h"
 #include "OCLMemDependency.h"
 #include "OCLMemObjs.h"
@@ -113,7 +112,6 @@ TestEntry TestList[] = {
     TEST(OCLDynamicBLines),
     TEST(OCLUnalignedCopy),
     TEST(OCLBlitKernel),
-    TEST(OCLLiquidFlash),
     TEST(OCLRTQueue),
     TEST(OCLAsyncMap),
     TEST(OCLPinnedMemory),

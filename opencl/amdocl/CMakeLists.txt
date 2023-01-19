@@ -81,7 +81,6 @@ target_sources(amdocl PRIVATE
   cl_gl.cpp
   cl_icd.cpp
   cl_kernel_info_amd.cpp
-  cl_lqdflash_amd.cpp
   cl_memobj.cpp
   cl_p2p_amd.cpp
   cl_pipe.cpp

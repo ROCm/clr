@@ -20,7 +20,6 @@ set(TESTS
     OCLKernelBinary
     OCLLDS32K
     OCLLinearFilter
-    OCLLiquidFlash
     OCLMapCount
     OCLMemDependency
     OCLMemObjs

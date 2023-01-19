@@ -53,4 +53,4 @@ class OCLP2PBuffer : public OCLTestImp {
 #endif
 };
 
-#endif  // _OCL_LIQUID_FLASH_H_
+#endif  // _OCL_P2P_BUFFER_H_
