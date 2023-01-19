@@ -663,6 +663,9 @@ class SvmBuffer : AllStatic {
   static Monitor AllocatedLock_;
 };
 
+#ifndef CL_COMMAND_WRITE_SSG_FILE_AMD
+#define CL_COMMAND_WRITE_SSG_FILE_AMD 2
+#endif
 #ifndef CL_COMMAND_READ_SSG_FILE_AMD
 #define CL_COMMAND_READ_SSG_FILE_AMD 1
 #endif
