@@ -3741,49 +3741,7 @@ bool VirtualGPU::validateSdmaOverlap(const Resource& src, const Resource& dst) {
   return false;
 }
 
-void VirtualGPU::submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd) {
-  size_t copySize = cmd.size()[0];
-  size_t fileOffset = cmd.fileOffset();
-  Memory* mem = dev().getGpuMemory(&cmd.memory());
-  uint idx = 0;
-
-  assert((cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD) ||
-         (cmd.type() == CL_COMMAND_WRITE_SSG_FILE_AMD));
-  const bool writeBuffer(cmd.type() == CL_COMMAND_READ_SSG_FILE_AMD);
-
-  if (writeBuffer) {
-    size_t dstOffset = cmd.origin()[0];
-    while (copySize > 0) {
-      Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
-      size_t dstSize = amd::TransferBufferFileCommand::StagingBufferSize;
-      dstSize = std::min(dstSize, copySize);
-      void* dstBuffer = staging->cpuMap(*this);
-      staging->cpuUnmap(*this);
-
-      blitMgr().copyBuffer(*staging, *mem, 0, dstOffset, dstSize, false);
-      flushDMA(staging->getGpuEvent(*this)->engineId_);
-      fileOffset += dstSize;
-      dstOffset += dstSize;
-      copySize -= dstSize;
-    }
-  } else {
-    size_t srcOffset = cmd.origin()[0];
-    while (copySize > 0) {
-      Memory* staging = dev().getGpuMemory(&cmd.staging(idx));
-      size_t srcSize = amd::TransferBufferFileCommand::StagingBufferSize;
-      srcSize = std::min(srcSize, copySize);
-      blitMgr().copyBuffer(*mem, *staging, srcOffset, 0, srcSize, false);
-
-      void* srcBuffer = staging->cpuMap(*this);
-      staging->cpuUnmap(*this);
-
-      fileOffset += srcSize;
-      srcOffset += srcSize;
-      copySize -= srcSize;
-    }
-  }
-}
-
+// ================================================================================================
 void* VirtualGPU::getOrCreateHostcallBuffer() {
   if (hostcallBuffer_ != nullptr) {
     return hostcallBuffer_;

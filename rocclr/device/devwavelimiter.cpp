@@ -328,6 +328,7 @@ amd::ProfilingCallback* WaveLimiterManager::getProfilingCallback(
 // ================================================================================================
 void WaveLimiterManager::enable(bool isSupported) {
   if (fixed_ > 0) {
+    enable_ = GPU_WAVE_LIMIT_ENABLE;
     return;
   }
 

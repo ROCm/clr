@@ -663,42 +663,6 @@ class SvmBuffer : AllStatic {
   static Monitor AllocatedLock_;
 };
 
-#ifndef CL_COMMAND_WRITE_SSG_FILE_AMD
-#define CL_COMMAND_WRITE_SSG_FILE_AMD 2
-#endif
-#ifndef CL_COMMAND_READ_SSG_FILE_AMD
-#define CL_COMMAND_READ_SSG_FILE_AMD 1
-#endif
-#ifndef cl_file_flags_amd
-typedef uint32_t cl_file_flags_amd;
-#endif
-    //! Liquid flash extension
-class LiquidFlashFile : public RuntimeObject {
- private:
-  std::wstring name_;
-  cl_file_flags_amd flags_;
-  void* handle_;
-  uint32_t blockSize_;
-  uint64_t fileSize_;
-
- public:
-  LiquidFlashFile(const wchar_t* name, cl_file_flags_amd flags)
-      : name_(name), flags_(flags), handle_(NULL), blockSize_(0), fileSize_(0) {}
-
-  ~LiquidFlashFile();
-
-  bool open();
-  void close();
-
-  uint32_t blockSize() const { return blockSize_; };
-  uint64_t fileSize() const { return fileSize_; };
-
-  bool transferBlock(bool read, void* dst, uint64_t bufferSize, uint64_t fileOffset,
-                     uint64_t bufferOffset, uint64_t size) const;
-
-  virtual ObjectType objectType() const { return ObjectTypeLiquidFlashFile; }
-};
-
 class ArenaMemory: public Buffer {
 public:
   ArenaMemory(Context& context)

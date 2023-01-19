@@ -341,8 +341,6 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 
-  virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd);
-
   void submitThreadTraceMemObjects(amd::ThreadTraceMemObjectsCommand& cmd) {}
   void submitThreadTrace(amd::ThreadTraceCommand& vcmd) {}
 
