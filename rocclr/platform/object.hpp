@@ -41,9 +41,7 @@
 #define AMD_CL_TYPES_DO(F)                                                                         \
   F(cl_counter_amd, Counter)                                                                       \
   F(cl_perfcounter_amd, PerfCounter)                                                               \
-  F(cl_threadtrace_amd, ThreadTrace)                                                               \
-  F(cl_file_amd, LiquidFlashFile)
-
+  F(cl_threadtrace_amd, ThreadTrace)
 
 #define CL_TYPES_DO(F)                                                                             \
   KHR_CL_TYPES_DO(F)                                                                               \
@@ -144,7 +142,6 @@ class RuntimeObject : public ReferenceCountedObject, public ICDDispatchedObject 
     ObjectTypeQueue = 8,
     ObjectTypeSampler = 9,
     ObjectTypeThreadTrace = 10,
-    ObjectTypeLiquidFlashFile = 11
   };
 
   virtual ObjectType objectType() const = 0;

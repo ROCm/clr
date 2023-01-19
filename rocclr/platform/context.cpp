@@ -34,14 +34,6 @@
 #include "CL/cl_dx9_media_sharing.h"
 #endif  //_WIN32
 
-#ifndef WITH_LIQUID_FLASH
-#if (!defined(BUILD_HSA_TARGET) && defined(WITH_HSA_DEVICE) && \
-      defined(WITH_AMDGPU_PRO)) || defined(_WIN32)
-#define WITH_LIQUID_FLASH 1
-#include "lf.h"
-#endif
-#endif
-
 namespace amd {
 
 Context::Context(const std::vector<Device*>& devices, const Info& info)
@@ -91,10 +83,6 @@ Context::~Context() {
 
   delete[] properties_;
   delete glenv_;
-
-#if WITH_LIQUID_FLASH
-  lfTerminate();
-#endif
 }
 
 int Context::checkProperties(const cl_context_properties* properties, Context::Info* info) {
@@ -314,10 +302,6 @@ int Context::create(const intptr_t* properties) {
       }
     }
   }
-
-#if WITH_LIQUID_FLASH
-  lfInit();
-#endif
 
   return result;
 }

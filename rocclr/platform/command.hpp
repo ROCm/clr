@@ -1642,66 +1642,6 @@ class SvmUnmapMemoryCommand : public Command {
   void* svmPtr() const { return svmPtr_; }
 };
 
-/*! \brief      A generic transfer memory from/to file command.
- *
- *  \details    Currently supports buffers only. Buffers
- *              are treated as 1D structures so origin_[0] and size_[0]
- *              are equivalent to offset_ and count_ respectively.
- */
-class TransferBufferFileCommand : public OneMemoryArgCommand {
- public:
-  static constexpr uint NumStagingBuffers = 2;
-  static constexpr size_t StagingBufferSize = 4 * Mi;
-  static constexpr uint StagingBufferMemType = CL_MEM_USE_PERSISTENT_MEM_AMD;
-
- protected:
-  const Coord3D origin_;                     //!< Origin of the region to write to
-  const Coord3D size_;                       //!< Size of the region to write to
-  LiquidFlashFile* file_;                    //!< The file object for data read
-  size_t fileOffset_;                        //!< Offset in the file for data read
-  amd::Memory* staging_[NumStagingBuffers];  //!< Staging buffers for transfer
-
- public:
-  TransferBufferFileCommand(cl_command_type type, HostQueue& queue,
-                            const EventWaitList& eventWaitList, Memory& memory,
-                            const Coord3D& origin, const Coord3D& size, LiquidFlashFile* file,
-                            size_t fileOffset)
-      : OneMemoryArgCommand(queue, type, eventWaitList, memory),
-        origin_(origin),
-        size_(size),
-        file_(file),
-        fileOffset_(fileOffset) {
-    // Sanity checks
-    assert(size.c[0] > 0 && "invalid");
-    for (uint i = 0; i < NumStagingBuffers; ++i) {
-      staging_[i] = NULL;
-    }
-  }
-
-  virtual void releaseResources();
-
-  virtual void submit(device::VirtualDevice& device);
-
-  //! Return the memory object to write to
-  Memory& memory() const { return *memory_; }
-
-  //! Return the host memory to read from
-  LiquidFlashFile* file() const { return file_; }
-
-  //! Returns file offset
-  size_t fileOffset() const { return fileOffset_; }
-
-  //! Return the region origin
-  const Coord3D& origin() const { return origin_; }
-  //! Return the region size
-  const Coord3D& size() const { return size_; }
-
-  //! Return the staging buffer for transfer
-  Memory& staging(uint i) const { return *staging_[i]; }
-
-  bool validateMemory();
-};
-
 /*! \brief      A P2P copy memory command
  *
  *  \details    Used for buffers only. Backends are expected

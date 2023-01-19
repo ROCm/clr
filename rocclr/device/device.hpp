@@ -89,7 +89,6 @@ class SvmFillMemoryCommand;
 class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
-class TransferBufferFileCommand;
 class StreamOperationCommand;
 class VirtualMapCommand;
 class ExternalSemaphoreCmd;
@@ -164,7 +163,6 @@ enum OclExtensions {
   ClKhrMipMapImage,
   ClKhrMipMapImageWrites,
   ClKhrIlProgram,
-  ClAMDLiquidFlash,
   ClAmdCopyBufferP2P,
   ClAmdAssemblyProgram,
 #if defined(_WIN32)
@@ -210,7 +208,6 @@ static constexpr const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_khr_mipmap_image ",
                                             "cl_khr_mipmap_image_writes ",
                                             "",
-                                            "cl_amd_liquid_flash ",
                                             "cl_amd_copy_buffer_p2p ",
                                             "cl_amd_assembly_program ",
 #if defined(_WIN32)
@@ -1241,9 +1238,6 @@ class VirtualDevice : public amd::HeapObject {
   /// Optional extensions
   virtual void submitSignal(amd::SignalCommand& cmd) = 0;
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) = 0;
-  virtual void submitTransferBufferFromFile(amd::TransferBufferFileCommand& cmd) {
-    ShouldNotReachHere();
-  }
   virtual void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     ShouldNotReachHere();
   }
