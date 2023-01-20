@@ -40,9 +40,6 @@
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #include "device/rocm/rocsignal.hpp"
-#ifdef WITH_AMDGPU_PRO
-#include "pro/prodriver.hpp"
-#endif
 #include "platform/sampler.hpp"
 
 #if defined(__clang__)
@@ -163,8 +160,6 @@ Device::Device(hsa_agent_t bkendDevice)
     , xferQueue_(nullptr)
     , xferRead_(nullptr)
     , xferWrite_(nullptr)
-    , pro_device_(nullptr)
-    , pro_ena_(false)
     , freeMem_(0)
     , vgpusAccess_("Virtual GPU List Ops Lock", true)
     , hsa_exclusive_gpu_access_(false)
@@ -218,9 +213,6 @@ void Device::checkAtomicSupport() {
 }
 
 Device::~Device() {
-#ifdef WITH_AMDGPU_PRO
-  delete pro_device_;
-#endif
   // Release cached map targets
   for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
     if ((*mapCache_)[i] != nullptr) {
@@ -686,18 +678,6 @@ bool Device::create() {
     return false;
   }
   info_.pciDomainID = pci_domain_id;
-
-#ifdef WITH_AMDGPU_PRO
-  // Create amdgpu-pro device interface for SSG support
-  pro_device_ = IProDevice::Init(
-      info_.deviceTopology_.pcie.bus,
-      info_.deviceTopology_.pcie.device,
-      info_.deviceTopology_.pcie.function);
-  if (pro_device_ != nullptr) {
-    pro_ena_ = true;
-    pro_device_->GetAsicIdAndRevisionId(&info_.pcieDeviceId_, &info_.pcieRevisionId_);
-  }
-#endif
 
   // Get Agent HDP Flush Register Memory
   hsa_amd_hdp_flush_t hdpInfo;

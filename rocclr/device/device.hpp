@@ -153,7 +153,6 @@ enum OclExtensions {
   ClKhrD3d9Sharing,
 #endif
   ClKhrImage2dFromBuffer,
-  ClAmdSemaphore,
   ClAMDBusAddressableMemory,
   ClAMDC11Atomics,
   ClKhrSpir,
@@ -162,7 +161,6 @@ enum OclExtensions {
   ClKhrDepthImages,
   ClKhrMipMapImage,
   ClKhrMipMapImageWrites,
-  ClKhrIlProgram,
   ClAmdCopyBufferP2P,
   ClAmdAssemblyProgram,
 #if defined(_WIN32)
@@ -198,7 +196,6 @@ static constexpr const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_khr_dx9_media_sharing ",
 #endif
                                             "cl_khr_image2d_from_buffer ",
-                                            "",
                                             "cl_amd_bus_addressable_memory ",
                                             "cl_amd_c11_atomics ",
                                             "cl_khr_spir ",
@@ -207,7 +204,6 @@ static constexpr const char* OclExtensionsString[] = {"cl_khr_fp64 ",
                                             "cl_khr_depth_images ",
                                             "cl_khr_mipmap_image ",
                                             "cl_khr_mipmap_image_writes ",
-                                            "",
                                             "cl_amd_copy_buffer_p2p ",
                                             "cl_amd_assembly_program ",
 #if defined(_WIN32)
