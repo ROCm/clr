@@ -120,7 +120,7 @@ void HostQueue::finish() {
       return;
     }
   }
-  if (nullptr == command || vdev()->isHandlerPending()) {
+  if (nullptr == command || vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }

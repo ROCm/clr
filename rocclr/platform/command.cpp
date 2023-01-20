@@ -436,7 +436,6 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
     profilingInfo_.clear();
     profilingInfo_.callback_ = nullptr;
     profilingInfo_.marker_ts_ = true;
-    setEventScope(amd::Device::kCacheStateSystem);
   }
   kernel_.retain();
 }

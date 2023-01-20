@@ -1260,6 +1260,9 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
 
+  //! Resets fence state of the VirtualGPU
+  virtual void resetFenceDirty() = 0;
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);

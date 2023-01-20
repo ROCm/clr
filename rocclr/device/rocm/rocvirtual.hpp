@@ -407,6 +407,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
+  void resetFenceDirty() { fence_dirty_ = false; }
   // } roc OpenCL integration
  private:
   //! Dispatches a barrier with blocking HSA signals
