@@ -37,9 +37,6 @@
 #include "platform/sampler.hpp"
 #include "amdocl/cl_gl_amd.hpp"
 #include "amdocl/cl_vk_amd.hpp"
-#ifdef WITH_AMDGPU_PRO
-#include "pro/prodriver.hpp"
-#endif
 
 namespace roc {
 
@@ -673,12 +670,6 @@ void Buffer::destroy() {
     return;
   }
 
-#ifdef WITH_AMDGPU_PRO
-  if ((memFlags & CL_MEM_USE_PERSISTENT_MEM_AMD) && dev().ProEna()) {
-    dev().iPro().FreeDmaBuffer(deviceMemory_);
-    return;
-  }
-#endif
   if (deviceMemory_ != nullptr) {
     if (deviceMemory_ != owner()->getHostMem()) {
       // if they are identical, the host pointer will be

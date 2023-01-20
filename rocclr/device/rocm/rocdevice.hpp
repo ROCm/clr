@@ -75,7 +75,6 @@ class Memory;
 class Resource;
 class VirtualDevice;
 class PrintfDbg;
-class IProDevice;
 
 class ProfilingSignal : public amd::ReferenceCountedObject {
 public:
@@ -478,10 +477,6 @@ class Device : public NullDevice {
   //! Create internal blit program
   bool createBlitProgram();
 
-  // Returns AMD GPU Pro interfacs
-  const IProDevice& iPro() const { return *pro_device_; }
-  bool ProEna() const  { return pro_ena_; }
-
   // P2P agents avaialble for this device
   const std::vector<hsa_agent_t>& p2pAgents() const { return p2p_agents_; }
 
@@ -598,8 +593,6 @@ class Device : public NullDevice {
 
   XferBuffers* xferRead_;   //!< Transfer buffers read
   XferBuffers* xferWrite_;  //!< Transfer buffers write
-  const IProDevice* pro_device_;  //!< AMDGPUPro device
-  bool  pro_ena_;           //!< Extra functionality with AMDGPUPro device, beyond ROCr
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode
