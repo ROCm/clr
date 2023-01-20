@@ -225,6 +225,14 @@ void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) 
       command->enqueue();
       command->release();
     }
+
+    //Reset the dirty flag for all streams now that the marker is submitted
+    for (const auto& stream : streamSet) {
+      amd::HostQueue* active_queue = stream->asHostQueue();
+      if (active_queue->vdev()->isFenceDirty()) {
+        active_queue->vdev()->resetFenceDirty();
+      }
+    }
   }
 
   // Release all active commands. It's safe after the marker was enqueued
