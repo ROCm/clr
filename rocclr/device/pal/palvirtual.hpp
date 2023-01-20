@@ -359,6 +359,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   bool isFenceDirty() const { return false; }
 
+  void resetFenceDirty() {}
+
   //! Returns GPU device object associated with this kernel
   const Device& dev() const { return gpuDevice_; }
 

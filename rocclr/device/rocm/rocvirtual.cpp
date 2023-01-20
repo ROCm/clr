@@ -78,13 +78,8 @@ static constexpr uint16_t kBarrierPacketHeader =
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
-static constexpr uint16_t kBarrierPacketAgentScopeHeader =
-    (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
-
 static constexpr uint16_t kNopPacketHeader =
-    (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) |
+    (HSA_PACKET_TYPE_BARRIER_AND << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
@@ -99,14 +94,16 @@ static constexpr uint16_t kBarrierPacketReleaseHeader =
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
 static constexpr uint16_t kBarrierVendorPacketHeader =
-    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) |
+    (1 << HSA_PACKET_HEADER_BARRIER) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
     (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
-static constexpr uint16_t kBarrierVendorPacketAgentScopeHeader =
-    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) | (1 << HSA_PACKET_HEADER_BARRIER) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
-    (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+static constexpr uint16_t kBarrierVendorPacketNopScopeHeader =
+    (HSA_PACKET_TYPE_VENDOR_SPECIFIC << HSA_PACKET_HEADER_TYPE) |
+    (1 << HSA_PACKET_HEADER_BARRIER) |
+    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+    (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
 
 static constexpr hsa_barrier_and_packet_t kBarrierAcquirePacket = {
     kBarrierPacketAcquireHeader, 0, 0, {{0}}, 0, {0}};
@@ -989,6 +986,7 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
 
+  fence_dirty_ = true;
   auto cache_state = extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
   if (!skipSignal) {
@@ -1001,7 +999,9 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   }
 
   // Reset fence_dirty_ flag if we submit a barrier
-  fence_dirty_ = false;
+  if (cache_state == amd::Device::kCacheStateSystem) {
+    fence_dirty_ = false;
+  }
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_barrier_and_packet_t* aql_loc =
@@ -1063,6 +1063,10 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
     }
   }
 
+  fence_dirty_ = true;
+  auto cache_state = extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                         HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
+
   if (completionSignal.handle == 0) {
     // Get active signal for current dispatch if profiling is necessary
     barrier_value_packet_.completion_signal =
@@ -1072,15 +1076,17 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
     barrier_value_packet_.completion_signal = completionSignal;
   }
 
+  // Reset fence_dirty_ flag if we submit a barrier
+  if (cache_state == amd::Device::kCacheStateSystem) {
+    fence_dirty_ = false;
+  }
+
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_amd_barrier_value_packet_t* aql_loc = &(reinterpret_cast<hsa_amd_barrier_value_packet_t*>(
       gpu_queue_->base_address))[index & queueMask];
   *aql_loc = barrier_value_packet_;
   packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), packetHeader, rest);
-
-  auto cache_state = extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
-                         HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
 
@@ -3252,11 +3258,11 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
       if (timestamp_ != nullptr) {
         const Settings& settings = dev().settings();
         int32_t releaseFlags = vcmd.getEventScope();
-        if (releaseFlags == Device::CacheState::kCacheStateAgent) {
+        if (releaseFlags == Device::CacheState::kCacheStateIgnore) {
           if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
-            dispatchBarrierValuePacket(kBarrierVendorPacketAgentScopeHeader, true);
+            dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
           } else {
-            dispatchBarrierPacket(kBarrierPacketAgentScopeHeader, false);
+            dispatchBarrierPacket(kNopPacketHeader, false);
           }
         } else {
           // Submit a barrier with a cache flushes.
