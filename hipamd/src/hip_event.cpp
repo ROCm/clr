@@ -222,13 +222,12 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                 uint32_t ext_flags ) {
   if (command == nullptr) {
     int32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
-                            (hipEventReleaseToSystem | hipEventReleaseToDevice);
-    if (releaseFlags & hipEventReleaseToDevice) {
-      releaseFlags = amd::Device::kCacheStateAgent;
-    } else if (releaseFlags & hipEventReleaseToSystem) {
-      releaseFlags = amd::Device::kCacheStateSystem;
-    } else {
+                            (hipEventReleaseToDevice | hipEventReleaseToSystem |
+                             hipEventDisableSystemFence);
+    if (releaseFlags & hipEventDisableSystemFence) {
       releaseFlags = amd::Device::kCacheStateIgnore;
+    } else {
+      releaseFlags = amd::Device::kCacheStateInvalid;
     }
     // Always submit a EventMarker.
     command = new hip::EventMarker(*stream, !kMarkerDisableFlush, true, releaseFlags);
@@ -279,14 +278,21 @@ bool isValid(hipEvent_t event) {
 // ================================================================================================
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   unsigned supportedFlags = hipEventDefault | hipEventBlockingSync | hipEventDisableTiming |
-      hipEventReleaseToDevice | hipEventReleaseToSystem | hipEventInterprocess;
+                            hipEventReleaseToDevice | hipEventReleaseToSystem |
+                            hipEventInterprocess | hipEventDisableSystemFence;
 
-  const unsigned releaseFlags = (hipEventReleaseToDevice | hipEventReleaseToSystem);
+  const unsigned releaseFlags = (hipEventReleaseToDevice | hipEventReleaseToSystem |
+                                 hipEventDisableSystemFence);
   // can't set any unsupported flags.
-  // can't set both release flags
+  // can set only one of the release flags.
   // if hipEventInterprocess flag is set, then hipEventDisableTiming flag also must be set
   const bool illegalFlags = (flags & ~supportedFlags) ||
-                            ((flags & releaseFlags) == releaseFlags) ||
+                            ([](unsigned int num){
+                              unsigned int bitcount;
+                              for (bitcount = 0; num; bitcount++) {
+                                num &= num - 1;
+                              }
+                              return bitcount; } (flags & releaseFlags) > 1) ||
                             ((flags & hipEventInterprocess) && !(flags & hipEventDisableTiming));
   if (!illegalFlags) {
     hip::Event* e = nullptr;
