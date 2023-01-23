@@ -312,7 +312,8 @@ class VirtualGPU : public device::VirtualDevice {
                             const_address parameters,            //!< Parameters for the kernel
                             void* event_handle,  //!< Handle to OCL event for debugging
                             uint32_t sharedMemBytes = 0, //!< Shared memory size
-                            amd::NDRangeKernelCommand* vcmd = nullptr //!< Original launch command
+                            amd::NDRangeKernelCommand* vcmd = nullptr, //!< Original launch command
+                            hsa_kernel_dispatch_packet_t* aql_packet = nullptr  //!< Scheduler launch
                             );
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);

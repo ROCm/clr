@@ -1817,7 +1817,7 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
         realSize.c[0] *= elemSize;
       }
 
-      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, realSrcOrigin, realDstOrigin, 
+      result = blitMgr().copyBuffer(*srcDevMem, *dstDevMem, realSrcOrigin, realDstOrigin,
                                     realSize, entire, copyMetadata);
       break;
     }
@@ -2781,7 +2781,8 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 // ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     const amd::Kernel& kernel, const_address parameters, void* eventHandle,
-    uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd) {
+    uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd,
+    hsa_kernel_dispatch_packet_t* aql_packet) {
   device::Kernel* devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(dev()));
   Kernel& gpuKernel = static_cast<Kernel&>(*devKernel);
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
@@ -3106,6 +3107,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     // retrieve this correlation ID to attribute waves to specific dispatch locations.
     if (vcmd != nullptr && vcmd->profilingInfo().enabled_) {
       dispatchPacket.reserved2 = vcmd->profilingInfo().correlation_id_;
+    }
+
+    // Copy scheduler's AQL packet for possible relaunch from the scheduler itself
+    if (aql_packet != nullptr) {
+      *aql_packet = dispatchPacket;
+      aql_packet->header = (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
+                           (1 << HSA_PACKET_HEADER_BARRIER) |
+                           (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
+                           (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
+      aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
 
     // Dispatch the packet
