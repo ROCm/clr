@@ -382,7 +382,7 @@ namespace hip {
 
   /// HIP Device class
   class Device {
-    amd::Monitor lock_{"Device lock"};
+    amd::Monitor lock_{"Device lock", true};
     /// ROCclr context
     amd::Context* context_;
     /// Device's ID

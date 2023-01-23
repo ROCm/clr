@@ -107,13 +107,16 @@ void Device::RemoveStreamFromPools(Stream* stream) {
 
 // ================================================================================================
 void Device::Reset() {
-  auto it = mem_pools_.begin();
-  while (it != mem_pools_.end()) {
-    auto current = it++;
-    (*current)->ReleaseAllMemory();
-    delete *current;
+  {
+    amd::ScopedLock lock(lock_);
+    auto it = mem_pools_.begin();
+    while (it != mem_pools_.end()) {
+      auto current = it++;
+      (*current)->ReleaseAllMemory();
+      delete *current;
+    }
+    mem_pools_.clear();
   }
-  mem_pools_.clear();
   flags_ = hipDeviceScheduleSpin;
   hip::Stream::destroyAllStreams(deviceId_);
   amd::MemObjMap::Purge(devices()[0]);
