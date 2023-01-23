@@ -496,7 +496,7 @@ struct ihipGraph {
   ihipGraph* clone() const;
   void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
     fout << "subgraph cluster_" << GetID() << " {" << std::endl;
-    fout << "graph[style=\"dashed\" label=\"graph_" << GetID() << "\"];\n";
+    fout << "label=\"graph_" << GetID() <<"\"graph[style=\"dashed\"];\n";
     for (auto node : vertices_) {
       node->GenerateDOTNode(GetID(), fout, flag);
     }
@@ -1371,9 +1371,15 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
       char buffer[500];
       sprintf(buffer,
-              "{\n%s\n| {{ID | node handle | dst | src | count | kind } | {%u | %p | %p | %p | "
-              "%zu | %s}}}",
-              label_.c_str(), GetID(), this, dst_, src_, count_, memcpyDirection.c_str());
+              "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
+              "{pitch "
+              "| ptr | xsize | ysize | pitch | ptr | xsize | size} | {%zu | %p | %zu | %zu | %zu | %p "
+              "| %zu "
+              "| %zu}}\n| {{srcPos | {{x | %zu} | {y | %zu} | {z | %zu}}} | {dstPos | {{x | %zu} | {y "
+              "| "
+              "%zu} | {z | %zu}}} | {Extent | {{Width | %zu} | {Height | %zu} | {Depth | %zu}}}}\n}",
+              label_.c_str(), GetID(), this, memcpyDirection.c_str(), (size_t)0,
+              src_, (size_t)0, (size_t)0, (size_t)0, dst_, (size_t)0, (size_t)0, (size_t)0, (size_t)0, (size_t)0, (size_t)0, (size_t)0, (size_t)0, count_, (size_t)1, (size_t)1);
       label = buffer;
     } else {
       label = std::to_string(GetID()) + "\n" + label_ + "\n(" + memcpyDirection + "," +
