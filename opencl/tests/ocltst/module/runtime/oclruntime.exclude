@@ -6,7 +6,6 @@ OCLCPUGuardPages
 
 OCLRegionDeviceQueries
 
-OCLDynamic
 OCLDynamicBLines
 
 OCLAtomicCounter
