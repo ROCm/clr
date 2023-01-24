@@ -695,7 +695,7 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 // ================================================================================================
 hipError_t hipLaunchHostFunc(hipStream_t stream, hipHostFn_t fn, void* userData) {
   HIP_INIT_API(hipLaunchHostFunc, stream, fn, userData);
-  if (stream == nullptr) {
+  if (stream == nullptr && (hip::Stream::StreamCaptureOngoing() == true)) {
     HIP_RETURN(hipErrorStreamCaptureImplicit);
   }
   HIP_RETURN(hipLaunchHostFunc_common(stream, fn, userData));
