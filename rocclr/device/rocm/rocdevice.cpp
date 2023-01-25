@@ -2311,7 +2311,6 @@ bool Device::IpcDetach (void* dev_ptr) const {
 // ================================================================================================
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
-  constexpr bool kForceAllocation = true;
   amd::Memory* mem = nullptr;
 
   if (nullptr == svmPtr) {
@@ -2323,7 +2322,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
       return nullptr;
     }
 
-    if (!mem->create(nullptr, false, false, kForceAllocation)) {
+    if (!mem->create(nullptr)) {
       LogError("failed to create a svm hidden buffer!");
       mem->release();
       return nullptr;
