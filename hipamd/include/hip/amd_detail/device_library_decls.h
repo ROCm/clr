@@ -128,26 +128,4 @@ __device__ inline static __local void* __to_local(unsigned x) { return (__local 
 #define __CLK_LOCAL_MEM_FENCE    0x01
 typedef unsigned __cl_mem_fence_flags;
 
-typedef enum __memory_scope {
-  __memory_scope_work_item = __OPENCL_MEMORY_SCOPE_WORK_ITEM,
-  __memory_scope_work_group = __OPENCL_MEMORY_SCOPE_WORK_GROUP,
-  __memory_scope_device = __OPENCL_MEMORY_SCOPE_DEVICE,
-  __memory_scope_all_svm_devices = __OPENCL_MEMORY_SCOPE_ALL_SVM_DEVICES,
-  __memory_scope_sub_group = __OPENCL_MEMORY_SCOPE_SUB_GROUP
-} __memory_scope;
-
-// enum values aligned with what clang uses in EmitAtomicExpr()
-typedef enum __memory_order
-{
-  __memory_order_relaxed = __ATOMIC_RELAXED,
-  __memory_order_acquire = __ATOMIC_ACQUIRE,
-  __memory_order_release = __ATOMIC_RELEASE,
-  __memory_order_acq_rel = __ATOMIC_ACQ_REL,
-  __memory_order_seq_cst = __ATOMIC_SEQ_CST
-} __memory_order;
-
-// Linked from hip.amdgcn.bc
-extern "C" __device__ void
-__atomic_work_item_fence(__cl_mem_fence_flags, __memory_order, __memory_scope);
-
 #endif
