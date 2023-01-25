@@ -83,7 +83,7 @@ const static char *strKernel =
 
 OCLCreateImage::OCLCreateImage() {
   _numSubTests = MaxSubTests;
-  failed_ = false;
+  done_ = false;
   ImageSizeX = ImageSize;
   ImageSizeY = ImageSize;
   ImageSizeZ = ImageSize;
@@ -103,7 +103,8 @@ void OCLCreateImage::open(unsigned int test, char *units, double &conversion,
     _wrapper->clGetDeviceInfo(devices_[i], CL_DEVICE_IMAGE_SUPPORT,
                               sizeof(imageSupport), &imageSupport, &size);
     if (!imageSupport) {
-      failed_ = true;
+      testDescString = "Image not supported, skipping this test! ";
+      done_ = true;
       return;
     }
   }
@@ -461,11 +462,7 @@ static void CL_CALLBACK notify_callback(const char *errinfo,
                                         void *user_data) {}
 
 void OCLCreateImage::run(void) {
-  if (failed_) {
-    printf ("\n");
-    printf ("**********************************************************\n");
-    printf ("* WARNING: Test skip. Image may not be supported in OCL. *\n");
-    printf ("**********************************************************\n");
+  if (done_) {
     return;
   }
 

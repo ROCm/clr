@@ -33,6 +33,9 @@ class OCLLinearFilter : public OCLTestImp {
                     unsigned int deviceID);
   virtual void run(void);
   virtual unsigned int close(void);
+
+ private:
+  bool done_;
 };
 
 #endif  // _OCL_LINEAR_FILTER_H_
