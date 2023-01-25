@@ -50,7 +50,10 @@ const static char* strKernel =
     "}                                                                  \n"
     "                                                                   \n";
 
-OCLLinearFilter::OCLLinearFilter() { _numSubTests = 2; }
+OCLLinearFilter::OCLLinearFilter() {
+  done_ = false;
+  _numSubTests = 2;
+}
 
 OCLLinearFilter::~OCLLinearFilter() {}
 
@@ -65,6 +68,8 @@ void OCLLinearFilter::open(unsigned int test, char* units, double& conversion,
     _wrapper->clGetDeviceInfo(devices_[i], CL_DEVICE_IMAGE_SUPPORT,
                               sizeof(imageSupport), &imageSupport, &size);
     if (!imageSupport) {
+      testDescString = "Image not supported, skipping this test! ";
+      done_ = true;
       return;
     }
   }
@@ -147,15 +152,10 @@ static void CL_CALLBACK notify_callback(const char* errinfo,
                                         void* user_data) {}
 
 void OCLLinearFilter::run(void) {
-  cl_bool imageSupport;
-  size_t size;
-  for (size_t i = 0; i < deviceCount_; ++i) {
-    _wrapper->clGetDeviceInfo(devices_[i], CL_DEVICE_IMAGE_SUPPORT,
-                              sizeof(imageSupport), &imageSupport, &size);
-    if (!imageSupport) {
-      return;
-    }
+  if (done_) {
+    return;
   }
+
   cl_float values[4] = {0.f, 0.f, 0.f, 0.f};
   cl_float ref[2] = {1.75f, 1.25f};
   cl_mem image = buffers()[0];

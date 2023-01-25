@@ -70,7 +70,7 @@ static const char *rgba8888_kernel_write =
 
 OCLReadWriteImage::OCLReadWriteImage() {
   _numSubTests = MaxSubTests;
-  failed_ = false;
+  done_ = false;
   imageWidth = imageSize;
   imageHeight = imageSize;
   imageDepth = imageSize;
@@ -104,7 +104,8 @@ void OCLReadWriteImage::open(unsigned int test, char *units, double &conversion,
     _wrapper->clGetDeviceInfo(devices_[i], CL_DEVICE_IMAGE_SUPPORT,
                               sizeof(imageSupport), &imageSupport, &size);
     if (!imageSupport) {
-      failed_ = true;
+      testDescString = "Image not supported, skipping this test! ";
+      done_ = true;
       return;
     }
   }
@@ -174,7 +175,7 @@ static void CL_CALLBACK notify_callback(const char *errinfo,
                                         void *user_data) {}
 
 void OCLReadWriteImage::run(void) {
-  if (failed_) {
+  if (done_) {
     return;
   }
 

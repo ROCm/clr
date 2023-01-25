@@ -35,7 +35,7 @@ class OCLCreateImage : public OCLTestImp {
   virtual unsigned int close(void);
 
  private:
-  bool failed_;
+  bool done_;
   unsigned int testID_;
   size_t maxSize_;
   size_t ImageSizeX;

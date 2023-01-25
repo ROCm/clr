@@ -43,7 +43,7 @@ class OCLImage2DFromBuffer : public OCLTestImp {
   void CopyOpenCLImage(cl_mem clImageSrc);
   void CompileKernel();
 
-  bool done;
+  bool done_;
   size_t blockSizeX; /**< Work-group size in x-direction */
   size_t blockSizeY; /**< Work-group size in y-direction */
   cl_mem buffer;

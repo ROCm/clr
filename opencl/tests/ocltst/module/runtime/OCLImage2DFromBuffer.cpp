@@ -66,7 +66,7 @@ OCLImage2DFromBuffer::~OCLImage2DFromBuffer() {}
 void OCLImage2DFromBuffer::open(unsigned int test, char *units,
                                 double &conversion, unsigned int deviceId) {
   buffer = clImage2DOriginal = clImage2D = clImage2DOut = NULL;
-  done = false;
+  done_ = false;
   pitchAlignment = 0;
 
   _openTest = test;
@@ -83,7 +83,17 @@ void OCLImage2DFromBuffer::open(unsigned int test, char *units,
 
   if (!(deviceType & CL_DEVICE_TYPE_GPU)) {
     testDescString = "GPU device is required for this test!\n";
-    done = true;
+    done_ = true;
+    return;
+  }
+
+  cl_bool imageSupport;
+  size_t size;
+  _wrapper->clGetDeviceInfo(devices_[deviceId], CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport), &imageSupport, &size);
+  if (!imageSupport) {
+    testDescString = "Image not supported, skipping this test! ";
+    done_ = true;
     return;
   }
 
@@ -93,7 +103,7 @@ void OCLImage2DFromBuffer::open(unsigned int test, char *units,
             platform_, "clConvertImageAMD");
     if (clConvertImageAMD == NULL) {
       testDescString = "clConvertImageAMD not found!\n";
-      done = true;
+      done_ = true;
       return;
     }
   }
@@ -103,7 +113,7 @@ void OCLImage2DFromBuffer::open(unsigned int test, char *units,
 }
 
 void OCLImage2DFromBuffer::run(void) {
-  if (_errorFlag || done) {
+  if (_errorFlag || done_) {
     return;
   }
 
@@ -231,7 +241,7 @@ void OCLImage2DFromBuffer::AllocateOpenCLImage() {
                    "status!=CL_INVALID_IMAGE_FORMAT_DESCRIPTOR) <=> (%p, %x)",
                    clImage2D, status);
       if (requiredPitch != pitch) {
-        done = true;
+        done_ = true;
         return;
       }
     }

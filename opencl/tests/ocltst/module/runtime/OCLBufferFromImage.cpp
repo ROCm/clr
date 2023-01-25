@@ -80,6 +80,16 @@ void OCLBufferFromImage::open(unsigned int test, char *units,
     return;
   }
 
+  cl_bool imageSupport;
+  size_t size;
+  _wrapper->clGetDeviceInfo(devices_[deviceId], CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport), &imageSupport, &size);
+  if (!imageSupport) {
+    testDescString = "Image not supported, skipping this test! ";
+    done = true;
+    return;
+  }
+
   clCreateBufferFromImageAMD =
       (clCreateBufferFromImageAMD_fn)clGetExtensionFunctionAddressForPlatform(
           platform_, "clCreateBufferFromImageAMD");
