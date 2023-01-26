@@ -500,6 +500,9 @@ RUNTIME_ENTRY(cl_int, clBuildProgram,
   if ((num_devices > 0 && device_list == NULL) || (num_devices == 0 && device_list != NULL)) {
     return CL_INVALID_VALUE;
   }
+  if (pfn_notify == nullptr && user_data != nullptr) {
+    return CL_INVALID_VALUE;
+  }
 
   amd::Program* amdProgram = as_amd(program);
 
