@@ -530,6 +530,10 @@ struct ihipGraph {
     }
     return false;
   }
+
+  void FreeAllMemory() {
+    mem_pool_->FreeAllMemory();
+  }
 };
 
 struct hipGraphExec {
@@ -544,19 +548,21 @@ struct hipGraphExec {
   static std::unordered_set<hipGraphExec*> graphExecSet_;
   std::unordered_set<hipUserObject*> graphExeUserObj_;
   static amd::Monitor graphExecSetLock_;
-
+  uint64_t flags_ = 0;
  public:
   hipGraphExec(std::vector<Node>& levelOrder, std::vector<std::vector<Node>>& lists,
                std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
                std::unordered_map<Node, Node>& clonedNodes,
-               std::unordered_set<hipUserObject*>& userObjs)
+               std::unordered_set<hipUserObject*>& userObjs,
+               uint64_t flags = 0)
       : parallelLists_(lists),
         levelOrder_(levelOrder),
         nodeWaitLists_(nodeWaitLists),
         clonedNodes_(clonedNodes),
         lastEnqueuedCommand_(nullptr),
         graphExeUserObj_(userObjs),
-        currentQueueIndex_(0) {
+        currentQueueIndex_(0),
+        flags_(flags) {
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.insert(this);
   }

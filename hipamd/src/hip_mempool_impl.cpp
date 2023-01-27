@@ -397,4 +397,10 @@ void MemoryPool::GetAccess(hip::Device* device, hipMemAccessFlags* flags) {
   }
 }
 
+void MemoryPool::FreeAllMemory(hip::Stream* stream) {
+  while (!busy_heap_.Allocations().empty()) {
+    FreeMemory(busy_heap_.Allocations().begin()->first, stream);
+  }
+}
+
 }

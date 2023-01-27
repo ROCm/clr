@@ -796,6 +796,11 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (queue == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
+  if (flags_ == hipGraphInstantiateFlagAutoFreeOnLaunch) {
+    if (!levelOrder_.empty()) {
+      levelOrder_[0]->GetParentGraph()->FreeAllMemory();
+    }
+  }
   UpdateQueue(parallelLists_, queue, this);
   std::vector<amd::Command*> rootCommands;
   amd::Command* endCommand = nullptr;
