@@ -1215,7 +1215,8 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
   HIP_RETURN(status);
 }
 
-hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph) {
+hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                               uint64_t flags = 0) {
   if (pGraphExec == nullptr || graph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1232,7 +1233,8 @@ hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph) {
   clonedGraph->LevelOrder(levelOrder);
   clonedGraph->GetUserObjs(graphExeUserObj);
   *pGraphExec =
-      new hipGraphExec(levelOrder, parallelLists, nodeWaitLists, clonedNodes, graphExeUserObj);
+      new hipGraphExec(levelOrder, parallelLists, nodeWaitLists, clonedNodes,
+      graphExeUserObj, flags);
   if (*pGraphExec != nullptr) {
     return (*pGraphExec)->Init();
   } else {
@@ -1247,7 +1249,7 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
 }
 
 hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
-                                        unsigned long long flags) {
+                                        unsigned long long flags = 0) {
   HIP_INIT_API(hipGraphInstantiateWithFlags, pGraphExec, graph, flags);
   if (pGraphExec == nullptr || graph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);

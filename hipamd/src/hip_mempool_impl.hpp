@@ -136,7 +136,7 @@ public:
   bool IsActiveMemory(amd::Memory* memory) const {
     return (allocations_.find(memory) != allocations_.end());
   }
-
+  const auto& Allocations() { return allocations_; }
 private:
   Heap() = delete;
   Heap(const Heap&) = delete;
@@ -217,7 +217,7 @@ public:
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
   bool InternalDependencies() const { return (state_.internal_dependencies_) ? true : false; }
-
+  void FreeAllMemory(hip::Stream* stream = nullptr);
 private:
   MemoryPool() = delete;
   MemoryPool(const MemoryPool&) = delete;
