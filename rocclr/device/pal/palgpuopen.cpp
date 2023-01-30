@@ -278,6 +278,21 @@ void RgpCaptureMgr::PostDispatch(VirtualGPU* gpu) {
           // continue until we find the right queue...
         } else if (Pal::Result::Success == res) {
           trace_.sqtt_disp_count_ = 0;
+          // Stop the trace and save the result. Currently runtime can't delay upload in HIP,
+          // because default stream doesn't have explicit destruction and
+          // OS kills all threads on exit without any notification. That includes PAL RGP threads.
+          {
+            if (trace_.status_ == TraceStatus::WaitingForSqtt) {
+              auto result = EndRGPTrace(gpu);
+            }
+            // Check if runtime is waiting for the final trace results
+            if (trace_.status_ == TraceStatus::WaitingForResults) {
+              // If results are ready, then finish the trace
+              if (CheckForTraceResults() == Pal::Result::Success) {
+                FinishRGPTrace(gpu, false);
+              }
+            }
+          }
         } else {
           FinishRGPTrace(gpu, true);
         }
