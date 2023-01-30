@@ -67,7 +67,6 @@ bool HostQueue::terminate() {
       marker->release();
     }
     thread_.acceptingCommands_ = false;
-    thread_.Release();
   } else {
     if (Os::isThreadAlive(thread_)) {
       Command* marker = nullptr;

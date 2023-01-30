@@ -1072,14 +1072,14 @@ bool VirtualGPU::allocHsaQueueMem() {
 }
 
 VirtualGPU::~VirtualGPU() {
+  // Not safe to remove a queue. So lock the device
+  amd::ScopedLock k(dev().lockAsyncOps());
+  amd::ScopedLock lock(dev().vgpusAccess());
+
   // Destroy RGP trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->FinishRGPTrace(this, true);
   }
-
-  // Not safe to remove a queue. So lock the device
-  amd::ScopedLock k(dev().lockAsyncOps());
-  amd::ScopedLock lock(dev().vgpusAccess());
 
   while (!freeCbQueue_.empty()) {
     auto cb = freeCbQueue_.front();
