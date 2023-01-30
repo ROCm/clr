@@ -88,6 +88,7 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
       }
       return;
     case SERVICE_DEVMEM: {
+      guarantee(payload[0] != 0 || payload[1] != 0, "Both payloads cannot be 0 \n");
       if (payload[0]) {
         amd::Memory* mem = amd::MemObjMap::FindMemObj(reinterpret_cast<void*>(payload[0]));
         if (mem) {
