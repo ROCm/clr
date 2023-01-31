@@ -54,9 +54,7 @@ RgpCaptureMgr::RgpCaptureMgr(Pal::IPlatform* platform, const Device& device)
       se_mask_(0),
       perf_counter_mem_limit_(0),
       perf_counter_frequency_(0),
-      trace_enabled_(false),
-      inst_tracing_enabled_(false),
-      perf_counters_enabled_(false) {
+      value_(0) {
   memset(&trace_, 0, sizeof(trace_));
 }
 
@@ -176,6 +174,8 @@ bool RgpCaptureMgr::Update(Pal::IPlatform* platform) {
     PostDeviceCreate();
   }
 
+  static_vm_id_ = device_.properties().gfxipProperties.flags.supportStaticVmid;
+
   return result;
 }
 
@@ -189,12 +189,12 @@ bool RgpCaptureMgr::RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue,
   // Get the OS context handle for this queue (this is a thing that RGP needs on DX clients;
   // it may be optional for Vulkan, but we provide it anyway if available).
   Pal::KernelContextInfo kernelContextInfo = {};
-
   Pal::Result palResult = iQueue->QueryKernelContextInfo(&kernelContextInfo);
 
   // Ensure we've acquired the debug VMID (note that some platforms do not
   // implement this function, so don't fail the whole trace if so)
   *debug_vmid = kernelContextInfo.flags.hasDebugVmid;
+  assert((static_vm_id_ || *debug_vmid) && "Can't capture multiple queues!");
 
   // Register the queue with the GPA session class for timed queue operation support.
   if (trace_.gpa_session_->RegisterTimedQueue(
@@ -532,11 +532,17 @@ Pal::Result RgpCaptureMgr::PrepareRGPTrace(VirtualGPU* gpu) {
     }
   }
 
-  // Notify the RGP server that we are starting a trace
-  if (rgp_server_->BeginTrace() != DevDriver::Result::Success) {
-    result = Pal::Result::ErrorUnknown;
+  if (static_vm_id_) {
+    result = device_.iDev()->SetStaticVmidMode(true);
+    assert(result == Pal::Result::Success && "Static VM ID setup failed!");
   }
 
+  if (result == Pal::Result::Success) {
+    // Notify the RGP server that we are starting a trace
+    if (rgp_server_->BeginTrace() != DevDriver::Result::Success) {
+      result = Pal::Result::ErrorUnknown;
+    }
+  }
   // Tell the GPA session class we're starting a trace
   if (result == Pal::Result::Success) {
     GpuUtil::GpaSessionBeginInfo info = {};
@@ -722,6 +728,7 @@ void RgpCaptureMgr::FinishRGPTrace(VirtualGPU* gpu, bool aborted) {
     return;
   }
 
+  auto disp_count = trace_.sqtt_disp_count_;
   // Finish the trace if the queue was destroyed before OCL reached
   // the number of captured dispatches
   if (trace_.sqtt_disp_count_ != 0) {
@@ -751,9 +758,18 @@ void RgpCaptureMgr::FinishRGPTrace(VirtualGPU* gpu, bool aborted) {
   } else {
     rgp_server_->EndTrace();
   }
+
+  if (static_vm_id_) {
+    auto result = device_.iDev()->SetStaticVmidMode(false);
+    assert(result == Pal::Result::Success && "Static VM ID setup failed!");
+  }
+
   if (trace_.gpa_session_ != nullptr) {
     trace_.gpa_session_->Reset();
   }
+  // If applicaiton exits, then Windows kills all threads and
+  // RGP can't finish data write into a file.
+  amd::Os::sleep(10 * disp_count + 500);
   // Reset tracing state to idle
   trace_.prepared_disp_count_ = 0;
   trace_.sqtt_disp_count_ = 0;

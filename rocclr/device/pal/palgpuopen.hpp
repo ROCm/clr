@@ -410,9 +410,10 @@ class RgpCaptureMgr {
 
   union {
     struct {
-      uint32_t trace_enabled_ : 1;      // True if tracing is currently enabled (master flag)
-      uint32_t inst_tracing_enabled_;   // Enable instruction-level SQTT tokens
-      uint32_t perf_counters_enabled_;  // True if perf counters are enabled
+      uint32_t trace_enabled_: 1;         // True if tracing is currently enabled (master flag)
+      uint32_t inst_tracing_enabled_: 1;  // Enable instruction-level SQTT tokens
+      uint32_t perf_counters_enabled_: 1; // True if perf counters are enabled
+      uint32_t static_vm_id_: 1;          // Static VM ID can be used for capture
     };
     uint32_t value_;
   };
