@@ -22,7 +22,7 @@
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
 #include "device/devurilocator.hpp"
-#include "hsa_ven_amd_loader.h"
+#include "hsa/hsa_ven_amd_loader.h"
 
 #include <vector>
 namespace roc {
