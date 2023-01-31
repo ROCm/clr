@@ -516,7 +516,8 @@ hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams*
     return hipErrorInvalidValue;
   }
 
-  if ((flags < 0) || (flags > hipCooperativeLaunchMultiDeviceNoPostSync)) {
+  if (flags > (hipCooperativeLaunchMultiDeviceNoPostSync + 
+               hipCooperativeLaunchMultiDeviceNoPreSync)) {
     return hipErrorInvalidValue;
   }
 
@@ -730,7 +731,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
       return hipErrorInvalidValue;
     }
 
-    amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(launch.stream)->asHostQueue();
+    amd::HostQueue* queue = hip::getQueue(launch.stream);
     hipFunction_t func = nullptr;
     // The order of devices in the launch may not match the order in the global array
     for (size_t dev = 0; dev < g_devices.size(); ++dev) {
