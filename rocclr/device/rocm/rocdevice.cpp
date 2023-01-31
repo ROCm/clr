@@ -236,17 +236,17 @@ Device::~Device() {
   }
 
   for (auto& it : queuePool_) {
-    for (auto& qIter : it) {
-      hsa_queue_t* queue = qIter.first;
-      auto& qInfo = qIter.second;
+    for (auto qIter = it.begin(); qIter != it.end(); ) {
+      hsa_queue_t* queue = qIter->first;
+      auto& qInfo = qIter->second;
       if (qInfo.hostcallBuffer_) {
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
-                qInfo.hostcallBuffer_, qIter.first);
+                qInfo.hostcallBuffer_, qIter->first);
         disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
-      it.erase(queue);
+      qIter = it.erase(qIter);
       hsa_queue_destroy(queue);
     }
   }
