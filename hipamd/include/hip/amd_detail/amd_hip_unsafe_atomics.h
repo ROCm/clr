@@ -178,7 +178,7 @@ __device__ inline float unsafeAtomicMin(float* addr, float val) {
  * @return Original value contained in \p addr.
  */
 __device__ inline double unsafeAtomicAdd(double* addr, double value) {
-#if (defined(__gfx90a__) || defined(__gfx940_)) &&                              \
+#if (defined(__gfx90a__) || defined(__gfx940__)) &&                              \
     __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f64)
   return __builtin_amdgcn_flat_atomic_fadd_f64(addr, value);
 #elif defined (__hip_atomic_fetch_add)
