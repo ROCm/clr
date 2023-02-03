@@ -1147,7 +1147,9 @@ bool Device::populateOCLDeviceConstants() {
 
   //TODO: add the assert statement for Raven
   if (!(isa().versionMajor() == 9 && isa().versionMinor() == 0 && isa().versionStepping() == 2)) {
-    assert(info_.maxEngineClockFrequency_ > 0);
+    if (info_.maxEngineClockFrequency_ <= 0) {
+      LogError("maxEngineClockFrequency_ is NOT positive!");
+    }
   }
 
   if (HSA_STATUS_SUCCESS !=
