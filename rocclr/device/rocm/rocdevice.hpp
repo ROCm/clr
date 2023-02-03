@@ -218,7 +218,7 @@ class NullDevice : public amd::Device {
 
   //! Determine if we can use device memory for SVM
   const bool forceFineGrain(amd::Memory* memory) const {
-    return !settings().enableCoarseGrainSVM_ || (memory->getContext().devices().size() > 1);
+    return (memory->getContext().devices().size() > 1);
   }
 
   virtual bool importExtSemaphore(void** extSemahore, const amd::Os::FileDesc& handle) {

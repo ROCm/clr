@@ -76,8 +76,6 @@ Settings::Settings() {
   // Enable workload split by default (for 24 bit arithmetic or timeout)
   workloadSplitSize_ = 1 << GPU_WORKLOAD_SPLIT;
 
-  // By default use host blit
-  blitEngine_ = BlitEngineHost;
   pinnedXferSize_ = GPU_PINNED_MIN_XFER_SIZE * Mi;
   pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
     ? 128 * Mi : GPU_PINNED_MIN_XFER_SIZE * Mi;
@@ -122,8 +120,6 @@ Settings::Settings() {
   // Controls tiled images in persistent
   //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
   linearPersistentImage_ = false;
-
-  useSingleScratch_ = GPU_USE_SINGLE_SCRATCH;
 
   // Device enqueuing settings
   numDeviceEvents_ = 1024;
@@ -328,16 +324,11 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
       libSelector_ = amd::GPU_Library_CI;
       if (LP64_SWITCH(false, true)) {
-        oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/
+        oclVersion_ = !reportAsOCL12Device
             ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR))
             : OpenCL12;
       }
-      if (GPU_FORCE_OCL20_32BIT) {
-        force32BitOcl20_ = true;
-        oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/
-            ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR))
-            : OpenCL12;
-      }
+
       if (OPENCL_VERSION < 200) {
         oclVersion_ = OpenCL12;
       }
@@ -346,27 +337,13 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       // Cap at OpenCL20 for now
       if (oclVersion_ > OpenCL20) oclVersion_ = OpenCL20;
 
-      // This needs to be cleaned once 64bit addressing is stable
-      if (oclVersion_ < OpenCL20) {
-        use64BitPtr_ = flagIsDefault(GPU_FORCE_64BIT_PTR)
-            ? LP64_SWITCH(false,
-                          /*calAttr.isWorkstation ||*/ true)
-            : GPU_FORCE_64BIT_PTR;
-      } else {
-        if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, true)) {
-          use64BitPtr_ = true;
-        }
-      }
+      use64BitPtr_ = LP64_SWITCH(false, true);
 
       if (oclVersion_ >= OpenCL20) {
         supportDepthsRGB_ = true;
       }
       if (use64BitPtr_) {
-        if (GPU_ENABLE_LARGE_ALLOCATION) {
-          maxAllocSize_ = 64ULL * Gi;
-        } else {
-          maxAllocSize_ = 4048 * Mi;
-        }
+        maxAllocSize_ = 64ULL * Gi;
       } else {
         maxAllocSize_ = 3ULL * Gi;
       }
@@ -446,9 +423,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   }
 
   imageSupport_ = true;
-
-  // Use kernels for blit if appropriate
-  blitEngine_ = BlitEngineKernel;
 
   hostMemDirectAccess_ |= HostMemBuffer;
   // HW doesn't support untiled image writes
@@ -540,11 +514,6 @@ void Settings::override() {
   // Limit reported workgroup size
   if (GPU_MAX_WORKGROUP_SIZE != 0) {
     preferredWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
-  }
-
-  // Override blit engine type
-  if (GPU_BLIT_ENGINE_TYPE != BlitEngineDefault) {
-    blitEngine_ = GPU_BLIT_ENGINE_TYPE;
   }
 
   if (!flagIsDefault(DEBUG_GPU_FLAGS)) {

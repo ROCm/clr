@@ -70,7 +70,6 @@ class Settings : public device::Settings {
       uint gfx10Plus_ : 1;              //!< gfx10 and post gfx10 features
       uint threadTraceEnable_ : 1;      //!< Thread trace enable
       uint linearPersistentImage_ : 1;  //!< Allocates linear images in persistent
-      uint useSingleScratch_ : 1;       //!< Allocates single scratch per device
       uint svmAtomics_ : 1;             //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;     //!< SVM fine grain system support
       uint useDeviceQueue_ : 1;         //!< Submit to separate device queue
@@ -82,7 +81,7 @@ class Settings : public device::Settings {
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint disableSdma_ : 1;            //!< Disable SDMA support
       uint alwaysResident_ : 1;         //!< Make resources resident at allocation time
-      uint reserved_ : 7;
+      uint reserved_ : 8;
     };
     uint value_;
   };
@@ -95,7 +94,6 @@ class Settings : public device::Settings {
   uint workloadSplitSize_;       //!< Workload split size
   uint minWorkloadTime_;         //!< Minimal workload time in 0.1 ms
   uint maxWorkloadTime_;         //!< Maximum workload time in 0.1 ms
-  uint blitEngine_;              //!< Blit engine type
   uint cacheLineSize_;           //!< Cache line size in bytes
   uint cacheSize_;               //!< L1 cache size in bytes
   uint numComputeRings_;         //!< 0 - disabled, 1 , 2,.. - the number of compute rings
