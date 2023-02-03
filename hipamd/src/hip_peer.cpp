@@ -232,7 +232,9 @@ hipError_t hipMemcpyPeerAsync(void* dst, int dstDevice, const void* src, int src
       srcDevice < 0 || dstDevice < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
   HIP_RETURN(hipMemcpyAsync(dst, src, sizeBytes, hipMemcpyDeviceToDevice, stream));
 }
 
