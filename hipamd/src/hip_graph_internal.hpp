@@ -39,8 +39,8 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
                         std::vector<Node>& levelOrder, std::vector<amd::Command*>& rootCommands,
                         amd::Command*& endCommand, amd::HostQueue* queue);
-void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
-                 hipGraphExec* ptr);
+void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
+                  hipGraphExec* ptr);
 
 struct hipUserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
@@ -154,6 +154,7 @@ struct hipGraphNodeDOTAttribute {
 
 struct hipGraphNode : public hipGraphNodeDOTAttribute {
  protected:
+  hip::Stream* stream_ = nullptr;
   amd::HostQueue* queue_;
   uint32_t level_;
   unsigned int id_;
@@ -223,7 +224,10 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
 
   amd::HostQueue* GetQueue() { return queue_; }
 
-  virtual void SetQueue(amd::HostQueue* queue, hipGraphExec* ptr = nullptr) { queue_ = queue; }
+  virtual void SetStream(hip::Stream* stream, hipGraphExec* ptr = nullptr) {
+    stream_ = stream;
+    queue_ = stream->asHostQueue();
+  }
   /// Create amd::command for the graph node
   virtual hipError_t CreateCommand(amd::HostQueue* queue) {
     commands_.clear();
@@ -337,7 +341,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
       command->updateEventWaitList(waitList);
     }
   }
-  virtual size_t GetNumParallelQueues() { return 0; }
+  virtual size_t GetNumParallelStreams() { return 0; }
   /// Enqueue commands part of the node
   virtual void EnqueueCommands(hipStream_t stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
@@ -541,7 +545,7 @@ struct hipGraphExec {
   // level order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> levelOrder_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
-  std::vector<amd::HostQueue*> parallelQueues_;
+  std::vector<hip::Stream*> parallel_streams_;
   uint currentQueueIndex_;
   std::unordered_map<Node, Node> clonedNodes_;
   amd::Command* lastEnqueuedCommand_;
@@ -570,8 +574,8 @@ struct hipGraphExec {
   ~hipGraphExec() {
     // new commands are launched for every launch they are destroyed as and when command is
     // terminated after it complete execution
-    for (auto queue : parallelQueues_) {
-      queue->release();
+    for (auto stream : parallel_streams_) {
+      delete stream;
     }
     for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;
     amd::ScopedLock lock(graphExecSetLock_);
@@ -596,10 +600,10 @@ struct hipGraphExec {
 
   std::vector<Node>& GetNodes() { return levelOrder_; }
 
-  amd::HostQueue* GetAvailableQueue() { return parallelQueues_[currentQueueIndex_++]; }
+  hip::Stream* GetAvailableStreams() { return parallel_streams_[currentQueueIndex_++]; }
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
   hipError_t Init();
-  hipError_t CreateQueues(size_t numQueues);
+  hipError_t CreateStreams(uint32_t num_streams);
   hipError_t Run(hipStream_t stream);
 };
 
@@ -628,20 +632,21 @@ struct hipChildGraphNode : public hipGraphNode {
 
   ihipGraph* GetChildGraph() { return childGraph_; }
 
-  size_t GetNumParallelQueues() {
+  size_t GetNumParallelStreams() {
     LevelOrder(childGraphlevelOrder_);
     size_t num = 0;
     for (auto& node : childGraphlevelOrder_) {
-      num += node->GetNumParallelQueues();
+      num += node->GetNumParallelStreams();
     }
     // returns total number of parallel queues required for child graph nodes to be launched
     // first parallel list will be launched on the same queue as parent
     return num + (parallelLists_.size() - 1);
   }
 
-  void SetQueue(amd::HostQueue* queue, hipGraphExec* ptr = nullptr) {
-    queue_ = queue;
-    UpdateQueue(parallelLists_, queue, ptr);
+  void SetStream(hip::Stream* stream, hipGraphExec* ptr = nullptr) {
+    stream_ = stream;
+    queue_ = stream->asHostQueue();
+    UpdateStream(parallelLists_, stream, ptr);
   }
 
   // For nodes that are dependent on the child graph node waitlist is the last node of the first
@@ -1876,9 +1881,7 @@ class hipGraphMemAllocNode : public hipGraphNode {
 
   virtual hipError_t CreateCommand(amd::HostQueue* queue) {
     auto error = hipGraphNode::CreateCommand(queue);
-    // Note: memory pool can work with hip::Streams only. It can't accept amd::HostQueue.
-    // Resource tracking is disabled!
-    auto ptr = Execute();
+    auto ptr = Execute(stream_);
     return error;
   }
 
@@ -1919,13 +1922,11 @@ class hipGraphMemFreeNode : public hipGraphNode {
 
   virtual hipError_t CreateCommand(amd::HostQueue* queue) {
     auto error = hipGraphNode::CreateCommand(queue);
-    // Note: memory pool can work with hip::Streams only. It can't accept amd::HostQueue.
-    // Resource tracking is disabled!
-    Execute();
+    Execute(stream_);
     return error;
   }
 
-  void Execute(hip::Stream* stream = nullptr) {
+  void Execute(hip::Stream* stream) {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
       graph->FreeMemory(device_ptr_, stream);

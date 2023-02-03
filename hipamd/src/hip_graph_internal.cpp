@@ -679,34 +679,29 @@ bool hipGraphExec::isGraphExecValid(hipGraphExec* pGraphExec) {
   return true;
 }
 
-hipError_t hipGraphExec::CreateQueues(size_t numQueues) {
-  parallelQueues_.reserve(numQueues);
-  for (size_t i = 0; i < numQueues; i++) {
-    amd::HostQueue* queue;
-    queue = new amd::HostQueue(
-        *hip::getCurrentDevice()->asContext(), *hip::getCurrentDevice()->devices()[0], 0,
-        amd::CommandQueue::RealTimeDisabled, amd::CommandQueue::Priority::Normal);
-
-    bool result = (queue != nullptr) ? queue->create() : false;
-    // Create a host queue
-    if (result) {
-      parallelQueues_.push_back(queue);
-    } else {
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create host queue\n");
+hipError_t hipGraphExec::CreateStreams(uint32_t num_streams) {
+  parallel_streams_.reserve(num_streams);
+  for (uint32_t i = 0; i < num_streams; ++i) {
+    auto stream = new hip::Stream(hip::getCurrentDevice(),
+                                  hip::Stream::Priority::Normal, hipStreamNonBlocking);
+    if (stream == nullptr || !stream->Create()) {
+      delete stream;
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!\n");
       return hipErrorOutOfMemory;
     }
+    parallel_streams_.push_back(stream);
   }
   return hipSuccess;
 }
 
 hipError_t hipGraphExec::Init() {
   hipError_t status;
-  size_t reqNumQueues = 1;
+  size_t min_num_streams = 1;
 
   for (auto& node : levelOrder_) {
-    reqNumQueues += node->GetNumParallelQueues();
+    min_num_streams += node->GetNumParallelStreams();
   }
-  status = CreateQueues(parallelLists_.size() - 1 + reqNumQueues);
+  status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
   return status;
 }
 
@@ -771,19 +766,19 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
   return hipSuccess;
 }
 
-void UpdateQueue(std::vector<std::vector<Node>>& parallelLists, amd::HostQueue*& queue,
+void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                  hipGraphExec* ptr) {
   int i = 0;
   for (const auto& list : parallelLists) {
     // first parallel list will be launched on the same queue as parent
     if (i == 0) {
       for (auto& node : list) {
-        node->SetQueue(queue, ptr);
+        node->SetStream(stream, ptr);
       }
-    } else {  // New queue for parallel branches
-      amd::HostQueue* paralleQueue = ptr->GetAvailableQueue();
+    } else {  // New stream for parallel branches
+      hip::Stream* stream = ptr->GetAvailableStreams();
       for (auto& node : list) {
-        node->SetQueue(paralleQueue, ptr);
+        node->SetStream(stream, ptr);
       }
     }
     i++;
@@ -801,7 +796,9 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
       levelOrder_[0]->GetParentGraph()->FreeAllMemory();
     }
   }
-  UpdateQueue(parallelLists_, queue, this);
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream()
+                                        : reinterpret_cast<hip::Stream*>(stream);
+  UpdateStream(parallelLists_, hip_stream, this);
   std::vector<amd::Command*> rootCommands;
   amd::Command* endCommand = nullptr;
   status =
