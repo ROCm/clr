@@ -464,6 +464,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   if (src == dst && kind == hipMemcpyDefault) {
     return hipSuccess;
   }
+  bool isP2P = false;
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
@@ -475,6 +476,11 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
     isAsync = false;
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
     isAsync = false;
+  } else if ((srcMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) &&
+             (srcMemory->getContext().devices().size() == 1) &&
+             (dstMemory->getContext().devices().size() == 1)) {
+    isAsync = true;
+    isP2P = true;
   }
   amd::Command* command = nullptr;
   status = ihipMemcpyCommand(command, dst, src, sizeBytes, kind, queue, isAsync);
@@ -484,6 +490,15 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   command->enqueue();
   if (!isAsync) {
     command->awaitCompletion();
+  } else if (isP2P) {
+    amd::HostQueue* pQueue = hip::getNullStream(dstMemory->getContext());
+    amd::Command::EventWaitList waitList;
+    waitList.push_back(command);
+    amd::Command* depdentMarker = new amd::Marker(*pQueue, false, waitList);
+    if (depdentMarker != nullptr) {
+      depdentMarker->enqueue();
+      depdentMarker->release();
+    }
   } else {
     amd::HostQueue* newQueue = command->queue();
     if (newQueue != &queue) {
