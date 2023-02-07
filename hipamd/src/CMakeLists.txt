@@ -95,7 +95,6 @@ if(NOT WIN32)
 endif()
 
 target_sources(amdhip64 PRIVATE
-  cl_gl.cpp
   fixme.cpp
   hip_activity.cpp
   hip_code_object.cpp
@@ -127,9 +126,6 @@ target_sources(amdhip64 PRIVATE
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
-    cl_d3d9.cpp
-    cl_d3d10.cpp
-    cl_d3d11.cpp
     hip_runtime.cpp)
 endif()
 

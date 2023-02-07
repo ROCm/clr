@@ -21,7 +21,7 @@
 #include "top.hpp"
 #include "hip/hip_runtime.h"
 #include "hip_internal.hpp"
-#include "cl_gl_amd.hpp"
+#include "platform/interop_gl.hpp"
 #include "cl_common.hpp"
 #include <GL/gl.h>
 #include <GL/glext.h>
@@ -398,7 +398,7 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
 
     // Now get CL format from GL format and bytes per pixel
     int iBytesPerPixel = 0;
-    if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+    if (!amd::getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
                             0)) { //clFlags)) {
       LogWarning("\"texture\" format does not map to an appropriate CL image format");
       HIP_RETURN(hipErrorInvalidValue);
@@ -462,7 +462,7 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
 
     // Now get CL format from GL format and bytes per pixel
     int iBytesPerPixel = 0;
-    if (!getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
+    if (!amd::getCLFormatFromGL(amdContext, glInternalFormat, &clImageFormat, &iBytesPerPixel,
                             flags)) {
       LogWarning("\"texture\" format does not map to an appropriate CL image format");
       HIP_RETURN(hipErrorInvalidValue);
