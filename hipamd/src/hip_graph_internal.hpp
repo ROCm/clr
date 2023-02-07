@@ -383,7 +383,7 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
       fout << "\"" << fromNodeName << "\" -> \"" << toNodeName << "\"" << std::endl;
     }
   }
-  virtual std::string GetLabel() { return (std::to_string(id_) + "\n" + label_); }
+  virtual std::string GetLabel(hipGraphDebugDotFlags flag) { return (std::to_string(id_) + "\n" + label_); }
   unsigned int GetEnabled() const { return isEnabled_; }
   void SetEnabled(unsigned int isEnabled) { isEnabled_ = isEnabled; }
 };
