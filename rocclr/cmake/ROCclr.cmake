@@ -84,6 +84,7 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/platform/ndrange.cpp
   ${ROCCLR_SRC_DIR}/platform/program.cpp
   ${ROCCLR_SRC_DIR}/platform/runtime.cpp
+  ${ROCCLR_SRC_DIR}/platform/interop_gl.cpp
   ${ROCCLR_SRC_DIR}/thread/monitor.cpp
   ${ROCCLR_SRC_DIR}/thread/semaphore.cpp
   ${ROCCLR_SRC_DIR}/thread/thread.cpp
@@ -91,6 +92,10 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/utils/flags.cpp)
 
 if(WIN32)
+  target_sources(rocclr PRIVATE
+  ${ROCCLR_SRC_DIR}/platform/interop_d3d9.cpp
+  ${ROCCLR_SRC_DIR}/platform/interop_d3d10.cpp
+  ${ROCCLR_SRC_DIR}/platform/interop_d3d11.cpp)
   target_compile_definitions(rocclr PUBLIC ATI_OS_WIN)
 else()
   target_compile_definitions(rocclr PUBLIC ATI_OS_LINUX)

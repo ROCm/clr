@@ -35,7 +35,7 @@
 #include "thread/monitor.hpp"
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
-#include "amdocl/cl_gl_amd.hpp"
+#include "platform/interop_gl.hpp"
 #include "amdocl/cl_vk_amd.hpp"
 
 namespace roc {
