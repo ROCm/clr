@@ -27,7 +27,7 @@
 #include "platform/context.hpp"
 #include "platform/agent.hpp"
 
-#include "amdocl/cl_gl_amd.hpp"
+#include "platform/interop_gl.hpp"
 
 #ifdef _WIN32
 #include <d3d10_1.h>

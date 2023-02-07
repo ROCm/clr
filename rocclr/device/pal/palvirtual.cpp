@@ -45,9 +45,9 @@
 
 #ifdef _WIN32
 #include <d3d10_1.h>
-#include "amdocl/cl_d3d9_amd.hpp"
-#include "amdocl/cl_d3d10_amd.hpp"
-#include "amdocl/cl_d3d11_amd.hpp"
+#include "platform/interop_d3d9.hpp"
+#include "platform/interop_d3d10.hpp"
+#include "platform/interop_d3d11.hpp"
 #endif  // _WIN32
 
 namespace pal {
