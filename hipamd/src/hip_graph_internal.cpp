@@ -77,14 +77,14 @@ hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size
     if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
       return hipErrorInvalidValue;
     }
-    if (kind != hipMemcpyHostToDevice) {
+    if ((kind != hipMemcpyHostToDevice) && (kind != hipMemcpyDefault)) {
       return hipErrorInvalidValue;
     }
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {  // device to host
     if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
       return hipErrorInvalidValue;
     }
-    if (kind != hipMemcpyDeviceToHost) {
+    if ((kind != hipMemcpyDeviceToHost) && (kind != hipMemcpyDefault)) {
       return hipErrorInvalidValue;
     }
   } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
