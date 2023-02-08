@@ -91,21 +91,21 @@ void setCurrentDevice(unsigned int index) {
   amd::Os::setPreferredNumaNode(preferredNumaNode);
 }
 
-amd::HostQueue* getQueue(hipStream_t stream) {
+hip::Stream* getStream(hipStream_t stream) {
  if (stream == nullptr) {
     return getNullStream();
   } else {
-    amd::HostQueue* queue = reinterpret_cast<hip::Stream*>(stream)->asHostQueue();
-    if (!(reinterpret_cast<hip::Stream*>(stream)->Flags() & hipStreamNonBlocking)) {
+    hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);
+    if (!(hip_stream->Flags() & hipStreamNonBlocking)) {
       constexpr bool WaitNullStreamOnly = true;
-      iHipWaitActiveStreams(queue, WaitNullStreamOnly);
+      iHipWaitActiveStreams(hip_stream, WaitNullStreamOnly);
     }
-    return queue;
+    return hip_stream;
   }
 }
 
 // ================================================================================================
-amd::HostQueue* getNullStream(amd::Context& ctx) {
+hip::Stream* getNullStream(amd::Context& ctx) {
   for (auto& it : g_devices) {
     if (it->asContext() == &ctx) {
       return it->NullStream();
@@ -131,7 +131,7 @@ int getDeviceID(amd::Context& ctx) {
 }
 
 // ================================================================================================
-amd::HostQueue* getNullStream() {
+hip::Stream* getNullStream() {
   Device* device = getCurrentDevice();
   return device ? device->NullStream() : nullptr;
 }

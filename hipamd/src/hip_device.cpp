@@ -26,25 +26,31 @@
 namespace hip {
 
 // ================================================================================================
-amd::HostQueue* Device::NullStream(bool skip_alloc) {
-  amd::HostQueue* null_queue = null_stream_.asHostQueue(skip_alloc);
-  if (null_queue == nullptr) {
+hip::Stream* Device::NullStream(bool skip_alloc) {
+  if (null_stream_ == nullptr && !skip_alloc) {
+    null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+  }
+
+  if (null_stream_ == nullptr) {
     return nullptr;
   }
   // Wait for all active streams before executing commands on the default
-  iHipWaitActiveStreams(null_queue);
-  return null_queue;
+  iHipWaitActiveStreams(null_stream_);
+  return null_stream_;
 }
 
 // ================================================================================================
-Stream* Device::GetNullStream() {
-  amd::HostQueue* null_queue = null_stream_.asHostQueue();
-  if (null_queue == nullptr) {
+hip::Stream* Device::GetNullStream() {
+  if (null_stream_ == nullptr) {
+    null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+  }
+  
+  if (null_stream_ == nullptr) {
     return nullptr;
   }
   // Wait for all active streams before executing commands on the default
-  iHipWaitActiveStreams(null_queue);
-  return &null_stream_;
+  iHipWaitActiveStreams(null_stream_);
+  return null_stream_;
 }
 
 // ================================================================================================
@@ -127,6 +133,10 @@ void Device::Reset() {
 Device::~Device() {
   if (default_mem_pool_ != nullptr) {
     default_mem_pool_->release();
+  }
+
+  if (null_stream_!= nullptr) {
+    delete null_stream_;
   }
 }
 

@@ -102,8 +102,8 @@ hipError_t IPCEvent::synchronize() {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::streamWaitCommand(amd::Command*& command, amd::HostQueue* queue) {
-  command = new amd::Marker(*queue, false);
+hipError_t IPCEvent::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
+  command = new amd::Marker(*stream, false);
   if (command == NULL) {
     return hipErrorOutOfMemory;
   }
@@ -125,12 +125,12 @@ hipError_t IPCEvent::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* 
 }
 
 hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
-  amd::HostQueue* queue = hip::getQueue(stream);
+  hip::Stream* hip_stream = hip::getStream(stream);
 
   amd::ScopedLock lock(lock_);
   if(query() != hipSuccess) {
     amd::Command* command;
-    hipError_t status = streamWaitCommand(command, queue);
+    hipError_t status = streamWaitCommand(command, hip_stream);
     if (status != hipSuccess) {
       return status;
     }
@@ -140,18 +140,17 @@ hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* queue, uint32_t flags) {
+hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* stream, uint32_t flags) {
   bool unrecorded = isUnRecorded();
   if (unrecorded) {
-    command = new amd::Marker(*queue, kMarkerDisableFlush);
+    command = new amd::Marker(*stream, kMarkerDisableFlush);
   } else {
-    return Event::recordCommand(command, queue);
+    return Event::recordCommand(command, stream);
   }
   return hipSuccess;
 }
 
 hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
-  amd::HostQueue* queue = hip::getQueue(stream);
   bool unrecorded = isUnRecorded();
   if (unrecorded) {
     amd::Event& tEvent = command->event();

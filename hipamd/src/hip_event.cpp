@@ -177,12 +177,12 @@ int64_t EventDD::time(bool getStartTs) const {
   }
 }
 
-hipError_t Event::streamWaitCommand(amd::Command*& command, amd::HostQueue* queue) {
+hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
   amd::Command::EventWaitList eventWaitList;
   if (event_ != nullptr) {
     eventWaitList.push_back(event_);
   }
-  command = new amd::Marker(*queue, kMarkerDisableFlush, eventWaitList);
+  command = new amd::Marker(*stream, kMarkerDisableFlush, eventWaitList);
 
   if (command == NULL) {
     return hipErrorOutOfMemory;
@@ -196,17 +196,17 @@ hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* com
 }
 
 hipError_t Event::streamWait(hipStream_t stream, uint flags) {
-  amd::HostQueue* queue = hip::getQueue(stream);
+  hip::Stream* hip_stream = hip::getStream(stream);
   // Access to event_ object must be lock protected
   amd::ScopedLock lock(lock_);
-  if ((event_ == nullptr) || (event_->command().queue() == queue) || ready()) {
+  if ((event_ == nullptr) || (event_->command().queue() == hip_stream) || ready()) {
     return hipSuccess;
   }
   if (!event_->notifyCmdQueue()) {
     return hipErrorLaunchOutOfResources;
   }
   amd::Command* command;
-  hipError_t status = streamWaitCommand(command, queue);
+  hipError_t status = streamWaitCommand(command, hip_stream);
   if (status != hipSuccess) {
     return status;
   }
@@ -218,7 +218,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   return hipSuccess;
 }
 
-hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
+hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                 uint32_t ext_flags ) {
   if (command == nullptr) {
     int32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
@@ -231,7 +231,7 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* queue,
       releaseFlags = amd::Device::kCacheStateIgnore;
     }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*queue, !kMarkerDisableFlush, true, releaseFlags);
+    command = new hip::EventMarker(*stream, !kMarkerDisableFlush, true, releaseFlags);
   }
   return hipSuccess;
 }
@@ -249,10 +249,10 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
 }
 
 hipError_t Event::addMarker(hipStream_t stream, amd::Command* command, bool record) {
-  amd::HostQueue* queue = hip::getQueue(stream);
+  hip::Stream* hip_stream = hip::getStream(stream);
   // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
   amd::ScopedLock lock(lock_);
-  hipError_t status = recordCommand(command, queue);
+  hipError_t status = recordCommand(command, hip_stream);
   if (status != hipSuccess) {
     return hipSuccess;
   }
@@ -379,8 +379,8 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
     return hipErrorInvalidHandle;
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  amd::HostQueue* queue = hip::getQueue(stream);
-  if (g_devices[e->deviceId()]->devices()[0] != &queue->device()) {
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
     return hipErrorInvalidHandle;
   }
   return e->addMarker(stream, nullptr, true);

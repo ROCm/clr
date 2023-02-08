@@ -69,11 +69,11 @@ hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void
     return hipErrorInvalidValue;
   }
 
-  amd::HostQueue* queue = hip::getQueue(stream);
+  hip::Stream* hip_stream = hip::getStream(stream);
   amd::Command::EventWaitList waitList;
 
   amd::StreamOperationCommand* command =
-    new amd::StreamOperationCommand(*queue, cmdType, waitList, *memory->asBuffer(),
+    new amd::StreamOperationCommand(*hip_stream, cmdType, waitList, *memory->asBuffer(),
                                     value, mask, outFlags, offset, sizeBytes);
 
   if (command == nullptr) {
