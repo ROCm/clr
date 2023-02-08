@@ -44,7 +44,7 @@ bool init() {
   if (!amd::Runtime::init()) {
     return false;
   }
-  LogPrintfInfo("Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
 
 
   const std::vector<amd::Device*>& devices = amd::Device::getDevices(CL_DEVICE_TYPE_GPU, false);
