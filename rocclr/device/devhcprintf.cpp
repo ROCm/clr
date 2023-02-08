@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <cstdarg>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
