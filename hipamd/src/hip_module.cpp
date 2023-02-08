@@ -336,10 +336,16 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
 
   // Capture the kernel arguments
   if (CL_SUCCESS != kernelCommand->captureAndValidate()) {
-    delete kernelCommand;
+    kernelCommand->release();
     return hipErrorOutOfMemory;
   }
+
+  if (kernelCommand->status() == CL_INVALID_OPERATION) {
+    kernelCommand->release();
+    return hipErrorIllegalState;
+  }
   command = kernelCommand;
+
   return hipSuccess;
 }
 
