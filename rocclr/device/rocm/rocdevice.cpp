@@ -1622,7 +1622,7 @@ bool Device::populateOCLDeviceConstants() {
     LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
   }
 
-  LogPrintfInfo("HMM support: %d, xnack: %d, direct host access: %d\n",
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, xnack: %d, direct host access: %d\n",
     info_.hmmSupported_, info_.hmmCpuMemoryAccessible_, info_.hmmDirectHostAccess_);
 
   info_.globalCUMask_ = {};
