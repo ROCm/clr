@@ -362,7 +362,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
       case amd::KernelParameterDescriptor::HiddenHeap:
         // Allocate hidden heap for HIP applications only
         if ((amd::IS_HIP) && (palDevice().HeapBuffer() == nullptr)) {
-          const_cast<Device&>(palDevice()).HiddenHeapAlloc();
+          const_cast<Device&>(palDevice()).HiddenHeapAlloc(gpu);
         }
         if (palDevice().HeapBuffer() != nullptr) {
           // Add heap pointer to the code

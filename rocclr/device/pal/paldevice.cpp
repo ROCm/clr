@@ -2356,8 +2356,8 @@ void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
 }
 
 // ================================================================================================
-void Device::HiddenHeapAlloc() {
-  auto HeapAlloc = [this]() -> bool {
+void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
+  auto HeapAlloc = [this, &gpu]() -> bool {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
@@ -2369,7 +2369,7 @@ void Device::HiddenHeapAlloc() {
       LogError("Heap buffer allocation failed!");
       return false;
     }
-    bool result = static_cast<const KernelBlitManager&>(xferMgr()).initHeap(
+    bool result = static_cast<const KernelBlitManager&>(gpu.blitMgr()).initHeap(
         heap_buffer_, initial_heap_buffer_, HeapBufferSize, initial_heap_size_ / (2 * Mi));
 
     return result;

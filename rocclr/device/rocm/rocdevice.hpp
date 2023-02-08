@@ -547,7 +547,7 @@ class Device : public NullDevice {
   bool IsValidAllocation(const void* dev_ptr, size_t size) const;
 
   //! Allocates hidden heap for device memory allocations
-  void HiddenHeapAlloc();
+  void HiddenHeapAlloc(const VirtualGPU& gpu);
 
  private:
   bool create();

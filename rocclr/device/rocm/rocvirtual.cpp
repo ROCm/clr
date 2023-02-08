@@ -2958,7 +2958,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         case amd::KernelParameterDescriptor::HiddenHeap:
           // Allocate hidden heap for HIP applications only
           if ((amd::IS_HIP) && (dev().HeapBuffer() == nullptr)) {
-            const_cast<Device&>(dev()).HiddenHeapAlloc();
+            const_cast<Device&>(dev()).HiddenHeapAlloc(*this);
           }
           if (dev().HeapBuffer() != nullptr) {
             // Add heap pointer to the code
