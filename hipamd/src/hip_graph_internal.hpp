@@ -735,12 +735,31 @@ class hipGraphKernelNode : public hipGraphNode {
   unsigned int kernelAttrInUse_;
 
  public:
+    void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
+      out << "[";
+      out << "style";
+      out << "=\"";
+      out << style_;
+      (flag == hipGraphDebugDotFlagsKernelNodeParams ||
+       flag == hipGraphDebugDotFlagsKernelNodeAttributes) ?
+       out << "\n" : out << "\"";
+      out << "shape";
+      out << "=\"";
+      out << GetShape(flag);
+      out << "\"";
+      out << "label";
+      out << "=\"";
+      out << GetLabel(flag);
+      out << "\"";
+      out << "];";
+      }
+
   std::string GetLabel(hipGraphDebugDotFlags flag) {
     hipFunction_t func = getFunc(*pKernelParams_, ihipGetDevice());
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     std::string label;
-    if (flag == hipGraphDebugDotFlagsKernelNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+    char buffer[500];
+    if (flag == hipGraphDebugDotFlagsVerbose) {
       sprintf(buffer,
               "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
               "handle | func handle} | {%p | %p}}\n| {accessPolicyWindow | {base_ptr | num_bytes | "
@@ -754,8 +773,29 @@ class hipGraphKernelNode : public hipGraphNode {
               kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
               kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative);
       label = buffer;
-    } else {
-      label = std::to_string(GetID()) + "\n" + function->name();
+    }
+    else if (flag == hipGraphDebugDotFlagsKernelNodeAttributes) {
+      sprintf(buffer,
+              "{\n%s\n| {ID | %d | %s}\n"
+              "| {accessPolicyWindow | {base_ptr | num_bytes | "
+              "hitRatio | hitProp | missProp} |\n| {%p | %ld | %f | %d | %d}}\n| {cooperative | "
+              "%u}\n| {priority | 0}\n}",
+              label_.c_str(), GetID(), function->name().c_str(),
+              kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
+              kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
+              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative);
+      label = buffer;
+    }
+    else if (flag == hipGraphDebugDotFlagsKernelNodeParams) {
+      sprintf(buffer, "%d\n%s\n\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>",
+              GetID(), function->name().c_str(), pKernelParams_->gridDim.x,
+              pKernelParams_->gridDim.y, pKernelParams_->gridDim.z,
+              pKernelParams_->blockDim.x, pKernelParams_->blockDim.y,
+              pKernelParams_->blockDim.z, pKernelParams_->sharedMemBytes);
+      label = buffer;
+    }
+    else {
+      label = std::to_string(GetID()) + "\n" + function->name() + "\n";
     }
     return label;
   }
