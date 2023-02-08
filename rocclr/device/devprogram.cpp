@@ -2962,7 +2962,7 @@ bool Program::runInitFiniKernel(kernel_kind_t kind) const {
   amd::HostQueue* queue = nullptr;
 
   for (const auto& i : kernels_) {
-    LogPrintfInfo("For Init/Fini: Kernel Name: %s", i.first.c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_INIT, "For Init/Fini: Kernel Name: %s", i.first.c_str());
     const auto &kernel = i.second;
     if ((kernel->isInitKernel() && kind == kernel_kind_t::InitKernel) ||
         (kernel->isFiniKernel() && kind == kernel_kind_t::FiniKernel)) {
