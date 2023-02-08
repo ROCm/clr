@@ -512,9 +512,9 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
 hipError_t hipDeviceSynchronize ( void ) {
   HIP_INIT_API(hipDeviceSynchronize);
 
-  amd::HostQueue* queue = hip::getNullStream();
+  hip::Stream* stream = hip::getNullStream();
 
-  if (!queue) {
+  if (!stream) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
 
@@ -522,7 +522,7 @@ hipError_t hipDeviceSynchronize ( void ) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
-  queue->finish();
+  stream->finish();
 
   hip::Stream::syncNonBlockingStreams(hip::getCurrentDevice()->deviceId());
 

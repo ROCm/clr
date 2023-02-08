@@ -26,7 +26,7 @@
 #include "platform/sampler.hpp"
 
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      amd::HostQueue& queue, bool isAsync = false);
+                      hip::Stream& stream, bool isAsync = false);
 
 hipError_t ihipFree(void* ptr);
 
@@ -575,8 +575,8 @@ hipError_t hipBindTexture2D(size_t* offset,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t ihipBindTextureToArray(const textureReference* texref,
@@ -624,8 +624,8 @@ hipError_t hipBindTextureToArray(const textureReference* texref,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t ihipBindTextureToMipmappedArray(const textureReference* texref,
@@ -674,8 +674,8 @@ hipError_t hipBindTextureToMipmappedArray(const textureReference* texref,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t hipUnbindTexture(const textureReference* texref) {
@@ -701,8 +701,8 @@ hipError_t hipBindTexture(size_t* offset,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texref, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc,
@@ -966,8 +966,8 @@ hipError_t hipTexRefSetArray(textureReference* texRef,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t hipTexRefGetAddress(hipDeviceptr_t* dptr,
@@ -1049,8 +1049,8 @@ hipError_t hipTexRefSetAddress(size_t* ByteOffset,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t hipTexRefSetAddress2D(textureReference* texRef,
@@ -1091,8 +1091,8 @@ hipError_t hipTexRefSetAddress2D(textureReference* texRef,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w, hipChannelFormatKind f) {
@@ -1454,8 +1454,8 @@ hipError_t hipTexRefSetMipmappedArray(textureReference* texRef,
     HIP_RETURN(err);
   }
   // Copy to device.
-  amd::HostQueue* queue = hip::getNullStream();
-  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *queue));
+  hip::Stream* stream = hip::getNullStream();
+  HIP_RETURN(ihipMemcpy(refDevPtr, texRef, refDevSize, hipMemcpyHostToDevice, *stream));
 }
 
 hipError_t hipTexObjectCreate(hipTextureObject_t* pTexObject,

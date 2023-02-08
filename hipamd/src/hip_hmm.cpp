@@ -94,7 +94,7 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
     HIP_RETURN(hipErrorInvalidDevice);
   }
 
-  amd::HostQueue* queue = nullptr;
+  hip::Stream* hip_stream = nullptr;
   amd::Device* dev = nullptr;
   bool cpu_access = false;
 
@@ -106,19 +106,19 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   // Pick the specified stream or Null one from the provided device
   if (device == hipCpuDeviceId) {
     cpu_access = true;
-    queue = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() : hip::getQueue(stream);
+    hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() : hip::getStream(stream);
   } else {
     dev = g_devices[device]->devices()[0];
-    queue = (stream == nullptr) ? g_devices[device]->NullStream() : hip::getQueue(stream);
+    hip_stream = (stream == nullptr) ? g_devices[device]->NullStream() : hip::getStream(stream);
   }
 
-  if (queue == nullptr) {
+  if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   amd::Command::EventWaitList waitList;
   amd::SvmPrefetchAsyncCommand* command =
-      new amd::SvmPrefetchAsyncCommand(*queue, waitList, dev_ptr, count, dev, cpu_access);
+      new amd::SvmPrefetchAsyncCommand(*hip_stream, waitList, dev_ptr, count, dev, cpu_access);
   if (command == nullptr) {
     return hipErrorOutOfMemory;
   }

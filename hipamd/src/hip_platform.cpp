@@ -34,7 +34,7 @@ PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
 // forward declaration of methods required for __hipRegisrterManagedVar
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      amd::HostQueue& queue, bool isAsync = false);
+                      hip::Stream& stream, bool isAsync = false);
 
 struct __CudaFatBinaryWrapper {
   unsigned int magic;
@@ -146,9 +146,9 @@ extern "C" void __hipRegisterManagedVar(
   HIP_INIT_VOID();
   hipError_t status = ihipMallocManaged(pointer, size, align);
   if (status == hipSuccess) {
-    amd::HostQueue* queue = hip::getNullStream();
-    if (queue != nullptr) {
-      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *queue);
+    hip::Stream* stream = hip::getNullStream();
+    if (stream != nullptr) {
+      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
       guarantee((status == hipSuccess), "Error during memcpy to managed memory!");
     } else {
       ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");

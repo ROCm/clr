@@ -637,13 +637,12 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
     HIP_RETURN(hipErrorUnknown);
   }
 
-  amd::HostQueue* queue = hip::getQueue(stream);
-  if (nullptr == queue) {
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (nullptr == hip_stream) {
     HIP_RETURN(hipErrorUnknown);
   }
-  amd::HostQueue& hostQueue = *queue;
 
-  if (!hostQueue.context().glenv() || !hostQueue.context().glenv()->isAssociated()) {
+  if (!hip_stream->context().glenv() || !hip_stream->context().glenv()->isAssociated()) {
     LogWarning("\"amdContext\" is not created from GL context or share list");
     HIP_RETURN(hipErrorUnknown);
   }
@@ -658,7 +657,7 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
 
   //! Now create command and enqueue
   amd::AcquireExtObjectsCommand* command = new amd::AcquireExtObjectsCommand(
-      hostQueue, nullWaitList, count, memObjects, CL_COMMAND_ACQUIRE_GL_OBJECTS);
+      *hip_stream, nullWaitList, count, memObjects, CL_COMMAND_ACQUIRE_GL_OBJECTS);
   if (command == nullptr) {
     HIP_RETURN(hipErrorUnknown);
   }
@@ -712,13 +711,12 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
   }
 
   // Wait for the current host queue
-  hip::getQueue(stream)->finish();
+  hip::getStream(stream)->finish();
 
-  amd::HostQueue* queue = hip::getQueue(stream);
-  if (nullptr == queue) {
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (nullptr == hip_stream) {
     HIP_RETURN(hipErrorUnknown);
   }
-  amd::HostQueue& hostQueue = *queue;
 
   std::vector<amd::Memory*> memObjects;
   hipError_t err = hipSetInteropObjects(count, reinterpret_cast<void**>(resources), memObjects);
@@ -730,7 +728,7 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
 
   // Now create command and enqueue
   amd::ReleaseExtObjectsCommand* command = new amd::ReleaseExtObjectsCommand(
-      hostQueue, nullWaitList, count, memObjects, CL_COMMAND_RELEASE_GL_OBJECTS);
+      *hip_stream, nullWaitList, count, memObjects, CL_COMMAND_RELEASE_GL_OBJECTS);
   if (command == nullptr) {
     HIP_RETURN(hipErrorUnknown);
   }

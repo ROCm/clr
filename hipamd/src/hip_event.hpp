@@ -78,9 +78,9 @@ typedef struct ihipIpcEventShmem_s {
 
 class EventMarker : public amd::Marker {
  public:
-  EventMarker(amd::HostQueue& queue, bool disableFlush, bool markerTs = false,
+  EventMarker(amd::HostQueue& stream, bool disableFlush, bool markerTs = false,
               int32_t scope = amd::Device::kCacheStateInvalid)
-      : amd::Marker(queue, disableFlush) {
+      : amd::Marker(stream, disableFlush) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.callback_ = nullptr;
     profilingInfo_.marker_ts_ = markerTs;
@@ -116,11 +116,11 @@ class Event {
   virtual hipError_t synchronize();
   hipError_t elapsedTime(Event& eStop, float& ms);
 
-  virtual hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
+  virtual hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
   virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   virtual hipError_t streamWait(hipStream_t stream, uint flags);
 
-  virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue,
+  virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                    uint32_t flags = 0);
   virtual hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
   hipError_t addMarker(hipStream_t stream, amd::Command* command, bool record);
@@ -175,7 +175,7 @@ class Event {
 
  protected:
   amd::Monitor lock_;
-  amd::HostQueue* stream_;
+  hip::Stream* stream_;
   amd::Event* event_;
   int device_id_;
   //! Flag to indicate hipEventRecord has not been called. This is needed for
@@ -224,7 +224,7 @@ class IPCEvent : public Event {
   hipError_t synchronize();
   hipError_t query();
 
-  hipError_t streamWaitCommand(amd::Command*& command, amd::HostQueue* queue);
+  hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
   hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   hipError_t streamWait(hipStream_t stream, uint flags);
 
