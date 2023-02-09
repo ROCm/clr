@@ -3188,7 +3188,9 @@ device::Signal* Device::createSignal() const {
 amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size) {
   // Only create arena_mem_object if CPU memory is accessible from HMM
   // or if runtime received an interop from another ROCr's client
-  if (!info_.hmmCpuMemoryAccessible_ && !IsValidAllocation(ptr, size)) {
+  hsa_amd_pointer_info_t ptr_info = {};
+  ptr_info.size = sizeof(hsa_amd_pointer_info_t);
+  if (!info_.hmmCpuMemoryAccessible_ && !IsValidAllocation(ptr, size, &ptr_info)) {
     return nullptr;
   }
 
@@ -3203,12 +3205,18 @@ amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size
       return arena_mem_obj_;
     }
   }
-
   // Calculate the offset of the pointer.
-  const void* dev_ptr = reinterpret_cast<void*>(arena_mem_obj_->getDeviceMemory(
-                          *arena_mem_obj_->getContext().devices()[0])->virtualAddress());
-  offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
-
+  const void* dev_ptr = reinterpret_cast<void*>(
+      arena_mem_obj_->getDeviceMemory(*arena_mem_obj_->getContext().devices()[0])
+          ->virtualAddress());
+  // System memory which has been locked
+  if (ptr_info.type == HSA_EXT_POINTER_TYPE_LOCKED &&
+      getCpuAgent().handle == ptr_info.agentOwner.handle && ptr_info.hostBaseAddress == ptr) {
+    offset =
+        reinterpret_cast<size_t>(ptr_info.agentBaseAddress) - reinterpret_cast<size_t>(dev_ptr);
+  } else {
+    offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
+  }
   return arena_mem_obj_;
 }
 
@@ -3220,20 +3228,18 @@ void Device::ReleaseGlobalSignal(void* signal) const {
 }
 
 // ================================================================================================
-bool Device::IsValidAllocation(const void* dev_ptr, size_t size) const {
-  hsa_amd_pointer_info_t ptr_info = {};
-  ptr_info.size = sizeof(hsa_amd_pointer_info_t);
+bool Device::IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer_info_t* ptr_info) {
   // Query ptr type to see if it's a HMM allocation
-  hsa_status_t status = hsa_amd_pointer_info(
-    const_cast<void*>(dev_ptr), &ptr_info, nullptr, nullptr, nullptr);
+  hsa_status_t status =
+      hsa_amd_pointer_info(const_cast<void*>(dev_ptr), ptr_info, nullptr, nullptr, nullptr);
   // The call should never fail in ROCR, but just check for an error and continue
   if (status != HSA_STATUS_SUCCESS) {
     LogError("hsa_amd_pointer_info() failed");
   }
-  // Check if it's a legacy non-HMM allocation in ROCr
-  if (ptr_info.type != HSA_EXT_POINTER_TYPE_UNKNOWN) {
-    if ((size != 0) && ((reinterpret_cast<const_address>(dev_ptr) -
-                         reinterpret_cast<const_address>(ptr_info.agentBaseAddress)) > size)) {
+  if (ptr_info->type != HSA_EXT_POINTER_TYPE_UNKNOWN) {
+    if ((size != 0) &&
+        ((reinterpret_cast<const_address>(dev_ptr) -
+          reinterpret_cast<const_address>(ptr_info->agentBaseAddress)) > size)) {
       return false;
     }
     return true;
