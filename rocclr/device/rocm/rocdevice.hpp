@@ -544,7 +544,7 @@ class Device : public NullDevice {
   const bool isFineGrainSupported() const;
 
   //! Returns True if memory pointer is known to ROCr (excludes HMM allocations)
-  bool IsValidAllocation(const void* dev_ptr, size_t size) const;
+  bool IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer_info_t* ptr_info);
 
   //! Allocates hidden heap for device memory allocations
   void HiddenHeapAlloc(const VirtualGPU& gpu);
