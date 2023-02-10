@@ -21,7 +21,7 @@
 cmake_minimum_required(VERSION 3.16.8)
 
 #set components for HIP
-set(CPACK_COMPONENTS_ALL binary dev doc samples runtime-nvidia)
+set(CPACK_COMPONENTS_ALL binary dev doc runtime-nvidia)
 
 ###############Install Required files for all compnents########
 
@@ -102,10 +102,6 @@ if(DOXYGEN_EXE)
             DESTINATION ${CMAKE_INSTALL_DOCDIR}/RuntimeAPI COMPONENT doc)
 endif()
 #End doc files install
-
-#Begin samples files install
-install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT samples)
-#End samples files install
 
 
 ##################################
@@ -206,18 +202,6 @@ set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_
 
 #End doc Packaging setting
 
-#Begin samples Packaging setting
-set(CPACK_SAMPLES_DEB "ON")
-set(CPACK_SAMPLES_RPM "ON")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_NAME "hip-samples")
-set(CPACK_RPM_SAMPLES_PACKAGE_NAME "hip-samples")
-set(CPACK_COMPONENT_SAMPLES_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [SAMPLES]")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_PROVIDES "hip-samples")
-
-set(CPACK_RPM_SAMPLES_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
-#End samples Packaging setting
-
 #Begin runtime-nvidia Packaging setting
 set(CPACK_RUNTIME-NVIDIA_DEB "ON")
 set(CPACK_RUNTIME-NVIDIA_RPM "ON")
@@ -242,8 +226,6 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_DOC_PACKAGE_REQUIRES ${CPACK_RPM_DOC_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_DOC_PACKAGE_DEPENDS ${CPACK_DEBIAN_DOC_PACKAGE_DEPENDS})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_SAMPLES_PACKAGE_REQUIRES ${CPACK_RPM_SAMPLES_PACKAGE_REQUIRES})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS ${CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS})
 endif()
