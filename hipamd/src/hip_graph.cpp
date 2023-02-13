@@ -2297,6 +2297,10 @@ hipError_t hipUserObjectRelease(hipUserObject_t object, unsigned int count) {
   if (object->referenceCount() < count || !hipUserObject::isUserObjvalid(object)) {
     HIP_RETURN(hipSuccess);
   }
+  //! If all the counts are gone not longer need the obj in the list
+  if (object->referenceCount() == count) {
+    hipUserObject::removeUSerObj(object);
+  }
   object->decreaseRefCount(count);
   HIP_RETURN(hipSuccess);
 }
