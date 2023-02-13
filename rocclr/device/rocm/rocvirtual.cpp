@@ -433,8 +433,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     prof_signal->ts_ = ts;
     ts->AddProfilingSignal(prof_signal);
     if (AMD_DIRECT_DISPATCH) {
-      bool enqueHandler= false;
-      uint32_t init_value = kInitSignalValueOne;
+      bool enqueHandler = false;
       enqueHandler = (ts->command().Callback() != nullptr ||
                       ts->command().GetBatchHead() != nullptr )  &&
                       !ts->command().CpuWaitRequested();
