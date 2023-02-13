@@ -76,8 +76,8 @@ struct hipUserObject : public amd::ReferenceCountedObject {
   }
 
   static bool isUserObjvalid(hipUserObject* pUsertObj) {
-    amd::ScopedLock lock(UserObjectLock_);
-    if (ObjectSet_.find(pUsertObj) == ObjectSet_.end()) {
+    auto it = ObjectSet_.find(pUsertObj);
+    if (it == ObjectSet_.end()) {
       return false;
     }
     return true;
@@ -85,8 +85,9 @@ struct hipUserObject : public amd::ReferenceCountedObject {
 
   static void removeUSerObj(hipUserObject* pUsertObj) {
     amd::ScopedLock lock(UserObjectLock_);
-    if (ObjectSet_.find(pUsertObj) == ObjectSet_.end()) {
-      ObjectSet_.erase(pUsertObj);
+    auto it = ObjectSet_.find(pUsertObj);
+    if (it != ObjectSet_.end()) {
+      ObjectSet_.erase(it);
     }
   }
 
