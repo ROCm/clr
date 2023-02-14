@@ -673,8 +673,6 @@ void PlatformState::init() {
 }
 
 hipError_t PlatformState::loadModule(hipModule_t* module, const char* fname, const void* image) {
-  amd::ScopedLock lock(lock_);
-
   if (module == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -689,6 +687,7 @@ hipError_t PlatformState::loadModule(hipModule_t* module, const char* fname, con
   *module = dynCo->module();
   assert(*module != nullptr);
 
+  amd::ScopedLock lock(lock_);
   if (dynCO_map_.find(*module) != dynCO_map_.end()) {
     delete dynCo;
     return hipErrorAlreadyMapped;
