@@ -35,8 +35,17 @@ Settings::Settings() {
   // Set this to true when we drop the flag
   doublePrecision_ = ::CL_KHR_FP64;
 
+  enableLocalMemory_ = HSA_LOCAL_MEMORY_ENABLE;
+  enableCoarseGrainSVM_ = HSA_ENABLE_COARSE_GRAIN_SVM;
+
   maxWorkGroupSize_ = 1024;
   preferredWorkGroupSize_ = 256;
+
+  maxWorkGroupSize2DX_ = 16;
+  maxWorkGroupSize2DY_ = 16;
+  maxWorkGroupSize3DX_ = 4;
+  maxWorkGroupSize3DY_ = 4;
+  maxWorkGroupSize3DZ_ = 4;
 
   kernargPoolSize_ = HSA_KERNARG_POOL_SIZE;
 
@@ -190,6 +199,23 @@ void Settings::override() {
   // Limit reported workgroup size
   if (GPU_MAX_WORKGROUP_SIZE != 0) {
     preferredWorkGroupSize_ = GPU_MAX_WORKGROUP_SIZE;
+  }
+
+  if (GPU_MAX_WORKGROUP_SIZE_2D_X != 0) {
+    maxWorkGroupSize2DX_ = GPU_MAX_WORKGROUP_SIZE_2D_X;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_2D_Y != 0) {
+    maxWorkGroupSize2DY_ = GPU_MAX_WORKGROUP_SIZE_2D_Y;
+  }
+
+  if (GPU_MAX_WORKGROUP_SIZE_3D_X != 0) {
+    maxWorkGroupSize3DX_ = GPU_MAX_WORKGROUP_SIZE_3D_X;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_3D_Y != 0) {
+    maxWorkGroupSize3DY_ = GPU_MAX_WORKGROUP_SIZE_3D_Y;
+  }
+  if (GPU_MAX_WORKGROUP_SIZE_3D_Z != 0) {
+    maxWorkGroupSize3DZ_ = GPU_MAX_WORKGROUP_SIZE_3D_Z;
   }
 
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
