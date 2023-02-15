@@ -46,9 +46,14 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
       }
 #endif  // DEBUG
       break;
-    case DLL_PROCESS_DETACH:
+    case DLL_PROCESS_DETACH: {
+      amd::Thread* thread = amd::Thread::current();
+      if (!(thread != nullptr ||
+            ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
+        return true;
+      }
       ihipDestroyDevice();
-      break;
+    } break;
     case DLL_THREAD_DETACH: {
       amd::Thread* thread = amd::Thread::current();
       delete thread;
