@@ -894,35 +894,37 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   Device* dev = reinterpret_cast<Device*>(data);
   switch (segment_type) {
     case HSA_REGION_SEGMENT_GLOBAL: {
-      uint32_t global_flag = 0;
-      hsa_status_t stat =
-          hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS, &global_flag);
-      if (stat != HSA_STATUS_SUCCESS) {
-        return stat;
-      }
-
-      if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
-        dev->gpu_fine_grained_segment_ = pool;
-      } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0) {
-        dev->gpuvm_segment_ = pool;
-
-        // If cpu agent cannot access this pool, the device does not support large bar.
-        hsa_amd_memory_pool_access_t tmp{};
-        hsa_amd_agent_memory_pool_get_info(
-          dev->cpu_agent_,
-          pool,
-          HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
-          &tmp);
-
-        if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED) {
-          dev->info_.largeBar_ = false;
-        } else {
-          dev->info_.largeBar_ = ROC_ENABLE_LARGE_BAR;
+      if (dev->settings().enableLocalMemory_) {
+        uint32_t global_flag = 0;
+        hsa_status_t stat =
+            hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS, &global_flag);
+        if (stat != HSA_STATUS_SUCCESS) {
+          return stat;
         }
-      }
 
-      if (dev->gpuvm_segment_.handle == 0) {
-        dev->gpuvm_segment_ = pool;
+        if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
+          dev->gpu_fine_grained_segment_ = pool;
+        } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0) {
+          dev->gpuvm_segment_ = pool;
+
+          // If cpu agent cannot access this pool, the device does not support large bar.
+          hsa_amd_memory_pool_access_t tmp{};
+          hsa_amd_agent_memory_pool_get_info(
+            dev->cpu_agent_,
+            pool,
+            HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
+            &tmp);
+
+          if (tmp == HSA_AMD_MEMORY_POOL_ACCESS_NEVER_ALLOWED) {
+            dev->info_.largeBar_ = false;
+          } else {
+            dev->info_.largeBar_ = ROC_ENABLE_LARGE_BAR;
+          }
+        }
+
+        if (dev->gpuvm_segment_.handle == 0) {
+          dev->gpuvm_segment_ = pool;
+        }
       }
       break;
     }
@@ -1232,7 +1234,7 @@ bool Device::populateOCLDeviceConstants() {
 
   info_.maxWorkItemDimensions_ = 3;
 
-  if (gpuvm_segment_.handle != 0) {
+  if (settings().enableLocalMemory_ && gpuvm_segment_.handle != 0) {
     size_t global_segment_size = 0;
     if (HSA_STATUS_SUCCESS != hsa_amd_memory_pool_get_info(gpuvm_segment_,
                                                            HSA_AMD_MEMORY_POOL_INFO_SIZE,

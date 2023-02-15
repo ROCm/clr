@@ -798,6 +798,17 @@ Settings::Settings() : value_(0) {
   commandQueues_ = 200;  //!< Field value set to maximum number
                          //!< concurrent Virtual GPUs for default
 
+  overrideLclSet = (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE)) ? 1 : 0;
+  overrideLclSet |=
+      (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_X) || !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_2D_Y))
+      ? 2
+      : 0;
+  overrideLclSet |=
+      (!flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_X) || !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Y) ||
+       !flagIsDefault(GPU_MAX_WORKGROUP_SIZE_3D_Z))
+      ? 4
+      : 0;
+
   fenceScopeAgent_ = AMD_OPT_FLUSH;
   if (amd::IS_HIP) {
     if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {

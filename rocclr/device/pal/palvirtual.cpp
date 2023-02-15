@@ -905,6 +905,11 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   // because destructor calls eraseResourceList() even if create() failed
   dev().resizeResoureList(index());
 
+  if (index() >= GPU_MAX_COMMAND_QUEUES) {
+    // Cap the maximum number of concurrent Virtual GPUs
+    return false;
+  }
+
   // Virtual GPU will have profiling enabled
   state_.profiling_ = profiling;
 
@@ -1015,7 +1020,18 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
-  blitMgr_ = new KernelBlitManager(*this, blitSetup);
+  // Choose the appropriate class for blit engine
+  switch (dev().settings().blitEngine_) {
+    default:
+    // Fall through ...
+    case Settings::BlitEngineHost:
+      blitSetup.disableAll();
+    // Fall through ...
+    case Settings::BlitEngineCAL:
+    case Settings::BlitEngineKernel:
+      blitMgr_ = new KernelBlitManager(*this, blitSetup);
+      break;
+  }
   if ((nullptr == blitMgr_) || !blitMgr_->create(gpuDevice_)) {
     LogError("Could not create BlitManager!");
     return false;
@@ -3253,8 +3269,11 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
       cb->lastTS_->value(&startTimeStampGPU, &endTimeStampGPU);
 
       uint64_t endTimeStampCPU = amd::Os::timeNanos();
-      // Adjust the base time by the execution time
-      readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
+      // Make sure the command batch has a valid GPU TS
+      if (!GPU_RAW_TIMESTAMP) {
+        // Adjust the base time by the execution time
+        readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
+      }
     }
   }
 }

@@ -30,10 +30,22 @@ release(uint, AMD_LOG_MASK, 0X7FFFFFFF,                                       \
         "The mask to enable specific kinds of logs")                          \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \
+release(uint, GPU_MAX_COMMAND_QUEUES, 300,                                    \
+        "The maximum number of concurrent Virtual GPUs")                      \
 release(size_t, CQ_THREAD_STACK_SIZE, 256*Ki, /* @todo: that much! */         \
         "The default command queue thread stack size")                        \
 release(int, GPU_MAX_WORKGROUP_SIZE, 0,                                       \
         "Maximum number of workitems in a workgroup for GPU, 0 -use default") \
+release(int, GPU_MAX_WORKGROUP_SIZE_2D_X, 0,                                  \
+        "Maximum number of workitems in a 2D workgroup for GPU, x component, 0 -use default") \
+release(int, GPU_MAX_WORKGROUP_SIZE_2D_Y, 0,                                  \
+        "Maximum number of workitems in a 2D workgroup for GPU, y component, 0 -use default") \
+release(int, GPU_MAX_WORKGROUP_SIZE_3D_X, 0,                                  \
+        "Maximum number of workitems in a 3D workgroup for GPU, x component, 0 -use default") \
+release(int, GPU_MAX_WORKGROUP_SIZE_3D_Y, 0,                                  \
+        "Maximum number of workitems in a 3D workgroup for GPU, y component, 0 -use default") \
+release(int, GPU_MAX_WORKGROUP_SIZE_3D_Z, 0,                                  \
+        "Maximum number of workitems in a 3D workgroup for GPU, z component, 0 -use default") \
 debug(bool, CPU_MEMORY_GUARD_PAGES, false,                                    \
         "Use guard pages for CPU memory")                                     \
 debug(size_t, CPU_MEMORY_GUARD_PAGE_SIZE, 64,                                 \
@@ -58,8 +70,12 @@ release(uint, GPU_STAGING_BUFFER_SIZE, 4,                                     \
         "Size of the GPU staging buffer in MiB")                              \
 release(bool, GPU_DUMP_BLIT_KERNELS, false,                                   \
         "Dump the kernels for blit manager")                                  \
+release(uint, GPU_BLIT_ENGINE_TYPE, 0x0,                                      \
+        "Blit engine type: 0 - Default, 1 - Host, 2 - CAL, 3 - Kernel")       \
 release(bool, GPU_FLUSH_ON_EXECUTION, false,                                  \
         "Submit commands to HW on every operation. 0 - Disable, 1 - Enable")  \
+release(bool, GPU_USE_SYNC_OBJECTS, true,                                     \
+        "If enabled, use sync objects instead of polling")                    \
 release(bool, CL_KHR_FP64, true,                                              \
         "Enable/Disable support for double precision")                        \
 release(cstring, AMD_OCL_BUILD_OPTIONS, 0,                                    \
@@ -70,8 +86,12 @@ release(cstring, AMD_OCL_LINK_OPTIONS, 0,                                     \
         "Set clLinkProgram()'s options (override)")                           \
 release(cstring, AMD_OCL_LINK_OPTIONS_APPEND, 0,                              \
         "Append clLinkProgram()'s options")                                   \
+release(cstring, AMD_OCL_SC_LIB, 0,                                           \
+        "Set shader compiler shared library name or path")                    \
 debug(cstring, AMD_OCL_SUBST_OBJFILE, 0,                                      \
         "Specify binary substitution config file for OpenCL")                 \
+debug(bool, AMD_OCL_ENABLE_MESSAGE_BOX, false,                                \
+        "Enable the error dialog on Windows")                                 \
 release(size_t, GPU_PINNED_XFER_SIZE, 32,                                     \
         "The pinned buffer size for pinning in read/write transfers in MiB")  \
 release(size_t, GPU_PINNED_MIN_XFER_SIZE, 128,                                \
@@ -80,6 +100,12 @@ release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
 release(size_t, GPU_MAX_SUBALLOC_SIZE, 4096,                                  \
         "The maximum size accepted for suballocaitons in KB")                 \
+release(bool, GPU_FORCE_64BIT_PTR, 0,                                         \
+        "Forces 64 bit pointers on GPU")                                      \
+release(bool, GPU_FORCE_OCL20_32BIT, 0,                                       \
+        "Forces 32 bit apps to take CLANG\HSAIL path")                        \
+release(bool, GPU_RAW_TIMESTAMP, 0,                                           \
+        "Reports GPU raw timestamps in GPU timeline")                         \
 release(size_t, GPU_NUM_MEM_DEPENDENCY, 256,                                  \
         "Number of memory objects for dependency tracking")                   \
 release(size_t, GPU_XFER_BUFFER_SIZE, 0,                                      \
@@ -90,20 +116,32 @@ release(uint, GPU_SINGLE_ALLOC_PERCENT, 85,                                   \
         "Maximum size of a single allocation as percentage of total")         \
 release(uint, GPU_NUM_COMPUTE_RINGS, 2,                                       \
         "GPU number of compute rings. 0 - disabled, 1 , 2,.. - the number of compute rings") \
+release(int, GPU_SELECT_COMPUTE_RINGS_ID, -1,                                 \
+        "GPU select the compute rings ID -1 - disabled, 0 , 1,.. - the forced compute rings ID for submission") \
 release(uint, GPU_WORKLOAD_SPLIT, 22,                                         \
         "Workload split size")                                                \
+release(bool, GPU_USE_SINGLE_SCRATCH, false,                                  \
+        "Use single scratch buffer per device instead of per HW ring")        \
 release(bool, AMD_OCL_WAIT_COMMAND, false,                                    \
         "1 = Enable a wait for every submitted command")                      \
 release(uint, GPU_PRINT_CHILD_KERNEL, 0,                                      \
         "Prints the specified number of the child kernels")                   \
 release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
         "Use a dedicated device queue for the actual submissions")            \
+release(bool, GPU_ENABLE_LARGE_ALLOCATION, true,                              \
+        "Enable >4GB single allocations")                                     \
 release(bool, AMD_THREAD_TRACE_ENABLE, true,                                  \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, (IS_BRAHMA ? 120 : 200),                        \
         "Force GPU opencl verison")                                           \
+release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
+        "Enable HSA device local memory usage")                               \
 release(uint, HSA_KERNARG_POOL_SIZE, 1024 * 1024,                             \
         "Kernarg pool size")                                                  \
+release(bool, HSA_ENABLE_COARSE_GRAIN_SVM, true,                              \
+        "Enable device memory for coarse grain SVM allocations")              \
+release(bool, GPU_IFH_MODE, false,                                            \
+        "1 = Enable GPU IFH (infinitely fast hardware) mode. Any other value keeps setting disabled.") \
 release(bool, GPU_MIPMAP, true,                                               \
         "Enables GPU mipmap extension")                                       \
 release(uint, GPU_ENABLE_PAL, 2,                                              \
@@ -114,6 +152,8 @@ release(int, AMD_GPU_FORCE_SINGLE_FP_DENORM, -1,                              \
         "Force denorm for single precision: -1 - don't force, 0 - disable, 1 - enable") \
 release(uint, OCL_SET_SVM_SIZE, 4*16384,                                      \
         "set SVM space size for discrete GPU")                                \
+debug(uint, OCL_SYSMEM_REQUIREMENT, 2,                                        \
+        "Use flag to change the minimum requirement of system memory not to downgrade")        \
 release(uint, GPU_WAVES_PER_SIMD, 0,                                          \
         "Force the number of waves per SIMD (1-10)")                          \
 release(bool, GPU_WAVE_LIMIT_ENABLE, false,                                   \
@@ -136,6 +176,10 @@ release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
         "File path prefix for dumping wave limiter output")                   \
 release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
         "File path prefix for tracing wave limiter")                          \
+release(bool, OCL_CODE_CACHE_ENABLE, false,                                   \
+        "1 = Enable compiler code cache")                                     \
+release(bool, OCL_CODE_CACHE_RESET, false,                                    \
+        "1 =  Reset the compiler code cache storage")                         \
 release(bool, PAL_DISABLE_SDMA, false,                                        \
         "1 = Disable SDMA for PAL")                                           \
 release(uint, PAL_RGP_DISP_COUNT, 10000,                                      \
