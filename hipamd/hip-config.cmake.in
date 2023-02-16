@@ -206,16 +206,6 @@ if(HIP_COMPILER STREQUAL "clang")
 
   if (NOT compilePropIsSet)
     hip_add_interface_compile_flags(hip::device -x hip)
-    if (NOT EXISTS ${AMD_DEVICE_LIBS_PREFIX}/amdgcn/bitcode)
-      # This path is to support an older build of the device library
-      # TODO: To be removed in the future.
-      if(WIN32)
-        hip_add_interface_compile_flags(hip::device -fms-extensions -fms-compatibility)
-        hip_add_interface_compile_flags(hip::device --hip-device-lib-path=\"${HIP_PATH}/lib/bitcode\")
-      else()
-        hip_add_interface_compile_flags(hip::device --hip-device-lib-path=\"${AMD_DEVICE_LIBS_PREFIX}/lib\")
-      endif()
-    endif()
   endif()
 
   hip_add_interface_link_flags(hip::device --hip-link)
