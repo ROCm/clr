@@ -513,7 +513,7 @@ namespace hip {
   extern thread_local TlsAggregator tls;
 
   /// Device representing the host - for pinned memory
-  extern Device* host_device;
+  extern amd::Context* host_context;
 
   extern bool init();
 

@@ -602,7 +602,7 @@ hipError_t hipSetDeviceFlags ( unsigned int  flags ) {
   switch (scheduleFlag) {
     case hipDeviceScheduleAuto:
       // Current behavior is different from the spec, due to MT usage in runtime
-      if (hip::host_device->devices().size() >= std::thread::hardware_concurrency()) {
+      if (hip::host_context->devices().size() >= std::thread::hardware_concurrency()) {
         device->SetActiveWait(false);
         break;
       }
