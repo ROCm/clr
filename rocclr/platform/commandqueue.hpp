@@ -164,19 +164,13 @@ class HostQueue : public CommandQueue {
           acceptingCommands_(false),
           virtualDevice_(nullptr) {}
 
-    virtual ~Thread() {
-      if (virtualDevice_ != nullptr) {
-        delete virtualDevice_;
-        virtualDevice_ = nullptr;
-      }
-    }
-
     //! The command queue thread entry point.
     void run(void* data) {
       HostQueue* queue = static_cast<HostQueue*>(data);
       virtualDevice_ = queue->device().createVirtualDevice(queue);
       if (virtualDevice_ != nullptr) {
         queue->loop(virtualDevice_);
+        Release();
       } else {
         acceptingCommands_ = false;
         queue->flush();
@@ -189,6 +183,8 @@ class HostQueue : public CommandQueue {
         acceptingCommands_ = true;
       }
     }
+
+    void Release() const { delete virtualDevice_; }
 
     //! Get virtual device for the current thread
     device::VirtualDevice* vdev() const { return virtualDevice_; }
