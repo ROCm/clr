@@ -29,7 +29,7 @@ std::vector<hip::Device*> g_devices;
 
 namespace hip {
 thread_local TlsAggregator tls;
-Device* host_device = nullptr;
+amd::Context* host_context = nullptr;
 
 //init() is only to be called from the HIP_INIT macro only once
 bool init() {
@@ -74,7 +74,7 @@ bool init() {
   if (CL_SUCCESS != hContext->create(nullptr)) {
     hContext->release();
   }
-  host_device = new Device(hContext, -1);
+  host_context = hContext;
 
   PlatformState::instance().init();
   return true;
@@ -113,7 +113,7 @@ amd::HostQueue* getNullStream(amd::Context& ctx) {
   }
   // If it's a pure SVM allocation with system memory access, then it shouldn't matter which device
   // runtime selects by default
-  if (hip::host_device->asContext() == &ctx) {
+  if (hip::host_context == &ctx) {
     // Return current...
     return getNullStream();
   }

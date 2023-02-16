@@ -274,7 +274,7 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 
   bool useHostDevice = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) != 0;
   amd::Context* curDevContext = hip::getCurrentDevice()->asContext();
-  amd::Context* amdContext = useHostDevice ? hip::host_device->asContext() : curDevContext;
+  amd::Context* amdContext = useHostDevice ? hip::host_context : curDevContext;
 
   if (amdContext == nullptr) {
     return hipErrorOutOfMemory;
@@ -1155,7 +1155,7 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
   if (hostPtr == nullptr || sizeBytes == 0 || flags > 15) {
     return hipErrorInvalidValue;
   } else {
-    amd::Memory* mem = new (*hip::host_device->asContext()) amd::Buffer(*hip::host_device->asContext(),
+    amd::Memory* mem = new (*hip::host_context) amd::Buffer(*hip::host_context,
                             CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
 
     constexpr bool sysMemAlloc = false;

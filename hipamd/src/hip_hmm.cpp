@@ -233,8 +233,8 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
     return hipSuccess;
   }
 
-  assert((hip::host_device->asContext()!= nullptr) && "Current host context must be valid");
-  amd::Context& ctx = *hip::host_device->asContext();
+  assert((hip::host_context != nullptr) && "Current host context must be valid");
+  amd::Context& ctx = *hip::host_context;
 
   const amd::Device& dev = *ctx.devices()[0];
 
