@@ -340,10 +340,6 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
     return hipErrorOutOfMemory;
   }
 
-  if (kernelCommand->status() == CL_INVALID_OPERATION) {
-    kernelCommand->release();
-    return hipErrorIllegalState;
-  }
   command = kernelCommand;
 
   return hipSuccess;
@@ -398,6 +394,12 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
     hip::Event* eStop = reinterpret_cast<hip::Event*>(stopEvent);
     eStop->BindCommand(*command, false);
   }
+
+  if (command->status() == CL_INVALID_OPERATION) {
+    command->release();
+    return hipErrorIllegalState;
+  }
+
   command->release();
 
   return hipSuccess;
