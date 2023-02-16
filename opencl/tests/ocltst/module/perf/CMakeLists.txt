@@ -105,13 +105,6 @@ target_link_libraries(oclperf
     PRIVATE
         OpenCL)
 
-if(OPENGL_FOUND AND GLEW_FOUND)
-    target_link_libraries(oclperf
-        PRIVATE
-            ${GLEW_LIBRARIES}
-            ${OPENGL_LIBRARIES})
-endif()
-
 add_custom_command(
     TARGET oclperf POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy
