@@ -66,6 +66,7 @@ bool HostQueue::terminate() {
       marker->awaitCompletion();
       marker->release();
     }
+    thread_.Release();
     thread_.acceptingCommands_ = false;
   } else {
     if (Os::isThreadAlive(thread_)) {
