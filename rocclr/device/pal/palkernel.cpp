@@ -498,7 +498,6 @@ const LightningProgram& LightningKernel::prog() const {
 
 #if defined(USE_COMGR_LIBRARY)
 bool LightningKernel::init() {
-  waveLimiter_.enable();
   return GetAttrCodePropMetadata();
 }
 
