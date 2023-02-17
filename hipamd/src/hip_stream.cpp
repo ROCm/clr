@@ -502,12 +502,6 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
     return hipErrorContextIsDestroyed;
   }
 
-  if (stream != nullptr) {
-    // If still capturing return error
-    if (hip::Stream::StreamCaptureOngoing() == true) {
-      HIP_RETURN(hipErrorStreamCaptureIsolation);
-    }
-  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   return e->streamWait(stream, flags);
 }

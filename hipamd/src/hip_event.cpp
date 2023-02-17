@@ -410,9 +410,6 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
 
-  if (hip::Stream::StreamCaptureOngoing() == true) {
-    HIP_RETURN(hipErrorStreamCaptureUnsupported);
-  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   HIP_RETURN(e->synchronize());
 }
