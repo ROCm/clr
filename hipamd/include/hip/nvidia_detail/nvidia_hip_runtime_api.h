@@ -39,6 +39,7 @@ THE SOFTWARE.
 #define CUDA_11030 11030
 #define CUDA_11040 11040
 #define CUDA_11060 11060
+#define CUDA_12000 12000
 
 #ifdef __cplusplus
 extern "C" {
@@ -2773,6 +2774,7 @@ inline static hipError_t hipFuncSetCacheConfig(const void* func, hipFuncCache_t 
     return hipCUDAErrorTohipError(cudaFuncSetCacheConfig(func, cacheConfig));
 }
 
+#if CUDA_VERSION < CUDA_12000
 __HIP_DEPRECATED inline static hipError_t hipBindTexture(size_t* offset,
                                                          struct textureReference* tex,
                                                          const void* devPtr,
@@ -2786,6 +2788,8 @@ __HIP_DEPRECATED inline static hipError_t hipBindTexture2D(
     const hipChannelFormatDesc* desc, size_t width, size_t height, size_t pitch) {
     return hipCUDAErrorTohipError(cudaBindTexture2D(offset, tex, devPtr, desc, width, height, pitch));
 }
+#endif // CUDA_VERSION < CUDA_12000
+
 
 inline static hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w,
                                                         hipChannelFormatKind f) {
@@ -2818,10 +2822,12 @@ inline static hipError_t hipGetTextureObjectResourceDesc(hipResourceDesc* pResDe
     return hipCUDAErrorTohipError(cudaGetTextureObjectResourceDesc( pResDesc, textureObject));
 }
 
+#if CUDA_VERSION < CUDA_12000
 __HIP_DEPRECATED inline static hipError_t hipGetTextureAlignmentOffset(
     size_t* offset, const struct textureReference* texref) {
     return hipCUDAErrorTohipError(cudaGetTextureAlignmentOffset(offset,texref));
 }
+#endif
 
 inline static hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc, hipArray_const_t array)
 {
@@ -3067,6 +3073,7 @@ inline static hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags( 
                                                                  blockSize, dynamicSMemSize, flags));
 }
 
+#if CUDA_VERSION < CUDA_12000
 template <class T, int dim, enum cudaTextureReadMode readMode>
 inline static hipError_t hipBindTexture(size_t* offset, const struct texture<T, dim, readMode>& tex,
                                         const void* devPtr, size_t size = UINT_MAX) {
@@ -3109,6 +3116,7 @@ __HIP_DEPRECATED inline static hipError_t hipBindTextureToArray(
     struct texture<T, dim, readMode>& tex, hipArray_const_t array) {
     return hipCUDAErrorTohipError(cudaBindTextureToArray(tex, array));
 }
+#endif   // CUDA_VERSION < CUDA_12000
 
 template <class T>
 inline static hipChannelFormatDesc hipCreateChannelDesc() {
