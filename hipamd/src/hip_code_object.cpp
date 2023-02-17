@@ -172,6 +172,11 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       sramEccSupported = false;
       proc_name = "gfx90c";
       break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX940:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx940";
+      break;
     case EF_AMDGPU_MACH_AMDGCN_GFX1010:
       xnackSupported = true;
       sramEccSupported = false;
@@ -186,6 +191,11 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       xnackSupported = true;
       sramEccSupported = false;
       proc_name = "gfx1012";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1013:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx1013";
       break;
     case EF_AMDGPU_MACH_AMDGCN_GFX1030:
       xnackSupported = false;
@@ -206,6 +216,41 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       xnackSupported = false;
       sramEccSupported = false;
       proc_name = "gfx1033";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1034:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1034";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1035:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1035";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1036:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1036";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1100:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1100";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1101:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1101";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1102:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1102";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX1103:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx1103";
       break;
     default:
       return false;
