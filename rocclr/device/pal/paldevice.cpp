@@ -633,7 +633,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.cooperativeGroups_ = settings().enableCoopGroups_;
     info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
 
-    if (heaps[Pal::GpuHeapInvisible].logicalSize == 0) {
+    if (amd::IS_HIP) {
+      info_.largeBar_ = false;
+    } else if (heaps[Pal::GpuHeapInvisible].logicalSize == 0) {
       info_.largeBar_ = true;
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Resizable bar enabled");
     }
