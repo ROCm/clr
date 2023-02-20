@@ -23,13 +23,15 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image) : fdesc_(amd:
     fname_ = std::string();
   }
 
-  fatbin_dev_info_.resize(g_devices.size());
+  fatbin_dev_info_.resize(g_devices.size(), nullptr);
 }
 
 FatBinaryInfo::~FatBinaryInfo() {
 
-  for (auto& fbd: fatbin_dev_info_) {
-    delete fbd;
+  for (auto* fbd: fatbin_dev_info_) {
+    if (fbd != nullptr) {
+      delete fbd;
+    }
   }
 
   if (fdesc_ > 0) {
@@ -298,6 +300,10 @@ hipError_t FatBinaryInfo::AddDevProgram(const int device_id) {
   DeviceIdCheck(device_id);
 
   FatBinaryDeviceInfo* fbd_info = fatbin_dev_info_[device_id];
+  if (fbd_info == nullptr) {
+    return hipErrorInvalidKernelFile;
+  }
+
   // If fat binary was already added, skip this step and return success
   if (fbd_info->add_dev_prog_ == false) {
     amd::Context* ctx = g_devices[device_id]->asContext();
