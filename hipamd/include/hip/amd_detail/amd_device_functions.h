@@ -921,7 +921,7 @@ int __syncthreads_or(int predicate)
    PIPE_ID     7:6     Pipeline from which the wave was dispatched.
    CU_ID       11:8    Compute Unit the wave is assigned to.
    SH_ID       12      Shader Array (within an SE) the wave is assigned to.
-   SE_ID       14:13   Shader Engine the wave is assigned to.
+   SE_ID       15:13   Shader Engine the wave is assigned to.
    TG_ID       19:16   Thread-group ID
    VM_ID       23:20   Virtual Memory ID
    QUEUE_ID    26:24   Queue from which this wave was dispatched.
@@ -934,7 +934,7 @@ int __syncthreads_or(int predicate)
 #define HW_ID_CU_ID_SIZE    4
 #define HW_ID_CU_ID_OFFSET  8
 
-#define HW_ID_SE_ID_SIZE    2
+#define HW_ID_SE_ID_SIZE    3
 #define HW_ID_SE_ID_OFFSET  13
 
 /*
