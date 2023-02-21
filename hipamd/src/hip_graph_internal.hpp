@@ -986,17 +986,27 @@ class hipGraphKernelNode : public hipGraphNode {
   }
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
+    constexpr int accessPolicyMaxWindowSize = 1024;
     // updates kernel attr params
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
-      if (params->accessPolicyWindow.hitRatio > 1) {
+      if (params->accessPolicyWindow.hitRatio > 1 ||
+          params->accessPolicyWindow.hitRatio < 0) {
         return hipErrorInvalidValue;
       }
+
       if (params->accessPolicyWindow.missProp == hipAccessPropertyPersisting) {
         return hipErrorInvalidValue;
       }
       if (params->accessPolicyWindow.num_bytes > 0 && params->accessPolicyWindow.hitRatio == 0) {
         return hipErrorInvalidValue;
       }
+
+      // need to check against accessPolicyMaxWindowSize from device
+      // accessPolicyMaxWindowSize not implemented on the device side yet
+      if (params->accessPolicyWindow.num_bytes >= accessPolicyMaxWindowSize) {
+        return hipErrorInvalidValue;
+      }
+
       kernelAttr_.accessPolicyWindow.base_ptr = params->accessPolicyWindow.base_ptr;
       kernelAttr_.accessPolicyWindow.hitProp = params->accessPolicyWindow.hitProp;
       kernelAttr_.accessPolicyWindow.hitRatio = params->accessPolicyWindow.hitRatio;
