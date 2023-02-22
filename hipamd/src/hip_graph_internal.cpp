@@ -569,7 +569,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
       levelOrder_[0]->GetParentGraph()->FreeAllMemory();
     }
   }
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream()
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
                                         : reinterpret_cast<hip::Stream*>(stream);
   UpdateStream(parallelLists_, hip_stream, this);
   std::vector<amd::Command*> rootCommands;
