@@ -350,8 +350,12 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  if (e->GetCaptureStream() != nullptr) {
-    reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->EraseCaptureEvent(event);
+  // There is a possibility that stream destroy be called first
+  hipStream_t s = e->GetCaptureStream();
+  if (hip::isValid(s)) {
+    if (e->GetCaptureStream() != nullptr) {
+      reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->EraseCaptureEvent(event);
+    }
   }
   delete e;
   HIP_RETURN(hipSuccess);
@@ -386,6 +390,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   hip::Stream* hip_stream = hip::getStream(stream);
+  e->SetCaptureStream(stream);
   if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
     return hipErrorInvalidHandle;
   }
@@ -409,8 +414,16 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   if (event == nullptr) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
-
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
+  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+    if (e->GetCaptureStatus() == false) {
+      return HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
+  if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream()) == true) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
   HIP_RETURN(e->synchronize());
 }
 
