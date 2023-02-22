@@ -1245,6 +1245,13 @@ bool Device::populateOCLDeviceConstants() {
     assert(global_segment_size > 0);
     info_.globalMemSize_ = static_cast<uint64_t>(global_segment_size);
 
+    // For APU with vram size <= 512MiB, use a smaller single alloc percentage
+    if (info_.globalMemSize_ <= 536870912) {
+      if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {
+        GPU_SINGLE_ALLOC_PERCENT = 75;
+      }
+    }
+
     gpuvm_segment_max_alloc_ =
         uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
     assert(gpuvm_segment_max_alloc_ > 0);
