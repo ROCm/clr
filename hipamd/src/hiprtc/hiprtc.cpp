@@ -240,7 +240,7 @@ hiprtcResult hiprtcVersion(int* major, int* minor) {
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
 
-hiprtcResult hiprtcGetBitcode (hiprtcProgram prog, char* bitcode) {
+hiprtcResult hiprtcGetBitcode(hiprtcProgram prog, char* bitcode) {
   HIPRTC_INIT_API(prog, bitcode);
 
   if (bitcode == nullptr) {
@@ -278,6 +278,14 @@ hiprtcResult hiprtcLinkCreate(unsigned int num_options, hiprtcJIT_option* option
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
+  if (num_options != 0) {
+    for (int i = 0; i < num_options; i++) {
+      if (options_ptr == nullptr || options_vals_pptr == nullptr) {
+        HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
+      }
+    }
+  }
+
   std::string name("Linker Program");
   hiprtc::RTCLinkProgram* rtc_link_prog_ptr = new hiprtc::RTCLinkProgram(name);
   if (!rtc_link_prog_ptr->AddLinkerOptions(num_options, options_ptr, options_vals_pptr)) {
@@ -298,14 +306,14 @@ hiprtcResult hiprtcLinkAddFile(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
-  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX 
-      || input_type == HIPRTC_JIT_INPUT_FATBINARY || input_type == HIPRTC_JIT_INPUT_OBJECT
-      || input_type == HIPRTC_JIT_INPUT_LIBRARY || input_type == HIPRTC_JIT_INPUT_NVVM) {
+  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX ||
+      input_type == HIPRTC_JIT_INPUT_FATBINARY || input_type == HIPRTC_JIT_INPUT_OBJECT ||
+      input_type == HIPRTC_JIT_INPUT_LIBRARY || input_type == HIPRTC_JIT_INPUT_NVVM) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
-  hiprtc::RTCLinkProgram* rtc_link_prog_ptr
-      = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
+  hiprtc::RTCLinkProgram* rtc_link_prog_ptr =
+      reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
   if (!rtc_link_prog_ptr->AddLinkerFile(std::string(file_path), input_type)) {
     HIPRTC_RETURN(HIPRTC_ERROR_PROGRAM_CREATION_FAILURE);
   }
@@ -317,16 +325,15 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
                                void* image, size_t image_size, const char* name,
                                unsigned int num_options, hiprtcJIT_option* options_ptr,
                                void** option_values) {
-  HIPRTC_INIT_API(hip_link_state, image, image_size, name, num_options, options_ptr,
-                  option_values);
+  HIPRTC_INIT_API(hip_link_state, image, image_size, name, num_options, options_ptr, option_values);
 
   if (image == nullptr || image_size <= 0) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
-  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX
-      || input_type == HIPRTC_JIT_INPUT_FATBINARY || input_type == HIPRTC_JIT_INPUT_OBJECT
-      || input_type == HIPRTC_JIT_INPUT_LIBRARY || input_type == HIPRTC_JIT_INPUT_NVVM) {
+  if (input_type == HIPRTC_JIT_INPUT_CUBIN || input_type == HIPRTC_JIT_INPUT_PTX ||
+      input_type == HIPRTC_JIT_INPUT_FATBINARY || input_type == HIPRTC_JIT_INPUT_OBJECT ||
+      input_type == HIPRTC_JIT_INPUT_LIBRARY || input_type == HIPRTC_JIT_INPUT_NVVM) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
   }
 
@@ -335,8 +342,8 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
     input_name = name;
   }
 
-  hiprtc::RTCLinkProgram* rtc_link_prog_ptr
-    = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
+  hiprtc::RTCLinkProgram* rtc_link_prog_ptr =
+      reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
   if (!rtc_link_prog_ptr->AddLinkerData(image, image_size, input_name, input_type)) {
     HIPRTC_RETURN(HIPRTC_ERROR_PROGRAM_CREATION_FAILURE);
   }
@@ -347,8 +354,12 @@ hiprtcResult hiprtcLinkAddData(hiprtcLinkState hip_link_state, hiprtcJITInputTyp
 hiprtcResult hiprtcLinkComplete(hiprtcLinkState hip_link_state, void** bin_out, size_t* size_out) {
   HIPRTC_INIT_API(hip_link_state, bin_out, size_out);
 
-  hiprtc::RTCLinkProgram* rtc_link_prog_ptr
-    = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
+  if (bin_out == nullptr || size_out == nullptr) {
+    HIPRTC_RETURN(HIPRTC_ERROR_INVALID_INPUT);
+  }
+
+  hiprtc::RTCLinkProgram* rtc_link_prog_ptr =
+      reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
   if (!rtc_link_prog_ptr->LinkComplete(bin_out, size_out)) {
     HIPRTC_RETURN(HIPRTC_ERROR_LINKING);
   }
@@ -359,10 +370,9 @@ hiprtcResult hiprtcLinkComplete(hiprtcLinkState hip_link_state, void** bin_out, 
 hiprtcResult hiprtcLinkDestroy(hiprtcLinkState hip_link_state) {
   HIPRTC_INIT_API(hip_link_state);
 
-  hiprtc::RTCLinkProgram* rtc_link_prog_ptr
-       = reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
+  hiprtc::RTCLinkProgram* rtc_link_prog_ptr =
+      reinterpret_cast<hiprtc::RTCLinkProgram*>(hip_link_state);
   delete rtc_link_prog_ptr;
 
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
-
