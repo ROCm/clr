@@ -110,8 +110,9 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   // {src/dst}Array is ignored.
   hipMemoryType srcMemoryType = pCopy.srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
-    srcMemoryType =
-        getMemoryObject(pCopy.srcDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    amd::Memory* memObj = getMemoryObject(pCopy.srcDevice, offset);
+    srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
     if (srcMemoryType == hipMemoryTypeHost) {
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
       // memory.
@@ -122,9 +123,10 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   offset = 0;
   hipMemoryType dstMemoryType = pCopy.dstMemoryType;
   if (dstMemoryType == hipMemoryTypeUnified) {
-    dstMemoryType =
-        getMemoryObject(pCopy.dstDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
-    if (srcMemoryType == hipMemoryTypeHost) {
+    amd::Memory* memObj = getMemoryObject(pCopy.dstDevice, offset);
+    dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
+    if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstHost = pCopy.dstDevice;
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
     }
@@ -133,8 +135,9 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
   // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
   if (srcMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy.srcHost, offset);
-    srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    srcMemoryType = getMemoryObject(pCopy.srcHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
+
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
@@ -142,8 +145,9 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   }
   offset = 0;
   if (dstMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy.dstHost, offset);
-    dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    dstMemoryType = getMemoryObject(pCopy.dstHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
+
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;

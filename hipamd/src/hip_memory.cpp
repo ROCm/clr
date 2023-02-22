@@ -471,10 +471,18 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   if (srcMemory == nullptr && dstMemory == nullptr) {
     ihipHtoHMemcpy(dst, src, sizeBytes, stream);
     return hipSuccess;
-  } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
+  } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
+             ((srcMemory != nullptr) && (dstMemory == nullptr))) {
     isHostAsync = false;
-  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
-    isHostAsync = false;
+  } else {
+    hipMemoryType srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+        srcMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
+    hipMemoryType dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+        dstMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
+    // Device to Device copies do not need to host side synchronization.
+    if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
+      isHostAsync = true;
+    }
   }
 
   amd::Command* command = nullptr;
@@ -2043,12 +2051,17 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
                                        hip::Stream* stream) {
   size_t offset = 0;
   // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
-  // (unified virtual address space) base address of the source data and the bytes per row to apply.
-  // {src/dst}Array is ignored.
+  // (unified virtual address space) base address of the source data and the bytes per row to
+  // apply. {src/dst}Array is ignored.
   hipMemoryType srcMemoryType = pCopy->srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
-    srcMemoryType =
-        getMemoryObject(pCopy->srcDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    amd::Memory* memObj = getMemoryObject(pCopy->srcDevice, offset);
+    if (memObj != nullptr) {
+      srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
+    } else {
+      srcMemoryType = hipMemoryTypeHost;
+    }
     if (srcMemoryType == hipMemoryTypeHost) {
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
       // memory.
@@ -2059,9 +2072,15 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
   offset = 0;
   hipMemoryType dstMemoryType = pCopy->dstMemoryType;
   if (dstMemoryType == hipMemoryTypeUnified) {
-    dstMemoryType =
-        getMemoryObject(pCopy->dstDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
-    if (srcMemoryType == hipMemoryTypeHost) {
+    amd::Memory* memObj = getMemoryObject(pCopy->dstDevice, offset);
+    if (memObj != nullptr) {
+      dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
+    } else {
+      dstMemoryType = hipMemoryTypeHost;
+    }
+
+    if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
     }
@@ -2071,8 +2090,9 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
   // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
   offset = 0;
   if (srcMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy->srcHost, offset);
-    srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    srcMemoryType = getMemoryObject(pCopy->srcHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
+
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcDevice = const_cast<void*>(pCopy->srcHost);
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
@@ -2080,8 +2100,9 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
   }
   offset = 0;
   if (dstMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy->dstHost, offset);
-    dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    dstMemoryType = getMemoryObject(pCopy->dstHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
+
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
@@ -2171,7 +2192,14 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
   // base address of the source data and the bytes per row to apply. {src/dst}Array is ignored.
   hipMemoryType srcMemoryType = pCopy->srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
-    srcMemoryType = getMemoryObject(pCopy->srcDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    amd::Memory* memObj = getMemoryObject(pCopy->srcDevice, offset);
+    if (memObj != nullptr) {
+      srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
+    } else {
+      srcMemoryType = hipMemoryTypeHost;
+    }
+
     if (srcMemoryType == hipMemoryTypeHost) {
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system memory.
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcHost = pCopy->srcDevice;
@@ -2181,8 +2209,15 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
   offset = 0;
   hipMemoryType dstMemoryType = pCopy->dstMemoryType;
   if (dstMemoryType == hipMemoryTypeUnified) {
-    dstMemoryType = getMemoryObject(pCopy->dstDevice, offset) ? hipMemoryTypeDevice : hipMemoryTypeHost;
-    if (srcMemoryType == hipMemoryTypeHost) {
+    amd::Memory* memObj = getMemoryObject(pCopy->dstDevice, offset);
+    if (memObj != nullptr) {
+      dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
+            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
+    } else {
+      dstMemoryType = hipMemoryTypeHost;
+    }
+
+    if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
     }
@@ -2191,13 +2226,14 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
   // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
   offset = 0;
   if (srcMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy->srcHost, offset);
-    srcMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    srcMemoryType = getMemoryObject(pCopy->srcHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
   }
   if (dstMemoryType == hipMemoryTypeHost) {
-    amd::Memory* mem = getMemoryObject(pCopy->dstHost, offset);
-    dstMemoryType = mem ? hipMemoryTypeDevice : hipMemoryTypeHost;
+    dstMemoryType = getMemoryObject(pCopy->dstHost, offset) ? hipMemoryTypeDevice :
+                    hipMemoryTypeHost;
   }
+
   if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeHost)) {
     amd::Coord3D srcOrigin = {pCopy->srcXInBytes, pCopy->srcY, pCopy->srcZ};
     amd::Coord3D dstOrigin = {pCopy->dstXInBytes, pCopy->dstY, pCopy->dstZ};
@@ -2217,11 +2253,17 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
     status = ihipGetMemcpyParam3DCommand(command, pCopy, hip_stream);
     if (status != hipSuccess) return status;
 
-    // Transfers from device memory to pageable host memory and transfers from any host memory to any host memory
-    // are synchronous with respect to the host.
+    // Transfers from device memory to pageable host memory and transfers from any
+    // host memory to any host memory are synchronous with respect to the host.
+    // Device to Device copies do not need to host side synchronization.
     if (dstMemoryType == hipMemoryTypeHost ||
-    ((pCopy->srcMemoryType == hipMemoryTypeHost) && (pCopy->dstMemoryType == hipMemoryTypeHost))) {
-         isAsync = false;
+        ((pCopy->srcMemoryType == hipMemoryTypeHost) &&
+         (pCopy->dstMemoryType == hipMemoryTypeHost))) {
+      isAsync = false;
+    } else if ((pCopy->srcMemoryType == hipMemoryTypeDevice) &&
+               (pCopy->dstMemoryType == hipMemoryTypeDevice)) {
+      // Device to Device copies dont need to wait for host synchronization
+      isAsync = true;
     }
     return ihipMemcpyCmdEnqueue(command, isAsync);
   }
