@@ -1344,6 +1344,12 @@ class hipGraphMemcpyNode1D : public hipGraphNode {
       memcpyDirection = "DtoH";
     } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
       memcpyDirection = "DtoD";
+    } else {
+      if (kind_ == hipMemcpyHostToDevice) {
+        memcpyDirection = "HtoD";
+      } else if (kind_ == hipMemcpyDeviceToHost) {
+        memcpyDirection = "DtoH";
+      }
     }
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
