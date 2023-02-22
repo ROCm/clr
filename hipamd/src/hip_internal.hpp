@@ -380,6 +380,10 @@ namespace hip {
       }
     }
     static bool existsActiveStreamForDevice(hip::Device* device);
+
+    /// The stream should be destroyed via release() rather than delete
+    private:
+      ~Stream() {};
   };
 
   /// HIP Device class

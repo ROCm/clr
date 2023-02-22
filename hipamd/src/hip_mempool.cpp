@@ -70,7 +70,7 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   if ((dev_ptr == nullptr) || (size == 0) || (!hip::isValid(stream))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream() :
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
     reinterpret_cast<hip::Stream*>(stream);
   auto device = hip_stream->GetDevice();
   auto mem_pool = device->GetCurrentMemoryPool();
@@ -92,7 +92,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   auto memory = getMemoryObject(dev_ptr, offset);
   if (memory != nullptr) {
     auto id = memory->getUserData().deviceId;
-    auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream() :
+    auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
       reinterpret_cast<hip::Stream*>(stream);
     if (!g_devices[id]->FreeMemory(memory, hip_stream)) {
       //! @todo It's not the most optimal logic. The current implementation has unconditional waits
@@ -241,7 +241,7 @@ hipError_t hipMallocFromPoolAsync(
   STREAM_CAPTURE(hipMallocAsync, stream, mem_pool, size, dev_ptr);
 
   auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->GetNullStream() :
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
     reinterpret_cast<hip::Stream*>(stream);
   *dev_ptr = mpool->AllocateMemory(size, hip_stream);
   HIP_RETURN(hipSuccess);

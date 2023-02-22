@@ -40,20 +40,6 @@ hip::Stream* Device::NullStream(bool skip_alloc) {
 }
 
 // ================================================================================================
-hip::Stream* Device::GetNullStream() {
-  if (null_stream_ == nullptr) {
-    null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
-  }
-
-  if (null_stream_ == nullptr) {
-    return nullptr;
-  }
-  // Wait for all active streams before executing commands on the default
-  iHipWaitActiveStreams(null_stream_);
-  return null_stream_;
-}
-
-// ================================================================================================
 bool Device::Create() {
   // Create default memory pool
   default_mem_pool_ = new MemoryPool(this);
@@ -152,7 +138,7 @@ Device::~Device() {
   }
 
   if (null_stream_!= nullptr) {
-    delete null_stream_;
+    null_stream_->release();
   }
 }
 
