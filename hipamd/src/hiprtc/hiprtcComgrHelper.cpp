@@ -22,7 +22,7 @@ THE SOFTWARE.
 
 #include "hiprtcComgrHelper.hpp"
 #if defined(_WIN32)
-  #include <io.h>
+#include <io.h>
 #endif
 
 #include "../amd_hsa_elf.hpp"
@@ -41,8 +41,8 @@ constexpr char const* OFFLOAD_KIND_HIPV4 = "hipv4";
 constexpr char const* OFFLOAD_KIND_HCC = "hcc";
 constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
 
-static constexpr size_t bundle_magic_string_size
-                                     = strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
+static constexpr size_t bundle_magic_string_size =
+    strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
 
 struct __ClangOffloadBundleInfo {
   uint64_t offset;
@@ -373,8 +373,8 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   if (co_triple_target_id == agent_triple_target_id) return true;
 
   // Parse code object triple target id
-  if (!consume(co_triple_target_id, std::string(OFFLOAD_KIND_HIP) + "-" 
-                                    + std::string(AMDGCN_TARGET_TRIPLE))) {
+  if (!consume(co_triple_target_id,
+               std::string(OFFLOAD_KIND_HIP) + "-" + std::string(AMDGCN_TARGET_TRIPLE))) {
     return false;
   }
 
@@ -420,18 +420,17 @@ bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::s
     return true;
   }
 
-  std::string bundled_llvm_bitcode_s(bundled_llvm_bitcode.begin(), bundled_llvm_bitcode.begin()
-                                                                   + bundled_llvm_bitcode.size());
+  std::string bundled_llvm_bitcode_s(bundled_llvm_bitcode.begin(),
+                                     bundled_llvm_bitcode.begin() + bundled_llvm_bitcode.size());
   const void* data = reinterpret_cast<const void*>(bundled_llvm_bitcode_s.c_str());
-  const auto obheader
-    = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
+  const auto obheader = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
   const auto* desc = &obheader->desc[0];
-  for (uint64_t idx=0; idx < obheader->numOfCodeObjects; ++idx,
+  for (uint64_t idx = 0; idx < obheader->numOfCodeObjects; ++idx,
                 desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
-                       reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
-                       desc->bundleEntryIdSize)) {
-    const void* image = reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) +
-                                                      desc->offset);
+                    reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
+                    desc->bundleEntryIdSize)) {
+    const void* image =
+        reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
     const size_t image_size = desc->size;
     std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
 
@@ -439,8 +438,6 @@ bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::s
     if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa)) {
       co_offset = (reinterpret_cast<uintptr_t>(image) - reinterpret_cast<uintptr_t>(data));
       co_size = image_size;
-      std::cout<<"bundleEntryId: "<<bundleEntryId<<" Isa:"<<isa<<" Offset: "<<co_offset<<" Size: "
-               << co_size <<std::endl;
       break;
     }
   }
@@ -594,9 +591,8 @@ bool compileToBitCode(const amd_comgr_data_set_t compileInputs, const std::strin
     return false;
   }
 
-  if (auto res =
-          amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_WITH_DEVICE_LIBS_TO_BC,
-                                action, input, output);
+  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_WITH_DEVICE_LIBS_TO_BC,
+                                       action, input, output);
       res != AMD_COMGR_STATUS_SUCCESS) {
     extractBuildLog(output, buildLog);
     amd::Comgr::destroy_action_info(action);
@@ -638,7 +634,6 @@ bool linkLLVMBitcode(const amd_comgr_data_set_t linkInputs, const std::string& i
     amd::Comgr::destroy_action_info(action);
     return false;
   }
-
 
   if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, linkInputs,
                                        dataSetDevLibs);
@@ -768,13 +763,13 @@ bool createExecutable(const amd_comgr_data_set_t linkInputs, const std::string& 
   return true;
 }
 
-void GenerateUniqueFileName(std::string &name) {
+void GenerateUniqueFileName(std::string& name) {
 #if !defined(_WIN32)
-  char *name_template = const_cast<char*>(name.c_str());
+  char* name_template = const_cast<char*>(name.c_str());
   int temp_fd = mkstemp(name_template);
 #else
-  char *name_template = new char[name.length()+1];
-  strcpy_s(name_template, name.length()+1, name.data());
+  char* name_template = new char[name.length() + 1];
+  strcpy_s(name_template, name.length() + 1, name.data());
   int sizeinchars = strnlen(name_template, 20) + 1;
   _mktemp_s(name_template, sizeinchars);
 #endif
@@ -787,7 +782,6 @@ void GenerateUniqueFileName(std::string &name) {
 
 bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
                    std::vector<std::string>& exeOptions, std::string name, std::string& buildLog) {
-
   amd_comgr_action_info_t action;
 
   if (auto res = createAction(action, exeOptions, isa); res != AMD_COMGR_STATUS_SUCCESS) {
@@ -917,11 +911,11 @@ std::string handleMangledName(std::string loweredName) {
   return loweredName;
 }
 
-bool fillMangledNames(std::vector<char>& dataVec,
-                      std::vector<std::string>& mangledNames, bool isBitcode) {
+bool fillMangledNames(std::vector<char>& dataVec, std::vector<std::string>& mangledNames,
+                      bool isBitcode) {
   amd_comgr_data_t dataObject;
-  if (auto res = amd::Comgr::create_data(isBitcode ? AMD_COMGR_DATA_KIND_BC :
-                                         AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
+  if (auto res = amd::Comgr::create_data(
+          isBitcode ? AMD_COMGR_DATA_KIND_BC : AMD_COMGR_DATA_KIND_EXECUTABLE, &dataObject);
       res != AMD_COMGR_STATUS_SUCCESS) {
     return false;
   }
@@ -944,7 +938,7 @@ bool fillMangledNames(std::vector<char>& dataVec,
       return false;
     }
 
-    char *mName = new char[Size]();
+    char* mName = new char[Size]();
     if (auto res = amd::Comgr::get_mangled_name(dataObject, i, &Size, mName)) {
       amd::Comgr::release_data(dataObject);
       return false;
@@ -959,7 +953,7 @@ bool fillMangledNames(std::vector<char>& dataVec,
 }
 
 bool getDemangledNames(const std::vector<std::string>& mangledNames,
-                     std::map<std::string, std::string>& demangledNames) {
+                       std::map<std::string, std::string>& demangledNames) {
   for (auto& i : mangledNames) {
     std::string demangledName;
     if (!demangleName(i, demangledName)) return false;
