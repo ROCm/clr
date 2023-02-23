@@ -253,7 +253,7 @@ bool KernelParameters::boundToSvmPointer(const Device& device, const_address cap
   return svmBound[index];
 }
 
-void KernelParameters::release(address mem, const amd::Device& device) const {
+void KernelParameters::release(address mem) const {
   if (mem == nullptr) {
     // nothing to do!
     return;

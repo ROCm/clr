@@ -441,7 +441,7 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
 }
 
 void NDRangeKernelCommand::releaseResources() {
-  kernel_.parameters().release(parameters_, queue()->device());
+  kernel_.parameters().release(parameters_);
   DEBUG_ONLY(parameters_ = NULL);
   kernel_.release();
   Command::releaseResources();
