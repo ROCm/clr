@@ -45,6 +45,7 @@ class OCLPerfImageWriteSpeed : public OCLTestImp {
   unsigned int bufnum_;
   unsigned int numIter;
   char* memptr;
+  bool skip_;
 };
 
 class OCLPerfPinnedImageWriteSpeed : public OCLPerfImageWriteSpeed {

@@ -41,6 +41,7 @@ class OCLPerfImageCopyCorners : public OCLTestImp {
   cl_mem srcBuffer_;
   cl_mem dstBuffer_;
   cl_int error_;
+  bool skip_;
 
   unsigned int bufSizeW_;
   unsigned int bufSizeH_;

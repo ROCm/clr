@@ -40,7 +40,7 @@ class OCLPerfImageReadSpeed : public OCLTestImp {
   cl_command_queue cmd_queue_;
   cl_mem outBuffer_;
   cl_int error_;
-
+  bool skip_;
   unsigned int bufSize_;
   unsigned int bufnum_;
   unsigned int numIter;

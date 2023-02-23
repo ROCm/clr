@@ -109,6 +109,7 @@ void OCLPerfImageCopyCorners::open(unsigned int test, char *units,
   dstBuffer_ = 0;
   srcImage_ = false;
   dstImage_ = false;
+  skip_ = false;
 
   error_ = _wrapper->clGetPlatformIDs(0, NULL, &numPlatforms);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetPlatformIDs failed");
@@ -172,6 +173,15 @@ void OCLPerfImageCopyCorners::open(unsigned int test, char *units,
 
   CHECK_RESULT(_deviceId >= num_devices, "Requested deviceID not available");
   device = devices[_deviceId];
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
 
   if (_openTest % NUM_SIZES) {
     error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE2D_MAX_WIDTH,
@@ -252,6 +262,9 @@ void OCLPerfImageCopyCorners::open(unsigned int test, char *units,
 }
 
 void OCLPerfImageCopyCorners::run(void) {
+  if (skip_) {
+    return;
+  }
   size_t origin[3] = {0, 0, 0};
   size_t region[3] = {bufSizeW_, bufSizeH_, 1};
 

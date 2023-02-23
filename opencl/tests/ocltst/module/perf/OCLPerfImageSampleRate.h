@@ -53,6 +53,7 @@ class OCLPerfImageSampleRate : public OCLTestImp {
   static const unsigned int MAX_ITERATIONS = 25;
   unsigned int numBufs_;
   unsigned int typeIdx_;
+  bool skip_;
 };
 
 #endif  // _OCL_IMAGESAMPLERATE_H_

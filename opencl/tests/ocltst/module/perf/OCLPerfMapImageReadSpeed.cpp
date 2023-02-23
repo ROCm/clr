@@ -72,7 +72,7 @@ void OCLPerfMapImageReadSpeed::open(unsigned int test, char *units,
   context_ = 0;
   cmd_queue_ = 0;
   outBuffer_ = 0;
-
+  skip_ = false;
   error_ = _wrapper->clGetPlatformIDs(0, NULL, &numPlatforms);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetPlatformIDs failed");
   if (0 < numPlatforms) {
@@ -129,6 +129,15 @@ void OCLPerfMapImageReadSpeed::open(unsigned int test, char *units,
   CHECK_RESULT(_deviceId >= num_devices, "Requested deviceID not available");
   device = devices[_deviceId];
 
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
   context_ = _wrapper->clCreateContext(NULL, 1, &device, notify_callback, NULL,
                                        &error_);
   CHECK_RESULT(context_ == 0, "clCreateContext failed");
@@ -143,6 +152,9 @@ void OCLPerfMapImageReadSpeed::open(unsigned int test, char *units,
 }
 
 void OCLPerfMapImageReadSpeed::run(void) {
+  if(skip_) {
+    return;
+  }
   CPerfCounter timer;
   void *mem;
 
