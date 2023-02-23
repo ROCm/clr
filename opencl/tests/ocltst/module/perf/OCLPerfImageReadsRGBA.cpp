@@ -126,7 +126,15 @@ void OCLPerfImageReadsRGBA::open(unsigned int test, char *units,
     return;
   }
   delete strVersion;
-
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId], CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
   bufSize_ = Sizes[test % NUM_SIZES];
   bufnum_ = (test / NUM_SIZES) % NUM_FORMATS;
   memSize = bufSize_ * bufSize_ * formatSize[bufnum_];

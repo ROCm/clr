@@ -72,7 +72,7 @@ void OCLPerfImageWriteSpeed::open(unsigned int test, char *units,
   cmd_queue_ = 0;
   outBuffer_ = 0;
   memptr = NULL;
-
+  skip_ = false;
   error_ = _wrapper->clGetPlatformIDs(0, NULL, &numPlatforms);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetPlatformIDs failed");
   if (0 < numPlatforms) {
@@ -128,7 +128,15 @@ void OCLPerfImageWriteSpeed::open(unsigned int test, char *units,
 
   CHECK_RESULT(_deviceId >= num_devices, "Requested deviceID not available");
   device = devices[_deviceId];
-
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
   context_ = _wrapper->clCreateContext(NULL, 1, &device, notify_callback, NULL,
                                        &error_);
   CHECK_RESULT(context_ == 0, "clCreateContext failed");
@@ -144,6 +152,9 @@ void OCLPerfImageWriteSpeed::open(unsigned int test, char *units,
 }
 
 void OCLPerfImageWriteSpeed::run(void) {
+  if (skip_) {
+    return;
+  }
   CPerfCounter timer;
   size_t origin[3] = {0, 0, 0};
   size_t region[3] = {bufSize_, bufSize_, 1};
@@ -225,7 +236,7 @@ void OCLPerfPinnedImageWriteSpeed::open(unsigned int test, char *units,
   cmd_queue_ = 0;
   outBuffer_ = 0;
   memptr = NULL;
-
+  skip_ = false;
   error_ = _wrapper->clGetPlatformIDs(0, NULL, &numPlatforms);
   CHECK_RESULT(error_ != CL_SUCCESS, "clGetPlatformIDs failed");
   if (0 < numPlatforms) {
@@ -260,7 +271,15 @@ void OCLPerfPinnedImageWriteSpeed::open(unsigned int test, char *units,
 
   CHECK_RESULT(_deviceId >= num_devices, "Requested deviceID not available");
   device = devices[_deviceId];
-
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
   context_ = _wrapper->clCreateContext(NULL, 1, &device, notify_callback, NULL,
                                        &error_);
   CHECK_RESULT(context_ == 0, "clCreateContext failed");

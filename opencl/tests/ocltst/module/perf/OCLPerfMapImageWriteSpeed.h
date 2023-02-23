@@ -44,6 +44,7 @@ class OCLPerfMapImageWriteSpeed : public OCLTestImp {
   unsigned int bufSize_;
   unsigned int bufnum_;
   unsigned int numIter;
+  bool skip_;
 };
 
 #endif  // _OCL_MapImageWriteSpeed_H_

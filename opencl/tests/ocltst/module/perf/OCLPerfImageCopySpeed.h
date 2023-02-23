@@ -41,7 +41,7 @@ class OCLPerfImageCopySpeed : public OCLTestImp {
   cl_mem srcBuffer_;
   cl_mem dstBuffer_;
   cl_int error_;
-
+  bool skip_;
   unsigned int bufSize_;
   unsigned int bufnum_;
   bool srcImage_;

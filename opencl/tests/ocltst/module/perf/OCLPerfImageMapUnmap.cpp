@@ -95,7 +95,7 @@ void OCLPerfImageMapUnmap::open(unsigned int test, char *units,
   conversion = 1.0f;
   _deviceId = deviceId;
   _openTest = test;
-
+  skip_ = false;
   context_ = 0;
   cmd_queue_ = 0;
   srcBuffer_ = 0;
@@ -162,6 +162,15 @@ void OCLPerfImageMapUnmap::open(unsigned int test, char *units,
 
   CHECK_RESULT(_deviceId >= num_devices, "Requested deviceID not available");
   device = devices[_deviceId];
+  size_t size;
+  bool imageSupport_ = false;
+  error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
+                            sizeof(imageSupport_), &imageSupport_, &size);
+  if (!imageSupport_) {
+    printf("\n%s\n", "Image not supported, skipping this test!");
+    skip_ = true;
+    return;
+  }
 
   bufSizeW_ = Sizes0[0];
   bufSizeH_ = Sizes0[1];
@@ -249,6 +258,9 @@ void OCLPerfImageMapUnmap::open(unsigned int test, char *units,
 }
 
 void OCLPerfImageMapUnmap::run(void) {
+  if (skip_) {
+    return;
+  }
   size_t origin[3] = {0, 0, 0};
   size_t region[3] = {bufSizeW_, bufSizeH_, 1};
 
