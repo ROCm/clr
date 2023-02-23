@@ -215,7 +215,7 @@ class KernelParameters : protected HeapObject {
   //! Capture the state of the parameters and return the stack base pointer.
   address capture(device::VirtualDevice& vDev, uint64_t lclMemSize, int32_t* error);
   //! Release the captured state of the parameters.
-  void release(address parameters, const amd::Device& device) const;
+  void release(address parameters) const;
 
   //! Allocate memory for this instance as well as the required storage for
   //  the values_, defined_, and rawPointer_ arrays.
