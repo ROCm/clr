@@ -168,6 +168,12 @@ hipArray_Format getCL2hipArrayFormat(const cl_channel_type type) {
     case CL_SIGNED_INT8:
       return HIP_AD_FORMAT_SIGNED_INT8;
 
+    case CL_UNSIGNED_INT16:
+      return HIP_AD_FORMAT_UNSIGNED_INT16;
+
+    case CL_SIGNED_INT16:
+      return HIP_AD_FORMAT_SIGNED_INT16;
+
     case CL_SIGNED_INT32:
       return HIP_AD_FORMAT_SIGNED_INT32;
 
