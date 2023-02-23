@@ -405,17 +405,9 @@ struct ihipGraph {
       , device_(device) {
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.insert(this);
-    if (original == nullptr) {
-      // Create memory pool, associated with the graph
-      mem_pool_ = new hip::MemoryPool(device);
-      uint64_t max_size = std::numeric_limits<uint64_t>::max();
-      // Note: the call for the threshold is always successful
-      auto error = mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
-    } else {
-      mem_pool_ = original->mem_pool_;
-      mem_pool_->retain();
-    }
-  };
+    mem_pool_ = device->GetGraphMemoryPool();
+    mem_pool_->retain();
+  }
 
   ~ihipGraph() {
     for (auto node : vertices_) {
@@ -430,7 +422,7 @@ struct ihipGraph {
       mem_pool_->release();
     }
 
-  };
+  }
 
   void AddManualNodeDuringCapture(hipGraphNode* node) { capturedNodes_.insert(node); }
 

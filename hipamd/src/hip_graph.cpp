@@ -2216,54 +2216,63 @@ hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType at
   if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0 || value == nullptr) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-  // later use this to access memory pool
-  auto* deviceHandle = g_devices[device]->devices()[0];
+  hipError_t result = hipErrorInvalidValue;
   switch (attr) {
     case hipGraphMemAttrUsedMemCurrent:
-      *reinterpret_cast<int32_t*>(value) = 0;
+      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
+          hipMemPoolAttrUsedMemCurrent, value);
       break;
     case hipGraphMemAttrUsedMemHigh:
-      *reinterpret_cast<int32_t*>(value) = 0;
+      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
+          hipMemPoolAttrUsedMemHigh, value);
       break;
     case hipGraphMemAttrReservedMemCurrent:
-      *reinterpret_cast<int32_t*>(value) = 0;
+      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
+          hipMemPoolAttrReservedMemCurrent, value);
       break;
     case hipGraphMemAttrReservedMemHigh:
-      *reinterpret_cast<int32_t*>(value) = 0;
+      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
+          hipMemPoolAttrReservedMemHigh, value);
       break;
     default:
-      return HIP_RETURN(hipErrorInvalidValue);
+      break;
   }
-  return HIP_RETURN(hipSuccess);
+  return HIP_RETURN(result);
 }
 
+// ================================================================================================
 hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
   HIP_INIT_API(hipDeviceSetGraphMemAttribute, device, attr, value);
   if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0 || value == nullptr) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-  // later use this to access memory pool
-  auto* deviceHandle = g_devices[device]->devices()[0];
+  hipError_t result = hipErrorInvalidValue;
   switch (attr) {
     case hipGraphMemAttrUsedMemHigh:
+      result = g_devices[device]->GetGraphMemoryPool()->SetAttribute(
+          hipMemPoolAttrUsedMemHigh, value);
       break;
     case hipGraphMemAttrReservedMemHigh:
+      result = g_devices[device]->GetGraphMemoryPool()->SetAttribute(
+          hipMemPoolAttrReservedMemHigh, value);
       break;
     default:
-      return HIP_RETURN(hipErrorInvalidValue);
+      break;
   }
-  return HIP_RETURN(hipSuccess);
+  return HIP_RETURN(result);
 }
 
+// ================================================================================================
 hipError_t hipDeviceGraphMemTrim(int device) {
   HIP_INIT_API(hipDeviceGraphMemTrim, device);
   if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-  // not implemented yet
+  g_devices[device]->GetGraphMemoryPool()->TrimTo(0);
   return HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 hipError_t hipUserObjectCreate(hipUserObject_t* object_out, void* ptr, hipHostFn_t destroy,
                                unsigned int initialRefcount, unsigned int flags) {
   HIP_INIT_API(hipUserObjectCreate, object_out, ptr, destroy, initialRefcount, flags);

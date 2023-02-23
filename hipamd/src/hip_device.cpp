@@ -44,7 +44,7 @@ hip::Stream* Device::GetNullStream() {
   if (null_stream_ == nullptr) {
     null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
   }
-  
+
   if (null_stream_ == nullptr) {
     return nullptr;
   }
@@ -60,6 +60,18 @@ bool Device::Create() {
   if (default_mem_pool_ == nullptr) {
     return false;
   }
+
+  // Create graph memory pool
+  graph_mem_pool_ = new MemoryPool(this);
+  if (graph_mem_pool_ == nullptr) {
+    return false;
+  }
+
+  uint64_t max_size = std::numeric_limits<uint64_t>::max();
+  // Use maximum value to hold memory, because current implementation doesn't support VM
+  // Note: the call for the threshold is always successful
+  auto error = graph_mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
+
   // Current is default pool after device creation
   current_mem_pool_ = default_mem_pool_;
   return true;
@@ -85,7 +97,7 @@ void Device::RemoveMemoryPool(MemoryPool* pool) {
 bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
   amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
-  for (auto& it : mem_pools_) {
+  for (auto it : mem_pools_) {
     if (it->FreeMemory(memory, stream)) {
       return true;
     }
@@ -97,7 +109,7 @@ bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
 void Device::ReleaseFreedMemory(Stream* stream) {
   amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
-  for (auto& it : mem_pools_) {
+  for (auto it : mem_pools_) {
     it->ReleaseFreedMemory(stream);
   }
 }
@@ -106,7 +118,7 @@ void Device::ReleaseFreedMemory(Stream* stream) {
 void Device::RemoveStreamFromPools(Stream* stream) {
   amd::ScopedLock lock(lock_);
   // Update all pools with the destroyed stream
-  for (auto& it : mem_pools_) {
+  for (auto it : mem_pools_) {
     it->RemoveStream(stream);
   }
 }
@@ -133,6 +145,10 @@ void Device::Reset() {
 Device::~Device() {
   if (default_mem_pool_ != nullptr) {
     default_mem_pool_->release();
+  }
+
+  if (graph_mem_pool_ != nullptr) {
+    graph_mem_pool_->release();
   }
 
   if (null_stream_!= nullptr) {
