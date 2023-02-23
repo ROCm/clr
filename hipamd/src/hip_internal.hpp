@@ -401,8 +401,9 @@ namespace hip {
     bool isActive_;
 
 
-    MemoryPool* default_mem_pool_;
+    MemoryPool* default_mem_pool_;  //!< Default memory pool for this device
     MemoryPool* current_mem_pool_;
+    MemoryPool* graph_mem_pool_;    //!< Memory pool, associated with graphs for this device
 
     std::set<MemoryPool*> mem_pools_;
 
@@ -412,7 +413,8 @@ namespace hip {
          flags_(hipDeviceScheduleSpin),
         isActive_(false),
         default_mem_pool_(nullptr),
-        current_mem_pool_(nullptr)
+        current_mem_pool_(nullptr),
+        graph_mem_pool_(nullptr)
         { assert(ctx != nullptr); }
     ~Device();
 
@@ -470,6 +472,9 @@ namespace hip {
     /// Get the default memory pool on the device
     MemoryPool* GetDefaultMemoryPool() const { return default_mem_pool_; }
 
+    /// Get the graph memory pool on the device
+    MemoryPool* GetGraphMemoryPool() const { return graph_mem_pool_; }
+
     /// Add memory pool to the device
     void AddMemoryPool(MemoryPool* pool);
 
@@ -484,6 +489,7 @@ namespace hip {
 
     /// Removes a destroyed stream from the safe list of memory pools
     void RemoveStreamFromPools(Stream* stream);
+
   };
 
   /// Thread Local Storage Variables Aggregator Class

@@ -213,16 +213,18 @@ public:
   /// Set memory pool access by different devices
   void GetAccess(hip::Device* device, hipMemAccessFlags* flags);
 
+  /// Frees all busy memory
+  void FreeAllMemory(hip::Stream* stream = nullptr);
+
   /// Accessors for the pool state
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
   bool InternalDependencies() const { return (state_.internal_dependencies_) ? true : false; }
-  void FreeAllMemory(hip::Stream* stream = nullptr);
+
 private:
   MemoryPool() = delete;
   MemoryPool(const MemoryPool&) = delete;
   MemoryPool& operator=(const MemoryPool&) = delete;
-
 
   Heap busy_heap_;    //!< Heap of busy allocations
   Heap free_heap_;    //!< Heap of freed allocations
