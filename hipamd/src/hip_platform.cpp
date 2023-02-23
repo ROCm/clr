@@ -662,7 +662,10 @@ void PlatformState::init() {
   initialized_ = true;
   for (auto& it : statCO_.modules_) {
     hipError_t err = digestFatBinary(it.first, it.second);
-    assert(err == hipSuccess);
+    if (err != hipSuccess) {
+      HIP_ERROR_PRINT(err);
+      return;
+    }
   }
   for (auto& it : statCO_.vars_) {
     it.second->resize_dVar(g_devices.size());
