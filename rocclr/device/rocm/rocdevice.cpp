@@ -3219,18 +3219,13 @@ amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size
       return arena_mem_obj_;
     }
   }
+
   // Calculate the offset of the pointer.
   const void* dev_ptr = reinterpret_cast<void*>(
       arena_mem_obj_->getDeviceMemory(*arena_mem_obj_->getContext().devices()[0])
           ->virtualAddress());
-  // System memory which has been locked
-  if (ptr_info.type == HSA_EXT_POINTER_TYPE_LOCKED &&
-      getCpuAgent().handle == ptr_info.agentOwner.handle && ptr_info.hostBaseAddress == ptr) {
-    offset =
-        reinterpret_cast<size_t>(ptr_info.agentBaseAddress) - reinterpret_cast<size_t>(dev_ptr);
-  } else {
-    offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
-  }
+  offset = reinterpret_cast<size_t>(ptr) - reinterpret_cast<size_t>(dev_ptr);
+
   return arena_mem_obj_;
 }
 
@@ -3250,6 +3245,13 @@ bool Device::IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer
   if (status != HSA_STATUS_SUCCESS) {
     LogError("hsa_amd_pointer_info() failed");
   }
+
+  // Return false for pinned memory. A true return may result in a race because
+  // ROCclr may attempt to do a pin/copy/unpin underneath in a multithreaded environment
+  if (ptr_info->type == HSA_EXT_POINTER_TYPE_LOCKED) {
+    return false;
+  }
+
   if (ptr_info->type != HSA_EXT_POINTER_TYPE_UNKNOWN) {
     if ((size != 0) &&
         ((reinterpret_cast<const_address>(dev_ptr) -
