@@ -865,13 +865,6 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
     return nullptr;
   }
 
-  bool mipMapSupport = true;
-  for (auto& dev : devices) {
-    if (!dev->settings().checkExtension(ClKhrMipMapImage)) {
-      mipMapSupport = false;
-    }
-  }
-
   if (!amd::Image::validateDimensions(devices,
                                       imageType,
                                       imageWidth,
@@ -884,7 +877,6 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   }
 
   if (numMipLevels > 0) {
-    if (mipMapSupport == true) {
       size_t max_dim = std::max(std::max(imageWidth, imageHeight), imageDepth);
       size_t mip_levels = 0;
       for (mip_levels = 0; max_dim > 0; max_dim >>=1, mip_levels++);
@@ -895,11 +887,6 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
         status = hipErrorInvalidValue;
         return nullptr;
       }
-    } else {
-      LogPrintfError("Mipmap not supported on one of the devices, Mip Level: %d", numMipLevels);
-      status = hipErrorInvalidValue;
-      return nullptr;
-    }
   }
 
   // TODO validate the image descriptor.
@@ -3881,7 +3868,18 @@ hipError_t hipGetMipmappedArrayLevel(hipArray_t *levelArray,
 hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                  HIP_ARRAY3D_DESCRIPTOR* mipmapped_array_desc_ptr,
                                  unsigned int num_mipmap_levels) {
-
+  bool mipMapSupport = true;
+  amd::Context& context = *hip::getCurrentDevice()->asContext();
+  const std::vector<amd::Device*>& devices = context.devices();
+  for (auto& dev : devices) {
+    if (!dev->settings().checkExtension(ClKhrMipMapImage)) {
+      mipMapSupport = false;
+    }
+  }
+  if (mipMapSupport == false) {
+    LogPrintfError("Mipmap not supported on one of the devices, Mip Level: %d", num_mipmap_levels);
+    return hipErrorNotSupported;
+  }
   const cl_channel_order channel_order = hip::getCLChannelOrder(
                                            mipmapped_array_desc_ptr->NumChannels, 0);
   const cl_channel_type channel_type = hip::getCLChannelType(mipmapped_array_desc_ptr->Format,
@@ -3890,7 +3888,6 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                                                 mipmapped_array_desc_ptr->Height,
                                                                 mipmapped_array_desc_ptr->Depth,
                                                                 mipmapped_array_desc_ptr->Flags);
-
   hipError_t status = hipSuccess;
   // Create a new amd::Image with mipmap
   amd::Image* image = ihipImageCreate(channel_order,
