@@ -25,9 +25,6 @@
 #include "hip_conversions.hpp"
 #include "platform/sampler.hpp"
 
-hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      hip::Stream& stream, bool isAsync = false);
-
 hipError_t ihipFree(void* ptr);
 
 struct __hip_texture {

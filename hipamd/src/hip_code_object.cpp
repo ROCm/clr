@@ -31,8 +31,6 @@ THE SOFTWARE.
 #include "platform/program.hpp"
 #include <elf/elf.hpp>
 
-hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      hip::Stream& stream, bool isAsync = false);
 hipError_t ihipFree(void* ptr);
 // forward declaration of methods required for managed variables
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
