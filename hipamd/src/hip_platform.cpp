@@ -33,8 +33,6 @@ PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
 
 // forward declaration of methods required for __hipRegisrterManagedVar
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
-hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      hip::Stream& stream, bool isAsync = false);
 
 struct __CudaFatBinaryWrapper {
   unsigned int magic;

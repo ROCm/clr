@@ -451,7 +451,7 @@ void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, hip::Stream& s
 }
 // ================================================================================================
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      hip::Stream& stream, bool isAsync = false) {
+                      hip::Stream& stream, bool isHostAsync, bool isGPUAsync) {
   hipError_t status;
   if (sizeBytes == 0) {
     // Skip if nothing needs writing.
@@ -464,7 +464,6 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   if (src == dst && kind == hipMemcpyDefault) {
     return hipSuccess;
   }
-  bool isP2P = false;
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
@@ -473,24 +472,20 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
     ihipHtoHMemcpy(dst, src, sizeBytes, stream);
     return hipSuccess;
   } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
-    isAsync = false;
+    isHostAsync = false;
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
-    isAsync = false;
-  } else if ((srcMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) &&
-             (srcMemory->getContext().devices().size() == 1) &&
-             (dstMemory->getContext().devices().size() == 1)) {
-    isAsync = true;
-    isP2P = true;
+    isHostAsync = false;
   }
+
   amd::Command* command = nullptr;
-  status = ihipMemcpyCommand(command, dst, src, sizeBytes, kind, stream, isAsync);
+  status = ihipMemcpyCommand(command, dst, src, sizeBytes, kind, stream, isHostAsync);
   if (status != hipSuccess) {
     return status;
   }
   command->enqueue();
-  if (!isAsync) {
+  if (!isHostAsync) {
     command->awaitCompletion();
-  } else if (isP2P) {
+  } else if (!isGPUAsync) {
     hip::Stream* pStream = hip::getNullStream(dstMemory->getContext());
     amd::Command::EventWaitList waitList;
     waitList.push_back(command);
