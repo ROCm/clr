@@ -232,12 +232,13 @@ class DmaBlitManager : public device::HostBlitManager {
   //! Assits in transferring data from Host to Local or vice versa
   //! taking into account the Hsail profile supported by Hsa Agent
   bool hsaCopy(const Memory& srcMemory, const Memory& dstMemory, const amd::Coord3D& srcOrigin,
-               const amd::Coord3D& dstOrigin, const amd::Coord3D& size, bool enableCopyRect = false,
-               bool flushDMA = true) const;
+               const amd::Coord3D& dstOrigin, const amd::Coord3D& size) const;
 
   const size_t MinSizeForPinnedTransfer;
-  bool completeOperation_;  //!< DMA blit manager must complete operation
-  amd::Context* context_;   //!< A dummy context
+  bool completeOperation_;                    //!< DMA blit manager must complete operation
+  amd::Context* context_;                     //!< A dummy context
+  mutable uint32_t lastCopyMask_;             //!< Last used copy mask
+  mutable HwQueueEngine lastUsedCopyEngine_;  //!< Last used copy engine
 
  private:
   //! Disable copy constructor
