@@ -26,7 +26,7 @@
 namespace hip {
 
 // ================================================================================================
-hip::Stream* Device::NullStream(bool skip_alloc, bool wait) {
+hip::Stream* Device::NullStream(bool skip_alloc) {
   if (null_stream_ == nullptr && !skip_alloc) {
     null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
   }
@@ -34,10 +34,8 @@ hip::Stream* Device::NullStream(bool skip_alloc, bool wait) {
   if (null_stream_ == nullptr) {
     return nullptr;
   }
-  if (wait == true) {
-    // Wait for all active streams before executing commands on the default
-    iHipWaitActiveStreams(null_stream_);
-  }
+  // Wait for all active streams before executing commands on the default
+  iHipWaitActiveStreams(null_stream_);
   return null_stream_;
 }
 

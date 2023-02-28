@@ -91,12 +91,12 @@ void setCurrentDevice(unsigned int index) {
   amd::Os::setPreferredNumaNode(preferredNumaNode);
 }
 
-hip::Stream* getStream(hipStream_t stream, bool wait) {
+hip::Stream* getStream(hipStream_t stream) {
  if (stream == nullptr) {
-    return getNullStream(wait);
+    return getNullStream();
   } else {
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);
-    if (wait && !(hip_stream->Flags() & hipStreamNonBlocking)) {
+    if (!(hip_stream->Flags() & hipStreamNonBlocking)) {
       constexpr bool WaitNullStreamOnly = true;
       iHipWaitActiveStreams(hip_stream, WaitNullStreamOnly);
     }
@@ -131,10 +131,9 @@ int getDeviceID(amd::Context& ctx) {
 }
 
 // ================================================================================================
-hip::Stream* getNullStream(bool wait) {
+hip::Stream* getNullStream() {
   Device* device = getCurrentDevice();
-  constexpr bool kSkipAlloc = false;
-  return device ? device->NullStream(kSkipAlloc, wait) : nullptr;
+  return device ? device->NullStream() : nullptr;
 }
 
 };
