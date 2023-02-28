@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,13 +24,12 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H
 
-#include <hip/amd_detail/amd_hip_common.h>
-
-#include "hip/amd_detail/host_defines.h"
 #if defined(__HIPCC_RTC__)
   #define __HOST_DEVICE__ __device__
 #else
   #define __HOST_DEVICE__ __host__ __device__
+  #include <hip/amd_detail/amd_hip_common.h>
+  #include "hip/amd_detail/host_defines.h"
   #include <assert.h>
   #if defined(__cplusplus)
     #include <algorithm>
@@ -39,7 +38,7 @@ THE SOFTWARE.
 #endif
 #endif // !defined(__HIPCC_RTC__)
 
-#if __HIP_CLANG_ONLY__
+#if defined(__clang__) && defined(__HIP__)
     typedef _Float16 _Float16_2 __attribute__((ext_vector_type(2)));
 
     struct __half_raw {
@@ -64,10 +63,13 @@ THE SOFTWARE.
     };
 
     #if defined(__cplusplus)
+      #if !defined(__HIPCC_RTC__)
         #include "hip_fp16_math_fwd.h"
         #include "amd_hip_vector_types.h"
         #include "host_defines.h"
-
+        #include "amd_device_functions.h"
+        #include "amd_warp_functions.h"
+      #endif
         namespace std
         {
             template<> struct is_floating_point<_Float16> : std::true_type {};
@@ -1471,7 +1473,7 @@ THE SOFTWARE.
             }
 
             // Math functions
-            #if __HIP_CLANG_ONLY__
+            #if defined(__clang__) && defined(__HIP__)
             inline
             __device__
             float amd_mixed_dot(__half2 a, __half2 b, float c, bool saturate) {
@@ -1710,69 +1712,67 @@ THE SOFTWARE.
             using half = __half;
             using half2 = __half2;
         #endif
-        #if !defined(__HIPCC_RTC__)
-        #include "amd_device_functions.h"
-        #include "amd_warp_functions.h"
-            __device__
-            inline
-            __half __shfl(__half var, int src_lane, int width = warpSize) {
-                union { int i; __half h; } tmp; tmp.h = var;
-                tmp.i = __shfl(tmp.i, src_lane, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half2 __shfl(__half2 var, int src_lane, int width = warpSize) {
-                union { int i; __half2 h; } tmp; tmp.h = var;
-                tmp.i = __shfl(tmp.i, src_lane, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half __shfl_up(__half var, unsigned int lane_delta, int width = warpSize) {
-                union { int i; __half h; } tmp; tmp.h = var;
-                tmp.i = __shfl_up(tmp.i, lane_delta, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half2 __shfl_up(__half2 var, unsigned int lane_delta, int width = warpSize) {
-                union { int i; __half2 h; } tmp; tmp.h = var;
-                tmp.i = __shfl_up(tmp.i, lane_delta, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half __shfl_down(__half var, unsigned int lane_delta, int width = warpSize) {
-                union { int i; __half h; } tmp; tmp.h = var;
-                tmp.i = __shfl_down(tmp.i, lane_delta, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half2 __shfl_down(__half2 var, unsigned int lane_delta, int width = warpSize) {
-                union { int i; __half2 h; } tmp; tmp.h = var;
-                tmp.i = __shfl_down(tmp.i, lane_delta, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half __shfl_xor(__half var,  int lane_mask, int width = warpSize) {
-                union { int i; __half h; } tmp; tmp.h = var;
-                tmp.i = __shfl_xor(tmp.i, lane_mask, width);
-                return tmp.h;
-            }
-            __device__
-            inline
-            __half2 __shfl_xor(__half2 var,  int lane_mask, int width = warpSize) {
-                union { int i; __half2 h; } tmp; tmp.h = var;
-                tmp.i = __shfl_xor(tmp.i, lane_mask, width);
-                return tmp.h;
-            }
-        #endif // !defined(__HIPCC_RTC__)
+        __device__
+        inline
+        __half __shfl(__half var, int src_lane, int width = warpSize) {
+           union { int i; __half h; } tmp; tmp.h = var;
+           tmp.i = __shfl(tmp.i, src_lane, width);
+           return tmp.h;
+        }
+        __device__
+        inline
+        __half2 __shfl(__half2 var, int src_lane, int width = warpSize) {
+           union { int i; __half2 h; } tmp; tmp.h = var;
+           tmp.i = __shfl(tmp.i, src_lane, width);
+           return tmp.h;
+        }
+        __device__
+        inline
+        __half __shfl_up(__half var, unsigned int lane_delta, int width = warpSize) {
+           union { int i; __half h; } tmp; tmp.h = var;
+           tmp.i = __shfl_up(tmp.i, lane_delta, width);
+           return tmp.h;
+        }
+        __device__
+        inline
+         __half2 __shfl_up(__half2 var, unsigned int lane_delta, int width = warpSize) {
+            union { int i; __half2 h; } tmp; tmp.h = var;
+            tmp.i = __shfl_up(tmp.i, lane_delta, width);
+            return tmp.h;
+         }
+         __device__
+         inline
+         __half __shfl_down(__half var, unsigned int lane_delta, int width = warpSize) {
+            union { int i; __half h; } tmp; tmp.h = var;
+            tmp.i = __shfl_down(tmp.i, lane_delta, width);
+            return tmp.h;
+         }
+         __device__
+         inline
+         __half2 __shfl_down(__half2 var, unsigned int lane_delta, int width = warpSize) {
+            union { int i; __half2 h; } tmp; tmp.h = var;
+            tmp.i = __shfl_down(tmp.i, lane_delta, width);
+            return tmp.h;
+         }
+         __device__
+         inline
+         __half __shfl_xor(__half var,  int lane_mask, int width = warpSize) {
+            union { int i; __half h; } tmp; tmp.h = var;
+            tmp.i = __shfl_xor(tmp.i, lane_mask, width);
+            return tmp.h;
+         }
+         __device__
+         inline
+          __half2 __shfl_xor(__half2 var,  int lane_mask, int width = warpSize) {
+             union { int i; __half2 h; } tmp; tmp.h = var;
+             tmp.i = __shfl_xor(tmp.i, lane_mask, width);
+             return tmp.h;
+         }
     #endif // defined(__cplusplus)
 #elif defined(__GNUC__)
-    #include "hip_fp16_gcc.h"
+    #if !defined(__HIPCC_RTC__)
+      #include "hip_fp16_gcc.h"
+    #endif
 #endif // !defined(__clang__) && defined(__GNUC__)
 
 #endif // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H

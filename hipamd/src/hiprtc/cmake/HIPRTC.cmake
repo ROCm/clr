@@ -51,7 +51,6 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
     select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)           \n\
 #pragma clang diagnostic pop\n\
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_H\n\
-#define HIP_INCLUDE_HIP_HIP_FP16_H\n\
 #pragma clang diagnostic push\n\
 #pragma clang diagnostic ignored \"-Wreserved-macro-identifier\"\n\
 #define _HIP_BFLOAT16_H_\n\
@@ -75,6 +74,10 @@ if(HIPRTC_ADD_MACROS)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_COOP_HEADER}")
   FILE(READ "${HIPRTC_UNSAFE_ATOMICS_FILE}" HIPRTC_UNSAFE_ATOMICS)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_UNSAFE_ATOMICS}")
+  FILE(READ "${HIPRTC_FP16_MATH_FWD_FILE}" HIPRTC_FP16_MATH_FWD)
+  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_FP16_MATH_FWD}")
+  FILE(READ "${HIPRTC_FP16_HEADER_FILE}" HIPRTC_FP16_HEADER)
+  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_FP16_HEADER}")
 #pragma clang diagnostic pop
 endif()
 
@@ -85,7 +88,6 @@ macro(generate_hiprtc_header HiprtcHeader)
 #define CHAR_BIT __CHAR_BIT__\n\
 #define INT_MAX __INTMAX_MAX__\n\
 #include \"hip/hip_runtime.h\"\n\
-#include \"hip/hip_fp16.h\"\n\
 #include \"hip/hip_bfloat16.h\"\n\
 #pragma pop_macro(\"CHAR_BIT\")\n\
 #pragma pop_macro(\"INT_MAX\")")
