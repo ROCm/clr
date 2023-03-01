@@ -503,7 +503,11 @@ hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
 
 hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   HIP_INIT_API(hipDeviceSetSharedMemConfig, config);
-
+  if (config != hipSharedMemBankSizeDefault &&
+      config != hipSharedMemBankSizeFourByte && 
+      config != hipSharedMemBankSizeEightByte) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   // No way to set cache config yet.
 
   HIP_RETURN(hipErrorNotSupported);
