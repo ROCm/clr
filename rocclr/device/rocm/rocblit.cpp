@@ -1585,14 +1585,9 @@ bool KernelBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory
   bool result = false;
   bool rejected = false;
 
-  // Use copyEnginePreference from the copyMetadata if we have HMM enabled as top level may have
-  // more info on where the buffer resides
-  bool useCopyHint = (copyMetadata.copyEnginePreference_ == amd::CopyMetadata::SDMA) &&
-                     dev().info().hmmSupported_;
-
   // Fall into the ROC path for rejected transfers
   if (dev().info().pcie_atomics_ && (setup_.disableCopyBufferRect_ ||
-      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess() || useCopyHint)) {
+      srcMemory.isHostMemDirectAccess() || dstMemory.isHostMemDirectAccess())) {
     result = DmaBlitManager::copyBufferRect(srcMemory, dstMemory, srcRectIn, dstRectIn, sizeIn, entire,
                                            copyMetadata);
 
@@ -2195,14 +2190,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
 #endif
 
-  // Use copyEnginePreference from the copyMetadata if we have HMM enabled as top level may have
-  // more info on where the buffer resides
-  bool useCopyHint = (copyMetadata.copyEnginePreference_ == amd::CopyMetadata::SDMA) &&
-                     dev().info().hmmSupported_;
-
   if (setup_.disableHwlCopyBuffer_ ||
       (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
-       !(p2p || asan) && !ipcShared && !useCopyHint)) {
+       !(p2p || asan) && !ipcShared)) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
