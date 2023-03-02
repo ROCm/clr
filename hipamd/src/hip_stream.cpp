@@ -506,12 +506,8 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
     return hipErrorInvalidHandle;
   }
 
-  if (flags != 0) {
+  if (flags != 0 || !hip::isValid(stream)) {
     return hipErrorInvalidValue;
-  }
-
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
