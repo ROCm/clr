@@ -41,5 +41,5 @@ target_link_libraries(ocltst
 
 set_target_properties(ocltst PROPERTIES INSTALL_RPATH "$ORIGIN")
 
-INSTALL(TARGETS ocltst DESTINATION tests/ocltst COMPONENT ocltst)
+INSTALL(TARGETS ocltst DESTINATION ${OCLTST_INSTALL_DIR} COMPONENT ocltst)
 
