@@ -2188,12 +2188,23 @@ hipError_t hipGraphMemAllocNodeGetParams(hipGraphNode_t node, hipMemAllocNodePar
 
 // ================================================================================================
 hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
-    const hipGraphNode_t* pDependencies, size_t numDependencies, void* dev_ptr) {
+                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                  void* dev_ptr) {
   HIP_INIT_API(hipGraphAddMemFreeNode, pGraphNode, graph, pDependencies, numDependencies, dev_ptr);
   if (pGraphNode == nullptr || graph == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr) || dev_ptr == nullptr) {
+      ((numDependencies > 0 && pDependencies == nullptr) ||
+       (pDependencies != nullptr && numDependencies == 0)) ||
+      dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  // Is memory passed to be free'd valid
+  size_t offset = 0;
+  amd::Memory* memory_object = getMemoryObject(dev_ptr, offset);
+  if (memory_object == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   auto mem_free_node = new hipGraphMemFreeNode(dev_ptr);
   *pGraphNode = mem_free_node;
   auto status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
