@@ -44,7 +44,7 @@
 #define __MAX_DEFAULT_VECTOR_SIZE 50
 #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
 #define CL_USE_DEPRECATED_OPENCL_2_0_APIS
-#include "cl.hpp"
+#include "CL/cl.hpp"
 #endif // !HAVE_CL2_HPP
 
 bool verbose = false;
