@@ -443,6 +443,9 @@ hipError_t hipModuleOccupancyMaxPotentialBlockSizeWithFlags(int* gridSize, int* 
   if ((gridSize == nullptr) || (blockSize == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (flags != hipOccupancyDefault && flags != hipOccupancyDisableCachingOverride) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   const amd::Device& device = *hip::getCurrentDevice()->devices()[0];
   int max_blocks_per_grid = 0;
   int num_blocks = 0;
@@ -482,6 +485,9 @@ hipError_t hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(
   HIP_INIT_API(hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags, f, blockSize,
                dynSharedMemPerBlk, flags);
   if (numBlocks == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (flags != hipOccupancyDefault && flags != hipOccupancyDisableCachingOverride) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   const amd::Device& device = *hip::getCurrentDevice()->devices()[0];
