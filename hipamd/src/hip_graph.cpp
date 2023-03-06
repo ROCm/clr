@@ -1218,12 +1218,20 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
 hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                uint64_t flags = 0) {
   if (pGraphExec == nullptr || graph == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
+  }
+  if (graph->IsGraphInstantiated() == true) {
+    for (auto node : graph->GetNodes()) {
+      if ((node->GetType() == hipGraphNodeTypeMemAlloc)
+          || (node->GetType() == hipGraphNodeTypeMemFree)) {
+        return hipErrorNotSupported;
+      }
+    }
   }
   std::unordered_map<Node, Node> clonedNodes;
   hipGraph_t clonedGraph = graph->clone(clonedNodes);
   if (clonedGraph == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   std::vector<std::vector<Node>> parallelLists;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists;
@@ -1236,6 +1244,7 @@ hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
       new hipGraphExec(levelOrder, parallelLists, nodeWaitLists, clonedNodes,
       graphExeUserObj, flags);
   if (*pGraphExec != nullptr) {
+    graph->SetGraphInstantiated(true);
     return (*pGraphExec)->Init();
   } else {
     return hipErrorOutOfMemory;

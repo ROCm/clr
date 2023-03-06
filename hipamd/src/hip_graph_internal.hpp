@@ -398,6 +398,7 @@ struct ihipGraph {
   hip::Device* device_;       //!< HIP device object
   hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
   std::unordered_set<hipGraphNode*> capturedNodes_;
+  bool graphInstantiated_;
 
  public:
   ihipGraph(hip::Device* device, const ihipGraph* original = nullptr)
@@ -408,6 +409,7 @@ struct ihipGraph {
     graphSet_.insert(this);
     mem_pool_ = device->GetGraphMemoryPool();
     mem_pool_->retain();
+    graphInstantiated_ = false;
   }
 
   ~ihipGraph() {
@@ -528,6 +530,14 @@ struct ihipGraph {
 
   void FreeAllMemory() {
     mem_pool_->FreeAllMemory();
+  }
+
+  bool IsGraphInstantiated() const {
+    return graphInstantiated_;
+  }
+
+  void SetGraphInstantiated(bool graphInstantiate) {
+    graphInstantiated_ = graphInstantiate;
   }
 };
 
