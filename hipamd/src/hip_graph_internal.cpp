@@ -574,7 +574,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (hip::getStream(stream) == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
-  if (flags_ == hipGraphInstantiateFlagAutoFreeOnLaunch) {
+  if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!levelOrder_.empty()) {
       levelOrder_[0]->GetParentGraph()->FreeAllMemory();
     }
