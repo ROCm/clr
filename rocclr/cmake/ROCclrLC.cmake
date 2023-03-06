@@ -21,6 +21,7 @@
 find_package(amd_comgr REQUIRED CONFIG
   PATHS
     /opt/rocm/
+    ${ROCM_INSTALL_PATH}
   PATH_SUFFIXES
     cmake/amd_comgr
     lib/cmake/amd_comgr)
