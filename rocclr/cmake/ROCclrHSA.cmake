@@ -21,6 +21,7 @@
 find_package(hsa-runtime64 1.6 REQUIRED CONFIG
   PATHS
     /opt/rocm/
+    ${ROCM_INSTALL_PATH}
   PATH_SUFFIXES
     cmake/hsa-runtime64
     lib/cmake/hsa-runtime64
