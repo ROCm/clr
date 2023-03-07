@@ -2179,7 +2179,8 @@ hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
 // ================================================================================================
 hipError_t hipGraphMemAllocNodeGetParams(hipGraphNode_t node, hipMemAllocNodeParams* pNodeParams) {
   HIP_INIT_API(hipGraphMemAllocNodeGetParams, node, pNodeParams);
-  if (node == nullptr || pNodeParams == nullptr || !hipGraphNode::isNodeValid(node)) {
+  if (node == nullptr || pNodeParams == nullptr || !hipGraphNode::isNodeValid(node)
+      || node->GetType() != hipGraphNodeTypeMemAlloc) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   reinterpret_cast<hipGraphMemAllocNode*>(node)->GetParams(pNodeParams);
@@ -2214,7 +2215,8 @@ hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
 // ================================================================================================
 hipError_t hipGraphMemFreeNodeGetParams(hipGraphNode_t node, void* dev_ptr) {
   HIP_INIT_API(hipGraphMemFreeNodeGetParams, node, dev_ptr);
-  if (node == nullptr || dev_ptr == nullptr || !hipGraphNode::isNodeValid(node)) {
+  if (node == nullptr || dev_ptr == nullptr || !hipGraphNode::isNodeValid(node)
+      || node->GetType() != hipGraphNodeTypeMemFree) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   reinterpret_cast<hipGraphMemFreeNode*>(node)->GetParams(reinterpret_cast<void**>(dev_ptr));
