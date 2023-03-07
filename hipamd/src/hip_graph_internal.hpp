@@ -1847,7 +1847,7 @@ class hipGraphMemAllocNode : public hipGraphNode {
 
  public:
   hipGraphMemAllocNode(const hipMemAllocNodeParams* node_params)
-      : hipGraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "MEM_ALLOC") {
+      : hipGraphNode(hipGraphNodeTypeMemAlloc, "solid", "rectangle", "MEM_ALLOC") {
         node_params_ = *node_params;
       }
   ~hipGraphMemAllocNode() {}
@@ -1889,7 +1889,7 @@ class hipGraphMemFreeNode : public hipGraphNode {
 
  public:
   hipGraphMemFreeNode(void* dptr)
-    : hipGraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "MEM_FREE")
+    : hipGraphNode(hipGraphNodeTypeMemFree, "solid", "rectangle", "MEM_FREE")
     , device_ptr_(dptr) {}
   ~hipGraphMemFreeNode() {}
 
