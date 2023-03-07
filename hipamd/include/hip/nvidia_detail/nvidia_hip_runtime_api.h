@@ -1383,6 +1383,10 @@ typedef enum cudaAccessProperty hipAccessProperty;
 typedef struct cudaAccessPolicyWindow hipAccessPolicyWindow;
 
 typedef enum  cudaGraphMemAttributeType hipGraphMemAttributeType;
+#define hipGraphMemAttrUsedMemCurrent cudaGraphMemAttrUsedMemCurrent
+#define hipGraphMemAttrUsedMemHigh cudaGraphMemAttrUsedMemHigh
+#define hipGraphMemAttrReservedMemCurrent cudaGraphMemAttrReservedMemCurrent
+#define hipGraphMemAttrReservedMemHigh cudaGraphMemAttrReservedMemHigh
 
 typedef enum cudaUserObjectFlags hipUserObjectFlags;
 #define hipUserObjectNoDestructorSync cudaUserObjectNoDestructorSync
