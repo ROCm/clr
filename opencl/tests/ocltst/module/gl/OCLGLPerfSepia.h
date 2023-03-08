@@ -24,10 +24,10 @@
 #include "OCLGLCommon.h"
 #include "Timer.h"
 
-class OCLPerfSepia : public OCLGLCommon {
+class OCLGLPerfSepia : public OCLGLCommon {
  public:
-  OCLPerfSepia();
-  virtual ~OCLPerfSepia();
+  OCLGLPerfSepia();
+  virtual ~OCLGLPerfSepia();
 
   virtual void open(unsigned int test, char *units, double &conversion,
                     unsigned int deviceId);

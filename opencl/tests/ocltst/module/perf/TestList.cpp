@@ -69,9 +69,6 @@
 #include "OCLPerfSampleRate.h"
 #include "OCLPerfScalarReplArrayElem.h"
 #include "OCLPerfSdiP2PCopy.h"
-#if USE_OPENGL
-#include "OCLPerfSepia.h"
-#endif
 #include "OCLPerfTextureMemLatency.h"
 #include "OCLPerfUAVReadSpeed.h"
 #include "OCLPerfUAVReadSpeedHostMem.h"
@@ -145,9 +142,6 @@ TestEntry TestList[] = {
     TEST(OCLPerfImageCopyCorners),
     TEST(OCLPerfScalarReplArrayElem),
     TEST(OCLPerfSdiP2PCopy),
-#if USE_OPENGL
-    TEST(OCLPerfSepia),
-#endif
     TEST(OCLPerfFlush),
     TEST(OCLPerfMemCreate),
     TEST(OCLPerfImageMapUnmap),

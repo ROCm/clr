@@ -80,12 +80,6 @@ foreach(TEST ${TESTS})
             ${TEST}.cpp)
 endforeach()
 
-if(OPENGL_FOUND AND GLEW_FOUND)
-    target_sources(oclperf
-        PRIVATE
-            OCLPerfSepia.cpp)
-endif()
-
 set_target_properties(oclperf PROPERTIES
     CXX_STANDARD 14
     CXX_STANDARD_REQUIRED ON

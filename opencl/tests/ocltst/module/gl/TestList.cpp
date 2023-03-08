@@ -31,6 +31,7 @@
 #include "OCLGLMsaaTexture.h"
 #include "OCLGLMultiContext.h"
 #include "OCLGLTexture.h"
+#include "OCLGLPerfSepia.h"
 
 //
 //  Helper macro for adding tests
@@ -46,7 +47,7 @@ static void* dictionary_CreateTestFunc(void) {
 TestEntry TestList[] = {
     TEST(OCLGLBuffer),    TEST(OCLGLBufferMultipleQueues),
     TEST(OCLGLTexture),   TEST(OCLGLMultiContext),
-    TEST(OCLGLFenceSync), TEST(OCLGLDepthTex),
+    TEST(OCLGLFenceSync), TEST(OCLGLDepthTex), TEST(OCLGLPerfSepia),
 };
 
 unsigned int TestListCount = sizeof(TestList) / sizeof(TestList[0]);
