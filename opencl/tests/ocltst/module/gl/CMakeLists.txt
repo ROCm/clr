@@ -7,6 +7,7 @@ set(TESTS
     OCLGLMsaaTexture
     OCLGLMultiContext
     OCLGLTexture
+    OCLGLPerfSepia
 )
 
 add_library(oclgl SHARED
@@ -18,6 +19,16 @@ foreach(TEST ${TESTS})
         PRIVATE
             ${TEST}.cpp)
 endforeach()
+
+target_sources(oclgl
+    PRIVATE
+        ${OCLTST_DIR}/module/common/OCLGLCommon.cpp
+        ${OCLTST_DIR}/module/common/OCLGLCommonLinux.cpp)
+
+target_include_directories(oclgl
+    PUBLIC
+        ${OPENGL_INCLUDE_DIR}
+        ${GLEW_INCLUDE_DIRS})
 
 set_target_properties(oclgl PROPERTIES
     CXX_STANDARD 14

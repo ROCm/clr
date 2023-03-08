@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#include "OCLPerfSepia.h"
+#include "OCLGLPerfSepia.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -158,11 +158,11 @@ const static char *strKernel =
     "/*o0*/);\n"
     "}\n";
 
-OCLPerfSepia::OCLPerfSepia() { _numSubTests = 2; }
+OCLGLPerfSepia::OCLGLPerfSepia() { _numSubTests = 2; }
 
-OCLPerfSepia::~OCLPerfSepia() {}
+OCLGLPerfSepia::~OCLGLPerfSepia() {}
 
-void OCLPerfSepia::open(unsigned int test, char *units, double &conversion,
+void OCLGLPerfSepia::open(unsigned int test, char *units, double &conversion,
                         unsigned int deviceId) {
   bVerify_ = false;
   silentFailure_ = false;
@@ -215,7 +215,7 @@ void OCLPerfSepia::open(unsigned int test, char *units, double &conversion,
   }
 }
 
-void OCLPerfSepia::populateData(void) {
+void OCLGLPerfSepia::populateData(void) {
   width_ = WIDTH;
   height_ = HEIGHT;
   bpr_ = 4 * width_;
@@ -225,7 +225,7 @@ void OCLPerfSepia::populateData(void) {
   }
 }
 
-void OCLPerfSepia::runGL(void) {
+void OCLGLPerfSepia::runGL(void) {
   glDisable(GL_ALPHA_TEST);
   glDisable(GL_DEPTH_TEST);
   glDisable(GL_SCISSOR_TEST);
@@ -392,7 +392,7 @@ void OCLPerfSepia::runGL(void) {
   glDeleteProgramsARB(1, &fragmentProgram);
 }
 
-void OCLPerfSepia::runCL(void) {
+void OCLGLPerfSepia::runCL(void) {
   cl_mem dst, src;
   cl_sampler nearestZero;
 
@@ -508,7 +508,7 @@ void OCLPerfSepia::runCL(void) {
   _wrapper->clReleaseMemObject(dst), dst = NULL;
 }
 
-void OCLPerfSepia::GetKernelExecDimsForImage(unsigned int work_group_size,
+void OCLGLPerfSepia::GetKernelExecDimsForImage(unsigned int work_group_size,
                                              unsigned int w, unsigned int h,
                                              size_t *global, size_t *local) {
   unsigned int a, b;
@@ -533,7 +533,7 @@ void OCLPerfSepia::GetKernelExecDimsForImage(unsigned int work_group_size,
   global[1] *= local[1];
 }
 
-void OCLPerfSepia::run(void) {
+void OCLGLPerfSepia::run(void) {
   if (_errorFlag || silentFailure_) {
     return;
   }
@@ -553,7 +553,7 @@ void OCLPerfSepia::run(void) {
   _perfInfo = (float)timer_.GetElapsedTime();
 }
 
-void OCLPerfSepia::verifyResult(void) {
+void OCLGLPerfSepia::verifyResult(void) {
   int r = 0, g = 0, b = 0, a = 0, d = 0;
   for (unsigned int k = 0; k < height_ * bpr_; k += 4) {
     a = a + result_[k + 0];
@@ -565,7 +565,7 @@ void OCLPerfSepia::verifyResult(void) {
       abs(a - 267386880);
   CHECK_RESULT(d > 20000, "wrong result");
 }
-unsigned int OCLPerfSepia::close(void) {
+unsigned int OCLGLPerfSepia::close(void) {
   if (silentFailure_) {
     return 0;
   }
