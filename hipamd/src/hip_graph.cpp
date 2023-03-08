@@ -2224,8 +2224,11 @@ hipError_t hipGraphMemFreeNodeGetParams(hipGraphNode_t node, void* dev_ptr) {
 // ================================================================================================
 hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
   HIP_INIT_API(hipDeviceGetGraphMemAttribute, device, attr, value);
-  if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0 || value == nullptr) {
+  if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
+  }
+  if (value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
   hipError_t result = hipErrorInvalidValue;
   switch (attr) {
@@ -2254,8 +2257,11 @@ hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType at
 // ================================================================================================
 hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAttributeType attr, void* value) {
   HIP_INIT_API(hipDeviceSetGraphMemAttribute, device, attr, value);
-  if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0 || value == nullptr) {
+  if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
+  }
+  if (value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
   hipError_t result = hipErrorInvalidValue;
   switch (attr) {
