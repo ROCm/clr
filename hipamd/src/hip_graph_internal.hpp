@@ -544,6 +544,7 @@ struct hipGraphExec {
   std::unordered_set<hipUserObject*> graphExeUserObj_;
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
+  bool repeatLaunch_ = false;
  public:
   hipGraphExec(std::vector<Node>& levelOrder, std::vector<std::vector<Node>>& lists,
                std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
@@ -1878,6 +1879,12 @@ class hipGraphMemAllocNode : public hipGraphNode {
     }
     return node_params_.dptr;
   }
+
+  bool IsActiveMem() {
+    auto graph = GetParentGraph();
+    return graph->ProbeMemory(node_params_.dptr);
+  }
+
 
   void GetParams(hipMemAllocNodeParams* params) const {
     std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));

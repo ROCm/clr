@@ -1260,11 +1260,7 @@ hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t g
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  // enable when change is merged to hip
-  // if (flags == hipGraphInstantiateFlagAutoFreeOnLaunch) {
-  // Free any unfreed memory allocations before the graph is relaunched
-  //}
-  HIP_RETURN_DURATION(ihipGraphInstantiate(pGraphExec, graph));
+  HIP_RETURN_DURATION(ihipGraphInstantiate(pGraphExec, graph, flags));
 }
 
 hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
