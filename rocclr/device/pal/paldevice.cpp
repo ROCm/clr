@@ -327,12 +327,6 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                 uint numExclusiveComputeRings) {
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = palProp.vendorId;
-  // Set uuid
-  memcpy(info_.uuid_, &palProp.pciProperties.domainNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 4, &palProp.pciProperties.busNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 8, &palProp.pciProperties.deviceNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 12, &palProp.pciProperties.functionNumber, sizeof(uint32_t));
-  
   info_.maxWorkItemDimensions_ = 3;
 
   info_.maxComputeUnits_ = settings().enableWgpMode_
@@ -844,11 +838,23 @@ uint32_t gNumDevices = 0;
 
 bool Device::create(Pal::IDevice* device) {
   resourceList_ = new std::unordered_set<Resource*>();
+  char uuidByte[4];
   if (nullptr == resourceList_) {
     return false;
   }
   appProfile_.init();
   device_ = device;
+
+  // Construct uuid from pal prop
+  memset(info_.uuid_, 0, sizeof(info_.uuid_));
+  sprintf(uuidByte, "%04x", properties().pciProperties.domainNumber);
+  strncpy(info_.uuid_, uuidByte, 4);
+  sprintf(uuidByte, "%04x", properties().pciProperties.busNumber);
+  strncpy(info_.uuid_+4, uuidByte, 4);
+  sprintf(uuidByte, "%04x", properties().pciProperties.deviceNumber);
+  strncpy(info_.uuid_+8, uuidByte, 4);
+  sprintf(uuidByte, "%04x", properties().pciProperties.functionNumber);
+  strncpy(info_.uuid_+12, uuidByte, 4);
 
   // Retrive device properties
   Pal::Result result = iDev()->GetProperties(&properties_);
