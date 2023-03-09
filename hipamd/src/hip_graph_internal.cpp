@@ -579,6 +579,20 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
       levelOrder_[0]->GetParentGraph()->FreeAllMemory();
     }
   }
+
+  // If this is a repeat launch, make sure corresponding MemFreeNode exists for a MemAlloc node
+  if (repeatLaunch_ == true) {
+    for (auto& node : levelOrder_) {
+      if (node->GetType() == hipGraphNodeTypeMemAlloc &&
+          static_cast<hipGraphMemAllocNode*>(node)->IsActiveMem() == true) {
+          return hipErrorInvalidValue;
+      }
+    }
+  }
+  else {
+    repeatLaunch_ = true;
+  }
+
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
                                         : reinterpret_cast<hip::Stream*>(stream);
   UpdateStream(parallelLists_, hip_stream, this);
