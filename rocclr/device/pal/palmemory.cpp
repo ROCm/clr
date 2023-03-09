@@ -456,6 +456,7 @@ Memory::~Memory() {
 }
 
 void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags) {
+  amd::ScopedLock lock(owner()->lockMemoryOps());
   // If the last writer was another GPU, then make a writeback
   if (isChacheCoherencySync() && (owner()->getLastWriter() != nullptr) &&
       (&dev() != owner()->getLastWriter())) {
@@ -508,7 +509,6 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
         syncFlagsTmp.skipEntire_ = syncFlags.skipEntire_;
       }
 
-      amd::ScopedLock lock(owner()->lockMemoryOps());
       for (auto& sub : owner()->subBuffers()) {
         //! \note Don't allow subbuffer's allocation in the worker thread.
         //! It may cause a system lock, because possible resource
