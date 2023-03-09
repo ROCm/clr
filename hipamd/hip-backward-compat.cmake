@@ -29,6 +29,8 @@ set(HIP_WRAPPER_FINDHIP_DIR ${HIP_WRAPPER_DIR}/FindHIP)
 set(HIP_SRC_INC_DIR ${HIP_SRC_PATH}/include/hip)
 set(HIP_SRC_BIN_DIR ${HIP_SRC_PATH}/bin)
 set(HIP_INFO_FILE ".hipInfo")
+set(HIP_AMD_DETAIL_DIR "amd_detail")
+set(HIP_NVIDIA_DETAIL_DIR "nvidia_detail")
 
 #Function to set actual file contents in wrapper files
 #Some components grep for the contents in the file
@@ -46,8 +48,8 @@ endfunction()
 #use header template file and generate wrapper header files
 function(generate_wrapper_header)
 #create respecitve folder in /opt/rocm/hip
-  file(MAKE_DIRECTORY ${HIP_WRAPPER_INC_DIR}/amd_detail)
-  file(MAKE_DIRECTORY ${HIP_WRAPPER_INC_DIR}/nvidia_detail)
+  file(MAKE_DIRECTORY ${HIP_WRAPPER_INC_DIR}/${HIP_AMD_DETAIL_DIR})
+  file(MAKE_DIRECTORY ${HIP_WRAPPER_INC_DIR}/${HIP_NVIDIA_DETAIL_DIR})
 
   #find all header files from include/hip
   file(GLOB include_files ${HIP_BUILD_DIR}/include/hip/*.h)
@@ -59,7 +61,8 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/${file_name}\"\n")
+    set(headerfile_dir "hip")
+    set(include_statements "#include \"../../../${CMAKE_INSTALL_INCLUDEDIR}/${headerfile_dir}/${file_name}\"\n")
     if(${file_name} STREQUAL "hip_version.h")
       set_file_contents(${header_file})
     else()
@@ -68,7 +71,7 @@ function(generate_wrapper_header)
   endforeach()
 
   #find all header files from include/hip/amd_detail
-  file(GLOB include_files ${HIP_SRC_INC_DIR}/amd_detail/*)
+  file(GLOB include_files ${HIP_SRC_INC_DIR}/${HIP_AMD_DETAIL_DIR}/*)
   #Convert the list of files into #includes
   foreach(header_file ${include_files})
     # set include guard
@@ -77,13 +80,14 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_AMD_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail/${file_name}\"\n")
+    set(headerfile_dir "hip/${HIP_AMD_DETAIL_DIR}")
+    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/${headerfile_dir}/${file_name}\"\n")
 
-    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/amd_detail/${file_name})
+    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/${HIP_AMD_DETAIL_DIR}/${file_name})
   endforeach()
 
   #find all header files from include/hip/nvidia_detail
-  file(GLOB include_files ${HIP_SRC_INC_DIR}/nvidia_detail/*)
+  file(GLOB include_files ${HIP_SRC_INC_DIR}/${HIP_NVIDIA_DETAIL_DIR}/*)
   #Convert the list of files into #includes
   foreach(header_file ${include_files})
     # set include guard
@@ -92,9 +96,10 @@ function(generate_wrapper_header)
     set(include_guard "HIP_WRAPPER_INCLUDE_HIP_NVIDIA_DETAIL_${INC_GAURD_NAME}_H")
     #set #include statement
     get_filename_component(file_name ${header_file} NAME)
-    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/hip/nvidia_detail/${file_name}\"\n")
+    set(headerfile_dir "hip/${HIP_NVIDIA_DETAIL_DIR}")
+    set(include_statements "#include \"../../../../${CMAKE_INSTALL_INCLUDEDIR}/${headerfile_dir}/${file_name}\"\n")
 
-    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/nvidia_detail/${file_name})
+    configure_file(${HIP_SRC_PATH}/header_template.hpp.in ${HIP_WRAPPER_INC_DIR}/${HIP_NVIDIA_DETAIL_DIR}/${file_name})
   endforeach()
 
 endfunction()
