@@ -518,7 +518,7 @@ hipError_t hipDeviceSynchronize ( void ) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
 
-  if (hip::Stream::StreamCaptureOngoing() == true) {
+  if (hip::Stream::StreamCaptureOngoing(reinterpret_cast<hipStream_t>(stream)) == true) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 

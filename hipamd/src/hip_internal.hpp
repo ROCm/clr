@@ -300,7 +300,7 @@ namespace hip {
     static void destroyAllStreams(int deviceId);
 
     /// Check Stream Capture status to make sure it is done
-    static bool StreamCaptureOngoing(void);
+    static bool StreamCaptureOngoing(hipStream_t hStream);
 
     /// Returns capture status of the current stream
     hipStreamCaptureStatus GetCaptureStatus() const { return captureStatus_; }
@@ -574,5 +574,6 @@ constexpr bool kMarkerDisableFlush = true;   //!< Avoids command batch flush in 
 
 extern std::vector<hip::Stream*> g_captureStreams;
 extern amd::Monitor g_captureStreamsLock;
+extern amd::Monitor g_streamSetLock;
 extern std::unordered_set<hip::Stream*> g_allCapturingStreams;
 #endif // HIP_SRC_HIP_INTERNAL_H

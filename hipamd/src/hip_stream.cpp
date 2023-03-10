@@ -156,8 +156,18 @@ void Stream::destroyAllStreams(int deviceId) {
   }
 }
 
-bool Stream::StreamCaptureOngoing(void) {
-  return (g_allCapturingStreams.empty() == true) ? false : true;
+bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
+  // If any local thread has an ongoing or concurrent capture sequence initiated
+  // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
+  if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    return (g_captureStreams.empty() == true) ? false : true;
+  }
+  else {
+    amd::ScopedLock lock(g_streamSetLock);
+    return (g_allCapturingStreams.find(s) == g_allCapturingStreams.end() ? false : true);
+  }
 }
 
 bool Stream::existsActiveStreamForDevice(hip::Device* device) {
@@ -416,7 +426,7 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   }
   if (stream != nullptr) {
     // If still capturing return error
-    if (hip::Stream::StreamCaptureOngoing() == true) {
+    if (hip::Stream::StreamCaptureOngoing(stream) == true) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
@@ -526,7 +536,7 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   }
   if (stream != nullptr) {
     // If still capturing return error
-    if (hip::Stream::StreamCaptureOngoing() == true) {
+    if (hip::Stream::StreamCaptureOngoing(stream) == true) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
@@ -657,7 +667,7 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 // ================================================================================================
 hipError_t hipLaunchHostFunc(hipStream_t stream, hipHostFn_t fn, void* userData) {
   HIP_INIT_API(hipLaunchHostFunc, stream, fn, userData);
-  if (stream == nullptr && (hip::Stream::StreamCaptureOngoing() == true)) {
+  if (stream == nullptr && (hip::Stream::StreamCaptureOngoing(stream) == true)) {
     HIP_RETURN(hipErrorStreamCaptureImplicit);
   }
   HIP_RETURN(hipLaunchHostFunc_common(stream, fn, userData));
