@@ -2162,6 +2162,16 @@ hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (pNodeParams->bytesize == 0 || pNodeParams->poolProps.allocType != hipMemAllocationTypePinned
+      || pNodeParams->poolProps.location.type != hipMemLocationTypeDevice) {
+    pNodeParams->dptr = nullptr;
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (pNodeParams->poolProps.location.type == hipMemLocationTypeDevice) {
+    if (pNodeParams->poolProps.location.id < 0 || pNodeParams->poolProps.location.id >= g_devices.size()) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
   // Clear the pointer to allocated memory because it may contain stale/uninitialized data
   pNodeParams->dptr = nullptr;
   auto mem_alloc_node = new hipGraphMemAllocNode(pNodeParams);
