@@ -29,7 +29,7 @@
 
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
-static amd::Monitor g_streamSetLock{"StreamCaptureset"};
+amd::Monitor g_streamSetLock{"StreamCaptureset"};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
 
 inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
