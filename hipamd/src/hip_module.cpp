@@ -690,12 +690,15 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
                                              void** kernelParams, uint32_t sharedMemBytes,
                                              hipStream_t hStream) {
   if (!hip::isValid(hStream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   hipFunction_t func = nullptr;
   int deviceId = hip::Stream::DeviceId(hStream);
-  HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&func, f, deviceId));
+  hipError_t getStatFuncError = PlatformState::instance().getStatFunc(&func, f, deviceId);
+  if (getStatFuncError != hipSuccess) {
+    return getStatFuncError;
+  }
   const amd::Device* device = g_devices[deviceId]->devices()[0];
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
@@ -704,7 +707,7 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
       globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max() ||
       (blockDim.x * blockDim.y * blockDim.z > device->info().maxWorkGroupSize_)) {
-    return HIP_RETURN(hipErrorInvalidConfiguration);
+    return hipErrorInvalidConfiguration;
   }
 
   return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),

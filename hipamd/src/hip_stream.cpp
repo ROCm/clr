@@ -805,7 +805,7 @@ hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
   }
 
   if (!hip::isValid(stream)) {
-    return HIP_RETURN(hipErrorContextIsDestroyed);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   if (stream == nullptr) {  // handle null stream

@@ -2249,7 +2249,7 @@ hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType at
     default:
       break;
   }
-  return HIP_RETURN(result);
+  HIP_RETURN(result);
 }
 
 // ================================================================================================
@@ -2274,7 +2274,7 @@ hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAttributeType at
     default:
       break;
   }
-  return HIP_RETURN(result);
+  HIP_RETURN(result);
 }
 
 // ================================================================================================
@@ -2284,7 +2284,7 @@ hipError_t hipDeviceGraphMemTrim(int device) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
   g_devices[device]->GetGraphMemoryPool()->TrimTo(0);
-  return HIP_RETURN(hipSuccess);
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
@@ -2417,7 +2417,7 @@ hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
   }
   if (!(hNode->GetType() == hipGraphNodeTypeKernel || hNode->GetType() == hipGraphNodeTypeMemcpy ||
         hNode->GetType() == hipGraphNodeTypeMemset)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
   clonedNode->SetEnabled(isEnabled);
   HIP_RETURN(hipSuccess);
@@ -2436,7 +2436,7 @@ hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
   }
   if (!(hNode->GetType() == hipGraphNodeTypeKernel || hNode->GetType() == hipGraphNodeTypeMemcpy ||
         hNode->GetType() == hipGraphNodeTypeMemset)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
   *isEnabled = clonedNode->GetEnabled();
   HIP_RETURN(hipSuccess);
