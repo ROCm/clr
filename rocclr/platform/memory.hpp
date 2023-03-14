@@ -201,6 +201,7 @@ class Memory : public amd::RuntimeObject {
       uint32_t canBeCached_ : 1;       //!< flag to if the object can be cached
       uint32_t p2pAccess_ : 1;         //!< Memory object allows P2P access
       uint32_t ipcShared_ : 1;         //!< Memory shared between processes
+      uint32_t largeBarSystem_ : 1;    //!< VRAM is visiable for host
     };
     uint32_t flagsEx_;
   };

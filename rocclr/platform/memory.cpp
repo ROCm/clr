@@ -285,6 +285,9 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
   }
 
   const std::vector<Device*>& devices = context_().devices();
+  if (devices.size() == 1 && devices[0]->info().largeBar_) {
+      largeBarSystem_ = 1;
+  }
 
   // Forces system memory allocation on the device,
   // instead of device memory
@@ -500,7 +503,8 @@ bool Memory::usesSvmPointer() const {
 
 void Memory::commitSvmMemory() {
   ScopedLock lock(lockMemoryOps_);
-  if (!svmPtrCommited_) {
+  // if VRAM is visible for host, it is not necessary to mmap again
+  if (!svmPtrCommited_ && !largeBarSystem_) {
     amd::Os::commitMemory(svmHostAddress_, size_, amd::Os::MEM_PROT_RW);
     svmPtrCommited_ = true;
   }
