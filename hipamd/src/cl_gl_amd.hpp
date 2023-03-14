@@ -175,7 +175,7 @@ public:
         GLenum              glCubemapFace = 0)
         : Image(amdContext, clType, clFlags, format, width, height, depth,
             Format(format).getElementSize() * width,
-            Format(format).getElementSize() * width * depth)
+            Format(format).getElementSize() * width * height)
         , GLObject(glTarget, gluiName, gliMipLevel, glInternalFormat,
             static_cast<GLint>(width), static_cast<GLint>(height),
             static_cast<GLint>(depth), clGLType, glCubemapFace,numSamples)
