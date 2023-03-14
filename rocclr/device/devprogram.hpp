@@ -435,9 +435,6 @@ class Program : public amd::HeapObject {
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
     char* outBinary[] = nullptr, size_t* outSize = nullptr);
 
-  //! Set the OCL language
-  void setLanguage(const char* clStd, amd_comgr_language_t* langver);
-
   //! Create code object and add it into the data set
   amd_comgr_status_t addCodeObjData(const char *source,
     const size_t size, const amd_comgr_data_kind_t type,
