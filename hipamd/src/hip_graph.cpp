@@ -1829,6 +1829,16 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
   if (!hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  // First remove all the edges both incoming and outgoing from node.
+  for(auto& edge : node->GetEdges()) {
+    node->RemoveUpdateEdge(edge);
+  }
+  const std::vector<Node>& dependencies = node->GetDependencies();
+  for(auto& parent: dependencies) {
+    parent->RemoveEdge(node);
+    parent->SetOutDegree(parent->GetOutDegree() - 1);
+  }
+  // Remove the node from graph.
   node->GetParentGraph()->RemoveNode(node);
   HIP_RETURN(hipSuccess);
 }
