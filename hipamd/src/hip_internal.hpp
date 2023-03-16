@@ -166,7 +166,6 @@ static  amd::Monitor g_hipInitlock{"hipInit lock"};
     if (hip::tls.capture_streams_.size() != 0) {                                                   \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
-    amd::ScopedLock lock(g_captureStreamsLock);                                                    \
     if (g_captureStreams.size() != 0) {                                                            \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \

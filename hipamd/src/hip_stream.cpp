@@ -470,10 +470,12 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   }
   s->GetDevice()->RemoveStreamFromPools(s);
 
-  amd::ScopedLock lock(g_captureStreamsLock);
-  const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
-  if (g_it != g_captureStreams.end()) {
-    g_captureStreams.erase(g_it);
+  {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
+    if (g_it != g_captureStreams.end()) {
+      g_captureStreams.erase(g_it);
+    }
   }
   const auto& l_it = std::find(hip::tls.capture_streams_.begin(),
                       hip::tls.capture_streams_.end(), s);
