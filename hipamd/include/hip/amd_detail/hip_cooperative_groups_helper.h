@@ -82,7 +82,10 @@ using is_valid_type =
 
 namespace internal {
 
-/** \brief Enums representing different cooperative group types
+/**
+* @brief Enums representing different cooperative group types
+* @note  This enum is only applicable on Linux.
+*
  */
 typedef enum {
   cg_invalid,
@@ -92,9 +95,23 @@ typedef enum {
   cg_tiled_group,
   cg_coalesced_group
 } group_type;
-
 /**
- *  Functionalities related to multi-grid cooperative group type
+ *  @ingroup CooperativeG
+ *  @{
+ *  This section describes the cooperative groups functions of HIP runtime API.
+ *  
+ *  The cooperative groups provides flexible thread parallel programming algorithms, threads
+ *  cooperate and share data to perform collective computations.
+ *
+ *  @note  Cooperative groups feature is implemented on Linux, under developement
+ *  on Windows.
+ *
+ */
+/**
+ *
+ * @brief  Functionalities related to multi-grid cooperative group type
+ * @note  The following cooperative groups functions are only applicable on Linux.
+ *
  */
 namespace multi_grid {
 
@@ -116,7 +133,8 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
 }  // namespace multi_grid
 
 /**
- *  Functionalities related to grid cooperative group type
+ *  @brief Functionalities related to grid cooperative group type
+ *  @note  The following cooperative groups functions are only applicable on Linux.
  */
 namespace grid {
 
@@ -149,8 +167,9 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 }  // namespace grid
 
 /**
- *  Functionalities related to `workgroup` (thread_block in CUDA terminology)
+ *  @brief Functionalities related to `workgroup` (thread_block in CUDA terminology)
  *  cooperative group type
+ *  @note  The following cooperative groups functions are only applicable on Linux.
  */
 namespace workgroup {
 
@@ -216,7 +235,9 @@ __CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int 
 }  // namespace internal
 
 }  // namespace cooperative_groups
-
+/**
+*  @}
+*/
 #pragma clang diagnostic pop
 #endif  // __cplusplus
 #endif  // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COOPERATIVE_GROUPS_HELPER_H
