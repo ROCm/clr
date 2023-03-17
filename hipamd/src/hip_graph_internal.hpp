@@ -1628,8 +1628,6 @@ class hipGraphMemsetNode : public hipGraphNode {
 
   hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
     hipError_t hip_error = hipSuccess;
-    hipMemsetParams origParams = {};
-    GetParams(&origParams);
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
@@ -1648,16 +1646,38 @@ class hipGraphMemsetNode : public hipGraphNode {
     }
     size_t sizeBytes;
     if (params->height == 1) {
+      // 1D - for hipGraphMemsetNodeSetParams & hipGraphExecMemsetNodeSetParams, They return
+      // invalid value if new width is more than actual allocation.
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+      if (memObj != nullptr) {
+        if (params->width * params->elementSize > memObj->getSize()) {
+          return hipErrorInvalidValue;
+        }
+       }
       sizeBytes = params->width * params->elementSize;
-      if (sizeBytes != origParams.width * origParams.elementSize) {
-        return hipErrorInvalidValue;
-      }
       hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize, sizeBytes);
     } else {
-      sizeBytes = params->width * params->height * 1;
-      if (sizeBytes != origParams.width * origParams.height * 1) {
-        return hipErrorInvalidValue;
-      }
+      if (isExec) {
+        // 2D - hipGraphExecMemsetNodeSetParams returns invalid value if new width or new height is
+        // not same as what memset node is added with.
+        if (pMemsetParams_->width * pMemsetParams_->elementSize != params->width * params->elementSize
+         || pMemsetParams_->height != params->height) {
+          return hipErrorInvalidValue;
+        }
+      } else {
+        // 2D - hipGraphMemsetNodeSetParams returns invalid value if new width or new height is
+        // greter than actual allocation.
+        size_t discardOffset = 0;
+        amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+        if (memObj != nullptr) {
+          if (params->width * params->elementSize > memObj->getUserData().width_
+           || params->height > memObj->getUserData().height_) {
+            return hipErrorInvalidValue;
+           }
+        }
+       }
+      sizeBytes = params->width * params->elementSize * params->height * 1;
       hip_error =
           ihipMemset3D_validate({params->dst, params->pitch, params->width * params->elementSize, params->height},
                                 params->value, {params->width * params->elementSize, params->height, 1}, sizeBytes);
