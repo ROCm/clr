@@ -109,6 +109,11 @@ hipError_t hipImportExternalMemory(
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if ((memHandleDesc->type < hipExternalMemoryHandleTypeOpaqueFd) ||
+      (memHandleDesc->type > hipExternalMemoryHandleTypeD3D11ResourceKmt)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   size_t sizeBytes = memHandleDesc->size;
   amd::Context& amdContext = *hip::getCurrentDevice()->asContext();
 
@@ -173,6 +178,12 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
   if (extSem_out == nullptr || semHandleDesc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if ((semHandleDesc->type < hipExternalSemaphoreHandleTypeOpaqueFd) ||
+      (semHandleDesc->type > hipExternalSemaphoreHandleTypeD3D12Fence)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
 #ifdef _WIN32
