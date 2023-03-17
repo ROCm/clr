@@ -59,10 +59,13 @@ THE SOFTWARE.
 
 namespace cooperative_groups {
 
-/** \brief The base type of all cooperative group types
+/** @brief The base type of all cooperative group types
  *
  *  \details Holds the key properties of a constructed cooperative group types
  *           object, like the group type, its size, etc
+ *
+ *  @note  Cooperative groups feature is implemented on Linux, under developement
+ *  on Windows.
  */
 class thread_group {
  protected:
@@ -111,12 +114,28 @@ class thread_group {
   // synchronize the threads in the thread group
   __CG_QUALIFIER__ void sync() const;
 };
-
+/**
+ *-------------------------------------------------------------------------------------------------
+ *-------------------------------------------------------------------------------------------------
+ *  @defgroup CooperativeG Cooperative Groups
+ *  @ingroup API
+ *  @{
+ *  This section describes the cooperative groups functions of HIP runtime API.
+ *  
+ *  The cooperative groups provides flexible thread parallel programming algorithms, threads
+ *  cooperate and share data to perform collective computations.
+ *
+ *  @note  Cooperative groups feature is implemented on Linux, under developement
+ *  on Windows.
+ *
+ */
 /** \brief The multi-grid cooperative group type
  *
  *  \details Represents an inter-device cooperative group type where the
  *           participating threads within the group spans across multple
  *           devices, running the (same) kernel on these devices
+ * @note  The multi-grid cooperative group type is implemented on Linux, under developement
+ *  on Windows.
  */
 class multi_grid_group : public thread_group {
   // Only these friend functions are allowed to construct an object of this class
@@ -140,22 +159,26 @@ class multi_grid_group : public thread_group {
   __CG_QUALIFIER__ void sync() const { internal::multi_grid::sync(); }
 };
 
-/** \brief User exposed API interface to construct multi-grid cooperative
+/** @brief User exposed API interface to construct multi-grid cooperative
  *         group type object - `multi_grid_group`
  *
  *  \details User is not allowed to directly construct an object of type
  *           `multi_grid_group`. Instead, he should construct it through this
  *           API function
+ *  @note  This multi-grid cooperative API type is implemented on Linux, under developement
+ *  on Windows.
  */
 __CG_QUALIFIER__ multi_grid_group this_multi_grid() {
   return multi_grid_group(internal::multi_grid::size());
 }
 
-/** \brief The grid cooperative group type
+/** @brief The grid cooperative group type
  *
  *  \details Represents an inter-workgroup cooperative group type where the
  *           participating threads within the group spans across multiple
  *           workgroups running the (same) kernel on the same device
+ *  @note  This is implemented on Linux, under developement
+ *  on Windows.
  */
 class grid_group : public thread_group {
   // Only these friend functions are allowed to construct an object of this class
@@ -172,21 +195,25 @@ class grid_group : public thread_group {
   __CG_QUALIFIER__ void sync() const { internal::grid::sync(); }
 };
 
-/** \brief User exposed API interface to construct grid cooperative group type
+/** @brief User exposed API interface to construct grid cooperative group type
  *         object - `grid_group`
  *
  *  \details User is not allowed to directly construct an object of type
  *           `multi_grid_group`. Instead, he should construct it through this
  *           API function
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
  */
 __CG_QUALIFIER__ grid_group this_grid() { return grid_group(internal::grid::size()); }
 
-/** \brief   The workgroup (thread-block in CUDA terminology) cooperative group
+/** @brief   The workgroup (thread-block in CUDA terminology) cooperative group
  *           type
  *
  *  \details Represents an intra-workgroup cooperative group type where the
  *           participating threads within the group are exactly the same threads
  *           which are participated in the currently executing `workgroup`
+ *  @note  This is implemented on Linux, under developement
+ *  on Windows.
  */
 class thread_block : public thread_group {
   // Only these friend functions are allowed to construct an object of thi
@@ -231,6 +258,8 @@ class thread_block : public thread_group {
  *  \details User is not allowed to directly construct an object of type
  *           `thread_block`. Instead, he should construct it through this API
  *           function.
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
  */
 __CG_QUALIFIER__ thread_block this_thread_block() {
   return thread_block(internal::workgroup::size());
@@ -240,6 +269,8 @@ __CG_QUALIFIER__ thread_block this_thread_block() {
  *
  *  \details Represents one tiled thread group in a wavefront.
  *           This group type also supports sub-wave level intrinsics.
+ *  @note  This is implemented on Linux, under developement
+ *  on Windows.
  */
 
 class tiled_group : public thread_group {
@@ -288,6 +319,8 @@ class tiled_group : public thread_group {
  *
  *  \details Represents a active thread group in a wavefront.
  *           This group type also supports sub-wave level intrinsics.
+ *  @note  This is implemented on Linux, under developement
+ *  on Windows.
  */
 class coalesced_group : public thread_group {
  private:
@@ -431,6 +464,8 @@ class coalesced_group : public thread_group {
 /** \brief   User exposed API to create coalesced groups.
  *
  *  \details A collective operation that groups  all active lanes into a new thread group.
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
  */
 
 __CG_QUALIFIER__ coalesced_group coalesced_threads() {
@@ -439,6 +474,8 @@ __CG_QUALIFIER__ coalesced_group coalesced_threads() {
 
 /**
  *  Implemenation of all publicly exposed base class APIs
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
  */
 __CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
   switch (this->_type) {
@@ -463,7 +500,11 @@ __CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
     }
   }
 }
-
+/**
+ *  Implemenation of all publicly exposed thread group API
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
+ */
 __CG_QUALIFIER__ bool thread_group::is_valid() const {
   switch (this->_type) {
     case internal::cg_multi_grid: {
@@ -487,7 +528,11 @@ __CG_QUALIFIER__ bool thread_group::is_valid() const {
     }
   }
 }
-
+/**
+ *  Implemenation of all publicly exposed thread group sync API
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
+ */
 __CG_QUALIFIER__ void thread_group::sync() const {
   switch (this->_type) {
     case internal::cg_multi_grid: {
@@ -517,19 +562,40 @@ __CG_QUALIFIER__ void thread_group::sync() const {
 }
 
 /**
- *  Implemenation of publicly exposed `wrapper` APIs on top of basic cooperative
+ *  Implemenation of publicly exposed `wrapper` API on top of basic cooperative
  *  group type APIs
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
  */
 template <class CGTy> __CG_QUALIFIER__ uint32_t group_size(CGTy const& g) { return g.size(); }
-
+/**
+ *  Implemenation of publicly exposed `wrapper` API on top of basic cooperative
+ *  group type APIs
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
+ */
 template <class CGTy> __CG_QUALIFIER__ uint32_t thread_rank(CGTy const& g) {
   return g.thread_rank();
 }
-
+/**
+ *  Implemenation of publicly exposed `wrapper` API on top of basic cooperative
+ *  group type APIs
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
+ */
 template <class CGTy> __CG_QUALIFIER__ bool is_valid(CGTy const& g) { return g.is_valid(); }
-
+/**
+ *  Implemenation of publicly exposed `wrapper` API on top of basic cooperative
+ *  group type APIs
+ *  @note  This function is implemented on Linux, under developement
+ *  on Windows.
+ */
 template <class CGTy> __CG_QUALIFIER__ void sync(CGTy const& g) { g.sync(); }
-
+/**
+ * template class tile_base
+ *  @note  This class is implemented on Linux, under developement
+ *  on Windows.
+ */
 template <unsigned int tileSize> class tile_base {
  protected:
   _CG_STATIC_CONST_DECL_ unsigned int numThreads = tileSize;
@@ -543,7 +609,11 @@ template <unsigned int tileSize> class tile_base {
   // Number of threads within this tile
   __CG_STATIC_QUALIFIER__ unsigned int size() { return numThreads; }
 };
-
+/**
+ * template class thread_block_tile_base
+ *  @note  This class is implemented on Linux, under developement
+ *  on Windows.
+ */
 template <unsigned int size> class thread_block_tile_base : public tile_base<size> {
   static_assert(is_valid_tile_size<size>::value,
                 "Tile size is either not a power of 2 or greater than the wavefront size");
@@ -578,6 +648,8 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
 /** \brief   Group type - thread_block_tile
  *
  *  \details  Represents one tile of thread group.
+ *  @note  This type is implemented on Linux, under developement
+ *  on Windows.
  */
 
 template <unsigned int tileSize, class ParentCGTy = void>
@@ -598,6 +670,10 @@ class thread_block_tile_type : public thread_block_tile_base<tileSize>, public t
   using tbtBase::size;
   using tbtBase::sync;
   using tbtBase::thread_rank;
+// end of operative group
+/**
+* @}
+*/
 };
 
 
