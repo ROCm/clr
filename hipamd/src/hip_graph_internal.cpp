@@ -140,7 +140,6 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
 
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
     }
   }
   offset = 0;
@@ -150,7 +149,6 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
 
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
     }
   }
 
