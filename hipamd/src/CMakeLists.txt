@@ -56,7 +56,6 @@ option(DISABLE_DIRECT_DISPATCH "Disable Direct Dispatch" OFF)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
-find_package(ROCclr)
 
 if(BUILD_SHARED_LIBS)
   add_library(amdhip64 SHARED)
@@ -215,7 +214,7 @@ option(USE_PROF_API "Enable roctracer integration" ON)
 # Enable profiling API
 if(USE_PROF_API)
   set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
-  set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/include/hip/amd_detail/hip_prof_str.h")
+  set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h")
   set(PROF_API_HDR "${HIP_COMMON_INCLUDE_DIR}/hip/hip_runtime_api.h")
   set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
   set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
