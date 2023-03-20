@@ -1,0 +1,9 @@
+.*
+!.gitignore
+*.o
+*.exe
+*.swp
+lib
+packages
+build
+tags
