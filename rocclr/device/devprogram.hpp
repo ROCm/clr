@@ -119,6 +119,10 @@ class Program : public amd::HeapObject {
   typedef enum { InitKernel = 0, FiniKernel } kernel_kind_t;  //!< Kernel kind
   bool runInitFiniKernel(kernel_kind_t) const;
 
+#if defined(WITH_COMPILER_LIB)
+  static amd::Monitor buildLock_; //!< Global build lock for HSAIL which isn't thread-safe
+#endif
+
  protected:
    union {
      struct {
