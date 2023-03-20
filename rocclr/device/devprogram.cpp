@@ -74,6 +74,10 @@ inline static std::vector<std::string> splitSpaceSeparatedString(const char *str
   return vec;
 }
 
+#if defined(WITH_COMPILER_LIB)
+amd::Monitor Program::buildLock_("HSAIL build lock", true);
+#endif
+
 // ================================================================================================
 Program::Program(amd::Device& device, amd::Program& owner)
     : device_(device),
@@ -785,6 +789,8 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
   const std::vector<const std::string*>& headers,
   const char** headerIncludeNames, amd::option::Options* options) {
 #if defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   aclTargetInfo target;
 
@@ -1009,6 +1015,8 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
 bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
   amd::option::Options* options, bool createLibrary) {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create
@@ -1317,6 +1325,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
 // ================================================================================================
 bool Program::linkImplHSAIL(amd::option::Options* options) {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   bool finalize = true;
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
@@ -1870,6 +1880,8 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
 // ================================================================================================
 bool Program::loadHSAIL() {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   size_t binSize;
   void* bin = const_cast<void*>(amd::Hsail::ExtractSection(device().compiler(), binaryElf_,

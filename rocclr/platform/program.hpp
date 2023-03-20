@@ -119,25 +119,14 @@ class Program : public RuntimeObject {
 
   std::string programLog_;  //!< Log for parsing options, etc.
 
+  Monitor programLock_; //!< Lock to protect program data structure
+
  protected:
   //! Destroy this program.
   ~Program();
 
   //! Clears the program object if the app attempts to rebuild the program
   void clear();
-
-#if defined(WITH_COMPILER_LIB)
-  //! Global HSAIL build lock (remove when HSAIL is thread-safe).
-  static Monitor buildLock_;
-
-  //! Check if any device uses HSAIL
-  bool useHsail(const std::vector<Device*>& devices) const {
-    for (const auto& it : devices) {
-      if (!it->settings().useLightning_) return true;
-    }
-    return false;
-  }
-#endif
 
  public:
   //! Construct a new program to be compiled from the given source code.
@@ -147,7 +136,8 @@ class Program : public RuntimeObject {
         sourceCode_(sourceCode),
         language_(language),
         symbolTable_(NULL),
-        programLog_() {
+        programLog_(),
+        programLock_("Program lock", true) {
     for (auto i = 0; i != numHeaders; ++i) {
       headers_.emplace_back(headers[i]);
       headerNames_.emplace_back(headerNames[i]);
@@ -157,7 +147,8 @@ class Program : public RuntimeObject {
   //! Construct a new program associated with a context.
   Program(Context& context, Language language = Binary)
       : context_(context), language_(language),
-        symbolTable_(NULL) {}
+        symbolTable_(NULL),
+        programLock_("Program lock", true) {}
 
   //! Returns context, associated with the current program.
   const Context& context() const { return context_(); }
