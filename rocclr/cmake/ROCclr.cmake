@@ -46,6 +46,8 @@ include(ROCclrCompilerOptions)
 
 set(ROCCLR_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
 mark_as_advanced(ROCCLR_SRC_DIR)
+set(ROCCLR_INCLUDE_DIR "${ROCCLR_SRC_DIR}/include" PARENT_SCOPE)
+mark_as_advanced(ROCCLR_INCLUDE_DIR)
 
 set_target_properties(rocclr PROPERTIES
     CXX_STANDARD 17
