@@ -1626,13 +1626,25 @@ class hipGraphMemsetNode : public hipGraphNode {
     std::memcpy(params, pMemsetParams_, sizeof(hipMemsetParams));
   }
 
-  hipError_t SetParams(const hipMemsetParams* params) {
+  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
     hipError_t hip_error = hipSuccess;
     hipMemsetParams origParams = {};
     GetParams(&origParams);
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
+    }
+    if (isExec) {
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+      if (memObj != nullptr) {
+        amd::Memory *memObjOri = getMemoryObject(pMemsetParams_->dst, discardOffset);
+        if (memObjOri != nullptr) {
+          if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) {
+            return hipErrorInvalidValue;
+          }
+        }
+      }
     }
     size_t sizeBytes;
     if (params->height == 1) {
