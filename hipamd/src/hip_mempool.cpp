@@ -67,8 +67,12 @@ hipError_t hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device) {
 // ================================================================================================
 hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   HIP_INIT_API(hipMallocAsync, dev_ptr, size, stream);
-  if ((dev_ptr == nullptr) || (size == 0) || (!hip::isValid(stream))) {
+  if ((dev_ptr == nullptr) || (!hip::isValid(stream))) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (size == 0) {
+    *dev_ptr = nullptr;
+    HIP_RETURN(hipSuccess);
   }
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
     reinterpret_cast<hip::Stream*>(stream);
@@ -235,8 +239,12 @@ hipError_t hipMallocFromPoolAsync(
     hipMemPool_t mem_pool,
     hipStream_t stream) {
   HIP_INIT_API(hipMallocFromPoolAsync, dev_ptr, size, mem_pool, stream);
-  if ((dev_ptr == nullptr) || (size == 0) || (mem_pool == nullptr) || (!hip::isValid(stream))) {
+  if ((dev_ptr == nullptr) || (mem_pool == nullptr) || (!hip::isValid(stream))) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (size == 0) {
+    *dev_ptr = nullptr;
+    HIP_RETURN(hipSuccess);
   }
   STREAM_CAPTURE(hipMallocAsync, stream, mem_pool, size, dev_ptr);
 
