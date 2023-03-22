@@ -26,8 +26,8 @@
 namespace hip {
 
 // ================================================================================================
-hip::Stream* Device::NullStream(bool skip_alloc) {
-  if (null_stream_ == nullptr && !skip_alloc) {
+hip::Stream* Device::NullStream() {
+  if (null_stream_ == nullptr) {
     null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
   }
 
@@ -138,7 +138,7 @@ Device::~Device() {
   }
 
   if (null_stream_!= nullptr) {
-    null_stream_->release();
+    hip::Stream::Destroy(null_stream_);
   }
 }
 

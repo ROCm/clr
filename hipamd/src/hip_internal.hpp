@@ -259,7 +259,7 @@ namespace hip {
     std::unordered_set<hipEvent_t> captureEvents_;
     unsigned long long captureID_;
 
-    static inline CommandQueue::Priority convertToQueuePriority(Priority p){
+    static inline CommandQueue::Priority convertToQueuePriority(Priority p) {
       return p == Priority::High ? amd::CommandQueue::Priority::High : p == Priority::Low ?
                     amd::CommandQueue::Priority::Low : amd::CommandQueue::Priority::Normal;
     }
@@ -271,7 +271,6 @@ namespace hip {
 
     /// Creates the hip stream object, including AMD host queue
     bool Create();
-    virtual bool terminate() override;
     /// Get device ID associated with the current stream;
     int DeviceId() const;
     /// Get HIP device associated with the stream
@@ -289,14 +288,16 @@ namespace hip {
     /// Returns the CU mask for the current stream
     const std::vector<uint32_t> GetCUMask() const { return cuMask_; }
 
-    /// Sync all non-blocking streams
-    static void syncNonBlockingStreams(int deviceId);
+    /// Sync all streams
+    static void SyncAllStreams(int deviceId);
 
     /// Check whether any blocking stream running
     static bool StreamCaptureBlocking();
 
     /// Destroy all streams on a given device
     static void destroyAllStreams(int deviceId);
+
+    static void Destroy(hip::Stream* stream);
 
     /// Check Stream Capture status to make sure it is done
     static bool StreamCaptureOngoing(hipStream_t hStream);
@@ -450,9 +451,8 @@ namespace hip {
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-   hip::Stream* NullStream(bool skip_alloc = false);
+   hip::Stream* NullStream();
    Stream* GetNullStream();
-
 
     bool GetActiveStatus() {
       amd::ScopedLock lock(lock_);

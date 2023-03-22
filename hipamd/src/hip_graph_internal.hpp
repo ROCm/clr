@@ -578,7 +578,7 @@ struct hipGraphExec {
     // terminated after it complete execution
     for (auto stream : parallel_streams_) {
       if (stream != nullptr) {
-        stream->release();
+        hip::Stream::Destroy(stream);
       }
     }
     for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;

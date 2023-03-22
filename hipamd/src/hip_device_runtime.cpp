@@ -513,23 +513,9 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   HIP_RETURN(hipErrorNotSupported);
 }
 
-hipError_t hipDeviceSynchronize ( void ) {
+hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
-
-  hip::Stream* stream = hip::getNullStream();
-
-  if (!stream) {
-    HIP_RETURN(hipErrorOutOfMemory);
-  }
-
-  if (hip::Stream::StreamCaptureOngoing(reinterpret_cast<hipStream_t>(stream)) == true) {
-    HIP_RETURN(hipErrorStreamCaptureUnsupported);
-  }
-
-  stream->finish();
-
-  hip::Stream::syncNonBlockingStreams(hip::getCurrentDevice()->deviceId());
-
+  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId());
   HIP_RETURN(hipSuccess);
 }
 
