@@ -465,7 +465,7 @@ hipError_t hipGraphExec::CreateStreams(uint32_t num_streams) {
                                   hip::Stream::Priority::Normal, hipStreamNonBlocking);
     if (stream == nullptr || !stream->Create()) {
       if (stream != nullptr) {
-        stream->release();
+        hip::Stream::Destroy(stream);
       }
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!\n");
       return hipErrorOutOfMemory;
