@@ -268,8 +268,7 @@ hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device) {
 
   auto* deviceHandle = g_devices[device]->devices()[0];
   const auto& info = deviceHandle->info();
-
-  ::strncpy(uuid->bytes, info.uuid_, 16);
+  memcpy(uuid->bytes, info.uuid_, sizeof(info.uuid_));
 
   HIP_RETURN(hipSuccess);
 }
