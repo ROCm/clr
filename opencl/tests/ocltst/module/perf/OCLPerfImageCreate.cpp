@@ -186,6 +186,9 @@ void OCLPerfImageCreate::run(void) {
 }
 
 unsigned int OCLPerfImageCreate::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   if (memptr) {
     delete memptr;
   }

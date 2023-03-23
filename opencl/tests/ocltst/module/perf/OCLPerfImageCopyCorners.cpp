@@ -354,6 +354,9 @@ void OCLPerfImageCopyCorners::run(void) {
 }
 
 unsigned int OCLPerfImageCopyCorners::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   _wrapper->clFinish(cmd_queue_);
 
   if (srcBuffer_) {

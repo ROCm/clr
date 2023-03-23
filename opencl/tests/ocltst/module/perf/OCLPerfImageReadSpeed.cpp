@@ -284,6 +284,9 @@ void OCLPerfPinnedImageReadSpeed::open(unsigned int test, char *units,
 }
 
 unsigned int OCLPerfPinnedImageReadSpeed::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   if (memptr) {
     error_ = _wrapper->clEnqueueUnmapMemObject(cmd_queue_, inBuffer_, memptr, 0,
                                                NULL, NULL);

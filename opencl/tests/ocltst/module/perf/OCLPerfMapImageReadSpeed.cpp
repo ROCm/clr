@@ -206,6 +206,9 @@ void OCLPerfMapImageReadSpeed::run(void) {
 }
 
 unsigned int OCLPerfMapImageReadSpeed::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   if (outBuffer_) {
     error_ = _wrapper->clReleaseMemObject(outBuffer_);
     CHECK_RESULT_NO_RETURN(error_ != CL_SUCCESS,
