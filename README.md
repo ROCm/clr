@@ -18,11 +18,11 @@ Please refer to Prerequisite Actions in [ROCm Installation Guide](https://docs.a
 
 - Clone this repo
 - `cd clr && mkdir build && cd build`
-- For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR -G Ninja`
+- For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
   - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm-Developer-Tools/HIP)
-- For OpenCL™ : `cmake .. -DCLR_BUILD_OCL=ON -G Ninja`
-- `ninja` : to build
-- `ninja install` : to install
+- For OpenCL™ : `cmake .. -DCLR_BUILD_OCL=ON`
+- `make` : to build
+- `make install` : to install
 
 Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=ON` to configure command.
 
