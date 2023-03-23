@@ -191,6 +191,9 @@ void OCLPerfImageWriteSpeed::run(void) {
 }
 
 unsigned int OCLPerfImageWriteSpeed::close(void) {
+  if(skip_) {
+    return CL_SUCCESS;
+  }
   if (memptr) {
     delete memptr;
   }
@@ -305,6 +308,9 @@ void OCLPerfPinnedImageWriteSpeed::open(unsigned int test, char *units,
 }
 
 unsigned int OCLPerfPinnedImageWriteSpeed::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   if (memptr) {
     error_ = _wrapper->clEnqueueUnmapMemObject(cmd_queue_, inBuffer_, memptr, 0,
                                                NULL, NULL);

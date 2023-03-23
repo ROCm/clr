@@ -296,6 +296,10 @@ void OCLPerfImageSampleRate::run(void) {
 }
 
 unsigned int OCLPerfImageSampleRate::close(void) {
+  if (skip_)
+  {
+    return CL_SUCCESS;
+  }
   _wrapper->clFinish(cmd_queue_);
 
   if (inBuffer_) {
