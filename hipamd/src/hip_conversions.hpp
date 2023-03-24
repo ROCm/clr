@@ -97,19 +97,19 @@ cl_mem_object_type getCLMemObjectType(const unsigned int hipWidth,
                                       const unsigned int hipHeight,
                                       const unsigned int hipDepth,
                                       const unsigned int flags) {
-  if (flags == hipArrayDefault) {
+  if (flags & hipArrayLayered == hipArrayLayered) {
+    if ((hipWidth != 0) && (hipHeight == 0) && (hipDepth != 0)) {
+      return CL_MEM_OBJECT_IMAGE1D_ARRAY;
+    } else if ((hipWidth != 0) && (hipHeight != 0) && (hipDepth != 0)) {
+      return CL_MEM_OBJECT_IMAGE2D_ARRAY;
+    }
+  } else {
     if ((hipWidth != 0) && (hipHeight == 0) && (hipDepth == 0)) {
       return CL_MEM_OBJECT_IMAGE1D;
     } else if ((hipWidth != 0) && (hipHeight != 0) && (hipDepth == 0)) {
       return CL_MEM_OBJECT_IMAGE2D;
     } else if ((hipWidth != 0) && (hipHeight != 0) && (hipDepth != 0)) {
       return CL_MEM_OBJECT_IMAGE3D;
-    }
-  } else if (flags == hipArrayLayered) {
-    if ((hipWidth != 0) && (hipHeight == 0) && (hipDepth != 0)) {
-      return CL_MEM_OBJECT_IMAGE1D_ARRAY;
-    } else if ((hipWidth != 0) && (hipHeight != 0) && (hipDepth != 0)) {
-      return CL_MEM_OBJECT_IMAGE2D_ARRAY;
     }
   }
   // error scenario. ShouldNotReachHere()

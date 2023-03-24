@@ -44,6 +44,10 @@ hipError_t ihipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
                                    const hipResourceDesc* pResDesc) {
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
+  if (!info.imageSupport_) {
+    LogPrintfError("Texture not supported on the device %s", info.name_);
+    return hipErrorNotSupported;
+  }
 
   // Validate input params
   if (pSurfObject == nullptr || pResDesc == nullptr) {
