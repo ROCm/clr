@@ -945,7 +945,7 @@ bool fillMangledNames(std::vector<char>& dataVec, std::vector<std::string>& mang
     }
 
     mangledNames.push_back(std::string(mName));
-    delete mName;
+    delete [] mName;
   }
 
   amd::Comgr::release_data(dataObject);
