@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+rm_ldconfig() {
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
+}
+
+case "$1" in
+  purge)
+  ;;
+  remove | upgrade )
+    rm_ldconfig
+  ;;
+  *)
+    exit 0
+  ;;
+esac
