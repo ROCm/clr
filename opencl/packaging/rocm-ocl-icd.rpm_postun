@@ -1,0 +1,8 @@
+if [ $1 -eq 0 ]; then
+  # Remove rocm-opencl.conf during remove/uninstall operation
+  rm -f /@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
+fi
+# Remove icd file for uninstall and upgrade operation
+rm -f /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
+
+

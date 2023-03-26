@@ -1,0 +1,4 @@
+INSTALL_PATH=@CPACK_PACKAGING_INSTALL_PREFIX@
+
+echo ${INSTALL_PATH}/@CMAKE_INSTALL_LIBDIR@ > /@CMAKE_INSTALL_SYSCONFDIR@/ld.so.conf.d/10-rocm-opencl.conf && ldconfig
+mkdir -p /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors && (echo libamdocl64.so > /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@)
