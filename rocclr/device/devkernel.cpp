@@ -711,42 +711,44 @@ void Kernel::FindLocalWorkSize(size_t workDim, const amd::NDRange& gblWorkSize,
             tmp /= div;
           }
 
-          // Assuming DWORD access
-          const uint cacheLineMatch = device().info().globalMemCacheLineSize_ >> 2;
+          if (!workGroupInfo()->uniformWorkGroupSize_) {
+            // Assuming DWORD access
+            const uint cacheLineMatch = device().info().globalMemCacheLineSize_ >> 2;
 
-          // Check if we couldn't find optimal workload
-          if (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
-              // or size is too small for the cache line
-            (lclWorkSize[0] < cacheLineMatch)) {
-            size_t maxSize = 0;
-            size_t maxDim = 0;
-            for (uint d = 0; d < workDim; ++d) {
-              if (maxSize < gblWorkSize[d]) {
-                maxSize = gblWorkSize[d];
-                maxDim = d;
-              }
-            }
-            // Use X dimension as high priority. Runtime will assume that
-            // X dimension is more important for the address calculation
-            if ((maxDim != 0) && (gblWorkSize[0] >= (cacheLineMatch / 2))) {
-              lclWorkSize[0] = cacheLineMatch;
-              thrPerGrp /= cacheLineMatch;
-              lclWorkSize[maxDim] = thrPerGrp;
-              for (uint d = 1; d < workDim; ++d) {
-                if (d != maxDim) {
-                  lclWorkSize[d] = 1;
+            // Check if we couldn't find optimal workload
+            if (((lclWorkSize.product() % workGroupInfo()->wavefrontSize_) != 0) ||
+                // or size is too small for the cache line
+              (lclWorkSize[0] < cacheLineMatch)) {
+              size_t maxSize = 0;
+              size_t maxDim = 0;
+              for (uint d = 0; d < workDim; ++d) {
+                if (maxSize < gblWorkSize[d]) {
+                  maxSize = gblWorkSize[d];
+                  maxDim = d;
                 }
               }
-            }
-            else {
-              // Check if a local workgroup has the most optimal size
-              if (thrPerGrp > maxSize) {
-                thrPerGrp = maxSize;
+              // Use X dimension as high priority. Runtime will assume that
+              // X dimension is more important for the address calculation
+              if ((maxDim != 0) && (gblWorkSize[0] >= (cacheLineMatch / 2))) {
+                lclWorkSize[0] = cacheLineMatch;
+                thrPerGrp /= cacheLineMatch;
+                lclWorkSize[maxDim] = thrPerGrp;
+                for (uint d = 1; d < workDim; ++d) {
+                  if (d != maxDim) {
+                    lclWorkSize[d] = 1;
+                  }
+                }
               }
-              lclWorkSize[maxDim] = thrPerGrp;
-              for (uint d = 0; d < workDim; ++d) {
-                if (d != maxDim) {
-                  lclWorkSize[d] = 1;
+              else {
+                // Check if a local workgroup has the most optimal size
+                if (thrPerGrp > maxSize) {
+                  thrPerGrp = maxSize;
+                }
+                lclWorkSize[maxDim] = thrPerGrp;
+                for (uint d = 0; d < workDim; ++d) {
+                  if (d != maxDim) {
+                    lclWorkSize[d] = 1;
+                  }
                 }
               }
             }
