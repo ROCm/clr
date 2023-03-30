@@ -89,7 +89,7 @@ if(BUILD_ICD)
   set(CPACK_ICD_DEB "ON")
   set(CPACK_DEBIAN_ICD_PACKAGE_NAME "rocm-ocl-icd")
 
-  set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/prerm")
+  set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/prerm")
   set(CPACK_DEBIAN_ICD_PACKAGE_DEPENDS "rocm-core")
 
 # RPM CPACK variables
@@ -98,8 +98,8 @@ if(BUILD_ICD)
 
 
 
-  set(CPACK_RPM_ICD_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_post")
-  set(CPACK_RPM_ICD_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/packages/rocm-ocl-icd/rpm_postun")
+  set(CPACK_RPM_ICD_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/rpm_post")
+  set(CPACK_RPM_ICD_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/rpm_postun")
   set(CPACK_RPM_ICD_PACKAGE_REQUIRES "rocm-core")
 endif()
 
