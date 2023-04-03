@@ -64,7 +64,7 @@ if(BUILD_SHARED_LIBS)
     add_custom_command(TARGET amdhip64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdhip64>)
   endif()
 else()
-  add_library(amdhip64 STATIC $<TARGET_OBJECTS:rocclr>)
+  add_library(amdhip64 STATIC rocclr)
 endif()
 
 set_target_properties(amdhip64 PROPERTIES

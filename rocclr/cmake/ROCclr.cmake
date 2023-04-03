@@ -40,7 +40,7 @@ find_package(Threads REQUIRED)
 
 find_package(AMD_OPENCL)
 
-add_library(rocclr OBJECT)
+add_library(rocclr STATIC)
 
 include(ROCclrCompilerOptions)
 
