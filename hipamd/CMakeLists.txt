@@ -439,7 +439,7 @@ endif()
 #############################
 # HIT is not compatible with Windows
 if(NOT WIN32)
-set(HIP_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(HIP_ROOT_DIR ${CMAKE_INSTALL_PREFIX})
 set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 if(HIP_PLATFORM STREQUAL "nvidia")
     execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/include" "${HIP_ROOT_DIR}/include" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
@@ -449,6 +449,7 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/
 if(${RUN_HIT} EQUAL 0)
     execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
 endif()
+
 if(HIP_CATCH_TEST EQUAL "1")
 	message(STATUS "Building of catch tests through hipamd is no longer supported. Testing targets will not be available. catch tests have been moved to an independent github project hip-tests. Please refer to hip-tests Readme for build instructions! ")
 else()
