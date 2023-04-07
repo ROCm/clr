@@ -9,12 +9,18 @@ if(BUILD_TESTS)
 set(CPACK_COMPONENTS_ALL "${CPACK_COMPONENTS_ALL}" ocltst)
 endif()
 
+if(ENABLE_ASAN_PACKAGING)
+  set(CPACK_COMPONENTS_ALL asan)
+endif()
+
 set(CPACK_DEB_COMPONENT_INSTALL ON)
 set(CPACK_RPM_COMPONENT_INSTALL ON)
 
 install(TARGETS clinfo DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT binary)
 install(TARGETS amdocl DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+install(TARGETS amdocl DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan)
 install(FILES ${opencl_SOURCE_DIR}/LICENSE.txt DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT binary)
+install(FILES ${opencl_SOURCE_DIR}/LICENSE.txt DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
 
 install(DIRECTORY ${opencl_SOURCE_DIR}/khronos/headers/opencl2.2/CL
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT dev
@@ -25,6 +31,7 @@ install(DIRECTORY ${opencl_SOURCE_DIR}/khronos/headers/opencl2.2/CL
 
 if(BUILD_ICD)
   install(TARGETS OpenCL DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT icd )
+  install(TARGETS OpenCL DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan )
   install(FILES ${opencl_SOURCE_DIR}/khronos/icd/LICENSE DESTINATION ${CMAKE_INSTALL_DATADIR}/doc/rocm-ocl-icd COMPONENT icd)
 endif()
 
@@ -33,14 +40,19 @@ endif()
 set(CPACK_GENERATOR "DEB;RPM" CACHE STRING "Package types to build")
 set(CPACK_PACKAGE_CONTACT "ROCm OpenCL Support <rocm-opencl.support@amd.com>")
 set(CPACK_PACKAGE_VENDOR "Advanced Micro Devices, Inc.")
-set(CPACK_PACKAGE_DESCRIPTION "OpenCL: Open Computing Language on ROCclr")
-
-
-
+if(ENABLE_ASAN_PACKAGING)
+  set(CPACK_PACKAGE_DESCRIPTION "OpenCL: AddressSanitizer Instrumented libraries for Open Computing Language on ROCclr")
+else()
+  set(CPACK_PACKAGE_DESCRIPTION "OpenCL: Open Computing Language on ROCclr")
+endif()
 
 #########Binary-Package###############
 set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "rocm-opencl")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "rocm-opencl")
+
+## Set ASAN package name
+set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "rocm-opencl-asan")
+set(CPACK_RPM_ASAN_PACKAGE_NAME "rocm-opencl-asan")
 
 # Debian CPACK variables
 set(CPACK_BINARY_DEB "ON")
@@ -54,16 +66,20 @@ message("Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}")
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
 if(BUILD_ICD)
   set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "rocm-ocl-icd, libelf-dev, comgr, hsa-rocr, rocm-core")
+  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libelf-dev, comgr-asan, hsa-rocr-asan, rocm-core-asan")
 else()
   set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "ocl-icd-libopencl1, libelf-dev, comgr, hsa-rocr, rocm-core")
+  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "ocl-icd-libopencl1, libelf-dev, comgr-asan, hsa-rocr-asan, rocm-core-asan")
 endif()
 
 # RPM CPACK variables
 set(CPACK_BINARY_RPM "ON")
 if(BUILD_ICD)
   set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "rocm-ocl-icd, comgr, hsa-rocr, rocm-core")
+  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "comgr-asan, hsa-rocr-asan, rocm-core-asan")
 else()
   set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "ocl-icd, comgr, hsa-rocr, rocm-core")
+  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "ocl-icd, comgr-asan, hsa-rocr-asan, rocm-core-asan")
 endif()
 
 #Unable to set CPACK_RPM_BIANRY_PACKAGE_LICENSE to control individual pacakge license

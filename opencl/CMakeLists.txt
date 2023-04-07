@@ -17,8 +17,10 @@ include(GNUInstallDirs)
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
 option(BUILD_ICD "Enable building OpenCL ICD Loader" ON)
 option(EMU_ENV "Enable building for emulation environment" OFF)
-option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
-
+# Disable file reorg backward compatibilty for ASAN build
+if(NOT ENABLE_ASAN_PACKAGING)
+  option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
+endif()
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 if(BUILD_ICD)
