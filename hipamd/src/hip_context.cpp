@@ -26,7 +26,7 @@
 #include "utils/versions.hpp"
 
 std::vector<hip::Device*> g_devices;
-
+amd::Monitor g_hipInitlock{"hipInit lock"};
 namespace hip {
 thread_local TlsAggregator tls;
 amd::Context* host_context = nullptr;
