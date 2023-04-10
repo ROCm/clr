@@ -25,27 +25,40 @@ THE SOFTWARE. */
 
 namespace amd
 {
+
   class VkObject : public InteropObject
   {
-  protected:
-    amd::Os::FileDesc handleVk_;
 
   public:
+    enum HandleType {
+      ExternalMemoryFd = 1,
+      ExternalMemoryWin32 = 2,
+      ExternalMemoryWin32KMT = 3,
+    };
+
     //! GLObject constructor initializes member variables
     VkObject(
-      amd::Os::FileDesc handle
+      amd::Os::FileDesc handle,
+      VkObject::HandleType handle_type
     ) // Initialization of member variables
 
     {
       handleVk_ = handle;
+      handle_type_ = handle_type;
     }
 
     virtual ~VkObject() {}
     VkObject* asVkObject() { return this; }
     amd::Os::FileDesc getVkSharedHandle() const { return handleVk_; }
+    HandleType getHandleType() const { return handle_type_; }
 
+  protected:
+    amd::Os::FileDesc handleVk_;
+    VkObject::HandleType handle_type_;
 
   };
+
+
 
   class BufferVk : public Buffer, public VkObject
   {
@@ -63,15 +76,15 @@ namespace amd
     BufferVk(
       Context&          amdContext,
       size_t            uiSizeInBytes,
-      amd::Os::FileDesc handle)
-      : // Call base classes constructors
+      amd::Os::FileDesc handle,
+      VkObject::HandleType handle_type) :  // Call base classes constructors
       Buffer(
         amdContext,
         0,
         uiSizeInBytes
       ),
       VkObject(
-        handle
+        handle, handle_type
       )
     {
       setInteropObj(this);
@@ -99,15 +112,15 @@ namespace amd
     ImageVk(
       Context&          amdContext,
       size_t            uiSizeInBytes,
-      amd::Os::FileDesc handle)
-      : // Call base classes constructors
+      amd::Os::FileDesc handle,
+      VkObject::HandleType handle_type):  // Call base classes constructors
       Buffer(
         amdContext,
         0,
         uiSizeInBytes
       ),
       VkObject(
-        handle
+        handle, handle_type
       )
     {
       setInteropObj(this);
