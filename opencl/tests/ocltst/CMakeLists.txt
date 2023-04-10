@@ -5,7 +5,7 @@ set(OCLTST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 if (WIN32)
     set(OCLTST_INSTALL_DIR "tests/ocltst")
 else()
-    set(OCLTST_INSTALL_DIR "share/ocltst")
+    set(OCLTST_INSTALL_DIR "share/opencl/ocltst")
 endif()
 
 find_package(OpenGL)
