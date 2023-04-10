@@ -173,7 +173,7 @@ bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
   // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
   if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
     amd::ScopedLock lock(g_captureStreamsLock);
-    return (g_captureStreams.empty() == true) ? false : true;
+    return (g_captureStreams.empty() == true && hip::tls.capture_streams_.empty()) ? false : true;
   }
   else {
     amd::ScopedLock lock(g_streamSetLock);
