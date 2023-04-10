@@ -551,6 +551,9 @@ class Device : public NullDevice {
   //! Allocates hidden heap for device memory allocations
   void HiddenHeapAlloc(const VirtualGPU& gpu);
 
+  uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
+  void resetSDMAMask(const device::BlitManager* handle) const ;
+
  private:
   bool create();
 
@@ -619,7 +622,14 @@ class Device : public NullDevice {
   //! Pool of HSA queues with custom CU masks
   std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
 
+  //! Read and Write mask for device<->host
+  uint32_t maxSdmaReadMask;
+  uint32_t maxSdmaWriteMask;
+  //! Map of SDMA engineId<->stream
+  mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
+
  public:
+  constexpr static uint32_t kSkipQueryStatus = 1 << 31;
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 
   //! enum for keeping the total and available queue priorities

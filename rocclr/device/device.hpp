@@ -611,6 +611,7 @@ struct Info : public amd::EmbeddedObject {
   //! Number of VGPRs per SIMD
   uint32_t vgprsPerSimd_;
   uint32_t vgprAllocGranularity_;
+  uint32_t numSDMAengines_; //!< Number of available SDMA engines
 };
 
 //! Device settings

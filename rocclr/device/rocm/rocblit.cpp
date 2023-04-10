@@ -32,9 +32,7 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr),
-      lastCopyMask_(0),
-      lastUsedCopyEngine_(HwQueueEngine::Unknown) {}
+      context_(nullptr) {}
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -118,8 +116,9 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
         if (pinned != nullptr) {
           // Get device memory for this virtual device
           Memory* dstMemory = dev().getRocMemory(pinned);
-
-          if (!hsaCopy(gpuMem(srcMemory), *dstMemory, srcPin, dst, copySizePin)) {
+          const KernelBlitManager *kb = dynamic_cast<const KernelBlitManager*>(this);
+          if (!kb->copyBuffer(gpuMem(srcMemory), *dstMemory, srcPin, dst,
+                              copySizePin)) {
             LogWarning("DmaBlitManager::readBuffer failed a pinned copy!");
             gpu().addPinnedMem(pinned);
             break;
@@ -287,8 +286,9 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
         if (pinned != nullptr) {
           // Get device memory for this virtual device
           Memory* srcMemory = dev().getRocMemory(pinned);
-
-          if (!hsaCopy(*srcMemory, gpuMem(dstMemory), src, dstPin, copySizePin)) {
+          const KernelBlitManager *kb = dynamic_cast<const KernelBlitManager*>(this);
+          if (!kb->copyBuffer(*srcMemory, gpuMem(dstMemory), src, dstPin,
+                              copySizePin)) {
             LogWarning("DmaBlitManager::writeBuffer failed a pinned copy!");
             gpu().addPinnedMem(pinned);
             break;
@@ -677,63 +677,74 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     srcAgent = dstAgent = dev().getBackendDevice();
   }
 
+  uint32_t copyMask = 0;
+  uint32_t freeEngineMask = 0;
+
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
+    copyMask = dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
+    copyMask = dev().fetchSDMAMask(this, true);
   }
 
-  auto wait_events = gpu().Barriers().WaitingSignal(engine);
-  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
-  uint32_t freeEngineMask = 0;
-  uint32_t copyMask = lastCopyMask_;
+  if (engine != HwQueueEngine::Unknown) {
+    if (copyMask == Device::kSkipQueryStatus) {
+      // Do not query engine status or take copy_on_engine path
+      status = HSA_STATUS_ERROR_OUT_OF_RESOURCES;
+    }
 
-  if ((engine != lastUsedCopyEngine_)) {
-    // Check SDMA engine status
-    status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, freemask %x",
-            status, freeEngineMask);
-    // Return a mask with the rightmost bit set
-    copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
-  }
+    if (copyMask == 0) {
+      // Check SDMA engine status
+      status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask %x",
+              status, freeEngineMask);
+      // Return a mask with the rightmost bit set
+      copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+    }
 
-  if (copyMask != 0 && engine != HwQueueEngine::Unknown) {
-    // Copy on the first available free engine if ROCr returns a valid mask
-    hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
+    if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
+      auto wait_events = gpu().Barriers().WaitingSignal(engine);
+      hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+      // Copy on the first available free engine if ROCr returns a valid mask
+      hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
-            "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
-            dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
-            active.handle);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+              "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
+              "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
+              dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+              active.handle);
 
-    status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
-                                                size[0], wait_events.size(),
-                                                wait_events.data(), active, copyEngine, false);
+      status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
+                                                  size[0], wait_events.size(),
+                                                  wait_events.data(), active, copyEngine, false);
+      if (status != HSA_STATUS_SUCCESS) {
+        gpu().Barriers().ResetCurrentSignal();
+      }
+    }
   } else {
-    // Force copy with BLIT in ROCr. Forcing agents to the GPU device causes ROCr to take
-    // blit path internally
-    srcAgent = dstAgent = dev().getBackendDevice();
+    auto wait_events = gpu().Barriers().WaitingSignal(engine);
+    hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA Async Blit Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
-            "completion_signal=0x%zx",
-            dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
-            active.handle);
+        "HSA Async Blit Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
+        "completion_signal=0x%zx",
+        dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+        active.handle);
 
     status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
         size[0], wait_events.size(), wait_events.data(), active);
+    if (status != HSA_STATUS_SUCCESS) {
+      gpu().Barriers().ResetCurrentSignal();
+    }
   }
 
   if (status == HSA_STATUS_SUCCESS) {
-    lastUsedCopyEngine_ = engine;
-    lastCopyMask_ = copyMask;
     gpu().addSystemScope();
   } else {
-    gpu().Barriers().ResetCurrentSignal();
-    LogPrintfError("HSA copy from host to device failed with code %d", status);
+    LogPrintfError("HSA copy failed with code %d, falling to Blit copy", status);
   }
 
   return (status == HSA_STATUS_SUCCESS);
@@ -855,6 +866,9 @@ KernelBlitManager::~KernelBlitManager() {
       kernels_[i]->release();
     }
   }
+
+  dev().resetSDMAMask(this);
+
   if (nullptr != program_) {
     program_->release();
   }
@@ -2264,9 +2278,26 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
 #endif
 
-  if (setup_.disableHwlCopyBuffer_ ||
-      (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
-       !(p2p || asan) && !ipcShared)) {
+  bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
+                           (!srcMemory.isHostMemDirectAccess() &&
+                            !dstMemory.isHostMemDirectAccess() &&
+                            !(p2p || asan) && !ipcShared);
+
+  if (!useShaderCopyPath) {
+    if (amd::IS_HIP) {
+      // Update the command type for ROC profiler
+      if (srcMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER);
+      }
+      if (dstMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER);
+      }
+    }
+    result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire,
+                                        copyMetadata);
+  }
+
+  if (!result) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
@@ -2338,18 +2369,6 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
-  } else {
-    if (amd::IS_HIP) {
-      // Update the command type for ROC profiler
-      if (srcMemory.isHostMemDirectAccess()) {
-        gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER);
-      }
-      if (dstMemory.isHostMemDirectAccess()) {
-        gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER);
-      }
-    }
-    result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire,
-                                        copyMetadata);
   }
 
   synchronize();
