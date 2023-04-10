@@ -763,6 +763,7 @@ bool Resource::CreateInterop(CreateParams* params) {
   else if (memoryType() == VkInterop) {
     VkInteropParams* vparams = reinterpret_cast<VkInteropParams*>(params);
     openInfo.hExternalResource = vparams->handle_;
+    openInfo.flags.ntHandle = vparams->nt_handle_;
   }
 #ifdef ATI_OS_WIN
   else {

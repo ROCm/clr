@@ -357,6 +357,8 @@ bool Memory::createInterop() {
     memType = Resource::VkInterop;
     vkRes.handle_ = vkObject->getVkSharedHandle();
     vkRes.type_ = Resource::InteropTypeless;
+    vkRes.nt_handle_ =
+        (vkObject->getHandleType() == amd::VkObject::ExternalMemoryWin32) ? true : false;
   }
 
   else if (glObject != nullptr) {

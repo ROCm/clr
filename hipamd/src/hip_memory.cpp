@@ -113,9 +113,13 @@ hipError_t hipImportExternalMemory(
 
   amd::BufferVk* pBufferVk = nullptr;
 #ifdef _WIN32
-  pBufferVk = new (amdContext) amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle);
+  pBufferVk = new (amdContext)
+                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle,
+                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
 #else
-  pBufferVk = new (amdContext) amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd);
+  pBufferVk = new (amdContext)
+                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd,
+                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
 #endif
 
   if (!pBufferVk) {
