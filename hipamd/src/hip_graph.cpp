@@ -1932,8 +1932,9 @@ hipError_t hipGraphExecMemcpyNodeSetParamsFromSymbol(hipGraphExec_t hGraphExec, 
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  constexpr bool kCheckDeviceIsSame = true;
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeFromSymbol*>(clonedNode)
-                 ->SetParams(dst, symbol, count, offset, kind));
+                 ->SetParams(dst, symbol, count, offset, kind, kCheckDeviceIsSame));
 }
 
 hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -1994,8 +1995,9 @@ hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hi
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  constexpr bool kCheckDeviceIsSame = true;
   HIP_RETURN(reinterpret_cast<hipGraphMemcpyNodeToSymbol*>(clonedNode)
-                 ->SetParams(symbol, src, count, offset, kind));
+                 ->SetParams(symbol, src, count, offset, kind, kCheckDeviceIsSame));
 }
 
 hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,

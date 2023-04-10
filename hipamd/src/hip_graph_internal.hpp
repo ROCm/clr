@@ -1441,7 +1441,19 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
   }
 
   hipError_t SetParams(void* dst, const void* symbol, size_t count, size_t offset,
-                       hipMemcpyKind kind) {
+                       hipMemcpyKind kind, bool isExec = false) {
+    if (isExec) {
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(dst, discardOffset);
+      if (memObj != nullptr) {
+        amd::Memory *memObjOri = getMemoryObject(dst_, discardOffset);
+        if (memObjOri != nullptr) {
+          if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) {
+            return hipErrorInvalidValue;
+          }
+        }
+      }
+    }
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
     // check to see if dst is also a symbol (hip negative test case)
@@ -1520,7 +1532,19 @@ class hipGraphMemcpyNodeToSymbol : public hipGraphMemcpyNode1D {
   }
 
   hipError_t SetParams(const void* symbol, const void* src, size_t count, size_t offset,
-                       hipMemcpyKind kind) {
+                       hipMemcpyKind kind, bool isExec = false) {
+    if (isExec) {
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(src, discardOffset);
+      if (memObj != nullptr) {
+        amd::Memory *memObjOri = getMemoryObject(src_, discardOffset);
+        if (memObjOri != nullptr) {
+          if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) {
+            return hipErrorInvalidValue;
+          }
+        }
+      }
+    }
     size_t sym_size = 0;
     hipDeviceptr_t device_ptr = nullptr;
     // check to see if src is also a symbol (hip negative test case)
