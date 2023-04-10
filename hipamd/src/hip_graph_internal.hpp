@@ -1456,11 +1456,12 @@ class hipGraphMemcpyNodeFromSymbol : public hipGraphMemcpyNode1D {
 
     size_t dOffset = 0;
     amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
-    if (dstMemory == nullptr && kind != hipMemcpyHostToDevice) {
+    if (dstMemory == nullptr && kind != hipMemcpyDeviceToHost && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
-    } else if (dstMemory != nullptr && kind != hipMemcpyDeviceToDevice) {
+    } else if (dstMemory != nullptr && dstMemory->getMemFlags() == 0 && 
+               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
-    } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyDeviceToHost) {
+    } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyHostToDevice) {
       return hipErrorInvalidMemcpyDirection;
     }
 
