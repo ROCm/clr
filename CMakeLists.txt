@@ -30,9 +30,23 @@ option(CLR_BUILD_OCL "Build OCL" OFF)
 #############
 # Build steps
 #############
-if(CLR_BUILD_HIP OR CLR_BUILD_OCL)
+if(CLR_BUILD_HIP)
+    # Determine HIP_PLATFORM
+    set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
+    if(NOT DEFINED HIP_PLATFORM)
+        if(NOT DEFINED ENV{HIP_PLATFORM})
+            execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform
+                OUTPUT_VARIABLE HIP_PLATFORM
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+        else()
+            set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+        endif()
+    endif()
+endif()
+
+if((CLR_BUILD_HIP AND HIP_PLATFORM STREQUAL "amd") OR CLR_BUILD_OCL)
     add_subdirectory(rocclr)
-else()
+elseif(HIP_PLATFORM STREQUAL "amd")
     message(FATAL_ERROR "Please enable building of one or more of the below runtimes:\n- HIP (-DCLR_BUILD_HIP=ON)\n- OpenCL (-DCLR_BUILD_OCL-ON)")
 endif()
 if(CLR_BUILD_HIP)
