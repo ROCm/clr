@@ -181,14 +181,16 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
       (semHandleDesc->type > hipExternalSemaphoreHandleTypeD3D12Fence)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
 #ifdef _WIN32
-  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.win32.handle)) {
+  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.win32.handle,
+                                 static_cast <amd::ExternalSemaphoreHandleType>
+                                 (semHandleDesc->type))) {
 #else
-  if (device->importExtSemaphore(
-          extSem_out, semHandleDesc->handle.fd)) {
+  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.fd,
+                                 static_cast <amd::ExternalSemaphoreHandleType>
+                                 (semHandleDesc->type))) {
 #endif
     HIP_RETURN(hipSuccess);
   }

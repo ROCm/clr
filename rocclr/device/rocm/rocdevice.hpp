@@ -221,7 +221,8 @@ class NullDevice : public amd::Device {
     return !settings().enableCoarseGrainSVM_ || (memory->getContext().devices().size() > 1);
   }
 
-  virtual bool importExtSemaphore(void** extSemahore, const amd::Os::FileDesc& handle) {
+  virtual bool importExtSemaphore(void** extSemahore, const amd::Os::FileDesc& handle,
+                                  amd::ExternalSemaphoreHandleType sem_handle_type) override {
     ShouldNotReachHere();
     return false;
   }
