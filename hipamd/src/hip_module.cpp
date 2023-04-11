@@ -370,6 +370,11 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   if (status != hipSuccess) {
     return status;
   }
+  // Make sure the app doesn't launch a workgroup bigger than the global size
+  if (globalWorkSizeX < blockDimX) blockDimX = globalWorkSizeX;
+  if (globalWorkSizeY < blockDimY) blockDimY = globalWorkSizeY;
+  if (globalWorkSizeZ < blockDimZ) blockDimZ = globalWorkSizeZ;
+
   amd::Command* command = nullptr;
   hip::Stream* hip_stream = hip::getStream(hStream);
   status = ihipLaunchKernelCommand(command, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
@@ -531,7 +536,7 @@ hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams*
     return hipErrorInvalidValue;
   }
 
-  if (flags > (hipCooperativeLaunchMultiDeviceNoPostSync + 
+  if (flags > (hipCooperativeLaunchMultiDeviceNoPostSync +
                hipCooperativeLaunchMultiDeviceNoPreSync)) {
     return hipErrorInvalidValue;
   }
