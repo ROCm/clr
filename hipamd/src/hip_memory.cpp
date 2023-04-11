@@ -2694,7 +2694,62 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   if (p->srcPtr.pitch < p->srcPtr.xsize || p->dstPtr.pitch < p->dstPtr.xsize) {
     return hipErrorInvalidPitchValue;
   }
+  // dst/src pitch must be less than max pitch
+  auto* deviceHandle = g_devices[hip::getCurrentDevice()->deviceId()]->devices()[0];
+  const auto& info = deviceHandle->info();
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  auto maxPitch = std::min(info.maxMemAllocSize_, int32_max);
 
+  // negative pitch cases
+  if (p->dstPtr.pitch >= maxPitch || p->srcPtr.pitch >= maxPitch) {
+    return hipErrorInvalidValue;
+  }
+
+  if (p->dstArray == nullptr && p->srcArray == nullptr) {
+    if ((p->extent.width + p->dstPos.x > p->dstPtr.pitch) ||
+        (p->extent.width + p->srcPos.x > p->srcPtr.pitch)) {
+      return hipErrorInvalidValue;
+    }
+    auto totalExtentBytes = p->extent.width * p->extent.height * p->extent.depth;
+    // get memory obj of the PitchPtr
+    size_t offset = 0;
+    amd::Memory* srcPtrMemObj = getMemoryObject(p->srcPtr.ptr, offset);
+    amd::Memory* dstPtrMemObj = getMemoryObject(p->dstPtr.ptr, offset);
+
+    if (dstPtrMemObj != nullptr && (p->dstPtr.xsize != 0 && p->dstPtr.ysize != 0)) {
+      // Use the memoryObj to get 3d data
+      const auto& dstUsrData = dstPtrMemObj->getUserData();
+      //  dst ptr out of bound cases for linear memory
+      if (dstUsrData.pitch_ == 0 || dstUsrData.height_ == 0 || dstUsrData.depth_ == 0) {
+        auto dstDepth = dstPtrMemObj->getSize() / (p->dstPtr.xsize * p->dstPtr.ysize);
+        if ((p->dstPtr.xsize * (p->dstPtr.ysize - p->dstPos.y) *
+            (dstDepth - p->dstPos.z)) < totalExtentBytes) {
+          return hipErrorInvalidValue;
+        }
+      // out of bound dst ptr for 3d memory
+      } else if ((dstUsrData.pitch_ * (dstUsrData.height_ - p->dstPos.y) *
+                 (dstUsrData.depth_ - p->dstPos.z)) < totalExtentBytes) {
+        return hipErrorInvalidValue;
+      }
+    }
+
+    if (srcPtrMemObj != nullptr && (p->srcPtr.xsize != 0 && p->srcPtr.ysize != 0)) {
+      const auto& srcUsrData = srcPtrMemObj->getUserData();
+      //  src ptr out of bound cases for linear memory
+      if (srcUsrData.pitch_ == 0 || srcUsrData.height_ == 0 || srcUsrData.depth_ == 0) {
+        auto srcDepth = srcPtrMemObj->getSize() / (p->srcPtr.xsize * p->srcPtr.ysize);
+        if ((p->srcPtr.xsize * (p->srcPtr.ysize - p->srcPos.y) *
+            (srcDepth - p->srcPos.z)) < totalExtentBytes) {
+          return hipErrorInvalidValue;
+        }
+      // out of bound src ptr for 3d memory
+      } else if ((srcUsrData.pitch_ * (srcUsrData.height_ - p->srcPos.y) *
+                 (srcUsrData.depth_ - p->srcPos.z)) < totalExtentBytes) {
+        return hipErrorInvalidValue;
+      }
+    }
+  }
+  
   if (p->kind < hipMemcpyHostToHost || p->kind > hipMemcpyDefault) {
     return hipErrorInvalidMemcpyDirection;
   }
