@@ -123,6 +123,26 @@ enum MemRangeAttribute : uint32_t {
 constexpr int CpuDeviceId = static_cast<int>(-1);
 constexpr int InvalidDeviceId = static_cast<int>(-2);
 
+enum class ExternalSemaphoreHandleType : uint32_t {
+  OpaqueFd = 1,        // Handle is an opaque file descriptor
+  OpaqueWin32 = 2,     // Handle is an opaque shared NT handle
+  OpaqueWin32Kmt = 3,  // Handle is an opaque, globally shared handle
+  D3D12Fence = 4,      // Handle is a shared NT handle referencing a
+                       // D3D12 fence object
+  D3D11Fence = 5,      // Handle is a shared NT handle referencing a
+                       // D3D11 fence object
+  NvSciSync = 6,       // Opaque handle to NvSciSync Object
+  KeyedMutex = 7,      // Handle is a shared NT handle referencing a
+                       // D3D11 keyed mutex object
+  KeyedMutexKmt = 8,   // Handle is a shared KMT handle referencing a
+                       // D3D11 keyed mutex object
+  TimelineSemaphoreFd = 9,      // Handle is an opaque handle file
+                                // descriptor referencing a timeline
+                                // semaphore
+  TimelineSemaphoreWin32 = 10,  // Handle is an opaque handle file
+                                // descriptor referencing a timeline
+                                // semaphore
+};
 }  // namespace amd
 
 enum OclExtensions {
@@ -1696,7 +1716,8 @@ class Device : public RuntimeObject {
   virtual bool globalFreeMemory(size_t* freeMemory  //!< Free memory information on a GPU device
                                 ) const = 0;
 
-  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle) = 0;
+  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
+                                  amd::ExternalSemaphoreHandleType sem_handle_type) = 0;
   virtual void DestroyExtSemaphore(void* extSemaphore) = 0;
   /**
    * @return True if the device has its own custom host allocator to be used

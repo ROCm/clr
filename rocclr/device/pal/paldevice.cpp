@@ -2545,11 +2545,18 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 }
 
 
-bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle) {
+bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
+                                amd::ExternalSemaphoreHandleType sem_handle_type) {
   Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};
   palOpenInfo.externalSemaphore = handle;
   palOpenInfo.flags.crossProcess = false;
   palOpenInfo.flags.isReference = true;
+  palOpenInfo.flags.timeline =
+  palOpenInfo.flags.timeline =
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreWin32 ||
+       sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreFd);
+  palOpenInfo.flags.sharedViaNtHandle =
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32);
   Pal::Result result;
 
   size_t semaphoreSize = iDev()->GetExternalSharedQueueSemaphoreSize(
