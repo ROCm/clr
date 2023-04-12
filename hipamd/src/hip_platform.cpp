@@ -88,7 +88,7 @@ extern "C" void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* 
   hipError_t hip_error = hipSuccess;
   hip::Function* func = new hip::Function(std::string(deviceName), modules);
   hip_error = PlatformState::instance().registerStatFunction(hostFunction, func);
-  guarantee((hip_error == hipSuccess), "Cannot register Static function");
+  guarantee((hip_error == hipSuccess), "Cannot register Static function, error: %d \n", hip_error);
 
   if (!enable_deferred_loading) {
     HIP_INIT_VOID();
@@ -96,7 +96,8 @@ extern "C" void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* 
 
     for (size_t dev_idx = 0; dev_idx < g_devices.size(); ++dev_idx) {
       hip_error = PlatformState::instance().getStatFunc(&hfunc, hostFunction, dev_idx);
-      guarantee((hip_error == hipSuccess), "Cannot retrieve Static function");
+      guarantee((hip_error == hipSuccess), "Cannot retrieve Static function, error: %d \n",
+                                            hip_error);
     }
   }
 }
@@ -119,7 +120,7 @@ extern "C" void __hipRegisterVar(
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Variable,
                                    size, 0, 0, modules);
   hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
-  guarantee((err == hipSuccess), "Cannot register Static Global Var");
+  guarantee((err == hipSuccess), "Cannot register Static Global Var, error:%d \n", err);
 }
 
 extern "C" void __hipRegisterSurface(
@@ -131,7 +132,7 @@ extern "C" void __hipRegisterSurface(
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Surface,
                                    sizeof(surfaceReference), 0, 0, modules);
   hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
-  guarantee((err == hipSuccess), "Cannot register Static Glbal Var");
+  guarantee((err == hipSuccess), "Cannot register Static Glbal Var, err:%d \n", err);
 }
 
 extern "C" void __hipRegisterManagedVar(
@@ -147,17 +148,18 @@ extern "C" void __hipRegisterManagedVar(
     hip::Stream* stream = hip::getNullStream();
     if (stream != nullptr) {
       status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
-      guarantee((status == hipSuccess), "Error during memcpy to managed memory!");
+      guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d \n!", 
+                                         status);
     } else {
       ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
     }
   } else {
-    guarantee(false, "Error during allocation of managed memory!");
+    guarantee(false, "Error during allocation of managed memory!, error: %d \n", status);
   }
   hip::Var* var_ptr = new hip::Var(std::string(name), hip::Var::DeviceVarKind::DVK_Managed, pointer,
                                    size, align, reinterpret_cast<hip::FatBinaryInfo**>(hipModule));
   status = PlatformState::instance().registerStatManagedVar(var_ptr);
-  guarantee((status == hipSuccess), "Cannot register Static Managed Var");
+  guarantee((status == hipSuccess), "Cannot register Static Managed Var, error: %d \n", status);
 }
 
 extern "C" void __hipRegisterTexture(
@@ -169,12 +171,12 @@ extern "C" void __hipRegisterTexture(
   hip::Var* var_ptr = new hip::Var(std::string(hostVar), hip::Var::DeviceVarKind::DVK_Texture,
                                    sizeof(textureReference), 0, 0, modules);
   hipError_t err = PlatformState::instance().registerStatGlobalVar(var, var_ptr);
-  guarantee((err == hipSuccess), "Cannot register Static Global Var");
+  guarantee((err == hipSuccess), "Cannot register Static Global Var, status: %d \n", err);
 }
 
 extern "C" void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
-  guarantee((err == hipSuccess), "Cannot Unregister Fat Binary");
+  guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d \n", err);
 }
 
 extern "C" hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem,
