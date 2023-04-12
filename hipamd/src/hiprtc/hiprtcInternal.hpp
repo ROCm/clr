@@ -122,6 +122,7 @@ class RTCProgram {
 
   // Member Functions
   bool findIsa();
+  static void AppendOptions(std::string app_env_var, std::vector<std::string>* options);
 
   // Data Members
   std::string name_;
@@ -157,6 +158,9 @@ class RTCCompileProgram : public RTCProgram {
   bool transformOptions(std::vector<std::string>& compile_options);
   bool findLLVMOptions(const std::vector<std::string>& options,
                        std::vector<std::string>& llvm_options);
+  void AppendCompileOptions() {
+    AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_);
+  }
 
   RTCCompileProgram() = delete;
   RTCCompileProgram(RTCCompileProgram&) = delete;
@@ -285,6 +289,9 @@ class RTCLinkProgram : public RTCProgram {
   bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                      hiprtcJITInputType input_type);
   bool LinkComplete(void** bin_out, size_t* size_out);
+  void AppendLinkerOptions() {
+    AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_);
+  }
 };
 
 // Thread Local Storage Variables Aggregator Class

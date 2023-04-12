@@ -110,6 +110,19 @@ bool RTCProgram::findIsa() {
 }
 
 // RTC Compile Program Member Functions
+void RTCProgram::AppendOptions(const std::string app_env_var, std::vector<std::string>* options) {
+
+  if (options == nullptr) {
+    LogError("Append options passed is nullptr.");
+    return;
+  }
+
+  std::stringstream ss(app_env_var);
+  std::istream_iterator<std::string> begin{ss}, end;
+  options->insert(options->end(), begin, end);
+}
+
+// RTC Compile Program Member Functions
 RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgpu_rdc_(false) {
   if ((amd::Comgr::create_data_set(&compile_input_) != AMD_COMGR_STATUS_SUCCESS) ||
       (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS)) {
@@ -150,6 +163,7 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back("-fms-extensions");
   compile_options_.push_back("-fms-compatibility");
 #endif
+  AppendCompileOptions();
 
   exe_options_.push_back("-O3");
 }
@@ -669,9 +683,10 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
     return false;
   }
 
+  AppendLinkerOptions();
+
   std::vector<char> linked_llvm_bitcode;
-  std::vector<std::string> linkopts;
-  if (!linkLLVMBitcode(link_input_, isa_, linkopts, build_log_, linked_llvm_bitcode)) {
+  if (!linkLLVMBitcode(link_input_, isa_, link_options_, build_log_, linked_llvm_bitcode)) {
     LogError("Error in hiprtc: unable to add device libs to linked bitcode");
     return false;
   }
