@@ -340,7 +340,7 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
       VgprGranularity = VgprGranularity >> 1;
     }
   }
-  if (wrkGrpInfo->usedSGPRs_ > 0) {
+  if (wrkGrpInfo->usedVGPRs_ > 0) {
     VgprWaves = maxVGPRs / amd::alignUp(wrkGrpInfo->usedVGPRs_, VgprGranularity);
   }
 
