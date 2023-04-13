@@ -533,7 +533,17 @@ getQueuePropertyString(const cl_queue_properties* qprops)
             break;
         case CL_QUEUE_SIZE: // Unimplemented
             queueSize = p->value.size;
-            ss << "QUEUE_SIZE "<<queueSize;;
+            ss << "QUEUE_SIZE " << queueSize;
+            break;
+#define CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD 0x404f
+        case CL_QUEUE_REAL_TIME_COMPUTE_UNITS_AMD:
+            queueSize = p->value.size;
+            ss << " RT_QUEUE " << queueSize;
+            break;
+#define CL_QUEUE_MEDIUM_PRIORITY_AMD 0x4050
+        case CL_QUEUE_MEDIUM_PRIORITY_AMD:
+            queueSize = p->value.size;
+            ss << " MEDIUM_PRIORITY " << queueSize;
             break;
         default:
             break;
