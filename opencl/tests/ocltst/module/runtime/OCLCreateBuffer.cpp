@@ -72,7 +72,7 @@ void OCLCreateBuffer::open(unsigned int test, char *units, double &conversion,
 void OCLCreateBuffer::run(void) {
   CPerfCounter timer;
 
-  cl_ulong pattern = PATTERN_20_64BIT;
+  cl_uchar pattern = PATTERN;
   timer.Reset();
   timer.Start();
   error_ = /*_wrapper->*/ clEnqueueFillBuffer(
@@ -90,20 +90,22 @@ void OCLCreateBuffer::run(void) {
   }
 #endif
   void *resultBuf = NULL;
-
+  ;
   while ((resultBuf = malloc(maxSteps)) == NULL) {
     maxSteps /= 2;
     continue;
   }
 
-  checkResult(maxSteps, resultBuf, PATTERN_20_64BIT);
+  checkResult(maxSteps, resultBuf, pattern);
 
-  memset(resultBuf, PATTERN_2A_08BIT, maxSteps);
+  pattern += 1;
+
+  memset(resultBuf, pattern, maxSteps);
 
   writeBuffer(maxSteps, resultBuf);
 
   memset(resultBuf, 0x00, maxSteps);
-  checkResult(maxSteps, resultBuf, PATTERN_2A_64BIT);
+  checkResult(maxSteps, resultBuf, pattern);
 
   free(resultBuf);
 
@@ -125,7 +127,7 @@ void OCLCreateBuffer::run(void) {
 }
 
 void OCLCreateBuffer::checkResult(size_t maxSteps, void *resultBuf,
-                                  cl_ulong pattern) {
+                                  cl_uchar pattern) {
   size_t startPoint = 0;
   while ((startPoint) < maxSize_) {
     cl_event ee;
@@ -138,16 +140,14 @@ void OCLCreateBuffer::checkResult(size_t maxSteps, void *resultBuf,
         resultBuf, 0, NULL, &ee);
     CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueReadBuffer() failed");
     _wrapper->clFinish(cmdQueues_[_deviceId]);
-
-    size_t err_cnt = 0, chk_cnt = readSize / sizeof(cl_ulong);
-    cl_ulong *cc = (cl_ulong *)resultBuf;
-
-    for (size_t i = 0; i < chk_cnt; i++) {
+    size_t cnt = 0;
+    cl_uchar *cc = (cl_uchar *)resultBuf;
+    for (size_t i = 0; i < readSize; i++) {
       if (cc[i] != pattern) {
-        err_cnt++;
+        cnt++;
       }
     }
-    if (err_cnt != 0) {
+    if (cnt != 0) {
       error_ = -1;
       CHECK_RESULT((error_ != CL_SUCCESS), "checkResult() failed");
       break;
