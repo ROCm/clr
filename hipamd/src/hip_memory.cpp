@@ -724,7 +724,8 @@ hipError_t hipMemGetAddressRange(hipDeviceptr_t* pbase, size_t* psize, hipDevice
 
   // Since we are using SVM buffer DevicePtr and HostPtr is the same
   void* ptr = dptr;
-  amd::Memory* svmMem = getMemoryObjectWithOffset(ptr);
+  size_t offset = 0;
+  amd::Memory* svmMem = getMemoryObject(ptr, offset);
   if (svmMem == nullptr) {
     HIP_RETURN(hipErrorNotFound);
   }
