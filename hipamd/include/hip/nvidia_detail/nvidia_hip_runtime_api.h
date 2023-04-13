@@ -3493,8 +3493,10 @@ inline static hipError_t hipStreamGetCaptureInfo_v2(
     hipStream_t stream, hipStreamCaptureStatus* captureStatus_out,
     unsigned long long* id_out __dparm(0), hipGraph_t* graph_out __dparm(0),
     const hipGraphNode_t** dependencies_out __dparm(0), size_t* numDependencies_out __dparm(0)) {
-    return hipCUDAErrorTohipError(cudaStreamGetCaptureInfo_v2(
-        stream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out));
+    return hipCUResultTohipError(cuStreamGetCaptureInfo_v2(
+        stream, reinterpret_cast<CUstreamCaptureStatus *>(captureStatus_out),
+        reinterpret_cast<cuuint64_t *>(id_out), graph_out,
+        dependencies_out, numDependencies_out));
 }
 #endif
 
