@@ -633,66 +633,39 @@ bool linkLLVMBitcode(const amd_comgr_data_set_t linkInputs, const std::string& i
                      std::vector<char>& LinkedLLVMBitcode) {
   amd_comgr_language_t lang = AMD_COMGR_LANGUAGE_HIP;
   amd_comgr_action_info_t action;
-  amd_comgr_data_set_t dataSetDevLibs;
 
   if (auto res = createAction(action, linkOptions, isa, AMD_COMGR_LANGUAGE_HIP);
       res != AMD_COMGR_STATUS_SUCCESS) {
     return false;
   }
 
-  if (auto res = amd::Comgr::create_data_set(&dataSetDevLibs); res != AMD_COMGR_STATUS_SUCCESS) {
-    amd::Comgr::destroy_action_info(action);
-    return false;
-  }
-
-  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, linkInputs,
-                                       dataSetDevLibs);
-      res != AMD_COMGR_STATUS_SUCCESS) {
-    extractBuildLog(dataSetDevLibs, buildLog);
-    LogPrintfInfo("%s", buildLog.c_str());
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
-    return false;
-  }
-
-  if (!extractBuildLog(dataSetDevLibs, buildLog)) {
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
-    return false;
-  }
-
   amd_comgr_data_set_t output;
   if (auto res = amd::Comgr::create_data_set(&output); res != AMD_COMGR_STATUS_SUCCESS) {
     amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
     return false;
   }
 
   if (auto res =
-          amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, dataSetDevLibs, output);
+          amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, linkInputs, output);
       res != AMD_COMGR_STATUS_SUCCESS) {
     amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
     amd::Comgr::destroy_data_set(output);
     return false;
   }
 
   if (!extractBuildLog(output, buildLog)) {
     amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
     amd::Comgr::destroy_data_set(output);
     return false;
   }
 
   if (!extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, LinkedLLVMBitcode)) {
     amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
     amd::Comgr::destroy_data_set(output);
     return false;
   }
 
   amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(dataSetDevLibs);
   amd::Comgr::destroy_data_set(output);
   return true;
 }
