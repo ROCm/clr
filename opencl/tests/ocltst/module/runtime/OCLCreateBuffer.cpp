@@ -90,7 +90,9 @@ void OCLCreateBuffer::run(void) {
   }
 #endif
   void *resultBuf = NULL;
-  ;
+  // Reduce the buffer for the step transfers ahead of the allocation,
+  // since huge buffers may cause paging and very low performance
+  maxSteps /= 16;
   while ((resultBuf = malloc(maxSteps)) == NULL) {
     maxSteps /= 2;
     continue;
