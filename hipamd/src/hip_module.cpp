@@ -375,6 +375,15 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   if (globalWorkSizeY < blockDimY) blockDimY = globalWorkSizeY;
   if (globalWorkSizeZ < blockDimZ) blockDimZ = globalWorkSizeZ;
 
+  auto device = g_devices[deviceId]->devices()[0];
+  // Check if it's a uniform kernel and validate dimensions
+  if (kernel->getDeviceKernel(*device)->getUniformWorkGroupSize()) {
+    if (((globalWorkSizeX % blockDimX) != 0) ||
+        ((globalWorkSizeY % blockDimY) != 0) ||
+        ((globalWorkSizeZ % blockDimZ) != 0)) {
+      return hipErrorInvalidValue;
+    }
+  }
   amd::Command* command = nullptr;
   hip::Stream* hip_stream = hip::getStream(hStream);
   status = ihipLaunchKernelCommand(command, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
