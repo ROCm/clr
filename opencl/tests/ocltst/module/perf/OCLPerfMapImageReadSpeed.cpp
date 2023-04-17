@@ -130,7 +130,7 @@ void OCLPerfMapImageReadSpeed::open(unsigned int test, char *units,
   device = devices[_deviceId];
 
   size_t size;
-  bool imageSupport_ = false;
+  cl_bool imageSupport_ = false;
   error_ = _wrapper->clGetDeviceInfo(device, CL_DEVICE_IMAGE_SUPPORT,
                             sizeof(imageSupport_), &imageSupport_, &size);
   if (!imageSupport_) {

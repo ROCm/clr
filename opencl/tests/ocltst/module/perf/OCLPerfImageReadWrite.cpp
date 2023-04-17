@@ -124,7 +124,7 @@ void OCLPerfImageReadWrite::open(unsigned int test, char *units,
   }
   delete strVersion;
   size_t size;
-  bool imageSupport_ = false;
+  cl_bool imageSupport_ = false;
   error_ = _wrapper->clGetDeviceInfo(devices_[_deviceId], CL_DEVICE_IMAGE_SUPPORT,
                             sizeof(imageSupport_), &imageSupport_, &size);
   if (!imageSupport_) {
