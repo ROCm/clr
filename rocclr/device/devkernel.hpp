@@ -242,7 +242,8 @@ enum class KernelField : uint8_t {
   NumSpilledSGPRs         = 13,
   NumSpilledVGPRs         = 14,
   Kind                    = 15,
-  WgpMode                = 16
+  WgpMode                 = 16,
+  UniformWrokGroupSize    = 17
 };
 
 static const std::map<std::string,ArgField> ArgFieldMapV3 =
@@ -311,8 +312,7 @@ static const std::map<std::string, cl_kernel_arg_address_qualifier> ArgAddrSpace
   {"region",    CL_KERNEL_ARG_ADDRESS_PRIVATE}
 };
 
-static const std::map<std::string,KernelField> KernelFieldMapV3 =
-{
+static const std::map<std::string,KernelField> KernelFieldMapV3 = {
   {".symbol",                     KernelField::SymbolName},
   {".reqd_workgroup_size",        KernelField::ReqdWorkGroupSize},
   {".workgroup_size_hint",        KernelField::WorkGroupSizeHint},
@@ -329,7 +329,8 @@ static const std::map<std::string,KernelField> KernelFieldMapV3 =
   {".sgpr_spill_count",           KernelField::NumSpilledSGPRs},
   {".vgpr_spill_count",           KernelField::NumSpilledVGPRs},
   {".kind",                       KernelField::Kind},
-  {".workgroup_processor_mode",   KernelField::WgpMode}
+  {".workgroup_processor_mode",   KernelField::WgpMode},
+  {".uniform_work_group_size",    KernelField::UniformWrokGroupSize}
 };
 
 #endif  // defined(USE_COMGR_LIBRARY)
@@ -383,12 +384,13 @@ class Kernel : public amd::HeapObject {
     size_t availableStackSize_;       //!< available stack size
     size_t usedStackSize_;            //!< used stack size
     size_t compileSizeHint_[3];       //!< kernel compiled workgroup size hint
-    std::string compileVecTypeHint_;  //!< kernel compiled vector type hint
-    bool uniformWorkGroupSize_;       //!< uniform work group size option
     size_t wavesPerSimdHint_;         //!< waves per simd hit
+    size_t constMemSize_;             //!< size of user-allocated constant memory
+    std::string compileVecTypeHint_;  //!< kernel compiled vector type hint
+
     int maxOccupancyPerCu_;           //!< Max occupancy per compute unit in threads
-    size_t constMemSize_;           //!< size of user-allocated constant memory
     bool isWGPMode_;                  //!< kernel compiled in WGP/cumode
+    bool uniformWorkGroupSize_;       //!< uniform work group size option
   };
 
   //! Default constructor
