@@ -182,6 +182,34 @@ public:
         setInteropObj(this);
     }
 
+    //! ImageGL constructor for mipmapped image,
+    //! just calls constructors of base classes to pass down the parameters
+    ImageGL(
+        Context&            amdContext,
+        cl_mem_object_type  clType,
+        cl_mem_flags        clFlags,
+        const Format&       format,
+        size_t              width,
+        size_t              height,
+        size_t              depth,
+        GLenum              glTarget,
+        GLuint              gluiName,
+        GLint               gliMipLevel,
+        GLenum              glInternalFormat,
+        cl_gl_object_type   clGLType,
+        GLsizei             numSamples,
+        cl_int              num_mip_levels,
+        GLenum              glCubemapFace = 0)
+        : Image(amdContext, clType, clFlags, format, width, height, depth,
+            Format(format).getElementSize() * width,
+            Format(format).getElementSize() * width * depth, num_mip_levels)
+        , GLObject(glTarget, gluiName, gliMipLevel, glInternalFormat,
+            static_cast<GLint>(width), static_cast<GLint>(height),
+            static_cast<GLint>(depth), clGLType, glCubemapFace,numSamples)
+    {
+        setInteropObj(this);
+    }
+
     virtual ~ImageGL() {}
 
 protected:
