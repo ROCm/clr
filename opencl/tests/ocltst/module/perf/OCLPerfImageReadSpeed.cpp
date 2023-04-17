@@ -213,6 +213,7 @@ void OCLPerfPinnedImageReadSpeed::open(unsigned int test, char *units,
   context_ = 0;
   cmd_queue_ = 0;
   outBuffer_ = 0;
+  inBuffer_ = 0;
   memptr = NULL;
   skip_ = false;
 
