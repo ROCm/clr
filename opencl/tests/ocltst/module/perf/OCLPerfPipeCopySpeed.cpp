@@ -149,9 +149,9 @@ const static char * strKernel =
         {\n
             int gid = get_global_id(0);\n
             local reserve_id_t resId;\n
-            resId = sub_group_reserve_write_pipe(outPipe, get_local_size(0));\n
+            resId = sub_group_reserve_write_pipe(outPipe, get_sub_group_size());\n
             if (is_valid_reserve_id(resId)) {\n
-                write_pipe(outPipe, resId, get_local_id(0), &inBuf[gid]);\n
+                write_pipe(outPipe, resId, get_sub_group_local_id(), &inBuf[gid]);\n
                 sub_group_commit_write_pipe(outPipe, resId);\n
             }\n
         }\n
@@ -159,14 +159,14 @@ const static char * strKernel =
         kernel __attribute__((reqd_work_group_size(64,1,1))) void copyPipe_sg(read_only pipe DATA_TYPE inPipe, write_only pipe DATA_TYPE outPipe)\n
         {\n
             local reserve_id_t resId;\n
-            resId = sub_group_reserve_read_pipe(inPipe, get_local_size(0));\n
+            resId = sub_group_reserve_read_pipe(inPipe, get_sub_group_size());\n
             if (is_valid_reserve_id(resId)) {\n
                 DATA_TYPE tmp;\n
-                read_pipe(inPipe, resId, get_local_id(0), &tmp);\n
+                read_pipe(inPipe, resId, get_sub_group_local_id(), &tmp);\n
                 sub_group_commit_read_pipe(inPipe, resId);\n
-                resId = sub_group_reserve_write_pipe(outPipe, get_local_size(0));\n
+                resId = sub_group_reserve_write_pipe(outPipe, get_sub_group_size());\n
                 if (is_valid_reserve_id(resId)) {\n
-                    write_pipe(outPipe, resId, get_local_id(0), &tmp);\n
+                    write_pipe(outPipe, resId, get_sub_group_local_id(), &tmp);\n
                     sub_group_commit_write_pipe(outPipe, resId);\n
                 }\n
             }\n
@@ -176,10 +176,10 @@ const static char * strKernel =
         {\n
             int gid = get_global_id(0);\n
             local reserve_id_t resId;\n
-            resId = sub_group_reserve_read_pipe(inPipe, get_local_size(0));\n
+            resId = sub_group_reserve_read_pipe(inPipe, get_sub_group_size());\n
             if (is_valid_reserve_id(resId)) {\n
                 DATA_TYPE tmp;\n
-                read_pipe(inPipe, resId, get_local_id(0), &tmp);\n
+                read_pipe(inPipe, resId, get_sub_group_local_id(), &outBuf[gid]);\n
                 sub_group_commit_read_pipe(inPipe, resId);\n
                 outBuf[gid] = tmp;\n
             }\n
