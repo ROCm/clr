@@ -1386,8 +1386,8 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 
 // ================================================================================================
 /* profilingBegin, when profiling is enabled, creates a timestamp to save in
-* virtualgpu's timestamp_, and calls start() to get the current host
-* timestamp.
+* virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
+* and then calls start() to get the current host timestamp.
 */
 void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
   if (command.profilingInfo().enabled_) {
@@ -1398,6 +1398,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
     }
     // Without barrier profiling will wait for each individual signal
     timestamp_ = new Timestamp(this, command);
+    command.setData(timestamp_);
     timestamp_->start();
   }
 
@@ -1423,15 +1424,13 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
 // ================================================================================================
 /* profilingEnd, when profiling is enabled, checks to see if a signal was
 * created for whatever command we are running and calls end() to get the
-* current host timestamp if no signal is available. It then saves the pointer
-* timestamp_ to the command's data.
+* current host timestamp if no signal is available.
 */
 void VirtualGPU::profilingEnd(amd::Command& command) {
   if (command.profilingInfo().enabled_) {
-    if (!timestamp_->HwProfiling()) {
+    if (timestamp_->HwProfiling() == false) {
       timestamp_->end();
     }
-    command.setData(timestamp_);
     timestamp_ = nullptr;
   }
   if (AMD_DIRECT_DISPATCH) {
