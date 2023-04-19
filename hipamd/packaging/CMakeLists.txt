@@ -162,7 +162,7 @@ if(FILE_REORG_BACKWARD_COMPATIBILITY)
    configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
    set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
 endif()
-set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr (>= 2.0), rocm-llvm, libc6, rocm-core")
+set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr (>= 2.0), rocm-llvm, libc6, rocm-core, hipcc")
 set(CPACK_DEBIAN_BINARY_PACKAGE_PROVIDES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 
@@ -172,7 +172,7 @@ if(FILE_REORG_BACKWARD_COMPATIBILITY)
    set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
 endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr >= 2.0, rocm-llvm, rocm-core")
+set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr >= 2.0, rocm-llvm, rocm-core, hipcc")
 set(CPACK_RPM_BINARY_PACKAGE_PROVIDES "hip-rocclr = ${HIP_BASE_VERSION}")
 set(CPACK_RPM_BINARY_PACKAGE_OBSOLETES "hip-rocclr = ${HIP_BASE_VERSION}")
 #End Binary Packaging setting
@@ -190,13 +190,13 @@ configure_file(hip-devel.postinst ${CMAKE_CURRENT_BINARY_DIR}/dev/postinst @ONLY
 configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
 
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), liburi-encode-perl, libfile-basedir-perl, libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), liburi-encode-perl, libfile-basedir-perl, libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core, hipcc")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-File-BaseDir, perl-URI-Encode, file, rocm-core")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-File-BaseDir, perl-URI-Encode, file, rocm-core, hipcc")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
@@ -209,11 +209,11 @@ set(CPACK_DEBIAN_DOC_PACKAGE_NAME "hip-doc")
 set(CPACK_RPM_DOC_PACKAGE_NAME "hip-doc")
 set(CPACK_COMPONENT_DOC_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [DOCUMENTATION]")
 
-set(CPACK_DEBIAN_DOC_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
+set(CPACK_DEBIAN_DOC_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core, hipcc")
 set(CPACK_DEBIAN_DOC_PACKAGE_PROVIDES "hip-doc")
 
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
+set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core, hipcc")
 
 #End doc Packaging setting
 
@@ -224,13 +224,13 @@ set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_COMPONENT_RUNTIME-NVIDIA_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [RUNTIME-NVIDIA]")
 
-set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS "cuda (>= 7.5), rocm-core")
+set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS "cuda (>= 7.5), rocm-core, hipcc")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_REPLACES "hip-nvcc")
 
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_OBSOLETES "hip-nvcc")
-set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core")
+set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core, hipcc")
 
 # Begin asan Packaging setting
 set(CPACK_ASAN_DEB "ON")
