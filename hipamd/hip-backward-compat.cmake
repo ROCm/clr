@@ -118,26 +118,6 @@ function(create_binary_symlink)
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
                   ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
   endforeach()
-
-  unset(binary_files)
-  file(GLOB binary_files ${HIP_BUILD_DIR}/bin/*)
-  foreach(binary_file ${binary_files})
-    get_filename_component(file_name ${binary_file} NAME)
-    if(WIN32)
-      add_custom_target(link_${file_name} ALL
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-                  COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
-
-    else()
-      if( NOT ${file_name} MATCHES ".bat$")
-        add_custom_target(link_${file_name} ALL
-                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-                  COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../${CMAKE_INSTALL_BINDIR}/${file_name} ${HIP_WRAPPER_BIN_DIR}/${file_name})
-      endif()#end of bat file check
-    endif()#end of OS check
-  endforeach()
 endfunction()
 
 #function to create symlink to libraries
