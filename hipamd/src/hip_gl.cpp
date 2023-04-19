@@ -674,6 +674,14 @@ hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources,
   if (as_cl(&command->event()) == nullptr) {
     command->release();
   }
+
+  const auto it = amdContext->devices().cbegin();
+  amd::Device* curDev = *it;
+  for (auto& mobj : memObjects) {
+    device::Memory* mem = reinterpret_cast<device::Memory*>(mobj->getDeviceMemory(*curDev));
+    amd::MemObjMap::AddMemObj(reinterpret_cast<void*>(mem->virtualAddress()), mobj);
+    mobj->retain();
+  }
   HIP_RETURN(hipSuccess);
 }
 
@@ -699,7 +707,6 @@ hipError_t hipGraphicsResourceGetMappedPointer(void** devPtr, size_t* size,
   // amd::MemObjMap using device virtual address during creation.
   device::Memory* mem = reinterpret_cast<device::Memory*>(amdMem->getDeviceMemory(*curDev));
   *devPtr = reinterpret_cast<void*>(static_cast<uintptr_t>(mem->virtualAddress()));
-
   HIP_RETURN(hipSuccess);
 }
 
@@ -744,15 +751,19 @@ hipError_t hipGraphicsUnmapResources(int count, hipGraphicsResource_t* resources
   if (as_cl(&command->event()) == nullptr) {
     command->release();
   }
-
+  for (auto& mobj : memObjects) {
+    mobj->release();
+  }
   HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
   HIP_INIT_API(hipGraphicsUnregisterResource, resource);
 
-  amd::BufferGL* pBufferGL = reinterpret_cast<amd::BufferGL*>(resource);
-  delete pBufferGL;
+  if (resource == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<amd::BufferGL*>(resource)->release();
 
   HIP_RETURN(hipSuccess);
 }
