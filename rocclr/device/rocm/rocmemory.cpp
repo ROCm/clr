@@ -36,7 +36,7 @@
 #include "platform/memory.hpp"
 #include "platform/sampler.hpp"
 #include "platform/interop_gl.hpp"
-#include "amdocl/cl_vk_amd.hpp"
+#include "platform/external_memory.hpp"
 
 namespace roc {
 
@@ -815,10 +815,10 @@ bool Buffer::create(bool alloc_local) {
   // Interop buffer
   if (owner()->isInterop()) {
     amd::InteropObject* interop = owner()->getInteropObj();
-    amd::VkObject* vkObject = interop->asVkObject();
+    auto ext_memory = interop->asExternalMemory();
     amd::GLObject* glObject = interop->asGLObject();
-    if (vkObject != nullptr) {
-      hsa_status_t status = interopMapBuffer(vkObject->getVkSharedHandle());
+    if (ext_memory != nullptr) {
+      hsa_status_t status = interopMapBuffer(ext_memory->Handle());
       if (status != HSA_STATUS_SUCCESS) return false;
       return true;
     } else if (glObject != nullptr) {

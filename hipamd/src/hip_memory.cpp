@@ -25,7 +25,7 @@
 #include "platform/context.hpp"
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
-#include "amdocl/cl_vk_amd.hpp"
+#include "platform/external_memory.hpp"
 
 amd::Monitor hip::hipArraySetLock{"Guards global hipArray set"};
 std::unordered_set<hipArray*> hip::hipArraySet;
@@ -108,29 +108,26 @@ hipError_t hipImportExternalMemory(
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  size_t sizeBytes = memHandleDesc->size;
   amd::Context& amdContext = *hip::getCurrentDevice()->asContext();
-
-  amd::BufferVk* pBufferVk = nullptr;
 #ifdef _WIN32
-  pBufferVk = new (amdContext)
-                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle,
-                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
+  auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
+      memHandleDesc->handle.win32.handle,
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
 #else
-  pBufferVk = new (amdContext)
-                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd,
-                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
+  auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
+      memHandleDesc->handle.fd,
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
 #endif
 
-  if (!pBufferVk) {
+  if (!ext_buffer) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
 
-  if (!pBufferVk->create()) {
-    pBufferVk->release();
+  if (!ext_buffer->create()) {
+    ext_buffer->release();
     HIP_RETURN(hipErrorOutOfMemory);
   }
-  *extMem_out = pBufferVk;
+  *extMem_out = ext_buffer;
 
   HIP_RETURN(hipSuccess);
 }
@@ -145,7 +142,7 @@ hipError_t hipExternalMemoryGetMappedBuffer(
   if (devPtr == nullptr || extMem == nullptr || bufferDesc == nullptr || bufferDesc->flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  amd::BufferVk *buf = reinterpret_cast<amd::BufferVk*>(extMem);
+  auto buf = reinterpret_cast<amd::ExternalBuffer*>(extMem);
   const device::Memory* devMem = buf->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
 
   if (devMem == nullptr || ((bufferDesc->offset + bufferDesc->size) > devMem->size())) {
@@ -157,18 +154,19 @@ hipError_t hipExternalMemoryGetMappedBuffer(
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
   HIP_INIT_API(hipDestroyExternalMemory, extMem);
 
   if (extMem == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  reinterpret_cast<amd::BufferVk*>(extMem)->release();
+  reinterpret_cast<amd::ExternalBuffer*>(extMem)->release();
 
   HIP_RETURN(hipSuccess);
 }
 
-
+// ================================================================================================
 hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc)
 {

@@ -34,7 +34,7 @@
 #include "platform/interop_d3d11.hpp"
 #endif  //_WIN32
 #include "platform/interop_gl.hpp"
-#include "amdocl/cl_vk_amd.hpp"
+#include "platform/external_memory.hpp"
 
 #include <string>
 #include <fstream>
@@ -241,7 +241,7 @@ bool Memory::createInterop() {
   amd::InteropObject* interop = owner()->getInteropObj();
   assert((interop != nullptr) && "An invalid interop object is impossible!");
 
-  amd::VkObject* vkObject = interop->asVkObject();
+  auto ext_memory = interop->asExternalMemory();
   amd::GLObject* glObject = interop->asGLObject();
 #ifdef _WIN32
   amd::D3D10Object* d3d10Object = interop->asD3D10Object();
@@ -351,14 +351,16 @@ bool Memory::createInterop() {
     }
   } else
 #endif  //_WIN32
-  if (vkObject != nullptr) {
+  if (ext_memory != nullptr) {
     createParams = &vkRes;
     vkRes.owner_ = owner();
     memType = Resource::VkInterop;
-    vkRes.handle_ = vkObject->getVkSharedHandle();
+    vkRes.handle_ = ext_memory->Handle();
     vkRes.type_ = Resource::InteropTypeless;
     vkRes.nt_handle_ =
-        (vkObject->getHandleType() == amd::VkObject::ExternalMemoryWin32) ? true : false;
+      ((ext_memory->Type() != amd::ExternalMemory::HandleType::OpaqueFd) &&
+       (ext_memory->Type() != amd::ExternalMemory::HandleType::OpaqueWin32Kmt) &&
+       (ext_memory->Type() != amd::ExternalMemory::HandleType::D3D11ResourceKmt)) ? true : false;
   }
 
   else if (glObject != nullptr) {

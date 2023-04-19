@@ -26,8 +26,7 @@ namespace amd {
 //! Forward declarations of interop classes
 class GLObject;
 class BufferGL;
-class VkObject;
-class BufferVk;
+class ExternalMemory;
 
 
 #ifdef _WIN32
@@ -45,9 +44,7 @@ class InteropObject {
   // Static cast functions for interop objects
   virtual GLObject* asGLObject() { return nullptr; }
   virtual BufferGL* asBufferGL() { return nullptr; }
-
-  virtual VkObject* asVkObject() { return nullptr; }
-  virtual BufferVk* asBufferVk() { return nullptr; }
+  virtual ExternalMemory* asExternalMemory() { return nullptr; }
 
 #ifdef _WIN32
   virtual D3D10Object* asD3D10Object() { return nullptr; }
