@@ -26,14 +26,14 @@ include(GNUInstallDirs)
 # ROCM_PATH is the path where ROCM is installed
 #  For shared lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #  For static lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "<ROCM_PATH>/hip".
 #  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
@@ -383,14 +383,25 @@ install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
 
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
-  set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
-  set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
-  if(WIN32)
-    set(hipcc_bin ${hipcc_bin}.exe)
-    set(hipconfig_bin ${hipconfig_bin}.exe)
+  if(${HIPCC_BIN_DIR}/hipcc.bin)
+    set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
+    set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
+    if(WIN32)
+      set(hipcc_bin ${hipcc_bin}.exe)
+      set(hipconfig_bin ${hipconfig_bin}.exe)
+    endif()
+    if(EXISTS ${hipcc_bin} AND EXISTS ${hipconfig_bin})
+      install(PROGRAMS ${hipcc_bin} DESTINATION bin)
+      install(PROGRAMS ${hipconfig_bin} DESTINATION bin)
+    endif()
   endif()
-  install(PROGRAMS ${hipcc_bin} DESTINATION bin)
-  install(PROGRAMS ${hipconfig_bin} DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
 endif()
 
 #############################
@@ -449,6 +460,12 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/
 if(${RUN_HIT} EQUAL 0)
     execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
 endif()
+
+file(COPY ${HIPCC_BIN_DIR}/hipcc DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipconfig DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION ${HIP_ROOT_DIR}/bin/)
 
 if(HIP_CATCH_TEST EQUAL "1")
 	message(STATUS "Building of catch tests through hipamd is no longer supported. Testing targets will not be available. catch tests have been moved to an independent github project hip-tests. Please refer to hip-tests Readme for build instructions! ")

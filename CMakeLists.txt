@@ -31,8 +31,14 @@ option(CLR_BUILD_OCL "Build OCL" OFF)
 # Build steps
 #############
 if(CLR_BUILD_HIP)
+    if(NOT EXISTS ${HIPCC_BIN_DIR}/hipconfig)
+        message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR. Passed HIPCC_BIN_DIR: "${HIPCC_BIN_DIR})
+    endif()
+    if(NOT DEFINED HIP_COMMON_DIR)
+        message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
+    endif()
     # Determine HIP_PLATFORM
-    set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
+    set(__HIPCONFIG_EXECUTABLE__ ${HIPCC_BIN_DIR}/hipconfig)
     if(NOT DEFINED HIP_PLATFORM)
         if(NOT DEFINED ENV{HIP_PLATFORM})
             execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform
