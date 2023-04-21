@@ -75,12 +75,12 @@ bool Stream::Create() {
 }
 
 // ================================================================================================
-bool Stream::terminate() {
+void Stream::Destroy(hip::Stream* stream) {
   {
     amd::ScopedLock lock(streamSetLock);
-    streamSet.erase(this);
+    streamSet.erase(stream);
   }
-  return HostQueue::terminate();
+  stream->release();
 }
 
 // ================================================================================================
@@ -107,6 +107,7 @@ int Stream::DeviceId() const {
   return device_->deviceId();
 }
 
+// ================================================================================================
 int Stream::DeviceId(const hipStream_t hStream) {
   // Copying locally into non-const variable just to get const away
   hipStream_t inputStream = hStream;
@@ -120,17 +121,27 @@ int Stream::DeviceId(const hipStream_t hStream) {
   return deviceId;
 }
 
-void Stream::syncNonBlockingStreams(int deviceId) {
-  amd::ScopedLock lock(streamSetLock);
-  for (auto& it : streamSet) {
-    if (it->Flags() & hipStreamNonBlocking) {
+// ================================================================================================
+void Stream::SyncAllStreams(int deviceId) {
+  // Make a local copy to avoid stalls for GPU finish with multiple threads
+  std::vector<hip::Stream*> streams;
+  streams.reserve(streamSet.size());
+  {
+    amd::ScopedLock lock(streamSetLock);
+    for (auto it : streamSet) {
       if (it->DeviceId() == deviceId) {
-        it->finish();
+        streams.push_back(it);
+        it->retain();
       }
     }
   }
+  for (auto it : streams) {
+    it->finish();
+    it->release();
+  }
 }
 
+// ================================================================================================
 bool Stream::StreamCaptureBlocking() {
   amd::ScopedLock lock(streamSetLock);
   for (auto& it : streamSet) {
@@ -152,12 +163,22 @@ void Stream::destroyAllStreams(int deviceId) {
     }
   }
   for (auto& it : toBeDeleted) {
-    it->release();
+    hip::Stream::Destroy(it);
   }
 }
 
-bool Stream::StreamCaptureOngoing(void) {
-  return (g_allCapturingStreams.empty() == true) ? false : true;
+bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
+  // If any local thread has an ongoing or concurrent capture sequence initiated
+  // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
+  if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    return (g_captureStreams.empty() == true) ? false : true;
+  }
+  else {
+    amd::ScopedLock lock(g_streamSetLock);
+    return (g_allCapturingStreams.find(s) == g_allCapturingStreams.end() ? false : true);
+  }
 }
 
 bool Stream::existsActiveStreamForDevice(hip::Device* device) {
@@ -261,7 +282,7 @@ static hipError_t ihipStreamCreate(hipStream_t* stream,
     return hipErrorOutOfMemory;
   }
   else if (!hStream->Create()) {
-    hStream->release();
+    hip::Stream::Destroy(hStream);
     return hipErrorOutOfMemory;
   }
 
@@ -282,7 +303,7 @@ stream_per_thread::stream_per_thread() {
 stream_per_thread::~stream_per_thread() {
   for (auto &stream:m_streams) {
     if (stream != nullptr && hip::isValid(stream)) {
-      reinterpret_cast<hip::Stream*>(stream)->release();
+      hip::Stream::Destroy(reinterpret_cast<hip::Stream*>(stream));
       stream = nullptr;
     }
   }
@@ -416,7 +437,7 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   }
   if (stream != nullptr) {
     // If still capturing return error
-    if (hip::Stream::StreamCaptureOngoing() == true) {
+    if (hip::Stream::StreamCaptureOngoing(stream) == true) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
@@ -460,17 +481,19 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   }
   s->GetDevice()->RemoveStreamFromPools(s);
 
-  amd::ScopedLock lock(g_captureStreamsLock);
-  const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
-  if (g_it != g_captureStreams.end()) {
-    g_captureStreams.erase(g_it);
+  {
+    amd::ScopedLock lock(g_captureStreamsLock);
+    const auto& g_it = std::find(g_captureStreams.begin(), g_captureStreams.end(), s);
+    if (g_it != g_captureStreams.end()) {
+      g_captureStreams.erase(g_it);
+    }
   }
   const auto& l_it = std::find(hip::tls.capture_streams_.begin(),
                       hip::tls.capture_streams_.end(), s);
   if (l_it != hip::tls.capture_streams_.end()) {
     hip::tls.capture_streams_.erase(l_it);
   }
-  s->release();
+  hip::Stream::Destroy(s);
 
   HIP_RETURN(hipSuccess);
 }
@@ -494,12 +517,8 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
     return hipErrorInvalidHandle;
   }
 
-  if (flags != 0) {
+  if (flags != 0 || !hip::isValid(stream)) {
     return hipErrorInvalidValue;
-  }
-
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
@@ -526,7 +545,7 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   }
   if (stream != nullptr) {
     // If still capturing return error
-    if (hip::Stream::StreamCaptureOngoing() == true) {
+    if (hip::Stream::StreamCaptureOngoing(stream) == true) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
@@ -657,7 +676,7 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 // ================================================================================================
 hipError_t hipLaunchHostFunc(hipStream_t stream, hipHostFn_t fn, void* userData) {
   HIP_INIT_API(hipLaunchHostFunc, stream, fn, userData);
-  if (stream == nullptr && (hip::Stream::StreamCaptureOngoing() == true)) {
+  if (stream == nullptr && (hip::Stream::StreamCaptureOngoing(stream) == true)) {
     HIP_RETURN(hipErrorStreamCaptureImplicit);
   }
   HIP_RETURN(hipLaunchHostFunc_common(stream, fn, userData));

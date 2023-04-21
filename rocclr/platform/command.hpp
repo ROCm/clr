@@ -251,7 +251,8 @@ union CopyMetadata {
   uint32_t flags_;
   CopyMetadata() : flags_(0){}
   CopyMetadata(bool isAsync, CopyEnginePreference copyEnginePreference)
-      : isAsync_(isAsync), copyEnginePreference_(copyEnginePreference){}
+      : isAsync_(isAsync),
+        copyEnginePreference_(copyEnginePreference) {}
 };
 
 /*! \brief An operation that is submitted to a command queue.

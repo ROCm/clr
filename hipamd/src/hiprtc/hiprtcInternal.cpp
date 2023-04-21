@@ -23,6 +23,9 @@ THE SOFTWARE.
 #include "hiprtcInternal.hpp"
 
 #include <fstream>
+#include <streambuf>
+#include <vector>
+
 #include <sys/stat.h>
 
 #include "vdi_common.hpp"
@@ -31,7 +34,20 @@ THE SOFTWARE.
 namespace hiprtc {
 using namespace helpers;
 
-//RTC Program Member Functions
+std::vector<std::string> getLinkOptions(const LinkArguments& args) {
+  std::vector<std::string> res;
+  auto irArgCount = args.linkerIRArgCount();
+  if (irArgCount > 0) {
+    res.reserve(irArgCount);
+    auto irArg = args.linkerIRArg();
+    for (size_t i = 0; i < irArgCount; i++) {
+      res.emplace_back(std::string(irArg[i]));
+    }
+  }
+  return res;
+}
+
+// RTC Program Member Functions
 RTCProgram::RTCProgram(std::string name) : name_(name) {
   constexpr bool kComgrVersioned = true;
   std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib, kComgrVersioned);
@@ -71,11 +87,10 @@ bool RTCProgram::findIsa() {
     return false;
   }
 
-  hipError_t (*dyn_hipGetDevice)(int*) = reinterpret_cast
-             <hipError_t (*)(int*)>(sym_hipGetDevice);
+  hipError_t (*dyn_hipGetDevice)(int*) = reinterpret_cast<hipError_t (*)(int*)>(sym_hipGetDevice);
 
-  hipError_t (*dyn_hipGetDeviceProperties)(hipDeviceProp_t*, int) = reinterpret_cast
-             <hipError_t (*)(hipDeviceProp_t*, int)>(sym_hipGetDeviceProperties);
+  hipError_t (*dyn_hipGetDeviceProperties)(hipDeviceProp_t*, int) =
+      reinterpret_cast<hipError_t (*)(hipDeviceProp_t*, int)>(sym_hipGetDeviceProperties);
 
   int device;
   hipError_t status = dyn_hipGetDevice(&device);
@@ -94,9 +109,8 @@ bool RTCProgram::findIsa() {
   return true;
 }
 
-//RTC Compile Program Member Functions
+// RTC Compile Program Member Functions
 RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgpu_rdc_(false) {
-
   if ((amd::Comgr::create_data_set(&compile_input_) != AMD_COMGR_STATUS_SUCCESS) ||
       (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS)) {
     crashWithMessage("Failed to allocate internal hiprtc structure");
@@ -187,9 +201,10 @@ bool RTCCompileProgram::findLLVMOptions(const std::vector<std::string>& options,
                                         std::vector<std::string>& llvm_options) {
   for (size_t i = 0; i < options.size(); ++i) {
     if (options[i] == "-mllvm") {
-      if (options.size() == (i+1)) {
+      if (options.size() == (i + 1)) {
         LogInfo(
-          "-mllvm option passed by the app, it comes as a pair but there is no option after this");
+            "-mllvm option passed by the app, it comes as a pair but there is no option after "
+            "this");
         return false;
       }
       llvm_options.push_back(options[i]);
@@ -228,6 +243,11 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
     }
   }
 
+  // Removed consumed options
+  compile_options.erase(
+      std::remove(compile_options.begin(), compile_options.end(), std::string("")),
+      compile_options.end());
+
   if (auto res = std::find_if(
           compile_options.begin(), compile_options.end(),
           [](const std::string& str) { return str.find("--offload-arch=") != std::string::npos; });
@@ -244,7 +264,6 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
 
 bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
-
   if (!addSource_impl()) {
     LogError("Error in hiprtc: unable to add source code");
     return false;
@@ -256,7 +275,7 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   std::vector<std::string> compileOpts(compile_options_);
   compileOpts.reserve(compile_options_.size() + options.size() + 2);
   compileOpts.insert(compileOpts.end(), options.begin(), options.end());
-  
+
   if (!fgpu_rdc_) {
     compileOpts.push_back("-Xclang");
     compileOpts.push_back("-disable-llvm-passes");
@@ -347,7 +366,6 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
 }
 
 void RTCCompileProgram::stripNamedExpression(std::string& strippedName) {
-
   if (strippedName.back() == ')') {
     strippedName.pop_back();
     strippedName.erase(0, strippedName.find('('));
@@ -356,11 +374,9 @@ void RTCCompileProgram::stripNamedExpression(std::string& strippedName) {
     strippedName.erase(0, 1);
   }
   // Removes the spaces from strippedName if present
-  strippedName.erase(std::remove_if(strippedName.begin(),
-                                           strippedName.end(),
-                                           [](unsigned char c) {
-                                             return std::isspace(c);
-                                           }), strippedName.end());
+  strippedName.erase(std::remove_if(strippedName.begin(), strippedName.end(),
+                                    [](unsigned char c) { return std::isspace(c); }),
+                     strippedName.end());
 }
 
 bool RTCCompileProgram::trackMangledName(std::string& name) {
@@ -382,7 +398,6 @@ bool RTCCompileProgram::trackMangledName(std::string& name) {
 }
 
 bool RTCCompileProgram::getMangledName(const char* name_expression, const char** loweredName) {
-
   std::string strippedName = name_expression;
   stripNamedExpression(strippedName);
 
@@ -397,7 +412,6 @@ bool RTCCompileProgram::getMangledName(const char* name_expression, const char**
 }
 
 bool RTCCompileProgram::GetBitcode(char* bitcode) {
-
   if (!fgpu_rdc_ || LLVMBitcode_.size() <= 0) {
     return false;
   }
@@ -415,7 +429,7 @@ bool RTCCompileProgram::GetBitcodeSize(size_t* bitcode_size) {
   return true;
 }
 
-//RTC Link Program Member Functions
+// RTC Link Program Member Functions
 RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
   if (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS) {
     crashWithMessage("Failed to allocate internal hiprtc structure");
@@ -424,21 +438,19 @@ RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
 
 bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                                       void** options_vals_ptr) {
-
   for (size_t opt_idx = 0; opt_idx < num_options; ++opt_idx) {
-
     if (options_vals_ptr[opt_idx] == nullptr) {
-      crashWithMessage("JIT Options value ptr cannot be null");
+      LogError("Options value can not be nullptr");
       return false;
     }
 
-    switch(options_ptr[opt_idx]) {
+    switch (options_ptr[opt_idx]) {
       case HIPRTC_JIT_MAX_REGISTERS:
         link_args_.max_registers_ = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_THREADS_PER_BLOCK:
-        link_args_.threads_per_block_
-          = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.threads_per_block_ =
+            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_WALL_TIME:
         link_args_.wall_time_ = *(reinterpret_cast<long*>(options_vals_ptr[opt_idx]));
@@ -456,19 +468,19 @@ bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option
         link_args_.error_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_OPTIMIZATION_LEVEL:
-        link_args_.optimization_level_
-          = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.optimization_level_ =
+            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_TARGET_FROM_HIPCONTEXT:
-        link_args_.target_from_hip_context_
-          = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.target_from_hip_context_ =
+            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_TARGET:
         link_args_.jit_target_ = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_FALLBACK_STRATEGY:
-        link_args_.fallback_strategy_
-          = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.fallback_strategy_ =
+            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_GENERATE_DEBUG_INFO:
         link_args_.generate_debug_info_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
@@ -495,8 +507,8 @@ bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option
         link_args_.global_symbol_addresses_ = reinterpret_cast<void**>(options_vals_ptr[opt_idx]);
         break;
       case HIPRTC_JIT_GLOBAL_SYMBOL_COUNT:
-        link_args_.global_symbol_count_
-          = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.global_symbol_count_ =
+            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_LTO:
         link_args_.lto_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
@@ -513,7 +525,13 @@ bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option
       case HIPRTC_JIT_FMA:
         link_args_.fma_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
         break;
-    default:
+      case HIPRTC_JIT_IR_TO_ISA_OPT_EXT:
+        link_args_.linker_ir2isa_args_ = reinterpret_cast<const char**>(options_vals_ptr[opt_idx]);
+        break;
+      case HIPRTC_JIT_IR_TO_ISA_OPT_COUNT_EXT:
+        link_args_.linker_ir2isa_args_count_ = reinterpret_cast<size_t>(options_vals_ptr[opt_idx]);
+        break;
+      default:
         break;
     }
   }
@@ -526,17 +544,17 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
 
   // Map the hiprtc input type to comgr data kind
   switch (input_type) {
-    case HIPRTC_JIT_INPUT_LLVM_BITCODE :
+    case HIPRTC_JIT_INPUT_LLVM_BITCODE:
       data_kind = AMD_COMGR_DATA_KIND_BC;
       break;
-    case HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE :
-      data_kind = HIPRTC_USE_RUNTIME_UNBUNDLER 
-                  ? AMD_COMGR_DATA_KIND_BC : AMD_COMGR_DATA_KIND_BC_BUNDLE;
+    case HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE:
+      data_kind =
+          HIPRTC_USE_RUNTIME_UNBUNDLER ? AMD_COMGR_DATA_KIND_BC : AMD_COMGR_DATA_KIND_BC_BUNDLE;
       break;
-    case HIPRTC_JIT_INPUT_LLVM_ARCHIVES_OF_BUNDLED_BITCODE :
+    case HIPRTC_JIT_INPUT_LLVM_ARCHIVES_OF_BUNDLED_BITCODE:
       data_kind = AMD_COMGR_DATA_KIND_AR_BUNDLE;
       break;
-    default :
+    default:
       LogError("Cannot find the corresponding comgr data kind");
       break;
   }
@@ -544,26 +562,9 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
   return data_kind;
 }
 
-bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
+bool RTCLinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITInputType input_type,
+                                       std::string& link_file_name) {
   std::vector<char> llvm_bitcode;
-
-  // Get the file size.
-  struct stat stat_buf;
-  if (stat(file_path.c_str(), &stat_buf)) {
-    return false;
-  }
-
-  // Read the file contents
-  std::string link_file_name("Linker Program");
-  std::vector<char> link_file_info(stat_buf.st_size);
-  std::ifstream bc_file(file_path, std::ios_base::in | std::ios_base::binary);
-  if (!bc_file.good()) {
-    return true;
-  }
-
-  bc_file.read(link_file_info.data(), stat_buf.st_size);
-  bc_file.close();
-
   // If this is bundled bitcode then unbundle this.
   if (HIPRTC_USE_RUNTIME_UNBUNDLER && input_type == HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE) {
     if (!findIsa()) {
@@ -572,19 +573,18 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
 
     size_t co_offset = 0;
     size_t co_size = 0;
-    if(!UnbundleBitCode(link_file_info, isa_, co_offset, co_size)) {
+    if (!UnbundleBitCode(link_data, isa_, co_offset, co_size)) {
       LogError("Error in hiprtc: unable to unbundle the llvm bitcode");
       return false;
     }
 
-    llvm_bitcode.assign(link_file_info.begin() + co_offset,
-                        link_file_info.begin() + co_offset + co_size);
+    llvm_bitcode.assign(link_data.begin() + co_offset, link_data.begin() + co_offset + co_size);
   } else {
-    llvm_bitcode.assign(link_file_info.begin(), link_file_info.end());
+    llvm_bitcode.assign(link_data.begin(), link_data.end());
   }
 
   amd_comgr_data_kind_t data_kind;
-  if((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
+  if ((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
     LogError("Cannot find the correct COMGR data kind");
     return false;
   }
@@ -597,52 +597,39 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
   return true;
 }
 
+bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
+  std::vector<char> link_file_info;
+
+  std::ifstream file_stream{file_path};
+  if (!file_stream.good()) {
+    return false;
+  }
+  std::copy(std::istream_iterator<char>(file_stream), std::istream_iterator<char>(),
+            std::back_inserter(link_file_info));
+  file_stream.close();
+
+  // Read the file contents
+  std::string link_file_name("Linker Program");
+
+  return AddLinkerDataImpl(link_file_info, input_type, link_file_name);
+}
+
 bool RTCLinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                                    hiprtcJITInputType input_type) {
   char* image_char_buf = reinterpret_cast<char*>(image_ptr);
-  std::vector<char> llvm_bitcode;
+  std::vector<char> bundled_llvm_bitcode(image_char_buf, image_char_buf + image_size);
 
-  if (HIPRTC_USE_RUNTIME_UNBUNDLER && input_type == HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE) {
-    std::vector<char> bundled_llvm_bitcode(image_char_buf, image_char_buf + image_size);
-
-    if (!findIsa()) {
-      return false;
-    }
-
-    size_t co_offset = 0;
-    size_t co_size = 0;
-    if(!UnbundleBitCode(bundled_llvm_bitcode, isa_, co_offset, co_size)) {
-      LogError("Error in hiprtc: unable to unbundle the llvm bitcode");
-      return false;
-    }
-
-    llvm_bitcode.assign(bundled_llvm_bitcode.begin() + co_offset,
-                        bundled_llvm_bitcode.begin() + co_offset + co_size);
-  } else {
-    llvm_bitcode.assign(image_char_buf, image_char_buf + image_size);
-  }
-
-  amd_comgr_data_kind_t data_kind;
-  if((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
-    LogError("Cannot find the correct COMGR data kind");
-    return false;
-  }
-
-  if(!addCodeObjData(link_input_, llvm_bitcode , link_file_name, data_kind)) {
-    LogError("Error in hiprtc: unable to add linked code object");
-    return false;
-  }
-  return true;
+  return AddLinkerDataImpl(bundled_llvm_bitcode, input_type, link_file_name);
 }
 
 bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
-
   if (!findIsa()) {
     return false;
   }
 
   std::vector<char> linked_llvm_bitcode;
-  if (!linkLLVMBitcode(link_input_, isa_, link_options_, build_log_, linked_llvm_bitcode)) {
+  std::vector<std::string> linkopts;
+  if (!linkLLVMBitcode(link_input_, isa_, linkopts, build_log_, linked_llvm_bitcode)) {
     LogError("Error in hiprtc: unable to add device libs to linked bitcode");
     return false;
   }
@@ -653,7 +640,7 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
     return false;
   }
 
-  std::vector<std::string> exe_options;
+  std::vector<std::string> exe_options = getLinkOptions(link_args_);
   exe_options.push_back("-O3");
   if (!createExecutable(exec_input_, isa_, exe_options, build_log_, executable_)) {
     LogError("Error in hiprtc: unable to create exectuable");

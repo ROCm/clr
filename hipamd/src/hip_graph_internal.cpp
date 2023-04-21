@@ -140,7 +140,6 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
 
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
     }
   }
   offset = 0;
@@ -150,7 +149,6 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
 
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
     }
   }
 
@@ -467,7 +465,7 @@ hipError_t hipGraphExec::CreateStreams(uint32_t num_streams) {
                                   hip::Stream::Priority::Normal, hipStreamNonBlocking);
     if (stream == nullptr || !stream->Create()) {
       if (stream != nullptr) {
-        stream->release();
+        hip::Stream::Destroy(stream);
       }
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!\n");
       return hipErrorOutOfMemory;
@@ -574,7 +572,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (hip::getStream(stream) == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
-  if (flags_ == hipGraphInstantiateFlagAutoFreeOnLaunch) {
+  if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!levelOrder_.empty()) {
       levelOrder_[0]->GetParentGraph()->FreeAllMemory();
     }

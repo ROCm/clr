@@ -1,4 +1,4 @@
-/* Copyright (c) 2012 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2012 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -22,300 +22,16 @@
 
 #include "top.hpp"
 
-#include "cl_d3d9_amd.hpp"
+#include "platform/interop_d3d9.hpp"
 #include "platform/command.hpp"
 
 #include <cstring>
 #include <utility>
 
-#define D3DFMT_NV_12 static_cast<D3DFORMAT>(MAKEFOURCC('N', 'V', '1', '2'))
-#define D3DFMT_P010  static_cast<D3DFORMAT>(MAKEFOURCC('P', '0', '1', '0'))
-#define D3DFMT_YV_12 static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'V', '1', '2'))
-#define D3DFMT_YUY2  static_cast<D3DFORMAT>(MAKEFOURCC('Y', 'U', 'Y', '2'))
-
-
-RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR,
-              (cl_platform_id platform, cl_uint num_media_adapters,
-               cl_dx9_media_adapter_type_khr* media_adapters_type, void* media_adapters,
-               cl_dx9_media_adapter_set_khr media_adapter_set, cl_uint num_entries,
-               cl_device_id* devices, cl_uint* num_devices)) {
-  cl_int errcode;
-  // Accept an array of DX9 devices here as the spec mention of array of num_media_adapters size.
-  IDirect3DDevice9Ex** d3d9_device = static_cast<IDirect3DDevice9Ex**>(media_adapters);
-  cl_device_id* gpu_devices = NULL;
-  cl_uint num_gpu_devices = 0;
-  static const bool VALIDATE_ONLY = true;
-
-  if (platform != NULL && platform != AMD_PLATFORM) {
-    LogWarning("\"platrform\" is not a valid AMD platform");
-    return CL_INVALID_PLATFORM;
-  }
-  // check if input parameter are correct
-  if ((num_media_adapters == 0) || (media_adapters_type == NULL) || (media_adapters == NULL) ||
-      (media_adapter_set != CL_PREFERRED_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR &&
-       media_adapter_set != CL_ALL_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR) ||
-      (num_entries == 0 && devices != NULL)) {
-    return CL_INVALID_VALUE;
-  }
-  // Get GPU devices
-  errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, 0, NULL, &num_gpu_devices);
-  if (errcode != CL_SUCCESS && errcode != CL_DEVICE_NOT_FOUND) {
-    return CL_INVALID_VALUE;
-  }
-
-  if (!num_gpu_devices) {
-    *not_null(num_devices) = 0;
-    return CL_DEVICE_NOT_FOUND;
-  }
-
-  switch (media_adapter_set) {
-    case CL_PREFERRED_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR:
-    case CL_ALL_DEVICES_FOR_DX9_MEDIA_ADAPTER_KHR: {
-      gpu_devices = new cl_device_id[num_gpu_devices];
-      errcode = clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, num_gpu_devices, gpu_devices, NULL);
-      if (errcode != CL_SUCCESS) {
-        break;
-      }
-
-      std::vector<amd::Device*> compatible_devices;
-      for (cl_uint i = 0; i < num_gpu_devices; ++i) {
-        cl_device_id device = gpu_devices[i];
-        amd::Context::Flags context_flag;
-        amd::Context::DeviceFlagIdx devIdx;
-        switch (media_adapters_type[i]) {
-          case CL_ADAPTER_D3D9_KHR:
-            context_flag = amd::Context::Flags::D3D9DeviceKhr;
-            devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceKhrIdx;
-            break;
-          case CL_ADAPTER_D3D9EX_KHR:
-            context_flag = amd::Context::Flags::D3D9DeviceEXKhr;
-            devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceEXKhrIdx;
-            break;
-          case CL_ADAPTER_DXVA_KHR:
-            context_flag = amd::Context::Flags::D3D9DeviceVAKhr;
-            devIdx = amd::Context::DeviceFlagIdx::D3D9DeviceVAKhrIdx;
-            break;
-        }
-
-        for (cl_uint j = 0; j < num_media_adapters; ++j) {
-          // Since there can be multiple DX9 adapters passed in the array we need to validate
-          // interopability with each.
-          void* external_device[amd::Context::DeviceFlagIdx::LastDeviceFlagIdx] = {};
-          external_device[devIdx] = d3d9_device[j];
-
-          if (is_valid(device) && (media_adapters_type[j] == CL_ADAPTER_D3D9EX_KHR) &&
-              as_amd(device)->bindExternalDevice(context_flag, external_device, NULL,
-                                                 VALIDATE_ONLY)) {
-            compatible_devices.push_back(as_amd(device));
-          }
-        }
-      }
-      if (compatible_devices.size() == 0) {
-        *not_null(num_devices) = 0;
-        errcode = CL_DEVICE_NOT_FOUND;
-        break;
-      }
-
-      auto it = compatible_devices.cbegin();
-      cl_uint compatible_count = std::min(num_entries, (cl_uint)compatible_devices.size());
-
-      while (compatible_count--) {
-        *devices++ = as_cl(*it++);
-        --num_entries;
-      }
-      while (num_entries--) {
-        *devices++ = (cl_device_id)0;
-      }
-
-      *not_null(num_devices) = (cl_uint)compatible_devices.size();
-    } break;
-
-    default:
-      LogWarning("\"d3d9_device_set\" is invalid");
-      errcode = CL_INVALID_VALUE;
-  }
-
-  delete[] gpu_devices;
-  return errcode;
-}
-RUNTIME_EXIT
-
-RUNTIME_ENTRY_RET(cl_mem, clCreateFromDX9MediaSurfaceKHR,
-                  (cl_context context, cl_mem_flags flags,
-                   cl_dx9_media_adapter_type_khr adapter_type, void* surface_info, cl_uint plane,
-                   cl_int* errcode_ret)) {
-  cl_mem clMemObj = NULL;
-
-  cl_dx9_surface_info_khr* cl_surf_info = NULL;
-
-  if (!is_valid(context)) {
-    *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-    LogWarning("invalid parameter \"context\"");
-    return clMemObj;
-  }
-
-  if (!flags) flags = CL_MEM_READ_WRITE;
-  if (!(((flags & CL_MEM_READ_ONLY) == CL_MEM_READ_ONLY) ||
-        ((flags & CL_MEM_WRITE_ONLY) == CL_MEM_WRITE_ONLY) ||
-        ((flags & CL_MEM_READ_WRITE) == CL_MEM_READ_WRITE))) {
-    *not_null(errcode_ret) = CL_INVALID_VALUE;
-    LogWarning("invalid parameter \"flags\"");
-    return clMemObj;
-  }
-
-  if ((adapter_type != CL_ADAPTER_D3D9_KHR) && (adapter_type != CL_ADAPTER_D3D9EX_KHR) &&
-      (adapter_type != CL_ADAPTER_DXVA_KHR)) {
-    *not_null(errcode_ret) = CL_INVALID_VALUE;
-    return clMemObj;
-  }
-
-  if (!surface_info) {
-    *not_null(errcode_ret) = CL_INVALID_VALUE;
-    LogWarning("parameter \"pD3DResource\" is a NULL pointer");
-    return clMemObj;
-  }
-
-  cl_surf_info = (cl_dx9_surface_info_khr*)surface_info;
-  IDirect3DSurface9* pD3D9Resource = cl_surf_info->resource;
-  HANDLE shared_handle = cl_surf_info->shared_handle;
-
-  if (!pD3D9Resource) {
-    *not_null(errcode_ret) = CL_INVALID_VALUE;
-    LogWarning("parameter \"surface_info\" is a NULL pointer");
-    return clMemObj;
-  }
-
-  D3DSURFACE_DESC Desc;
-  pD3D9Resource->GetDesc(&Desc);
-
-  if ((Desc.Format != D3DFMT_NV_12) &&
-      (Desc.Format != D3DFMT_P010) &&
-      (Desc.Format != D3DFMT_YV_12) && (plane != 0)) {
-    *not_null(errcode_ret) = CL_INVALID_VALUE;
-    LogWarning("The plane has to be Zero if the surface format is non-planar !");
-    return clMemObj;
-  }
-
-  // Check for image support
-  const std::vector<amd::Device*>& devices = as_amd(context)->devices();
-  bool supportPass = false;
-  for (const auto& it : devices) {
-    if (it->info().imageSupport_) {
-      supportPass = true;
-    }
-  }
-  if (!supportPass) {
-    *not_null(errcode_ret) = CL_INVALID_OPERATION;
-    LogWarning("there are no devices in context to support images");
-    return (cl_mem)0;
-  }
-  // Verify the resource is a 2D image
-  return amd::clCreateImage2DFromD3D9ResourceAMD(*as_amd(context), flags, adapter_type,
-                                                 cl_surf_info, plane, errcode_ret);
-}
-RUNTIME_EXIT
-
-RUNTIME_ENTRY(cl_int, clEnqueueAcquireDX9MediaSurfacesKHR,
-              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
-               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
-  return amd::clEnqueueAcquireExtObjectsAMD(command_queue, num_objects, mem_objects,
-                                            num_events_in_wait_list, event_wait_list, event,
-                                            CL_COMMAND_ACQUIRE_DX9_MEDIA_SURFACES_KHR);
-}
-RUNTIME_EXIT
-
-RUNTIME_ENTRY(cl_int, clEnqueueReleaseDX9MediaSurfacesKHR,
-              (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
-               cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
-  return amd::clEnqueueReleaseExtObjectsAMD(command_queue, num_objects, mem_objects,
-                                            num_events_in_wait_list, event_wait_list, event,
-                                            CL_COMMAND_RELEASE_DX9_MEDIA_SURFACES_KHR);
-}
-RUNTIME_EXIT
-
-//
-//
-//          namespace amd
-//
-//
 namespace amd {
-/*! @}
- *  \addtogroup CL-D3D9 interop helper functions
- *  @{
- */
-//
-// Class D3D9Object implementation
-//
 std::vector<std::pair<TD3D9RESINFO, TD3D9RESINFO>> D3D9Object::resources_;
 Monitor D3D9Object::resLock_;
 
-//
-//      clCreateImage2DFromD3D9ResourceAMD
-//
-cl_mem clCreateImage2DFromD3D9ResourceAMD(Context& amdContext, cl_mem_flags flags,
-                                          cl_dx9_media_adapter_type_khr adapter_type,
-                                          cl_dx9_surface_info_khr* surface_info, cl_uint plane,
-                                          int* errcode_ret) {
-  cl_dx9_surface_info_khr* cl_surf_info = reinterpret_cast<cl_dx9_surface_info_khr*>(surface_info);
-  IDirect3DSurface9* pD3D9Resource = cl_surf_info->resource;
-  HANDLE shared_handle = cl_surf_info->shared_handle;
-
-  D3D9Object obj;
-  cl_int errcode = D3D9Object::initD3D9Object(amdContext, adapter_type, surface_info, plane, obj);
-  if (CL_SUCCESS != errcode) {
-    *not_null(errcode_ret) = errcode;
-    return (cl_mem)0;
-  }
-
-  Image2DD3D9* pImage2DD3D9 = new (amdContext) Image2DD3D9(amdContext, flags, obj);
-  if (!pImage2DD3D9) {
-    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-    return (cl_mem)0;
-  }
-  if (!pImage2DD3D9->create()) {
-    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    pImage2DD3D9->release();
-    return (cl_mem)0;
-  }
-
-  *not_null(errcode_ret) = CL_SUCCESS;
-  return as_cl<Memory>(pImage2DD3D9);
-}
-
-//
-// Helper function SyncD3D9Objects
-//
-void SyncD3D9Objects(std::vector<amd::Memory*>& memObjects) {
-  Memory*& mem = memObjects.front();
-  if (!mem) {
-    LogWarning("\nNULL memory object\n");
-    return;
-  }
-  InteropObject* interop = mem->getInteropObj();
-  if (!interop) {
-    LogWarning("\nNULL interop object\n");
-    return;
-  }
-  D3D9Object* d3d9Obj = interop->asD3D9Object();
-  if (!d3d9Obj) {
-    LogWarning("\nNULL D3D9 object\n");
-    return;
-  }
-  IDirect3DQuery9* query = d3d9Obj->getQuery();
-  if (!query) {
-    LogWarning("\nNULL IDirect3DQuery9\n");
-    return;
-  }
-  ScopedLock sl(d3d9Obj->getResLock());
-  query->Issue(D3DISSUE_END);
-  BOOL data = FALSE;
-  while (S_OK != query->GetData(&data, sizeof(BOOL), D3DGETDATA_FLUSH)) {
-  }
-}
-
-//
-// Class D3D10Object implementation
-//
 size_t D3D9Object::getElementBytes(D3DFORMAT d3d9Format, cl_uint plane) {
   size_t bytesPerPixel;
 
@@ -496,7 +212,7 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
                                D3D9Object& obj) {
   ScopedLock sl(resLock_);
 
-  IDirect3DDevice9Ex* pDev9Ex = NULL;
+  IDirect3DDevice9Ex* pDev9Ex = nullptr;
   cl_int errcode = CL_SUCCESS;
 
   // Check if this ressource has already been used for interop
@@ -537,9 +253,9 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
   setObjDesc(obj.objDescOrig_, resDesc, plane);
   obj.objDesc_ = obj.objDescOrig_;
 
-  // shared handle cases if the shared_handle is NULL
+  // shared handle cases if the shared_handle is nullptr
   // first check if the format is NV12 or YV12, which we need special handling
-  if (NULL == shared_handle) {
+  if (nullptr == shared_handle) {
     bool found = false;
     for (const auto& it : resources_) {
       if (it.first.surfInfo.resource == cl_surf_info->resource &&
@@ -567,7 +283,7 @@ int D3D9Object::initD3D9Object(const Context& amdContext,
     obj.pD3D9ResOrig_->AddRef();  // addRef in case lost the resource
   } else {
     // Share the original resource
-    obj.pD3D9ResOrig_ = NULL;
+    obj.pD3D9ResOrig_ = nullptr;
     obj.pD3D9Res_ = pD3D9res;
     obj.pD3D9Res_->AddRef();
   }
@@ -789,7 +505,7 @@ cl_image_format D3D9Object::getCLFormatFromD3D9(D3DFORMAT d3d9Fmt, cl_uint plane
 
 bool D3D9Object::copyOrigToShared() {
   // Don't copy if there is no orig
-  if (NULL == getD3D9ResOrig()) return true;
+  if (nullptr == getD3D9ResOrig()) return true;
 
   IDirect3DDevice9Ex* d3dDev;
   HRESULT hr;
@@ -804,7 +520,7 @@ bool D3D9Object::copyOrigToShared() {
     return false;
   }
 
-  hr = d3dDev->StretchRect(srcSurf, NULL, dstSurf, NULL, D3DTEXF_NONE);
+  hr = d3dDev->StretchRect(srcSurf, nullptr, dstSurf, nullptr, D3DTEXF_NONE);
   if (hr != D3D_OK) {
     LogError("\ncopy original surface to shared surface failed\n");
     return false;
@@ -821,7 +537,7 @@ bool D3D9Object::copyOrigToShared() {
 
 bool D3D9Object::copySharedToOrig() {
   // Don't copy if there is no orig
-  if (NULL == getD3D9ResOrig()) return true;
+  if (nullptr == getD3D9ResOrig()) return true;
 
   IDirect3DDevice9Ex* d3dDev;
   HRESULT hr;
@@ -833,7 +549,7 @@ bool D3D9Object::copySharedToOrig() {
     return false;
   }
 
-  hr = d3dDev->StretchRect(getD3D9Resource(), NULL, getD3D9ResOrig(), NULL, D3DTEXF_NONE);
+  hr = d3dDev->StretchRect(getD3D9Resource(), nullptr, getD3D9ResOrig(), nullptr, D3DTEXF_NONE);
   if (hr != D3D_OK) {
     LogError("\ncopy shared surface to original surface failed\n");
     return false;

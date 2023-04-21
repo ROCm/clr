@@ -74,6 +74,10 @@ inline static std::vector<std::string> splitSpaceSeparatedString(const char *str
   return vec;
 }
 
+#if defined(WITH_COMPILER_LIB)
+amd::Monitor Program::buildLock_("HSAIL build lock", true);
+#endif
+
 // ================================================================================================
 Program::Program(amd::Device& device, amd::Program& owner)
     : device_(device),
@@ -280,31 +284,29 @@ amd_comgr_status_t Program::addCodeObjData(const char *source,
   return status;
 }
 
-void Program::setLanguage(const char* clStd, amd_comgr_language_t* langver) {
+static amd_comgr_language_t getCOMGRLanguage(bool isHIP, const amd::option::Options &amdOptions) {
 
-  if (isHIP()) {
-    if (langver != nullptr) {
-      *langver = AMD_COMGR_LANGUAGE_HIP;
-    }
+  if (isHIP) {
+    return AMD_COMGR_LANGUAGE_HIP;
   } else {
+    const char* clStd = amdOptions.oVariables->CLStd;
     uint clcStd = (clStd[2] - '0') * 100 + (clStd[4] - '0') * 10;
 
-    if (langver != nullptr) {
-      switch (clcStd) {
-        case 100:
-        case 110:
-        case 120:
-          *langver = AMD_COMGR_LANGUAGE_OPENCL_1_2;
-          break;
-        case 200:
-          *langver = AMD_COMGR_LANGUAGE_OPENCL_2_0;
-          break;
-        default:
-          *langver = AMD_COMGR_LANGUAGE_NONE;
-          break;
-      }
+    switch (clcStd) {
+      case 100:
+      case 110:
+      case 120:
+        return AMD_COMGR_LANGUAGE_OPENCL_1_2;
+      case 200:
+        return AMD_COMGR_LANGUAGE_OPENCL_2_0;
+      default:
+        break;
     }
   }
+
+  DevLogPrintfError("Cannot set Language version for %s \n",
+                    amdOptions.oVariables->CLStd);
+  return AMD_COMGR_LANGUAGE_NONE;
 }
 
 
@@ -348,11 +350,8 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
                               char* binaryData[], size_t* binarySize, const bool link_dev_libs) {
 
-  amd_comgr_language_t langver;
-  setLanguage(amdOptions->oVariables->CLStd, &langver);
+  amd_comgr_language_t langver = getCOMGRLanguage(isHIP(), *amdOptions);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
-    DevLogPrintfError("Cannot set Language version for %s \n",
-                      amdOptions->oVariables->CLStd);
     return false;
   }
 
@@ -408,11 +407,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
                                    amd::option::Options* amdOptions,
                                    char* binaryData[], size_t* binarySize) {
 
-  amd_comgr_language_t langver;
-  setLanguage(amdOptions->oVariables->CLStd, &langver);
+  amd_comgr_language_t langver = getCOMGRLanguage(isHIP(), *amdOptions);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
-    DevLogPrintfError("Cannot set Language version for %s \n",
-                      amdOptions->oVariables->CLStd);
     return false;
   }
 
@@ -793,6 +789,8 @@ bool Program::compileImplHSAIL(const std::string& sourceCode,
   const std::vector<const std::string*>& headers,
   const char** headerIncludeNames, amd::option::Options* options) {
 #if defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   aclTargetInfo target;
 
@@ -1017,6 +1015,8 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
 bool Program::linkImplHSAIL(const std::vector<Program*>& inputPrograms,
   amd::option::Options* options, bool createLibrary) {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
 
   // For each program we need to extract the LLVMIR and create
@@ -1325,6 +1325,8 @@ bool Program::linkImplLC(amd::option::Options* options) {
 // ================================================================================================
 bool Program::linkImplHSAIL(amd::option::Options* options) {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   bool finalize = true;
   internal_ = (compileOptions_.find("-cl-internal-kernel") != std::string::npos) ? true : false;
@@ -1878,6 +1880,8 @@ int32_t Program::build(const std::string& sourceCode, const char* origOptions,
 // ================================================================================================
 bool Program::loadHSAIL() {
 #if  defined(WITH_COMPILER_LIB)
+  amd::ScopedLock sl(&buildLock_);
+
   acl_error errorCode;
   size_t binSize;
   void* bin = const_cast<void*>(amd::Hsail::ExtractSection(device().compiler(), binaryElf_,

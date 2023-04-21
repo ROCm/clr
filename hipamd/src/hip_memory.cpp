@@ -75,14 +75,8 @@ hipError_t ihipFree(void *ptr) {
   if (memory_object != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
     auto device_id = memory_object->getUserData().deviceId;
-    auto dev = g_devices[device_id];
-    // Skip stream allocation, since if it wasn't allocated until free, then the device wasn't used
-    constexpr bool SkipStreamAlloc = true;
-    hip::Stream* stream = dev->NullStream(SkipStreamAlloc);
-    if (stream != nullptr) {
-      stream->finish();
-    }
-    hip::Stream::syncNonBlockingStreams(device_id);
+    hip::Stream::SyncAllStreams(device_id);
+
     // Find out if memory belongs to any memory pool
     if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
       // External mem is not svm.
@@ -106,6 +100,11 @@ hipError_t hipImportExternalMemory(
   if (extMem_out == nullptr || memHandleDesc == nullptr ||
       (memHandleDesc->flags != 0 && memHandleDesc->flags != hipExternalMemoryDedicated) ||
       memHandleDesc->size == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if ((memHandleDesc->type < hipExternalMemoryHandleTypeOpaqueFd) ||
+      (memHandleDesc->type > hipExternalMemoryHandleTypeD3D11ResourceKmt)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -173,6 +172,12 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
   if (extSem_out == nullptr || semHandleDesc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if ((semHandleDesc->type < hipExternalSemaphoreHandleTypeOpaqueFd) ||
+      (semHandleDesc->type > hipExternalSemaphoreHandleTypeD3D12Fence)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
 #ifdef _WIN32
@@ -699,14 +704,11 @@ hipError_t ihipArrayDestroy(hipArray* array) {
     return hipErrorInvalidValue;
   }
 
-  for (auto& dev : g_devices) {
-    hip::Stream* stream = dev->NullStream(true);
-    if (stream != nullptr) {
-      stream->finish();
-    }
-  }
+  auto image = as_amd(memObj);
+  // Wait on the device, associated with the current memory object during allocation
+  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  image->release();
 
-  as_amd(memObj)->release();
   delete array;
   return hipSuccess;
 }
@@ -973,7 +975,8 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
     delete image;
     return nullptr;
   }
-
+  // Save device ID image was creted on
+  image->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   return image;
 }
 
@@ -993,11 +996,6 @@ hipError_t ihipArrayCreate(hipArray** array,
 
   if (pAllocateArray->Flags & hipArrayCubemap) {
     return hipErrorInvalidValue;
-  }
-
-  if ((pAllocateArray->Flags & hipArraySurfaceLoadStore) ||
-      (pAllocateArray->Flags & hipArrayTextureGather)) {
-    return hipErrorNotSupported;
   }
 
   const cl_channel_order channelOrder = hip::getCLChannelOrder(pAllocateArray->NumChannels, 0);
@@ -1193,12 +1191,7 @@ hipError_t ihipHostUnregister(void* hostPtr) {
 
   if (mem != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
-    auto device_id = mem->getUserData().deviceId;
-
-    hip::Stream* stream = g_devices[device_id]->NullStream(true);
-    if (stream != nullptr) {
-      stream->finish();
-    }
+    hip::Stream::SyncAllStreams(mem->getUserData().deviceId);
 
     amd::MemObjMap::RemoveMemObj(hostPtr);
     for (const auto& device: g_devices) {
@@ -2095,7 +2088,6 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
 
     if (srcMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcDevice = const_cast<void*>(pCopy->srcHost);
-      const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
     }
   }
   offset = 0;
@@ -2105,7 +2097,6 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
 
     if (dstMemoryType == hipMemoryTypeDevice) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
     }
   }
 
@@ -3983,7 +3974,6 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
 }
 
 hipError_t ihipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
-
   if (mipmapped_array_ptr == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -3993,17 +3983,12 @@ hipError_t ihipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
     return hipErrorInvalidValue;
   }
 
-  for (auto& dev : g_devices) {
-    hip::Stream* stream = dev->NullStream(true);
-    if (stream != nullptr) {
-      stream->finish();
-    }
-  }
-
-  as_amd(mem_obj)->release();
+  auto image = as_amd(mem_obj);
+  // Wait on the device, associated with the current memory object during allocation
+  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  image->release();
 
   delete mipmapped_array_ptr;
-
   return hipSuccess;
 }
 

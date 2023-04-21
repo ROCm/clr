@@ -503,29 +503,19 @@ hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
 
 hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   HIP_INIT_API(hipDeviceSetSharedMemConfig, config);
-
+  if (config != hipSharedMemBankSizeDefault &&
+      config != hipSharedMemBankSizeFourByte && 
+      config != hipSharedMemBankSizeEightByte) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   // No way to set cache config yet.
 
   HIP_RETURN(hipErrorNotSupported);
 }
 
-hipError_t hipDeviceSynchronize ( void ) {
+hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
-
-  hip::Stream* stream = hip::getNullStream();
-
-  if (!stream) {
-    HIP_RETURN(hipErrorOutOfMemory);
-  }
-
-  if (hip::Stream::StreamCaptureOngoing() == true) {
-    HIP_RETURN(hipErrorStreamCaptureUnsupported);
-  }
-
-  stream->finish();
-
-  hip::Stream::syncNonBlockingStreams(hip::getCurrentDevice()->deviceId());
-
+  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId());
   HIP_RETURN(hipSuccess);
 }
 

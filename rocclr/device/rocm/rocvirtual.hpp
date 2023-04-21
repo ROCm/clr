@@ -282,7 +282,7 @@ class VirtualGPU : public device::VirtualDevice {
     size_t current_id_ = 0;       //!< Last submitted signal
     bool sdma_profiling_ = false; //!< If TRUE, then SDMA profiling is enabled
     const VirtualGPU& gpu_;       //!< VirtualGPU, associated with this tracker
-    std::vector<ProfilingSignal*> external_signals_;  //!< External signals for a wait in this queue
+    std::vector<ProfilingSignal*> external_signals_; //!< External signals for a wait in this queue
     std::vector<hsa_signal_t> waiting_signals_;   //!< Current waiting signals in this queue
     bool handlerPending_;         //!< This indicates if we have queued a callback handler
   };
@@ -372,7 +372,7 @@ class VirtualGPU : public device::VirtualDevice {
                          size_t& ldsAddress,         //!< LDS usage
                          bool cooperativeGroups,     //!< Dispatch with cooperative groups
                          bool& imageBufferWrtBack,   //!< Image buffer write back is required
-                         std::vector<device::Memory*>& wrtBackImageBuffer //!< images for write back
+                         std::vector<device::Memory*>& wrtBackImageBuffer //!< Images for writeback
                          );
 
   //! Adds a stage write buffer into a list
@@ -511,7 +511,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   amd::Memory* virtualQueue_;     //!< Virtual device queue
   uint deviceQueueSize_;          //!< Device queue size
-  uint maskGroups_;               //!< The number of mask groups processed in the scheduler by one thread
+  uint maskGroups_;               //!< The number of mask groups processed in the scheduler by
+                                  //!< one thread
   uint schedulerThreads_;         //!< The number of scheduler threads
 
   amd::Memory* schedulerParam_;
@@ -527,7 +528,8 @@ class VirtualGPU : public device::VirtualDevice {
   uint32_t  kernarg_pool_chunk_end_;    //!< The end offset of the current chunck
   uint32_t  active_chunk_;              //!< The index of the current active chunk
   uint32_t  kernarg_pool_cur_offset_;
-  std::vector<hsa_signal_t> kernarg_pool_signal_; //!< Pool of HSA signals to manage multiple chunks
+  std::vector<hsa_signal_t> kernarg_pool_signal_; //!< Pool of HSA signals to manage
+                                                  //!< multiple chunks
 
   friend class Timestamp;
 

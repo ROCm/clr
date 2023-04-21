@@ -62,7 +62,7 @@ template <typename T, typename... Args> inline std::string ToString(T first, Arg
 }  // namespace internal
 }  // namespace hiprtc
 
-static amd::Monitor g_hiprtcInitlock {"hiprtcInit lock"};
+static amd::Monitor g_hiprtcInitlock{"hiprtcInit lock"};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
   amd::Thread* thread = amd::Thread::current();                                                    \
   if (!VDI_CHECK_THREAD(thread)) {                                                                 \
@@ -72,7 +72,7 @@ static amd::Monitor g_hiprtcInitlock {"hiprtcInit lock"};
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
   if (!amd::Flag::init()) {                                                                        \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
-  }                                                                                                \
+  }
 
 #define HIPRTC_INIT_API(...)                                                                       \
   HIPRTC_INIT_API_INTERNAL(0, __VA_ARGS__)                                                         \
@@ -101,15 +101,13 @@ struct Settings {
 };
 
 class RTCProgram {
-protected:
+ protected:
   // Lock and control variables
   static amd::Monitor lock_;
   static std::once_flag initialized_;
 
   RTCProgram(std::string name);
-  ~RTCProgram() {
-    amd::Comgr::destroy_data_set(exec_input_);
-  }
+  ~RTCProgram() { amd::Comgr::destroy_data_set(exec_input_); }
 
   // Member Functions
   bool findIsa();
@@ -125,7 +123,6 @@ protected:
 };
 
 class RTCCompileProgram : public RTCProgram {
-
   // Private Data Members
   Settings settings_;
 
@@ -213,10 +210,43 @@ struct LinkArguments {
   int prec_div_;
   int prec_sqrt_;
   int fma_;
+  const char** linker_ir2isa_args_;
+  size_t linker_ir2isa_args_count_;
+
+  LinkArguments()
+      : max_registers_{0},
+        threads_per_block_{0},
+        wall_time_{0.0f},
+        info_log_size_{0},
+        info_log_{nullptr},
+        error_log_size_{0},
+        error_log_{nullptr},
+        optimization_level_{3},
+        target_from_hip_context_{0},
+        jit_target_{0},
+        fallback_strategy_{0},
+        generate_debug_info_{0},
+        log_verbose_{0},
+        generate_line_info_{0},
+        cache_mode_{0},
+        sm3x_opt_{false},
+        fast_compile_{false},
+        global_symbol_names_{nullptr},
+        global_symbol_addresses_{nullptr},
+        global_symbol_count_{0},
+        lto_{0},
+        ftz_{0},
+        prec_div_{0},
+        prec_sqrt_{0},
+        fma_{0},
+        linker_ir2isa_args_{nullptr},
+        linker_ir2isa_args_count_{0} {}
+
+  size_t linkerIRArgCount() const { return linker_ir2isa_args_count_; }
+  const char** linkerIRArg() const { return linker_ir2isa_args_; }
 };
 
 class RTCLinkProgram : public RTCProgram {
-
   // Private Member Functions (forbid these function calls)
   RTCLinkProgram() = delete;
   RTCLinkProgram(RTCLinkProgram&) = delete;
@@ -230,29 +260,29 @@ class RTCLinkProgram : public RTCProgram {
   // Private Data Members
   amd_comgr_data_set_t link_input_;
   std::vector<std::string> link_options_;
-public:
+
+  bool AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITInputType input_type,
+                         std::string& link_file_name);
+
+ public:
   RTCLinkProgram(std::string name);
-  ~RTCLinkProgram() {
-    amd::Comgr::destroy_data_set(link_input_);
-  }
+  ~RTCLinkProgram() { amd::Comgr::destroy_data_set(link_input_); }
   // Public Member Functions
   bool AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                         void** options_vals_ptr);
   bool AddLinkerFile(std::string file_path, hiprtcJITInputType input_type);
   bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
-                    hiprtcJITInputType input_type);
+                     hiprtcJITInputType input_type);
   bool LinkComplete(void** bin_out, size_t* size_out);
 };
 
 // Thread Local Storage Variables Aggregator Class
 class TlsAggregator {
-public:
+ public:
   hiprtcResult last_rtc_error_;
 
-  TlsAggregator(): last_rtc_error_(HIPRTC_SUCCESS) {
-  }
-  ~TlsAggregator() {
-  }
+  TlsAggregator() : last_rtc_error_(HIPRTC_SUCCESS) {}
+  ~TlsAggregator() {}
 };
 extern thread_local TlsAggregator tls;
 }  // namespace hiprtc

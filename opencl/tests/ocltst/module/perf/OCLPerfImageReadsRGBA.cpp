@@ -227,6 +227,9 @@ void OCLPerfImageReadsRGBA::run(void) {
 }
 
 unsigned int OCLPerfImageReadsRGBA::close(void) {
+  if (skip_) {
+    return CL_SUCCESS;
+  }
   if (memptr) {
     delete memptr;
   }

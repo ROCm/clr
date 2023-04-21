@@ -29,11 +29,11 @@
 
 #ifdef _WIN32
 #include <d3d10_1.h>
-#include "amdocl/cl_d3d9_amd.hpp"
-#include "amdocl/cl_d3d10_amd.hpp"
-#include "amdocl/cl_d3d11_amd.hpp"
+#include "platform/interop_d3d9.hpp"
+#include "platform/interop_d3d10.hpp"
+#include "platform/interop_d3d11.hpp"
 #endif  //_WIN32
-#include "amdocl/cl_gl_amd.hpp"
+#include "platform/interop_gl.hpp"
 #include "amdocl/cl_vk_amd.hpp"
 
 #include <string>
@@ -456,6 +456,7 @@ Memory::~Memory() {
 }
 
 void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFlags) {
+  amd::ScopedLock lock(owner()->lockMemoryOps());
   // If the last writer was another GPU, then make a writeback
   if (isChacheCoherencySync() && (owner()->getLastWriter() != nullptr) &&
       (&dev() != owner()->getLastWriter())) {
@@ -508,7 +509,6 @@ void Memory::syncCacheFromHost(VirtualGPU& gpu, device::Memory::SyncFlags syncFl
         syncFlagsTmp.skipEntire_ = syncFlags.skipEntire_;
       }
 
-      amd::ScopedLock lock(owner()->lockMemoryOps());
       for (auto& sub : owner()->subBuffers()) {
         //! \note Don't allow subbuffer's allocation in the worker thread.
         //! It may cause a system lock, because possible resource

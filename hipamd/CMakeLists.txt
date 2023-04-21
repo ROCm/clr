@@ -50,7 +50,10 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
-option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
+# Disable file reorg backward compatibility for ASAN packaging
+if(NOT ENABLE_ASAN_PACKAGING)
+    option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
+endif()
 set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
 
 if(__HIP_ENABLE_PCH)
@@ -446,6 +449,7 @@ execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/
 if(${RUN_HIT} EQUAL 0)
     execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
 endif()
+
 if(HIP_CATCH_TEST EQUAL "1")
 	message(STATUS "Building of catch tests through hipamd is no longer supported. Testing targets will not be available. catch tests have been moved to an independent github project hip-tests. Please refer to hip-tests Readme for build instructions! ")
 else()

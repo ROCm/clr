@@ -74,8 +74,8 @@ set_target_properties(amdhip64 PROPERTIES
   POSITION_INDEPENDENT_CODE ON
   # Workaround for many places in the HIP project
   # having hardcoded references to build/lib/libamdhip64.so
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+  LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib
+  ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set_target_properties(amdhip64 PROPERTIES OUTPUT_NAME "amdhip64")
@@ -95,7 +95,6 @@ if(NOT WIN32)
 endif()
 
 target_sources(amdhip64 PRIVATE
-  cl_gl.cpp
   fixme.cpp
   hip_activity.cpp
   hip_code_object.cpp
@@ -127,9 +126,6 @@ target_sources(amdhip64 PRIVATE
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
-    cl_d3d9.cpp
-    cl_d3d10.cpp
-    cl_d3d11.cpp
     hip_runtime.cpp)
 endif()
 

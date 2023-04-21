@@ -119,6 +119,10 @@ class Program : public amd::HeapObject {
   typedef enum { InitKernel = 0, FiniKernel } kernel_kind_t;  //!< Kernel kind
   bool runInitFiniKernel(kernel_kind_t) const;
 
+#if defined(WITH_COMPILER_LIB)
+  static amd::Monitor buildLock_; //!< Global build lock for HSAIL which isn't thread-safe
+#endif
+
  protected:
    union {
      struct {
@@ -434,9 +438,6 @@ class Program : public amd::HeapObject {
   amd_comgr_status_t extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
     const amd_comgr_data_kind_t dataKind, const std::string& outFileName,
     char* outBinary[] = nullptr, size_t* outSize = nullptr);
-
-  //! Set the OCL language
-  void setLanguage(const char* clStd, amd_comgr_language_t* langver);
 
   //! Create code object and add it into the data set
   amd_comgr_status_t addCodeObjData(const char *source,

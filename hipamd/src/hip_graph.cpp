@@ -29,7 +29,7 @@
 
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
-static amd::Monitor g_streamSetLock{"StreamCaptureset"};
+amd::Monitor g_streamSetLock{"StreamCaptureset"};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
 
 inline hipError_t ihipGraphAddNode(hipGraphNode_t graphNode, hipGraph_t graph,
@@ -1218,12 +1218,20 @@ hipError_t hipGraphAddChildGraphNode(hipGraphNode_t* pGraphNode, hipGraph_t grap
 hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                uint64_t flags = 0) {
   if (pGraphExec == nullptr || graph == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
+  }
+  if (graph->IsGraphInstantiated() == true) {
+    for (auto node : graph->GetNodes()) {
+      if ((node->GetType() == hipGraphNodeTypeMemAlloc)
+          || (node->GetType() == hipGraphNodeTypeMemFree)) {
+        return hipErrorNotSupported;
+      }
+    }
   }
   std::unordered_map<Node, Node> clonedNodes;
   hipGraph_t clonedGraph = graph->clone(clonedNodes);
   if (clonedGraph == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   std::vector<std::vector<Node>> parallelLists;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists;
@@ -1236,6 +1244,7 @@ hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
       new hipGraphExec(levelOrder, parallelLists, nodeWaitLists, clonedNodes,
       graphExeUserObj, flags);
   if (*pGraphExec != nullptr) {
+    graph->SetGraphInstantiated(true);
     return (*pGraphExec)->Init();
   } else {
     return hipErrorOutOfMemory;
@@ -1470,7 +1479,7 @@ hipError_t hipGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hipGraphMemsetNode*>(clonedNode)->SetParams(pNodeParams));
+  HIP_RETURN(reinterpret_cast<hipGraphMemsetNode*>(clonedNode)->SetParams(pNodeParams, true));
 }
 
 hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
@@ -1820,6 +1829,16 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
   if (!hipGraphNode::isNodeValid(node)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  // First remove all the edges both incoming and outgoing from node.
+  for(auto& edge : node->GetEdges()) {
+    node->RemoveUpdateEdge(edge);
+  }
+  const std::vector<Node>& dependencies = node->GetDependencies();
+  for(auto& parent: dependencies) {
+    parent->RemoveEdge(node);
+    parent->SetOutDegree(parent->GetOutDegree() - 1);
+  }
+  // Remove the node from graph.
   node->GetParentGraph()->RemoveNode(node);
   HIP_RETURN(hipSuccess);
 }
@@ -2161,6 +2180,16 @@ hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   if (pGraphNode == nullptr || graph == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (pNodeParams->bytesize == 0 || pNodeParams->poolProps.allocType != hipMemAllocationTypePinned
+      || pNodeParams->poolProps.location.type != hipMemLocationTypeDevice) {
+    pNodeParams->dptr = nullptr;
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (pNodeParams->poolProps.location.type == hipMemLocationTypeDevice) {
+    if (pNodeParams->poolProps.location.id < 0 || pNodeParams->poolProps.location.id >= g_devices.size()) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
   }
   // Clear the pointer to allocated memory because it may contain stale/uninitialized data
   pNodeParams->dptr = nullptr;

@@ -19,7 +19,7 @@
  THE SOFTWARE. */
 
 #include "platform/context.hpp"
-#include "amdocl/cl_gl_amd.hpp"
+#include "platform/interop_gl.hpp"
 #include "vdi_common.hpp"
 #include "platform/commandqueue.hpp"
 

@@ -398,6 +398,7 @@ struct ihipGraph {
   hip::Device* device_;       //!< HIP device object
   hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
   std::unordered_set<hipGraphNode*> capturedNodes_;
+  bool graphInstantiated_;
 
  public:
   ihipGraph(hip::Device* device, const ihipGraph* original = nullptr)
@@ -408,6 +409,7 @@ struct ihipGraph {
     graphSet_.insert(this);
     mem_pool_ = device->GetGraphMemoryPool();
     mem_pool_->retain();
+    graphInstantiated_ = false;
   }
 
   ~ihipGraph() {
@@ -529,6 +531,14 @@ struct ihipGraph {
   void FreeAllMemory() {
     mem_pool_->FreeAllMemory();
   }
+
+  bool IsGraphInstantiated() const {
+    return graphInstantiated_;
+  }
+
+  void SetGraphInstantiated(bool graphInstantiate) {
+    graphInstantiated_ = graphInstantiate;
+  }
 };
 
 struct hipGraphExec {
@@ -568,7 +578,7 @@ struct hipGraphExec {
     // terminated after it complete execution
     for (auto stream : parallel_streams_) {
       if (stream != nullptr) {
-        stream->release();
+        hip::Stream::Destroy(stream);
       }
     }
     for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;
@@ -976,17 +986,27 @@ class hipGraphKernelNode : public hipGraphNode {
   }
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
+    constexpr int accessPolicyMaxWindowSize = 1024;
     // updates kernel attr params
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
-      if (params->accessPolicyWindow.hitRatio > 1) {
+      if (params->accessPolicyWindow.hitRatio > 1 ||
+          params->accessPolicyWindow.hitRatio < 0) {
         return hipErrorInvalidValue;
       }
+
       if (params->accessPolicyWindow.missProp == hipAccessPropertyPersisting) {
         return hipErrorInvalidValue;
       }
       if (params->accessPolicyWindow.num_bytes > 0 && params->accessPolicyWindow.hitRatio == 0) {
         return hipErrorInvalidValue;
       }
+
+      // need to check against accessPolicyMaxWindowSize from device
+      // accessPolicyMaxWindowSize not implemented on the device side yet
+      if (params->accessPolicyWindow.num_bytes >= accessPolicyMaxWindowSize) {
+        return hipErrorInvalidValue;
+      }
+
       kernelAttr_.accessPolicyWindow.base_ptr = params->accessPolicyWindow.base_ptr;
       kernelAttr_.accessPolicyWindow.hitProp = params->accessPolicyWindow.hitProp;
       kernelAttr_.accessPolicyWindow.hitRatio = params->accessPolicyWindow.hitRatio;
@@ -1616,26 +1636,58 @@ class hipGraphMemsetNode : public hipGraphNode {
     std::memcpy(params, pMemsetParams_, sizeof(hipMemsetParams));
   }
 
-  hipError_t SetParams(const hipMemsetParams* params) {
+  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
     hipError_t hip_error = hipSuccess;
-    hipMemsetParams origParams = {};
-    GetParams(&origParams);
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
     }
+    if (isExec) {
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+      if (memObj != nullptr) {
+        amd::Memory *memObjOri = getMemoryObject(pMemsetParams_->dst, discardOffset);
+        if (memObjOri != nullptr) {
+          if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) {
+            return hipErrorInvalidValue;
+          }
+        }
+      }
+    }
     size_t sizeBytes;
     if (params->height == 1) {
+      // 1D - for hipGraphMemsetNodeSetParams & hipGraphExecMemsetNodeSetParams, They return
+      // invalid value if new width is more than actual allocation.
+      size_t discardOffset = 0;
+      amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+      if (memObj != nullptr) {
+        if (params->width * params->elementSize > memObj->getSize()) {
+          return hipErrorInvalidValue;
+        }
+       }
       sizeBytes = params->width * params->elementSize;
-      if (sizeBytes != origParams.width * origParams.elementSize) {
-        return hipErrorInvalidValue;
-      }
       hip_error = ihipMemset_validate(params->dst, params->value, params->elementSize, sizeBytes);
     } else {
-      sizeBytes = params->width * params->height * 1;
-      if (sizeBytes != origParams.width * origParams.height * 1) {
-        return hipErrorInvalidValue;
-      }
+      if (isExec) {
+        // 2D - hipGraphExecMemsetNodeSetParams returns invalid value if new width or new height is
+        // not same as what memset node is added with.
+        if (pMemsetParams_->width * pMemsetParams_->elementSize != params->width * params->elementSize
+         || pMemsetParams_->height != params->height) {
+          return hipErrorInvalidValue;
+        }
+      } else {
+        // 2D - hipGraphMemsetNodeSetParams returns invalid value if new width or new height is
+        // greter than actual allocation.
+        size_t discardOffset = 0;
+        amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
+        if (memObj != nullptr) {
+          if (params->width * params->elementSize > memObj->getUserData().width_
+           || params->height > memObj->getUserData().height_) {
+            return hipErrorInvalidValue;
+           }
+        }
+       }
+      sizeBytes = params->width * params->elementSize * params->height * 1;
       hip_error =
           ihipMemset3D_validate({params->dst, params->pitch, params->width * params->elementSize, params->height},
                                 params->value, {params->width * params->elementSize, params->height, 1}, sizeBytes);

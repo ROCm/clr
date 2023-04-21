@@ -21,8 +21,12 @@
 cmake_minimum_required(VERSION 3.16.8)
 
 #set components for HIP
-set(CPACK_COMPONENTS_ALL binary dev doc samples runtime-nvidia)
+set(CPACK_COMPONENTS_ALL binary dev doc runtime-nvidia)
 
+# ASAN Package requires only libraries and license file
+if(ENABLE_ASAN_PACKAGING)
+   set(CPACK_COMPONENTS_ALL asan)
+endif()
 ###############Install Required files for all compnents########
 
 #Enable Component Install
@@ -32,22 +36,26 @@ set(CPACK_DEB_COMPONENT_INSTALL ON)
 ###Set License####
 set(CPACK_RESOURCE_FILE_LICENSE ${hip_SOURCE_DIR}/LICENSE.txt)
 install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR} COMPONENT binary)
+# install license file in share/doc/hip-asan folder
+install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}-asan COMPONENT asan)
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
-
 #Begin binary files install
 if(HIP_PLATFORM STREQUAL "amd" )
    if(BUILD_SHARED_LIBS)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libamdhip64.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      # Add libraries to asan package
+      install(DIRECTORY ${PROJECT_BINARY_DIR}/lib/ DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan
+                                                 PATTERN ".hipInfo" EXCLUDE)
    else()
-      install(FILES ${CMAKE_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(FILES ${PROJECT_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
    endif()#End BUILD_SHARED_LIBS
 
 #TODO:This do not belong in BINARY package.
@@ -102,10 +110,6 @@ if(DOXYGEN_EXE)
             DESTINATION ${CMAKE_INSTALL_DOCDIR}/RuntimeAPI COMPONENT doc)
 endif()
 #End doc files install
-
-#Begin samples files install
-install(DIRECTORY ${HIP_COMMON_DIR}/samples DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT samples)
-#End samples files install
 
 
 ##################################
@@ -206,18 +210,6 @@ set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_
 
 #End doc Packaging setting
 
-#Begin samples Packaging setting
-set(CPACK_SAMPLES_DEB "ON")
-set(CPACK_SAMPLES_RPM "ON")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_NAME "hip-samples")
-set(CPACK_RPM_SAMPLES_PACKAGE_NAME "hip-samples")
-set(CPACK_COMPONENT_SAMPLES_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [SAMPLES]")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
-set(CPACK_DEBIAN_SAMPLES_PACKAGE_PROVIDES "hip-samples")
-
-set(CPACK_RPM_SAMPLES_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
-#End samples Packaging setting
-
 #Begin runtime-nvidia Packaging setting
 set(CPACK_RUNTIME-NVIDIA_DEB "ON")
 set(CPACK_RUNTIME-NVIDIA_RPM "ON")
@@ -233,6 +225,16 @@ set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_OBSOLETES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core")
 
+# Begin asan Packaging setting
+set(CPACK_ASAN_DEB "ON")
+set(CPACK_ASAN_RPM "ON")
+set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "hip-runtime-amd-asan")
+set(CPACK_RPM_ASAN_PACKAGE_NAME "hip-runtime-amd-asan")
+set(CPACK_COMPONENT_ASAN_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [AddressSanitizer libraries]")
+set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr-asan (>= 2.0), rocm-llvm, libc6, rocm-core-asan")
+set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr-asan >= 2.0, rocm-llvm, rocm-core-asan")
+#End asan Packaging setting
+
 # Remove dependency on rocm-core if -DROCM_DEP_ROCMCORE=ON not given to cmake
 if(NOT ROCM_DEP_ROCMCORE)
 
@@ -242,10 +244,10 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_DEV_PACKAGE_DEPENDS ${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_DOC_PACKAGE_REQUIRES ${CPACK_RPM_DOC_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_DOC_PACKAGE_DEPENDS ${CPACK_DEBIAN_DOC_PACKAGE_DEPENDS})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_SAMPLES_PACKAGE_REQUIRES ${CPACK_RPM_SAMPLES_PACKAGE_REQUIRES})
-    string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS ${CPACK_DEBIAN_SAMPLES_PACKAGE_DEPENDS})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES ${CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core" "" CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS ${CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS})
+    string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
+    string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
 endif()
 
 include(CPack)

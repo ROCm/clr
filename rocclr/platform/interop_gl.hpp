@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifndef CL_GL_AMD_HPP_
-#define CL_GL_AMD_HPP_
+#pragma once
 
 #ifdef _WIN32
 #include <windows.h>
@@ -175,7 +174,7 @@ public:
         GLenum              glCubemapFace = 0)
         : Image(amdContext, clType, clFlags, format, width, height, depth,
             Format(format).getElementSize() * width,
-            Format(format).getElementSize() * width * depth)
+            Format(format).getElementSize() * width * height)
         , GLObject(glTarget, gluiName, gliMipLevel, glInternalFormat,
             static_cast<GLint>(width), static_cast<GLint>(height),
             static_cast<GLint>(depth), clGLType, glCubemapFace,numSamples)
@@ -395,4 +394,3 @@ getCLFormatFromGL(
 
 } //namespace amd
 
-#endif //CL_GL_AMD_HPP_
