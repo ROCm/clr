@@ -372,7 +372,12 @@ namespace hip {
         captureEvents_.erase(it);
       }
     }
-    void SetParallelCaptureStream(hipStream_t s) { parallelCaptureStreams_.push_back(s); }
+    void SetParallelCaptureStream(hipStream_t s) {
+      auto it = std::find(parallelCaptureStreams_.begin(), parallelCaptureStreams_.end(), s);
+      if (it == parallelCaptureStreams_.end()) {
+        parallelCaptureStreams_.push_back(s);
+      }
+    }
     void EraseParallelCaptureStream(hipStream_t s) {
       auto it = std::find(parallelCaptureStreams_.begin(), parallelCaptureStreams_.end(), s);
       if (it != parallelCaptureStreams_.end()) {
