@@ -24,9 +24,9 @@
 #include "thread/monitor.hpp"
 #include "hip_prof_api.h"
 
+namespace hip {
 static amd::Monitor streamSetLock{"Guards global stream set"};
 static std::unordered_set<hip::Stream*> streamSet;
-namespace hip {
 
 // ================================================================================================
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
@@ -193,8 +193,6 @@ bool Stream::existsActiveStreamForDevice(hip::Device* device) {
   }
   return false;
 }
-
-};// hip namespace
 
 // ================================================================================================
 void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) {
@@ -864,3 +862,4 @@ hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
 
   HIP_RETURN(hipSuccess);
 }
+} // hip namespace

@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #pragma once
+namespace hip {
 // forward declaration of capture methods
 hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
                                   dim3& blockDim, void**& args, size_t& sharedMemBytes);
@@ -97,3 +98,4 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
 hipError_t capturehipMallocAsync(hipStream_t stream, hipMemPool_t mem_pool, size_t size, void** dev_ptr);
 
 hipError_t capturehipFreeAsync(hipStream_t stream, void* dev_ptr);
+}

@@ -277,7 +277,6 @@ bool isValid(hipEvent_t event) {
   return true;
 }
 
-}  // namespace hip
 // ================================================================================================
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   unsigned supportedFlags = hipEventDefault | hipEventBlockingSync | hipEventDisableTiming |
@@ -458,3 +457,4 @@ hipError_t hipEventQuery(hipEvent_t event) {
   HIP_INIT_API(hipEventQuery, event);
   HIP_RETURN(ihipEventQuery(event));
 }
+}  // namespace hip

@@ -22,31 +22,7 @@
 
 #include "hip_internal.hpp"
 
-hipError_t hipDeviceCanAccessPeer(int* canAccessPeer, hipCtx_t thisCtx, hipCtx_t peerCtx) {
-  HIP_INIT_API(NONE, canAccessPeer, thisCtx, peerCtx);
-
-  assert(0 && "Unimplemented");
-
-  HIP_RETURN(hipErrorNotSupported);
-}
-
-hipError_t hipMemcpyPeer(void* dst, hipCtx_t dstCtx, const void* src, hipCtx_t srcCtx,
-                         size_t sizeBytes) {
-  HIP_INIT_API(NONE, dst, dstCtx, src, srcCtx, sizeBytes);
-
-  assert(0 && "Unimplemented");
-
-  HIP_RETURN(hipErrorNotSupported);
-}
-
-hipError_t hipMemcpyPeerAsync(void* dst, hipCtx_t dstDevice, const void* src, hipCtx_t srcDevice,
-                              size_t sizeBytes, hipStream_t stream) {
-  HIP_INIT_API(NONE, dst, dstDevice, src, srcDevice, sizeBytes, stream);
-
-  assert(0 && "Unimplemented");
-
-  HIP_RETURN(hipErrorNotSupported);
-}
+namespace hip {
 
 hipError_t canAccessPeer(int* canAccessPeer, int deviceId, int peerDeviceId){
   amd::Device* device = nullptr;
@@ -254,3 +230,4 @@ hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx) {
 
   HIP_RETURN(hipSuccess);
 }
+}  // namespace hip

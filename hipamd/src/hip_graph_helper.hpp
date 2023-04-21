@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 #include "hip_conversions.hpp"
 
+namespace hip {
 hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 
 hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy);
@@ -51,11 +52,11 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
 hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
                                    uint32_t globalWorkSizeX, uint32_t globalWorkSizeY,
                                    uint32_t globalWorkSizeZ, uint32_t blockDimX, uint32_t blockDimY,
-                                   uint32_t blockDimZ, uint32_t sharedMemBytes,
-                                   hip::Stream* stream, void** kernelParams, void** extra,
-                                   hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags,
-                                   uint32_t params, uint32_t gridId, uint32_t numGrids,
-                                   uint64_t prevGridSum, uint64_t allGridSum, uint32_t firstDevice);
+                                   uint32_t blockDimZ, uint32_t sharedMemBytes, hip::Stream* stream,
+                                   void** kernelParams, void** extra, hipEvent_t startEvent,
+                                   hipEvent_t stopEvent, uint32_t flags, uint32_t params,
+                                   uint32_t gridId, uint32_t numGrids, uint64_t prevGridSum,
+                                   uint64_t allGridSum, uint32_t firstDevice);
 
 hipError_t ihipMemcpy3DCommand(amd::Command*& command, const hipMemcpy3DParms* p,
                                hip::Stream* stream);
@@ -67,7 +68,8 @@ hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, in
                              size_t valueSize, size_t sizeBytes, hip::Stream* stream);
 
 hipError_t ihipMemset3DCommand(std::vector<amd::Command*>& commands, hipPitchedPtr pitchedDevPtr,
-                               int value, hipExtent extent, hip::Stream* stream, size_t elementSize = 1);
+                               int value, hipExtent extent, hip::Stream* stream,
+                               size_t elementSize = 1);
 
 hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset,
                                      size_t& sym_size, hipDeviceptr_t& device_ptr);
@@ -121,3 +123,4 @@ hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord
                                   size_t &start);
 
 hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams);
+}  // namespace hip

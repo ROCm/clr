@@ -26,9 +26,9 @@
 
 #include "platform/object.hpp"
 
-hipError_t ihipFree(void* ptr);
-
 namespace hip {
+
+hipError_t ihipFree(void* ptr);
 
 struct MemMapAllocUserData {
   void* ptr_;       // Original pointer of the allocation

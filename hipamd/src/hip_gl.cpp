@@ -30,6 +30,8 @@
 namespace amd {
 static std::once_flag interopOnce;
 }
+
+namespace hip {
 // Sets up GL context association with amd context.
 // NOTE: Refer to Context setup code in OCLTestImp.cpp
 void setupGLInteropOnce() {
@@ -767,3 +769,4 @@ hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
 
   HIP_RETURN(hipSuccess);
 }
+} // namespace hip

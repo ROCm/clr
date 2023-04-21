@@ -34,10 +34,9 @@ THE SOFTWARE.
 #include "device/device.hpp"
 #include "platform/program.hpp"
 
+namespace hip {
 //Forward Declaration for friend usage
 class PlatformState;
-
-namespace hip {
 
 //Code Object base class
 class CodeObject {
@@ -150,7 +149,7 @@ public:
   //pointer to the alocated managed memory has to be copied to the address of symbol
   hipError_t initStatManagedVarDevicePtr(int deviceId);
 private:
-  friend class ::PlatformState;
+  friend class hip::PlatformState;
   //Populated during __hipRegisterFatBinary
   std::unordered_map<const void*, FatBinaryInfo*> modules_;
   //Populated during __hipRegisterFuncs

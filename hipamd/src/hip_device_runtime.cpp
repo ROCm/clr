@@ -22,6 +22,8 @@
 
 #include "hip_internal.hpp"
 
+namespace hip {
+
 hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* properties) {
   HIP_INIT_API(hipChooseDevice, device, properties);
 
@@ -689,3 +691,4 @@ hipError_t hipSetValidDevices(int* device_arr, int len) {
 
   HIP_RETURN(hipErrorNotSupported);
 }
+} //namespace hip

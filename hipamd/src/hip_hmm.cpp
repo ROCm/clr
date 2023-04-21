@@ -25,6 +25,8 @@
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
 
+namespace hip {
+
 // Forward declaraiton of a function
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 
@@ -304,3 +306,4 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "ihipMallocManaged ptr=0x%zx", *ptr);
   return hipSuccess;
 }
+} //namespace hip

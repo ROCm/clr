@@ -147,8 +147,6 @@ Device::~Device() {
   }
 }
 
-}  // namespace hip
-
 void ihipDestroyDevice() {
   for (auto deviceHandle : g_devices) {
     delete deviceHandle;
@@ -649,3 +647,4 @@ extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t
   *props = deviceProps;
   return hipSuccess;
 }
+}  // namespace hip

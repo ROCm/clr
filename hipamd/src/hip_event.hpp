@@ -25,6 +25,7 @@
 #include "thread/monitor.hpp"
 
 // Internal structure for stream callback handler
+namespace hip {
 class StreamCallback {
 protected:
   void* userData_;
@@ -64,7 +65,6 @@ class LaunchHostFuncCallback : public StreamCallback {
 
 void CL_CALLBACK ihipStreamCallback(cl_event event, cl_int command_exec_status, void* user_data);
 
-namespace hip {
 
 #define IPC_SIGNALS_PER_EVENT 32
 typedef struct ihipIpcEventShmem_s {
@@ -226,11 +226,11 @@ class IPCEvent : public Event {
   hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
 };
 
-};  // namespace hip
 
 struct CallbackData {
   int previous_read_index;
   hip::ihipIpcEventShmem_t* shmem;
 };
+}  // namespace hip
 
 #endif  // HIP_EVEMT_H

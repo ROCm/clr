@@ -21,6 +21,7 @@
 #include <hip/hip_runtime.h>
 #include "hip_internal.hpp"
 #include "hip_vm.hpp"
+namespace hip {
 
 static_assert(static_cast<uint32_t>(hipMemAccessFlagsProtNone)
               == static_cast<uint32_t>(amd::Device::VmmAccess::kNone),
@@ -324,3 +325,5 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
 
   HIP_RETURN(hipSuccess);
 }
+} //namespace hip
+
