@@ -25,8 +25,6 @@
 #include "hip_conversions.hpp"
 #include "platform/sampler.hpp"
 
-hipError_t ihipFree(void* ptr);
-
 struct __hip_texture {
   uint32_t imageSRD[HIP_IMAGE_OBJECT_SIZE_DWORD];
   uint32_t samplerSRD[HIP_SAMPLER_OBJECT_SIZE_DWORD];
@@ -57,6 +55,9 @@ struct __hip_texture {
   }
 };
 
+namespace hip {
+
+hipError_t ihipFree(void* ptr);
 amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                             const cl_channel_type channelType,
                             const cl_mem_object_type imageType,
@@ -1317,7 +1318,7 @@ hipError_t hipTexRefGetMipmapLevelClamp(float* pminMipmapLevelClamp,
   HIP_RETURN(hipErrorInvalidValue);
 }
 
-hipError_t hipTexRefGetMipmappedArray(hipMipmappedArray_t* pArray,
+hipError_t hipTexRefGetMipMappedArray(hipMipmappedArray_t* pArray,
                                       const textureReference* texRef) {
   // TODO overload operator<<(ostream&, textureReference&).
   HIP_INIT_API(hipTexRefGetMipmappedArray, pArray, &texRef);
@@ -1579,3 +1580,4 @@ hipError_t hipTexObjectGetTextureDesc(HIP_TEXTURE_DESC* pTexDesc,
 
   HIP_RETURN(hipSuccess);
 }
+}  // namespace hip

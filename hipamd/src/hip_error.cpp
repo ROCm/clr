@@ -22,6 +22,8 @@
 
 #include "hip_internal.hpp"
 
+namespace hip {
+
 hipError_t hipGetLastError()
 {
   HIP_INIT_API(hipGetLastError);
@@ -380,3 +382,4 @@ hipError_t hipDrvGetErrorString(hipError_t hip_error, const char** errStr)
     return hipErrorInvalidValue;
   }
 }
+} //namespace hip

@@ -23,8 +23,6 @@
 #include "hip_internal.hpp"
 #include <hip/surface_types.h>
 
-hipError_t ihipFree(void* ptr);
-
 struct __hip_surface {
   uint32_t imageSRD[HIP_IMAGE_OBJECT_SIZE_DWORD];
   amd::Image* image;
@@ -40,6 +38,9 @@ struct __hip_surface {
   }
 };
 
+namespace hip {
+
+hipError_t ihipFree(void* ptr);
 hipError_t ihipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
                                    const hipResourceDesc* pResDesc) {
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
@@ -103,3 +104,4 @@ hipError_t hipDestroySurfaceObject(hipSurfaceObject_t surfaceObject) {
 
   HIP_RETURN(ihipDestroySurfaceObject(surfaceObject));
 }
+} //namespace hip

@@ -30,7 +30,7 @@ THE SOFTWARE.
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 #include <elf/elf.hpp>
-
+namespace hip {
 hipError_t ihipFree(void* ptr);
 // forward declaration of methods required for managed variables
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
@@ -58,8 +58,6 @@ struct __ClangOffloadBundleHeader {
   __ClangOffloadBundleInfo desc[1];
 };
 }  // namespace
-
-namespace hip {
 
 bool CodeObject::IsClangOffloadMagicBundle(const void* data) {
   std::string magic(reinterpret_cast<const char*>(data), kOffloadBundleMagicStrSize - 1);
@@ -532,7 +530,6 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
         LogPrintfError("    %s - [Unsupported]", bundleEntryId.c_str());
       }
     }
-
     return hipErrorNoBinaryForGpu;
   }
 }
@@ -906,4 +903,4 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
   }
   return err;
 }
-};  // namespace hip
+}  // namespace hip

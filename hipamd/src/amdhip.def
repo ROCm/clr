@@ -240,7 +240,7 @@ hipTexRefGetMaxAnisotropy
 hipTexRefGetMipmapFilterMode
 hipTexRefGetMipmapLevelBias
 hipTexRefGetMipmapLevelClamp
-hipTexRefGetMipmappedArray
+hipTexRefGetMipMappedArray
 hipTexRefSetAddress
 hipTexRefSetAddress2D
 hipTexRefSetAddressMode

@@ -26,6 +26,8 @@
 #include "hip_event.hpp"
 #include "hip_mempool_impl.hpp"
 
+namespace hip {
+
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
 amd::Monitor g_streamSetLock{"StreamCaptureset"};
@@ -2477,7 +2479,7 @@ hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, un
     HIP_RETURN(hipSuccess);
   }
   if (flags != hipGraphUserObjectMove) {
-    status = hipUserObjectRetain(object, count);
+    status = hip::hipUserObjectRetain(object, count);
     if (status != hipSuccess) {
       HIP_RETURN(status);
     }
@@ -2505,7 +2507,7 @@ hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, u
   if (userObject->referenceCount() == releaseCount) {
     g->RemoveUserObjGraph(userObject);
   }
-  hipError_t status = hipUserObjectRelease(object, count);
+  hipError_t status = hip::hipUserObjectRelease(object, count);
   HIP_RETURN(status);
 }
 
@@ -2595,3 +2597,4 @@ hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   // memory for memAlloc nodes if any when support is added with mempool feature
   HIP_RETURN(hipSuccess);
 }
+}  // namespace hip

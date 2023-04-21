@@ -22,6 +22,7 @@
 
 #include "hip_internal.hpp"
 
+namespace hip {
 hipError_t hipProfilerStart() {
   HIP_INIT_API(hipProfilerStart);
 
@@ -38,3 +39,4 @@ hipError_t hipProfilerStop() {
 
   HIP_RETURN(hipErrorNotSupported);
 }
+} //namespace hip

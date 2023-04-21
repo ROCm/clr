@@ -26,7 +26,7 @@
 #include "platform/runtime.hpp"
 
 #include <unordered_map>
-
+namespace hip {
 constexpr unsigned __hipFatMAGIC2 = 0x48495046;  // "HIPF"
 
 PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
@@ -67,17 +67,17 @@ static bool isCompatibleCodeObject(const std::string& codeobj_target_id, const c
   return codeobj_target_id == short_name;
 }
 
-extern "C" hip::FatBinaryInfo** __hipRegisterFatBinary(const void* data) {
+void** __hipRegisterFatBinary(const void* data) {
   const __CudaFatBinaryWrapper* fbwrapper = reinterpret_cast<const __CudaFatBinaryWrapper*>(data);
   if (fbwrapper->magic != __hipFatMAGIC2 || fbwrapper->version != 1) {
     LogPrintfError("Cannot Register fat binary. FatMagic: %u version: %u ", fbwrapper->magic,
                    fbwrapper->version);
     return nullptr;
   }
-  return PlatformState::instance().addFatBinary(fbwrapper->binary);
+  return reinterpret_cast<void**>(PlatformState::instance().addFatBinary(fbwrapper->binary));
 }
 
-extern "C" void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunction,
+void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunction,
                                       char* deviceFunction, const char* deviceName,
                                       unsigned int threadLimit, uint3* tid, uint3* bid,
                                       dim3* blockDim, dim3* gridDim, int* wSize) {
@@ -107,7 +107,7 @@ extern "C" void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* 
 // global variable in host code. The shadow host variable is used to keep
 // track of the value of the device side global variable between kernel
 // executions.
-extern "C" void __hipRegisterVar(
+void __hipRegisterVar(
     hip::FatBinaryInfo** modules,  // The device modules containing code object
     void* var,                     // The shadow variable in host code
     char* hostVar,                 // Variable name in host code
@@ -123,7 +123,7 @@ extern "C" void __hipRegisterVar(
   guarantee((err == hipSuccess), "Cannot register Static Global Var, error:%d \n", err);
 }
 
-extern "C" void __hipRegisterSurface(
+void __hipRegisterSurface(
     hip::FatBinaryInfo** modules,  // The device modules containing code object
     void* var,                     // The shadow variable in host code
     char* hostVar,                 // Variable name in host code
@@ -135,7 +135,7 @@ extern "C" void __hipRegisterSurface(
   guarantee((err == hipSuccess), "Cannot register Static Glbal Var, err:%d \n", err);
 }
 
-extern "C" void __hipRegisterManagedVar(
+void __hipRegisterManagedVar(
     void* hipModule,  // Pointer to hip module returned from __hipRegisterFatbinary
     void** pointer,   // Pointer to a chunk of managed memory with size \p size and alignment \p
                      // align HIP runtime allocates such managed memory and assign it to \p pointer
@@ -162,7 +162,7 @@ extern "C" void __hipRegisterManagedVar(
   guarantee((status == hipSuccess), "Cannot register Static Managed Var, error: %d \n", status);
 }
 
-extern "C" void __hipRegisterTexture(
+void __hipRegisterTexture(
     hip::FatBinaryInfo** modules,  // The device modules containing code object
     void* var,                     // The shadow variable in host code
     char* hostVar,                 // Variable name in host code
@@ -174,12 +174,38 @@ extern "C" void __hipRegisterTexture(
   guarantee((err == hipSuccess), "Cannot register Static Global Var, status: %d \n", err);
 }
 
-extern "C" void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
+void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d \n", err);
 }
 
-extern "C" hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem,
+void __hipRegisterFunction(void** modules, const void* hostFunction, char* deviceFunction,
+                           const char* deviceName, unsigned int threadLimit, uint3* tid, uint3* bid,
+                           dim3* blockDim, dim3* gridDim, int* wSize) {
+  return __hipRegisterFunction(reinterpret_cast<hip::FatBinaryInfo**>(modules), hostFunction,
+                               deviceFunction, deviceName, threadLimit, tid, bid, blockDim, gridDim,
+                               wSize);
+}
+void __hipRegisterSurface(void** modules, void* var, char* hostVar, char* deviceVar, int type,
+                          int ext) {
+  return __hipRegisterSurface(reinterpret_cast<hip::FatBinaryInfo**>(modules), var, hostVar,
+                              deviceVar, type, ext);
+}
+void __hipRegisterTexture(void** modules, void* var, char* hostVar, char* deviceVar, int type,
+                          int norm, int ext) {
+  return __hipRegisterTexture(reinterpret_cast<hip::FatBinaryInfo**>(modules), var, hostVar,
+                              deviceVar, type, norm, ext);
+}
+void __hipRegisterVar(void** modules, void* var, char* hostVar, char* deviceVar, int ext,
+                      size_t size, int constant, int global) {
+  return __hipRegisterVar(reinterpret_cast<hip::FatBinaryInfo**>(modules), var, hostVar,
+                          deviceVar, ext, size, constant, global);
+}
+void __hipUnregisterFatBinary(void** modules) {
+  return __hipUnregisterFatBinary(reinterpret_cast<hip::FatBinaryInfo**>(modules));
+}
+
+hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem,
                                        hipStream_t stream) {
   HIP_INIT_API(hipConfigureCall, gridDim, blockDim, sharedMem, stream);
 
@@ -188,7 +214,7 @@ extern "C" hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t share
   HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t __hipPushCallConfiguration(dim3 gridDim, dim3 blockDim, size_t sharedMem,
+hipError_t __hipPushCallConfiguration(dim3 gridDim, dim3 blockDim, size_t sharedMem,
                                                  hipStream_t stream) {
   HIP_INIT_API(__hipPushCallConfiguration, gridDim, blockDim, sharedMem, stream);
 
@@ -197,7 +223,7 @@ extern "C" hipError_t __hipPushCallConfiguration(dim3 gridDim, dim3 blockDim, si
   HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t __hipPopCallConfiguration(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
+hipError_t __hipPopCallConfiguration(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
                                                 hipStream_t* stream) {
   HIP_INIT_API(__hipPopCallConfiguration, gridDim, blockDim, sharedMem, stream);
 
@@ -211,7 +237,7 @@ extern "C" hipError_t __hipPopCallConfiguration(dim3* gridDim, dim3* blockDim, s
   HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t hipSetupArgument(const void* arg, size_t size, size_t offset) {
+hipError_t hipSetupArgument(const void* arg, size_t size, size_t offset) {
   HIP_INIT_API(hipSetupArgument, arg, size, offset);
 
   PlatformState::instance().setupArgument(arg, size, offset);
@@ -219,7 +245,7 @@ extern "C" hipError_t hipSetupArgument(const void* arg, size_t size, size_t offs
   HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t hipLaunchByPtr(const void* hostFunction) {
+hipError_t hipLaunchByPtr(const void* hostFunction) {
   HIP_INIT_API(hipLaunchByPtr, hostFunction);
 
   ihipExec_t exec;
@@ -294,7 +320,7 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
 
   HIP_RETURN(hipSuccess);
 }
-
+}  // namespace hip
 
 namespace hip_impl {
 hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
@@ -389,7 +415,7 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
 }
 }  // namespace hip_impl
 
-extern "C" {
+namespace hip {
 hipError_t hipOccupancyMaxPotentialBlockSize(int* gridSize, int* blockSize, const void* f,
                                              size_t dynSharedMemPerBlk, int blockSizeLimit) {
   HIP_INIT_API(hipOccupancyMaxPotentialBlockSize, f, dynSharedMemPerBlk, blockSizeLimit);
@@ -557,7 +583,6 @@ hipError_t hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags(int* numBlocks,
       false);
   *numBlocks = num_blocks;
   HIP_RETURN(ret);
-}
 }
 
 hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim, void** args,
@@ -927,3 +952,4 @@ bool PlatformState::CloseUniqueFileHandle(const std::shared_ptr<UniqueFD>& ufd) 
   }
   return true;
 }
+} //namespace hip

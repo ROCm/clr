@@ -27,6 +27,7 @@
 #include "hip_event.hpp"
 #include "hip_platform.hpp"
 
+namespace hip {
 hipError_t ihipModuleLoadData(hipModule_t* module, const void* mmap_ptr, size_t mmap_size);
 
 extern hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
@@ -460,7 +461,7 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
       hStream, kernelParams, extra, nullptr, nullptr));
 }
 
-hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t __hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -484,7 +485,7 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 }
 
 
-hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t __hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
                                     size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
@@ -655,7 +656,7 @@ hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* 
 
 }
 
-extern "C" hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+ hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                              void** args, size_t sharedMemBytes,
                                              hipStream_t stream) {
   STREAM_CAPTURE(hipLaunchKernel, stream, hostFunction, gridDim, blockDim, args, sharedMemBytes);
@@ -663,20 +664,20 @@ extern "C" hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 grid
                           nullptr, 0);
 }
 
-extern "C" hipError_t hipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+ hipError_t hipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                       void** args, size_t sharedMemBytes, hipStream_t stream) {
   HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
   HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
-extern "C" hipError_t hipLaunchKernel_spt(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+hipError_t hipLaunchKernel_spt(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                           void** args, size_t sharedMemBytes, hipStream_t stream) {
   HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
-extern "C" hipError_t hipExtLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
+hipError_t hipExtLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                          void** args, size_t sharedMemBytes, hipStream_t stream,
                                          hipEvent_t startEvent, hipEvent_t stopEvent, int flags) {
   HIP_INIT_API(hipExtLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes,
@@ -840,3 +841,4 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
 
   HIP_RETURN(err);
 }
+}  // namespace hip

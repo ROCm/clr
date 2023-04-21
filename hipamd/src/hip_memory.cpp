@@ -26,9 +26,10 @@
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
 #include "platform/external_memory.hpp"
+namespace hip {
 
-amd::Monitor hip::hipArraySetLock{"Guards global hipArray set"};
-std::unordered_set<hipArray*> hip::hipArraySet;
+amd::Monitor hipArraySetLock{"Guards global hipArray set"};
+std::unordered_set<hipArray*> hipArraySet;
 
 // ================================================================================================
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
@@ -727,7 +728,7 @@ hipError_t ihipArrayDestroy(hipArray_t array) {
     return hipErrorInvalidValue;
   }
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
       return hipErrorContextIsDestroyed;
     } else {
@@ -1101,7 +1102,7 @@ hipError_t ihipArrayCreate(hipArray_t* array,
   (*array)->NumChannels = pAllocateArray->NumChannels;
   (*array)->flags = pAllocateArray->Flags;
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     hip::hipArraySet.insert(*array);
   }
   return hipSuccess;
@@ -3859,7 +3860,7 @@ hipError_t hipArrayDestroy(hipArray_t array) {
 hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
                                     hipArray_t array) {
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
       return hipErrorInvalidHandle;
     }
@@ -4267,7 +4268,7 @@ hipError_t ihipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
   (*level_array_pptr)->textureType = 0;
   (*level_array_pptr)->flags = mipmapped_array_ptr->flags;
 
-  amd::ScopedLock lock(hip::hipArraySetLock);
+  amd::ScopedLock lock(hipArraySetLock);
   hip::hipArraySet.insert(*level_array_pptr);
 
   return hipSuccess;
@@ -4360,4 +4361,4 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
   HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,
                                    (size_t)mipmapDesc->offset, buf));
 }
-
+}  // namespace hip

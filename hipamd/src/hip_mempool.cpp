@@ -20,6 +20,7 @@
 
 #include "hip_mempool_impl.hpp"
 
+namespace hip {
 /**
  * API interfaces
  */
@@ -386,3 +387,4 @@ hipError_t hipMemPoolImportPointer(
   mpool->retain();
   HIP_RETURN(hipSuccess);
 }
+}  // namespace hip

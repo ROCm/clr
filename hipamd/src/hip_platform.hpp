@@ -29,7 +29,7 @@ namespace hip_impl {
 hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     int* maxBlocksPerCU, int* numBlocksPerGrid, int* bestBlockSize, const amd::Device& device,
     hipFunction_t func, int inputBlockSize, size_t dynamicSMemSize, bool bCalcPotentialBlkSz);
-} /* namespace hip_impl*/
+}  // namespace hip_impl
 
 // Unique file descriptor class
 struct UniqueFD {
@@ -41,6 +41,7 @@ struct UniqueFD {
   const size_t fsize_;             //!< File Size
 };
 
+namespace hip {
 class PlatformState {
   amd::Monitor lock_{"Guards PlatformState globals", true};
 
@@ -114,3 +115,4 @@ class PlatformState {
 
   std::unordered_map<std::string, std::shared_ptr<UniqueFD>> ufd_map_; //!< Unique File Desc Map
 };
+}  // namespace hip

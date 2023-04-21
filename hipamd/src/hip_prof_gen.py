@@ -370,7 +370,12 @@ def parse_src(api_map, src_path, src_patt, out):
         if pattern.search(fnm):
           file = root + '/' + fnm
           message(file)
-          content = parse_content(file, api_map, out);
+          content = ''
+          filename = os.path.basename(file)
+          if re.match("hip_table_interface.cpp", filename):
+            message("SKIP FILE:" + filename)
+          else:
+            content = parse_content(file, api_map, out);
           if (hip_patch_mode != 0) and (content != ''):
             f = open(file, 'w')
             f.write(content)
