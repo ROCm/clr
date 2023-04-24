@@ -89,7 +89,7 @@ __device__
 inline
 int __shfl(int var, int src_lane, int width = warpSize) {
     int self = __lane_id();
-    int index = src_lane + (self & ~(width-1));
+    int index = (src_lane & (width - 1)) + (self & ~(width-1));
     return __builtin_amdgcn_ds_bpermute(index<<2, var);
 }
 __device__
