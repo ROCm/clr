@@ -284,6 +284,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   auto* deviceHandle = g_devices[device]->devices()[0];
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max());
   hipDeviceProp_t deviceProps = {0};
 
   const auto& info = deviceHandle->info();
@@ -298,8 +299,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.maxThreadsDim[1] = info.maxWorkItemSizes_[1];
   deviceProps.maxThreadsDim[2] = info.maxWorkItemSizes_[2];
   deviceProps.maxGridSize[0] = int32_max;
-  deviceProps.maxGridSize[1] = int32_max;
-  deviceProps.maxGridSize[2] = int32_max;
+  deviceProps.maxGridSize[1] = uint16_max;
+  deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
   deviceProps.memoryBusWidth = info.globalMemChannels_;
