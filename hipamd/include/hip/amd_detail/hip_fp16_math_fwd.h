@@ -28,7 +28,7 @@ THE SOFTWARE.
 #if !defined(__HIPCC_RTC__)
 #include "host_defines.h"
 #endif
-#if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
+#ifndef __CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 extern "C"
 {
     __device__ __attribute__((const)) _Float16 __ocml_ceil_f16(_Float16);
