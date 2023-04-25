@@ -1057,6 +1057,28 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         return HIP_vector_type<T, n>{x} <<= y;
     }
 
+    /*
+     * Map HIP_vector_type<U, rankU> to HIP_vector_type<T, rankT>
+     */
+    template<
+        typename T,
+        unsigned int rankT,
+        typename U,
+        unsigned int rankU>
+    __forceinline__
+    __HOST_DEVICE__
+    typename std::enable_if<
+        (rankT >= 1 && rankT <= 4 && rankU >= 1 && rankU <= 4),
+        const HIP_vector_type<T, rankT>>::type
+    __hipMapVector(const HIP_vector_type<U, rankU> &u) {
+      HIP_vector_type<T, rankT> t; // Initialized to 0
+      if constexpr (rankT >= 1 && rankU >= 1) t.x = static_cast<T>(u.x);
+      if constexpr (rankT >= 2 && rankU >= 2) t.y = static_cast<T>(u.y);
+      if constexpr (rankT >= 3 && rankU >= 3) t.z = static_cast<T>(u.z);
+      if constexpr (rankT >= 4 && rankU >= 4) t.w = static_cast<T>(u.w);
+      return t;
+    };
+
     #define __MAKE_VECTOR_TYPE__(CUDA_name, T) \
         using CUDA_name##1 = HIP_vector_type<T, 1>;\
         using CUDA_name##2 = HIP_vector_type<T, 2>;\
@@ -2030,223 +2052,6 @@ typedef union {
     type r{x, y, z, w};                                                                            \
     return r;                                                                                      \
   }
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 1 &&
-  sizeof(U) / sizeof(typename U::value_type) >= 1, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 2 &&
-  sizeof(U) / sizeof(typename U::value_type) >= 2, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x),
-    static_cast<typename T::value_type>(u.y)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 3 &&
-  sizeof(U) / sizeof(typename U::value_type) >= 3, T>::type
-mapElem(const U &u) {
-  return {
-   static_cast<typename T::value_type>(u.x),
-   static_cast<typename T::value_type>(u.y),
-   static_cast<typename T::value_type>(u.z)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 4 &&
-  sizeof(U) / sizeof(typename U::value_type) == 1, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x),
-    static_cast<typename T::value_type>(0),
-    static_cast<typename T::value_type>(0),
-    static_cast<typename T::value_type>(0)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 4 &&
-  sizeof(U) / sizeof(typename U::value_type) == 2, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x),
-    static_cast<typename T::value_type>(u.y),
-    static_cast<typename T::value_type>(0),
-    static_cast<typename T::value_type>(0)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 4 &&
-  sizeof(U) / sizeof(typename U::value_type) == 3, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x),
-    static_cast<typename T::value_type>(u.y),
-    static_cast<typename T::value_type>(u.z),
-    static_cast<typename T::value_type>(0)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-  sizeof(T) / sizeof(typename T::value_type) == 4 &&
-  sizeof(U) / sizeof(typename U::value_type) >= 4, T>::type
-mapElem(const U &u) {
-  return {
-    static_cast<typename T::value_type>(u.x),
-    static_cast<typename T::value_type>(u.y),
-    static_cast<typename T::value_type>(u.z),
-    static_cast<typename T::value_type>(u.w)
-  };
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        std::is_same<T, char>::value ||
-        std::is_same<T, unsigned char>::value ||
-        std::is_same<T, short>::value ||
-        std::is_same<T, unsigned short>::value ||
-        std::is_same<T, int>::value ||
-        std::is_same<T, unsigned int>::value ||
-        std::is_same<T, float>::value, const T>::type
-mapFrom(const U &u) {
-  union {
-    U u;
-    T t;
-  } d = { u };
-  return d.t;
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        (sizeof(T) == sizeof(typename T::value_type)) ||
-        std::is_same<typename T::value_type, int>::value ||
-        std::is_same<typename T::value_type, unsigned int>::value ||
-        std::is_same<typename T::value_type, float>::value, const T>::type
-mapFrom(const U &u) {
-  union {
-    U u;
-    T t;
-  } d = { u };
-  return d.t;
-}
-
-template<typename T, typename U>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        (sizeof(T) > sizeof(typename T::value_type)) && (
-        std::is_same<typename T::value_type, char>::value ||
-        std::is_same<typename T::value_type, unsigned char>::value ||
-        std::is_same<typename T::value_type, short>::value ||
-        std::is_same<typename T::value_type, unsigned short>::value), const T>::type
-mapFrom(const U &u) {
-  union {
-    U u;
-    int4 i4;
-    uint4 u4;
-  } d = { u };
-  if (std::is_signed<typename T::value_type>::value) {
-    return mapElem<T>(d.i4) ;
-  } else {
-    return mapElem<T>(d.u4);
-  }
-}
-
-template<typename U, typename T>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        std::is_same<T, char>::value ||
-        std::is_same<T, unsigned char>::value ||
-        std::is_same<T, short>::value ||
-        std::is_same<T, unsigned short>::value ||
-        std::is_same<T, int>::value ||
-        std::is_same<T, unsigned int>::value ||
-        std::is_same<T, float>::value, const U>::type
-mapTo(const T &t) {
-  union {
-    U u;
-    T t;
-  } d = { 0 };
-  d.t = t;
-  return d.u;
-}
-
-template<typename U, typename T>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        (sizeof(T) == sizeof(typename T::value_type)) ||
-        std::is_same<typename T::value_type, int>::value ||
-        std::is_same<typename T::value_type, unsigned int>::value ||
-        std::is_same<typename T::value_type, float>::value, const U>::type
-mapTo(const T &t) {
-  union {
-    U u;
-    T t;
-  } d = { 0 };
-  d.t = t;
-  return d.u;
-}
-
-template<typename U, typename T>
-__HOST_DEVICE__
-__forceinline__
-typename std::enable_if<
-        (sizeof(T) > sizeof(typename T::value_type)) && (
-        std::is_same<typename T::value_type, char>::value ||
-        std::is_same<typename T::value_type, unsigned char>::value ||
-        std::is_same<typename T::value_type, short>::value ||
-        std::is_same<typename T::value_type, unsigned short>::value), const U>::type
-mapTo(const T &t) {
-  union {
-    U u;
-    int4 i4;
-    uint4 u4;
-  } d = { 0 };
-  if (std::is_signed<typename T::value_type>::value) {
-    d.i4 = mapElem<int4>(t);
-  } else {
-    d.u4 = mapElem<uint4>(t);
-  }
-  return d.u;
-}
-
 #else
 #define DECLOP_MAKE_ONE_COMPONENT(comp, type)                                                      \
   static inline __HOST_DEVICE__ type make_##type(comp x) {                                         \
