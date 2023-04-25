@@ -26,6 +26,7 @@ THE SOFTWARE.
 
 #include <hip/hip_vector_types.h>
 #include <hip/hip_texture_types.h>
+#include <hip/amd_detail/texture_fetch_functions.h>
 #include <hip/amd_detail/ockl_image.h>
 
 #if !defined(__HIPCC_RTC__)
@@ -36,30 +37,8 @@ THE SOFTWARE.
     unsigned int ADDRESS_SPACE_CONSTANT* i = (unsigned int ADDRESS_SPACE_CONSTANT*)textureObject; \
     unsigned int ADDRESS_SPACE_CONSTANT* s = i + HIP_SAMPLER_OBJECT_OFFSET_DWORD;
 
-template<typename T>
-struct __hip_is_itex_channel_type
-{
-    static constexpr bool value =
-        std::is_same<T, char>::value ||
-        std::is_same<T, unsigned char>::value ||
-        std::is_same<T, short>::value ||
-        std::is_same<T, unsigned short>::value ||
-        std::is_same<T, int>::value ||
-        std::is_same<T, unsigned int>::value ||
-        std::is_same<T, float>::value;
-};
-
-template<
-    typename T,
-    unsigned int rank>
-struct __hip_is_itex_channel_type<HIP_vector_type<T, rank>>
-{
-    static constexpr bool value =
-        __hip_is_itex_channel_type<T>::value &&
-        ((rank == 1) ||
-         (rank == 2) ||
-         (rank == 4));
-};
+template <typename T>
+using __hip_is_itex_channel_type = __hip_is_tex_channel_type<T>;
 
 template <
     typename T,
@@ -68,7 +47,7 @@ static __device__ __hip_img_chk__ T tex1Dfetch(hipTextureObject_t textureObject,
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_load_1Db(i, x);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -86,7 +65,7 @@ static __device__ __hip_img_chk__ T tex1D(hipTextureObject_t textureObject, floa
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1D(i, s, x);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -104,7 +83,7 @@ static __device__ __hip_img_chk__ T tex2D(hipTextureObject_t textureObject, floa
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2D(i, s, float2(x, y).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -122,7 +101,7 @@ static __device__ __hip_img_chk__ T tex3D(hipTextureObject_t textureObject, floa
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_3D(i, s, float4(x, y, z, 0.0f).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -140,7 +119,7 @@ static __device__ __hip_img_chk__ T tex1DLayered(hipTextureObject_t textureObjec
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -158,7 +137,7 @@ static __device__ __hip_img_chk__ T tex2DLayered(hipTextureObject_t textureObjec
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -176,7 +155,7 @@ static __device__ __hip_img_chk__  T texCubemap(hipTextureObject_t textureObject
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_CM(i, s, float4(x, y, z, 0.0f).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -194,7 +173,7 @@ static __device__ __hip_img_chk__ T texCubemapLayered(hipTextureObject_t texture
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_CMa(i, s, float4(x, y, z, layer).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -214,22 +193,22 @@ static __device__ __hip_img_chk__ T tex2Dgather(hipTextureObject_t textureObject
     switch (comp) {
     case 1: {
         auto tmp = __ockl_image_gather4r_2D(i, s, float2(x, y).data);
-        return mapFrom<T>(tmp);
+        return __hipMapFrom<T>(tmp);
         break;
     }
     case 2: {
         auto tmp = __ockl_image_gather4g_2D(i, s, float2(x, y).data);
-        return mapFrom<T>(tmp);
+        return __hipMapFrom<T>(tmp);
         break;
     }
     case 3: {
         auto tmp = __ockl_image_gather4b_2D(i, s, float2(x, y).data);
-        return mapFrom<T>(tmp);
+        return __hipMapFrom<T>(tmp);
         break;
     }
     default: {
         auto tmp = __ockl_image_gather4a_2D(i, s, float2(x, y).data);
-        return mapFrom<T>(tmp);
+        return __hipMapFrom<T>(tmp);
         break;
     }
     };
@@ -251,7 +230,7 @@ static __device__ __hip_img_chk__ T tex1DLod(hipTextureObject_t textureObject, f
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_1D(i, s, x, level);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -269,7 +248,7 @@ static __device__ __hip_img_chk__ T tex2DLod(hipTextureObject_t textureObject, f
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_2D(i, s, float2(x, y).data, level);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -287,7 +266,7 @@ static __device__ __hip_img_chk__ T tex3DLod(hipTextureObject_t textureObject, f
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_3D(i, s, float4(x, y, z, 0.0f).data, level);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -305,7 +284,7 @@ static __device__ __hip_img_chk__ T tex1DLayeredLod(hipTextureObject_t textureOb
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -323,7 +302,7 @@ static __device__ __hip_img_chk__  T tex2DLayeredLod(hipTextureObject_t textureO
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -341,7 +320,7 @@ static __device__ __hip_img_chk__ T texCubemapLod(hipTextureObject_t textureObje
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_CM(i, s, float4(x, y, z, 0.0f).data, level);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -360,7 +339,7 @@ static __device__ __hip_img_chk__ T texCubemapGrad(hipTextureObject_t textureObj
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
     // auto tmp = __ockl_image_sample_grad_CM(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return mapFrom<T>(tmp);
+    // return __hipMapFrom<T>(tmp);
     return {};
 }
 
@@ -379,7 +358,7 @@ static __device__ __hip_img_chk__ T texCubemapLayeredLod(hipTextureObject_t text
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_lod_CMa(i, s, float4(x, y, z, layer).data, level);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -397,7 +376,7 @@ static __device__ __hip_img_chk__ T tex1DGrad(hipTextureObject_t textureObject, 
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_1D(i, s, x, dPdx, dPdy);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -415,7 +394,7 @@ static __device__ __hip_img_chk__ T tex2DGrad(hipTextureObject_t textureObject, 
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_2D(i, s, float2(x, y).data, float2(dPdx.x, dPdx.y).data,  float2(dPdy.x, dPdy.y).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -433,7 +412,7 @@ static __device__ __hip_img_chk__ T tex3DGrad(hipTextureObject_t textureObject, 
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_3D(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -451,7 +430,7 @@ static __device__ __hip_img_chk__ T tex1DLayeredGrad(hipTextureObject_t textureO
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_1Da(i, s, float2(x, layer).data, dPdx, dPdy);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -469,7 +448,7 @@ static __device__ __hip_img_chk__ T tex2DLayeredGrad(hipTextureObject_t textureO
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     auto tmp = __ockl_image_sample_grad_2Da(i, s, float4(x, y, layer, 0.0f).data, float2(dPdx.x, dPdx.y).data, float2(dPdy.x, dPdy.y).data);
-    return mapFrom<T>(tmp);
+    return __hipMapFrom<T>(tmp);
 }
 
 template <
@@ -488,7 +467,7 @@ static __device__ __hip_img_chk__  T texCubemapLayeredGrad(hipTextureObject_t te
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
     // auto tmp = __ockl_image_sample_grad_CMa(i, s, float4(x, y, z, layer).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return mapFrom<T>(tmp);
+    // return __hipMapFrom<T>(tmp);
     return {};
 }
 
