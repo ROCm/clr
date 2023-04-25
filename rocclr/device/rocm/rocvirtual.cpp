@@ -2908,7 +2908,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         case amd::KernelParameterDescriptor::HiddenDefaultQueue: {
           uint64_t vqVA = 0;
           amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(dev());
-          if (nullptr != defQueue) {
+          if (nullptr != defQueue && devKernel->dynamicParallelism()) {
             if (!createVirtualQueue(defQueue->size()) || !createSchedulerParam()) {
               return false;
             }
@@ -2919,7 +2919,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         }
         case amd::KernelParameterDescriptor::HiddenCompletionAction: {
           uint64_t spVA = 0;
-          if (nullptr != schedulerParam_) {
+          if (nullptr != schedulerParam_ && devKernel->dynamicParallelism()) {
             Memory* schedulerMem = dev().getRocMemory(schedulerParam_);
             AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(
                                reinterpret_cast<uint64_t>(schedulerParam_->getHostMem()) + sizeof(SchedulerParam));
