@@ -915,27 +915,66 @@ int __syncthreads_or(int predicate)
 
 // hip.amdgcn.bc - device routine
 /*
-   HW_ID Register bit structure
-   WAVE_ID     3:0     Wave buffer slot number. 0-9.
-   SIMD_ID     5:4     SIMD which the wave is assigned to within the CU.
-   PIPE_ID     7:6     Pipeline from which the wave was dispatched.
-   CU_ID       11:8    Compute Unit the wave is assigned to.
-   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
-   SE_ID       15:13   Shader Engine the wave is assigned to.
-   TG_ID       19:16   Thread-group ID
-   VM_ID       23:20   Virtual Memory ID
-   QUEUE_ID    26:24   Queue from which this wave was dispatched.
-   STATE_ID    29:27   State ID (graphics only, not compute).
-   ME_ID       31:30   Micro-engine ID.
+  HW_ID Register bit structure for RDNA2 & RDNA3
+  WAVE_ID     4:0     Wave id within the SIMD.
+  SIMD_ID     9:8     SIMD_ID within the WGP: [0] = row, [1] = column.
+  WGP_ID      13:10   Physical WGP ID.
+  SA_ID       16      Shader Array ID
+  SE_ID       20:18   Shader Engine the wave is assigned to for gfx11
+  SE_ID       19:18   Shader Engine the wave is assigned to for gfx10
+  DP_RATE     31:29   Number of double-precision float units per SIMD
+
+  HW_ID Register bit structure for GCN and CDNA
+  WAVE_ID     3:0     Wave buffer slot number. 0-9.
+  SIMD_ID     5:4     SIMD which the wave is assigned to within the CU.
+  PIPE_ID     7:6     Pipeline from which the wave was dispatched.
+  CU_ID       11:8    Compute Unit the wave is assigned to.
+  SH_ID       12      Shader Array (within an SE) the wave is assigned to.
+  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940
+              14:13   Shader Engine the wave is assigned to for Vega.
+  TG_ID       19:16   Thread-group ID
+  VM_ID       23:20   Virtual Memory ID
+  QUEUE_ID    26:24   Queue from which this wave was dispatched.
+  STATE_ID    29:27   State ID (graphics only, not compute).
+  ME_ID       31:30   Micro-engine ID.
+
+  XCC_ID Register bit structure for gfx940
+  XCC_ID      3:0     XCC the wave is assigned to.
  */
 
-#define HW_ID               4
+#if (defined (__GFX10__) || defined (__GFX11__))
+  #define HW_ID               23
+#else
+  #define HW_ID               4
+#endif
 
-#define HW_ID_CU_ID_SIZE    4
-#define HW_ID_CU_ID_OFFSET  8
+#if (defined(__GFX10__) || defined(__GFX11__))
+  #define HW_ID_WGP_ID_SIZE   4
+  #define HW_ID_WGP_ID_OFFSET 10
+#else
+  #define HW_ID_CU_ID_SIZE    4
+  #define HW_ID_CU_ID_OFFSET  8
+#endif
 
-#define HW_ID_SE_ID_SIZE    3
-#define HW_ID_SE_ID_OFFSET  13
+#if (defined(__gfx908__) || defined(__gfx90a__) || \
+     defined(__GFX11__))
+  #define HW_ID_SE_ID_SIZE    3
+#else //4 SEs/XCC for gfx940
+  #define HW_ID_SE_ID_SIZE    2
+#endif
+#if (defined(__GFX10__) || defined(__GFX11__))
+  #define HW_ID_SE_ID_OFFSET  18
+  #define HW_ID_SA_ID_OFFSET  16
+  #define HW_ID_SA_ID_SIZE    1
+#else
+  #define HW_ID_SE_ID_OFFSET  13
+#endif
+
+#if (defined(__gfx940__))
+  #define XCC_ID                   20
+  #define XCC_ID_XCC_ID_SIZE       4
+  #define XCC_ID_XCC_ID_OFFSET     0
+#endif
 
 /*
    Encoding of parameter bitmask
@@ -956,13 +995,35 @@ __device__
 inline
 unsigned __smid(void)
 {
-    unsigned cu_id = __builtin_amdgcn_s_getreg(
-            GETREG_IMMED(HW_ID_CU_ID_SIZE-1, HW_ID_CU_ID_OFFSET, HW_ID));
     unsigned se_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(HW_ID_SE_ID_SIZE-1, HW_ID_SE_ID_OFFSET, HW_ID));
-
-    /* Each shader engine has 16 CU */
-    return (se_id << HW_ID_CU_ID_SIZE) + cu_id;
+    #if (defined(__GFX10__) || defined(__GFX11__))
+      unsigned wgp_id = __builtin_amdgcn_s_getreg(
+            GETREG_IMMED(HW_ID_WGP_ID_SIZE - 1, HW_ID_WGP_ID_OFFSET, HW_ID));
+      unsigned sa_id = __builtin_amdgcn_s_getreg(
+            GETREG_IMMED(HW_ID_SA_ID_SIZE - 1, HW_ID_SA_ID_OFFSET, HW_ID));
+    #else
+      #if defined(__gfx940__)
+      unsigned xcc_id = __builtin_amdgcn_s_getreg(
+            GETREG_IMMED(XCC_ID_XCC_ID_SIZE - 1, XCC_ID_XCC_ID_OFFSET, XCC_ID));
+      #endif
+      unsigned cu_id = __builtin_amdgcn_s_getreg(
+            GETREG_IMMED(HW_ID_CU_ID_SIZE - 1, HW_ID_CU_ID_OFFSET, HW_ID));
+    #endif
+    #if (defined(__GFX10__) || defined(__GFX11__))
+      unsigned temp = se_id;
+      temp = (temp << HW_ID_SA_ID_SIZE) | sa_id;
+      temp = (temp << HW_ID_WGP_ID_SIZE) | wgp_id;
+      return temp;
+      //TODO : CU Mode impl
+    #elif defined(__gfx940__)
+      unsigned temp = xcc_id;
+      temp = (temp << HW_ID_SE_ID_SIZE) | se_id;
+      temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;
+      return temp;
+    #else
+      return (se_id << HW_ID_CU_ID_SIZE) + cu_id;
+    #endif
 }
 
 /**
