@@ -348,12 +348,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         }
         break;
       case amd::KernelParameterDescriptor::HiddenDefaultQueue:
-        if (vmDefQueue != 0) {
+        if (vmDefQueue != 0 && dynamicParallelism()) {
           WriteAqlArgAt(hidden_arguments, vmDefQueue, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenCompletionAction:
-        if (*vmParentWrap != 0) {
+        if (*vmParentWrap != 0 && dynamicParallelism()) {
           WriteAqlArgAt(hidden_arguments, *vmParentWrap, it.size_, it.offset_);
         }
         break;
