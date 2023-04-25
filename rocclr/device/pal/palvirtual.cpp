@@ -2190,8 +2190,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   profilingEnd(cmd);
 }
 
-
-
+// ================================================================================================
 void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -2203,7 +2202,8 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     return;
   }
   pal::Memory* vaRange = dev().getGpuMemory(va);
-  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr)? nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
+  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr) ?
+      nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
   Pal::VirtualMemoryRemapRange range{
     vaRange->iMem(),
     0,
@@ -2212,7 +2212,12 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     vcmd.size(),
     Pal::VirtualGpuMemAccessMode::NoAccess
   };
-  Pal::Result result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+  eventBegin(MainEngine);
+  auto result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+  // Capture GPU event for the paging operation
+  GpuEvent event;
+  eventEnd(MainEngine, event);
+  setGpuEvent(event);
   if (result == Pal::Result::Success) {
     if (vcmd.memory() != nullptr) {
       // assert the va wasn't mapped already

@@ -2300,12 +2300,10 @@ void Device::svmFree(void* ptr) const {
   }
 }
 
-void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
-{
-  amd::Memory* mem = nullptr;
-
+// ================================================================================================
+void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
   // create a hidden buffer, which will allocated on the device later
-  mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, addr);
+  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, addr);
   if (mem == nullptr) {
     LogError("failed to new a va range mem object!");
     return nullptr;
@@ -2316,24 +2314,19 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
     mem->release();
     return nullptr;
   }
-  // if the device supports SVM FGS, return the committed CPU address directly.
-  pal::Memory* gpuMem = getGpuMemory(mem);
-  amd::MemObjMap::AddVirtualMemObj(mem->getSvmPtr(), mem);
 
-  void* svmPtr = mem->getSvmPtr();
-
-  return svmPtr;
+  return mem->getSvmPtr();
 }
 
-void Device::virtualFree(void* addr)
-{
-  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(addr);
-  if (nullptr != va && (va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+// ================================================================================================
+void Device::virtualFree(void* addr) {
+  auto va = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (nullptr != va) {
     va->release();
-    amd::MemObjMap::RemoveVirtualMemObj(addr);
   }
 }
 
+// ================================================================================================
 bool Device::AcquireExclusiveGpuAccess() {
   // Lock the virtual GPU list
   vgpusAccess().lock();
