@@ -1041,7 +1041,6 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
                                             hsa_signal_t signal, hsa_signal_value_t value,
                                             hsa_signal_value_t mask, hsa_signal_condition32_t cond,
                                             bool skipTs, hsa_signal_t completionSignal) {
-  hsa_amd_barrier_value_packet_t barrier_value_packet_ = {0};
   uint16_t rest = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
@@ -1280,6 +1279,7 @@ bool VirtualGPU::create() {
   // Initialize barrier and barrier value packets
   memset(&barrier_packet_, 0, sizeof(barrier_packet_));
   barrier_packet_.header = kInvalidAql;
+  barrier_value_packet_.header.header = kInvalidAql;
 
   // Create a object of PrintfDbg
   printfdbg_ = new PrintfDbg(roc_device_);
