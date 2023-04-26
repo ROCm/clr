@@ -1447,7 +1447,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
   gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, 0};
+    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, arraySliceIdx};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = dstOrigin[0];
@@ -1472,7 +1473,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    Pal::SubresId ImgSubresId = {0, desc().baseLevel_, 0};
+    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
     copyRegion.imageOffset.y = srcOrigin[1];
