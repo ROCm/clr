@@ -1,4 +1,4 @@
-# Copyright (c) 2020 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+# Copyright (c) 2020 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -129,12 +129,33 @@ set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
 set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
 set(HIPRTC_GEN_PREPROCESSED "${HIPRTC_GEN_DIR}/hipRTC")
 set(HIPRTC_GEN_OBJ "${HIPRTC_GEN_DIR}/hipRTC_header${CMAKE_CXX_OUTPUT_EXTENSION}")
-set(HIPRTC_WARP_FUNCS "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_functions.h")
-set(HIPRTC_FP16_MATH_FWD "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_fp16_math_fwd.h")
-set(HIPRTC_FP16_FUNCS "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_fp16.h")
-set(HIPRTC_COOP_GROUPS "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_cooperative_groups.h")
-set(HIPRTC_COOP_GRPS_HELPER "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_cooperative_groups_helper.h")
-set(HIPRTC_UNSAFE_ATOMICS "${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_unsafe_atomics.h")
+# list of headers which needs to be appended to the hiprtc preprocessed file
+set(HIPRTC_HEADERS
+${HIP_COMMON_INCLUDE_DIR}/hip/hip_common.h
+${HIP_COMMON_INCLUDE_DIR}/hip/library_types.h
+${HIP_COMMON_INCLUDE_DIR}/hip/driver_types.h
+${HIP_COMMON_INCLUDE_DIR}/hip/surface_types.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_channel_descriptor.h
+${HIP_COMMON_INCLUDE_DIR}/hip/texture_types.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/ockl_image.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/texture_fetch_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/texture_indirect_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_surface_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_complex.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_math_constants.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/math_fwd.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/device_library_decls.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_cooperative_groups_helper.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_cooperative_groups.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_unsafe_atomics.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_atomic.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/math_fwd.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_fp16_math_fwd.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_fp16.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_math_functions.h
+)
 
 # Generate required HIPRTC files.
 FILE(MAKE_DIRECTORY ${HIPRTC_GEN_DIR})
@@ -147,7 +168,7 @@ generate_hiprtc_mcin("${HIPRTC_GEN_MCIN}" "${HIPRTC_GEN_PREPROCESSED}")
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_PREPROCESSED}
   COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=3.6 -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -x hip ${HIPRTC_GEN_HEADER} -E -o ${HIPRTC_GEN_PREPROCESSED}
-  COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_WARP_HEADER_FILE=${HIPRTC_WARP_FUNCS} -DHIPRTC_COOP_HEADER_FILE=${HIPRTC_COOP_GROUPS} -DHIPRTC_COOP_HELPER_FILE=${HIPRTC_COOP_GRPS_HELPER} -DHIPRTC_UNSAFE_ATOMICS_FILE=${HIPRTC_UNSAFE_ATOMICS} -DHIPRTC_FP16_MATH_FWD_FILE=${HIPRTC_FP16_MATH_FWD} -DHIPRTC_FP16_HEADER_FILE=${HIPRTC_FP16_FUNCS} -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
+  COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_HEADERS="${HIPRTC_HEADERS}" -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
   DEPENDS clang ${HIPRTC_GEN_HEADER})
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_OBJ}

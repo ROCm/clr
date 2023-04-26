@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,7 +23,21 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COMPLEX_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COMPLEX_H
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wfloat-equal"
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
+#pragma clang diagnostic ignored "-Wimplicit-int-float-conversion"
+#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
+#pragma clang diagnostic ignored "-Wdouble-promotion"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif
+
+#if !defined(__HIPCC_RTC__)
 #include "hip/amd_detail/amd_hip_vector_types.h"
+#endif
 
 #if defined(__HIPCC_RTC__)
 #define __HOST_DEVICE__ __device__
@@ -310,5 +324,9 @@ __HOST_DEVICE__ static inline hipDoubleComplex hipCfma(hipDoubleComplex p, hipDo
 
     return make_hipDoubleComplex(real, imag);
 }
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #endif //HIP_INCLUDE_HIP_AMD_DETAIL_HIP_COMPLEX_H

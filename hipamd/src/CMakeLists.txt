@@ -261,9 +261,11 @@ endif()
 target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
 
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
-  ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
+  ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/share/hip/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
   ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/include)
+add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
+  ${CMAKE_COMMAND} -E copy_directory ${HIP_COMMON_INCLUDE_DIR} ${PROJECT_BINARY_DIR}/include)
 
 add_library(host INTERFACE)
 target_link_libraries(host INTERFACE amdhip64)

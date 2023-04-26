@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -110,18 +110,19 @@ using ::int64_t;
 
 #if !defined(__HIPCC_RTC__)
 #include <hip/hip_runtime_api.h>
+#include <hip/amd_detail/amd_hip_atomic.h>
+#include <hip/amd_detail/amd_device_functions.h>
+#include <hip/amd_detail/amd_surface_functions.h>
+#include <hip/amd_detail/texture_fetch_functions.h>
+#include <hip/amd_detail/texture_indirect_functions.h>
 extern int HIP_TRACE_API;
 #endif // !defined(__HIPCC_RTC__)
 
 #ifdef __cplusplus
 #include <hip/amd_detail/hip_ldg.h>
 #endif
-#include <hip/amd_detail/amd_hip_atomic.h>
+
 #include <hip/amd_detail/host_defines.h>
-#include <hip/amd_detail/amd_device_functions.h>
-#include <hip/amd_detail/amd_surface_functions.h>
-#include <hip/amd_detail/texture_fetch_functions.h>
-#include <hip/amd_detail/texture_indirect_functions.h>
 
 // TODO-HCC remove old definitions ; ~1602 hcc supports __HCC_ACCELERATOR__ define.
 #if defined(__KALMAR_ACCELERATOR__) && !defined(__HCC_ACCELERATOR__)
@@ -244,10 +245,10 @@ void hipLaunchKernelGGL(F kernel, const dim3& numBlocks, const dim3& dimBlocks,
 #include <hip/hip_runtime_api.h>
 #endif // !defined(__HIPCC_RTC__)
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_id(uint);
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_group_id(uint);
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_size(uint);
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_num_groups(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_id(unsigned int);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_group_id(unsigned int);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_size(unsigned int);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_num_groups(unsigned int);
 struct __HIP_BlockIdx {
   __device__
   std::uint32_t operator()(std::uint32_t x) const noexcept { return __ockl_get_group_id(x); }
@@ -282,7 +283,7 @@ typedef struct dim3 {
 } dim3;
 #endif // !defined(__HIPCC_RTC__)
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_size(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_size(unsigned int);
 
 #ifdef __cplusplus
 template <typename F> struct __HIP_Coordinates {
@@ -367,33 +368,35 @@ static constexpr __HIP_Coordinates<__HIP_GridDim> gridDim{};
 static constexpr __HIP_Coordinates<__HIP_ThreadIdx> threadIdx{};
 #endif // __cplusplus
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_id(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_id(unsigned int);
 #define hipThreadIdx_x (__ockl_get_local_id(0))
 #define hipThreadIdx_y (__ockl_get_local_id(1))
 #define hipThreadIdx_z (__ockl_get_local_id(2))
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_group_id(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_group_id(unsigned int);
 #define hipBlockIdx_x (__ockl_get_group_id(0))
 #define hipBlockIdx_y (__ockl_get_group_id(1))
 #define hipBlockIdx_z (__ockl_get_group_id(2))
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_size(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_size(unsigned int);
 #define hipBlockDim_x (__ockl_get_local_size(0))
 #define hipBlockDim_y (__ockl_get_local_size(1))
 #define hipBlockDim_z (__ockl_get_local_size(2))
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_num_groups(uint);
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_num_groups(unsigned int);
 #define hipGridDim_x (__ockl_get_num_groups(0))
 #define hipGridDim_y (__ockl_get_num_groups(1))
 #define hipGridDim_z (__ockl_get_num_groups(2))
 
+#if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_math_functions.h>
+#endif
 
 #if __HIP_HCC_COMPAT_MODE__
 // Define HCC work item functions in terms of HIP builtin variables.
 #pragma push_macro("__DEFINE_HCC_FUNC")
 #define __DEFINE_HCC_FUNC(hc_fun,hip_var) \
-inline __device__ __attribute__((always_inline)) uint hc_get_##hc_fun(uint i) { \
+inline __device__ __attribute__((always_inline)) unsigned int hc_get_##hc_fun(unsigned int i) { \
   if (i==0) \
     return hip_var.x; \
   else if(i==1) \
@@ -408,11 +411,11 @@ __DEFINE_HCC_FUNC(group_size, blockDim)
 __DEFINE_HCC_FUNC(num_groups, gridDim)
 #pragma pop_macro("__DEFINE_HCC_FUNC")
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_id(uint);
-inline __device__ __attribute__((always_inline)) uint
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_id(unsigned int);
+inline __device__ __attribute__((always_inline)) unsigned int
 hc_get_workitem_absolute_id(int dim)
 {
-  return (uint)__ockl_get_global_id(dim);
+  return (unsigned int)__ockl_get_global_id(dim);
 }
 
 #endif

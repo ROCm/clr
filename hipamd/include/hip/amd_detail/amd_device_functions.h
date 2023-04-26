@@ -23,18 +23,32 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 
-#include "host_defines.h"
-#include "math_fwd.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wimplicit-int-conversion"
+#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
+#pragma clang diagnostic ignored "-Wmissing-noreturn"
+#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
+#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
+#pragma clang diagnostic ignored "-Wshift-count-overflow"
+#endif
 
 #if !defined(__HIPCC_RTC__)
+#include "host_defines.h"
+#include "math_fwd.h"
 #include <hip/hip_runtime_api.h>
 #include <stddef.h>
-#endif // !defined(__HIPCC_RTC__)
-
 #include <hip/hip_vector_types.h>
 #include <hip/amd_detail/device_library_decls.h>
+#endif // !defined(__HIPCC_RTC__)
 
-#if __HIP_CLANG_ONLY__
+#if defined(__clang__) && defined(__HIP__)
 extern "C" __device__ int printf(const char *fmt, ...);
 #else
 template <typename... All>
@@ -639,7 +653,7 @@ __device__ static inline float __ull2float_rz(unsigned long long int x) {
     return __ocml_cvtrtz_f32_u64(x);
 }
 
-#if __HIP_CLANG_ONLY__
+#if defined(__clang__) && defined(__HIP__)
 
 // Clock functions
 __device__ long long int __clock64();
@@ -1105,4 +1119,9 @@ static inline __device__ void* memset(void* ptr, int val, size_t size) {
     return __hip_hc_memset(ptr, val8, size);
 }
 #endif // !__OPENMP_AMDGCN__
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
 #endif

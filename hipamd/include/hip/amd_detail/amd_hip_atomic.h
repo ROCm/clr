@@ -22,7 +22,17 @@ THE SOFTWARE.
 
 #pragma once
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#pragma clang diagnostic ignored "-Wsign-conversion"
+#endif
+
+#if !defined(__HIPCC_RTC__)
 #include "amd_device_functions.h"
+#endif
 
 #if __has_builtin(__hip_atomic_compare_exchange_strong)
 
@@ -1624,5 +1634,9 @@ unsigned long long atomicXor(
 {
     return __atomic_fetch_xor(address, val, __ATOMIC_RELAXED);
 }
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
 
 #endif // __hip_atomic_compare_exchange_strong
