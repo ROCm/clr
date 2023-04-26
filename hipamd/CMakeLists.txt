@@ -292,15 +292,15 @@ set(_versionInfoHeader
 ")
 file(WRITE "${PROJECT_BINARY_DIR}/include/hip/hip_version.h" ${_versionInfoHeader})
 
-if(HIP_RUNTIME STREQUAL "rocclr")
-	add_subdirectory(src)
-endif()
-
 # Generate .hipInfo
-file(WRITE "${PROJECT_BINARY_DIR}/.hipInfo" ${_buildInfo})
+file(WRITE "${PROJECT_BINARY_DIR}/share/hip/.hipInfo" ${_buildInfo})
 
 # Generate version
-file(WRITE "${PROJECT_BINARY_DIR}/version" ${_versionInfo})
+file(WRITE "${PROJECT_BINARY_DIR}/share/hip/version" ${_versionInfo})
+
+if(HIP_RUNTIME STREQUAL "rocclr")
+   add_subdirectory(src)
+endif()
 
 # Build doxygen documentation
 find_program(DOXYGEN_EXE doxygen)
@@ -321,14 +321,14 @@ endif()
 #############################
 
 # Install .hipInfo
-install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(FILES ${PROJECT_BINARY_DIR}/share/hip/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # Install version
-install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip)
+install(FILES ${PROJECT_BINARY_DIR}/share/hip/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip)
 # .hipVersion is added to satisfy Windows compute build.
 #TODO to be removed
 if(WIN32)
-    install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion)
+    install(FILES ${PROJECT_BINARY_DIR}/share/hip/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion)
 endif()
 
 # Install src, bin, include & cmake if necessary

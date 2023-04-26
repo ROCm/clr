@@ -60,7 +60,7 @@ if(HIP_PLATFORM STREQUAL "amd" )
 
 #TODO:This do not belong in BINARY package.
 #Keeping it as is for now
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
 
 install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
 install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
@@ -94,11 +94,11 @@ install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/hip_version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT dev)
 # .hipVersion is added to satisfy Windows compute build.
 #TODO to be removed
 if(WIN32)
-    install(FILES ${CMAKE_BINARY_DIR}/hipamd/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion COMPONENT dev)
+    install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion COMPONENT dev)
 endif()
 install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)

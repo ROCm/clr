@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2018 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,12 +23,33 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_SURFACE_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_SURFACE_FUNCTIONS_H
 
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
+#pragma clang diagnostic ignored "-Wc++17-extensions"
+#pragma clang diagnostic ignored "-Wreserved-identifier"
+#pragma clang diagnostic ignored "-Wc++98-compat"
+#pragma clang diagnostic ignored "-Wold-style-cast"
+#pragma clang diagnostic ignored "-Wextra-semi-stmt"
+#pragma clang diagnostic ignored "-Wunused-variable"
+#pragma clang diagnostic ignored "-Wunused-parameter"
+#pragma clang diagnostic ignored "-Wunused-template"
+#endif
+
 #if defined(__cplusplus)
 
+#if !defined(__HIPCC_RTC__)
 #include <hip/surface_types.h>
 #include <hip/hip_vector_types.h>
 #include <hip/amd_detail/texture_fetch_functions.h>
 #include <hip/amd_detail/ockl_image.h>
+#endif
+
+#if defined(__HIPCC_RTC__)
+#define __HOST_DEVICE__ __device__
+#else
+#define __HOST_DEVICE__ __host__ __device__
+#endif
 
 #define __HIP_SURFACE_OBJECT_PARAMETERS_INIT                                                            \
     unsigned int ADDRESS_SPACE_CONSTANT* i = (unsigned int ADDRESS_SPACE_CONSTANT*)surfObj; 
@@ -232,4 +253,9 @@ static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfa
 }
 
 #endif
+
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif
+
 #endif
