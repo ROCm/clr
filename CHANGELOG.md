@@ -8,7 +8,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Added
 
 ### Changed
-
+- find_package(hip) does not set HIP_CLANG_ROOT, HIP_PATH and ROCM_PATH cmake variables anymore
 ### Fixed
 
 ### Known Issues
