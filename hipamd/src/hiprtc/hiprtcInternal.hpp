@@ -66,7 +66,8 @@ static amd::Monitor g_hiprtcInitlock{"hiprtcInit lock"};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
   amd::Thread* thread = amd::Thread::current();                                                    \
   if (!VDI_CHECK_THREAD(thread)) {                                                                 \
-    ClPrint(amd::LOG_INFO, amd::LOG_API, "Failed to create thread");                               \
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "An internal error has occurred."                      \
+      " This may be due to insufficient memory.");                                                 \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
   }                                                                                                \
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
