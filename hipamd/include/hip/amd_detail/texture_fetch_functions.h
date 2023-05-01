@@ -37,7 +37,7 @@ THE SOFTWARE.
     unsigned int ADDRESS_SPACE_CONSTANT* s = i + HIP_SAMPLER_OBJECT_OFFSET_DWORD;
 
 template<typename T>
-struct __hip_is_tex_channel_type
+struct __hip_is_tex_surf_scalar_channel_type
 {
     static constexpr bool value =
         std::is_same<T, char>::value ||
@@ -49,13 +49,20 @@ struct __hip_is_tex_channel_type
         std::is_same<T, float>::value;
 };
 
+template<typename T>
+struct __hip_is_tex_surf_channel_type
+{
+    static constexpr bool value =
+        __hip_is_tex_surf_scalar_channel_type<T>::value;
+};
+
 template<
     typename T,
     unsigned int rank>
-struct __hip_is_tex_channel_type<HIP_vector_type<T, rank>>
+struct __hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>
 {
     static constexpr bool value =
-        __hip_is_tex_channel_type<T>::value &&
+        __hip_is_tex_surf_scalar_channel_type<T>::value &&
         ((rank == 1) ||
          (rank == 2) ||
          (rank == 4));
@@ -98,7 +105,7 @@ struct __hip_tex_ret
 template<typename T, typename U>
 __forceinline__ __device__
 typename std::enable_if<
-  __hip_is_tex_channel_type<T>::value && std::is_scalar<T>::value, const T>::type
+  __hip_is_tex_surf_scalar_channel_type<T>::value, const T>::type
 __hipMapFrom(const U &u) {
   if constexpr (sizeof(T) < sizeof(float)) {
     union {
@@ -120,7 +127,8 @@ __hipMapFrom(const U &u) {
  */
 template<typename T, typename U>
 __forceinline__ __device__
-typename std::enable_if<__hip_is_tex_channel_type<typename T::value_type>::value, const T>::type
+typename std::enable_if<
+  __hip_is_tex_surf_scalar_channel_type<typename T::value_type>::value, const T>::type
 __hipMapFrom(const U &u) {
   if constexpr (sizeof(typename T::value_type) < sizeof(float)) {
     union {
@@ -143,7 +151,7 @@ __hipMapFrom(const U &u) {
 template<typename U, typename T>
 __forceinline__ __device__
 typename std::enable_if<
-  __hip_is_tex_channel_type<T>::value  && std::is_scalar<T>::value, const U>::type
+__hip_is_tex_surf_scalar_channel_type<T>::value, const U>::type
 __hipMapTo(const T &t) {
   if constexpr (sizeof(T) < sizeof(float)) {
     union {
@@ -167,7 +175,8 @@ __hipMapTo(const T &t) {
  */
 template<typename U, typename T>
 __forceinline__ __device__
-typename std::enable_if<__hip_is_tex_channel_type<typename T::value_type>::value, const U>::type
+typename std::enable_if<
+  __hip_is_tex_surf_scalar_channel_type<typename T::value_type>::value, const U>::type
 __hipMapTo(const T &t) {
   if constexpr (sizeof(typename T::value_type) < sizeof(float)) {
     union {
@@ -195,7 +204,7 @@ template <typename T>
 struct __hip_tex_ret<
     T,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<T>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value, bool>::type>
 {
     using type = T;
 };
@@ -206,7 +215,7 @@ template<
 struct __hip_tex_ret<
     HIP_vector_type<T, rank>,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
 {
     using type = HIP_vector_type<__hip_tex_ret_t<T, hipReadModeElementType>, rank>;
 };
@@ -430,7 +439,7 @@ template <typename T>
 struct __hip_tex2dgather_ret<
     T,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<T>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value, bool>::type>
 {
     using type = HIP_vector_type<T, 4>;
 };
@@ -441,7 +450,7 @@ template<
 struct __hip_tex2dgather_ret<
     HIP_vector_type<T, rank>,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
 {
     using type = HIP_vector_type<T, 4>;
 };
