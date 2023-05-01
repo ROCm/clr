@@ -578,6 +578,34 @@ unsigned long long atomicMin_system(unsigned long long* address, unsigned long l
 
 __device__
 inline
+long long atomicMin(long long* address, long long val) {
+#if defined(__gfx941__)
+  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
+      address, val, [](long long x, long long y) { return x < y; },
+      [=]() {
+        return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      });
+#else
+  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif  // __gfx941__
+}
+
+__device__
+inline
+long long atomicMin_system(long long* address, long long val) {
+#if defined(__gfx941__)
+  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
+      address, val, [](long long x, long long y) { return x < y; },
+      [=]() {
+        return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      });
+#else
+  return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif  // __gfx941__
+}
+
+__device__
+inline
 float atomicMin(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
@@ -790,6 +818,34 @@ unsigned long long atomicMax_system(unsigned long long* address, unsigned long l
 #else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 #endif // __gfx941__
+}
+
+__device__
+inline
+long long atomicMax(long long* address, long long val) {
+  #if defined(__gfx941__)
+  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
+      address, val, [](long long x, long long y) { return y < x; },
+      [=]() {
+        return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+      });
+#else
+  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif // __gfx941__
+}
+
+__device__
+inline
+long long atomicMax_system(long long* address, long long val) {
+#if defined(__gfx941__)
+  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
+      address, val, [](long long x, long long y) { return y < x; },
+      [=]() {
+        return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+      });
+#else
+  return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif  // __gfx941__
 }
 
 __device__
@@ -1437,6 +1493,20 @@ unsigned long long atomicMin(
 
     return tmp;
 }
+__device__ inline long long atomicMin(long long* address, long long val) {
+    long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
+    while (val < tmp) {
+        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
+
+        if (tmp1 != tmp) {
+          tmp = tmp1;
+          continue;
+        }
+
+        tmp = atomicCAS(address, tmp, val);
+    }
+    return tmp;
+}
 
 __device__
 inline
@@ -1464,6 +1534,20 @@ unsigned long long atomicMax(
         tmp = atomicCAS(address, tmp, val);
     }
 
+    return tmp;
+}
+__device__ inline long long atomicMax(long long* address, long long val) {
+    long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
+    while (tmp < val) {
+        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
+
+        if (tmp1 != tmp) {
+          tmp = tmp1;
+          continue;
+        }
+
+        tmp = atomicCAS(address, tmp, val);
+    }
     return tmp;
 }
 
