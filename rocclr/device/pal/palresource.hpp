@@ -55,6 +55,8 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
 
   static GpuMemoryReference* Create(const Device& dev, const Pal::PeerGpuMemoryOpenInfo& openInfo);
 
+  static GpuMemoryReference* Create(const Device& dev, const Pal::PeerImageOpenInfo& openInfo,
+                                    Pal::IImage** image);
   //! Default constructor
   GpuMemoryReference(const Device& dev);
 
