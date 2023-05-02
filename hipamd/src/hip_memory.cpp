@@ -113,9 +113,13 @@ hipError_t hipImportExternalMemory(
 
   amd::BufferVk* pBufferVk = nullptr;
 #ifdef _WIN32
-  pBufferVk = new (amdContext) amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle);
+  pBufferVk = new (amdContext)
+                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle,
+                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
 #else
-  pBufferVk = new (amdContext) amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd);
+  pBufferVk = new (amdContext)
+                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd,
+                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
 #endif
 
   if (!pBufferVk) {
@@ -479,7 +483,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
              ((srcMemory != nullptr) && (dstMemory == nullptr))) {
     isHostAsync = false;
-  } else {
+  } else if (srcMemory->getContext().devices()[0] == dstMemory->getContext().devices()[0]) {
     hipMemoryType srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
         srcMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
     hipMemoryType dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &

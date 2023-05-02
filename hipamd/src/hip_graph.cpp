@@ -1052,7 +1052,10 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hipGraph_t* pGraph) {
     std::vector<hipGraphNode_t> leafNodes = s->GetCaptureGraph()->GetLeafNodes();
     std::unordered_set<hipGraphNode_t> nodes = s->GetCaptureGraph()->GetManualNodesDuringCapture();
     for (auto node : nodes) {
-      leafNodes.erase(std::find(leafNodes.begin(), leafNodes.end(), node));
+      const auto& fnode = std::find(leafNodes.begin(), leafNodes.end(), node);
+      if (fnode != leafNodes.end()) {
+        leafNodes.erase(fnode);
+      }
     }
     const std::vector<hipGraphNode_t>& removedDepNodes = s->GetRemovedDependencies();
     bool foundInRemovedDep = false;

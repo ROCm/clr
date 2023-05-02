@@ -1163,6 +1163,8 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
   cl_mem_object_type clType;
   cl_gl_object_type clGLType;
   GLsizei numSamples = 1;
+  GLint gliTexMaxLevel;
+  bool wholeMipmap = false;
 
   // Verify context init'ed for interop
   if (!amdContext.glenv() || !amdContext.glenv()->isAssociated()) {
@@ -1280,7 +1282,6 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
     if (image) {
       // Check mipmap level for "texture" name
       GLint gliTexBaseLevel;
-      GLint gliTexMaxLevel;
 
       clearGLErrors(amdContext);
       amdContext.glenv()->glGetTexParameteriv_(glTarget, GL_TEXTURE_BASE_LEVEL, &gliTexBaseLevel);
@@ -1296,6 +1297,8 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
         LogWarning("Cannot get max mipmap level of a GL \"texture\" object");
         return static_cast<cl_mem>(0);
       }
+      wholeMipmap = miplevel < 0;
+      miplevel = wholeMipmap ? gliTexBaseLevel : miplevel;
       if ((gliTexBaseLevel > miplevel) || (miplevel > gliTexMaxLevel)) {
         *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
         LogWarning("\"miplevel\" is not a valid mipmap level of the GL \"texture\" object");
@@ -1431,10 +1434,17 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
 
   target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
 
-  pImageGL = new (amdContext)
-      ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
+  if (wholeMipmap) {
+    pImageGL = new (amdContext)
+        ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
+              static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
+              texture, miplevel, glInternalFormat, clGLType, numSamples, gliTexMaxLevel, target);
+  } else {
+    pImageGL = new (amdContext)
+        ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
               static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
               texture, miplevel, glInternalFormat, clGLType, numSamples, target);
+  }
 
   if (!pImageGL) {
     *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;

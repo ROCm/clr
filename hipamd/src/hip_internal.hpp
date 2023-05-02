@@ -71,7 +71,7 @@ typedef struct ihipIpcEventHandle_st {
 
 const char* ihipGetErrorName(hipError_t hip_error);
 
-static  amd::Monitor g_hipInitlock{"hipInit lock"};
+extern amd::Monitor g_hipInitlock;
 #define HIP_INIT(noReturn) {\
     amd::ScopedLock lock(g_hipInitlock);                     \
     if (!amd::Runtime::initialized()) {                      \

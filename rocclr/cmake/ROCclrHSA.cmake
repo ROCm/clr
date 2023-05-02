@@ -35,6 +35,8 @@ if(NUMA_FOUND)
   target_link_libraries(rocclr PUBLIC ${NUMA_LIBRARIES})
 endif()
 
+find_package(OpenGL REQUIRED)
+
 target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/rocm/rocappprofile.cpp
   ${ROCCLR_SRC_DIR}/device/rocm/rocblit.cpp
