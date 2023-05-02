@@ -1678,6 +1678,22 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
 
       // Create memory object
       result = gpuImage->create(Resource::Pinned, &params);
+    } else {
+      Resource::CreateParams params;
+      params.owner_ = &owner;
+      params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
+      params.svmBase_ = static_cast<Memory*>(owner.svmBase());
+      Resource::MemoryType type = Resource::MemoryType::Empty;
+      if (owner.P2PAccess()) {
+        params.svmBase_ = static_cast<Memory*>(owner.BaseP2PMemory());
+        if (params.svmBase_ != nullptr) {
+          type = Resource::P2PAccess;
+        }
+      }
+      if (type == Resource::P2PAccess) {
+        // Create memory object
+        result = gpuImage->create(type, &params);
+      }
     }
 
     if (!result && !owner.isInterop()) {
