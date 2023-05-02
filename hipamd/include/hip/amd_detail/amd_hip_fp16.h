@@ -1144,24 +1144,34 @@ THE SOFTWARE.
                 return static_cast<__half_raw>(x).data >
                     static_cast<__half_raw>(y).data;
             }
+            inline __device__
+            bool __hequ(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data < static_cast<__half_raw>(y).data) &&
+                    !(static_cast<__half_raw>(x).data > static_cast<__half_raw>(y).data);
+            }
+            inline __device__
+            bool __hneu(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data == static_cast<__half_raw>(y).data);
+            }
+            inline __device__
+            bool __hleu(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data > static_cast<__half_raw>(y).data);
+            }
             inline
             __device__
-            bool __hequ(__half x, __half y) { return __heq(x, y); }
+            bool __hgeu(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data < static_cast<__half_raw>(y).data);
+            }
             inline
             __device__
-            bool __hneu(__half x, __half y) { return __hne(x, y); }
+            bool __hltu(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data >= static_cast<__half_raw>(y).data);
+            }
             inline
             __device__
-            bool __hleu(__half x, __half y) { return __hle(x, y); }
-            inline
-            __device__
-            bool __hgeu(__half x, __half y) { return __hge(x, y); }
-            inline
-            __device__
-            bool __hltu(__half x, __half y) { return __hlt(x, y); }
-            inline
-            __device__
-            bool __hgtu(__half x, __half y) { return __hgt(x, y); }
+            bool __hgtu(__half x, __half y) {
+                return !(static_cast<__half_raw>(x).data <= static_cast<__half_raw>(y).data);
+            }
 
             inline
             __HOST_DEVICE__
@@ -1211,24 +1221,42 @@ THE SOFTWARE.
                     static_cast<__half2_raw>(y).data;
                 return __builtin_convertvector(-r, _Float16_2);
             }
+            inline __HOST_DEVICE__
+            __half2 __hequ2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data < static_cast<__half2_raw>(y).data) &&
+                    !(static_cast<__half2_raw>(x).data > static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
             inline
             __HOST_DEVICE__
-            __half2 __hequ2(__half2 x, __half2 y) { return __heq2(x, y); }
+            __half2 __hneu2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data == static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
             inline
             __HOST_DEVICE__
-            __half2 __hneu2(__half2 x, __half2 y) { return __hne2(x, y); }
+            __half2 __hleu2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data > static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
             inline
             __HOST_DEVICE__
-            __half2 __hleu2(__half2 x, __half2 y) { return __hle2(x, y); }
+            __half2 __hgeu2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data < static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
             inline
             __HOST_DEVICE__
-            __half2 __hgeu2(__half2 x, __half2 y) { return __hge2(x, y); }
+            __half2 __hltu2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data >= static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
             inline
             __HOST_DEVICE__
-            __half2 __hltu2(__half2 x, __half2 y) { return __hlt2(x, y); }
-            inline
-            __HOST_DEVICE__
-            __half2 __hgtu2(__half2 x, __half2 y) { return __hgt2(x, y); }
+            __half2 __hgtu2(__half2 x, __half2 y) {
+                auto r = !(static_cast<__half2_raw>(x).data <= static_cast<__half2_raw>(y).data);
+                return __builtin_convertvector(-r, _Float16_2);
+            }
 
             inline
             __HOST_DEVICE__
