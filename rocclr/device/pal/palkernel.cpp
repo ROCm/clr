@@ -514,7 +514,10 @@ bool LightningKernel::postLoad() {
   if (!setKernelCode(sym, &akc_)) {
     return false;
   }
-
+  if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_DYNAMIC_CALLSTACK,
+                    reinterpret_cast<void*>(&kernelHasDynamicCallStack_))) {
+    return false;
+  }
   if (!prog().isNull()) {
     codeSize_ = prog().codeSegGpu().owner()->getSize();
 
@@ -545,7 +548,7 @@ bool LightningKernel::postLoad() {
 
   // Copy wavefront size
   workGroupInfo_.wavefrontSize_ = device().info().wavefrontWidth_;
-
+  workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }

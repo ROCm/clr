@@ -2678,6 +2678,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       dispatchParam.scratchSize = scratch->size_;
       dispatchParam.scratchOffset = scratch->offset_;
       dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
+      if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+        dispatchParam.workitemPrivateSegmentSize =
+            std::max<uint64_t>(dev().StackSize(), dispatchParam.workitemPrivateSegmentSize);
+        if (dispatchParam.workitemPrivateSegmentSize > 16 * Ki) {
+          dispatchParam.workitemPrivateSegmentSize = 16 * Ki;
+        }
+      }
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
