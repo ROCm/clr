@@ -884,8 +884,8 @@ hipError_t capturehipMallocAsync(hipStream_t stream, hipMemPool_t mem_pool,
   if (status != hipSuccess) {
     return status;
   }
-  // Execute the node during capture, so runtime can return a valid device pointer
-  *dev_ptr = mem_alloc_node->Execute(s);
+  // Without VM runtime executes the node during capture, so it can return a valid device pointer
+  *dev_ptr = (HIP_MEM_POOL_USE_VM) ? mem_alloc_node->ReserveAddress() : mem_alloc_node->Execute(s);
   s->SetLastCapturedNode(mem_alloc_node);
 
   return hipSuccess;
@@ -900,8 +900,10 @@ hipError_t capturehipFreeAsync(hipStream_t stream, void* dev_ptr) {
   if (status != hipSuccess) {
     return status;
   }
-  // Execute the node during capture, so runtime can release memory into cache
-  mem_free_node->Execute(s);
+  // Execute the node without VM support, so runtime can release memory into cache
+  if (!HIP_MEM_POOL_USE_VM) {
+    mem_free_node->Execute(s);
+  }
   s->SetLastCapturedNode(mem_free_node);
   return hipSuccess;
 }
@@ -2202,7 +2204,8 @@ hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   *pGraphNode = mem_alloc_node;
   auto status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies);
   // The address must be provided during the node creation time
-  pNodeParams->dptr = mem_alloc_node->Execute();
+  pNodeParams->dptr =
+      (HIP_MEM_POOL_USE_VM) ? mem_alloc_node->ReserveAddress() : mem_alloc_node->Execute();
   HIP_RETURN(status);
 }
 
@@ -2231,9 +2234,15 @@ hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
 
   // Is memory passed to be free'd valid
   size_t offset = 0;
-  amd::Memory* memory_object = getMemoryObject(dev_ptr, offset);
-  if (memory_object == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+  auto memory = getMemoryObject(dev_ptr, offset);
+  if (memory == nullptr) {
+    if (HIP_MEM_POOL_USE_VM) {
+      // When VM is on the address must be valid and may point to a VA object
+      memory = amd::MemObjMap::FindVirtualMemObj(dev_ptr);
+    }
+    if (memory == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
   }
 
   auto mem_free_node = new hipGraphMemFreeNode(dev_ptr);

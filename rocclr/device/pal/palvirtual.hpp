@@ -707,7 +707,7 @@ inline void VirtualGPU::logVmMemory(const std::string name, const Memory* memory
     if (PAL_EMBED_KERNEL_MD) {
       iCmd()->CmdCommentString(buf);
     }
-    LogPrintfInfo("%s", buf);
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "%s", buf);
   }
 }
 

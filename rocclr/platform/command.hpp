@@ -1696,10 +1696,12 @@ class SvmPrefetchAsyncCommand : public Command {
 class VirtualMapCommand : public Command {
  private:
   const void* ptr_;     //!< Virtual address to map to the memory
-  size_t size_;         //!< Size of the mapping in bytes
-  Memory* memory_;      //!< Memory to map, nullptr means unmap
 
- public:
+protected:
+  Memory* memory_;  //!< Memory to map, nullptr means unmap
+  size_t size_;     //!< Size of the mapping in bytes
+
+public:
   //! Construct a new VirtualMapCommand
   VirtualMapCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                    void* ptr, size_t size, Memory* memory)
