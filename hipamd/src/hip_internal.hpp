@@ -190,12 +190,6 @@ extern amd::Monitor g_hipInitlock;
     return status;                                                                                 \
   }
 
-#define EVENT_CAPTURE(name, event, ...)                                                            \
-  if (event != nullptr && reinterpret_cast<hip::Event*>(event)->GetCaptureStatus() == true) {      \
-    hipError_t status = capture##name(event, ##__VA_ARGS__);                                       \
-    HIP_RETURN(status);                                                                            \
-  }
-
 #define PER_THREAD_DEFAULT_STREAM(stream)                                                         \
   if (stream == nullptr) {                                                                        \
     stream = getPerThreadDefaultStream();                                                         \
@@ -369,8 +363,19 @@ namespace hip {
     }
     /// Get Capture ID
     unsigned long long GetCaptureID() { return captureID_; }
-    void SetCaptureEvent(hipEvent_t e) { captureEvents_.emplace(e); }
+    void SetCaptureEvent(hipEvent_t e) {
+      amd::ScopedLock lock(lock_);
+      captureEvents_.emplace(e); }
+    bool IsEventCaptured(hipEvent_t e) {
+      amd::ScopedLock lock(lock_);
+      auto it = captureEvents_.find(e);
+      if (it != captureEvents_.end()) {
+        return true;
+      }
+      return false;
+    }
     void EraseCaptureEvent(hipEvent_t e) {
+      amd::ScopedLock lock(lock_);
       auto it = captureEvents_.find(e);
       if (it != captureEvents_.end()) {
         captureEvents_.erase(it);

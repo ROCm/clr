@@ -100,10 +100,6 @@ hipError_t capturehipMemset2DAsync(hipStream_t& stream, void*& dst, size_t& pitc
 hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDevPtr, int& value,
                                    hipExtent& extent);
 
-hipError_t capturehipEventRecord(hipStream_t& stream, hipEvent_t& event);
-
-hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, unsigned int& flags);
-
 hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*& userData);
 
 hipError_t capturehipMallocAsync(hipStream_t stream, hipMemPool_t mem_pool, size_t size, void** dev_ptr);
