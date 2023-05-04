@@ -1525,53 +1525,88 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
                                   const amd::Coord3D& size, bool entire,
                                   amd::CopyMetadata copyMetadata) const {
   amd::ScopedLock k(lockXferOps_);
-  bool rejected = false;
+  bool result = false;
   Memory* srcView = &gpuMem(srcMemory);
   Memory* dstView = &gpuMem(dstMemory);
-  bool releaseView = false;
-  bool result = false;
-  amd::Image::Format newFormat(gpuMem(srcMemory).desc().format_);
+  amd::Image::Format srcFormat(srcView->desc().format_);
+  amd::Image::Format dstFormat(dstView->desc().format_);
+  bool srcRejected = false, dstRejected = false;
+  bool srcReleaseView = false, dstReleaseView = false;
 
-  // Find unsupported formats
+  // Find unsupported source formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
-    if (RejectedData[i].clOldType_ == newFormat.image_channel_data_type) {
-      newFormat.image_channel_data_type = RejectedData[i].clNewType_;
-      rejected = true;
+    if (RejectedData[i].clOldType_ == srcFormat.image_channel_data_type) {
+      srcFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      srcRejected = true;
       break;
     }
   }
 
-  // Search for the rejected channel's order only if the format was rejected
+  // Search for the rejected source channel's order only if the format was rejected
   // Note: Image blit is independent from the channel order
-  if (rejected) {
+  if (srcRejected) {
     for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
-      if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
-        newFormat.image_channel_order = RejectedOrder[i].clNewType_;
-        rejected = true;
+      if (RejectedOrder[i].clOldType_ == srcFormat.image_channel_order) {
+        srcFormat.image_channel_order = RejectedOrder[i].clNewType_;
         break;
       }
     }
   }
 
-  // Attempt to create a view if the format was rejected
-  if (rejected) {
-    srcView = createView(gpuMem(srcMemory), newFormat);
-    if (srcView != NULL) {
-      dstView = createView(gpuMem(dstMemory), newFormat);
-      if (dstView != NULL) {
-        rejected = false;
-        releaseView = true;
-      } else {
-        delete srcView;
+  // Find unsupported destination formats
+  for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
+    if (RejectedData[i].clOldType_ == dstFormat.image_channel_data_type) {
+      dstFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      dstRejected = true;
+      break;
+    }
+  }
+
+  // Search for the rejected destination channel's order only if the format was rejected
+  // Note: Image blit is independent from the channel order
+  if (dstRejected) {
+    for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
+      if (RejectedOrder[i].clOldType_ == dstFormat.image_channel_order) {
+        dstFormat.image_channel_order = RejectedOrder[i].clNewType_;
+        break;
       }
     }
   }
 
-  // Fall into the host path for the entire 2D copy or
-  // if the image format was rejected
-  if (rejected) {
+  if (srcFormat.image_channel_order != dstFormat.image_channel_order ||
+      srcFormat.image_channel_data_type != dstFormat.image_channel_data_type) {
+    //Give hint if any related test fails
+    LogPrintfInfo("srcFormat(order=0x%xh, type=0x%xh) != dstFormat(order=0x%xh, type=0x%xh)",
+                  srcFormat.image_channel_order, srcFormat.image_channel_data_type,
+                  dstFormat.image_channel_order, dstFormat.image_channel_data_type);
+  }
+
+  // Attempt to create a view if the format was rejected
+  if (srcRejected) {
+    srcView = createView(gpuMem(srcMemory), srcFormat);
+    if (srcView) {
+      srcRejected = false;
+      srcReleaseView = true;
+    }
+  }
+
+  if (dstRejected) {
+    dstView = createView(gpuMem(dstMemory), dstFormat);
+    if (dstView) {
+      dstRejected = false;
+      dstReleaseView = true;
+    }
+  }
+  // Fall into the host path for the copy if the image format was rejected
+  if (srcRejected || dstRejected) {
     result = HostBlitManager::copyImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire,
                                         copyMetadata);
+    if (srcReleaseView) {
+      delete srcView;
+    }
+    if (dstReleaseView) {
+      delete dstView;
+    }
     synchronize();
     return result;
   }
@@ -1643,11 +1678,13 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   // Execute the blit
   address parameters = kernels_[blitType]->parameters().values();
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters);
-  if (releaseView) {
+
+  if (srcReleaseView) {
     delete srcView;
+  }
+  if (dstReleaseView) {
     delete dstView;
   }
-
   synchronize();
 
   return result;
