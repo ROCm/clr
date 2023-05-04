@@ -1393,57 +1393,93 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
 
   amd::ScopedLock k(lockXferOps_);
-  bool rejected = false;
+  bool result = false;
   Memory* srcView = &gpuMem(srcMemory);
   Memory* dstView = &gpuMem(dstMemory);
-  bool releaseView = false;
-  bool result = false;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
-  amd::Image::Format newFormat(srcImage->getImageFormat());
-
-  // Find unsupported formats
+  amd::Image::Format srcFormat(srcImage->getImageFormat());
+  amd::Image::Format dstFormat(dstImage->getImageFormat());
+  bool srcRejected = false, dstRejected = false;
+  bool srcReleaseView = false, dstReleaseView = false;
+  // Find unsupported source formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
-    if (RejectedData[i].clOldType_ == newFormat.image_channel_data_type) {
-      newFormat.image_channel_data_type = RejectedData[i].clNewType_;
-      rejected = true;
+    if (RejectedData[i].clOldType_ == srcFormat.image_channel_data_type) {
+      srcFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      srcRejected = true;
       break;
     }
   }
 
-  // Search for the rejected channel's order only if the format was rejected
+  // Search for the rejected source channel's order only if the format was rejected
   // Note: Image blit is independent from the channel order
-  if (rejected) {
+  if (srcRejected) {
     for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
-      if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
-        newFormat.image_channel_order = RejectedOrder[i].clNewType_;
-        rejected = true;
+      if (RejectedOrder[i].clOldType_ == srcFormat.image_channel_order) {
+        srcFormat.image_channel_order = RejectedOrder[i].clNewType_;
+        srcRejected = true;
         break;
       }
     }
   }
 
-  // Attempt to create a view if the format was rejected
-  if (rejected) {
-    srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
-    if (srcView != nullptr) {
-      dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
-      if (dstView != nullptr) {
-        rejected = false;
-        releaseView = true;
-      } else {
-        delete srcView;
+  // Find unsupported destination formats
+  for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
+    if (RejectedData[i].clOldType_ == dstFormat.image_channel_data_type) {
+      dstFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      dstRejected = true;
+      break;
+    }
+  }
+
+  // Search for the rejected destionation channel's order only if the format was rejected
+  // Note: Image blit is independent from the channel order
+  if (dstRejected) {
+    for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
+      if (RejectedOrder[i].clOldType_ == dstFormat.image_channel_order) {
+        dstFormat.image_channel_order = RejectedOrder[i].clNewType_;
+        break;
       }
     }
   }
 
-  // Fall into the host path for the entire 2D copy or
-  // if the image format was rejected
-  if (rejected) {
+  if (srcFormat.image_channel_order != dstFormat.image_channel_order ||
+      srcFormat.image_channel_data_type != dstFormat.image_channel_data_type) {
+    //Give hint if any related test fails
+    LogPrintfInfo("srcFormat(order=0x%xh, type=0x%xh) != dstFormat(order=0x%xh, type=0x%xh)",
+                  srcFormat.image_channel_order, srcFormat.image_channel_data_type,
+                  dstFormat.image_channel_order, dstFormat.image_channel_data_type);
+  }
+  // Attempt to create a view if the format was rejected
+  if (srcRejected) {
+    srcView = createView(gpuMem(srcMemory), srcFormat, CL_MEM_READ_ONLY);
+    if (srcView != nullptr) {
+      srcRejected = false;
+      srcReleaseView = true;
+    }
+  }
+
+  if (dstRejected) {
+    dstView = createView(gpuMem(dstMemory), dstFormat, CL_MEM_WRITE_ONLY);
+    if (dstView != nullptr) {
+      dstRejected = false;
+      dstReleaseView = true;
+    }
+  }
+
+  // Fall into the host path for the copy if the image format was rejected
+  if (srcRejected || dstRejected) {
     result = DmaBlitManager::copyImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire,
                                        copyMetadata);
+    if (srcReleaseView) {
+      gpu().releaseGpuMemoryFence();
+      srcView->owner()->release();
+    }
+    if (dstReleaseView) {
+      gpu().releaseGpuMemoryFence();
+      dstView->owner()->release();
+    }
     synchronize();
-    return result;
   }
 
   uint blitType = BlitCopyImage;
@@ -1512,13 +1548,17 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
+
+  if (srcReleaseView) {
     // todo SRD programming could be changed to avoid a stall
     gpu().releaseGpuMemoryFence();
     srcView->owner()->release();
+  }
+  if (dstReleaseView) {
+    // todo SRD programming could be changed to avoid a stall
+    gpu().releaseGpuMemoryFence();
     dstView->owner()->release();
   }
-
   synchronize();
 
   return result;
