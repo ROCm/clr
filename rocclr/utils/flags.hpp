@@ -251,6 +251,8 @@ release(bool, GPU_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
 release(bool, HIP_MEM_POOL_SUPPORT, false,                                    \
         "Enables memory pool support in HIP")                                 \
+release(bool, HIP_MEM_POOL_USE_VM, IS_WINDOWS,                                \
+        "Enables memory pool support in HIP")                                 \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
         "Force a specific asic revision for all devices")                     \
 release(bool, PAL_EMBED_KERNEL_MD, false,                                     \

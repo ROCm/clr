@@ -56,6 +56,7 @@ enum LogMask {
   LOG_CMD2      = 0x00008000, //!< More detailed command info, including barrier commands
   LOG_LOCATION  = 0x00010000, //!< Log message location
   LOG_MEM       = 0x00020000, //!< Memory allocation
+  LOG_MEM_POOL  = 0x00040000, //!< Memory pool allocation, including memory in graphs
   LOG_ALWAYS    = 0xFFFFFFFF, //!< Log always even mask flag is zero
 };
 

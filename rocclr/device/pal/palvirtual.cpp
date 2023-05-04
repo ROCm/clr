@@ -865,6 +865,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   return true;
 }
 
+// ================================================================================================
 VirtualGPU::VirtualGPU(Device& device)
     : device::VirtualDevice(device),
       engineID_(MainEngine),
@@ -897,6 +898,7 @@ VirtualGPU::VirtualGPU(Device& device)
   hostcallBuffer_ = nullptr;
 }
 
+// ================================================================================================
 bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
                         amd::CommandQueue::Priority priority) {
   device::BlitManager::Setup blitSetup;
@@ -1046,10 +1048,11 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_,
                                               &dbg_vmid);
   }
-
+  
   return true;
 }
 
+// ================================================================================================
 bool VirtualGPU::allocHsaQueueMem() {
   // Allocate a dummy HSA queue
   hsaQueueMem_ = new Memory(dev(), sizeof(amd_queue_t));
@@ -2212,6 +2215,14 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     vcmd.size(),
     Pal::VirtualGpuMemAccessMode::NoAccess
   };
+
+  // Wait for previous operations before unmap
+  if (vcmd.memory() == nullptr) {
+    // @note: Need to verify if compute requires a wait or IB flush is enough
+    WaitForIdleCompute();
+    WaitForIdleSdma();
+  }
+
   eventBegin(MainEngine);
   auto result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
   // Capture GPU event for the paging operation

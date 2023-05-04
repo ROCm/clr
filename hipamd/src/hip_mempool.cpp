@@ -82,8 +82,43 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   STREAM_CAPTURE(hipMallocAsync, stream, reinterpret_cast<hipMemPool_t>(mem_pool), size, dev_ptr);
 
   *dev_ptr = mem_pool->AllocateMemory(size, hip_stream);
+  if (*dev_ptr == nullptr) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
   HIP_RETURN(hipSuccess);
 }
+
+// ================================================================================================
+// @note: Runtime needs the new command for MT path, since the app can execute hipFreeAsync()
+// before the graph execution is done. Hence there could be a race condition between
+// memory allocatiom in graph, which occurs in a worker thread, and host execution of hipFreeAsync
+class FreeAsyncCommand : public amd::Command {
+ private:
+  void* ptr_;     //!< Virtual address for asynchronious free
+
+ public:
+  FreeAsyncCommand(amd::HostQueue& queue, void* ptr)
+      : amd::Command(queue, 1, amd::Event::nullWaitList), ptr_(ptr) {}
+
+  virtual void submit(device::VirtualDevice& device) final {
+    size_t offset = 0;
+    auto memory = getMemoryObject(ptr_, offset);
+    if (memory != nullptr) {
+      auto id = memory->getUserData().deviceId;
+      if (!AMD_DIRECT_DISPATCH) {
+        // Required for HIP events
+        hip::setCurrentDevice(id);
+      }
+      if (!g_devices[id]->FreeMemory(memory, static_cast<hip::Stream*>(queue()))) {
+        // @note It's not the most optimal logic.
+        // The current implementation has unconditional waits
+        if (ihipFree(ptr_) != hipSuccess) {
+          setStatus(CL_INVALID_OPERATION);
+        }
+      }
+    }
+  }
+};
 
 // ================================================================================================
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
@@ -92,17 +127,15 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
-  size_t offset = 0;
-  auto memory = getMemoryObject(dev_ptr, offset);
-  if (memory != nullptr) {
-    auto id = memory->getUserData().deviceId;
-    auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
-      reinterpret_cast<hip::Stream*>(stream);
-    if (!g_devices[id]->FreeMemory(memory, hip_stream)) {
-      //! @todo It's not the most optimal logic. The current implementation has unconditional waits
-      HIP_RETURN(ihipFree(dev_ptr));
-    }
+
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
+                    : reinterpret_cast<hip::Stream*>(stream);
+  auto cmd = new FreeAsyncCommand(*hip_stream, dev_ptr);
+  if (cmd == nullptr) {
+    HIP_RETURN(hipErrorUnknown);
   }
+  cmd->enqueue();
+  cmd->release();
 
   HIP_RETURN(hipSuccess);
 }

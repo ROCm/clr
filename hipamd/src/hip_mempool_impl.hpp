@@ -33,7 +33,9 @@ class Stream;
 
 struct MemoryTimestamp {
   MemoryTimestamp(hip::Stream* stream, hip::Event* event = nullptr): event_(event) {
-    safe_streams_.insert(stream);
+    if (stream != nullptr) {
+      safe_streams_.insert(stream);
+    }
   }
   MemoryTimestamp(): event_(nullptr) {}
 
@@ -63,6 +65,9 @@ struct MemoryTimestamp {
     } else if (opportunistic && (event_ != nullptr)) {
       // Check HIP event for a retired status
       result = (event_->query() == hipSuccess) ? true : false;
+    } else if (event_ == nullptr) {
+      // Event doesn't exist. It was a safe release with explicit wait
+      return true;
     }
     return result;
   }

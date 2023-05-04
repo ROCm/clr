@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,15 @@
 hipError_t ihipFree(void* ptr);
 
 namespace hip {
+
+struct MemMapAllocUserData {
+  void* ptr_;       // Original pointer of the allocation
+  size_t size_;     // Aligned size of the allocation
+  amd::Memory* va_; // Memory object for the virtual address
+
+  MemMapAllocUserData(void* ptr, size_t size, amd::Memory* va) : ptr_(ptr), size_(size), va_(va) {}
+};
+
 class GenericAllocation {
   void* ptr_;
   size_t size_;

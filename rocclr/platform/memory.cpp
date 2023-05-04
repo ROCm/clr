@@ -449,9 +449,14 @@ Memory::~Memory() {
     parent_->release();
   }
   hostMemRef_.deallocateMemory(context_());
-
   if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
     amd::MemObjMap::RemoveVirtualMemObj(getSvmPtr());
+    // If runtime executes graph mempool with VM, then VA can be mapped in space
+    // for graph validation logic during execution. And the reason it's not unmaped
+    // in graph itself because the app can have a graph without a free node
+    if (amd::MemObjMap::FindMemObj(getSvmPtr())) {
+      amd::MemObjMap::RemoveMemObj(getSvmPtr());
+    }
   }
 }
 

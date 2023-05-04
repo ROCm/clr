@@ -38,6 +38,8 @@ const char* GetGraphNodeTypeString(uint32_t op) {
     CASE_STRING(hipGraphNodeTypeEventRecord, EventRecordNode)
     CASE_STRING(hipGraphNodeTypeExtSemaphoreSignal, ExtSemaphoreSignalNode)
     CASE_STRING(hipGraphNodeTypeExtSemaphoreWait, ExtSemaphoreWaitNode)
+    CASE_STRING(hipGraphNodeTypeMemAlloc, MemAllocNode)
+    CASE_STRING(hipGraphNodeTypeMemFree, MemFreeNode)
     CASE_STRING(hipGraphNodeTypeMemcpyFromSymbol, MemcpyFromSymbolNode)
     CASE_STRING(hipGraphNodeTypeMemcpyToSymbol, MemcpyToSymbolNode)
     default:
