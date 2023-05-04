@@ -786,50 +786,6 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
   return hipSuccess;
 }
 
-hipError_t capturehipEventRecord(hipStream_t& stream, hipEvent_t& event) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node EventRecord on stream : %p, Event %p", stream, event);
-  if (event == nullptr) {
-    return hipErrorInvalidHandle;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  e->StartCapture(stream);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  s->SetCaptureEvent(event);
-  std::vector<hipGraphNode_t> lastCapturedNodes = s->GetLastCapturedNodes();
-  if (!lastCapturedNodes.empty()) {
-    e->SetNodesPrevToRecorded(lastCapturedNodes);
-  }
-  return hipSuccess;
-}
-
-hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, unsigned int& flags) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
-          event);
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hip::Event* e = reinterpret_cast<hip::Event*>(event);
-
-  if (event == nullptr || stream == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  if (!s->IsOriginStream()) {
-    s->SetCaptureGraph(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureGraph());
-    s->SetCaptureId(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureID());
-    s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
-    s->SetParentStream(e->GetCaptureStream());
-    reinterpret_cast<hip::Stream*>(s->GetParentStream())->SetParallelCaptureStream(stream);
-  }
-  s->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
-  return hipSuccess;
-}
-
 hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*& userData) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node host on stream : %p",
           stream);

@@ -91,8 +91,6 @@ class EventMarker : public amd::Marker {
 
 enum eventType { Query, StreamWait, ElapsedTime };
 class Event {
-  /// event recorded on stream where capture is active
-  bool onCapture_;
   /// capture stream where event is recorded
   hipStream_t captureStream_ = nullptr;
   /// Previous captured nodes before event record
@@ -112,7 +110,6 @@ class Event {
   Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
                               event_(nullptr), unrecorded_(false), stream_(nullptr) {
     // No need to init event_ here as addMarker does that
-    onCapture_ = false;
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
   }
 
@@ -151,19 +148,6 @@ class Event {
   const int deviceId() const { return device_id_; }
   void setDeviceId(int id) { device_id_ = id; }
   amd::Event* event() { return event_; }
-
-  /// End capture on this event
-  void EndCapture() {
-    onCapture_ = false;
-    captureStream_ = nullptr;
-  }
-  /// Start capture when waited on this event
-  void StartCapture(hipStream_t stream) {
-    onCapture_ = true;
-    captureStream_ = stream;
-  }
-  /// Get capture status of the graph
-  bool GetCaptureStatus() const { return onCapture_; }
   /// Get capture stream where event is recorded
   hipStream_t GetCaptureStream() const { return captureStream_; }
   /// Set capture stream where event is recorded

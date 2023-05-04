@@ -51,7 +51,7 @@ Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
 hipError_t Stream::EndCapture() {
   for (auto event : captureEvents_) {
     hip::Event* e = reinterpret_cast<hip::Event*>(event);
-    e->EndCapture();
+    e->SetCaptureStream(nullptr);
   }
   for (auto stream : parallelCaptureStreams_) {
     hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
@@ -511,26 +511,44 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
 
 // ================================================================================================
 hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsigned int flags) {
-  EVENT_CAPTURE(hipStreamWaitEvent, event, stream, flags);
-
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
+          event);
+  hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
-
-  if (flags != 0 || !hip::isValid(stream)) {
+  if (stream == nullptr) {
     return hipErrorInvalidValue;
   }
-
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+  hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  if ((e->GetCaptureStream() != nullptr) &&
-      (reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureStatus()
-      == hipStreamCaptureStatusActive)) {
-    // If stream is capturing but event is not recorded on event's stream.
-    if (e->GetCaptureStatus() == false) {
+  hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
+
+  if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
+    if (!waitStream->IsOriginStream()) {
+      waitStream->SetCaptureGraph((eventStream)->GetCaptureGraph());
+      waitStream->SetCaptureId((eventStream)->GetCaptureID());
+      waitStream->SetCaptureMode((eventStream)->GetCaptureMode());
+      waitStream->SetParentStream(reinterpret_cast<hipStream_t>(eventStream));
+      eventStream->SetParallelCaptureStream(stream);
+    }
+    waitStream->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
+  } else {
+    if (flags != 0) {
+      return hipErrorInvalidValue;
+    }
+    if ((eventStream != nullptr) &&
+      (eventStream->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+      // If stream is capturing but event is not recorded on event's stream.
       return hipErrorStreamCaptureIsolation;
     }
+    status = e->streamWait(stream, flags);
   }
-  return e->streamWait(stream, flags);
+  return status;
 }
 
 // ================================================================================================
