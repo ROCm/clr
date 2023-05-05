@@ -38,7 +38,7 @@
 typedef hipGraphNode* Node;
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& levelOrder, std::vector<amd::Command*>& rootCommands,
+                        std::vector<Node>& topoOrder, std::vector<amd::Command*>& rootCommands,
                         amd::Command*& endCommand, hip::Stream* stream);
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                   hipGraphExec* ptr);
@@ -157,7 +157,6 @@ struct hipGraphNodeDOTAttribute {
 struct hipGraphNode : public hipGraphNodeDOTAttribute {
  protected:
   hip::Stream* stream_ = nullptr;
-  uint32_t level_;
   unsigned int id_;
   hipGraphNodeType type_;
   std::vector<amd::Command*> commands_;
@@ -178,7 +177,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   hipGraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
                std::string label = "")
       : type_(type),
-        level_(0),
         visited_(false),
         inDegree_(0),
         outDegree_(0),
@@ -191,7 +189,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   }
   /// Copy Constructor
   hipGraphNode(const hipGraphNode& node) : hipGraphNodeDOTAttribute(node) {
-    level_ = node.level_;
     type_ = node.type_;
     inDegree_ = node.inDegree_;
     outDegree_ = node.outDegree_;
@@ -240,10 +237,6 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
   virtual std::vector<amd::Command*>& GetCommands() { return commands_; }
   /// Returns graph node type
   hipGraphNodeType GetType() const { return type_; }
-  /// Returns graph node in coming edges
-  uint32_t GetLevel() const { return level_; }
-  /// Set graph node level
-  void SetLevel(uint32_t level) { level_ = level; }
   /// Clone graph node
   virtual hipGraphNode* clone() const = 0;
   /// Returns graph node indegree
@@ -280,29 +273,14 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
       edges_.push_back(entry);
     }
   }
-  /// Update level, for existing edges
-  void UpdateEdgeLevel() {
-    for (auto edge : edges_) {
-      edge->SetLevel(std::max(edge->GetLevel(), GetLevel() + 1));
-      edge->UpdateEdgeLevel();
-    }
-  }
-  void ReduceEdgeLevel() {
-    for (auto edge: edges_) {
-      edge->SetLevel(std::min(edge->GetLevel(),GetLevel() + 1));
-      edge->ReduceEdgeLevel();
-    }
-  }
-  /// Add edge, update parent node outdegree, child node indegree, level and dependency
+  /// Add edge, update parent node outdegree, child node indegree and dependency
   void AddEdge(const Node& childNode) {
     edges_.push_back(childNode);
     outDegree_++;
     childNode->SetInDegree(childNode->GetInDegree() + 1);
-    childNode->SetLevel(std::max(childNode->GetLevel(), GetLevel() + 1));
-    childNode->UpdateEdgeLevel();
     childNode->AddDependency(this);
   }
-  /// Remove edge, update parent node outdegree, child node indegree, level and dependency
+  /// Remove edge, update parent node outdegree, child node indegree and dependency
   bool RemoveUpdateEdge(const Node& childNode) {
     // std::remove changes the end() hence saving it before hand for validation
     auto currEdgeEnd = edges_.end();
@@ -315,33 +293,20 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
     outDegree_--;
     childNode->SetInDegree(childNode->GetInDegree() - 1);
     childNode->RemoveDependency(this);
-    const std::vector<Node>& dependencies = childNode->GetDependencies();
-    int32_t level = 0;
-    int32_t parentLevel = 0;
-    uint32_t origLevel = 0;
-    for (auto parent : dependencies) {
-      parentLevel = parent->GetLevel();
-      level = std::max(level, (parentLevel + 1));
-    }
-    origLevel = childNode->GetLevel();
-    childNode->SetLevel(level);
-    if (level < origLevel) {
-      childNode->ReduceEdgeLevel();
-    }
     return true;
   }
   /// Get Runlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual void GetRunList(std::vector<std::vector<Node>>& parallelList,
                           std::unordered_map<Node, std::vector<Node>>& dependencies) {}
-  /// Get levelorder of the nodes embedded as part of the graphnode(e.g. ChildGraph)
-  virtual void LevelOrder(std::vector<Node>& levelOrder) {}
+  /// Get topological sort of the nodes embedded as part of the graphnode(e.g. ChildGraph)
+  virtual bool TopologicalOrder(std::vector<Node>& TopoOrder) { return true; }
   /// Update waitlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual void UpdateEventWaitLists(amd::Command::EventWaitList waitList) {
     for (auto command : commands_) {
       command->updateEventWaitList(waitList);
     }
   }
-  virtual size_t GetNumParallelStreams() { return 0; }
+  virtual hipError_t GetNumParallelStreams(size_t &num) { return hipSuccess; }
   /// Enqueue commands part of the node
   virtual void EnqueueCommands(hipStream_t stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
@@ -479,7 +444,7 @@ struct ihipGraph {
                       std::unordered_map<Node, std::vector<Node>>& dependencies);
   void GetRunList(std::vector<std::vector<Node>>& parallelLists,
                   std::unordered_map<Node, std::vector<Node>>& dependencies);
-  void LevelOrder(std::vector<Node>& levelOrder);
+  bool TopologicalOrder(std::vector<Node>& TopoOrder);
   void GetUserObjs(std::unordered_set<hipUserObject*>& graphExeUserObjs) {
     for (auto userObj : graphUserObj_) {
       userObj->retain();
@@ -575,8 +540,8 @@ struct ihipGraph {
 
 struct hipGraphExec {
   std::vector<std::vector<Node>> parallelLists_;
-  // level order of the graph doesn't include nodes embedded as part of the child graph
-  std::vector<Node> levelOrder_;
+  // Topological order of the graph doesn't include nodes embedded as part of the child graph
+  std::vector<Node> topoOrder_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
   std::vector<hip::Stream*> parallel_streams_;
   uint currentQueueIndex_;
@@ -588,13 +553,13 @@ struct hipGraphExec {
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
  public:
-  hipGraphExec(std::vector<Node>& levelOrder, std::vector<std::vector<Node>>& lists,
+  hipGraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
                std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
                std::unordered_map<Node, Node>& clonedNodes,
                std::unordered_set<hipUserObject*>& userObjs,
                uint64_t flags = 0)
       : parallelLists_(lists),
-        levelOrder_(levelOrder),
+        topoOrder_(topoOrder),
         nodeWaitLists_(nodeWaitLists),
         clonedNodes_(clonedNodes),
         lastEnqueuedCommand_(nullptr),
@@ -634,7 +599,7 @@ struct hipGraphExec {
   // check executable graphs validity
   static bool isGraphExecValid(hipGraphExec* pGraphExec);
 
-  std::vector<Node>& GetNodes() { return levelOrder_; }
+  std::vector<Node>& GetNodes() { return topoOrder_; }
 
   hip::Stream* GetAvailableStreams() { return parallel_streams_[currentQueueIndex_++]; }
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
@@ -645,7 +610,7 @@ struct hipGraphExec {
 
 struct hipChildGraphNode : public hipGraphNode {
   struct ihipGraph* childGraph_;
-  std::vector<Node> childGraphlevelOrder_;
+  std::vector<Node> childGraphNodeOrder_;
   std::vector<std::vector<Node>> parallelLists_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
   amd::Command* lastEnqueuedCommand_;
@@ -668,15 +633,19 @@ struct hipChildGraphNode : public hipGraphNode {
 
   ihipGraph* GetChildGraph() { return childGraph_; }
 
-  size_t GetNumParallelStreams() {
-    LevelOrder(childGraphlevelOrder_);
-    size_t num = 0;
-    for (auto& node : childGraphlevelOrder_) {
-      num += node->GetNumParallelStreams();
+  hipError_t GetNumParallelStreams(size_t &num) {
+    if (false == TopologicalOrder(childGraphNodeOrder_)) {
+      return hipErrorInvalidValue;
+    }
+    for (auto& node : childGraphNodeOrder_) {
+      if (hipSuccess != node->GetNumParallelStreams(num)) {
+        return hipErrorInvalidValue;
+      }
     }
     // returns total number of parallel queues required for child graph nodes to be launched
     // first parallel list will be launched on the same queue as parent
-    return num + (parallelLists_.size() - 1);
+    num += (parallelLists_.size() - 1);
+    return hipSuccess;
   }
 
   void SetStream(hip::Stream* stream, hipGraphExec* ptr = nullptr) {
@@ -697,7 +666,7 @@ struct hipChildGraphNode : public hipGraphNode {
     commands_.reserve(2);
     std::vector<amd::Command*> rootCommands;
     amd::Command* endCommand = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphlevelOrder_, rootCommands,
+    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, rootCommands,
                           endCommand, stream);
     for (auto& cmd : rootCommands) {
       commands_.push_back(cmd);
@@ -717,9 +686,7 @@ struct hipChildGraphNode : public hipGraphNode {
                   std::unordered_map<Node, std::vector<Node>>& dependencies) {
     childGraph_->GetRunList(parallelLists_, nodeWaitLists_);
   }
-
-  void LevelOrder(std::vector<Node>& levelOrder) { childGraph_->LevelOrder(levelOrder); }
-
+  bool TopologicalOrder(std::vector<Node>& TopoOrder) { return childGraph_->TopologicalOrder(TopoOrder); }
   void EnqueueCommands(hipStream_t stream) {
     // enqueue child graph start command
     if (commands_.size() == 1) {
@@ -727,7 +694,7 @@ struct hipChildGraphNode : public hipGraphNode {
       commands_[0]->release();
     }
     // enqueue nodes in child graph in level order
-    for (auto& node : childGraphlevelOrder_) {
+    for (auto& node : childGraphNodeOrder_) {
       node->EnqueueCommands(stream);
     }
     // enqueue child graph end command
