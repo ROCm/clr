@@ -286,7 +286,7 @@ hiprtcResult hiprtcLinkCreate(unsigned int num_options, hiprtcJIT_option* option
     }
   }
 
-  std::string name("Linker Program");
+  std::string name("LinkerProgram");
   hiprtc::RTCLinkProgram* rtc_link_prog_ptr = new hiprtc::RTCLinkProgram(name);
   if (!rtc_link_prog_ptr->AddLinkerOptions(num_options, options_ptr, options_vals_pptr)) {
     HIPRTC_RETURN(HIPRTC_ERROR_INVALID_OPTION);
