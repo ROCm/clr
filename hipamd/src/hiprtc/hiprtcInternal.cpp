@@ -613,7 +613,7 @@ bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType inp
 
   file_stream.close();
 
-  std::string link_file_name("Linker Program");
+  std::string link_file_name("LinkerProgram");
 
   return AddLinkerDataImpl(link_file_info, input_type, link_file_name);
 }
