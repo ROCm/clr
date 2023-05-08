@@ -624,13 +624,12 @@ class Device : public NullDevice {
   std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
 
   //! Read and Write mask for device<->host
-  uint32_t maxSdmaReadMask;
-  uint32_t maxSdmaWriteMask;
+  uint32_t maxSdmaReadMask_;
+  uint32_t maxSdmaWriteMask_;
   //! Map of SDMA engineId<->stream
   mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
 
  public:
-  constexpr static uint32_t kSkipQueryStatus = 1 << 31;
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
 
   //! enum for keeping the total and available queue priorities

@@ -1243,17 +1243,17 @@ bool Device::populateOCLDeviceConstants() {
 
   // Find SDMA read mask
   if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
-                                                              &maxSdmaReadMask)) {
+                                                              &maxSdmaReadMask_)) {
     return false;
   }
-  assert(maxSdmaReadMask > 0 && "No SDMA engines available for Read");
+  assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
 
   // Find SDMA write mask
   if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
-                                                              &maxSdmaWriteMask)) {
+                                                              &maxSdmaWriteMask_)) {
     return false;
   }
-  assert(maxSdmaWriteMask > 0 && "No SDMA engines available for Write");
+  assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
 
   info_.localMemSizePerCU_ = group_segment_size;
   info_.localMemSize_ = group_segment_size;
@@ -1657,8 +1657,12 @@ bool Device::populateOCLDeviceConstants() {
     LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
   }
 
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, xnack: %d, direct host access: %d",
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Gfx Major/Minor/Stepping: %d/%d/%d", isa().versionMajor(),
+  isa().versionMinor(), isa().versionStepping());
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, XNACK: %d, Direct host access: %d",
     info_.hmmSupported_, info_.hmmCpuMemoryAccessible_, info_.hmmDirectHostAccess_);
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Max SDMA Read Mask: 0x%x, Max SDMA Write Mask: 0x%x",
+          maxSdmaReadMask_, maxSdmaWriteMask_);
 
   info_.globalCUMask_ = {};
   info_.virtualMemoryManagement_ = false;
@@ -3338,12 +3342,7 @@ uint32_t Device::fetchSDMAMask(const device::BlitManager* handle, bool readEngin
     }
   }
 
-  uint32_t mask = (readEngine ? maxSdmaReadMask : maxSdmaWriteMask) & engine;
-  if (engine != 0 && mask == 0 ) {
-    return kSkipQueryStatus;
-  } else {
-    return mask;
-  }
+  return (readEngine ? maxSdmaReadMask_ : maxSdmaWriteMask_) & engine;
 }
 
 // ================================================================================================

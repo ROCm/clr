@@ -692,15 +692,10 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   }
 
   if (engine != HwQueueEngine::Unknown) {
-    if (copyMask == Device::kSkipQueryStatus) {
-      // Do not query engine status or take copy_on_engine path
-      status = HSA_STATUS_ERROR_OUT_OF_RESOURCES;
-    }
-
     if (copyMask == 0) {
       // Check SDMA engine status
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask %x",
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
               status, freeEngineMask);
       // Return a mask with the rightmost bit set
       copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
@@ -729,7 +724,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     auto wait_events = gpu().Barriers().WaitingSignal(engine);
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-        "HSA Async Blit Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
+        "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
         "completion_signal=0x%zx",
         dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
         active.handle);
