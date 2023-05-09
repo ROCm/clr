@@ -34,7 +34,7 @@ std::unordered_set<hipArray*> hip::hipArraySet;
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
   auto memObj = amd::MemObjMap::FindMemObj(ptr, &offset);
   if (memObj == nullptr) {
-    // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM and Xnack is disabled.
+    // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM is disabled.
     memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(
         ptr, offset, size);
   }
