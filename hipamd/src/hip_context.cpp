@@ -26,13 +26,13 @@
 #include "utils/versions.hpp"
 
 std::vector<hip::Device*> g_devices;
-amd::Monitor g_hipInitlock{"hipInit lock"};
+std::once_flag g_ihipInitialized;
 namespace hip {
 thread_local TlsAggregator tls;
 amd::Context* host_context = nullptr;
 
 //init() is only to be called from the HIP_INIT macro only once
-bool init() {
+void init(bool* status) {
   amd::IS_HIP = true;
   GPU_NUM_MEM_DEPENDENCY = 0;
 #if DISABLE_DIRECT_DISPATCH
@@ -42,7 +42,8 @@ bool init() {
 #endif
   AMD_DIRECT_DISPATCH = flagIsDefault(AMD_DIRECT_DISPATCH) ? kDirectDispatch : AMD_DIRECT_DISPATCH;
   if (!amd::Runtime::init()) {
-    return false;
+    *status = false;
+    return;
   }
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
 
@@ -52,7 +53,10 @@ bool init() {
   for (unsigned int i=0; i<devices.size(); i++) {
     const std::vector<amd::Device*> device(1, devices[i]);
     amd::Context* context = new amd::Context(device, amd::Context::Info());
-    if (!context) return false;
+    if (!context) {
+      *status = false;
+      return;
+    }
 
     // Enable active wait on the device by default
     devices[i]->SetActiveWait(true);
@@ -62,14 +66,18 @@ bool init() {
     } else {
       auto device = new Device(context, i);
       if ((device == nullptr) || !device->Create()) {
-        return false;
+        *status = false;
+        return;
       }
       g_devices.push_back(device);
     }
   }
 
   amd::Context* hContext = new amd::Context(devices, amd::Context::Info());
-  if (!hContext) return false;
+  if (!hContext) {
+    *status = false;
+    return;
+  }
 
   if (CL_SUCCESS != hContext->create(nullptr)) {
     hContext->release();
@@ -77,7 +85,8 @@ bool init() {
   host_context = hContext;
 
   PlatformState::instance().init();
-  return true;
+  *status = true;
+  return;
 }
 
 Device* getCurrentDevice() {
