@@ -23,8 +23,11 @@ THE SOFTWARE.
 #pragma once
 
 #ifdef __cplusplus
+
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
 
 /**
  * @brief Unsafe floating point rmw atomic add.
@@ -564,5 +567,8 @@ __device__ inline double safeAtomicMin(double* addr, double val) {
   #endif
 }
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
+
 #endif
