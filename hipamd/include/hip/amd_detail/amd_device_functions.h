@@ -444,8 +444,10 @@ __device__ static inline unsigned long long int __double2ull_ru(double x) {
 __device__ static inline unsigned long long int __double2ull_rz(double x) {
   return (unsigned long long int)x;
 }
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#endif
 __device__ static inline long long int __double_as_longlong(double x) {
     static_assert(sizeof(long long) == sizeof(double), "");
 
@@ -454,7 +456,9 @@ __device__ static inline long long int __double_as_longlong(double x) {
 
     return tmp;
 }
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
 
 /*
 __device__ unsigned short __float2half_rn(float x);
