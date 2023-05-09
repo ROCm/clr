@@ -71,29 +71,28 @@ typedef struct ihipIpcEventHandle_st {
 
 const char* ihipGetErrorName(hipError_t hip_error);
 
-extern amd::Monitor g_hipInitlock;
-#define HIP_INIT(noReturn) {\
-    amd::ScopedLock lock(g_hipInitlock);                     \
-    if (!amd::Runtime::initialized()) {                      \
-      if (!hip::init() && !noReturn) {                       \
-        HIP_RETURN(hipErrorInvalidDevice);                   \
-      }                                                      \
-    }                                                        \
-    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {  \
-      hip::tls.device_ = g_devices[0];                          \
-      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
-    }                                                        \
+extern std::once_flag g_ihipInitialized;
+#define HIP_INIT(noReturn)                                                                         \
+  {                                                                                                \
+    bool status = true;                                                                            \
+    std::call_once(g_ihipInitialized, hip::init, &status);                                         \
+    if (!status  && !noReturn) {                                                                   \
+      HIP_RETURN(hipErrorInvalidDevice);                                                           \
+    }                                                                                              \
+    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {                                     \
+      hip::tls.device_ = g_devices[0];                                                             \
+      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());           \
+    }                                                                                              \
   }
 
-#define HIP_INIT_VOID() {\
-    amd::ScopedLock lock(g_hipInitlock);                     \
-    if (!amd::Runtime::initialized()) {                      \
-      if (hip::init()) {}                                    \
-    }                                                        \
-    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {  \
-      hip::tls.device_ = g_devices[0];                          \
-      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());  \
-    }                                                        \
+#define HIP_INIT_VOID()                                                                            \
+  {                                                                                                \
+    bool status = true;                                                                            \
+    std::call_once(g_ihipInitialized, hip::init, &status);                                         \
+    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {                                     \
+      hip::tls.device_ = g_devices[0];                                                             \
+      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());           \
+    }                                                                                              \
   }
 
 
@@ -532,7 +531,7 @@ namespace hip {
   /// Device representing the host - for pinned memory
   extern amd::Context* host_context;
 
-  extern bool init();
+  extern void init(bool* status);
 
   extern Device* getCurrentDevice();
 
