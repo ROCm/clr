@@ -3235,9 +3235,10 @@ device::Signal* Device::createSignal() const {
 amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size) {
   // Only create arena_mem_object if CPU memory is accessible from HMM
   // or if runtime received an interop from another ROCr's client
+  // Disable arena for XNACK
   hsa_amd_pointer_info_t ptr_info = {};
   ptr_info.size = sizeof(hsa_amd_pointer_info_t);
-  if (!info_.hmmCpuMemoryAccessible_ && !IsValidAllocation(ptr, size, &ptr_info)) {
+  if (!IsValidAllocation(ptr, size, &ptr_info)) {
     return nullptr;
   }
 
