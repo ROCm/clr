@@ -95,7 +95,7 @@ __device__ __host__ static inline double hipCabs(hipDoubleComplex z) { return cu
 
 typedef cuFloatComplex hipComplex;
 
-__device__ __host__ static inline hipComplex make_Complex(float x, float y) {
+__device__ __host__ static inline hipComplex make_hipComplex(float x, float y) {
     return make_cuComplex(x, y);
 }
 
