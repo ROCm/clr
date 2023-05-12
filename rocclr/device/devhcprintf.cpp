@@ -21,6 +21,7 @@
 /** \file Format string processing for printf based on hostcall messages.
  */
 
+#include "device/devkernel.hpp"
 #include <assert.h>
 #include <cstdarg>
 #include <cstdint>
@@ -28,6 +29,7 @@
 #include <cstring>
 #include <string>
 
+namespace amd {
 static void checkPrintf(FILE* stream, int* outCount, const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -245,3 +247,45 @@ void handlePrintf(uint64_t* output, const uint64_t* input, uint64_t len) {
 
   *output = format(stream, input, end);
 }
+
+// Extract the format string hash and the format string.
+// The compiler generates the amdhsa.printf metadata in
+// following format for HIP nonhostcall case.
+//    "0:0:<format_string_hash>,<actual_format_string>"
+// i.e the hash is part of the format string itself
+// delimited by character ','.
+bool populateFormatStringHashMap(
+    const std::vector<device::PrintfInfo> &printfInfo,
+    std::map<uint64_t, std::string> &strMap) {
+  for (auto it : printfInfo) {
+    auto Delim = it.fmtString_.find_first_of(',');
+    auto HashStr = it.fmtString_.substr(0, Delim);
+    auto HashVal = strtoul(HashStr.c_str(), NULL, 16);
+    if (strMap.find(HashVal) != strMap.end()) {
+      LogError("Hash value collision detected, printf buffer ill formed");
+      return false;
+    }
+    strMap[HashVal] = it.fmtString_.substr(Delim + 1, it.fmtString_.size());
+  }
+
+  return true;
+}
+
+void handlePrintfDelayed(const uint64_t* input, uint64_t len, uint64_t control)
+{
+  auto end = input + len;
+  FILE* stream = stdout;
+
+  // The LSB in the control word is used to decide stream.
+  uint64_t CTRL_MASK = 1;
+
+  // Output goes to stderr if LSB is set.
+  if (control & CTRL_MASK) {
+    stream = stderr;
+  }
+
+  format(stream, input, end);
+
+}
+
+} // namespace amd

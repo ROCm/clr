@@ -133,7 +133,9 @@ void MessageHandler::discardMessage(Message* message) {
 }
 
 // Defined in devhcprintf.cpp
+namespace amd {
 void handlePrintf(uint64_t* output, const uint64_t* input, uint64_t len);
+} // namespace amd
 
 bool MessageHandler::handlePayload(uint32_t service, uint64_t* payload) {
   Message* message = nullptr;
@@ -166,7 +168,7 @@ bool MessageHandler::handlePayload(uint32_t service, uint64_t* payload) {
 
   switch (service) {
     case SERVICE_PRINTF:
-      handlePrintf(payload, message->data_.data(), message->data_.size());
+      amd::handlePrintf(payload, message->data_.data(), message->data_.size());
       break;
     default:
       ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Messages not supported for service %d",

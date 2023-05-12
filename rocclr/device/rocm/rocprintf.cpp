@@ -31,6 +31,14 @@
 #include <algorithm>
 #include <cmath>
 
+// Functions defined in devhcprintf.cpp
+namespace amd {
+void handlePrintfDelayed(const uint64_t *input, uint64_t len, uint64_t control);
+bool populateFormatStringHashMap(
+    const std::vector<device::PrintfInfo> &printfInfo,
+    std::map<uint64_t, std::string> &strMap);
+} // namespace amd
+
 namespace roc {
 
 PrintfDbg::PrintfDbg(Device& device, FILE* file)
@@ -434,6 +442,67 @@ bool PrintfDbg::output(VirtualGPU& gpu, bool printfEnabled,
 
     uint sb = 0;
     uint sbt = 0;
+
+    // Handle HIP nonhostcall printf here, However longterm goal
+    // should be to have common implementation for both HIP and OpenCL
+    if (amd::IS_HIP) {
+      // Map between 64 bit MD5 format string hash and
+      // actual format string
+      std::map<uint64_t, std::string> StrMap;
+
+      auto BufferForHIP = reinterpret_cast<uint32_t*>(dbgBufferPtr);
+
+      // Populate string map with hashes and actual
+      // format strings.
+      if(!amd::populateFormatStringHashMap(printfInfo, StrMap))
+        return false;
+
+      while (sbt < offsetSize)
+      {
+        auto controlDword = *BufferForHIP++;
+        auto PB = (uint64_t*)BufferForHIP;
+
+        uint64_t nextOffset  = controlDword >> 2;
+
+        std::vector<uint8_t> PBuffer;
+        uint64_t BufferLen = 0;
+        if (controlDword & 2U) {
+          // Process the contsant format string case.
+          // The first value is the 64 bit format string hash
+          // and remaining values are printf arguments.
+          // Construct a temporary buffer with actual format
+          // string followed by arguments. The format string is
+          // obtained by querying StrMap populated before.
+          auto ArgsLen = nextOffset - 12;
+          auto Str = StrMap[*PB++];
+          auto StrLenWithNull = Str.size() + 1;
+          BufferLen = ArgsLen + amd::alignUp(StrLenWithNull, sizeof(uint64_t));
+          PBuffer.resize(BufferLen);
+          memcpy(PBuffer.data(), Str.c_str(), StrLenWithNull);
+          memset(PBuffer.data() + Str.size(), 0, 8 - (StrLenWithNull % 8 ));
+          memcpy(PBuffer.data() + amd::alignUp(StrLenWithNull, sizeof(uint64_t)),
+          PB, ArgsLen);
+        }
+        else {
+            // Process Non constant format string case.
+            // Here, The buffer itself contains the actual
+            // format string and hence just copy the contents
+            // of format string and arguments into a temporary
+            // buffer
+            BufferLen = nextOffset - /*ControlDWord*/4;
+            PBuffer.resize(BufferLen);
+            memcpy(PBuffer.data(), BufferForHIP, nextOffset);
+        }
+
+        // Handle printing
+        amd::handlePrintfDelayed((uint64_t*)PBuffer.data(), BufferLen / 8,
+                            controlDword);
+        BufferForHIP += (nextOffset / 4) - /*ControlDWord*/1;
+        sbt += nextOffset;
+      }
+
+      return true;
+    }
 
     // parse the debug buffer
     while (sbt < offsetSize) {

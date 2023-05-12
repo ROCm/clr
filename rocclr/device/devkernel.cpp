@@ -1477,6 +1477,7 @@ void Kernel::InitParameters(const aclArgData* aclArg, uint32_t argBufferSize) {
 // ================================================================================================
 #if defined(USE_COMGR_LIBRARY)
 void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
+  size_t HIPPrintfInfoID = 0;
   for (auto str : printfInfoStrings) {
     std::vector<std::string> tokens;
 
@@ -1493,10 +1494,20 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
     }
 
     pos = 0;
-    size_t printfInfoID = std::stoi(tokens[pos++]);
-    if (printf_.size() <= printfInfoID) {
-      printf_.resize(printfInfoID + 1);
+    size_t printfInfoID;
+
+    if(amd::IS_HIP) {
+      printfInfoID = HIPPrintfInfoID++;
+      printf_.resize(HIPPrintfInfoID);
+      pos++;
     }
+    else {
+      printfInfoID = std::stoi(tokens[pos++]);
+      if (printf_.size() <= printfInfoID) {
+        printf_.resize(printfInfoID + 1);
+      }
+    }
+
     PrintfInfo& info = printf_[printfInfoID];
 
     size_t numSizes = std::stoi(tokens[pos++]);
@@ -1514,7 +1525,13 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
     }
 
     // FIXME: We should not need this! [
-    std::string& fmt = tokens[pos];
+    std::string fmt;
+    // Format string itself might contain ':' characters
+    for(int i = 0; pos < tokens.size(); i++) {
+      if(i) fmt += ':';
+      fmt += tokens[pos++];
+    }
+
     bool need_nl = true;
 
     for (pos = 0; pos < fmt.size(); ++pos) {
@@ -1559,7 +1576,7 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
       }
       info.fmtString_.push_back(symbol);
     }
-    if (need_nl) {
+    if (need_nl && !amd::IS_HIP) {
       info.fmtString_ += "\n";
     }
     // ]
@@ -1570,12 +1587,19 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
 // ================================================================================================
 #if defined(WITH_COMPILER_LIB)
 void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
-  uint index = 0;
+  uint index = 0, HIPIndex = 0;
   for (; aclPrintf->struct_size != 0; aclPrintf++) {
-    index = aclPrintf->ID;
-    if (printf_.size() <= index) {
-      printf_.resize(index + 1);
+    if(amd::IS_HIP) {
+      index = HIPIndex++;
+      printf_.resize(HIPIndex);
     }
+    else {
+      index = aclPrintf->ID;
+      if (printf_.size() <= index) {
+        printf_.resize(index + 1);
+      }
+    }
+
     PrintfInfo& info = printf_[index];
     const std::string& pfmt = aclPrintf->fmtStr;
     bool need_nl = true;
@@ -1621,7 +1645,7 @@ void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
       }
       info.fmtString_.push_back(symbol);
     }
-    if (need_nl) {
+    if (need_nl && !amd::IS_HIP) {
       info.fmtString_ += "\n";
     }
     uint32_t* tmp_ptr = const_cast<uint32_t*>(aclPrintf->argSizes);
