@@ -44,7 +44,10 @@ add_library(rocclr STATIC)
 
 include(ROCclrCompilerOptions)
 
-set(ROCCLR_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
+# To Fix path issue due to current dir (cmake folder - cmake/../) in debuginfo
+get_filename_component(_ROCCLR_SRC_DIR_PATH "${CMAKE_CURRENT_LIST_DIR}/../" REALPATH)
+set(ROCCLR_SRC_DIR "${_ROCCLR_SRC_DIR_PATH}")
+
 mark_as_advanced(ROCCLR_SRC_DIR)
 set(ROCCLR_INCLUDE_DIR "${ROCCLR_SRC_DIR}/include" PARENT_SCOPE)
 mark_as_advanced(ROCCLR_INCLUDE_DIR)
