@@ -1766,6 +1766,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
                          &globalAvailMemory)) {
     LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
+    return false;
   }
 
   globalAvailMemory = globalAvailMemory / Ki;
