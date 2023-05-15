@@ -646,6 +646,16 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
 
   std::vector<std::string> exe_options = getLinkOptions(link_args_);
   exe_options.push_back("-O3");
+  LogPrintfInfo("Exe options forwarded to compiler: %s",
+                [&]() {
+                  std::string ret;
+                  for (const auto& i : exe_options) {
+                    ret += i;
+                    ret += " ";
+                  }
+                  return ret;
+                }()
+                    .c_str());
   if (!createExecutable(exec_input_, isa_, exe_options, build_log_, executable_)) {
     LogError("Error in hiprtc: unable to create exectuable");
     return false;
