@@ -43,6 +43,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <immintrin.h>
 
 
 /**
@@ -2784,6 +2785,44 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 }
 
 // ================================================================================================
+__attribute__((optimize("unroll-all-loops"), always_inline))
+static void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
+                              uint16_t size) {
+  #if defined(__AVX512F__)
+    for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
+      _mm512_stream_si512(reinterpret_cast<__m512i* __restrict&>(dst)++,
+                          *reinterpret_cast<const __m512i* __restrict&>(src)++);
+    }
+    size = size % sizeof(__m512i);
+  #endif
+
+  #if defined(__AVX__)
+    for (auto i = 0u; i != size / sizeof(__m256i); ++i) {
+      _mm256_stream_si256(reinterpret_cast<__m256i* __restrict&>(dst)++,
+                          *reinterpret_cast<const __m256i* __restrict&>(src)++);
+    }
+    size = size % sizeof(__m256i);
+  #endif
+
+  for (auto i = 0u; i != size / sizeof(__m128i); ++i) {
+    _mm_stream_si128(reinterpret_cast<__m128i* __restrict&>(dst)++,
+                     *(reinterpret_cast<const __m128i* __restrict&>(src)++));
+  }
+  size = size % sizeof(__m128i);
+
+  for (auto i = 0u; i != size / sizeof(long long); ++i) {
+    _mm_stream_si64(reinterpret_cast<long long* __restrict&>(dst)++,
+                    *reinterpret_cast<const long long* __restrict&>(src)++);
+  }
+  size = size % sizeof(long long);
+
+  for (auto i = 0u; i != size / sizeof(int); ++i) {
+    _mm_stream_si32(reinterpret_cast<int* __restrict&>(dst)++,
+                    *reinterpret_cast<const int* __restrict&>(src)++);
+  }
+}
+
+// ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     const amd::Kernel& kernel, const_address parameters, void* eventHandle,
     uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd,
@@ -3051,8 +3090,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       argBuffer = reinterpret_cast<address>(allocKernArg(gpuKernel.KernargSegmentByteSize(),
                                             gpuKernel.KernargSegmentAlignment()));
       // Load all kernel arguments
-      memcpy(argBuffer, parameters, std::min(gpuKernel.KernargSegmentByteSize(),
-                                             signature.paramsSize()));
+      nontemporalMemcpy(argBuffer, parameters,
+                        std::min(gpuKernel.KernargSegmentByteSize(),
+                                 signature.paramsSize()));
     }
 
     // Check for group memory overflow
