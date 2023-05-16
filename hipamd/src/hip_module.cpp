@@ -440,8 +440,8 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
   STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
                  blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra);
   if (gridDimX > std::numeric_limits<int32_t>::max() ||
-      gridDimY > std::numeric_limits<uint16_t>::max() ||
-      gridDimZ > std::numeric_limits<uint16_t>::max()) {
+      gridDimY > std::numeric_limits<uint16_t>::max()+1 ||
+      gridDimZ > std::numeric_limits<uint16_t>::max()+1) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;

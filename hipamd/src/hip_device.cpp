@@ -286,7 +286,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   auto* deviceHandle = g_devices[device]->devices()[0];
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
-  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max());
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max())+1;
   hipDeviceProp_t deviceProps = {0};
 
   const auto& info = deviceHandle->info();
