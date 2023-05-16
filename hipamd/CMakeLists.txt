@@ -39,10 +39,6 @@ include(GNUInstallDirs)
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
 list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 
-# required to add the right link to libhsa-runtime in install/lib path
-# CMAKE_PREFIX_PATH is used as rpath to search for libs outside HIP
-set(CMAKE_INSTALL_RPATH "${CMAKE_PREFIX_PATH}/${CMAKE_INSTALL_LIBDIR}")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #############################
 # Options
@@ -190,12 +186,6 @@ else ()
    set (HIP_LIB_VERSION_PATCH ${HIP_VERSION_PATCH})
 endif ()
 set (HIP_LIB_VERSION_STRING "${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR}.${HIP_LIB_VERSION_PATCH}")
-if (DEFINED ENV{ROCM_RPATH})
-    set (CMAKE_INSTALL_RPATH "$ENV{ROCM_RPATH}")
-    set (CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set (CMAKE_SKIP_BUILD_RPATH TRUE)
-    set (CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
-endif ()
 
 # overwrite HIP_VERSION_PATCH for packaging
 set(HIP_VERSION ${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_PACKAGING_VERSION_PATCH})
