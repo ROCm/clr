@@ -554,6 +554,7 @@ class Device : public NullDevice {
 
   uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
   void resetSDMAMask(const device::BlitManager* handle) const ;
+  bool isXgmi() const { return isXgmi_; }
 
  private:
   bool create();
@@ -628,6 +629,7 @@ class Device : public NullDevice {
   uint32_t maxSdmaWriteMask_;
   //! Map of SDMA engineId<->stream
   mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
+  bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
