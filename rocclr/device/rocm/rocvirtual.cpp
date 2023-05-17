@@ -1315,8 +1315,12 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
   kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
   active_chunk_ = 0;
-  kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
-                                                 Device::MemorySegment::kKernArg));
+  if (HIP_FORCE_DEV_KERNARG && roc_device_.info().largeBar_) {
+    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
+  } else {
+    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
+                                                   Device::MemorySegment::kKernArg));
+  }
   if (kernarg_pool_base_ == nullptr) {
     return false;
   }
