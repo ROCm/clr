@@ -679,6 +679,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
+  bool useRegularCopyApi = false;
 
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
@@ -719,8 +720,12 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       if (status != HSA_STATUS_SUCCESS) {
         gpu().Barriers().ResetCurrentSignal();
       }
+    } else {
+      useRegularCopyApi = true;
     }
-  } else {
+  }
+
+  if (engine == HwQueueEngine::Unknown || useRegularCopyApi) {
     auto wait_events = gpu().Barriers().WaitingSignal(engine);
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
