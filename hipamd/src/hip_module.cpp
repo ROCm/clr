@@ -220,7 +220,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0 || blockDimX == 0 ||
       blockDimY == 0 || blockDimZ == 0) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidConfiguration;
   }
 
   const amd::Device* device = g_devices[deviceId]->devices()[0];
