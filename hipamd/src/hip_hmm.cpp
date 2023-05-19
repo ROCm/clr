@@ -147,11 +147,7 @@ hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advic
 
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
-  if (memObj == nullptr) {
-    HIP_RETURN(hipErrorMemoryAllocation);
-  }
-
-  if (count > (memObj->getSize() - offset)) {
+  if (memObj && count > (memObj->getSize() - offset)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
