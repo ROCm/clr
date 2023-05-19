@@ -138,7 +138,6 @@ global:
     hipModuleGetGlobal;
     hipModuleGetTexRef;
     hipModuleLaunchKernel;
-    hipModuleLaunchKernelExt;
     hipLaunchCooperativeKernel;
     hipLaunchCooperativeKernelMultiDevice;
     hipModuleLoad;

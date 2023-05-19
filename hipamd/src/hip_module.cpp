@@ -498,20 +498,6 @@ hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     extra, startEvent, stopEvent));
 }
 
-hipError_t hipModuleLaunchKernelExt(hipFunction_t f, uint32_t globalWorkSizeX,
-                                    uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                    uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
-                                    size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
-                                    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent) {
-  HIP_INIT_API(hipModuleLaunchKernelExt, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
-               startEvent, stopEvent);
-
-  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
-                                    blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams,
-                                    extra, startEvent, stopEvent));
-}
-
 hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDimX,
                                             unsigned int gridDimY, unsigned int gridDimZ,
                                             unsigned int blockDimX, unsigned int blockDimY,
