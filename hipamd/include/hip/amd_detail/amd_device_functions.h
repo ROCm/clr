@@ -980,6 +980,11 @@ int __syncthreads_or(int predicate)
   #define XCC_ID_XCC_ID_OFFSET     0
 #endif
 
+#if (!defined(__HIP_NO_IMAGE_SUPPORT) && \
+    (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)))
+  #define __HIP_NO_IMAGE_SUPPORT   1
+#endif
+
 /*
    Encoding of parameter bitmask
    HW_ID        5:0     HW_ID
