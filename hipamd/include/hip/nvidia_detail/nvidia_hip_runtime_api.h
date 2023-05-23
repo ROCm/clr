@@ -2809,6 +2809,26 @@ inline static hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int
     return cudaCreateChannelDesc(x, y, z, w, hipChannelFormatKindToCudaChannelFormatKind(f));
 }
 
+inline static hipChannelFormatDesc hipCreateChannelDescHalf() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, 0, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf1() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, 0, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf2() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, e, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf4() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, e, e, e, cudaChannelFormatKindFloat);
+}
+
 inline static hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject,
                                                 const hipResourceDesc* pResDesc,
                                                 const hipTextureDesc* pTexDesc,

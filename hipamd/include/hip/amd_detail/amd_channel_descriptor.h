@@ -44,7 +44,12 @@ static inline hipChannelFormatDesc hipCreateChannelDescHalf1() {
 
 static inline hipChannelFormatDesc hipCreateChannelDescHalf2() {
     int e = (int)sizeof(unsigned short) * 8;
-    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindFloat);
+    return hipCreateChannelDesc(e, e, 0, 0, hipChannelFormatKindFloat);
+}
+
+static inline hipChannelFormatDesc hipCreateChannelDescHalf4() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindFloat);
 }
 
 template <typename T>
