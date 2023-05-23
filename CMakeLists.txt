@@ -27,6 +27,11 @@ cmake_minimum_required(VERSION 3.16.8)
 option(CLR_BUILD_HIP "Build HIP" OFF)
 option(CLR_BUILD_OCL "Build OCL" OFF)
 
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
+
 #############
 # Build steps
 #############
