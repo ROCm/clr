@@ -21,9 +21,25 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Fixed
 - Fixed regression in hipMemCpyParam3D when offset is applied
 
+### Knoen Issues
+- Limited testing on xnack+ configuration
+  - Multiple HIP tests failures (gpuvm fault or hangs)
+
 ### Upcoming changes in future release
 - Removal of gcnarch from hipDeviceProp_t structure
-- Removal of deprecated stuff such as hip-hcc codes from hip code tree
+- Addition of new fields in hipDeviceProp_t structure
+  - maxTexture1D
+  - maxTexture2D
+  - maxTexture1DLayered
+  - maxTexture2DLayered
+  - sharedMemPerMultiprocessor
+  - deviceOverlap
+  - asyncEngineCount
+  - surfaceAlignment
+  - unifiedAddressing
+  - computePreemptionSupported
+  - uuid 
+- Removal of deprecated code
+  - hip-hcc codes from hip code tree
 - Correctness of hipArray usage in HIP APIs
 - HIPMEMCPY_3D fields correction (unsigned int -> size_t)
-- 
