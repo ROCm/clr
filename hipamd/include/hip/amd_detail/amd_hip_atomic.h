@@ -302,49 +302,81 @@ double atomicAdd_system(double* address, double val) {
 __device__
 inline
 int atomicSub(int* address, int val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
 inline
 int atomicSub_system(int* address, int val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
 inline
 unsigned int atomicSub(unsigned int* address, unsigned int val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
 inline
 unsigned int atomicSub_system(unsigned int* address, unsigned int val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
 inline
 unsigned long atomicSub(unsigned long* address, unsigned long val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
 inline
 unsigned long atomicSub_system(unsigned long* address, unsigned long val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
 inline
 unsigned long long atomicSub(unsigned long long* address, unsigned long long val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 }
 
 __device__
 inline
 unsigned long long atomicSub_system(unsigned long long* address, unsigned long long val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
@@ -353,14 +385,22 @@ float atomicSub(float* address, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, -val);
 #else
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+#endif
 #endif
 }
 
 __device__
 inline
 float atomicSub_system(float* address, float val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
@@ -376,7 +416,11 @@ double atomicSub(double* address, double val) {
 __device__
 inline
 double atomicSub_system(double* address, double val) {
+#if __has_builtin(__hip_atomic_fetch_sub)
+  return __hip_atomic_fetch_sub(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#else
   return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+#endif
 }
 
 __device__
