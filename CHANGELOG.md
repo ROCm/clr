@@ -12,16 +12,20 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 - Added hipRTC support for amd_hip_fp16
 - Added hipStreamGetDevice implementation to get the device assocaited with the stream
 - Added HIP_AD_FORMAT_SIGNED_INT16 in hipArray formats
+- hipArrayGetInfo for getting information about the specified array
+- hipArrayGetDescriptor for getting 1D or 2D array descriptor
+- hipArray3DGetDescriptor to get 3D array descriptor
 
 ### Changed
 - hipMallocAsync to return success for zero size allocation to match hipMalloc
-- Separation of hipcc perl binaries from HIP project to hipcc project. hip-devel package depends on newly added hipcc package.
+- Separation of hipcc perl binaries from HIP project to hipcc project. hip-devel package depends on newly added hipcc package
+- Consolidation of hipamd, ROCclr and OpenCL repositories into a single repository called clr. Updated instructions to build HIP from sources are avilable in installation guide 
 - Removed hipBusBandwidth and hipCommander samples from hip-tests
 
 ### Fixed
 - Fixed regression in hipMemCpyParam3D when offset is applied
 
-### Knoen Issues
+### Known Issues
 - Limited testing on xnack+ configuration
   - Multiple HIP tests failures (gpuvm fault or hangs)
 
