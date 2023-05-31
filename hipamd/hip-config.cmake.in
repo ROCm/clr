@@ -83,9 +83,6 @@ function(hip_add_interface_link_flags TARGET)
   endif()
 endfunction()
 
-set(HIP_COMPILER "@HIP_COMPILER@")
-set(HIP_RUNTIME "@HIP_RUNTIME@")
-
 # NOTE: If hip-config is invoked from /opt/rocm-ver/hip/lib/cmake/hip/
 # then PACKAGE_PREFIX_DIR will resolve to /opt/rocm-ver/hip, which is for backward compatibility
 # The following will ensure PACKAGE_PREFIX_DIR will resolves to /opt/rocm-ver
@@ -112,7 +109,28 @@ else()
   set_and_check(hip_HIPCC_EXECUTABLE "${hip_BIN_INSTALL_DIR}/hipcc")
   set_and_check(hip_HIPCONFIG_EXECUTABLE "${hip_BIN_INSTALL_DIR}/hipconfig")
 endif()
-@PLATFORM_CONFIG@
+
+if(NOT DEFINED HIP_PLATFORM)
+  if(NOT DEFINED ENV{HIP_PLATFORM})
+    execute_process(COMMAND ${hip_HIPCONFIG_EXECUTABLE} --platform
+      OUTPUT_VARIABLE HIP_PLATFORM
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+  else()
+    set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+  endif()
+endif()
+
+if(HIP_PLATFORM STREQUAL "amd")
+  set(HIP_RUNTIME "rocclr")
+  set(HIP_COMPILER "clang")
+  include( "${hip_LIB_INSTALL_DIR}/cmake/hip/hip-config-amd.cmake" )
+elseif(HIP_PLATFORM STREQUAL "nvidia")
+  set(HIP_RUNTIME "cuda")
+  set(HIP_COMPILER "nvcc")
+  include( "${hip_LIB_INSTALL_DIR}/cmake/hip/hip-config-nvidia.cmake" )
+else()
+  message(FATAL_ERROR "Unexpected HIP_PLATFORM: " ${HIP_PLATFORM})
+endif()
 
 set( hip_LIBRARIES hip::host hip::device)
 set( hip_LIBRARY ${hip_LIBRARIES})
