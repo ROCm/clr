@@ -242,5 +242,7 @@ endif()#End HIP_PLATFORM AMD
 install(FILES ${HIP_WRAPPER_LIB_DIR}/${HIP_INFO_FILE} DESTINATION hip/lib COMPONENT binary)
 #create symlink to cmake files
 create_cmake_symlink()
-install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR} DESTINATION hip/lib COMPONENT binary)
+install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang DESTINATION hip/lib/cmake COMPONENT binary)
+install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hiprtc DESTINATION hip/lib/cmake COMPONENT binary)
+install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip DESTINATION hip/lib/cmake COMPONENT dev)
 install(DIRECTORY ${HIP_WRAPPER_FINDHIP_DIR}/ DESTINATION hip/cmake COMPONENT dev)

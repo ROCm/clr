@@ -212,11 +212,9 @@ message(STATUS "HIP Platform: " ${HIP_PLATFORM})
 if(HIP_PLATFORM STREQUAL "nvidia")
     set(HIP_RUNTIME "cuda"  CACHE STRING "HIP Runtime")
     set(HIP_COMPILER "nvcc" CACHE STRING "HIP Compiler")
-    file(READ "hip-nvidia-config.cmake" PLATFORM_CONFIG)
 elseif(HIP_PLATFORM STREQUAL "amd")
     set(HIP_RUNTIME "rocclr" CACHE STRING "HIP Runtime")
     set(HIP_COMPILER "clang" CACHE STRING "HIP Compiler")
-    file(READ "hip-amd-config.cmake" PLATFORM_CONFIG)
 else()
     message(FATAL_ERROR "Unexpected HIP_PLATFORM: " ${HIP_PLATFORM})
 endif()
@@ -410,6 +408,20 @@ configure_package_config_file(
     PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
     )
 
+configure_package_config_file(
+      hip-config-amd.cmake
+      ${CMAKE_CURRENT_BINARY_DIR}/hip-config-amd.cmake
+      INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+      PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+      )
+
+configure_package_config_file(
+      hip-config-nvidia.cmake
+      ${CMAKE_CURRENT_BINARY_DIR}/hip-config-nvidia.cmake
+      INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+      PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+      )
+
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
     VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
@@ -418,6 +430,8 @@ write_basic_package_version_file(
 install(
     FILES
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-amd.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-nvidia.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
     DESTINATION
     ${CONFIG_PACKAGE_INSTALL_DIR}
