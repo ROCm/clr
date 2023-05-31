@@ -473,6 +473,22 @@ endif()
 #File reorg Backward compatibility function
 if(NOT WIN32)
     if(FILE_REORG_BACKWARD_COMPATIBILITY)
+    # To enabe/disable #error in wrapper header files
+        if(NOT DEFINED ROCM_HEADER_WRAPPER_WERROR)
+            if(DEFINED ENV{ROCM_HEADER_WRAPPER_WERROR})
+                set(ROCM_HEADER_WRAPPER_WERROR "$ENV{ROCM_HEADER_WRAPPER_WERROR}"
+                    CACHE STRING "Header wrapper warnings as errors.")
+            else()
+                set(ROCM_HEADER_WRAPPER_WERROR "OFF" CACHE STRING "Header wrapper warnings as errors.")
+            endif()
+        endif()
+
+        if(ROCM_HEADER_WRAPPER_WERROR)
+            set(deprecated_error 1)
+        else()
+            set(deprecated_error 0)
+        endif()
+
         include(hip-backward-compat.cmake)
-    endif()
+    endif() #FILE_REORG_BACKWARD_COMPATIBILITY
 endif()
