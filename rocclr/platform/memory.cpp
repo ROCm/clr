@@ -567,14 +567,15 @@ void Pipe::initDeviceMemory() {
 
 #define GETMIPDIM(dim, mip) (((dim >> mip) > 0) ? (dim >> mip) : 1)
 
-Image::Image(const Format& format, Image& parent, uint baseMipLevel, cl_mem_flags flags)
+Image::Image(const Format& format, Image& parent, uint baseMipLevel, cl_mem_flags flags,
+             bool isMipmapView)
     : Memory(parent, flags, 0,
              parent.getWidth() * parent.getHeight() * parent.getDepth() * format.getElementSize()),
       impl_(format, Coord3D(parent.getWidth() * parent.getImageFormat().getElementSize() /
                                 format.getElementSize(),
                             parent.getHeight(), parent.getDepth()),
             parent.getRowPitch(), parent.getSlicePitch(), parent.getBytePitch()),
-      mipLevels_(1),
+      mipLevels_(isMipmapView ? parent.getMipLevels() : 1),
       baseMipLevel_(baseMipLevel) {
   if (baseMipLevel > 0) {
     impl_.region_.c[0] = GETMIPDIM(parent.getWidth(), baseMipLevel) *
@@ -1191,10 +1192,10 @@ bool Image::Format::isSupported(const Context& context, cl_mem_object_type image
 
 // ================================================================================================
 Image* Image::createView(const Context& context, const Format& format, device::VirtualDevice* vDev,
-                         uint baseMipLevel, cl_mem_flags flags) {
+                         uint baseMipLevel, cl_mem_flags flags, bool createMipmapView) {
 
   // Find the image dimensions and create a corresponding object
-  Image* view = new (context) Image(format, *this, baseMipLevel, flags);
+  Image* view = new (context) Image(format, *this, baseMipLevel, flags, createMipmapView);
 
   if (view != nullptr) {
     // Set GPU virtual device for this view

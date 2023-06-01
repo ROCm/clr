@@ -139,25 +139,22 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
     return hipErrorInvalidValue;
   }
 
-  // Mipmaps are currently not supported.
-  if (pResDesc->resType == hipResourceTypeMipmappedArray) {
-    return hipErrorNotSupported;
-  }
   // We don't program the max_ansio_ratio field in the the HW sampler SRD.
   if (pTexDesc->maxAnisotropy != 0) {
     return hipErrorNotSupported;
   }
   // We don't program the lod_bias field in the HW sampler SRD.
   if (pTexDesc->mipmapLevelBias != 0) {
+    LogError("mipmapLevelBias not supported!");
     return hipErrorNotSupported;
   }
   // We don't program the min_lod field in the HW sampler SRD.
   if (pTexDesc->minMipmapLevelClamp != 0) {
-    return hipErrorNotSupported;
+    LogInfo("minMipmapLevelClamp ignored!");
   }
   // We don't program the max_lod field in the HW sampler SRD.
   if (pTexDesc->maxMipmapLevelClamp != 0) {
-    return hipErrorNotSupported;
+    LogInfo("maxMipmapLevelClamp ignored!");
   }
 
   // TODO ROCclr assumes all dimensions have the same addressing mode.
@@ -242,12 +239,50 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       if (image == nullptr) {
         return hipErrorInvalidValue;
       }
+    } else if (image->parent()) {
+      image->retain();  // Because it will be released as a view in ihipDestroyTextureObject()
     }
     break;
   }
-  case hipResourceTypeMipmappedArray:
-    return hipErrorInvalidValue;
+  case hipResourceTypeMipmappedArray: {
+    cl_mem memObj = reinterpret_cast<cl_mem>(pResDesc->res.array.array->data);
+    if (!is_valid(memObj)) {
+      return hipErrorInvalidValue;
+    }
+    image = as_amd(memObj)->asImage();
 
+    hipTextureReadMode readMode = pTexDesc->readMode;
+    // 32-bit integer format will not be promoted, regardless of whether or not
+    // this hipTextureDesc::readMode is set hipReadModeNormalizedFloat is specified.
+    if ((pResDesc->res.array.array->Format == HIP_AD_FORMAT_SIGNED_INT32) ||
+        (pResDesc->res.array.array->Format == HIP_AD_FORMAT_UNSIGNED_INT32)) {
+      readMode = hipReadModeElementType;
+    }
+
+    // We need to create an image view if the user requested to use normalized pixel values,
+    // due to already having the image created with a different format.
+    if ((pResViewDesc != nullptr) || (readMode == hipReadModeNormalizedFloat) ||
+        (pTexDesc->sRGB == 1)) {
+      // TODO ROCclr currently right now can only change the format of the image.
+      const cl_channel_order channelOrder = (pResViewDesc != nullptr)
+          ? hip::getCLChannelOrder(hip::getNumChannels(pResViewDesc->format), pTexDesc->sRGB)
+          : hip::getCLChannelOrder(pResDesc->res.mipmap.mipmap->num_channels, pTexDesc->sRGB);
+      const cl_channel_type channelType = (pResViewDesc != nullptr)
+          ? hip::getCLChannelType(hip::getArrayFormat(pResViewDesc->format), readMode)
+          : hip::getCLChannelType(pResDesc->res.mipmap.mipmap->format, readMode);
+      const amd::Image::Format imageFormat(cl_image_format{channelOrder, channelType});
+      if (!imageFormat.isValid()) {
+        return hipErrorInvalidValue;
+      }
+
+      image = image->createView(*hip::getCurrentDevice()->asContext(), imageFormat, nullptr, 0, 0,
+                                true);
+      if (image == nullptr) {
+        return hipErrorInvalidValue;
+      }
+    }
+    break;
+  }
   case hipResourceTypeLinear: {
     const cl_channel_order channelOrder = hip::getCLChannelOrder(hip::getNumChannels(pResDesc->res.linear.desc), pTexDesc->sRGB);
     const cl_channel_type channelType = hip::getCLChannelType(hip::getArrayFormat(pResDesc->res.linear.desc), pTexDesc->readMode);

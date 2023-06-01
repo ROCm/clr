@@ -3948,30 +3948,6 @@ hipError_t hipDrvMemcpy2DUnaligned(const hip_Memcpy2D* pCopy) {
   HIP_RETURN(ihipMemcpyParam3D(&desc, nullptr));
 }
 
-hipError_t hipMallocMipmappedArray(hipMipmappedArray_t *mipmappedArray,
-                                   const hipChannelFormatDesc* desc,
-                                   hipExtent extent,
-                                   unsigned int numLevels,
-                                   unsigned int flags) {
-  HIP_INIT_API(hipMallocMipmappedArray, mipmappedArray, desc, extent, numLevels, flags);
-  CHECK_STREAM_CAPTURE_SUPPORTED();
-  HIP_RETURN(hipErrorNotSupported);
-}
-
-hipError_t hipFreeMipmappedArray(hipMipmappedArray_t mipmappedArray) {
-  HIP_INIT_API(hipFreeMipmappedArray, mipmappedArray);
-  CHECK_STREAM_CAPTURE_SUPPORTED();
-  HIP_RETURN(hipErrorNotSupported);
-}
-
-hipError_t hipGetMipmappedArrayLevel(hipArray_t *levelArray,
-                                     hipMipmappedArray_const_t mipmappedArray,
-                                     unsigned int level) {
-  HIP_INIT_API(hipGetMipmappedArrayLevel, levelArray, mipmappedArray, level);
-
-  HIP_RETURN(hipErrorNotSupported);
-}
-
 hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                  HIP_ARRAY3D_DESCRIPTOR* mipmapped_array_desc_ptr,
                                  unsigned int num_mipmap_levels) {
@@ -4029,6 +4005,7 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
   (*mipmapped_array_pptr)->max_mipmap_level = num_mipmap_levels;
   (*mipmapped_array_pptr)->flags = mipmapped_array_desc_ptr->Flags;
   (*mipmapped_array_pptr)->format = mipmapped_array_desc_ptr->Format;
+  (*mipmapped_array_pptr)->num_channels = mipmapped_array_desc_ptr->NumChannels;
 
   return hipSuccess;
 }
@@ -4100,6 +4077,9 @@ hipError_t ihipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
   (*level_array_pptr)->isDrv = 0;
   (*level_array_pptr)->textureType = 0;
 
+  amd::ScopedLock lock(hip::hipArraySetLock);
+  hip::hipArraySet.insert(*level_array_pptr);
+
   return hipSuccess;
 }
 
@@ -4127,3 +4107,40 @@ hipError_t hipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
   HIP_RETURN(ihipMipmappedArrayGetLevel(level_array_pptr, mipmapped_array_ptr, mip_level));
 }
 
+hipError_t hipMallocMipmappedArray(hipMipmappedArray_t *mipmappedArray,
+                                   const hipChannelFormatDesc* desc,
+                                   hipExtent extent,
+                                   unsigned int numLevels,
+                                   unsigned int flags) {
+  HIP_INIT_API(hipMallocMipmappedArray, mipmappedArray, desc, extent, numLevels, flags);
+  if (mipmappedArray == nullptr || desc == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+  HIP_ARRAY3D_DESCRIPTOR allocateArray = {extent.width,
+                                          extent.height,
+                                          extent.depth,
+                                          hip::getArrayFormat(*desc),
+                                          hip::getNumChannels(*desc),
+                                          flags};
+  if(!hip::CheckArrayFormat(*desc)) {
+    return hipErrorInvalidValue;
+  }
+  HIP_RETURN(ihipMipmapArrayCreate(mipmappedArray, &allocateArray, numLevels));
+}
+
+hipError_t hipFreeMipmappedArray(hipMipmappedArray_t mipmappedArray) {
+  HIP_INIT_API(hipFreeMipmappedArray, mipmappedArray);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+  HIP_RETURN(ihipMipmappedArrayDestroy(mipmappedArray));
+}
+
+hipError_t hipGetMipmappedArrayLevel(hipArray_t *levelArray,
+                                     hipMipmappedArray_const_t mipmappedArray,
+                                     unsigned int level) {
+  HIP_INIT_API(hipGetMipmappedArrayLevel, levelArray, mipmappedArray, level);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+  HIP_RETURN(ihipMipmappedArrayGetLevel(levelArray,
+                                        const_cast<hipMipmappedArray_t>(mipmappedArray),
+                                        level));
+}

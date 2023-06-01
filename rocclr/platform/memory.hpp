@@ -540,7 +540,8 @@ class Image : public Memory {
   uint baseMipLevel_;  //!< The base mip level for a view
 
  protected:
-  Image(const Format& format, Image& parent, uint baseMipLevel = 0, cl_mem_flags flags = 0);
+  Image(const Format& format, Image& parent, uint baseMipLevel = 0, cl_mem_flags flags = 0,
+      bool isMipmapView = false);
 
   ///! Initializes the device memory array which is nested
   // after'Image' object in memory layout.
@@ -596,7 +597,8 @@ class Image : public Memory {
                             const Format& format,         //!< The new format for a view
                             device::VirtualDevice* vDev,  //!< Virtual device object
                             uint baseMipLevel = 0,        //!< Base mip level for a view
-                            cl_mem_flags flags = 0        //!< Memory allocation flags
+                            cl_mem_flags flags = 0,       //!< Memory allocation flags
+                            bool createMipmapView = false //!< To create mipmap view based on this image
   );
 
   //! Returns the impl for this image.
