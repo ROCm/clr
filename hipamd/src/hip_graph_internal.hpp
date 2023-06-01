@@ -2329,5 +2329,124 @@ class GraphDrvMemcpyNode : public GraphNode {
     }
     return hipSuccess;
   }
+
 };
+
+class hipGraphExternalSemSignalNode : public GraphNode {
+  hipExternalSemaphoreSignalNodeParams externalSemaphorNodeParam_;
+
+ public:
+  hipGraphExternalSemSignalNode(const hipExternalSemaphoreSignalNodeParams* pNodeParams)
+    : GraphNode(hipGraphNodeTypeExtSemaphoreSignal, "solid", "rectangle",
+                   "EXTERNAL_SEMAPHORE_SIGNAL") {
+        externalSemaphorNodeParam_ = *pNodeParams;
+  }
+
+  hipGraphExternalSemSignalNode(const hipGraphExternalSemSignalNode& rhs)
+    : GraphNode(rhs) {
+    externalSemaphorNodeParam_ = rhs.externalSemaphorNodeParam_;
+  }
+
+  ~hipGraphExternalSemSignalNode() {}
+
+  GraphNode* clone() const {
+    return new hipGraphExternalSemSignalNode(
+                static_cast<hipGraphExternalSemSignalNode const&>(*this));
+  }
+
+  hipError_t CreateCommand(hip::Stream* stream) {
+    hipError_t status = GraphNode::CreateCommand(stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+    unsigned int numExtSems = externalSemaphorNodeParam_.numExtSems;
+    commands_.reserve(numExtSems);
+    for (unsigned int i = 0; i < numExtSems; i++) {
+      if (externalSemaphorNodeParam_.extSemArray[i] != nullptr) {
+        amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
+                                        externalSemaphorNodeParam_.extSemArray[i],
+                                        externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
+                                        amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
+        if (command == nullptr) {
+          return hipErrorOutOfMemory;
+        }
+        commands_.emplace_back(command);
+      } else {
+        return hipErrorInvalidValue;
+      }
+    }
+    return hipSuccess;
+  }
+
+  void GetParams(hipExternalSemaphoreSignalNodeParams* pNodeParams) const {
+    std::memcpy(pNodeParams, &externalSemaphorNodeParam_,
+                sizeof(hipExternalSemaphoreSignalNodeParams));
+  }
+
+  hipError_t SetParams(const hipExternalSemaphoreSignalNodeParams* pNodeParams) {
+    std::memcpy(&externalSemaphorNodeParam_, pNodeParams,
+                sizeof(hipExternalSemaphoreSignalNodeParams));
+    return hipSuccess;
+  }
+};
+
+class hipGraphExternalSemWaitNode : public GraphNode {
+  hipExternalSemaphoreWaitNodeParams externalSemaphorNodeParam_;
+
+ public:
+  hipGraphExternalSemWaitNode(const hipExternalSemaphoreWaitNodeParams* pNodeParams)
+    : GraphNode(hipGraphNodeTypeExtSemaphoreWait, "solid",
+                   "rectangle", "EXTERNAL_SEMAPHORE_WAIT") {
+        externalSemaphorNodeParam_ = *pNodeParams;
+  }
+
+  hipGraphExternalSemWaitNode(const hipGraphExternalSemWaitNode& rhs) : GraphNode(rhs) {
+    externalSemaphorNodeParam_ = rhs.externalSemaphorNodeParam_;
+  }
+  ~hipGraphExternalSemWaitNode() {}
+
+  GraphNode* clone() const {
+    return new hipGraphExternalSemWaitNode(static_cast<hipGraphExternalSemWaitNode const&>(*this));
+  }
+
+  hipError_t CreateCommand(hip::Stream* stream) {
+    hipError_t status = GraphNode::CreateCommand(stream);
+    if (status != hipSuccess) {
+      return status;
+
+    }
+    unsigned int numExtSems = externalSemaphorNodeParam_.numExtSems;
+    commands_.reserve(numExtSems);
+    for (unsigned int i = 0; i < numExtSems; i++) {
+      if (externalSemaphorNodeParam_.extSemArray[i] != nullptr) {
+        amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
+                                    externalSemaphorNodeParam_.extSemArray[i],
+                                    externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
+                                    amd::ExternalSemaphoreCmd::COMMAND_WAIT_EXTSEMAPHORE);
+        if (command == nullptr) {
+          return hipErrorOutOfMemory;
+        }
+        commands_.emplace_back(command);
+      } else {
+        return hipErrorInvalidValue;
+      }
+    }
+    return hipSuccess;
+  }
+
+  void GetParams(hipExternalSemaphoreWaitNodeParams* pNodeParams) const {
+    std::memcpy(pNodeParams, &externalSemaphorNodeParam_,
+                sizeof(hipExternalSemaphoreWaitNodeParams));
+  }
+
+  hipError_t SetParams(const hipExternalSemaphoreWaitNodeParams* pNodeParams) {
+    std::memcpy(&externalSemaphorNodeParam_, pNodeParams,
+                sizeof(hipExternalSemaphoreWaitNodeParams));
+    return hipSuccess;
+  }
+};
+
 }  // namespace hip
+
+
+

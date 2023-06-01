@@ -2623,4 +2623,117 @@ hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   // memory for memAlloc nodes if any when support is added with mempool feature
   HIP_RETURN(hipSuccess);
 }
+
+hipError_t hipGraphAddExternalSemaphoresSignalNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                 const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                 const hipExternalSemaphoreSignalNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphAddExternalSemaphoresSignalNode, pGraphNode, graph, pDependencies,
+               numDependencies, nodeParams);
+  if (pGraphNode == nullptr || graph == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* node = new hip::hipGraphExternalSemSignalNode(nodeParams);
+  hipError_t status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                         reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
+  *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipGraphAddExternalSemaphoresWaitNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                 const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                 const hipExternalSemaphoreWaitNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphAddExternalSemaphoresWaitNode, pGraphNode, graph, pDependencies,
+               numDependencies, nodeParams);
+  if (pGraphNode == nullptr || graph == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* node = new hip::hipGraphExternalSemWaitNode(nodeParams);
+  hipError_t status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                          reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
+  *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipGraphExternalSemaphoresSignalNodeSetParams(hipGraphNode_t hNode,
+                                    const hipExternalSemaphoreSignalNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphExternalSemaphoresSignalNodeSetParams, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphExternalSemSignalNode*>(n)->SetParams(nodeParams));
+}
+
+hipError_t hipGraphExternalSemaphoresWaitNodeSetParams(hipGraphNode_t hNode,
+                                      const hipExternalSemaphoreWaitNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphExternalSemaphoresWaitNodeSetParams, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphExternalSemWaitNode*>(n)->SetParams(nodeParams));
+}
+
+hipError_t hipGraphExternalSemaphoresSignalNodeGetParams(hipGraphNode_t hNode,
+                                              hipExternalSemaphoreSignalNodeParams* params_out) {
+  HIP_INIT_API(hipGraphExternalSemaphoresSignalNodeGetParams, hNode, params_out);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || params_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hip::hipGraphExternalSemSignalNode*>(n)->GetParams(params_out);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExternalSemaphoresWaitNodeGetParams(hipGraphNode_t hNode,
+                                              hipExternalSemaphoreWaitNodeParams* params_out) {
+  HIP_INIT_API(hipGraphExternalSemaphoresWaitNodeGetParams, hNode, params_out);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || params_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hip::hipGraphExternalSemWaitNode*>(n)->GetParams(params_out);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphExecExternalSemaphoresSignalNodeSetParams(hipGraphExec_t hGraphExec,
+                                        hipGraphNode_t hNode,
+                                        const hipExternalSemaphoreSignalNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphExecExternalSemaphoresSignalNodeSetParams, hGraphExec, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  hip::GraphExec* graphExec = reinterpret_cast<hip::GraphExec*>(hGraphExec);
+  if (hGraphExec == nullptr || hNode == nullptr || !hip::GraphExec::isGraphExecValid(graphExec) ||
+      !hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = graphExec->GetClonedNode(n);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphExternalSemSignalNode*>(clonedNode)->SetParams(
+      nodeParams));
+}
+
+hipError_t hipGraphExecExternalSemaphoresWaitNodeSetParams(hipGraphExec_t hGraphExec,
+                                              hipGraphNode_t hNode,
+                                              const hipExternalSemaphoreWaitNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphExecExternalSemaphoresWaitNodeSetParams, hGraphExec, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  hip::GraphExec* graphExec = reinterpret_cast<hip::GraphExec*>(hGraphExec);
+  if (hGraphExec == nullptr || hNode == nullptr || !hip::GraphExec::isGraphExecValid(graphExec) ||
+      !hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = graphExec->GetClonedNode(n);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphExternalSemWaitNode*>(clonedNode)->SetParams(
+      nodeParams));
+}
+
 }  // namespace hip
+
+
