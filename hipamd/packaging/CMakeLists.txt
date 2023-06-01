@@ -96,7 +96,11 @@ install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/hip_version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
+if(WIN32)
+    install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
+else()
+    install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version COMPONENT dev)
+endif()
 install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config-amd.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)

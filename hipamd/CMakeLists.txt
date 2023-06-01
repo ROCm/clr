@@ -321,7 +321,11 @@ endif()
 install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # Install .hipVersion
-install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(WIN32)
+    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
+else()
+    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version)
+endif()
 
 # Install src, bin, include & cmake if necessary
 execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
