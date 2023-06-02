@@ -437,7 +437,7 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
   }
 
   //pciBusId should be large enough to store 13 characters including the NULL-terminator.
-  if (pciBusId == nullptr || len <= 12) {
+  if (pciBusId == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -448,7 +448,7 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
                     prop.pciBusID,
                     prop.pciDeviceID);
 
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(len <= 12 ? hipErrorInvalidValue : hipSuccess);
 }
 
 hipError_t hipDeviceGetSharedMemConfig ( hipSharedMemConfig * pConfig ) {
