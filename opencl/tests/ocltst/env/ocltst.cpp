@@ -977,7 +977,7 @@ static void Help(const char* name) {
              "one test per line\n");
   oclTestLog(OCLTEST_LOG_ALWAYS,
              "   -p <platform> : specify a platform to run on, 'amd','nvidia' "
-             "or 'intel'\n");
+             ",'intel' or 'ms'\n");
   oclTestLog(OCLTEST_LOG_ALWAYS, "   -h            : this help text\n");
   oclTestLog(
       OCLTEST_LOG_ALWAYS,
@@ -1029,6 +1029,8 @@ unsigned int getPlatformID(const char* str) {
     strOfCLPlatformName = "Intel(R) Corporation";
   } else if (strOfCLVendor == "nvidia") {
     strOfCLPlatformName = "NVIDIA Corporation";
+  } else if (strOfCLVendor == "ms") {
+    strOfCLPlatformName = "Microsoft";
   } else {
     // fall-back on platform index 0
     return platform;
