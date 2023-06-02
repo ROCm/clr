@@ -252,6 +252,7 @@ class thread_block : public thread_group {
   __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::workgroup::thread_rank(); }
   __CG_QUALIFIER__ bool is_valid() const { return internal::workgroup::is_valid(); }
   __CG_QUALIFIER__ void sync() const { internal::workgroup::sync(); }
+  __CG_QUALIFIER__ dim3 group_dim() { return internal::workgroup::block_dim(); }
 };
 
 /** \brief   User exposed API interface to construct workgroup cooperative

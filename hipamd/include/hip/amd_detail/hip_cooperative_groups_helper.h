@@ -195,11 +195,15 @@ __CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
 }
 
 __CG_STATIC_QUALIFIER__ bool is_valid() {
-  // TODO(mahesha) any functionality need to be added here? I believe not
   return true;
 }
 
 __CG_STATIC_QUALIFIER__ void sync() { __syncthreads(); }
+
+__CG_STATIC_QUALIFIER__ dim3 block_dim() {
+  return (dim3(static_cast<uint32_t>(blockDim.x), static_cast<uint32_t>(blockDim.y),
+          static_cast<uint32_t>(blockDim.z)));
+}
 
 }  // namespace workgroup
 
