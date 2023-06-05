@@ -4240,8 +4240,8 @@ RUNTIME_ENTRY(cl_int, clEnqueueFillBuffer,
     return CL_INVALID_VALUE;
   }
 
-  // Offset must be a multiple of pattern_size
-  if ((offset % pattern_size) != 0) {
+  // Offset and size must be multiple of pattern_size
+  if (!(amd::isMultipleOf(offset, pattern_size) && amd::isMultipleOf(size, pattern_size))) {
     return CL_INVALID_VALUE;
   }
 

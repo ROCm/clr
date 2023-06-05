@@ -22,7 +22,10 @@
 #define _OCL_CREATE_BUFFER_H_
 
 #include "OCLTestImp.h"
-#define PATTERN 0x20
+#define PATTERN_20_08BIT 0x20
+#define PATTERN_20_64BIT 0x2020202020202020
+#define PATTERN_2A_08BIT 0x2a
+#define PATTERN_2A_64BIT 0x2a2a2a2a2a2a2a2a
 
 class OCLCreateBuffer : public OCLTestImp {
  public:
@@ -34,8 +37,7 @@ class OCLCreateBuffer : public OCLTestImp {
                     unsigned int deviceID);
   virtual void run(void);
   virtual void writeBuffer(size_t tmpMaxSize, void* dataBuf);
-  virtual void checkResult(size_t tmpMaxSize, void* resultBuf,
-                           cl_uchar pattern);
+  virtual void checkResult(size_t tmpMaxSize, void* resultBuf, cl_ulong pattern);
   virtual unsigned int close(void);
 
  private:
