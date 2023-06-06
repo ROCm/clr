@@ -595,7 +595,7 @@ __device__ static inline double __longlong_as_double(long long int x) {
     return tmp;
 }
 
-__device__ static inline double __uint2double_rn(int x) { return (double)x; }
+__device__ static inline double __uint2double_rn(unsigned int x) { return (double)x; }
 
 __device__ static inline float __uint2float_rd(unsigned int x) {
     return __ocml_cvtrtn_f32_u32(x);
