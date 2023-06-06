@@ -196,6 +196,24 @@ hipError_t hipMemRangeGetAttributes(void** data, size_t* data_sizes,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (*data_sizes > 0) {
+    for (int i = 0 ; i<*data_sizes ; i++) {
+      if (!data[i]) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+    }
+  }
+
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
+  if (memObj) {
+    if (!(memObj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR))) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  } else {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   // Shouldn't matter for which device the interface is called
   amd::Device* dev = g_devices[0]->devices()[0];
   // Get the allocation attributes from AMD HMM
