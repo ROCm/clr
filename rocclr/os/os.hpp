@@ -131,6 +131,15 @@ class Os : AllStatic {
   // Given a valid mmaped ptr with correct size, unmaps the ptr from memory
   static bool MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size);
 
+  // Given a valid filename create system memory that can be shared between processes
+  static void* CreateIpcMemory(const char* fname, size_t size, FileDesc* desc);
+
+  // Given a valid file descriptor open IPC memory
+  static void* OpenIpcMemory(const char* fname, const FileDesc desc, size_t size);
+
+  // Given a valid file descriptor close IPC memory
+  static void CloseIpcMemory(const FileDesc desc, const void* ptr, size_t size);
+
  private:
   static constexpr size_t FILE_PATH_MAX_LENGTH = 1024;
 

@@ -332,7 +332,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   memcpy(info_.uuid_ + 4, &palProp.pciProperties.busNumber, sizeof(uint32_t));
   memcpy(info_.uuid_ + 8, &palProp.pciProperties.deviceNumber, sizeof(uint32_t));
   memcpy(info_.uuid_ + 12, &palProp.pciProperties.functionNumber, sizeof(uint32_t));
-  
+
   info_.maxWorkItemDimensions_ = 3;
 
   info_.maxComputeUnits_ = settings().enableWgpMode_
@@ -1571,7 +1571,10 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
         type = Resource::P2PAccess;
       }
     }
-
+    params.interprocess_ = (owner.getMemFlags() & ROCCLR_MEM_INTERPROCESS) ? true : false;
+    if (owner.ipcShared()) {
+      type = Resource::IpcMemory;
+    }
     // Create memory object
     result = gpuMemory->create(type, &params);
 
@@ -2343,6 +2346,116 @@ void Device::virtualFree(void* addr) {
 }
 
 // ================================================================================================
+bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
+    return false;
+  }
+
+  // Get the original pointer from the amd::Memory object
+  void* orig_dev_ptr = nullptr;
+  if (amd_mem_obj->getSvmPtr() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getSvmPtr();
+  } else if (amd_mem_obj->getHostMem() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getHostMem();
+  } else {
+    ShouldNotReachHere();
+  }
+
+  // Check if the dev_ptr is lesser than original dev_ptr
+  if (orig_dev_ptr > dev_ptr) {
+    // If this happens, then revisit FindMemObj logic
+    DevLogPrintfError("Original dev_ptr: 0x%x cannot be greater than dev_ptr: 0x%x", orig_dev_ptr,
+                      dev_ptr);
+    return false;
+  }
+
+  // Calculate the memory offset from the original base ptr
+  *mem_offset = reinterpret_cast<address>(dev_ptr) - reinterpret_cast<address>(orig_dev_ptr);
+  *mem_size = amd_mem_obj->getSize();
+
+  // Check if the dev_ptr is greater than memory allocated
+  if (*mem_offset > *mem_size) {
+    DevLogPrintfError(
+        "Memory offset: %u cannot be greater than size of original memory allocated: %u", *mem_size,
+        *mem_offset);
+    return false;
+  }
+  auto dev_mem = getGpuMemory(amd_mem_obj);
+  *reinterpret_cast<void**>(handle) = dev_mem->ExportHandle();
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+                       void** dev_ptr) const {
+  amd::Memory* amd_mem_obj = nullptr;
+
+  // Note: ROCr path has a validation for duplicated IPC memory, but PAL currently can't
+  // identify the duplicates
+
+  // Create an amd Memory object for the handle
+  amd_mem_obj = new (context()) amd::IpcBuffer(context(), flags, mem_offset, mem_size,
+      *reinterpret_cast<amd::Os::FileDesc*>(const_cast<void*>(handle)));
+  if (amd_mem_obj == nullptr) {
+    LogError("failed to create a mem object!");
+    return false;
+  }
+
+  if (!amd_mem_obj->create(nullptr)) {
+    LogError("failed to create a svm hidden buffer!");
+    amd_mem_obj->release();
+    return false;
+  }
+
+  // Add the original mem_ptr to the MemObjMap with newly created amd_mem_obj
+  amd::MemObjMap::AddMemObj(amd_mem_obj->getSvmPtr(), amd_mem_obj);
+
+  // Make sure the mem_offset doesnt overflow the allocated memory
+  guarantee((mem_offset < mem_size), "IPC mem offset greater than allocated size");
+
+  *dev_ptr = amd_mem_obj->getSvmPtr();
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::IpcDetach(void* dev_ptr) const {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
+    return false;
+  }
+
+  if (!amd_mem_obj->ipcShared()) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
+    return false;
+  }
+
+  // Get the original pointer from the amd::Memory object
+  void* orig_dev_ptr = nullptr;
+  if (amd_mem_obj->getSvmPtr() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getSvmPtr();
+  } else if (amd_mem_obj->getHostMem() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getHostMem();
+  } else {
+    ShouldNotReachHere();
+  }
+
+  if (amd_mem_obj->release() == 0) {
+    amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
+  }
+
+  return true;
+}
+
+// ================================================================================================
 bool Device::AcquireExclusiveGpuAccess() {
   // Lock the virtual GPU list
   vgpusAccess().lock();
@@ -2508,8 +2621,7 @@ bool Device::createBlitProgram() {
     if (info().cooperativeGroups_) {
       extraBlits.append(GwsInitSourceCode);
     }
-  }
-  else {
+  } else {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();
       if (settings().useLightning_) {
@@ -2553,7 +2665,7 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
   return result;
 }
 
-
+// ================================================================================================
 bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
                                 amd::ExternalSemaphoreHandleType sem_handle_type) {
   Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};
