@@ -910,6 +910,47 @@ int Os::getProcessId() {
   return ::getpid();
 }
 
+// ================================================================================================
+void* Os::CreateIpcMemory(const char* fname, size_t size, FileDesc* desc) {
+  *desc = shm_open(fname, O_RDWR | O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
+  if (*desc < 0) {
+    return nullptr;
+  }
+
+  int status = ftruncate(*desc, size);
+  if (status != 0) {
+    return nullptr;
+  }
+
+  auto addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, *desc, 0);
+  return addr;
+}
+
+// ================================================================================================
+void* Os::OpenIpcMemory(const char* fname, const FileDesc desc, size_t size) {
+  FileDesc handle = desc;
+  if (fname != nullptr) {
+    handle = shm_open(fname, O_RDWR, S_IRWXU|S_IRWXG|S_IRWXO);
+  }
+
+  if (handle < 0) {
+    return nullptr;
+  }
+
+  auto addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, handle, 0);
+  return addr;
+}
+
+// ================================================================================================
+void Os::CloseIpcMemory(const FileDesc desc, const void* ptr, size_t size) {
+  if (ptr != nullptr) {
+    munmap(const_cast<void*>(ptr), size);
+  }
+  if (desc != 0) {
+    close(desc);
+  }
+}
+
 }  // namespace amd
 
 #endif  // !defined(_WIN32) && !defined(__CYGWIN__)

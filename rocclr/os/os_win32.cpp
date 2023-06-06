@@ -945,6 +945,42 @@ int Os::getProcessId() {
   return ::_getpid();
 }
 
+// ================================================================================================
+void* Os::CreateIpcMemory(const char* fname, size_t size, FileDesc* desc) {
+  void* addr = nullptr;
+  *desc = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE,
+      0, static_cast<DWORD>(size), fname);
+  if (*desc != 0) {
+    addr = MapViewOfFile(*desc, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  }
+
+  return addr;
+}
+
+// ================================================================================================
+void* Os::OpenIpcMemory(const char* fname, const FileDesc desc, size_t size) {
+  void* addr = nullptr;
+  FileDesc handle = desc;
+  if (fname != nullptr) {
+    handle = CreateFileMapping(desc, NULL, PAGE_READWRITE, 0, static_cast<DWORD>(size), fname);
+  }
+  if (handle != 0) {
+    addr = MapViewOfFile(handle, FILE_MAP_ALL_ACCESS, 0, 0, size);
+  }
+
+  return addr;
+}
+
+// ================================================================================================
+void Os::CloseIpcMemory(const FileDesc desc, const void* ptr, size_t size) {
+  if (ptr != nullptr) {
+    UnmapViewOfFile(ptr);
+  }
+  if (desc != nullptr) {
+    CloseHandle(desc);
+  }
+}
+
 }  // namespace amd
 
 #endif  // _WIN32 || __CYGWIN__

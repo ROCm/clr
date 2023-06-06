@@ -1535,6 +1535,14 @@ void SvmBuffer::memFill(void* dst, const void* src, size_t srcSize, size_t times
   }
 }
 
+// ================================================================================================
 bool SvmBuffer::malloced(const void* ptr) { return Contains(reinterpret_cast<uintptr_t>(ptr)); }
+
+// ================================================================================================
+void IpcBuffer::initDeviceMemory() {
+  deviceMemories_ =
+      reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(IpcBuffer));
+  memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
+}
 
 }  // namespace amd

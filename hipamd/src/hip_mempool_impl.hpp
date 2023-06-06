@@ -31,6 +31,12 @@ namespace hip {
 class Device;
 class Stream;
 
+struct SharedMemPointer {
+  size_t offset_;
+  size_t size_;
+  char handle_[IHIP_IPC_MEM_HANDLE_SIZE];
+};
+
 struct MemoryTimestamp {
   MemoryTimestamp(hip::Stream* stream, hip::Event* event = nullptr): event_(event) {
     if (stream != nullptr) {
@@ -160,16 +166,34 @@ private:
 /// hipMemPoolReuseAllowOpportunistic option will validate if HIP event,
 /// associated with memory is done, then reuse can be performed.
 class MemoryPool : public amd::ReferenceCountedObject {
-public:
-  MemoryPool(hip::Device* device):
-    busy_heap_(device),
-    free_heap_(device),
-    lock_pool_ops_("Pool operations", true), device_(device) {
-      device_->AddMemoryPool(this);
-      state_.event_dependencies_ = 1;
-      state_.opportunistic_ = 1;
-      state_.internal_dependencies_ = 1;
-    }
+ public:
+  struct SharedAccess {
+    int device_id_;             //!< Device ID for access with a specified shared resource
+    hipMemAccessFlags flags_;   //!< Flags which define access type
+  };
+
+  static constexpr uint32_t kMaxMgpuAccess = 32;
+  struct SharedMemPool {
+    amd::Os::FileDesc handle_;            //!< File descriptor for shared memory
+    uint32_t state_;                      //!< Memory pool state
+    uint32_t access_size_;                //!< The number of entries in access array
+    SharedAccess access_[kMaxMgpuAccess]; //!< The list of devices for access
+  };
+
+  MemoryPool(hip::Device* device, bool interprocess = false)
+      : busy_heap_(device),
+        free_heap_(device),
+        lock_pool_ops_("Pool operations", true),
+        device_(device),
+        shared_(nullptr) {
+    device_->AddMemoryPool(this);
+    state_.value_ = 0;
+    state_.event_dependencies_ = 1;
+    state_.opportunistic_ = 1;
+    state_.internal_dependencies_ = 1;
+    state_.interprocess_ = interprocess;
+  }
+
   virtual ~MemoryPool() {
     if (!busy_heap_.IsEmpty()) {
       LogError("Shouldn't destroy pool with busy allocations!");
@@ -177,6 +201,10 @@ public:
     ReleaseAllMemory();
     // Remove memory pool from the list of all pool on the current device
     device_->RemoveMemoryPool(this);
+    if (shared_ != nullptr) {
+      // Note: The app supposes to close the handle... Double close in Windows will cause a crash
+      amd::Os::CloseIpcMemory(0, shared_, sizeof(SharedMemPool));
+    }
   }
 
   /// The same stream can reuse memory without HIP event validation
@@ -186,9 +214,7 @@ public:
   bool FreeMemory(amd::Memory* memory, hip::Stream* stream);
 
   /// Check if memory is active and belongs to the busy heap
-  bool IsBusyMemory(amd::Memory* memory) const {
-    return busy_heap_.IsActiveMemory(memory);
-  }
+  bool IsBusyMemory(amd::Memory* memory) const { return busy_heap_.IsActiveMemory(memory); }
 
   /// Releases all allocations from free_heap_. It can be called on Stream or Device synchronization
   /// @note The caller must make sure it's safe to release memory
@@ -200,6 +226,10 @@ public:
   /// Releases all allocations in MemoryPool
   void ReleaseAllMemory();
 
+  /// Place the allocated memory into the busy heap
+  void AddBusyMemory(amd::Memory* memory) {
+    busy_heap_.AddMemory(memory, nullptr);
+  }
   /// Trims the pool until it has only min_bytes_to_hold
   void TrimTo(size_t min_bytes_to_hold);
 
@@ -221,6 +251,12 @@ public:
   /// Frees all busy memory
   void FreeAllMemory(hip::Stream* stream = nullptr);
 
+  /// Exports memory pool into an OS specific handle
+  amd::Os::FileDesc Export();
+
+  /// Imports memory pool from an OS specific handle
+  bool Import(amd::Os::FileDesc handle);
+
   /// Accessors for the pool state
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
@@ -233,15 +269,22 @@ private:
 
   Heap busy_heap_;    //!< Heap of busy allocations
   Heap free_heap_;    //!< Heap of freed allocations
-  struct {
-    uint32_t event_dependencies_ : 1;     //!< Event dependencies tracking is enabled
-    uint32_t opportunistic_ : 1;          //!< HIP event check is enabled
-    uint32_t internal_dependencies_ : 1;  //!< Runtime adds internal events to handle memory dependencies
+  union {
+    struct {
+      uint32_t event_dependencies_ : 1;     //!< Event dependencies tracking is enabled
+      uint32_t opportunistic_ : 1;          //!< HIP event check is enabled
+      uint32_t internal_dependencies_ : 1;  //!< Runtime adds internal events to handle memory
+                                            //!< dependencies
+      uint32_t interprocess_ : 1;  //!< Memory pool can be used in interprocess communications
+    };
+    uint32_t value_;
   } state_;
 
   amd::Monitor  lock_pool_ops_;  //!< Access to the pool must be lock protected
   std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
   hip::Device*  device_;    //!< Hip device the heap will reside
+  SharedMemPool* shared_;   //!< Pointer to shared memory for IPC
 };
+
 
 } // Mamespace hip

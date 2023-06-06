@@ -37,11 +37,12 @@
 #include <unordered_map>
 #include <memory>
 #include <limits>
-#define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
-#define ROCCLR_MEM_HSA_SIGNAL_MEMORY                (1u << 30)
-#define ROCCLR_MEM_INTERNAL_MEMORY                  (1u << 29)
-#define CL_MEM_VA_RANGE_AMD                         (1u << 28)
-#define ROCCLR_MEM_HSA_UNCACHED                     (1u << 27)
+#define CL_MEM_FOLLOW_USER_NUMA_POLICY  (1u << 31)
+#define ROCCLR_MEM_HSA_SIGNAL_MEMORY    (1u << 30)
+#define ROCCLR_MEM_INTERNAL_MEMORY      (1u << 29)
+#define CL_MEM_VA_RANGE_AMD             (1u << 28)
+#define ROCCLR_MEM_HSA_UNCACHED         (1u << 27)
+#define ROCCLR_MEM_INTERPROCESS         (1u << 26)
 
 namespace device {
 class Memory;
@@ -671,6 +672,21 @@ public:
              reinterpret_cast<void*>(kArenaMemoryPtr)) {}
   bool isArena() { return true; }
 };
+
+class IpcBuffer : public Buffer {
+ public:
+  IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, amd::Os::FileDesc handle)
+    : Buffer(context, flags, offset, size), handle_(handle) {
+    setIpcShared(true);
+  }
+
+  virtual void initDeviceMemory();
+  amd::Os::FileDesc Handle() const { return handle_; }
+
+ private:
+  amd::Os::FileDesc handle_;  //!< Ipc handle, associated with this memory object
+};
+
 
 }  // namespace amd
 

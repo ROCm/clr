@@ -533,6 +533,15 @@ class Device : public NullDevice {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
 
+  //! Creates IPC memory handle from a provided SVM pointer
+  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size,
+                         void* handle, size_t* mem_offset) const override;
+  //! Attch IPC memory to the current device
+  virtual bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+                         void** dev_ptr) const override;
+  //! Detach IPC memory from the current device
+  virtual bool IpcDetach(void* dev_ptr) const override;
+
   //! Returns SRD manger object
   SrdManager& srds() const { return *srdManager_; }
 

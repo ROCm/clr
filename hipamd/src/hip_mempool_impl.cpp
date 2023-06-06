@@ -168,8 +168,8 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
     if (dev_info.maxMemAllocSize_ < size) {
       return nullptr;
     }
-
-    dev_ptr = amd::SvmBuffer::malloc(*context, 0, size, dev_info.memBaseAddrAlign_, nullptr);
+    cl_svm_mem_flags flags = (state_.interprocess_) ? ROCCLR_MEM_INTERPROCESS : 0;
+    dev_ptr = amd::SvmBuffer::malloc(*context, flags, size, dev_info.memBaseAddrAlign_, nullptr);
     if (dev_ptr == nullptr) {
       size_t free = 0, total =0;
       hipError_t err = hipMemGetInfo(&free, &total);
@@ -425,10 +425,56 @@ void MemoryPool::GetAccess(hip::Device* device, hipMemAccessFlags* flags) {
   }
 }
 
+// ================================================================================================
 void MemoryPool::FreeAllMemory(hip::Stream* stream) {
   while (!busy_heap_.Allocations().empty()) {
     FreeMemory(busy_heap_.Allocations().begin()->first, stream);
   }
 }
 
+// ================================================================================================
+amd::Os::FileDesc MemoryPool::Export() {
+  amd::ScopedLock lock(lock_pool_ops_);
+  if (shared_ != nullptr) {
+    return shared_->handle_;
+  }
+
+  constexpr uint32_t kFileNameSize = 20;
+  char file_name[kFileNameSize];
+  // Generate a unique name from the mempool pointer
+  // Note: Windows can accept an unnamed allocation
+  snprintf(file_name, kFileNameSize, "%p", this);
+  amd::Os::FileDesc handle{};
+  shared_ = reinterpret_cast<SharedMemPool*>(amd::Os::CreateIpcMemory(
+      file_name, sizeof(SharedMemPool), &handle));
+  if (shared_ != nullptr) {
+    shared_->handle_ = handle;
+    shared_->state_ = state_.value_;
+    shared_->access_size_ = 0;
+    memset(shared_->access_, 0, sizeof(SharedAccess) * kMaxMgpuAccess);
+    assert((access_map_.size() <= kMaxMgpuAccess) && "Can't support more GPU(s) in shared access" );
+    for (auto it : access_map_) {
+      shared_->access_[shared_->access_size_] = SharedAccess{it.first->deviceId(), it.second};
+      shared_->access_size_++;
+    }
+  }
+  return handle;
+}
+
+// ================================================================================================
+bool MemoryPool::Import(amd::Os::FileDesc handle) {
+  amd::ScopedLock lock(lock_pool_ops_);
+  bool result = false;
+  auto shared = reinterpret_cast<SharedMemPool*>(
+      amd::Os::OpenIpcMemory(nullptr, handle, sizeof(SharedMemPool)));
+
+  if (shared != nullptr) {
+    state_.value_ = shared->state_;
+    for (uint32_t i = 0; i < shared->access_size_; ++i) {
+      access_map_[g_devices[shared->access_[i].device_id_]] = shared->access_[i].flags_;
+    }
+    result = true;
+  }
+  return result;
+}
 }
