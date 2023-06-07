@@ -37,7 +37,7 @@ THE SOFTWARE.
     unsigned int ADDRESS_SPACE_CONSTANT* s = i + HIP_SAMPLER_OBJECT_OFFSET_DWORD;
 
 template<typename T>
-struct __hip_is_tex_channel_type
+struct __hip_is_tex_surf_scalar_channel_type
 {
     static constexpr bool value =
         std::is_same<T, char>::value ||
@@ -49,13 +49,20 @@ struct __hip_is_tex_channel_type
         std::is_same<T, float>::value;
 };
 
+template<typename T>
+struct __hip_is_tex_surf_channel_type
+{
+    static constexpr bool value =
+        __hip_is_tex_surf_scalar_channel_type<T>::value;
+};
+
 template<
     typename T,
     unsigned int rank>
-struct __hip_is_tex_channel_type<HIP_vector_type<T, rank>>
+struct __hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>
 {
     static constexpr bool value =
-        __hip_is_tex_channel_type<T>::value &&
+        __hip_is_tex_surf_scalar_channel_type<T>::value &&
         ((rank == 1) ||
          (rank == 2) ||
          (rank == 4));
@@ -92,6 +99,102 @@ struct __hip_tex_ret
     static_assert(std::is_same<Enable, void>::value, "Invalid channel type!");
 };
 
+/*
+ * Map from device function return U to scalar texture type T
+ */
+template<typename T, typename U>
+__forceinline__ __device__
+typename std::enable_if<
+  __hip_is_tex_surf_scalar_channel_type<T>::value, const T>::type
+__hipMapFrom(const U &u) {
+  if constexpr (sizeof(T) < sizeof(float)) {
+    union {
+      U u;
+      int i;
+    } d = { u };
+    return static_cast<T>(d.i);
+  } else { // sizeof(T) == sizeof(float)
+    union {
+      U u;
+      T t;
+    } d = { u };
+    return d.t;
+  }
+}
+
+/*
+ * Map from device function return U to vector texture type T
+ */
+template<typename T, typename U>
+__forceinline__ __device__
+typename std::enable_if<
+  __hip_is_tex_surf_scalar_channel_type<typename T::value_type>::value, const T>::type
+__hipMapFrom(const U &u) {
+  if constexpr (sizeof(typename T::value_type) < sizeof(float)) {
+    union {
+      U u;
+      int4 i4;
+    } d = { u };
+    return __hipMapVector<typename T::value_type, sizeof(T)/sizeof(typename T::value_type)>(d.i4);
+  } else { // sizeof(typename T::value_type) == sizeof(float)
+    union {
+      U u;
+      T t;
+    } d = { u };
+    return d.t;
+  }
+}
+
+/*
+ * Map from scalar texture type T to device function input U
+ */
+template<typename U, typename T>
+__forceinline__ __device__
+typename std::enable_if<
+__hip_is_tex_surf_scalar_channel_type<T>::value, const U>::type
+__hipMapTo(const T &t) {
+  if constexpr (sizeof(T) < sizeof(float)) {
+    union {
+      U u;
+      int i;
+    } d = { 0 };
+    d.i = static_cast<int>(t);
+    return d.u;
+  } else { // sizeof(T) == sizeof(float)
+    union {
+      U u;
+      T t;
+    } d = { 0 };
+    d.t = t;
+    return d.u;
+  }
+}
+
+/*
+ * Map from vector texture type T to device function input U
+ */
+template<typename U, typename T>
+__forceinline__ __device__
+typename std::enable_if<
+  __hip_is_tex_surf_scalar_channel_type<typename T::value_type>::value, const U>::type
+__hipMapTo(const T &t) {
+  if constexpr (sizeof(typename T::value_type) < sizeof(float)) {
+    union {
+      U u;
+      int4 i4;
+    } d = { 0 };
+    d.i4 = __hipMapVector<int, 4>(t);
+    return d.u;
+  } else { // sizeof(typename T::value_type) == sizeof(float)
+    union {
+      U u;
+      T t;
+    } d = { 0 };
+    d.t = t;
+    return d.u;
+  }
+}
+
 template <
     typename T,
     hipTextureReadMode readMode>
@@ -101,7 +204,7 @@ template <typename T>
 struct __hip_tex_ret<
     T,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<T>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value, bool>::type>
 {
     using type = T;
 };
@@ -112,7 +215,7 @@ template<
 struct __hip_tex_ret<
     HIP_vector_type<T, rank>,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
 {
     using type = HIP_vector_type<__hip_tex_ret_t<T, hipReadModeElementType>, rank>;
 };
@@ -137,12 +240,13 @@ struct __hip_tex_ret<
     using type = HIP_vector_type<__hip_tex_ret_t<T, hipReadModeNormalizedFloat>, rank>;
 };
 
+
 template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex1Dfetch(texture<T, hipTextureType1D, readMode> t, int x)
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_load_1Db(i, x);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -150,7 +254,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_1D(i, s, x);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -158,7 +262,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_2D(i, s, float2(x, y).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -166,7 +270,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -174,7 +278,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -182,7 +286,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_3D(i, s, float4(x, y, z, 0.0f).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -190,7 +294,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_CM(i, s, float4(x, y, z, 0.0f).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -198,7 +302,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_1D(i, s, x, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -206,7 +310,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_2D(i, s, float2(x, y).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -214,7 +318,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_1Da(i, s, float2(x, layer).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -222,7 +326,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_2Da(i, s, float4(x, y, layer, 0.0f).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -230,7 +334,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_3D(i, s, float4(x, y, z, 0.0f).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -238,7 +342,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_CM(i, s, float4(x, y, z, 0.0f).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -246,7 +350,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_CMa(i, s, float4(x, y, z, layer).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -254,7 +358,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_lod_CMa(i, s, float4(x, y, z, layer).data, level);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -263,7 +367,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
     TEXTURE_PARAMETERS_INIT;
     // TODO missing in device libs.
     // auto tmp = __ockl_image_sample_grad_CM(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    // return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
     return {};
 }
 
@@ -273,7 +377,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
     TEXTURE_PARAMETERS_INIT;
     // TODO missing in device libs.
     // auto tmp = __ockl_image_sample_grad_CMa(i, s, float4(x, y, z, layer).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    // return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
     return {};
 }
 
@@ -282,7 +386,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_grad_1D(i, s, x, dPdx, dPdy);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -290,7 +394,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_grad_2D(i, s, float2(x, y).data, float2(dPdx.x, dPdx.y).data,  float2(dPdy.x, dPdy.y).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -298,7 +402,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_grad_1Da(i, s, float2(x, layer).data, dPdx, dPdy);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -306,7 +410,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_grad_2Da(i, s, float4(x, y, layer, 0.0f).data, float2(dPdx.x, dPdx.y).data, float2(dPdy.x, dPdy.y).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <typename T, hipTextureReadMode readMode>
@@ -314,7 +418,7 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     auto tmp = __ockl_image_sample_grad_3D(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    return mapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
 template <
@@ -335,7 +439,7 @@ template <typename T>
 struct __hip_tex2dgather_ret<
     T,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<T>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value, bool>::type>
 {
     using type = HIP_vector_type<T, 4>;
 };
@@ -346,7 +450,7 @@ template<
 struct __hip_tex2dgather_ret<
     HIP_vector_type<T, rank>,
     hipReadModeElementType,
-    typename std::enable_if<__hip_is_tex_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
+    typename std::enable_if<__hip_is_tex_surf_channel_type<HIP_vector_type<T, rank>>::value, bool>::type>
 {
     using type = HIP_vector_type<T, 4>;
 };
@@ -367,19 +471,19 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex2dgather_ret_t<T, rea
     switch (comp) {
     case 1: {
         auto tmp = __ockl_image_gather4g_2D(i, s, float2(x, y).data);
-        return mapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     case 2: {
         auto tmp = __ockl_image_gather4b_2D(i, s, float2(x, y).data);
-        return mapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     case 3: {
         auto tmp = __ockl_image_gather4a_2D(i, s, float2(x, y).data);
-        return mapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     default: {
         auto tmp = __ockl_image_gather4r_2D(i, s, float2(x, y).data);
-        return mapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     }
     return {};

@@ -23,8 +23,11 @@ THE SOFTWARE.
 #pragma once
 
 #ifdef __cplusplus
+
+#if defined(__clang__)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wold-style-cast"
+#endif
 
 /**
  * @brief Unsafe floating point rmw atomic add.
@@ -53,10 +56,7 @@ THE SOFTWARE.
  * @return Original value contained in \p addr.
  */
 __device__ inline float unsafeAtomicAdd(float* addr, float value) {
-#if defined(__gfx940__) &&                                                     \
-    __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f32)
-  return __builtin_amdgcn_flat_atomic_fadd_f32(addr, value);
-#elif defined(__gfx90a__) &&                                                   \
+#if defined(__gfx90a__) &&                                                   \
     __has_builtin(__builtin_amdgcn_is_shared) &&                               \
     __has_builtin(__builtin_amdgcn_is_private) &&                              \
     __has_builtin(__builtin_amdgcn_ds_atomic_fadd_f32) &&                      \
@@ -178,8 +178,7 @@ __device__ inline float unsafeAtomicMin(float* addr, float val) {
  * @return Original value contained in \p addr.
  */
 __device__ inline double unsafeAtomicAdd(double* addr, double value) {
-#if (defined(__gfx90a__) || defined(__gfx940__)) &&                              \
-    __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f64)
+#if defined(__gfx90a__) && __has_builtin(__builtin_amdgcn_flat_atomic_fadd_f64)
   return __builtin_amdgcn_flat_atomic_fadd_f64(addr, value);
 #elif defined (__hip_atomic_fetch_add)
   return __hip_atomic_fetch_add(addr, value, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -215,7 +214,7 @@ __device__ inline double unsafeAtomicAdd(double* addr, double value) {
  * @return Original value contained at \p addr.
  */
 __device__ inline double unsafeAtomicMax(double* addr, double val) {
-#if (defined(__gfx90a__) || defined(__gfx940__)) && \
+#if (defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)) &&  \
     __has_builtin(__builtin_amdgcn_flat_atomic_fmax_f64)
   return __builtin_amdgcn_flat_atomic_fmax_f64(addr, val);
 #else
@@ -268,7 +267,7 @@ __device__ inline double unsafeAtomicMax(double* addr, double val) {
  * @return Original value contained at \p addr.
  */
 __device__ inline double unsafeAtomicMin(double* addr, double val) {
-#if (defined(__gfx90a__) || defined(__gfx940__)) && \
+#if (defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)) &&  \
     __has_builtin(__builtin_amdgcn_flat_atomic_fmin_f64)
   return __builtin_amdgcn_flat_atomic_fmin_f64(addr, val);
 #else
@@ -309,12 +308,15 @@ __device__ inline double unsafeAtomicMin(double* addr, double val) {
  * @return Original value contained in \p addr.
  */
 __device__ inline float safeAtomicAdd(float* addr, float value) {
-#if defined(__gfx908__) ||                                                    \
-    (defined(__gfx90a__) && !__has_builtin(__hip_atomic_fetch_add))
+#if defined(__gfx908__) || defined(__gfx941__)                                \
+    || ((defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx942__))   \
+         && !__has_builtin(__hip_atomic_fetch_add))
   // On gfx908, we can generate unsafe FP32 atomic add that does not follow all
   // IEEE rules when -munsafe-fp-atomics is passed. Do a CAS loop emulation instead.
-  // On gfx90a, if we do not have the __hip_atomic_fetch_add builtin, we need to
-  // force a CAS loop here.
+  // On gfx941, we can generate unsafe FP32 atomic add that may not always happen atomically,
+  // so we need to force a CAS loop emulation to ensure safety.
+  // On gfx90a, gfx940 and gfx942 if we do not have the __hip_atomic_fetch_add builtin, we
+  // need to force a CAS loop here.
   float old_val;
 #if __has_builtin(__hip_atomic_load)
   old_val = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
@@ -434,8 +436,7 @@ __device__ inline float safeAtomicMin(float* addr, float val) {
  * @return Original value contained in \p addr.
  */
 __device__ inline double safeAtomicAdd(double* addr, double value) {
-#if (defined(__gfx90a__) || defined(__gfx940__)) &&                                                    \
-    __has_builtin(__hip_atomic_fetch_add)
+#if defined(__gfx90a__) &&  __has_builtin(__hip_atomic_fetch_add)
   // On gfx90a, with the __hip_atomic_fetch_add builtin, relaxed system-scope
   // atomics will produce safe CAS loops, but are otherwise not different than
   // agent-scope atomics. This logic is only applicable for gfx90a, and should
@@ -566,5 +567,8 @@ __device__ inline double safeAtomicMin(double* addr, double val) {
   #endif
 }
 
+#if defined(__clang__)
 #pragma clang diagnostic pop
+#endif
+
 #endif

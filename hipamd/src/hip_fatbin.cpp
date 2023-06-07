@@ -36,10 +36,10 @@ FatBinaryInfo::~FatBinaryInfo() {
 
   if (fdesc_ > 0) {
     if (fsize_ && image_mapped_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
-      guarantee(false, "Cannot unmap file");
+      guarantee(false, "Cannot unmap file for fdesc: %d fsize: %d \n", fdesc_, fsize_);
     }
     if (!amd::Os::CloseFileHandle(fdesc_)) {
-      guarantee(false, "Cannot close file");
+      guarantee(false, "Cannot close file for fdesc: %d \n", fdesc_);
     }
   }
 
@@ -91,7 +91,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   }
 
   // At this line, image should be a valid ptr.
-  guarantee(image_ != nullptr, "Image cannot be nullptr, file did not map for some reason");
+  guarantee(image_ != nullptr, "Image cannot be nullptr, file:%s did not map for some reason",
+                                fname_.c_str());
 
   do {
 
@@ -121,7 +122,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 #if !defined(_WIN32)
     // Using the file descriptor and file size, map the data object.
     if (fdesc_ > 0) {
-      guarantee(fsize_ > 0, "Cannot have a file size of 0");
+      guarantee(fsize_ > 0, "Cannot have a file size of 0, fdesc: %d fname: %s \n",
+                             fdesc_, fname_.c_str());
       if ((comgr_status = amd_comgr_set_data_from_file_slice(data_object, fdesc_, foffset_,
                           fsize_)) != AMD_COMGR_STATUS_SUCCESS) {
         LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
@@ -165,13 +167,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     if ((comgr_status = amd_comgr_lookup_code_object(data_object, query_list_array,
                         unique_isa_names.size())) != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
-      hip_status = hipErrorInvalidValue; 
+      hip_status = hipErrorInvalidValue;
       break;
     }
 
     for (size_t isa_idx = 0; isa_idx < unique_isa_names.size(); ++isa_idx) {
       auto unique_it = unique_isa_names.find(query_list_array[isa_idx].isa);
-      guarantee(unique_isa_names.cend() != unique_it, "Cannot find unique isa");
+      guarantee(unique_isa_names.cend() != unique_it, "Cannot find unique isa ");
       unique_it->second = std::pair<size_t, size_t>
                             (static_cast<size_t>(query_list_array[isa_idx].size),
                              static_cast<size_t>(query_list_array[isa_idx].offset));
@@ -262,7 +264,11 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
   }
 
   if (hip_error == hipErrorNoBinaryForGpu) {
-    LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for current devices! - %d",hip_error);
+    if (fname_.size() > 0) {
+      LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for file: %s", fname_.c_str());
+    } else {
+      LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for ptr: 0x%x", image_);
+    }
     return hip_error;
   }
 

@@ -175,6 +175,16 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       sramEccSupported = true;
       proc_name = "gfx940";
       break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX941:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx941";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX942:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx942";
+      break;
     case EF_AMDGPU_MACH_AMDGCN_GFX1010:
       xnackSupported = true;
       sramEccSupported = false;
@@ -625,10 +635,8 @@ hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
   }
   // Allocate managed memory for these symbols
   status = ihipMallocManaged(&pointer, dvar->size());
-  if (status != hipSuccess) {
-    ClPrint(amd::LOG_ERROR, amd::LOG_API, "Status %d, failed to allocate managed memory", status);
-    guarantee(false, "Error during allocation of managed memory!");
-  }
+  guarantee(status == hipSuccess, "Status %d, failed to allocate managed memory", status);
+
   // update as manager variable and set managed memory pointer and size
   auto it = vars_.find(managedVar);
   it->second->setManagedVarInfo(pointer, dvar->size());

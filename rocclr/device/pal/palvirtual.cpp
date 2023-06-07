@@ -865,6 +865,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   return true;
 }
 
+// ================================================================================================
 VirtualGPU::VirtualGPU(Device& device)
     : device::VirtualDevice(device),
       engineID_(MainEngine),
@@ -897,6 +898,7 @@ VirtualGPU::VirtualGPU(Device& device)
   hostcallBuffer_ = nullptr;
 }
 
+// ================================================================================================
 bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
                         amd::CommandQueue::Priority priority) {
   device::BlitManager::Setup blitSetup;
@@ -1046,10 +1048,11 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_,
                                               &dbg_vmid);
   }
-
+  
   return true;
 }
 
+// ================================================================================================
 bool VirtualGPU::allocHsaQueueMem() {
   // Allocate a dummy HSA queue
   hsaQueueMem_ = new Memory(dev(), sizeof(amd_queue_t));
@@ -2190,8 +2193,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   profilingEnd(cmd);
 }
 
-
-
+// ================================================================================================
 void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
@@ -2203,7 +2205,8 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     return;
   }
   pal::Memory* vaRange = dev().getGpuMemory(va);
-  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr)? nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
+  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr) ?
+      nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
   Pal::VirtualMemoryRemapRange range{
     vaRange->iMem(),
     0,
@@ -2212,7 +2215,20 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     vcmd.size(),
     Pal::VirtualGpuMemAccessMode::NoAccess
   };
-  Pal::Result result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+
+  // Wait for previous operations before unmap
+  if (vcmd.memory() == nullptr) {
+    // @note: Need to verify if compute requires a wait or IB flush is enough
+    WaitForIdleCompute();
+    WaitForIdleSdma();
+  }
+
+  eventBegin(MainEngine);
+  auto result = queue(MainEngine).iQueue_->RemapVirtualMemoryPages(1, &range, false, nullptr);
+  // Capture GPU event for the paging operation
+  GpuEvent event;
+  eventEnd(MainEngine, event);
+  setGpuEvent(event);
   if (result == Pal::Result::Success) {
     if (vcmd.memory() != nullptr) {
       // assert the va wasn't mapped already
@@ -2662,6 +2678,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       dispatchParam.scratchSize = scratch->size_;
       dispatchParam.scratchOffset = scratch->offset_;
       dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
+      if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+        dispatchParam.workitemPrivateSegmentSize =
+            std::max<uint64_t>(dev().StackSize(), dispatchParam.workitemPrivateSegmentSize);
+        if (dispatchParam.workitemPrivateSegmentSize > 16 * Ki) {
+          dispatchParam.workitemPrivateSegmentSize = 16 * Ki;
+        }
+      }
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();

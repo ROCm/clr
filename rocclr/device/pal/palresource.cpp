@@ -220,7 +220,32 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
   }
   return memRef;
 }
+GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
+                                               const Pal::PeerImageOpenInfo& openInfo,
+                                               Pal::IImage** image) {
+  Pal::Result result;
+  size_t imageSize = 0;
+  size_t gpuMemSize = 0;
+  dev.iDev()->GetPeerImageSizes(openInfo, &imageSize, &gpuMemSize, &result);
+  if (Pal::Result::Success != result) {
+    return nullptr;
+  }
 
+  char* imgMem = new char[imageSize];
+  GpuMemoryReference* memRef = new (gpuMemSize) GpuMemoryReference(dev);
+  if (memRef != nullptr) {
+    result = dev.iDev()->OpenPeerImage(openInfo, imgMem, &memRef[1], image,
+                                       &memRef->gpuMem_);
+    if (result == Pal::Result::Success) {
+      result = memRef->MakeResident();
+    }
+    if (result != Pal::Result::Success) {
+      memRef->release();
+      return nullptr;
+    }
+  }
+  return memRef;
+}
 // ================================================================================================
 GpuMemoryReference::GpuMemoryReference(const Device& dev)
     : gpuMem_(nullptr), cpuAddress_(nullptr), device_(dev), gpu_(nullptr) {}
@@ -1003,11 +1028,16 @@ bool Resource::CreateInterop(CreateParams* params) {
 }
 
 // ================================================================================================
-bool Resource::CreateP2PAccess(CreateParams* params) {
-  Pal::PeerGpuMemoryOpenInfo openInfo = {};
-  openInfo.pOriginalMem = params->svmBase_->iMem();
-
-  memRef_ = GpuMemoryReference::Create(dev(), openInfo);
+ bool Resource::CreateP2PAccess(CreateParams* params) {
+  if (params->owner_->asImage()) {
+    Pal::PeerImageOpenInfo openInfo = {};
+    openInfo.pOriginalImage = params->svmBase_->image();
+    memRef_ = GpuMemoryReference::Create(dev(), openInfo, &image_);
+  } else {
+    Pal::PeerGpuMemoryOpenInfo openInfo = {};
+    openInfo.pOriginalMem = params->svmBase_->iMem();
+    memRef_ = GpuMemoryReference::Create(dev(), openInfo);
+  }
   if (nullptr == memRef_) {
     return false;
   }
@@ -1447,7 +1477,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
   gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, 0};
+    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, arraySliceIdx};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = dstOrigin[0];
@@ -1472,7 +1503,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    Pal::SubresId ImgSubresId = {0, desc().baseLevel_, 0};
+    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
     copyRegion.imageOffset.y = srcOrigin[1];

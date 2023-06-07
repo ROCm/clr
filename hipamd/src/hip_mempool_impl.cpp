@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2022-2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +19,8 @@
  THE SOFTWARE. */
 
 #include "hip_mempool_impl.hpp"
+#include "hip_vm.hpp"
+#include "platform/command.hpp"
 
 namespace hip {
 
@@ -40,10 +42,16 @@ void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
 amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr) {
   amd::Memory* memory = nullptr;
   for (auto it = allocations_.begin(); it != allocations_.end();) {
-    bool check_address = (dptr == nullptr) || (it->first->getSvmPtr() == dptr);
-    // Check if size can match and it's safe to use this resource
-    if ((it->first->getSize() >= size) && check_address &&
-       (it->second.IsSafeFind(stream, opportunistic))) {
+    bool check_address = (dptr == nullptr);
+    if (it->first->getSvmPtr() == dptr) {
+      // If the search is done for the specified address then runtime must wait
+      it->second.Wait();
+      check_address = true;
+    }
+    // Check if size can match and it's safe to use this resource.
+    // Runtime can accept an allocation with 12.5% on the size threshold
+    if ((it->first->getSize() >= size) && (it->first->getSize() <= (size / 8) * 9) &&
+        check_address && (it->second.IsSafeFind(stream, opportunistic))) {
       memory = it->first;
       total_size_ -= memory->getSize();
       // Remove found allocation from the map
@@ -197,6 +205,8 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
   // Increment the reference counter on the pool
   retain();
 
+  ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool AllocMem: %p, %p", memory->getSvmPtr(), memory);
+
   return dev_ptr;
 }
 
@@ -209,6 +219,24 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, hip::Stream* stream) {
   if (!busy_heap_.RemoveMemory(memory, &ts)) {
     // This pool doesn't contain memory
     return false;
+  }
+  ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool FreeMem: %p, %p", memory->getSvmPtr(), memory);
+
+  auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(memory->getUserData().data);
+  if (ga != nullptr) {
+    if (stream == nullptr) {
+      stream = g_devices[memory->getUserData().deviceId]->NullStream();
+    }
+    // Unmap virtual address from memory
+    auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
+                                          memory->getSvmPtr(), ga->size_, nullptr);
+    cmd->enqueue();
+    cmd->release();
+    memory->setSvmPtr(ga->ptr_);
+    // Free virtual address and destroy generic allocation object
+    ga->va_->release();
+    delete ga;
+    memory->getUserData().data = nullptr;
   }
 
   if (stream != nullptr) {

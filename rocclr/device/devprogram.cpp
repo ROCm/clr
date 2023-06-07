@@ -2599,13 +2599,13 @@ bool Program::createKernelMetadataMap(void* binary, size_t binSize) {
 
     const amd::Isa *binaryIsa = amd::Isa::findIsa(binaryIsaName.data());
     if (!binaryIsa) {
-      buildLog_ += "Error: Could not find the program ISA " + std::string(binaryIsaName.data());
+      buildLog_ += "Error: Could not find the program ISA " + std::string(binaryIsaName.data()) + "\n";
       return false;
     }
 
     if (!amd::Isa::isCompatible(*binaryIsa, device().isa())) {
       buildLog_ += "Error: The program ISA " + std::string(binaryIsaName.data());
-      buildLog_ += " is not compatible with the device ISA " + device().isa().isaName();
+      buildLog_ += " is not compatible with the device ISA " + device().isa().isaName() + "\n";
       return false;
     }
   }
@@ -2981,7 +2981,6 @@ bool Program::runInitFiniKernel(kernel_kind_t kind) const {
   amd::HostQueue* queue = nullptr;
 
   for (const auto& i : kernels_) {
-    ClPrint(amd::LOG_INFO, amd::LOG_INIT, "For Init/Fini: Kernel Name: %s", i.first.c_str());
     const auto &kernel = i.second;
     if ((kernel->isInitKernel() && kind == kernel_kind_t::InitKernel) ||
         (kernel->isFiniKernel() && kind == kernel_kind_t::FiniKernel)) {

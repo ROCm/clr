@@ -598,17 +598,21 @@ bool RTCLinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITIn
 }
 
 bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
-  std::vector<char> link_file_info;
-
   std::ifstream file_stream{file_path};
   if (!file_stream.good()) {
     return false;
   }
-  std::copy(std::istream_iterator<char>(file_stream), std::istream_iterator<char>(),
-            std::back_inserter(link_file_info));
-  file_stream.close();
+
+  file_stream.seekg(0, std::ios::end);
+  std::streampos file_size = file_stream.tellg();
+  file_stream.seekg(0, std::ios::beg);
 
   // Read the file contents
+  std::vector<char> link_file_info(file_size);
+  file_stream.read(link_file_info.data(), file_size);
+
+  file_stream.close();
+
   std::string link_file_name("Linker Program");
 
   return AddLinkerDataImpl(link_file_info, input_type, link_file_name);

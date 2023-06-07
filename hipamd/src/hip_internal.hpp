@@ -108,12 +108,16 @@ extern amd::Monitor g_hipInitlock;
           __func__, ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
 #define HIP_INIT_API_INTERNAL(noReturn, cid, ...)            \
-  HIP_API_PRINT(__VA_ARGS__)                                 \
   amd::Thread* thread = amd::Thread::current();              \
-  if (!VDI_CHECK_THREAD(thread) && !noReturn) {              \
-    HIP_RETURN(hipErrorOutOfMemory);                         \
+  if (!VDI_CHECK_THREAD(thread)) {                           \
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "An internal error has occurred."   \
+      " This may be due to insufficient memory.");                              \
+    if (!noReturn) {                                         \
+      return hipErrorOutOfMemory;                            \
+    }                                                        \
   }                                                          \
   HIP_INIT(noReturn)                                         \
+  HIP_API_PRINT(__VA_ARGS__)                                 \
   HIP_CB_SPAWNER_OBJECT(cid);
 
 // This macro should be called at the beginning of every HIP API.
@@ -372,7 +376,12 @@ namespace hip {
         captureEvents_.erase(it);
       }
     }
-    void SetParallelCaptureStream(hipStream_t s) { parallelCaptureStreams_.push_back(s); }
+    void SetParallelCaptureStream(hipStream_t s) {
+      auto it = std::find(parallelCaptureStreams_.begin(), parallelCaptureStreams_.end(), s);
+      if (it == parallelCaptureStreams_.end()) {
+        parallelCaptureStreams_.push_back(s);
+      }
+    }
     void EraseParallelCaptureStream(hipStream_t s) {
       auto it = std::find(parallelCaptureStreams_.begin(), parallelCaptureStreams_.end(), s);
       if (it != parallelCaptureStreams_.end()) {

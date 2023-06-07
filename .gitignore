@@ -37,6 +37,7 @@ release/
 debug/
 packages/
 install/
+.vs/
 
 # Editor temp files
 *.swp

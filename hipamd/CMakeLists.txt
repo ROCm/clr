@@ -317,8 +317,15 @@ file(WRITE "${PROJECT_BINARY_DIR}/.hipVersion" ${_versionInfo})
 # Build doxygen documentation
 find_program(DOXYGEN_EXE doxygen)
 if(DOXYGEN_EXE)
-    add_custom_target(doc COMMAND HIP_PATH=${CMAKE_CURRENT_SOURCE_DIR} ${DOXYGEN_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/docs/doxygen-input/doxy.cfg
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs)
+    if(EXISTS "${HIP_COMMON_DIR}/docs/doxygen-input/doxy.cfg")
+        add_custom_target(doc COMMAND HIP_PATH=${CMAKE_CURRENT_SOURCE_DIR} ${DOXYGEN_EXE} ${HIP_COMMON_DIR}/docs/doxygen-input/doxy.cfg
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs)
+    elseif(EXISTS "${HIP_COMMON_DIR}/docs/.doxygen/Doxyfile")
+        add_custom_target(doc COMMAND HIP_PATH=${CMAKE_CURRENT_SOURCE_DIR} ${DOXYGEN_EXE} ${HIP_COMMON_DIR}/docs/.doxygen/Doxyfile
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/docs)
+    else()
+        message(STATUS "Unable to find doxygen config file. Will not generate doxygen output")
+    endif()
 endif()
 
 #############################

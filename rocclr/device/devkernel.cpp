@@ -1343,7 +1343,8 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
 
     // Allocate the hidden arguments, but abstraction layer will skip them
     if (desc.info_.hidden_) {
-      if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::HiddenCompletionAction) {
+      if (desc.info_.oclObject_ == amd::KernelParameterDescriptor::HiddenCompletionAction &&
+          !amd::IS_HIP) {
         setDynamicParallelFlag(true);
       }
       if (codeObjectVer() == 2) {

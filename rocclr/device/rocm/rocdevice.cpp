@@ -240,12 +240,12 @@ Device::~Device() {
       hsa_queue_t* queue = qIter->first;
       auto& qInfo = qIter->second;
       if (qInfo.hostcallBuffer_) {
-        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hostcall buffer %p for hardware queue %p",
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hostcall buffer %p for hardware queue %p",
                 qInfo.hostcallBuffer_, qIter->first);
         disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "deleting hardware queue %p with refCount 0", queue);
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0", queue);
       qIter = it.erase(qIter);
       hsa_queue_destroy(queue);
     }
@@ -1183,6 +1183,17 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
 
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(bkendDevice_,
+                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_NUM_SDMA_ENG),
+                         &info_.numSDMAengines_)) {
+    return false;
+  }
+
+  for (uint32_t i = 0; i < info_.numSDMAengines_; i++) {
+    engineAssignMap_[1 << i] = 0;
+  }
+
   setupCpuAgent();
 
   checkAtomicSupport();
@@ -1200,7 +1211,8 @@ bool Device::populateOCLDeviceConstants() {
       hsa_status_t err;
       // Can another GPU (agent) have access to the current GPU memory pool (gpuvm_segment_)?
       hsa_amd_memory_pool_access_t access;
-      err = hsa_amd_agent_memory_pool_get_info(agent, gpuvm_segment_, HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS, &access);
+      err = hsa_amd_agent_memory_pool_get_info(agent, gpuvm_segment_,
+                                               HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS, &access);
       if (err != HSA_STATUS_SUCCESS) {
         continue;
       }
@@ -1214,7 +1226,7 @@ bool Device::populateOCLDeviceConstants() {
     }
   }
 
-  /* Keep track of all P2P Agents in a Array including current device handle for IPC */
+  // Keep track of all P2P Agents in a Array including current device handle for IPC
   p2p_agents_list_ = new hsa_agent_t[1 + p2p_agents_.size()];
   p2p_agents_list_[0] = getBackendDevice();
   for (size_t agent_idx = 0; agent_idx < p2p_agents_.size(); ++agent_idx) {
@@ -1228,6 +1240,20 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
   assert(group_segment_size > 0);
+
+  // Find SDMA read mask
+  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
+                                                              &maxSdmaReadMask_)) {
+    return false;
+  }
+  assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
+
+  // Find SDMA write mask
+  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
+                                                              &maxSdmaWriteMask_)) {
+    return false;
+  }
+  assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
 
   info_.localMemSizePerCU_ = group_segment_size;
   info_.localMemSize_ = group_segment_size;
@@ -1631,8 +1657,12 @@ bool Device::populateOCLDeviceConstants() {
     LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
   }
 
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, xnack: %d, direct host access: %d\n",
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Gfx Major/Minor/Stepping: %d/%d/%d", isa().versionMajor(),
+  isa().versionMinor(), isa().versionStepping());
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, XNACK: %d, Direct host access: %d",
     info_.hmmSupported_, info_.hmmCpuMemoryAccessible_, info_.hmmDirectHostAccess_);
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Max SDMA Read Mask: 0x%x, Max SDMA Write Mask: 0x%x",
+          maxSdmaReadMask_, maxSdmaWriteMask_);
 
   info_.globalCUMask_ = {};
   info_.virtualMemoryManagement_ = false;
@@ -2185,7 +2215,7 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
 
   amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
   if (amd_mem_obj == nullptr) {
-    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x \n", dev_ptr);
+    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
     return false;
   }
 
@@ -2788,7 +2818,7 @@ hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
     for (auto it = queuePool_[qIndex].begin(); it != queuePool_[qIndex].end(); it++) {
       if (it->second.refCount == 0) {
         it->second.refCount++;
-        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)\n", it->first,
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)", it->first,
                 it->second.refCount);
         return it->first;
       }
@@ -2930,7 +2960,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     for (int i = mask.size() - 1; i >= 0; i--) {
       ss << mask[i];
     }
-    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "setting CU mask 0x%s for hardware queue %p",
+    ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue);
 
     hsa_status_t status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
@@ -2960,7 +2990,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   assert(result.second && "QueueInfo already exists");
   auto &qInfo = result.first->second;
   qInfo.refCount = 1;
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)\n", result.first->first,
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)", result.first->first,
           result.first->second.refCount);
   return queue;
 }
@@ -2972,7 +3002,7 @@ void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMas
       auto &qInfo = qIter->second;
       assert(qInfo.refCount > 0);
       qInfo.refCount--;
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)\n", qIter->first,
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)", qIter->first,
               qIter->second.refCount);
     }
   }
@@ -3209,9 +3239,10 @@ device::Signal* Device::createSignal() const {
 amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size) {
   // Only create arena_mem_object if CPU memory is accessible from HMM
   // or if runtime received an interop from another ROCr's client
+  // Disable arena for XNACK
   hsa_amd_pointer_info_t ptr_info = {};
   ptr_info.size = sizeof(hsa_amd_pointer_info_t);
-  if (!info_.hmmCpuMemoryAccessible_ && !IsValidAllocation(ptr, size, &ptr_info)) {
+  if (!IsValidAllocation(ptr, size, &ptr_info)) {
     return nullptr;
   }
 
@@ -3290,6 +3321,40 @@ void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
     return result;
   };
   std::call_once(heap_initialized_, HeapAllocZeroOut);
+}
+
+// ================================================================================================
+uint32_t Device::fetchSDMAMask(const device::BlitManager* handle, bool readEngine) const {
+  uint32_t engine = 0;
+  {
+    amd::ScopedLock lock(vgpusAccess());
+    for (auto it = engineAssignMap_.rbegin(); it != engineAssignMap_.rend(); ++it) {
+      // If blitManager handle is in the map return the engine ID else
+      // add to the map
+      if (it->second == handle) {
+        engine = it->first;
+        break;
+      } else if (it->second == 0) {
+        it->second = handle;
+        engine = it->first;
+        break;
+      }
+    }
+  }
+
+  return (readEngine ? maxSdmaReadMask_ : maxSdmaWriteMask_) & engine;
+}
+
+// ================================================================================================
+void Device::resetSDMAMask(const device::BlitManager* handle) const {
+  amd::ScopedLock lock(vgpusAccess());
+
+  for (auto& it : engineAssignMap_) {
+    if (it.second == handle) {
+      it.second = 0;
+      break;
+    }
+  }
 }
 
 // ================================================================================================

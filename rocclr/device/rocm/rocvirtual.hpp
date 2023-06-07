@@ -111,6 +111,7 @@ class Timestamp : public amd::ReferenceCountedObject {
   hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
   amd::Monitor  lock_;            //!< Serialize timestamp update
   bool        accum_ena_ = false; //!< If TRUE then the accumulation of execution times has started
+  bool        hasHwProfiling_ = false; //!< If TRUE then HwProfiling is enabled for the command
 
   Timestamp(const Timestamp&) = delete;
   Timestamp& operator=(const Timestamp&) = delete;
@@ -133,11 +134,14 @@ class Timestamp : public amd::ReferenceCountedObject {
     *end = end_;
   }
 
-  void AddProfilingSignal(ProfilingSignal* signal) { signals_.push_back(signal); }
+  void AddProfilingSignal(ProfilingSignal* signal) {
+    signals_.push_back(signal);
+    hasHwProfiling_ = true;
+  }
 
   const std::vector<ProfilingSignal*>& Signals() const { return signals_; }
 
-  const bool HwProfiling() const { return !signals_.empty(); }
+  const bool HwProfiling() const { return hasHwProfiling_; }
 
   //! Finds execution ticks on GPU
   void checkGpuTime();
@@ -502,6 +506,7 @@ class VirtualGPU : public device::VirtualDevice {
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
   hsa_barrier_and_packet_t barrier_packet_;
+  hsa_amd_barrier_value_packet_t barrier_value_packet_;
 
   uint32_t dispatch_id_;  //!< This variable must be updated atomically.
   Device& roc_device_;    //!< roc device object

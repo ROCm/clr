@@ -229,7 +229,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     return hipErrorInvalidValue;
   }
   // Make sure dispatch doesn't exceed max workgroup size limit
-  if (blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
+  if (blockDimX * blockDimY * blockDimZ > info.maxWorkGroupSize_) {
     return hipErrorInvalidValue;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
@@ -439,13 +439,15 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
 
   STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
                  blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra);
-
+  if (gridDimX > std::numeric_limits<int32_t>::max() ||
+      gridDimY > std::numeric_limits<uint16_t>::max() ||
+      gridDimZ > std::numeric_limits<uint16_t>::max()) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max()) {
     HIP_RETURN(hipErrorInvalidConfiguration);
   }
   HIP_RETURN(ihipModuleLaunchKernel(

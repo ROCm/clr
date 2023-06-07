@@ -32,9 +32,7 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr),
-      lastCopyMask_(0),
-      lastUsedCopyEngine_(HwQueueEngine::Unknown) {}
+      context_(nullptr) {}
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -118,8 +116,9 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
         if (pinned != nullptr) {
           // Get device memory for this virtual device
           Memory* dstMemory = dev().getRocMemory(pinned);
-
-          if (!hsaCopy(gpuMem(srcMemory), *dstMemory, srcPin, dst, copySizePin)) {
+          const KernelBlitManager *kb = dynamic_cast<const KernelBlitManager*>(this);
+          if (!kb->copyBuffer(gpuMem(srcMemory), *dstMemory, srcPin, dst,
+                              copySizePin)) {
             LogWarning("DmaBlitManager::readBuffer failed a pinned copy!");
             gpu().addPinnedMem(pinned);
             break;
@@ -287,8 +286,9 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
         if (pinned != nullptr) {
           // Get device memory for this virtual device
           Memory* srcMemory = dev().getRocMemory(pinned);
-
-          if (!hsaCopy(*srcMemory, gpuMem(dstMemory), src, dstPin, copySizePin)) {
+          const KernelBlitManager *kb = dynamic_cast<const KernelBlitManager*>(this);
+          if (!kb->copyBuffer(*srcMemory, gpuMem(dstMemory), src, dstPin,
+                              copySizePin)) {
             LogWarning("DmaBlitManager::writeBuffer failed a pinned copy!");
             gpu().addPinnedMem(pinned);
             break;
@@ -677,63 +677,69 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     srcAgent = dstAgent = dev().getBackendDevice();
   }
 
+  uint32_t copyMask = 0;
+  uint32_t freeEngineMask = 0;
+
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
+    copyMask = dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
+    copyMask = dev().fetchSDMAMask(this, true);
   }
 
-  auto wait_events = gpu().Barriers().WaitingSignal(engine);
-  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
-  uint32_t freeEngineMask = 0;
-  uint32_t copyMask = lastCopyMask_;
+  if (engine != HwQueueEngine::Unknown) {
+    if (copyMask == 0) {
+      // Check SDMA engine status
+      status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
+              status, freeEngineMask);
+      // Return a mask with the rightmost bit set
+      copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+    }
 
-  if ((engine != lastUsedCopyEngine_)) {
-    // Check SDMA engine status
-    status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, freemask %x",
-            status, freeEngineMask);
-    // Return a mask with the rightmost bit set
-    copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
-  }
+    if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
+      auto wait_events = gpu().Barriers().WaitingSignal(engine);
+      hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+      // Copy on the first available free engine if ROCr returns a valid mask
+      hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
-  if (copyMask != 0 && engine != HwQueueEngine::Unknown) {
-    // Copy on the first available free engine if ROCr returns a valid mask
-    hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+              "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
+              "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
+              dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+              active.handle);
 
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
-            "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
-            dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
-            active.handle);
-
-    status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
-                                                size[0], wait_events.size(),
-                                                wait_events.data(), active, copyEngine, false);
+      status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
+                                                  size[0], wait_events.size(),
+                                                  wait_events.data(), active, copyEngine, false);
+      if (status != HSA_STATUS_SUCCESS) {
+        gpu().Barriers().ResetCurrentSignal();
+      }
+    }
   } else {
-    // Force copy with BLIT in ROCr. Forcing agents to the GPU device causes ROCr to take
-    // blit path internally
-    srcAgent = dstAgent = dev().getBackendDevice();
+    auto wait_events = gpu().Barriers().WaitingSignal(engine);
+    hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-            "HSA Async Blit Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
-            "completion_signal=0x%zx",
-            dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
-            active.handle);
+        "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
+        "completion_signal=0x%zx",
+        dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+        active.handle);
 
     status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
         size[0], wait_events.size(), wait_events.data(), active);
+    if (status != HSA_STATUS_SUCCESS) {
+      gpu().Barriers().ResetCurrentSignal();
+    }
   }
 
   if (status == HSA_STATUS_SUCCESS) {
-    lastUsedCopyEngine_ = engine;
-    lastCopyMask_ = copyMask;
     gpu().addSystemScope();
   } else {
-    gpu().Barriers().ResetCurrentSignal();
-    LogPrintfError("HSA copy from host to device failed with code %d", status);
+    LogPrintfError("HSA copy failed with code %d, falling to Blit copy", status);
   }
 
   return (status == HSA_STATUS_SUCCESS);
@@ -855,6 +861,9 @@ KernelBlitManager::~KernelBlitManager() {
       kernels_[i]->release();
     }
   }
+
+  dev().resetSDMAMask(this);
+
   if (nullptr != program_) {
     program_->release();
   }
@@ -1379,57 +1388,93 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   guarantee((dev().info().imageSupport_ != false), "Image not supported on this device");
 
   amd::ScopedLock k(lockXferOps_);
-  bool rejected = false;
+  bool result = false;
   Memory* srcView = &gpuMem(srcMemory);
   Memory* dstView = &gpuMem(dstMemory);
-  bool releaseView = false;
-  bool result = false;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
-  amd::Image::Format newFormat(srcImage->getImageFormat());
-
-  // Find unsupported formats
+  amd::Image::Format srcFormat(srcImage->getImageFormat());
+  amd::Image::Format dstFormat(dstImage->getImageFormat());
+  bool srcRejected = false, dstRejected = false;
+  bool srcReleaseView = false, dstReleaseView = false;
+  // Find unsupported source formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
-    if (RejectedData[i].clOldType_ == newFormat.image_channel_data_type) {
-      newFormat.image_channel_data_type = RejectedData[i].clNewType_;
-      rejected = true;
+    if (RejectedData[i].clOldType_ == srcFormat.image_channel_data_type) {
+      srcFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      srcRejected = true;
       break;
     }
   }
 
-  // Search for the rejected channel's order only if the format was rejected
+  // Search for the rejected source channel's order only if the format was rejected
   // Note: Image blit is independent from the channel order
-  if (rejected) {
+  if (srcRejected) {
     for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
-      if (RejectedOrder[i].clOldType_ == newFormat.image_channel_order) {
-        newFormat.image_channel_order = RejectedOrder[i].clNewType_;
-        rejected = true;
+      if (RejectedOrder[i].clOldType_ == srcFormat.image_channel_order) {
+        srcFormat.image_channel_order = RejectedOrder[i].clNewType_;
+        srcRejected = true;
         break;
       }
     }
   }
 
-  // Attempt to create a view if the format was rejected
-  if (rejected) {
-    srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
-    if (srcView != nullptr) {
-      dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
-      if (dstView != nullptr) {
-        rejected = false;
-        releaseView = true;
-      } else {
-        delete srcView;
+  // Find unsupported destination formats
+  for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
+    if (RejectedData[i].clOldType_ == dstFormat.image_channel_data_type) {
+      dstFormat.image_channel_data_type = RejectedData[i].clNewType_;
+      dstRejected = true;
+      break;
+    }
+  }
+
+  // Search for the rejected destionation channel's order only if the format was rejected
+  // Note: Image blit is independent from the channel order
+  if (dstRejected) {
+    for (uint i = 0; i < RejectedFormatChannelTotal; ++i) {
+      if (RejectedOrder[i].clOldType_ == dstFormat.image_channel_order) {
+        dstFormat.image_channel_order = RejectedOrder[i].clNewType_;
+        break;
       }
     }
   }
 
-  // Fall into the host path for the entire 2D copy or
-  // if the image format was rejected
-  if (rejected) {
+  if (srcFormat.image_channel_order != dstFormat.image_channel_order ||
+      srcFormat.image_channel_data_type != dstFormat.image_channel_data_type) {
+    //Give hint if any related test fails
+    LogPrintfInfo("srcFormat(order=0x%xh, type=0x%xh) != dstFormat(order=0x%xh, type=0x%xh)",
+                  srcFormat.image_channel_order, srcFormat.image_channel_data_type,
+                  dstFormat.image_channel_order, dstFormat.image_channel_data_type);
+  }
+  // Attempt to create a view if the format was rejected
+  if (srcRejected) {
+    srcView = createView(gpuMem(srcMemory), srcFormat, CL_MEM_READ_ONLY);
+    if (srcView != nullptr) {
+      srcRejected = false;
+      srcReleaseView = true;
+    }
+  }
+
+  if (dstRejected) {
+    dstView = createView(gpuMem(dstMemory), dstFormat, CL_MEM_WRITE_ONLY);
+    if (dstView != nullptr) {
+      dstRejected = false;
+      dstReleaseView = true;
+    }
+  }
+
+  // Fall into the host path for the copy if the image format was rejected
+  if (srcRejected || dstRejected) {
     result = DmaBlitManager::copyImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire,
                                        copyMetadata);
+    if (srcReleaseView) {
+      gpu().releaseGpuMemoryFence();
+      srcView->owner()->release();
+    }
+    if (dstReleaseView) {
+      gpu().releaseGpuMemoryFence();
+      dstView->owner()->release();
+    }
     synchronize();
-    return result;
   }
 
   uint blitType = BlitCopyImage;
@@ -1498,13 +1543,17 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
+
+  if (srcReleaseView) {
     // todo SRD programming could be changed to avoid a stall
     gpu().releaseGpuMemoryFence();
     srcView->owner()->release();
+  }
+  if (dstReleaseView) {
+    // todo SRD programming could be changed to avoid a stall
+    gpu().releaseGpuMemoryFence();
     dstView->owner()->release();
   }
-
   synchronize();
 
   return result;
@@ -2264,9 +2313,26 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
 #endif
 
-  if (setup_.disableHwlCopyBuffer_ ||
-      (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
-       !(p2p || asan) && !ipcShared)) {
+  bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
+                           (!srcMemory.isHostMemDirectAccess() &&
+                            !dstMemory.isHostMemDirectAccess() &&
+                            !(p2p || asan) && !ipcShared);
+
+  if (!useShaderCopyPath) {
+    if (amd::IS_HIP) {
+      // Update the command type for ROC profiler
+      if (srcMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER);
+      }
+      if (dstMemory.isHostMemDirectAccess()) {
+        gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER);
+      }
+    }
+    result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire,
+                                        copyMetadata);
+  }
+
+  if (!result) {
     uint blitType = BlitCopyBuffer;
     size_t dim = 1;
     size_t globalWorkOffset[3] = {0, 0, 0};
@@ -2338,18 +2404,6 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     address parameters = captureArguments(kernels_[blitType]);
     result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
     releaseArguments(parameters);
-  } else {
-    if (amd::IS_HIP) {
-      // Update the command type for ROC profiler
-      if (srcMemory.isHostMemDirectAccess()) {
-        gpu().SetCopyCommandType(CL_COMMAND_WRITE_BUFFER);
-      }
-      if (dstMemory.isHostMemDirectAccess()) {
-        gpu().SetCopyCommandType(CL_COMMAND_READ_BUFFER);
-      }
-    }
-    result = DmaBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, sizeIn, entire,
-                                        copyMetadata);
   }
 
   synchronize();

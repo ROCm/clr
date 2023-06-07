@@ -1678,6 +1678,22 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
 
       // Create memory object
       result = gpuImage->create(Resource::Pinned, &params);
+    } else {
+      Resource::CreateParams params;
+      params.owner_ = &owner;
+      params.gpu_ = static_cast<VirtualGPU*>(owner.getVirtualDevice());
+      params.svmBase_ = static_cast<Memory*>(owner.svmBase());
+      Resource::MemoryType type = Resource::MemoryType::Empty;
+      if (owner.P2PAccess()) {
+        params.svmBase_ = static_cast<Memory*>(owner.BaseP2PMemory());
+        if (params.svmBase_ != nullptr) {
+          type = Resource::P2PAccess;
+        }
+      }
+      if (type == Resource::P2PAccess) {
+        // Create memory object
+        result = gpuImage->create(type, &params);
+      }
     }
 
     if (!result && !owner.isInterop()) {
@@ -2300,12 +2316,10 @@ void Device::svmFree(void* ptr) const {
   }
 }
 
-void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
-{
-  amd::Memory* mem = nullptr;
-
+// ================================================================================================
+void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
   // create a hidden buffer, which will allocated on the device later
-  mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, addr);
+  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, addr);
   if (mem == nullptr) {
     LogError("failed to new a va range mem object!");
     return nullptr;
@@ -2316,24 +2330,19 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
     mem->release();
     return nullptr;
   }
-  // if the device supports SVM FGS, return the committed CPU address directly.
-  pal::Memory* gpuMem = getGpuMemory(mem);
-  amd::MemObjMap::AddVirtualMemObj(mem->getSvmPtr(), mem);
 
-  void* svmPtr = mem->getSvmPtr();
-
-  return svmPtr;
+  return mem->getSvmPtr();
 }
 
-void Device::virtualFree(void* addr)
-{
-  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(addr);
-  if (nullptr != va && (va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+// ================================================================================================
+void Device::virtualFree(void* addr) {
+  auto va = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (nullptr != va) {
     va->release();
-    amd::MemObjMap::RemoveVirtualMemObj(addr);
   }
 }
 
+// ================================================================================================
 bool Device::AcquireExclusiveGpuAccess() {
   // Lock the virtual GPU list
   vgpusAccess().lock();
@@ -2545,11 +2554,18 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 }
 
 
-bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle) {
+bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
+                                amd::ExternalSemaphoreHandleType sem_handle_type) {
   Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};
   palOpenInfo.externalSemaphore = handle;
   palOpenInfo.flags.crossProcess = false;
   palOpenInfo.flags.isReference = true;
+  palOpenInfo.flags.timeline =
+  palOpenInfo.flags.timeline =
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreWin32 ||
+       sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreFd);
+  palOpenInfo.flags.sharedViaNtHandle =
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32);
   Pal::Result result;
 
   size_t semaphoreSize = iDev()->GetExternalSharedQueueSemaphoreSize(

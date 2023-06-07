@@ -25,7 +25,7 @@
 #include "platform/context.hpp"
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
-#include "amdocl/cl_vk_amd.hpp"
+#include "platform/external_memory.hpp"
 
 amd::Monitor hip::hipArraySetLock{"Guards global hipArray set"};
 std::unordered_set<hipArray*> hip::hipArraySet;
@@ -34,7 +34,7 @@ std::unordered_set<hipArray*> hip::hipArraySet;
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
   auto memObj = amd::MemObjMap::FindMemObj(ptr, &offset);
   if (memObj == nullptr) {
-    // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM and Xnack is disabled.
+    // If memObj not found, use arena_mem_obj. arena_mem_obj is null, if HMM is disabled.
     memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(
         ptr, offset, size);
   }
@@ -108,29 +108,26 @@ hipError_t hipImportExternalMemory(
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  size_t sizeBytes = memHandleDesc->size;
   amd::Context& amdContext = *hip::getCurrentDevice()->asContext();
-
-  amd::BufferVk* pBufferVk = nullptr;
 #ifdef _WIN32
-  pBufferVk = new (amdContext)
-                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.win32.handle,
-                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
+  auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
+      memHandleDesc->handle.win32.handle,
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
 #else
-  pBufferVk = new (amdContext)
-                   amd::BufferVk(amdContext, sizeBytes, memHandleDesc->handle.fd,
-                                 static_cast<amd::VkObject::HandleType>(memHandleDesc->type));
+  auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
+      memHandleDesc->handle.fd,
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
 #endif
 
-  if (!pBufferVk) {
+  if (!ext_buffer) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
 
-  if (!pBufferVk->create()) {
-    pBufferVk->release();
+  if (!ext_buffer->create()) {
+    ext_buffer->release();
     HIP_RETURN(hipErrorOutOfMemory);
   }
-  *extMem_out = pBufferVk;
+  *extMem_out = ext_buffer;
 
   HIP_RETURN(hipSuccess);
 }
@@ -145,7 +142,7 @@ hipError_t hipExternalMemoryGetMappedBuffer(
   if (devPtr == nullptr || extMem == nullptr || bufferDesc == nullptr || bufferDesc->flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  amd::BufferVk *buf = reinterpret_cast<amd::BufferVk*>(extMem);
+  auto buf = reinterpret_cast<amd::ExternalBuffer*>(extMem);
   const device::Memory* devMem = buf->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
 
   if (devMem == nullptr || ((bufferDesc->offset + bufferDesc->size) > devMem->size())) {
@@ -157,18 +154,19 @@ hipError_t hipExternalMemoryGetMappedBuffer(
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
   HIP_INIT_API(hipDestroyExternalMemory, extMem);
 
   if (extMem == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  reinterpret_cast<amd::BufferVk*>(extMem)->release();
+  reinterpret_cast<amd::ExternalBuffer*>(extMem)->release();
 
   HIP_RETURN(hipSuccess);
 }
 
-
+// ================================================================================================
 hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc)
 {
@@ -181,14 +179,16 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
       (semHandleDesc->type > hipExternalSemaphoreHandleTypeD3D12Fence)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
 #ifdef _WIN32
-  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.win32.handle)) {
+  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.win32.handle,
+                                 static_cast <amd::ExternalSemaphoreHandleType>
+                                 (semHandleDesc->type))) {
 #else
-  if (device->importExtSemaphore(
-          extSem_out, semHandleDesc->handle.fd)) {
+  if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.fd,
+                                 static_cast <amd::ExternalSemaphoreHandleType>
+                                 (semHandleDesc->type))) {
 #endif
     HIP_RETURN(hipSuccess);
   }
@@ -728,7 +728,8 @@ hipError_t hipMemGetAddressRange(hipDeviceptr_t* pbase, size_t* psize, hipDevice
 
   // Since we are using SVM buffer DevicePtr and HostPtr is the same
   void* ptr = dptr;
-  amd::Memory* svmMem = getMemoryObjectWithOffset(ptr);
+  size_t offset = 0;
+  amd::Memory* svmMem = getMemoryObject(ptr, offset);
   if (svmMem == nullptr) {
     HIP_RETURN(hipErrorNotFound);
   }
@@ -2693,7 +2694,62 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   if (p->srcPtr.pitch < p->srcPtr.xsize || p->dstPtr.pitch < p->dstPtr.xsize) {
     return hipErrorInvalidPitchValue;
   }
+  // dst/src pitch must be less than max pitch
+  auto* deviceHandle = g_devices[hip::getCurrentDevice()->deviceId()]->devices()[0];
+  const auto& info = deviceHandle->info();
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  auto maxPitch = std::min(info.maxMemAllocSize_, int32_max);
 
+  // negative pitch cases
+  if (p->dstPtr.pitch >= maxPitch || p->srcPtr.pitch >= maxPitch) {
+    return hipErrorInvalidValue;
+  }
+
+  if (p->dstArray == nullptr && p->srcArray == nullptr) {
+    if ((p->extent.width + p->dstPos.x > p->dstPtr.pitch) ||
+        (p->extent.width + p->srcPos.x > p->srcPtr.pitch)) {
+      return hipErrorInvalidValue;
+    }
+    auto totalExtentBytes = p->extent.width * p->extent.height * p->extent.depth;
+    // get memory obj of the PitchPtr
+    size_t offset = 0;
+    amd::Memory* srcPtrMemObj = getMemoryObject(p->srcPtr.ptr, offset);
+    amd::Memory* dstPtrMemObj = getMemoryObject(p->dstPtr.ptr, offset);
+
+    if (dstPtrMemObj != nullptr && (p->dstPtr.xsize != 0 && p->dstPtr.ysize != 0)) {
+      // Use the memoryObj to get 3d data
+      const auto& dstUsrData = dstPtrMemObj->getUserData();
+      //  dst ptr out of bound cases for linear memory
+      if (dstUsrData.pitch_ == 0 || dstUsrData.height_ == 0 || dstUsrData.depth_ == 0) {
+        auto dstDepth = dstPtrMemObj->getSize() / (p->dstPtr.xsize * p->dstPtr.ysize);
+        if ((p->dstPtr.xsize * (p->dstPtr.ysize - p->dstPos.y) *
+            (dstDepth - p->dstPos.z)) < totalExtentBytes) {
+          return hipErrorInvalidValue;
+        }
+      // out of bound dst ptr for 3d memory
+      } else if ((dstUsrData.pitch_ * (dstUsrData.height_ - p->dstPos.y) *
+                 (dstUsrData.depth_ - p->dstPos.z)) < totalExtentBytes) {
+        return hipErrorInvalidValue;
+      }
+    }
+
+    if (srcPtrMemObj != nullptr && (p->srcPtr.xsize != 0 && p->srcPtr.ysize != 0)) {
+      const auto& srcUsrData = srcPtrMemObj->getUserData();
+      //  src ptr out of bound cases for linear memory
+      if (srcUsrData.pitch_ == 0 || srcUsrData.height_ == 0 || srcUsrData.depth_ == 0) {
+        auto srcDepth = srcPtrMemObj->getSize() / (p->srcPtr.xsize * p->srcPtr.ysize);
+        if ((p->srcPtr.xsize * (p->srcPtr.ysize - p->srcPos.y) *
+            (srcDepth - p->srcPos.z)) < totalExtentBytes) {
+          return hipErrorInvalidValue;
+        }
+      // out of bound src ptr for 3d memory
+      } else if ((srcUsrData.pitch_ * (srcUsrData.height_ - p->srcPos.y) *
+                 (srcUsrData.depth_ - p->srcPos.z)) < totalExtentBytes) {
+        return hipErrorInvalidValue;
+      }
+    }
+  }
+  
   if (p->kind < hipMemcpyHostToHost || p->kind > hipMemcpyDefault) {
     return hipErrorInvalidMemcpyDirection;
   }

@@ -147,7 +147,10 @@ class NullDevice : public amd::Device {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) { return nullptr; };
   virtual void virtualFree(void* addr) { };
 
-  virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle) { return false; }
+  virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle,
+                                  amd::ExternalSemaphoreHandleType sem_handle_type) override {
+    return false;
+  }
   virtual void DestroyExtSemaphore(void* extSemaphore) { }
 
   void* Alloc(const Util::AllocInfo& allocInfo) { return allocator_.Alloc(allocInfo); }
@@ -619,7 +622,9 @@ class Device : public NullDevice {
     return false;
   }
 
-  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle);
+  virtual bool importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
+                                  amd::ExternalSemaphoreHandleType sem_handle_type) override;
+
   virtual void DestroyExtSemaphore(void* extSemaphore);
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)

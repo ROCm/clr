@@ -260,6 +260,7 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
   return true;
 }
 
+// ================================================================================================
 bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool forceAlloc) {
   static const bool forceAllocHostMem = false;
 
@@ -310,12 +311,16 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
       }
     }
   }
-
+  // Add a VA range into VA range map
+  if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
+    amd::MemObjMap::AddVirtualMemObj(getSvmPtr(), this);
+  }
   // Store the unique id for each memory allocation
   uniqueId_ = ++numAllocs;
   return true;
 }
 
+// ================================================================================================
 bool Memory::addDeviceMemory(const Device* dev) {
   bool result = false;
   AllocState create = AllocCreate;
@@ -401,6 +406,7 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
   return dm;
 }
 
+// ================================================================================================
 Memory::~Memory() {
   // For_each destructor callback:
   DestructorCallBackEntry* entry;
@@ -443,8 +449,18 @@ Memory::~Memory() {
     parent_->release();
   }
   hostMemRef_.deallocateMemory(context_());
+  if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
+    amd::MemObjMap::RemoveVirtualMemObj(getSvmPtr());
+    // If runtime executes graph mempool with VM, then VA can be mapped in space
+    // for graph validation logic during execution. And the reason it's not unmaped
+    // in graph itself because the app can have a graph without a free node
+    if (amd::MemObjMap::FindMemObj(getSvmPtr())) {
+      amd::MemObjMap::RemoveMemObj(getSvmPtr());
+    }
+  }
 }
 
+// ================================================================================================
 bool Memory::setDestructorCallback(DestructorCallBackFunction callback, void* data) {
   DestructorCallBackEntry* entry = new DestructorCallBackEntry(callback, data);
   if (entry == NULL) {

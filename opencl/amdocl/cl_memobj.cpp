@@ -2368,7 +2368,7 @@ RUNTIME_ENTRY(cl_int, clEnqueueWriteImage,
     return CL_INVALID_OPERATION;
   }
 
-  if (dstImage->getDims() == 2 && origin[2] != 0) {
+  if (dstImage->getDims() == 2 && origin[2] != 0 && dstImage->getMipLevels() == 0) {
     return CL_INVALID_VALUE;
   }
 

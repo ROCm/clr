@@ -522,6 +522,14 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
+  if ((e->GetCaptureStream() != nullptr) &&
+      (reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureStatus()
+      == hipStreamCaptureStatusActive)) {
+    // If stream is capturing but event is not recorded on event's stream.
+    if (e->GetCaptureStatus() == false) {
+      return hipErrorStreamCaptureIsolation;
+    }
+  }
   return e->streamWait(stream, flags);
 }
 

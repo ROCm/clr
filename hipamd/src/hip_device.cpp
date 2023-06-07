@@ -53,10 +53,12 @@ bool Device::Create() {
     return false;
   }
 
-  uint64_t max_size = std::numeric_limits<uint64_t>::max();
-  // Use maximum value to hold memory, because current implementation doesn't support VM
-  // Note: the call for the threshold is always successful
-  auto error = graph_mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
+  if (!HIP_MEM_POOL_USE_VM) {
+    uint64_t max_size = std::numeric_limits<uint64_t>::max();
+    // Use maximum value to hold memory, because current implementation doesn't support VM
+    // Note: the call for the threshold is always successful
+    auto error = graph_mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
+  }
 
   // Current is default pool after device creation
   current_mem_pool_ = default_mem_pool_;
@@ -268,8 +270,7 @@ hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device) {
 
   auto* deviceHandle = g_devices[device]->devices()[0];
   const auto& info = deviceHandle->info();
-
-  ::strncpy(uuid->bytes, info.uuid_, 16);
+  memcpy(uuid->bytes, info.uuid_, sizeof(info.uuid_));
 
   HIP_RETURN(hipSuccess);
 }
@@ -285,6 +286,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   auto* deviceHandle = g_devices[device]->devices()[0];
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max());
   hipDeviceProp_t deviceProps = {0};
 
   const auto& info = deviceHandle->info();
@@ -299,8 +301,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.maxThreadsDim[1] = info.maxWorkItemSizes_[1];
   deviceProps.maxThreadsDim[2] = info.maxWorkItemSizes_[2];
   deviceProps.maxGridSize[0] = int32_max;
-  deviceProps.maxGridSize[1] = int32_max;
-  deviceProps.maxGridSize[2] = int32_max;
+  deviceProps.maxGridSize[1] = uint16_max;
+  deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
   deviceProps.memoryBusWidth = info.globalMemChannels_;

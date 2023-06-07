@@ -559,18 +559,21 @@ hipError_t hipGetDeviceFlags ( unsigned int* flags ) {
 
 hipError_t hipSetDevice ( int  device ) {
   HIP_INIT_API(hipSetDevice, device);
-
   if (static_cast<unsigned int>(device) < g_devices.size()) {
     hip::setCurrentDevice(device);
 
     HIP_RETURN(hipSuccess);
+  } else if (g_devices.empty()) {
+    HIP_RETURN(hipErrorNoDevice);
   }
   HIP_RETURN(hipErrorInvalidDevice);
 }
 
 hipError_t hipSetDeviceFlags ( unsigned int  flags ) {
   HIP_INIT_API(hipSetDeviceFlags, flags);
-
+  if (g_devices.empty()) {
+    HIP_RETURN(hipErrorNoDevice);
+  }
   constexpr uint32_t supportedFlags =
       hipDeviceScheduleMask | hipDeviceMapHost | hipDeviceLmemResizeToMax;
   constexpr uint32_t mutualExclusiveFlags =

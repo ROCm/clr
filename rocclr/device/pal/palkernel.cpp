@@ -348,12 +348,12 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
         }
         break;
       case amd::KernelParameterDescriptor::HiddenDefaultQueue:
-        if (vmDefQueue != 0) {
+        if (vmDefQueue != 0 && dynamicParallelism()) {
           WriteAqlArgAt(hidden_arguments, vmDefQueue, it.size_, it.offset_);
         }
         break;
       case amd::KernelParameterDescriptor::HiddenCompletionAction:
-        if (*vmParentWrap != 0) {
+        if (*vmParentWrap != 0 && dynamicParallelism()) {
           WriteAqlArgAt(hidden_arguments, *vmParentWrap, it.size_, it.offset_);
         }
         break;
@@ -514,7 +514,10 @@ bool LightningKernel::postLoad() {
   if (!setKernelCode(sym, &akc_)) {
     return false;
   }
-
+  if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_DYNAMIC_CALLSTACK,
+                    reinterpret_cast<void*>(&kernelHasDynamicCallStack_))) {
+    return false;
+  }
   if (!prog().isNull()) {
     codeSize_ = prog().codeSegGpu().owner()->getSize();
 
@@ -545,7 +548,7 @@ bool LightningKernel::postLoad() {
 
   // Copy wavefront size
   workGroupInfo_.wavefrontSize_ = device().info().wavefrontWidth_;
-
+  workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   if (workGroupInfo_.size_ == 0) {
     return false;
   }

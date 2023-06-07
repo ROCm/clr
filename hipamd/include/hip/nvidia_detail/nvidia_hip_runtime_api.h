@@ -27,7 +27,6 @@ THE SOFTWARE.
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <cuda_fp16.h>
-#include <cuda_gl_interop.h>
 
 #include <stdio.h>
 
@@ -1303,11 +1302,6 @@ typedef struct cudaExternalSemaphoreHandleDesc hipExternalSemaphoreHandleDesc;
 typedef cudaExternalSemaphore_t hipExternalSemaphore_t;
 typedef struct cudaExternalSemaphoreSignalParams hipExternalSemaphoreSignalParams;
 typedef struct cudaExternalSemaphoreWaitParams hipExternalSemaphoreWaitParams;
-
-typedef enum cudaGLDeviceList hipGLDeviceList;
-#define hipGLDeviceListAll cudaGLDeviceListAll
-#define hipGLDeviceListCurrentFrame  cudaGLDeviceListCurrentFrame
-#define hipGLDeviceListNextFrame  cudaGLDeviceListNextFrame
 
 typedef struct cudaGraphicsResource hipGraphicsResource;
 typedef cudaGraphicsResource_t hipGraphicsResource_t;
@@ -2915,19 +2909,6 @@ inline static hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
   return hipCUDAErrorTohipError(cudaDestroyExternalMemory(extMem));
 }
 
-inline static hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices, unsigned int hipDeviceCount,
-                                         hipGLDeviceList deviceList) {
-  return hipCUDAErrorTohipError(cudaGLGetDevices(pHipDeviceCount, pHipDevices, hipDeviceCount, deviceList));
-}
-
-inline static hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint buffer, unsigned int flags) {
-  return hipCUDAErrorTohipError(cudaGraphicsGLRegisterBuffer(resource, buffer, flags));
-}
-
-inline static hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint image, GLenum target, unsigned int flags) {
-  return hipCUDAErrorTohipError(cudaGraphicsGLRegisterImage(resource, image, target, flags));
-}
-
 inline static hipError_t hipGraphicsMapResources(int count, hipGraphicsResource_t* resources, hipStream_t stream  __dparm(0)) {
   return hipCUDAErrorTohipError(cudaGraphicsMapResources(count, resources, stream));
 }
@@ -3512,8 +3493,10 @@ inline static hipError_t hipStreamGetCaptureInfo_v2(
     hipStream_t stream, hipStreamCaptureStatus* captureStatus_out,
     unsigned long long* id_out __dparm(0), hipGraph_t* graph_out __dparm(0),
     const hipGraphNode_t** dependencies_out __dparm(0), size_t* numDependencies_out __dparm(0)) {
-    return hipCUDAErrorTohipError(cudaStreamGetCaptureInfo_v2(
-        stream, captureStatus_out, id_out, graph_out, dependencies_out, numDependencies_out));
+    return hipCUResultTohipError(cuStreamGetCaptureInfo_v2(
+        stream, reinterpret_cast<CUstreamCaptureStatus *>(captureStatus_out),
+        reinterpret_cast<cuuint64_t *>(id_out), graph_out,
+        dependencies_out, numDependencies_out));
 }
 #endif
 

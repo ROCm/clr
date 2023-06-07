@@ -1041,7 +1041,6 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
                                             hsa_signal_t signal, hsa_signal_value_t value,
                                             hsa_signal_value_t mask, hsa_signal_condition32_t cond,
                                             bool skipTs, hsa_signal_t completionSignal) {
-  hsa_amd_barrier_value_packet_t barrier_value_packet_ = {0};
   uint16_t rest = HSA_AMD_PACKET_TYPE_BARRIER_VALUE;
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
@@ -1280,6 +1279,7 @@ bool VirtualGPU::create() {
   // Initialize barrier and barrier value packets
   memset(&barrier_packet_, 0, sizeof(barrier_packet_));
   barrier_packet_.header = kInvalidAql;
+  barrier_value_packet_.header.header = kInvalidAql;
 
   // Create a object of PrintfDbg
   printfdbg_ = new PrintfDbg(roc_device_);
@@ -1386,8 +1386,8 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 
 // ================================================================================================
 /* profilingBegin, when profiling is enabled, creates a timestamp to save in
-* virtualgpu's timestamp_, and calls start() to get the current host
-* timestamp.
+* virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
+* and then calls start() to get the current host timestamp.
 */
 void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
   if (command.profilingInfo().enabled_) {
@@ -1398,6 +1398,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
     }
     // Without barrier profiling will wait for each individual signal
     timestamp_ = new Timestamp(this, command);
+    command.setData(timestamp_);
     timestamp_->start();
   }
 
@@ -1423,15 +1424,13 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
 // ================================================================================================
 /* profilingEnd, when profiling is enabled, checks to see if a signal was
 * created for whatever command we are running and calls end() to get the
-* current host timestamp if no signal is available. It then saves the pointer
-* timestamp_ to the command's data.
+* current host timestamp if no signal is available.
 */
 void VirtualGPU::profilingEnd(amd::Command& command) {
   if (command.profilingInfo().enabled_) {
-    if (!timestamp_->HwProfiling()) {
+    if (timestamp_->HwProfiling() == false) {
       timestamp_->end();
     }
-    command.setData(timestamp_);
     timestamp_ = nullptr;
   }
   if (AMD_DIRECT_DISPATCH) {
@@ -2908,7 +2907,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         case amd::KernelParameterDescriptor::HiddenDefaultQueue: {
           uint64_t vqVA = 0;
           amd::DeviceQueue* defQueue = kernel.program().context().defDeviceQueue(dev());
-          if (nullptr != defQueue) {
+          if (nullptr != defQueue && devKernel->dynamicParallelism()) {
             if (!createVirtualQueue(defQueue->size()) || !createSchedulerParam()) {
               return false;
             }
@@ -2919,7 +2918,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         }
         case amd::KernelParameterDescriptor::HiddenCompletionAction: {
           uint64_t spVA = 0;
-          if (nullptr != schedulerParam_) {
+          if (nullptr != schedulerParam_ && devKernel->dynamicParallelism()) {
             Memory* schedulerMem = dev().getRocMemory(schedulerParam_);
             AmdAqlWrap* wrap = reinterpret_cast<AmdAqlWrap*>(
                                reinterpret_cast<uint64_t>(schedulerParam_->getHostMem()) + sizeof(SchedulerParam));
