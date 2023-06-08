@@ -38,6 +38,7 @@ debug/
 packages/
 install/
 .vs/
+.vscode/
 
 # Editor temp files
 *.swp

@@ -12,7 +12,9 @@ AMD Common Language Runtime contains source code for AMD's compute languages run
 
 ### Prerequisites
 
-Please refer to Prerequisite Actions in [ROCm Installation Guide](https://docs.amd.com/) in release documentation.
+Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/en/latest/deploy/linux/quick_start.html).
+
+Building clr requires `rocm-hip-libraries` meta package, which provides the pre-requisites for clr.
 
 ### Linux
 
@@ -20,6 +22,7 @@ Please refer to Prerequisite Actions in [ROCm Installation Guide](https://docs.a
 - `cd clr && mkdir build && cd build`
 - For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
   - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm-Developer-Tools/HIP)
+  - `HIPCC_BIN_DIR` points to [HIPCC](https://github.com/ROCm-Developer-Tools/HIPCC)'s bin folder. If not provided, it defaults to `/opt/rocm/bin`.
 - For OpenCL™ : `cmake .. -DCLR_BUILD_OCL=ON`
 - `make` : to build
 - `make install` : to install
