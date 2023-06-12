@@ -486,7 +486,7 @@ bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option
         link_args_.generate_debug_info_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_LOG_VERBOSE:
-        link_args_.log_verbose_ = reinterpret_cast<long>(options_vals_ptr[opt_idx]);
+        link_args_.log_verbose_ = *(reinterpret_cast<long*>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_GENERATE_LINE_INFO:
         link_args_.generate_line_info_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));

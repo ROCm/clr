@@ -1209,11 +1209,11 @@ class ExternalSemaphoreCmd : public Command {
 
  private:
   const void* sem_ptr_; //!< Pointer to external semaphore
-  int fence_;           //!< semaphore value to be set
+  uint64_t fence_;           //!< semaphore value to be set
   ExternalSemaphoreCmdType cmd_type_; //!< Signal or Wait semaphore command
 
  public:
-  ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, int fence,
+  ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, uint64_t fence,
                        ExternalSemaphoreCmdType cmd_type)
       : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
 
@@ -1221,7 +1221,7 @@ class ExternalSemaphoreCmd : public Command {
     device.submitExternalSemaphoreCmd(*this);
   }
   const void* sem_ptr() const { return sem_ptr_; }
-  const int fence() { return fence_; }
+  const uint64_t fence() { return fence_; }
   const ExternalSemaphoreCmdType semaphoreCmd() { return cmd_type_; }
 
 };
