@@ -19,7 +19,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Changed
 - hipMallocAsync to return success for zero size allocation to match hipMalloc
 - Separation of hipcc perl binaries from HIP project to hipcc project. hip-devel package depends on newly added hipcc package
-- Consolidation of hipamd, ROCclr and OpenCL repositories into a single repository called clr. Updated instructions to build HIP from sources are avilable in installation guide 
+- Consolidation of hipamd, ROCclr, and OpenCL repositories into a single repository called clr. Instructions are updated to build HIP from sources in the HIP Installation guide
 - Removed hipBusBandwidth and hipCommander samples from hip-tests
 
 ### Fixed
