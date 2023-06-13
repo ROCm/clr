@@ -42,8 +42,9 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
   - surfaceAlignment
   - unifiedAddressing
   - computePreemptionSupported
-  - uuid 
+  - uuid
 - Removal of deprecated code
   - hip-hcc codes from hip code tree
-- Correctness of hipArray usage in HIP APIs
+- Correct hipArray usage in HIP APIs such as hipMemcpyAtoH and hipMemcpyHtoA
 - HIPMEMCPY_3D fields correction (unsigned int -> size_t)
+- Renaming of 'memoryType' in hipPointerAttribute_t structure to 'type'
