@@ -65,21 +65,21 @@ message("Using CPACK_DEBIAN_PACKAGE_RELEASE ${CPACK_DEBIAN_PACKAGE_RELEASE}")
 
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
 if(BUILD_ICD)
-  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "rocm-ocl-icd, libelf-dev, comgr, hsa-rocr, rocm-core")
+  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "libelf-dev, comgr, hsa-rocr, rocm-core")
   set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libelf-dev, comgr-asan, hsa-rocr-asan, rocm-core-asan")
 else()
-  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "ocl-icd-libopencl1, libelf-dev, comgr, hsa-rocr, rocm-core")
-  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "ocl-icd-libopencl1, libelf-dev, comgr-asan, hsa-rocr-asan, rocm-core-asan")
+  set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "libelf-dev, comgr, hsa-rocr, rocm-core")
+  set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "libelf-dev, comgr-asan, hsa-rocr-asan, rocm-core-asan")
 endif()
 
 # RPM CPACK variables
 set(CPACK_BINARY_RPM "ON")
 if(BUILD_ICD)
-  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "rocm-ocl-icd, comgr, hsa-rocr, rocm-core")
+  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "comgr, hsa-rocr, rocm-core")
   set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "comgr-asan, hsa-rocr-asan, rocm-core-asan")
 else()
-  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "ocl-icd, comgr, hsa-rocr, rocm-core")
-  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "ocl-icd, comgr-asan, hsa-rocr-asan, rocm-core-asan")
+  set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "comgr, hsa-rocr, rocm-core")
+  set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "comgr-asan, hsa-rocr-asan, rocm-core-asan")
 endif()
 
 #Unable to set CPACK_RPM_BIANRY_PACKAGE_LICENSE to control individual pacakge license
