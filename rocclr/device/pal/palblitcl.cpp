@@ -28,6 +28,8 @@ extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong, ulong);
 \n
 extern void __amd_streamOpsWait(__global uint*,__global ulong*, ulong, ulong, ulong);
 \n
+extern void __ockl_dm_init_v1(ulong, ulong, uint, uint);
+\n
 __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
                                           ulong value, ulong sizeBytes) {
   __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);
@@ -36,6 +38,11 @@ __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong*
 __kernel void __amd_rocclr_streamOpsWait(__global uint* ptrInt, __global ulong* ptrUlong,
                                          ulong value, ulong flags, ulong mask) {
   __amd_streamOpsWait(ptrInt, ptrUlong, value, flags, mask);
+}
+\n
+__kernel void __amd_rocclr_initHeap(ulong heap_to_initialize, ulong initial_blocks,
+                                    uint heap_size, uint number_of_initial_blocks) {
+  __ockl_dm_init_v1(heap_to_initialize, initial_blocks, heap_size, number_of_initial_blocks);
 }
 \n);
 
