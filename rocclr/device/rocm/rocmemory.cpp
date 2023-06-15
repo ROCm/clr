@@ -1174,9 +1174,6 @@ bool Image::createInteropImage() {
 
 bool Image::create(bool alloc_local) {
   if (owner()->parent() != nullptr) {
-    if (!ValidateMemory()) {
-      return false;
-    }
     // Image view creation
     roc::Memory* parent = static_cast<roc::Memory*>(owner()->parent()->getDeviceMemory(dev_));
 
@@ -1280,26 +1277,57 @@ bool Image::createView(const Memory& parent) {
 
   hsa_status_t status;
   if (linearLayout) {
-    if (!amd::IS_HIP && nullptr != copyImageBuffer_) {
-      status = HSA_STATUS_SUCCESS;
+    size_t rowPitch;
+    amd::Image& ownerImage = *owner()->asImage();
+    size_t elementSize = ownerImage.getImageFormat().getElementSize();
+    // First get the row pitch in pixels
+    if (ownerImage.getRowPitch() != 0) {
+      rowPitch = ownerImage.getRowPitch() / elementSize;
     } else {
-      size_t rowPitch;
-      amd::Image& ownerImage = *owner()->asImage();
-      size_t elementSize = ownerImage.getImageFormat().getElementSize();
-      // First get the row pitch in pixels
-      if (ownerImage.getRowPitch() != 0) {
-        rowPitch = ownerImage.getRowPitch() / elementSize;
-      } else {
-        rowPitch = ownerImage.getWidth();
+      rowPitch = ownerImage.getWidth();
+    }
+
+    // Make sure the row pitch is aligned to pixels
+    rowPitch =
+        elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
+
+    status = hsa_ext_image_create_with_layout(
+             dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+             HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
+
+    if (status == HSA_STATUS_SUCCESS && !amd::IS_HIP && dev().settings().imageBufferWar_ &&
+        ((ownerImage.getWidth() * ownerImage.getImageFormat().getElementSize()) <
+        ownerImage.getRowPitch())) {
+      bool workaround = false;
+      // There are corner cases which still need workaround.
+      const size_t kAlignments[] = {16, 32, 64, 128, 256};
+      size_t tryPitch;
+      for (int i = 0; i < sizeof(kAlignments) / sizeof(kAlignments[0]); i++) {
+        tryPitch = amd::alignUp(ownerImage.getWidth(), kAlignments[i]) * elementSize;
+        if (tryPitch >= rowPitch) {
+          break;
+        }
+        hsa_ext_image_t hsaImage;
+        if (HSA_STATUS_SUCCESS == hsa_ext_image_create_with_layout(
+              dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+              HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, tryPitch, 0, &hsaImage)) {
+          // The image pitch from app is not expectation of the GPU
+          LogWarning("[OCL] will use copy image");
+          workaround = true;
+          // Free the image.
+          hsa_ext_image_destroy(dev().getBackendDevice(), hsaImage);
+          hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
+          hsaImageObject_.handle = 0;
+          break;
+        }
       }
 
-      // Make sure the row pitch is aligned to pixels
-      rowPitch =
-          elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
-
-      status = hsa_ext_image_create_with_layout(
-          dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
-          HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
+      if (workaround) {
+        if (!ValidateMemory()) {
+          LogWarning("[OCL] copy image fail during validation");
+          status = HSA_STATUS_ERROR;
+        }
+      }
     }
   } else if (kind_ == MEMORY_KIND_INTEROP) {
     amdImageDesc_ = static_cast<Image*>(parent.owner()->getDeviceMemory(dev()))->amdImageDesc_;
@@ -1428,28 +1456,18 @@ void Image::destroy() {
 }
 
 bool Image::ValidateMemory() {
-  // Detect image view from buffer to distinguish linear paths from tiled.
-  amd::Memory* ancestor = owner()->parent();
-  while ((ancestor->asBuffer() == nullptr) && (ancestor->parent() != nullptr)) {
-    ancestor = ancestor->parent();
-  }
-  bool linearLayout = (ancestor->asBuffer() != nullptr);
+  amd::Image* img = owner()->asImage();
+  // Create a native image without pitch for validation
+  copyImageBuffer_ =
+      new (dev().context()) amd::Image(
+                              dev().context(), CL_MEM_OBJECT_IMAGE2D, 0, img->getImageFormat(),
+                              img->getWidth(), img->getHeight(), 1, 0, 0);
 
-  if (dev().settings().imageBufferWar_ && linearLayout && (owner() != nullptr) &&
-      ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
-       owner()->asImage()->getRowPitch())) {
-    amd::Image* img = owner()->asImage();
-    // Create a native image without pitch for validation
-    copyImageBuffer_ =
-        new (dev().context()) amd::Image(
-                                dev().context(), CL_MEM_OBJECT_IMAGE2D, 0, img->getImageFormat(),
-                                img->getWidth(), img->getHeight(), 1, 0, 0);
-
-    if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
-      return false;
-    }
+  if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
+    return false;
+  } else {
+    return true;
   }
-  return true;
 }
 
 }
