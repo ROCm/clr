@@ -403,6 +403,7 @@ void MemObjMap::Purge(amd::Device* dev) {
     unsigned int flags = memObj->getMemFlags();
     const std::vector<Device*>& devices = memObj->getContext().devices();
     if (devices.size() == 1 && devices[0] == dev && !(flags & ROCCLR_MEM_INTERNAL_MEMORY)) {
+      memObj->release();
       it = MemObjMap_.erase(it);
     } else {
       ++it;
