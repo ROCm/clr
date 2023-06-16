@@ -18,8 +18,10 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
+#include "top.hpp"
+#include "utils/flags.hpp"
+#include "utils/debug.hpp"
 #include "rocsignal.hpp"
-
 namespace roc {
 
 Signal::~Signal() {
@@ -33,7 +35,7 @@ bool Signal::Init(const amd::Device& dev, uint64_t init, device::Signal::WaitSta
   }
 
   ws_ = ws;
-
+  ClPrint(amd::LOG_DEBUG, amd::LOG_AQL, "Initialize Hostcall signal=0x%zx", signal_);
   return true;
 }
 
