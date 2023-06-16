@@ -1,4 +1,4 @@
-/* Copyright (c) 2009 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2009 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -483,16 +483,14 @@ class Device : public NullDevice {
   // P2P agents avaialble for this device
   const std::vector<hsa_agent_t>& p2pAgents() const { return p2p_agents_; }
 
+  //! Returns the list of HSA agents used for IPC memory attach
+  const hsa_agent_t* IpcAgents() const { return p2p_agents_list_; }
+
   // User enabled peer devices
   const bool isP2pEnabled() const { return (enabled_p2p_devices_.size() > 0) ? true : false; }
 
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
-
-  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const;
-  virtual bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
-                         unsigned int flags, void** dev_ptr) const;
-  virtual bool IpcDetach (void* dev_ptr) const;
 
   bool AcquireExclusiveGpuAccess();
   void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;

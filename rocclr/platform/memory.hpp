@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -675,16 +675,17 @@ public:
 
 class IpcBuffer : public Buffer {
  public:
-  IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, amd::Os::FileDesc handle)
+  IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, const void* handle)
     : Buffer(context, flags, offset, size), handle_(handle) {
     setIpcShared(true);
   }
 
   virtual void initDeviceMemory();
-  amd::Os::FileDesc Handle() const { return handle_; }
+
+  const void* Handle() const { return handle_; }
 
  private:
-  amd::Os::FileDesc handle_;  //!< Ipc handle, associated with this memory object
+  const void* handle_;  //!< Ipc handle, associated with this memory object
 };
 
 

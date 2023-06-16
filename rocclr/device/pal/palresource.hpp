@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -433,8 +433,6 @@ class Resource : public amd::HeapObject {
    */
   bool CreateP2PAccess(CreateParams* params //!< special parameters for resource allocation
                       );
-  //! Returns an export handle for the interprocess communication
-  void* ExportHandle() const;
 
  protected:
     /*! \brief Creates a PAL memory object, from IPC handle

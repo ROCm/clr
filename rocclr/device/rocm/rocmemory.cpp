@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -618,6 +618,14 @@ Buffer::~Buffer() {
     dev().hostFree(deviceMemory_, size());
   } else {
     destroy();
+
+    if (owner()->ipcShared()) {
+      // Detach the memory from HSA
+      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getHostMem());
+      if (hsa_status != HSA_STATUS_SUCCESS) {
+        LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
+      }
+    }
   }
 }
 
@@ -722,6 +730,22 @@ bool Buffer::create(bool alloc_local) {
       }
     }
     return false;
+  }
+
+  if (owner()->ipcShared()) {
+    void* orig_dev_ptr = nullptr;
+    // Extra 1 for the current device
+    const uint32_t ipc_agents_num = dev().p2pAgents().size() + 1;
+    // Retrieve the devPtr from the handle
+    auto hsa_status = hsa_amd_ipc_memory_attach(
+        reinterpret_cast<const hsa_amd_ipc_memory_t*>(
+        reinterpret_cast<const amd::IpcBuffer*>(owner())->Handle()),
+        owner()->getSize(), ipc_agents_num, dev().IpcAgents(), &orig_dev_ptr);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
+      return false;
+    }
+    owner()->setSvmPtr(orig_dev_ptr);
   }
 
   // Allocate backing storage in device local memory unless UHP or AHP are set
@@ -953,6 +977,24 @@ bool Buffer::create(bool alloc_local) {
   }
 
   return deviceMemory_ != nullptr;
+}
+
+// ================================================================================================
+bool Buffer::ExportHandle(void* handle) const {
+  void* orig_dev_ptr = nullptr;
+  if (owner()->getSvmPtr() != nullptr) {
+    orig_dev_ptr = owner()->getSvmPtr();
+  } else if (owner()->getHostMem() != nullptr) {
+    orig_dev_ptr = owner()->getHostMem();
+  }
+
+  auto hsa_status = hsa_amd_ipc_memory_create(orig_dev_ptr, owner()->getSize(),
+                                              reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
+    return false;
+  }
+  return true;
 }
 
 // ======================================= roc::Image =============================================

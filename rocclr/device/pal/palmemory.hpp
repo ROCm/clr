@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -206,6 +206,9 @@ class Buffer : public pal::Memory {
   virtual Memory* createBufferView(
       amd::Memory& subBufferOwner  //!< The abstraction layer subbuf owner
       ) const;
+
+  //! Returns an export handle for the interprocess communication
+  virtual bool ExportHandle(void* handle) const final;
 
  private:
   //! Disable copy constructor
