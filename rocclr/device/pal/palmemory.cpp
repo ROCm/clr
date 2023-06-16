@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -989,6 +989,7 @@ void Memory::mgpuCacheWriteBack(VirtualGPU& gpu) {
   }
 }
 
+// ================================================================================================
 Memory* Buffer::createBufferView(amd::Memory& subBufferOwner) const {
   pal::Memory* subBuffer;
   Resource::ViewParams params;
@@ -1017,6 +1018,16 @@ Memory* Buffer::createBufferView(amd::Memory& subBufferOwner) const {
   return subBuffer;
 }
 
+// ================================================================================================
+bool Buffer::ExportHandle(void* handle) const {
+  Pal::GpuMemoryExportInfo exportInfo = {};
+  // Set default flags in case they are not provided by application
+  exportInfo.accessFlags = GENERIC_READ | GENERIC_WRITE;
+  *reinterpret_cast<Pal::OsExternalHandle*>(handle) = iMem()->ExportExternalHandle(exportInfo);
+  return true;
+}
+
+// ================================================================================================
 void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& region, uint mapFlags,
                             size_t* rowPitch, size_t* slicePitch) {
   // Sanity checks
