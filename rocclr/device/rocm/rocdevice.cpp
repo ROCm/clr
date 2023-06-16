@@ -1248,19 +1248,21 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(group_segment_size > 0);
 
-  // Find SDMA read mask
-  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
-                                                              &maxSdmaReadMask_)) {
-    return false;
-  }
-  assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
+  if (HIP_USE_SDMA_QUERY) {
+    // Find SDMA read mask
+    if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
+                                                                &maxSdmaReadMask_)) {
+      return false;
+    }
+    assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
 
-  // Find SDMA write mask
-  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
-                                                              &maxSdmaWriteMask_)) {
-    return false;
+    // Find SDMA write mask
+    if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
+                                                                &maxSdmaWriteMask_)) {
+      return false;
+    }
+    assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
   }
-  assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
 
   info_.localMemSizePerCU_ = group_segment_size;
   info_.localMemSize_ = group_segment_size;
