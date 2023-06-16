@@ -3364,7 +3364,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     HIP_RETURN(hipSuccess);
   }
 
-  LogPrintfError("Cannot get amd_mem_obj for ptr: 0x%x \n", ptr);
+  LogPrintfError("Cannot get amd_mem_obj for ptr: %p \n", ptr);
   HIP_RETURN(hipErrorInvalidValue);
 }
 
