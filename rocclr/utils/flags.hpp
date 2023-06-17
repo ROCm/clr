@@ -287,8 +287,11 @@ release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
 release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
          "Force device mem for kernel args.")                                 \
 release(bool, DEBUG_CLR_USE_SDMA_QUERY, 0,                                    \
-         "Use SDMA query API to make copy decisions.")
-
+         "Use SDMA query API to make copy decisions.")                        \
+release(uint, DEBUG_CLR_GRAPH_MAX_AQL_BUFFER_SIZE, 32,                        \
+         "Size of AQL buffering queue")                                       \
+release(bool, DEBUG_CLR_GRAPH_ENABLE_BUFFERING, false,                        \
+         "Enable/Disable graph AQL buffering")
 namespace amd {
 
 extern bool IS_HIP;

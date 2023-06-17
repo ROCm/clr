@@ -424,13 +424,15 @@ class VirtualGPU : public device::VirtualDevice {
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();
 
+  bool dispatchAqlBuffer();
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header,
-                         uint16_t rest, bool blocking = true);
+                         uint16_t rest, bool blocking = true, bool buffering = false);
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
                         uint16_t rest, bool blocking = true);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               size_t size = 1);
+
   void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
                              hsa_signal_t signal = hsa_signal_t{0});
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
@@ -564,5 +566,6 @@ class VirtualGPU : public device::VirtualDevice {
   int fence_state_;                     //!< Fence scope
                                         //!< kUnknown/kFlushedToDevice/kFlushedToSystem
   bool fence_dirty_;                    //!< Fence modified flag
+  std::vector<hsa_kernel_dispatch_packet_t> aqlBuffer_;  //!< AQL packet buffer for graphs
 };
 }

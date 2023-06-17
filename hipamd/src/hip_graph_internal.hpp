@@ -326,6 +326,11 @@ struct hipGraphNode : public hipGraphNodeDOTAttribute {
       command->release();
     }
   }
+  virtual void EnableBuffering() {
+    for (auto& command : commands_) {
+      command->setBufferingState(true);
+    }
+  }
   ihipGraph* GetParentGraph() { return parentGraph_; }
   virtual ihipGraph* GetChildGraph() { return nullptr; }
   void SetParentGraph(ihipGraph* graph) { parentGraph_ = graph; }
