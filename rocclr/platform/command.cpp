@@ -310,15 +310,18 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
 const Event::EventWaitList Event::nullWaitList(0);
 
 // ================================================================================================
-Command::Command(HostQueue& queue, cl_command_type type,
-                 const EventWaitList& eventWaitList, uint32_t commandWaitBits, const Event* waitingEvent)
-    : Event(queue, activity_prof::IsEnabled(activity_prof::OperationId(type)) ||
-                   queue.properties().test(CL_QUEUE_PROFILING_ENABLE) || Agent::shouldPostEventEvents()),
+Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList,
+                 uint32_t commandWaitBits, const Event* waitingEvent)
+    : Event(queue,
+            activity_prof::IsEnabled(activity_prof::OperationId(type)) ||
+                queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
+                Agent::shouldPostEventEvents()),
       queue_(&queue),
       next_(nullptr),
       type_(type),
       data_(nullptr),
       waitingEvent_(waitingEvent),
+      buffering_(false),
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.

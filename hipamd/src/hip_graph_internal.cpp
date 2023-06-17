@@ -611,8 +611,20 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     cmd->enqueue();
     cmd->release();
   }
-  for (auto& node : topoOrder_) {
-    node->EnqueueCommands(stream);
+  for (int i = 0; i < topoOrder_.size(); i++) {
+    if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
+      // Enable buffering for graph with single branch
+      if (parallelLists_.size() == 1) {
+        // Peep through the next node. If current and next node are kernel then enable AQL
+        // buffering
+        if (((i + 1) != topoOrder_.size()) &&
+            topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
+            topoOrder_[i + 1]->GetType() == hipGraphNodeTypeKernel) {
+          topoOrder_[i]->EnableBuffering();
+        }
+      }
+    }
+    topoOrder_[i]->EnqueueCommands(stream);
   }
   if (endCommand != nullptr) {
     endCommand->enqueue();

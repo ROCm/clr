@@ -270,6 +270,7 @@ class Command : public Event {
   cl_command_type     type_;      //!< This command's OpenCL type.
   void* data_;
   const Event* waitingEvent_;     //!< Waiting event associated with the marker
+  bool buffering_;                //!< Flag to enable/disable AQL buffering
 
  protected:
   bool cpu_wait_ = false;         //!< If true, then the command was issued for CPU/GPU sync
@@ -278,7 +279,7 @@ class Command : public Event {
   EventWaitList eventWaitList_;
 
   //! Force await completion of previous command
-  //! 0x1 - wait before enqueue, 0x2 - wait after, 0x3 - wait both.
+  //! 0x1 - wait before enqueue, 0x2 - wait after, 0x3 - wait both
   uint32_t commandWaitBits_;
 
   //! Construct a new command of the given OpenCL type.
@@ -293,6 +294,7 @@ class Command : public Event {
         type_(type),
         data_(nullptr),
         waitingEvent_(nullptr),
+        buffering_(false),
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
 
@@ -307,6 +309,12 @@ class Command : public Event {
   }
 
  public:
+  //! Returns AQL buffer state
+  bool getBufferingState() const { return buffering_; }
+
+  //! Sets AQL buffer state
+  void setBufferingState(bool state) { buffering_ = state; }
+
   //! Return the queue this command is enqueued into.
   HostQueue* queue() const { return queue_; }
 
