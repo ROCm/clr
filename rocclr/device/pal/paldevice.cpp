@@ -835,8 +835,6 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
-extern const char* GwsInitSourceCode;
-extern const char* palBlitLinearSourceCode;
 
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
@@ -2506,12 +2504,7 @@ bool Device::createBlitProgram() {
   // Delayed compilation due to brig_loader memory allocation
   std::string extraBlits;
   std::string ocl20;
-  if (amd::IS_HIP) {
-    extraBlits = palBlitLinearSourceCode;
-    if (info().cooperativeGroups_) {
-      extraBlits.append(GwsInitSourceCode);
-    }
-  } else {
+  if (!amd::IS_HIP) {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();
       if (settings().useLightning_) {
