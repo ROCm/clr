@@ -884,6 +884,10 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
         }
         break;
 
+    case OID_UniformWorkGroupSize:
+      Opts.clangOptions.push_back("-cl-uniform-work-group-size");
+      break;
+
     case OID_WorkGrpSize:
         // -wgs=x[,y[,z]]. The default for missing part is 1.
         if (sval) {
