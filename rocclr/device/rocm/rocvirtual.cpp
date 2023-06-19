@@ -2790,7 +2790,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 
 // ================================================================================================
 __attribute__((optimize("unroll-all-loops"), always_inline))
-static void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
+static inline void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
                               uint16_t size) {
   #if defined(__AVX512F__)
     for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
