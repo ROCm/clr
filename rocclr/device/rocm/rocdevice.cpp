@@ -546,8 +546,6 @@ bool Device::init() {
 }
 
 extern const char* SchedulerSourceCode;
-extern const char* GwsInitSourceCode;
-extern const char* rocBlitLinearSourceCode;
 
 void Device::tearDown() {
   NullDevice::tearDown();
@@ -845,13 +843,7 @@ bool Device::createBlitProgram() {
 
 #if defined(USE_COMGR_LIBRARY)
   if (settings().useLightning_) {
-    if (amd::IS_HIP) {
-      extraKernel = rocBlitLinearSourceCode;
-      if (info().cooperativeGroups_) {
-        extraKernel.append(GwsInitSourceCode);
-      }
-    }
-    else {
+    if (!amd::IS_HIP) {
       extraKernel = SchedulerSourceCode;
     }
 
