@@ -201,7 +201,7 @@ hipError_t hipSignalExternalSemaphoresAsync(
     unsigned int numExtSems, hipStream_t stream )
 {
   HIP_INIT_API(hipSignalExternalSemaphoresAsync, extSemArray, paramsArray, numExtSems, stream);
-  if (extSemArray == nullptr || paramsArray == nullptr) {
+  if (extSemArray == nullptr || paramsArray == nullptr || !hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::Stream* hip_stream = hip::getStream(stream);
@@ -233,7 +233,7 @@ hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemAr
 {
   HIP_INIT_API(hipWaitExternalSemaphoresAsync, extSemArray, paramsArray, numExtSems,
                stream);
-  if (extSemArray == nullptr || paramsArray == nullptr) {
+  if (extSemArray == nullptr || paramsArray == nullptr || !hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::Stream* hip_stream = hip::getStream(stream);
