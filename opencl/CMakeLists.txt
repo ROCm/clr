@@ -22,6 +22,12 @@ if(NOT ENABLE_ASAN_PACKAGING)
   option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
 endif()
 
+# Add flags to generate PDB files with full symbolic information
+if(MSVC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FULL")
+endif()
+
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
 if(BUILD_ICD)
   add_subdirectory(khronos/icd)

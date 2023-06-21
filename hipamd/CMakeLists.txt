@@ -50,6 +50,12 @@ option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
 if(NOT ENABLE_ASAN_PACKAGING)
     option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
 endif()
+
+if(MSVC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FULL")
+endif()
+
 set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
 
 if(__HIP_ENABLE_PCH)
