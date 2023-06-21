@@ -558,7 +558,7 @@ hipError_t hipGetDeviceFlags ( unsigned int* flags ) {
 }
 
 hipError_t hipSetDevice ( int  device ) {
-  HIP_INIT_API(hipSetDevice, device);
+  HIP_INIT_API_NO_RETURN(hipSetDevice, device);
   if (static_cast<unsigned int>(device) < g_devices.size()) {
     hip::setCurrentDevice(device);
 
