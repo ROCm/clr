@@ -291,7 +291,6 @@ INSTALL(TARGETS amdhip64 host device
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 INSTALL(EXPORT hip-lang-targets DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR} NAMESPACE hip-lang::)
 
-if(NOT WIN32)
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
@@ -311,4 +310,4 @@ install(
     DESTINATION
     ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
     )
-endif()
+
