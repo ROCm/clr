@@ -31,7 +31,7 @@ namespace hip {
 // ================================================================================================
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
                const std::vector<uint32_t>& cuMask, hipStreamCaptureStatus captureStatus)
-    : amd::HostQueue(*dev->asContext(), *dev->devices()[0], 0, amd::CommandQueue::RealTimeDisabled, 
+    : amd::HostQueue(*dev->asContext(), *dev->devices()[0], 0, amd::CommandQueue::RealTimeDisabled,
         convertToQueuePriority(p), cuMask),
       lock_("Stream Callback lock"),
       device_(dev),
@@ -518,9 +518,6 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
-  if (stream == nullptr) {
-    return hipErrorInvalidValue;
-  }
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -529,6 +526,9 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
 
   if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
+    if (waitStream == nullptr) {
+      return hipErrorInvalidHandle;
+    }
     if (!waitStream->IsOriginStream()) {
       waitStream->SetCaptureGraph((eventStream)->GetCaptureGraph());
       waitStream->SetCaptureId((eventStream)->GetCaptureID());
