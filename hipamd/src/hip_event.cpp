@@ -389,6 +389,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
+  getStreamPerThread(stream);
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
