@@ -466,10 +466,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         ts->command().SetHwEvent(prof_signal);
       }
     }
-    if (!sdma_profiling_) {
-      hsa_amd_profiling_async_copy_enable(true);
-      sdma_profiling_ = true;
-    }
   }
   return prof_signal->signal_;
 }
@@ -1394,7 +1390,7 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
 * and then calls start() to get the current host timestamp.
 */
-void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
+void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
   if (command.profilingInfo().enabled_) {
     if (timestamp_ != nullptr) {
       LogWarning("Trying to create a second timestamp in VirtualGPU. \
@@ -1405,6 +1401,12 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
     timestamp_ = new Timestamp(this, command);
     command.setData(timestamp_);
     timestamp_->start();
+
+    // Enable SDMA profiling on the first access if profiling is set
+    // Its not per command basis
+    if (sdmaProfiling && !Barriers().GetSDMAProfiling()) {
+      Barriers().SetSDMAProfiling(true);
+    }
   }
 
   if (AMD_DIRECT_DISPATCH) {
@@ -1526,7 +1528,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   size_t offset = 0;
   // Find if virtual address is a CL allocation
@@ -1629,7 +1631,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   size_t offset = 0;
   // Find if virtual address is a CL allocation
@@ -1871,7 +1873,7 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   cl_command_type type = cmd.type();
   bool entire = cmd.isEntireMemory();
@@ -1894,7 +1896,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true)) {
     amd::Coord3D srcOrigin(0, 0, 0);
@@ -1976,7 +1978,7 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   Memory* srcDevMem = static_cast<roc::Memory*>(
     cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
@@ -2073,7 +2075,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true) &&
@@ -2111,7 +2113,7 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true) &&
@@ -2151,7 +2153,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   //! @todo add multi-devices synchronization when supported.
 
@@ -2259,7 +2261,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
     return;
   }
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // Force buffer write for IMAGE1D_BUFFER
   bool imageBuffer = (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER);

@@ -270,6 +270,13 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Check if callback has been queued
     bool IsHandlerPending() const { return handlerPending_; }
+
+    //! Get/Set SDMA profiling
+    bool GetSDMAProfiling() { return sdma_profiling_; }
+    void SetSDMAProfiling(bool profile) {
+      sdma_profiling_ = profile;
+      hsa_amd_profiling_async_copy_enable(profile);
+    }
   private:
     //! Wait for the next active signal
     void WaitNext() {
@@ -299,7 +306,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool create();
   const Device& dev() const { return roc_device_; }
 
-  void profilingBegin(amd::Command& command, bool drmProfiling = false);
+  void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
   void profilingEnd(amd::Command& command);
 
   void updateCommandsState(amd::Command* list) const;
