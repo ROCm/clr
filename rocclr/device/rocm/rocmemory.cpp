@@ -1295,35 +1295,42 @@ bool Image::createView(const Memory& parent) {
              dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
              HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
 
-    if (status == HSA_STATUS_SUCCESS && !amd::IS_HIP && dev().settings().imageBufferWar_ &&
+    if (!amd::IS_HIP && dev().settings().imageBufferWar_ &&
         ((ownerImage.getWidth() * ownerImage.getImageFormat().getElementSize()) <
         ownerImage.getRowPitch())) {
       bool workaround = false;
-      // There are corner cases which still need workaround.
-      const size_t kAlignments[] = {16, 32, 64, 128, 256};
-      size_t tryPitch;
-      for (int i = 0; i < sizeof(kAlignments) / sizeof(kAlignments[0]); i++) {
-        tryPitch = amd::alignUp(ownerImage.getWidth(), kAlignments[i]) * elementSize;
-        if (tryPitch >= rowPitch) {
-          break;
-        }
-        hsa_ext_image_t hsaImage;
-        if (HSA_STATUS_SUCCESS == hsa_ext_image_create_with_layout(
-              dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
-              HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, tryPitch, 0, &hsaImage)) {
-          // The image pitch from app is not expectation of the GPU
-          LogWarning("[OCL] will use copy image");
-          workaround = true;
-          // Free the image.
-          hsa_ext_image_destroy(dev().getBackendDevice(), hsaImage);
-          hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
-          hsaImageObject_.handle = 0;
-          break;
+      if (status == static_cast<hsa_status_t>(HSA_EXT_STATUS_ERROR_IMAGE_PITCH_UNSUPPORTED)) {
+        workaround = true;
+      }
+      if (status == HSA_STATUS_SUCCESS) {
+        // There are corner cases which still need workaround.
+        const size_t kAlignments[] = {16, 32, 64, 128, 256};
+        size_t tryPitch;
+        for (int i = 0; i < sizeof(kAlignments) / sizeof(kAlignments[0]); i++) {
+          tryPitch = amd::alignUp(ownerImage.getWidth(), kAlignments[i]) * elementSize;
+          if (tryPitch >= rowPitch) {
+            break;
+          }
+          hsa_ext_image_t hsaImage;
+          if (HSA_STATUS_SUCCESS == hsa_ext_image_create_with_layout(
+                dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+                HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, tryPitch, 0, &hsaImage)) {
+            // The image pitch from app is not expectation of the GPU
+            LogWarning("[OCL] will use copy image");
+            workaround = true;
+            // Free the image.
+            hsa_ext_image_destroy(dev().getBackendDevice(), hsaImage);
+            hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
+            hsaImageObject_.handle = 0;
+            break;
+          }
         }
       }
 
       if (workaround) {
-        if (!ValidateMemory()) {
+        if (ValidateMemory()) {
+          status = HSA_STATUS_SUCCESS;
+        } else {
           LogWarning("[OCL] copy image fail during validation");
           status = HSA_STATUS_ERROR;
         }
