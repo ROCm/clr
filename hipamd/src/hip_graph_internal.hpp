@@ -525,8 +525,8 @@ struct ihipGraph {
     return false;
   }
 
-  void FreeAllMemory() {
-    mem_pool_->FreeAllMemory();
+  void FreeAllMemory(hip::Stream* stream) {
+    mem_pool_->FreeAllMemory(stream);
   }
 
   bool IsGraphInstantiated() const {
@@ -1940,7 +1940,9 @@ class hipGraphMemAllocNode : public hipGraphNode {
     virtual void submit(device::VirtualDevice& device) final {
       // Remove VA reference from the global mapping. Runtime has to keep a dummy reference for
       // validation logic during the capture or creation of the nodes
-      amd::MemObjMap::RemoveMemObj(va_->getSvmPtr());
+      if (amd::MemObjMap::FindMemObj(va_->getSvmPtr())) {
+        amd::MemObjMap::RemoveMemObj(va_->getSvmPtr());
+      }
       // Allocate real memory for mapping
       const auto& dev_info = queue()->device().info();
       auto aligned_size = amd::alignUp(size_, dev_info.virtualMemAllocGranularity_);

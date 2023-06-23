@@ -578,9 +578,11 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (hip::getStream(stream) == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
+                                        : reinterpret_cast<hip::Stream*>(stream);
   if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!topoOrder_.empty()) {
-      topoOrder_[0]->GetParentGraph()->FreeAllMemory();
+      topoOrder_[0]->GetParentGraph()->FreeAllMemory(hip_stream);
     }
   }
 
@@ -597,8 +599,6 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
 
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
-                                        : reinterpret_cast<hip::Stream*>(stream);
   UpdateStream(parallelLists_, hip_stream, this);
   std::vector<amd::Command*> rootCommands;
   amd::Command* endCommand = nullptr;
