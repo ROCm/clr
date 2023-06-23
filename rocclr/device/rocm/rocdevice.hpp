@@ -140,12 +140,13 @@ class NullDevice : public amd::Device {
   const Settings& settings() const { return static_cast<Settings&>(*settings_); }
 
   //! Construct an HSAIL program object from the ELF assuming it is valid
-  virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
+  device::Program* createProgram(amd::Program& owner,
+                                 amd::option::Options* options = nullptr) override;
 
   // List of dummy functions which are disabled for NullDevice
 
   //! Create a new virtual device environment.
-  virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr) {
+  device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr) override {
     ShouldNotReachHere();
     return nullptr;
   }
@@ -158,60 +159,60 @@ class NullDevice : public amd::Device {
   virtual void deregisterSvmMemory(void* ptr) const { ShouldNotReachHere(); }
 
   //! Just returns nullptr for the dummy device
-  virtual device::Memory* createMemory(amd::Memory& owner) const {
+  device::Memory* createMemory(amd::Memory& owner) const override {
     ShouldNotReachHere();
     return nullptr;
   }
-  virtual device::Memory* createMemory(size_t size) const {
+  device::Memory* createMemory(size_t size) const override {
     ShouldNotReachHere();
     return nullptr;
   }
 
   //! Sampler object allocation
-  virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
-                             device::Sampler** sampler   //!< device sampler object
-                             ) const {
+  bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
+                     device::Sampler** sampler   //!< device sampler object
+  ) const override {
     ShouldNotReachHere();
     return true;
   }
 
   //! Just returns nullptr for the dummy device
-  virtual device::Memory* createView(
+  device::Memory* createView(
       amd::Memory& owner,           //!< Owner memory object
       const device::Memory& parent  //!< Parent device memory object for the view
-      ) const {
+  ) const override {
     ShouldNotReachHere();
     return nullptr;
   }
 
-  virtual device::Signal* createSignal() const {
-    ShouldNotReachHere();
-    return nullptr;
-  }
-
-  //! Just returns nullptr for the dummy device
-  virtual void* svmAlloc(amd::Context& context,   //!< The context used to create a buffer
-                         size_t size,             //!< size of svm spaces
-                         size_t alignment,        //!< alignment requirement of svm spaces
-                         cl_svm_mem_flags flags,  //!< flags of creation svm spaces
-                         void* svmPtr             //!< existing svm pointer for mGPU case
-                         ) const {
+  device::Signal* createSignal() const override {
     ShouldNotReachHere();
     return nullptr;
   }
 
   //! Just returns nullptr for the dummy device
-  virtual void svmFree(void* ptr  //!< svm pointer needed to be freed
-                       ) const {
+  void* svmAlloc(amd::Context& context,   //!< The context used to create a buffer
+                 size_t size,             //!< size of svm spaces
+                 size_t alignment,        //!< alignment requirement of svm spaces
+                 cl_svm_mem_flags flags,  //!< flags of creation svm spaces
+                 void* svmPtr             //!< existing svm pointer for mGPU case
+  ) const override {
+    ShouldNotReachHere();
+    return nullptr;
+  }
+
+  //! Just returns nullptr for the dummy device
+  void svmFree(void* ptr  //!< svm pointer needed to be freed
+  ) const override {
     ShouldNotReachHere();
     return;
   }
-  virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) {
+  void* virtualAlloc(void* addr, size_t size, size_t alignment) override {
     ShouldNotReachHere();
     return nullptr;
   }
 
-  virtual void virtualFree(void* addr) {
+  void virtualFree(void* addr) override {
     ShouldNotReachHere();
     return;
   }
@@ -227,19 +228,19 @@ class NullDevice : public amd::Device {
     return false;
   }
 
-  virtual void DestroyExtSemaphore(void* extSemaphore) { ShouldNotReachHere(); }
+  void DestroyExtSemaphore(void* extSemaphore) override { ShouldNotReachHere(); }
 
   //! Acquire external graphics API object in the host thread
   //! Needed for OpenGL objects on CPU device
 
-  virtual bool bindExternalDevice(uint flags, void* const pDevice[], void* pContext,
-                                  bool validateOnly) {
+  bool bindExternalDevice(uint flags, void* const pDevice[], void* pContext,
+                          bool validateOnly) override {
     ShouldNotReachHere();
     return false;
   }
 
-  virtual bool unbindExternalDevice(uint flags, void* const pDevice[], void* pContext,
-                                    bool validateOnly) {
+  bool unbindExternalDevice(uint flags, void* const pDevice[], void* pContext,
+                            bool validateOnly) override {
     ShouldNotReachHere();
     return false;
   }
@@ -248,19 +249,20 @@ class NullDevice : public amd::Device {
   virtual void freeMapTarget(amd::Memory& mem, void* target) { ShouldNotReachHere(); }
 
   //! Empty implementation on Null device
-  virtual bool globalFreeMemory(size_t* freeMemory) const {
+  bool globalFreeMemory(size_t* freeMemory) const override {
     ShouldNotReachHere();
     return false;
   }
 
-  virtual bool SetClockMode(
-      const cl_set_device_clock_mode_input_amd setClockModeInput,
-      cl_set_device_clock_mode_output_amd* pSetClockModeOutput) { return true; }
+  bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
+                    cl_set_device_clock_mode_output_amd* pSetClockModeOutput) override {
+    return true;
+  }
 
-  virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const { return false; }
-  virtual bool IsHwEventReadyForcedWait(const amd::Event& event) const { return false; }
-  virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {};
-  virtual void ReleaseGlobalSignal(void* signal) const {}
+  bool IsHwEventReady(const amd::Event& event, bool wait = false) const override { return false; }
+  bool IsHwEventReadyForcedWait(const amd::Event& event) const override { return false; }
+  void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const override{};
+  void ReleaseGlobalSignal(void* signal) const override {}
 
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
