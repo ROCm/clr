@@ -1598,7 +1598,7 @@ inline static hipError_t hipMipmappedArrayGetLevel(hiparray* pLevelArray,
 
 inline static hipError_t hipMallocMipmappedArray(hipMipmappedArray_t* pHandle,
                                                  const hipChannelFormatDesc* desc, hipExtent extent,
-                                                 unsigned int numLevels, unsigned int flags = 0) {
+                                                 unsigned int numLevels, unsigned int flags __dparm(0)) {
     return hipCUDAErrorTohipError(cudaMallocMipmappedArray(pHandle, desc, extent, numLevels, flags));
 }
 
