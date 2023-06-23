@@ -52,7 +52,7 @@ namespace amd
     ExternalMemory::HandleType handle_type_;
   };
 
-  class ExternalBuffer : public Buffer, public ExternalMemory
+  class ExternalBuffer final : public Buffer, public ExternalMemory
   {
   protected:
     // Initializes device memory array, which is located after ExternalBuffer object in memory
@@ -69,11 +69,11 @@ namespace amd
       setInteropObj(this);
     }
 
-    virtual ~ExternalBuffer() final {}
+    virtual ~ExternalBuffer() {}
   };
 
   // to be modified once image requirments are known, for now, implement like buffer
-  class ExternalImage : public Buffer, public ExternalMemory
+  class ExternalImage final : public Buffer, public ExternalMemory
   {
   protected:
     // Initializes device memory array, which is located after ExternalImage object in memory
@@ -90,6 +90,6 @@ namespace amd
       setInteropObj(this);
     }
 
-    virtual ~ExternalImage() final {}
+    virtual ~ExternalImage() {}
   };
 }
