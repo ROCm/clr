@@ -27,7 +27,7 @@ use File::Which;
 use Cwd 'realpath';
 use Getopt::Std;
 use List::Util qw(max);
-use URI::Encode;
+use URI::Escape;
 
 my $extract_range_specifier;
 my $extract_pid;
@@ -111,7 +111,6 @@ foreach my $uri_str(@ARGV) {
   chomp $uri_str;
 
   my ($uri_protocol, $specs) = split(/:\/\//,$uri_str);
-  my $obj_uri_encode = URI::Encode->new();
   my $decoded_extract_file;
   my $file_size;
 
@@ -120,7 +119,7 @@ foreach my $uri_str(@ARGV) {
     ($extract_file, $extract_range_specifier) = split(/[#,?]/,$specs);
 
     # decode the file name. URIs may have file/path names with non-alphanumeric characters, which will be encoded with %.  We need to decode these.
-    $decoded_extract_file = $obj_uri_encode->decode($extract_file);
+    $decoded_extract_file = uri_unescape($extract_file);
 
     # verify file exists:
     if (! -e $decoded_extract_file) {

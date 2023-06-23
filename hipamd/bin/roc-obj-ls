@@ -22,12 +22,11 @@
 use strict;
 use File::Copy;
 use File::Spec;
-use File::Basename;
 use File::Which;
 use Cwd 'realpath';
 use Getopt::Std;
 use List::Util qw(max);
-use URI::Encode;
+use URI::Escape;
 
 sub usage {
   print("Usage: $0 [-v|h] executable...\n");
@@ -159,8 +158,7 @@ foreach my $executable_file(@ARGV) {
 
       printf("abs_offset: 0x%X\n",$abs_offset) if $debug;
 
-      my $obj_uri_encode = URI::Encode->new();
-      my $encoded_executable_file = $obj_uri_encode->encode($executable_file);
+      my $encoded_executable_file = uri_unescape($executable_file);
 
       printf("%-8s%-40s%35s%s%s%s%s%s%s\n",$num_bundles,$triple,"file:\/\/",$encoded_executable_file,"\#offset=",$abs_offset, "\&size=",$entry_size);
 
