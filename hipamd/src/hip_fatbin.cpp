@@ -35,7 +35,9 @@ FatBinaryInfo::~FatBinaryInfo() {
   }
 
   if (fdesc_ > 0) {
-    if (fsize_ && image_mapped_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
+    if (fsize_
+        && (HIP_USE_RUNTIME_UNBUNDLER || image_mapped_)
+        && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
       guarantee(false, "Cannot unmap file for fdesc: %d fsize: %d \n", fdesc_, fsize_);
     }
     if (!amd::Os::CloseFileHandle(fdesc_)) {
