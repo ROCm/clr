@@ -2829,7 +2829,32 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue);
 
-    hsa_status_t status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
+    std::vector<uint32_t> final_mask = {};
+    // hsa_amd_queue_cu_set_mask expects each bit in cuMask to represent each CU
+    // For wgp mode: Each wgp consists of 2 CUs and CUs must be adjacent pairwise enabled
+    // Convert each bit in the cuMask from wgp to cu by duplicating it
+    if (settings().enableWgpMode_) {
+      final_mask.resize(mask.size() * 2, 0);
+
+      for (int i = 0; i < mask.size(); i++) {
+        for (int j = 0; j < 16; j++) {
+          // Convert least significant 16 bits
+          if (((mask[i] >> j) & 0x1) == 0x1) {
+            final_mask[2 * i] |= (0x3 << (2 * j));
+          }
+
+          // Convert most significant 16 bits
+          if (((mask[i] >> (16 + j)) & 0x1) == 0x1) {
+            final_mask[2 * i + 1] |= (0x3 << (2 * j));
+          }
+        }
+      }
+    } else {
+      final_mask = mask;
+    }
+
+    hsa_status_t status = hsa_amd_queue_cu_set_mask(queue,
+                          final_mask.size() * 32, final_mask.data());
     if (status != HSA_STATUS_SUCCESS) {
       DevLogError("Device::acquireQueue: hsa_amd_queue_cu_set_mask failed!");
       hsa_queue_destroy(queue);
