@@ -1061,32 +1061,47 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
      * Map HIP_vector_type<U, rankU> to HIP_vector_type<T, rankT>
      */
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 1 && rankU >= rankT),
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 1 && rankU >= 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT>(static_cast<T>(u.x));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 2 && rankU >= rankT),
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 2 && rankU == 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
-      return HIP_vector_type<T, rankT>(static_cast<T>(u.x), static_cast<T>(u.y));
+      return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(0));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 3 && rankU >= rankT),
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 2 && rankU >= 2),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
-      return HIP_vector_type<T, rankT>(static_cast<T>(u.x), static_cast<T>(u.y),
-                                       static_cast<T>(u.z));
+      return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(u.y));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU >= rankT),
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 1),
+                                                            const HIP_vector_type<T, rankT>>::type
+    __hipMapVector(const HIP_vector_type<U, rankU>& u) {
+      return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(0),
+                                       static_cast<T>(0), static_cast<T>(0));
+    };
+
+    template <typename T, unsigned int rankT, typename U, unsigned int rankU>
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 2),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT>(static_cast<T>(u.x), static_cast<T>(u.y),
+                                       static_cast<T>(0), static_cast<T>(0));
+    };
+
+    template <typename T, unsigned int rankT, typename U, unsigned int rankU>
+    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 4),
+                                                            const HIP_vector_type<T, rankT>>::type
+    __hipMapVector(const HIP_vector_type<U, rankU>& u) {
+      return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(u.y),
                                        static_cast<T>(u.z), static_cast<T>(u.w));
     };
 
