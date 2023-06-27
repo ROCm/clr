@@ -1035,7 +1035,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
 
   bool rejected = false;
   Memory* dstView = &gpuMem(dstMemory);
-  bool releaseView = false;
   bool result = false;
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
@@ -1068,7 +1067,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
     dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
     if (dstView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -1164,11 +1162,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    dstView->owner()->release();
-  }
 
   return result;
 }
@@ -1235,7 +1228,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
 
   bool rejected = false;
   Memory* srcView = &gpuMem(srcMemory);
-  bool releaseView = false;
   bool result = false;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image::Format newFormat(srcImage->getImageFormat());
@@ -1267,7 +1259,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
     srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
     if (srcView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -1369,11 +1360,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    srcView->owner()->release();
-  }
 
   return result;
 }
@@ -1395,7 +1381,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   amd::Image::Format srcFormat(srcImage->getImageFormat());
   amd::Image::Format dstFormat(dstImage->getImageFormat());
   bool srcRejected = false, dstRejected = false;
-  bool srcReleaseView = false, dstReleaseView = false;
   // Find unsupported source formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
     if (RejectedData[i].clOldType_ == srcFormat.image_channel_data_type) {
@@ -1449,7 +1434,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
     srcView = createView(gpuMem(srcMemory), srcFormat, CL_MEM_READ_ONLY);
     if (srcView != nullptr) {
       srcRejected = false;
-      srcReleaseView = true;
     }
   }
 
@@ -1457,7 +1441,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
     dstView = createView(gpuMem(dstMemory), dstFormat, CL_MEM_WRITE_ONLY);
     if (dstView != nullptr) {
       dstRejected = false;
-      dstReleaseView = true;
     }
   }
 
@@ -1465,14 +1448,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   if (srcRejected || dstRejected) {
     result = DmaBlitManager::copyImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire,
                                        copyMetadata);
-    if (srcReleaseView) {
-      gpu().releaseGpuMemoryFence();
-      srcView->owner()->release();
-    }
-    if (dstReleaseView) {
-      gpu().releaseGpuMemoryFence();
-      dstView->owner()->release();
-    }
     synchronize();
   }
 
@@ -1543,16 +1518,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
 
-  if (srcReleaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    srcView->owner()->release();
-  }
-  if (dstReleaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    dstView->owner()->release();
-  }
   synchronize();
 
   return result;
@@ -2409,7 +2374,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   uint32_t iFillColor[4];
 
   bool rejected = false;
-  bool releaseView = false;
 
   // For depth, we need to create a view
   if (newFormat.image_channel_order == CL_sRGBA) {
@@ -2445,7 +2409,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
     memView = createView(gpuMem(memory), newFormat, CL_MEM_WRITE_ONLY);
     if (memView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -2536,11 +2499,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   address parameters = captureArguments(kernels_[fillType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    memView->owner()->release();
-  }
 
   synchronize();
 
@@ -2706,31 +2664,22 @@ Memory* KernelBlitManager::createView(const Memory& parent, cl_image_format form
                                       cl_mem_flags flags) const {
   assert((parent.owner()->asBuffer() == nullptr) && "View supports images only");
   amd::Image* parentImage = static_cast<amd::Image*>(parent.owner());
-  amd::Image* image =
-      parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags);
-
+  auto parent_dev_image = static_cast<Image*>(parentImage->getDeviceMemory(dev()));
+  amd::Image* image = parent_dev_image->FindView(format);
   if (image == nullptr) {
-    LogError("[OCL] Fail to allocate view of image object");
-    return nullptr;
+    image = parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags);
+    if (image == nullptr) {
+      LogError("[OCL] Fail to allocate view of image object");
+      return nullptr;
+    }
+    if (!parent_dev_image->AddView(image)) {
+      // Another thread already added a view
+      image->release();
+      image = parent_dev_image->FindView(format);
+    }
   }
-
-  Image* devImage = new roc::Image(dev(), *image);
-  if (devImage == nullptr) {
-    LogError("[OCL] Fail to allocate device mem object for the view");
-    image->release();
-    return nullptr;
-  }
-
-  if (!devImage->createView(parent)) {
-    LogError("[OCL] Fail to create device mem object for the view");
-    delete devImage;
-    image->release();
-    return nullptr;
-  }
-
-  image->replaceDeviceMemory(&dev_, devImage);
-
-  return devImage;
+  auto dev_image = static_cast<Image*>(image->getDeviceMemory(dev()));
+  return dev_image;
 }
 
 address KernelBlitManager::captureArguments(const amd::Kernel* kernel) const {

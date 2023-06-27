@@ -224,6 +224,13 @@ class Image : public roc::Memory {
   amd::Image* CopyImageBuffer() const { return copyImageBuffer_; }
 
   virtual uint64_t originalDeviceAddress() const { return reinterpret_cast<uint64_t>(originalDeviceMemory_); }
+
+  //! Adds an image view to the view cache for the fast blit manager operations
+  bool AddView(amd::Image* image);
+
+  //! Finds an image view of this original image from the cache
+  amd::Image* FindView(cl_image_format format) const;
+
  private:
   //! Disable copy constructor
   Image(const Buffer&);
@@ -246,6 +253,7 @@ class Image : public roc::Memory {
 
   void* originalDeviceMemory_;
   amd::Image* copyImageBuffer_ = nullptr;
+  std::vector<amd::Image*>  view_cache_;  //!< Cache of views for fast access
 };
 }
 #endif

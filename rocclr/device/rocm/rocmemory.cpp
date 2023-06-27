@@ -1430,7 +1430,12 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
 
 Image::~Image() { destroy(); }
 
+// ================================================================================================
 void Image::destroy() {
+  for (auto it : view_cache_) {
+    it->release();
+  }
+
   delete copyImageBuffer_;
 
   if (hsaImageObject_.handle != 0) {
@@ -1462,6 +1467,7 @@ void Image::destroy() {
   }
 }
 
+// ================================================================================================
 bool Image::ValidateMemory() {
   amd::Image* img = owner()->asImage();
   // Create a native image without pitch for validation
@@ -1475,6 +1481,35 @@ bool Image::ValidateMemory() {
   } else {
     return true;
   }
+}
+
+// ================================================================================================
+bool Image::AddView(amd::Image* image) {
+  amd::ScopedLock l(owner()->lockMemoryOps());
+  for (auto it : view_cache_) {
+    if ((it->getImageFormat().image_channel_data_type ==
+         image->getImageFormat().image_channel_data_type) &&
+        (it->getImageFormat().image_channel_order ==
+         image->getImageFormat().image_channel_order)) {
+      return false;
+    }
+  }
+  view_cache_.push_back(image);
+  // Remove parent dependency on the child, since cache will be destroyed within the parent
+  owner()->release();
+  return true;
+}
+
+// ================================================================================================
+amd::Image* Image::FindView(cl_image_format format) const {
+  amd::ScopedLock l(owner()->lockMemoryOps());
+  for (auto it : view_cache_) {
+    if ((it->getImageFormat().image_channel_data_type == format.image_channel_data_type) &&
+        (it->getImageFormat().image_channel_order == format.image_channel_order)) {
+      return it;
+    }
+  }
+  return nullptr;
 }
 
 }
