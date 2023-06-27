@@ -1829,29 +1829,6 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
-  if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize && !copyMetadata.isAsync_) {
-    if ((srcMemory.owner()->getHostMem() == nullptr) &&
-        (srcMemory.owner()->getSvmPtr() != nullptr)) {
-      // CPU read ahead, hence release GPU memory and force barrier to make sure L2 flush
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host memcpy for ReadBuffer");
-      gpu().releaseGpuMemoryFence();
-      char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
-      std::memcpy(dstHost, src + origin[0], size[0]);
-      // Force HDP Read cache invalidation somewhere in the AQL barrier flags...
-      // @note: This is a workaround for an issue in ROCr/ucode, when the following SDMA transfer
-      //        won't invalidate HDP read and later CPU will receive the old values.
-      //        It's unclear if AQL has the same issue and runtime needs to track extra AQL flags
-      //        if this workaround will be removed in the future
-      // 1. H->D: SDMA
-      // 2. D->H: CPU Read  HDP read cache was updated
-      // 3. H->D: SDMA      Memory updated, ROCr/ucode doesn't invalidate HDP read cache after
-      //                    transfer
-      // 4. D->H: CPU Read  CPU receives the old values from HDP read cache
-      gpu().hasPendingDispatch();
-      return true;
-    }
-  }
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() &&
       !srcMemory.isCpuUncached())) {
@@ -1954,22 +1931,6 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
                                     bool entire, amd::CopyMetadata copyMetadata) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-
-  if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize && !copyMetadata.isAsync_) {
-    if ((dstMemory.owner()->getHostMem() == nullptr) &&
-        (dstMemory.owner()->getSvmPtr() != nullptr)) {
-      // CPU read ahead, hence release GPU memory
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host memcpy for WriteBuffer");
-      gpu().releaseGpuMemoryFence();
-      char* dst = reinterpret_cast<char*>(dstMemory.owner()->getSvmPtr());
-      std::memcpy(dst + origin[0], srcHost, size[0]);
-      // Set hasPendingDispatch_ flag. Then releaseGpuMemoryFence() will use barrier
-      // to invalidate cache
-      gpu().hasPendingDispatch();
-      gpu().releaseGpuMemoryFence();
-      return true;
-    }
-  }
 
   // Use host copy if memory has direct access
   if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||

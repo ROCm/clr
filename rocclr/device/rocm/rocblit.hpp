@@ -209,8 +209,6 @@ class DmaBlitManager : public device::HostBlitManager {
 
  protected:
   static constexpr uint MaxPinnedBuffers = 4;
-  static constexpr size_t kMaxH2dMemcpySize = 8 * Ki;
-  static constexpr size_t kMaxD2hMemcpySize = 64; //!< 1 cacheline
 
   //! Synchronizes the blit operations if necessary
   inline void synchronize() const;
