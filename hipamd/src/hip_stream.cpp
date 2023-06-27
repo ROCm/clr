@@ -515,11 +515,8 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
           "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
           event);
   hipError_t status = hipSuccess;
-  if (event == nullptr) {
+  if (event == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidHandle;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
   }
   hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
