@@ -91,10 +91,12 @@ extern "C" {
 hipError_t hipMemcpy_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
 
 hipError_t hipMemcpyToSymbol_spt(const void* symbol, const void* src, size_t sizeBytes,
-                             size_t offset, hipMemcpyKind kind);
+                                 size_t offset __dparm(0),
+                                 hipMemcpyKind kind __dparm(hipMemcpyHostToDevice));
 
 hipError_t hipMemcpyFromSymbol_spt(void* dst, const void* symbol,size_t sizeBytes,
-                               size_t offset, hipMemcpyKind kind);
+                                   size_t offset __dparm(0),
+                                   hipMemcpyKind kind __dparm(hipMemcpyDeviceToHost));
 
 hipError_t hipMemcpy2D_spt(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
                         size_t height, hipMemcpyKind kind);
