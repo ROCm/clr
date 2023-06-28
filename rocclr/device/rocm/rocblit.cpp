@@ -679,7 +679,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
-  bool useRegularCopyApi = !HIP_USE_SDMA_QUERY;
+  bool useRegularCopyApi = !DEBUG_CLR_USE_SDMA_QUERY;
 
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
