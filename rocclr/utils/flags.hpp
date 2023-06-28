@@ -285,9 +285,9 @@ release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
 release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
 release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
-         "Force device mem for kernel args")                                  \
-release(bool, HIP_USE_SDMA_QUERY, 0,                                          \
-         "Use SDMA query API to make copy decisions")
+         "Force device mem for kernel args.")                                 \
+release(bool, DEBUG_CLR_USE_SDMA_QUERY, 0,                                    \
+         "Use SDMA query API to make copy decisions.")
 
 namespace amd {
 

@@ -1240,7 +1240,7 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(group_segment_size > 0);
 
-  if (HIP_USE_SDMA_QUERY) {
+  if (DEBUG_CLR_USE_SDMA_QUERY) {
     // Find SDMA read mask
     if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
                                                                 &maxSdmaReadMask_)) {
