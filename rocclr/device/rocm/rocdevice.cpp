@@ -1430,6 +1430,10 @@ bool Device::populateOCLDeviceConstants() {
     info_.singleFPConfig_ |= CL_FP_DENORM;
   }
 
+  if (settings().checkExtension(ClKhrFp16)) {
+    info_.halfFPConfig_ = info_.singleFPConfig_;
+  }
+
   info_.preferredPlatformAtomicAlignment_ = 0;
   info_.preferredGlobalAtomicAlignment_ = 0;
   info_.preferredLocalAtomicAlignment_ = 0;

@@ -381,6 +381,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
   }
 
+  if (settings().checkExtension(ClKhrFp16)) {
+    info_.halfFPConfig_ = info_.singleFPConfig_;
+  }
+
   info_.globalMemCacheLineSize_ = settings().cacheLineSize_;
   info_.globalMemCacheSize_ = settings().cacheSize_;
   if ((settings().cacheLineSize_ != 0) || (settings().cacheSize_ != 0)) {
