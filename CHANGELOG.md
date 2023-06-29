@@ -7,6 +7,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Optimizations
 
 ### Added
+- Added meta_group_size/rank for getting the number of tiles and rank of a tile in the partition
 
 ### Changed
 
