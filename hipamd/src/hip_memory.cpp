@@ -2200,6 +2200,8 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system memory.
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcHost = pCopy->srcDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
+      // We don't need detect memory type again for hipMemoryTypeUnified
+      const_cast<HIP_MEMCPY3D*>(pCopy)->srcMemoryType = srcMemoryType;
     }
   }
   offset = 0;
@@ -2216,6 +2218,8 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
     if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
+      // We don't need detect memory type again for hipMemoryTypeUnified
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstMemoryType = dstMemoryType;
     }
   }
   // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
