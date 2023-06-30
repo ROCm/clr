@@ -1040,7 +1040,8 @@ bool Resource::CreateIpc(CreateParams* params) {
   if (nullptr == memRef_) {
     return false;
   }
-  params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+  offset_ += params->owner_->getOffset();
+  params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr + offset_));
   return true;
 }
 
@@ -1178,6 +1179,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
     params->owner_->setSvmPtr(
         reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr + subOffset_));
     offset_ += static_cast<size_t>(subOffset_);
+    params->owner_->setOffset(offset_);
   }
   return true;
 }
@@ -2055,6 +2057,10 @@ bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
   createInfo.heaps[1] = Pal::GpuHeapLocal;
   createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
+  if (amd::IS_HIP) {
+    //set interprocess for IPC memory support
+    createInfo.flags.interprocess = 1;
+  }
   GpuMemoryReference* mem_ref = GpuMemoryReference::Create(*device_, createInfo);
   if (mem_ref != nullptr) {
     // Workaround: some chunk memory are not guaranteed to be resident during initial allocation.

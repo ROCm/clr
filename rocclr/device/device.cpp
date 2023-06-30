@@ -844,16 +844,12 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
   }
 
   // Calculate the memory offset from the original base ptr
-  *mem_offset = reinterpret_cast<address>(dev_ptr) - reinterpret_cast<address>(orig_dev_ptr);
+  *mem_offset = reinterpret_cast<address>(dev_ptr)
+                - reinterpret_cast<address>(orig_dev_ptr)
+                + amd_mem_obj->getOffset();
+
   *mem_size = amd_mem_obj->getSize();
 
-  // Check if the dev_ptr is greater than memory allocated
-  if (*mem_offset > *mem_size) {
-    DevLogPrintfError(
-        "Memory offset: %u cannot be greater than size of original memory allocated: %u", *mem_size,
-        *mem_offset);
-    return false;
-  }
   auto dev_mem = static_cast<device::Memory*>(amd_mem_obj->getDeviceMemory(*this));
   auto result = dev_mem->ExportHandle(handle);
 
@@ -882,9 +878,6 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, u
   if (mem_obj_exist == nullptr) {
     // Add the original mem_ptr to the MemObjMap with newly created amd_mem_obj
     amd::MemObjMap::AddMemObj(amd_mem_obj->getSvmPtr(), amd_mem_obj);
-
-    // Make sure the mem_offset doesnt overflow the allocated memory
-    guarantee((mem_offset < mem_size), "IPC mem offset greater than allocated size");
   } else {
     amd_mem_obj->release();
     amd_mem_obj = mem_obj_exist;

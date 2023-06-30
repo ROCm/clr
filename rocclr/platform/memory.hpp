@@ -194,6 +194,7 @@ class Memory : public amd::RuntimeObject {
   device::VirtualDevice* vDev_;  //!< Memory object belongs to a virtual device only
   std::atomic_uint mapCount_;    //!< Keep track of number of mappings for a memory object
   void* svmHostAddress_;         //!< svm host address;
+  size_t resOffset_;             //!< resource offset
   union {
     struct {
       uint32_t isParent_ : 1;          //!< This object is a parent
@@ -372,6 +373,10 @@ class Memory : public amd::RuntimeObject {
 
   void* getSvmPtr() const { return svmHostAddress_; }   //!< svm pointer accessor;
   void setSvmPtr(void* ptr) { svmHostAddress_ = ptr; }  //!< svm pointer setter;
+
+  size_t getOffset() const { return resOffset_; }         //!< resource offset accessor;
+  void setOffset(size_t offset) { resOffset_ = offset; }  //!< resource offset setter;
+
   bool isSvmPtrCommited() const {
     return svmPtrCommited_;
   }                        //!< svm host address committed accessor;
@@ -679,8 +684,9 @@ public:
 class IpcBuffer : public Buffer {
  public:
   IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, const void* handle)
-    : Buffer(context, flags, offset, size), handle_(handle) {
+    : Buffer(context, flags, size), handle_(handle) {
     setIpcShared(true);
+    setOffset(offset);
   }
 
   virtual void initDeviceMemory();
