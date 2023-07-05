@@ -748,9 +748,8 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
       return false;
     }
     kernels()[kernelName] = kernel;
-    if (codeObjectVer() < 5) {
-      kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
-    }
+
+    kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
   }
 
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);

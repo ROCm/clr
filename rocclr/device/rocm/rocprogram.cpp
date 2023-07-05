@@ -274,9 +274,7 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
     if (!aKernel->init()) {
       return false;
     }
-    if (codeObjectVer() < 5) {
-      aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
-    }
+    aKernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
     aKernel->setInternalKernelFlag(internalKernel);
     kernels()[kernelName] = aKernel;
   }
