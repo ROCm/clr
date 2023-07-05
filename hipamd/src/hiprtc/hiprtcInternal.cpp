@@ -598,7 +598,7 @@ bool RTCLinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITIn
 }
 
 bool RTCLinkProgram::AddLinkerFile(std::string file_path, hiprtcJITInputType input_type) {
-  std::ifstream file_stream{file_path};
+  std::ifstream file_stream{file_path, std::ios_base::in | std::ios_base::binary};
   if (!file_stream.good()) {
     return false;
   }
