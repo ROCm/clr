@@ -95,7 +95,9 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
                                                    ulong4 srcRect, ulong4 dstRect, ulong4 size) {
     __amd_copyBufferRectAligned(src, dst, srcRect, dstRect, size);
   }
+);
 
+const char* HipExtraSourceCode = BLIT_KERNELS(
   __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
                                             ulong value, ulong sizeBytes) {
     __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);

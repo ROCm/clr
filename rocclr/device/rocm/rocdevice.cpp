@@ -65,6 +65,7 @@
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
+
 namespace {
 
 inline bool getIsaMeta(std::string isaName, amd_comgr_metadata_node_t& isaMeta) {
@@ -94,7 +95,7 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 } // namespace
 
 namespace device {
-extern const char* BlitSourceCode;
+extern const char* HipExtraSourceCode;
 } // namespace device
 
 namespace roc {
@@ -843,7 +844,9 @@ bool Device::createBlitProgram() {
 
 #if defined(USE_COMGR_LIBRARY)
   if (settings().useLightning_) {
-    if (!amd::IS_HIP) {
+    if (amd::IS_HIP) {
+      extraKernel = device::HipExtraSourceCode;
+    } else {
       extraKernel = SchedulerSourceCode;
     }
 
