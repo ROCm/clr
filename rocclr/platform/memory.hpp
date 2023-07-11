@@ -323,6 +323,7 @@ class Memory : public amd::RuntimeObject {
 
   // Accessors
   Memory* parent() const { return parent_; }
+  void SetParent(amd::Memory* parent) { parent_ = parent; }
   bool isParent() const { return isParent_; }
 
   size_t getOrigin() const { return origin_; }
