@@ -47,7 +47,7 @@ THE SOFTWARE.
 #endif
 
 #define __hip_abort()                                                                              \
-  { asm("trap;"); }
+  { abort(); }
 #if defined(NDEBUG)
 #define __hip_assert(COND)
 #else
