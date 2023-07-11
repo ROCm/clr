@@ -1497,6 +1497,7 @@ bool Image::AddView(amd::Image* image) {
   view_cache_.push_back(image);
   // Remove parent dependency on the child, since cache will be destroyed within the parent
   owner()->release();
+  image->SetParent(nullptr);
   return true;
 }
 
