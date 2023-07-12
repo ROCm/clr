@@ -961,8 +961,9 @@ bool Buffer::create(bool alloc_local) {
                                     dev().SystemSegment() :
                                     (dev().SystemCoarseSegment().handle != 0 ?
                                         dev().SystemCoarseSegment() : dev().SystemSegment());
+      hsa_agent_t hsa_agent = dev().getBackendDevice();
       hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(),
-          owner()->getSize(), nullptr, 0, pool, 0, &deviceMemory_);
+          owner()->getSize(), &hsa_agent, 1, pool, 0, &deviceMemory_);
       ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, HostPtr = %p,"
               " DevPtr = %p", pool, owner()->getSize(), owner()->getHostMem(), deviceMemory_ );
       if (status != HSA_STATUS_SUCCESS) {
