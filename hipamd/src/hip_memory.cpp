@@ -290,6 +290,7 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   }
 
   const auto& dev_info = amdContext->devices()[0]->info();
+  hip::getCurrentDevice()->SetActiveStatus();
 
   if ((!useHostDevice && (dev_info.maxMemAllocSize_ < sizeBytes)) ||
       (useHostDevice && (dev_info.maxPhysicalMemAllocSize_ < sizeBytes))) {

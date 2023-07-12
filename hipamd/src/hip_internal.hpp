@@ -464,11 +464,16 @@ namespace hip {
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-   hip::Stream* NullStream();
-   Stream* GetNullStream();
+    hip::Stream* NullStream();
+    Stream* GetNullStream();
+
+    void SetActiveStatus() {
+      isActive_ = true;
+    }
 
     bool GetActiveStatus() {
       amd::ScopedLock lock(lock_);
+      /// Either stream is active or device is active
       if (isActive_) return true;
       if (Stream::existsActiveStreamForDevice(this)) {
         isActive_ = true;
