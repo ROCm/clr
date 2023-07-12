@@ -53,7 +53,7 @@ bool IsEnabled(OpId operation_id) {
 
 void ReportActivity(const amd::Command& command) {
   assert(command.profilingInfo().enabled_ && "profiling must be enabled for this command");
-  auto operation_id = OperationId(command.type());
+  activity_op_t operation_id = OperationId(command.type());
   if (operation_id >= OP_ID_NUMBER)
     // This command does not translate into a profiler activity (dispatch, memcopy, etc...), there
     // is nothing to report to the profiler.

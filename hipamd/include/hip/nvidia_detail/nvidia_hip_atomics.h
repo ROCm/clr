@@ -25,51 +25,43 @@ THE SOFTWARE.
 
 
 __device__ inline float atomicMax(float* addr, float val) {
-    unsigned int *uaddr = (unsigned int *)addr;
-    float value = __uint_as_float(*uaddr);
-
-    while (value < val) {
-        value = __uint_as_float(atomicCAS(uaddr, __float_as_uint(value),
-                                                 __float_as_uint(val)));
+    int ret = __float_as_int(*addr);
+    while (val > __int_as_float(ret)) {
+        int old = ret;
+        if ((ret = atomicCAS((int *)addr, old, __float_as_int(val))) == old)
+            break;
     }
-    return value;
+    return __int_as_float(ret);
 }
-
 __device__ inline double atomicMax(double* addr, double val) {
-    unsigned long long* uaddr  = (unsigned long long *)addr;
-    double value = __longlong_as_double(*uaddr);
-
-    while (value < val) {
-        value = __longlong_as_double(atomicCAS(uaddr,
-                                        __double_as_longlong(value),
-                                        __double_as_longlong(val)));
+    unsigned long long ret = __double_as_longlong(*addr);
+    while (val > __longlong_as_double(ret)) {
+        unsigned long long old = ret;
+        if ((ret = atomicCAS((unsigned long long *)addr, old, __double_as_longlong(val))) == old)
+            break;
     }
-
-    return value;
+    return __longlong_as_double(ret);
 }
 
 __device__ inline float atomicMin(float* addr, float val) {
-    unsigned int *uaddr = (unsigned int *)addr;
-    float value = __uint_as_float(*uaddr);
-
-    while (value > val) {
-        value = __uint_as_float(atomicCAS(uaddr, __float_as_uint(value),
-                                                 __float_as_uint(val)));
+    int ret = __float_as_int(*addr);
+    while (val < __int_as_float(ret)) {
+        int old = ret;
+        if ((ret = atomicCAS((int *)addr, old, __float_as_int(val))) == old)
+            break;
     }
-    return value;
+    return __int_as_float(ret);
 }
 
 __device__ inline double atomicMin(double* addr, double val) {
-    unsigned long long* uaddr  = (unsigned long long *)addr;
-    double value = __longlong_as_double(*uaddr);
-
-    while (value > val) {
-        value = __longlong_as_double(atomicCAS(uaddr,
-                                         __double_as_longlong(value),
-                                         __double_as_longlong(val)));
+    unsigned long long ret = __double_as_longlong(*addr);
+    while (val < __longlong_as_double(ret)) {
+        unsigned long long old = ret;
+        if ((ret = atomicCAS((unsigned long long *)addr, old, __double_as_longlong(val))) == old)
+            break;
     }
-
-    return value;
+    return __longlong_as_double(ret);
 }
+
 
 #endif

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -618,6 +618,14 @@ Buffer::~Buffer() {
     dev().hostFree(deviceMemory_, size());
   } else {
     destroy();
+
+    if (owner()->ipcShared()) {
+      // Detach the memory from HSA
+      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getHostMem());
+      if (hsa_status != HSA_STATUS_SUCCESS) {
+        LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
+      }
+    }
   }
 }
 
@@ -722,6 +730,22 @@ bool Buffer::create(bool alloc_local) {
       }
     }
     return false;
+  }
+
+  if (owner()->ipcShared()) {
+    void* orig_dev_ptr = nullptr;
+    // Extra 1 for the current device
+    const uint32_t ipc_agents_num = dev().p2pAgents().size() + 1;
+    // Retrieve the devPtr from the handle
+    auto hsa_status = hsa_amd_ipc_memory_attach(
+        reinterpret_cast<const hsa_amd_ipc_memory_t*>(
+        reinterpret_cast<const amd::IpcBuffer*>(owner())->Handle()),
+        owner()->getSize(), ipc_agents_num, dev().IpcAgents(), &orig_dev_ptr);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
+      return false;
+    }
+    owner()->setSvmPtr(orig_dev_ptr);
   }
 
   // Allocate backing storage in device local memory unless UHP or AHP are set
@@ -955,6 +979,24 @@ bool Buffer::create(bool alloc_local) {
   return deviceMemory_ != nullptr;
 }
 
+// ================================================================================================
+bool Buffer::ExportHandle(void* handle) const {
+  void* orig_dev_ptr = nullptr;
+  if (owner()->getSvmPtr() != nullptr) {
+    orig_dev_ptr = owner()->getSvmPtr();
+  } else if (owner()->getHostMem() != nullptr) {
+    orig_dev_ptr = owner()->getHostMem();
+  }
+
+  auto hsa_status = hsa_amd_ipc_memory_create(orig_dev_ptr, owner()->getSize(),
+                                              reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
+    return false;
+  }
+  return true;
+}
+
 // ======================================= roc::Image =============================================
 typedef struct ChannelOrderMap {
   uint32_t cl_channel_order;
@@ -1132,9 +1174,6 @@ bool Image::createInteropImage() {
 
 bool Image::create(bool alloc_local) {
   if (owner()->parent() != nullptr) {
-    if (!ValidateMemory()) {
-      return false;
-    }
     // Image view creation
     roc::Memory* parent = static_cast<roc::Memory*>(owner()->parent()->getDeviceMemory(dev_));
 
@@ -1238,26 +1277,64 @@ bool Image::createView(const Memory& parent) {
 
   hsa_status_t status;
   if (linearLayout) {
-    if (!amd::IS_HIP && nullptr != copyImageBuffer_) {
-      status = HSA_STATUS_SUCCESS;
+    size_t rowPitch;
+    amd::Image& ownerImage = *owner()->asImage();
+    size_t elementSize = ownerImage.getImageFormat().getElementSize();
+    // First get the row pitch in pixels
+    if (ownerImage.getRowPitch() != 0) {
+      rowPitch = ownerImage.getRowPitch() / elementSize;
     } else {
-      size_t rowPitch;
-      amd::Image& ownerImage = *owner()->asImage();
-      size_t elementSize = ownerImage.getImageFormat().getElementSize();
-      // First get the row pitch in pixels
-      if (ownerImage.getRowPitch() != 0) {
-        rowPitch = ownerImage.getRowPitch() / elementSize;
-      } else {
-        rowPitch = ownerImage.getWidth();
+      rowPitch = ownerImage.getWidth();
+    }
+
+    // Make sure the row pitch is aligned to pixels
+    rowPitch =
+        elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
+
+    status = hsa_ext_image_create_with_layout(
+             dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+             HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
+
+    if (!amd::IS_HIP && dev().settings().imageBufferWar_ &&
+        ((ownerImage.getWidth() * ownerImage.getImageFormat().getElementSize()) <
+        ownerImage.getRowPitch())) {
+      bool workaround = false;
+      if (status == static_cast<hsa_status_t>(HSA_EXT_STATUS_ERROR_IMAGE_PITCH_UNSUPPORTED)) {
+        workaround = true;
+      }
+      if (status == HSA_STATUS_SUCCESS) {
+        // There are corner cases which still need workaround.
+        const size_t kAlignments[] = {16, 32, 64, 128, 256};
+        size_t tryPitch;
+        for (int i = 0; i < sizeof(kAlignments) / sizeof(kAlignments[0]); i++) {
+          tryPitch = amd::alignUp(ownerImage.getWidth(), kAlignments[i]) * elementSize;
+          if (tryPitch >= rowPitch) {
+            break;
+          }
+          hsa_ext_image_t hsaImage;
+          if (HSA_STATUS_SUCCESS == hsa_ext_image_create_with_layout(
+                dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
+                HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, tryPitch, 0, &hsaImage)) {
+            // The image pitch from app is not expectation of the GPU
+            LogWarning("[OCL] will use copy image");
+            workaround = true;
+            // Free the image.
+            hsa_ext_image_destroy(dev().getBackendDevice(), hsaImage);
+            hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
+            hsaImageObject_.handle = 0;
+            break;
+          }
+        }
       }
 
-      // Make sure the row pitch is aligned to pixels
-      rowPitch =
-          elementSize * amd::alignUp(rowPitch, (dev().info().imagePitchAlignment_ / elementSize));
-
-      status = hsa_ext_image_create_with_layout(
-          dev().getBackendDevice(), &imageDescriptor_, deviceMemory_, permission_,
-          HSA_EXT_IMAGE_DATA_LAYOUT_LINEAR, rowPitch, 0, &hsaImageObject_);
+      if (workaround) {
+        if (ValidateMemory()) {
+          status = HSA_STATUS_SUCCESS;
+        } else {
+          LogWarning("[OCL] copy image fail during validation");
+          status = HSA_STATUS_ERROR;
+        }
+      }
     }
   } else if (kind_ == MEMORY_KIND_INTEROP) {
     amdImageDesc_ = static_cast<Image*>(parent.owner()->getDeviceMemory(dev()))->amdImageDesc_;
@@ -1353,7 +1430,12 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
 
 Image::~Image() { destroy(); }
 
+// ================================================================================================
 void Image::destroy() {
+  for (auto it : view_cache_) {
+    it->release();
+  }
+
   delete copyImageBuffer_;
 
   if (hsaImageObject_.handle != 0) {
@@ -1385,29 +1467,49 @@ void Image::destroy() {
   }
 }
 
+// ================================================================================================
 bool Image::ValidateMemory() {
-  // Detect image view from buffer to distinguish linear paths from tiled.
-  amd::Memory* ancestor = owner()->parent();
-  while ((ancestor->asBuffer() == nullptr) && (ancestor->parent() != nullptr)) {
-    ancestor = ancestor->parent();
+  amd::Image* img = owner()->asImage();
+  // Create a native image without pitch for validation
+  copyImageBuffer_ =
+      new (dev().context()) amd::Image(
+                              dev().context(), CL_MEM_OBJECT_IMAGE2D, 0, img->getImageFormat(),
+                              img->getWidth(), img->getHeight(), 1, 0, 0);
+
+  if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
+    return false;
+  } else {
+    return true;
   }
-  bool linearLayout = (ancestor->asBuffer() != nullptr);
+}
 
-  if (dev().settings().imageBufferWar_ && linearLayout && (owner() != nullptr) &&
-      ((owner()->asImage()->getWidth() * owner()->asImage()->getImageFormat().getElementSize()) <
-       owner()->asImage()->getRowPitch())) {
-    amd::Image* img = owner()->asImage();
-    // Create a native image without pitch for validation
-    copyImageBuffer_ =
-        new (dev().context()) amd::Image(
-                                dev().context(), CL_MEM_OBJECT_IMAGE2D, 0, img->getImageFormat(),
-                                img->getWidth(), img->getHeight(), 1, 0, 0);
-
-    if ((copyImageBuffer_ == nullptr) || !copyImageBuffer_->create()) {
+// ================================================================================================
+bool Image::AddView(amd::Image* image) {
+  amd::ScopedLock l(owner()->lockMemoryOps());
+  for (auto it : view_cache_) {
+    if ((it->getImageFormat().image_channel_data_type ==
+         image->getImageFormat().image_channel_data_type) &&
+        (it->getImageFormat().image_channel_order ==
+         image->getImageFormat().image_channel_order)) {
       return false;
     }
   }
+  view_cache_.push_back(image);
+  // Remove parent dependency on the child, since cache will be destroyed within the parent
+  owner()->release();
   return true;
+}
+
+// ================================================================================================
+amd::Image* Image::FindView(cl_image_format format) const {
+  amd::ScopedLock l(owner()->lockMemoryOps());
+  for (auto it : view_cache_) {
+    if ((it->getImageFormat().image_channel_data_type == format.image_channel_data_type) &&
+        (it->getImageFormat().image_channel_order == format.image_channel_order)) {
+      return it;
+    }
+  }
+  return nullptr;
 }
 
 }

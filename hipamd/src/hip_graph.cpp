@@ -786,50 +786,6 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
   return hipSuccess;
 }
 
-hipError_t capturehipEventRecord(hipStream_t& stream, hipEvent_t& event) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node EventRecord on stream : %p, Event %p", stream, event);
-  if (event == nullptr) {
-    return hipErrorInvalidHandle;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  e->StartCapture(stream);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  s->SetCaptureEvent(event);
-  std::vector<hipGraphNode_t> lastCapturedNodes = s->GetLastCapturedNodes();
-  if (!lastCapturedNodes.empty()) {
-    e->SetNodesPrevToRecorded(lastCapturedNodes);
-  }
-  return hipSuccess;
-}
-
-hipError_t capturehipStreamWaitEvent(hipEvent_t& event, hipStream_t& stream, unsigned int& flags) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
-          event);
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hip::Event* e = reinterpret_cast<hip::Event*>(event);
-
-  if (event == nullptr || stream == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  if (!s->IsOriginStream()) {
-    s->SetCaptureGraph(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureGraph());
-    s->SetCaptureId(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureID());
-    s->SetCaptureMode(reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->GetCaptureMode());
-    s->SetParentStream(e->GetCaptureStream());
-    reinterpret_cast<hip::Stream*>(s->GetParentStream())->SetParallelCaptureStream(stream);
-  }
-  s->AddCrossCapturedNode(e->GetNodesPrevToRecorded());
-  return hipSuccess;
-}
-
 hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*& userData) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] current capture node host on stream : %p",
           stream);
@@ -1242,11 +1198,13 @@ hipError_t ihipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists;
   std::unordered_set<hipUserObject*> graphExeUserObj;
   clonedGraph->GetRunList(parallelLists, nodeWaitLists);
-  std::vector<Node> levelOrder;
-  clonedGraph->LevelOrder(levelOrder);
+  std::vector<hipGraphNode_t> graphNodes;
+  if (false == clonedGraph->TopologicalOrder(graphNodes)) {
+    return hipErrorInvalidValue;
+  }
   clonedGraph->GetUserObjs(graphExeUserObj);
   *pGraphExec =
-      new hipGraphExec(levelOrder, parallelLists, nodeWaitLists, clonedNodes,
+      new hipGraphExec(graphNodes, parallelLists, nodeWaitLists, clonedNodes,
       graphExeUserObj, flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
@@ -1320,7 +1278,9 @@ hipError_t hipGraphGetNodes(hipGraph_t graph, hipGraphNode_t* nodes, size_t* num
     HIP_RETURN(hipErrorInvalidValue);
   }
   std::vector<hipGraphNode_t> graphNodes;
-  graph->LevelOrder(graphNodes);
+  if (false == graph->TopologicalOrder(graphNodes)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   if (nodes == nullptr) {
     *numNodes = graphNodes.size();
     HIP_RETURN(hipSuccess);
@@ -1561,10 +1521,10 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
 
   // Validate whether the topology of node and childGraph matches
   std::vector<Node> childGraphNodes1;
-  node->LevelOrder(childGraphNodes1);
+  node->TopologicalOrder(childGraphNodes1);
 
   std::vector<Node> childGraphNodes2;
-  childGraph->LevelOrder(childGraphNodes2);
+  childGraph->TopologicalOrder(childGraphNodes2);
 
   if (childGraphNodes1.size() != childGraphNodes2.size()) {
     HIP_RETURN(hipErrorUnknown);
@@ -2148,7 +2108,7 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
   }
 
   std::vector<Node> newGraphNodes;
-  hGraph->LevelOrder(newGraphNodes);
+  hGraph->TopologicalOrder(newGraphNodes);
   std::vector<Node>& oldGraphExecNodes = hGraphExec->GetNodes();
   if (newGraphNodes.size() != oldGraphExecNodes.size()) {
     *updateResult_out = hipGraphExecUpdateErrorTopologyChanged;

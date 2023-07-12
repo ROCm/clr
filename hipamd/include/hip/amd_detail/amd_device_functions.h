@@ -595,7 +595,7 @@ __device__ static inline double __longlong_as_double(long long int x) {
     return tmp;
 }
 
-__device__ static inline double __uint2double_rn(int x) { return (double)x; }
+__device__ static inline double __uint2double_rn(unsigned int x) { return (double)x; }
 
 __device__ static inline float __uint2float_rd(unsigned int x) {
     return __ocml_cvtrtn_f32_u32(x);
@@ -978,6 +978,11 @@ int __syncthreads_or(int predicate)
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
   #define XCC_ID_XCC_ID_OFFSET     0
+#endif
+
+#if (!defined(__HIP_NO_IMAGE_SUPPORT) && \
+    (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)))
+  #define __HIP_NO_IMAGE_SUPPORT   1
 #endif
 
 /*

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,12 @@
 #include <unordered_map>
 #include <memory>
 #include <limits>
-#define CL_MEM_FOLLOW_USER_NUMA_POLICY              (1u << 31)
-#define ROCCLR_MEM_HSA_SIGNAL_MEMORY                (1u << 30)
-#define ROCCLR_MEM_INTERNAL_MEMORY                  (1u << 29)
-#define CL_MEM_VA_RANGE_AMD                         (1u << 28)
-#define ROCCLR_MEM_HSA_UNCACHED                     (1u << 27)
+#define CL_MEM_FOLLOW_USER_NUMA_POLICY  (1u << 31)
+#define ROCCLR_MEM_HSA_SIGNAL_MEMORY    (1u << 30)
+#define ROCCLR_MEM_INTERNAL_MEMORY      (1u << 29)
+#define CL_MEM_VA_RANGE_AMD             (1u << 28)
+#define ROCCLR_MEM_HSA_UNCACHED         (1u << 27)
+#define ROCCLR_MEM_INTERPROCESS         (1u << 26)
 
 namespace device {
 class Memory;
@@ -539,7 +540,8 @@ class Image : public Memory {
   uint baseMipLevel_;  //!< The base mip level for a view
 
  protected:
-  Image(const Format& format, Image& parent, uint baseMipLevel = 0, cl_mem_flags flags = 0);
+  Image(const Format& format, Image& parent, uint baseMipLevel = 0, cl_mem_flags flags = 0,
+      bool isMipmapView = false);
 
   ///! Initializes the device memory array which is nested
   // after'Image' object in memory layout.
@@ -595,7 +597,8 @@ class Image : public Memory {
                             const Format& format,         //!< The new format for a view
                             device::VirtualDevice* vDev,  //!< Virtual device object
                             uint baseMipLevel = 0,        //!< Base mip level for a view
-                            cl_mem_flags flags = 0        //!< Memory allocation flags
+                            cl_mem_flags flags = 0,       //!< Memory allocation flags
+                            bool createMipmapView = false //!< To create mipmap view based on this image
   );
 
   //! Returns the impl for this image.
@@ -671,6 +674,22 @@ public:
              reinterpret_cast<void*>(kArenaMemoryPtr)) {}
   bool isArena() { return true; }
 };
+
+class IpcBuffer : public Buffer {
+ public:
+  IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, const void* handle)
+    : Buffer(context, flags, offset, size), handle_(handle) {
+    setIpcShared(true);
+  }
+
+  virtual void initDeviceMemory();
+
+  const void* Handle() const { return handle_; }
+
+ private:
+  const void* handle_;  //!< Ipc handle, associated with this memory object
+};
+
 
 }  // namespace amd
 

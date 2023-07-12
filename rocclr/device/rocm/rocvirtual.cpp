@@ -43,6 +43,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <immintrin.h>
 
 
 /**
@@ -464,10 +465,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
       }
-    }
-    if (!sdma_profiling_) {
-      hsa_amd_profiling_async_copy_enable(true);
-      sdma_profiling_ = true;
     }
   }
   return prof_signal->signal_;
@@ -1314,8 +1311,12 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
   kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
   active_chunk_ = 0;
-  kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
-                                                 Device::MemorySegment::kKernArg));
+  if (HIP_FORCE_DEV_KERNARG && roc_device_.info().largeBar_) {
+    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
+  } else {
+    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
+                                                   Device::MemorySegment::kKernArg));
+  }
   if (kernarg_pool_base_ == nullptr) {
     return false;
   }
@@ -1389,7 +1390,7 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
 * and then calls start() to get the current host timestamp.
 */
-void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
+void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
   if (command.profilingInfo().enabled_) {
     if (timestamp_ != nullptr) {
       LogWarning("Trying to create a second timestamp in VirtualGPU. \
@@ -1400,6 +1401,12 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
     timestamp_ = new Timestamp(this, command);
     command.setData(timestamp_);
     timestamp_->start();
+
+    // Enable SDMA profiling on the first access if profiling is set
+    // Its not per command basis
+    if (sdmaProfiling && !Barriers().GetSDMAProfiling()) {
+      Barriers().SetSDMAProfiling(true);
+    }
   }
 
   if (AMD_DIRECT_DISPATCH) {
@@ -1521,7 +1528,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   size_t offset = 0;
   // Find if virtual address is a CL allocation
@@ -1624,7 +1631,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   size_t offset = 0;
   // Find if virtual address is a CL allocation
@@ -1866,7 +1873,7 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   cl_command_type type = cmd.type();
   bool entire = cmd.isEntireMemory();
@@ -1889,7 +1896,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true)) {
     amd::Coord3D srcOrigin(0, 0, 0);
@@ -1971,7 +1978,7 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   Memory* srcDevMem = static_cast<roc::Memory*>(
     cmd.source().getDeviceMemory(*cmd.source().getContext().devices()[0]));
@@ -2068,7 +2075,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true) &&
@@ -2106,7 +2113,7 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem(true) &&
@@ -2146,7 +2153,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   //! @todo add multi-devices synchronization when supported.
 
@@ -2254,7 +2261,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
     return;
   }
 
-  profilingBegin(cmd);
+  profilingBegin(cmd, true);
 
   // Force buffer write for IMAGE1D_BUFFER
   bool imageBuffer = (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER);
@@ -2784,6 +2791,44 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 }
 
 // ================================================================================================
+__attribute__((optimize("unroll-all-loops"), always_inline))
+static inline void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
+                              uint16_t size) {
+  #if defined(__AVX512F__)
+    for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
+      _mm512_stream_si512(reinterpret_cast<__m512i* __restrict&>(dst)++,
+                          *reinterpret_cast<const __m512i* __restrict&>(src)++);
+    }
+    size = size % sizeof(__m512i);
+  #endif
+
+  #if defined(__AVX__)
+    for (auto i = 0u; i != size / sizeof(__m256i); ++i) {
+      _mm256_stream_si256(reinterpret_cast<__m256i* __restrict&>(dst)++,
+                          *reinterpret_cast<const __m256i* __restrict&>(src)++);
+    }
+    size = size % sizeof(__m256i);
+  #endif
+
+  for (auto i = 0u; i != size / sizeof(__m128i); ++i) {
+    _mm_stream_si128(reinterpret_cast<__m128i* __restrict&>(dst)++,
+                     *(reinterpret_cast<const __m128i* __restrict&>(src)++));
+  }
+  size = size % sizeof(__m128i);
+
+  for (auto i = 0u; i != size / sizeof(long long); ++i) {
+    _mm_stream_si64(reinterpret_cast<long long* __restrict&>(dst)++,
+                    *reinterpret_cast<const long long* __restrict&>(src)++);
+  }
+  size = size % sizeof(long long);
+
+  for (auto i = 0u; i != size / sizeof(int); ++i) {
+    _mm_stream_si32(reinterpret_cast<int* __restrict&>(dst)++,
+                    *reinterpret_cast<const int* __restrict&>(src)++);
+  }
+}
+
+// ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     const amd::Kernel& kernel, const_address parameters, void* eventHandle,
     uint32_t sharedMemBytes, amd::NDRangeKernelCommand* vcmd,
@@ -3051,8 +3096,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       argBuffer = reinterpret_cast<address>(allocKernArg(gpuKernel.KernargSegmentByteSize(),
                                             gpuKernel.KernargSegmentAlignment()));
       // Load all kernel arguments
-      memcpy(argBuffer, parameters, std::min(gpuKernel.KernargSegmentByteSize(),
-                                             signature.paramsSize()));
+      nontemporalMemcpy(argBuffer, parameters,
+                        std::min(gpuKernel.KernargSegmentByteSize(),
+                                 signature.paramsSize()));
     }
 
     // Check for group memory overflow

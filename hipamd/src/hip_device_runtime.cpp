@@ -437,7 +437,7 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
   }
 
   //pciBusId should be large enough to store 13 characters including the NULL-terminator.
-  if (pciBusId == nullptr || len <= 12) {
+  if (pciBusId == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -448,7 +448,7 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
                     prop.pciBusID,
                     prop.pciDeviceID);
 
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(len <= 12 ? hipErrorInvalidValue : hipSuccess);
 }
 
 hipError_t hipDeviceGetSharedMemConfig ( hipSharedMemConfig * pConfig ) {
@@ -474,7 +474,7 @@ hipError_t hipDeviceSetCacheConfig ( hipFuncCache_t cacheConfig ) {
 
   // No way to set cache config yet.
 
-  HIP_RETURN(hipErrorNotSupported);
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
@@ -510,7 +510,7 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   }
   // No way to set cache config yet.
 
-  HIP_RETURN(hipErrorNotSupported);
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipDeviceSynchronize() {
@@ -558,7 +558,7 @@ hipError_t hipGetDeviceFlags ( unsigned int* flags ) {
 }
 
 hipError_t hipSetDevice ( int  device ) {
-  HIP_INIT_API(hipSetDevice, device);
+  HIP_INIT_API_NO_RETURN(hipSetDevice, device);
   if (static_cast<unsigned int>(device) < g_devices.size()) {
     hip::setCurrentDevice(device);
 

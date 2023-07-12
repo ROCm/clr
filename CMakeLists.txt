@@ -18,21 +18,45 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-project(clr)
 cmake_minimum_required(VERSION 3.16.8)
+project(clr)
 
 ##########
 # Defaults
 ##########
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options("/wd4267" "/wd4244" "/wd4996")
+    string(REPLACE "/GR" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+    string(REPLACE "/W3" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
+endif()
 option(CLR_BUILD_HIP "Build HIP" OFF)
 option(CLR_BUILD_OCL "Build OCL" OFF)
+
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
 
 #############
 # Build steps
 #############
 if(CLR_BUILD_HIP)
+    # Set default HIPCC_BIN_DIR to /opt/rocm/bin
+    if(NOT DEFINED HIPCC_BIN_DIR AND UNIX)
+        set(HIPCC_BIN_DIR "/opt/rocm/bin" CACHE STRING "Default hipcc directory on linux.")
+    endif()
+    message(STATUS "HIPCC Binary Directory: ${HIPCC_BIN_DIR}")
+
+    if(NOT EXISTS ${HIPCC_BIN_DIR}/hipconfig)
+        message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR.")
+    endif()
+
+    message(STATUS "HIP Common Directory: ${HIP_COMMON_DIR}")
+    if(NOT DEFINED HIP_COMMON_DIR)
+        message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
+    endif()
     # Determine HIP_PLATFORM
-    set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
+    set(__HIPCONFIG_EXECUTABLE__ ${HIPCC_BIN_DIR}/hipconfig)
     if(NOT DEFINED HIP_PLATFORM)
         if(NOT DEFINED ENV{HIP_PLATFORM})
             execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform

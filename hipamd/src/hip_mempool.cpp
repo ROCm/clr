@@ -236,7 +236,7 @@ hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_
     HIP_RETURN(hipErrorInvalidValue);
   }
   auto device = g_devices[pool_props->location.id];
-  auto pool = new hip::MemoryPool(device);
+  auto pool = new hip::MemoryPool(device, pool_props->handleTypes != hipMemHandleTypeNone);
   if (pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -298,7 +298,15 @@ hipError_t hipMemPoolExportToShareableHandle(
   if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(hipErrorNotSupported);
+
+  auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+  auto handle = mpool->Export();
+  if (!handle) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  *reinterpret_cast<amd::Os::FileDesc*>(shared_handle) = handle;
+
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
@@ -311,7 +319,26 @@ hipError_t hipMemPoolImportFromShareableHandle(
   if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(hipErrorNotSupported);
+
+  auto device = g_devices[0];
+  auto pool = new hip::MemoryPool(device);
+  if (pool == nullptr) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
+  // Note: The interface casts the integer value of file handle under Linux into void*,
+  // but compiler may not allow to cast it back. Hence, make a cast with a union...
+  union {
+    amd::Os::FileDesc desc;
+    void* ptr;
+  } handle;
+  handle.ptr = shared_handle;
+  if (!pool->Import(handle.desc)) {
+    pool->release();
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
+  *mem_pool = reinterpret_cast<hipMemPool_t>(pool);
+
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
@@ -320,7 +347,22 @@ hipError_t hipMemPoolExportPointer(hipMemPoolPtrExportData* export_data, void* p
   if (export_data == nullptr || ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(hipErrorNotSupported);
+
+  size_t offset = 0;
+  auto memory = getMemoryObject(ptr, offset);
+  if (memory != nullptr) {
+    auto id = memory->getUserData().deviceId;
+    // Note: export_data must point to 64 bytes of shared memory
+    auto shared = reinterpret_cast<hip::SharedMemPointer*>(export_data);
+
+    if (!g_devices[id]->devices()[0]->IpcCreate(ptr,
+      &shared->size_, &shared->handle_[0], &shared->offset_)) {
+      HIP_RETURN(hipErrorOutOfMemory);
+    }
+  } else {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
@@ -332,6 +374,15 @@ hipError_t hipMemPoolImportPointer(
   if (mem_pool == nullptr || export_data == nullptr || ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
-  HIP_RETURN(hipErrorNotSupported);
+  auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+  auto shared = reinterpret_cast<hip::SharedMemPointer*>(export_data);
+  if (!mpool->Device()->devices()[0]->IpcAttach(
+      &shared->handle_[0], shared->size_, shared->offset_, 0, ptr)) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
+  size_t offset = 0;
+  auto memory = getMemoryObject(*ptr, offset);
+  mpool->AddBusyMemory(memory);
+  mpool->retain();
+  HIP_RETURN(hipSuccess);
 }

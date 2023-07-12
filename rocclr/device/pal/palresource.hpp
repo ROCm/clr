@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -103,7 +103,8 @@ class Resource : public amd::HeapObject {
     amd::Memory* owner_;       //!< Resource's owner
     VirtualGPU* gpu_;          //!< Resource won't be shared between multiple queues
     const Resource* svmBase_;  //!< SVM base for MGPU allocations
-    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr) {}
+    bool interprocess_;        //!< Ressource can be used in the interprocess communication
+    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr), interprocess_(false) {}
   };
 
   struct PinnedParams : public CreateParams {
@@ -176,7 +177,8 @@ class Resource : public amd::HeapObject {
     Shader,            //!< resource is a shader
     P2PAccess,         //!< resource is a shared resource for P2P access
     VkInterop,         //!< resource is a Vulkan memory object
-    VaRange            //!< reousrce is a virtual address range
+    VaRange,           //!< reousrce is a virtual address range
+    IpcMemory          //!< reousrce is a IPC memory object
   };
 
   //! Resource map flags
@@ -213,6 +215,7 @@ class Resource : public amd::HeapObject {
         uint isDoppTexture_ : 1;   //!< PAL resource is for a DOPP desktop texture
         uint gl2CacheDisabled_ : 1;//!< PAL resource is allocated with GPU L2 cache disabled.
         uint reserved_va_ : 1;     //!< PAL resource was allocated for a reserved VA
+        uint interprocess_ : 1;    //!< PAL resource can be shared between processes
       };
       uint state_;
     };
@@ -432,7 +435,13 @@ class Resource : public amd::HeapObject {
                       );
 
  protected:
-  /*! \brief Creates a PAL iamge object, associated with the resource
+    /*! \brief Creates a PAL memory object, from IPC handle
+   *
+   *  \return True if we succesfully created a PAL resource
+   */
+  bool CreateIpc(CreateParams* params);
+
+   /*! \brief Creates a PAL iamge object, associated with the resource
    *
    *  \return True if we succesfully created a PAL resource
    */

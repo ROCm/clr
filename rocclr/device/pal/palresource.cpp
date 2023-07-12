@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -1028,6 +1028,23 @@ bool Resource::CreateInterop(CreateParams* params) {
 }
 
 // ================================================================================================
+bool Resource::CreateIpc(CreateParams* params) {
+  Pal::ExternalGpuMemoryOpenInfo gpuMemOpenInfo = {};
+  Pal::ExternalResourceOpenInfo& openInfo = gpuMemOpenInfo.resourceInfo;
+
+  openInfo.hExternalResource = *reinterpret_cast<const Pal::OsExternalHandle*>(
+      reinterpret_cast<amd::IpcBuffer*>(params->owner_)->Handle());
+  openInfo.flags.ntHandle = false;
+
+  memRef_ = GpuMemoryReference::Create(dev(), gpuMemOpenInfo);
+  if (nullptr == memRef_) {
+    return false;
+  }
+  params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+  return true;
+}
+
+// ================================================================================================
  bool Resource::CreateP2PAccess(CreateParams* params) {
   if (params->owner_->asImage()) {
     Pal::PeerImageOpenInfo openInfo = {};
@@ -1123,6 +1140,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
       createInfo.flags.useReservedGpuVa = false;
       createInfo.pReservedGpuVaOwner = nullptr;
     }
+    createInfo.flags.interprocess = desc_.interprocess_;
     if (!dev().settings().svmFineGrainSystem_) {
       memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
                                                     createInfo.pReservedGpuVaOwner, &subOffset_);
@@ -1141,6 +1159,8 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
     }
     memTypeToHeap(&createInfo);
+    createInfo.flags.interprocess = desc_.interprocess_;
+
     memRef_ = dev().resourceCache().findGpuMemory(&desc_, createInfo.size, createInfo.alignment,
                                                   createInfo.pReservedGpuVaOwner, &subOffset_);
     if (memRef_ == nullptr) {
@@ -1210,6 +1230,8 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
   if (dev().settings().disablePersistent_ && (memoryType() == Persistent)) {
     desc_.type_ = RemoteUSWC;
   }
+  desc_.interprocess_ = (nullptr != params) ? params->interprocess_ : false;
+
   switch (memoryType()) {
     case OGLInterop:
     case D3D9Interop:
@@ -1242,6 +1264,8 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
       }
       return true;
     }
+    case IpcMemory:
+      return CreateIpc(params);
     default:
       break;
   }
@@ -1477,7 +1501,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
   gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
     Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, arraySliceIdx};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
@@ -1503,7 +1527,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    int arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
     Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
@@ -2246,7 +2270,8 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
         (size > (sizeRes >> 1)) && ((it.second->iMem()->Desc().gpuVirtAddr % alignment) == 0) &&
         (entry->isAllocExecute_ == desc->isAllocExecute_) &&
         (entry->SVMRes_ == desc->SVMRes_) &&
-        (entry->gl2CacheDisabled_ == desc->gl2CacheDisabled_)) {
+        (entry->gl2CacheDisabled_ == desc->gl2CacheDisabled_) &&
+        (entry->interprocess_ == desc->interprocess_)) {
       ref = it.second;
       cacheSize_ -= sizeRes;
       if (entry->type_ == Resource::Local) {

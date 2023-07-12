@@ -1048,7 +1048,7 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_,
                                               &dbg_vmid);
   }
-  
+
   return true;
 }
 

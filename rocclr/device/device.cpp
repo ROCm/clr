@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -403,6 +403,7 @@ void MemObjMap::Purge(amd::Device* dev) {
     unsigned int flags = memObj->getMemFlags();
     const std::vector<Device*>& devices = memObj->getContext().devices();
     if (devices.size() == 1 && devices[0] == dev && !(flags & ROCCLR_MEM_INTERNAL_MEMORY)) {
+      memObj->release();
       it = MemObjMap_.erase(it);
     } else {
       ++it;
@@ -814,6 +815,116 @@ char* Device::getExtensionString() {
   }
 
   return result;
+}
+
+// ================================================================================================
+bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
+    return false;
+  }
+
+  // Get the original pointer from the amd::Memory object
+  void* orig_dev_ptr = nullptr;
+  if (amd_mem_obj->getSvmPtr() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getSvmPtr();
+  } else if (amd_mem_obj->getHostMem() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getHostMem();
+  } else {
+    ShouldNotReachHere();
+  }
+
+  // Check if the dev_ptr is lesser than original dev_ptr
+  if (orig_dev_ptr > dev_ptr) {
+    // If this happens, then revisit FindMemObj logic
+    DevLogPrintfError("Original dev_ptr: 0x%x cannot be greater than dev_ptr: 0x%x", orig_dev_ptr,
+                      dev_ptr);
+    return false;
+  }
+
+  // Calculate the memory offset from the original base ptr
+  *mem_offset = reinterpret_cast<address>(dev_ptr) - reinterpret_cast<address>(orig_dev_ptr);
+  *mem_size = amd_mem_obj->getSize();
+
+  // Check if the dev_ptr is greater than memory allocated
+  if (*mem_offset > *mem_size) {
+    DevLogPrintfError(
+        "Memory offset: %u cannot be greater than size of original memory allocated: %u", *mem_size,
+        *mem_offset);
+    return false;
+  }
+  auto dev_mem = static_cast<device::Memory*>(amd_mem_obj->getDeviceMemory(*this));
+  auto result = dev_mem->ExportHandle(handle);
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+                       void** dev_ptr) const {
+  amd::Memory* amd_mem_obj = nullptr;
+
+  // Create an amd Memory object for the handle
+  amd_mem_obj = new (context()) amd::IpcBuffer(context(), flags, mem_offset, mem_size, handle);
+  if (amd_mem_obj == nullptr) {
+    LogError("failed to create a mem object!");
+    return false;
+  }
+
+  if (!amd_mem_obj->create(nullptr)) {
+    LogError("failed to create a svm hidden buffer!");
+    amd_mem_obj->release();
+    return false;
+  }
+
+  auto mem_obj_exist = amd::MemObjMap::FindMemObj(amd_mem_obj->getSvmPtr());
+  if (mem_obj_exist == nullptr) {
+    // Add the original mem_ptr to the MemObjMap with newly created amd_mem_obj
+    amd::MemObjMap::AddMemObj(amd_mem_obj->getSvmPtr(), amd_mem_obj);
+
+    // Make sure the mem_offset doesnt overflow the allocated memory
+    guarantee((mem_offset < mem_size), "IPC mem offset greater than allocated size");
+  } else {
+    amd_mem_obj->release();
+    amd_mem_obj = mem_obj_exist;
+    // Memory already exists, just retain the old one.
+    amd_mem_obj->retain();
+  }
+
+  *dev_ptr = amd_mem_obj->getSvmPtr();
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::IpcDetach(void* dev_ptr) const {
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
+    return false;
+  }
+
+  if (!amd_mem_obj->ipcShared()) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
+    return false;
+  }
+
+  // Get the original pointer from the amd::Memory object
+  void* orig_dev_ptr = nullptr;
+  if (amd_mem_obj->getSvmPtr() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getSvmPtr();
+  } else if (amd_mem_obj->getHostMem() != nullptr) {
+    orig_dev_ptr = amd_mem_obj->getHostMem();
+  } else {
+    ShouldNotReachHere();
+  }
+
+  if (amd_mem_obj->release() == 0) {
+    amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
+  }
+
+  return true;
 }
 
 }  // namespace amd

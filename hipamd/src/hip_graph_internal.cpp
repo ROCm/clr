@@ -392,31 +392,32 @@ void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
     }
   }
 }
-
-void ihipGraph::LevelOrder(std::vector<Node>& levelOrder) {
-  std::vector<Node> roots = GetRootNodes();
-  std::unordered_map<Node, bool> visited;
+bool ihipGraph::TopologicalOrder(std::vector<Node>& TopoOrder) {
   std::queue<Node> q;
-  for (auto it = roots.begin(); it != roots.end(); it++) {
-    q.push(*it);
-    ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] %s(%p) level:%d \n",
-            GetGraphNodeTypeString((*it)->GetType()), *it, (*it)->GetLevel());
+  std::unordered_map<Node, int> inDegree;
+  for (auto entry : vertices_) {
+    if (entry->GetInDegree() == 0) {
+      q.push(entry);
+    }
+    inDegree[entry] = entry->GetInDegree();
   }
-  while (!q.empty()) {
+  while (!q.empty())
+  {
     Node node = q.front();
+    TopoOrder.push_back(node);
     q.pop();
-    levelOrder.push_back(node);
-    for (const auto& i : node->GetEdges()) {
-      if (visited.find(i) == visited.end() && i->GetLevel() == (node->GetLevel() + 1)) {
-        q.push(i);
-        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] %s(%p) level:%d \n",
-                GetGraphNodeTypeString(i->GetType()), i, i->GetLevel());
-        visited[i] = true;
+    for (auto edge : node->GetEdges()) {
+      inDegree[edge]--;
+      if (inDegree[edge] == 0) {
+        q.push(edge);
       }
     }
   }
+  if (GetNodeCount() == TopoOrder.size()) {
+    return true;
+  }
+  return false;
 }
-
 ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
   ihipGraph* newGraph = new ihipGraph(device_, this);
   for (auto entry : vertices_) {
@@ -481,8 +482,11 @@ hipError_t hipGraphExec::Init() {
   hipError_t status;
   size_t min_num_streams = 1;
 
-  for (auto& node : levelOrder_) {
-    min_num_streams += node->GetNumParallelStreams();
+  for (auto& node : topoOrder_) {
+    status = node->GetNumParallelStreams(min_num_streams);
+    if(status != hipSuccess) {
+      return status;
+    }
   }
   status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
   return status;
@@ -490,10 +494,10 @@ hipError_t hipGraphExec::Init() {
 
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& levelOrder, std::vector<amd::Command*>& rootCommands,
+                        std::vector<Node>& topoOrder, std::vector<amd::Command*>& rootCommands,
                         amd::Command*& endCommand, hip::Stream* stream) {
   hipError_t status;
-  for (auto& node : levelOrder) {
+  for (auto& node : topoOrder) {
     // TODO: clone commands from next launch
     status = node->CreateCommand(node->GetQueue());
     if (status != hipSuccess) return status;
@@ -574,15 +578,17 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (hip::getStream(stream) == nullptr) {
     return hipErrorInvalidResourceHandle;
   }
+  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
+                                        : reinterpret_cast<hip::Stream*>(stream);
   if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
-    if (!levelOrder_.empty()) {
-      levelOrder_[0]->GetParentGraph()->FreeAllMemory();
+    if (!topoOrder_.empty()) {
+      topoOrder_[0]->GetParentGraph()->FreeAllMemory(hip_stream);
     }
   }
 
   // If this is a repeat launch, make sure corresponding MemFreeNode exists for a MemAlloc node
   if (repeatLaunch_ == true) {
-    for (auto& node : levelOrder_) {
+    for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeMemAlloc &&
           static_cast<hipGraphMemAllocNode*>(node)->IsActiveMem() == true) {
           return hipErrorInvalidValue;
@@ -593,13 +599,11 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
 
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
-                                        : reinterpret_cast<hip::Stream*>(stream);
   UpdateStream(parallelLists_, hip_stream, this);
   std::vector<amd::Command*> rootCommands;
   amd::Command* endCommand = nullptr;
   status =
-      FillCommands(parallelLists_, nodeWaitLists_, levelOrder_, rootCommands, endCommand, hip_stream);
+      FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, rootCommands, endCommand, hip_stream);
   if (status != hipSuccess) {
     return status;
   }
@@ -607,7 +611,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     cmd->enqueue();
     cmd->release();
   }
-  for (auto& node : levelOrder_) {
+  for (auto& node : topoOrder_) {
     node->EnqueueCommands(stream);
   }
   if (endCommand != nullptr) {

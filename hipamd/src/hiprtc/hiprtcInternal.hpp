@@ -54,6 +54,16 @@ template <typename T> inline std::string ToString(T v) {
   return ss.str();
 }
 
+template <typename T> inline std::string ToString(T* v) {
+  std::ostringstream ss;
+  if (v == nullptr) {
+    ss << "<null>";
+  } else {
+    ss << v;
+  }
+  return ss.str();
+};
+
 inline std::string ToString() { return (""); }
 
 template <typename T, typename... Args> inline std::string ToString(T first, Args... args) {

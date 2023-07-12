@@ -147,11 +147,7 @@ hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advic
 
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
-  if (memObj == nullptr) {
-    HIP_RETURN(hipErrorMemoryAllocation);
-  }
-
-  if (count > (memObj->getSize() - offset)) {
+  if (memObj && count > (memObj->getSize() - offset)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -200,6 +196,24 @@ hipError_t hipMemRangeGetAttributes(void** data, size_t* data_sizes,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (*data_sizes > 0) {
+    for (int i = 0 ; i<*data_sizes ; i++) {
+      if (!data[i]) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+    }
+  }
+
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
+  if (memObj) {
+    if (!(memObj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR))) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  } else {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   // Shouldn't matter for which device the interface is called
   amd::Device* dev = g_devices[0]->devices()[0];
   // Get the allocation attributes from AMD HMM
@@ -215,9 +229,42 @@ hipError_t hipMemRangeGetAttributes(void** data, size_t* data_sizes,
 hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
                                    size_t length, unsigned int flags) {
   HIP_INIT_API(hipStreamAttachMemAsync, stream, dev_ptr, length, flags);
-
-  if ((stream == nullptr) || (dev_ptr == nullptr) || (length == 0)) {
+  // stream can be null, length can be 0.
+  if ((dev_ptr == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
+  if (flags != hipMemAttachGlobal && flags != hipMemAttachHost && flags != hipMemAttachSingle) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (flags == hipMemAttachSingle && !stream) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // host-accessible region of system-allocated pageable memory.
+  // This type of memory may only be specified if the device associated with the
+  // stream reports a non-zero value for the device attribute hipDevAttrPageableMemoryAccess.
+  hip::Stream* hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
+                                                : hip::getStream(stream);
+  size_t offset = 0;
+  amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
+  if (memObj == nullptr) {
+    if (hip_stream->GetDevice()->devices()[0]->info().hmmCpuMemoryAccessible_ == 0) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    if (length == 0) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  } else {
+    if (memObj->getMemFlags() & (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR)) {
+      if (length != 0 && memObj->getSize() != length) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+    }
   }
 
   // Unclear what should be done for this interface in AMD HMM, since it's generic SVM alloc

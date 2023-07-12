@@ -253,7 +253,8 @@ inline static CUresourcetype hipResourcetype_enumToCUresourcetype(
 
 #define hipTexRef CUtexref
 #define hiparray CUarray
-typedef CUmipmappedArray hipMipmappedArray_t;
+typedef CUmipmappedArray hipmipmappedArray;
+typedef cudaMipmappedArray_t hipMipmappedArray_t;
 
 #define HIP_TRSA_OVERRIDE_FORMAT        CU_TRSA_OVERRIDE_FORMAT
 #define HIP_TRSF_READ_AS_INTEGER        CU_TRSF_READ_AS_INTEGER
@@ -1579,20 +1580,36 @@ inline static hipError_t hipFreeArray(hipArray* array) {
     return hipCUDAErrorTohipError(cudaFreeArray(array));
 }
 
-inline static hipError_t hipMipmappedArrayCreate(hipMipmappedArray_t* pHandle,
+inline static hipError_t hipMipmappedArrayCreate(hipmipmappedArray* pHandle,
                                                  HIP_ARRAY3D_DESCRIPTOR* pMipmappedArrayDesc,
                                                  unsigned int numMipmapLevels) {
     return hipCUResultTohipError(cuMipmappedArrayCreate(pHandle, pMipmappedArrayDesc, numMipmapLevels));
 }
 
-inline static hipError_t hipMipmappedArrayDestroy(hipMipmappedArray_t hMipmappedArray) {
+inline static hipError_t hipMipmappedArrayDestroy(hipmipmappedArray hMipmappedArray) {
     return hipCUResultTohipError(cuMipmappedArrayDestroy(hMipmappedArray));
 }
 
-inline static hipError_t hipMipmappedArrayGetLevel(hipArray_t* pLevelArray,
-                                                   hipMipmappedArray_t hMipMappedArray,
+inline static hipError_t hipMipmappedArrayGetLevel(hiparray* pLevelArray,
+                                                   hipmipmappedArray hMipMappedArray,
                                                    unsigned int level) {
     return hipCUResultTohipError(cuMipmappedArrayGetLevel((CUarray*)pLevelArray, hMipMappedArray, level));
+}
+
+inline static hipError_t hipMallocMipmappedArray(hipMipmappedArray_t* pHandle,
+                                                 const hipChannelFormatDesc* desc, hipExtent extent,
+                                                 unsigned int numLevels, unsigned int flags __dparm(0)) {
+    return hipCUDAErrorTohipError(cudaMallocMipmappedArray(pHandle, desc, extent, numLevels, flags));
+}
+
+inline static hipError_t hipFreeMipmappedArray(hipMipmappedArray_t hMipmappedArray) {
+    return hipCUDAErrorTohipError(cudaFreeMipmappedArray(hMipmappedArray));
+}
+
+inline static hipError_t hipGetMipmappedArrayLevel(hipArray_t* pLevelArray,
+                                                   hipMipmappedArray_t hMipMappedArray,
+                                                   unsigned int level) {
+    return hipCUDAErrorTohipError(cudaGetMipmappedArrayLevel(pLevelArray, hMipMappedArray, level));
 }
 
 inline static hipError_t hipHostGetDevicePointer(void** devPtr, void* hostPtr, unsigned int flags) {
@@ -2807,6 +2824,26 @@ __HIP_DEPRECATED inline static hipError_t hipBindTexture2D(
 inline static hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w,
                                                         hipChannelFormatKind f) {
     return cudaCreateChannelDesc(x, y, z, w, hipChannelFormatKindToCudaChannelFormatKind(f));
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, 0, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf1() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, 0, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf2() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, e, 0, 0, cudaChannelFormatKindFloat);
+}
+
+inline static hipChannelFormatDesc hipCreateChannelDescHalf4() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return cudaCreateChannelDesc(e, e, e, e, cudaChannelFormatKindFloat);
 }
 
 inline static hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject,

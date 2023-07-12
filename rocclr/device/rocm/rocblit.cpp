@@ -679,19 +679,23 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
+  bool useRegularCopyApi = !DEBUG_CLR_USE_SDMA_QUERY;
 
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    copyMask = dev().fetchSDMAMask(this, false);
+    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = dev().fetchSDMAMask(this, true);
+    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
-  if (engine != HwQueueEngine::Unknown) {
+  auto wait_events = gpu().Barriers().WaitingSignal(engine);
+  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+
+  if (!useRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
       // Check SDMA engine status
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
@@ -702,8 +706,6 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     }
 
     if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
-      auto wait_events = gpu().Barriers().WaitingSignal(engine);
-      hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
       // Copy on the first available free engine if ROCr returns a valid mask
       hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
@@ -716,29 +718,26 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
                                                   size[0], wait_events.size(),
                                                   wait_events.data(), active, copyEngine, false);
-      if (status != HSA_STATUS_SUCCESS) {
-        gpu().Barriers().ResetCurrentSignal();
-      }
+    } else {
+      useRegularCopyApi = true;
     }
-  } else {
-    auto wait_events = gpu().Barriers().WaitingSignal(engine);
-    hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
+  }
+
+  if (engine == HwQueueEngine::Unknown || useRegularCopyApi) {
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-        "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
-        "completion_signal=0x%zx",
-        dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
-        active.handle);
+            "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
+            "completion_signal=0x%zx",
+            dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+            active.handle);
 
     status = hsa_amd_memory_async_copy(dst, dstAgent, src, srcAgent,
         size[0], wait_events.size(), wait_events.data(), active);
-    if (status != HSA_STATUS_SUCCESS) {
-      gpu().Barriers().ResetCurrentSignal();
-    }
   }
 
   if (status == HSA_STATUS_SUCCESS) {
     gpu().addSystemScope();
   } else {
+    gpu().Barriers().ResetCurrentSignal();
     LogPrintfError("HSA copy failed with code %d, falling to Blit copy", status);
   }
 
@@ -1036,7 +1035,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
 
   bool rejected = false;
   Memory* dstView = &gpuMem(dstMemory);
-  bool releaseView = false;
   bool result = false;
   amd::Image* dstImage = static_cast<amd::Image*>(dstMemory.owner());
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
@@ -1069,7 +1067,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
     dstView = createView(gpuMem(dstMemory), newFormat, CL_MEM_WRITE_ONLY);
     if (dstView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -1165,11 +1162,6 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    dstView->owner()->release();
-  }
 
   return result;
 }
@@ -1236,7 +1228,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
 
   bool rejected = false;
   Memory* srcView = &gpuMem(srcMemory);
-  bool releaseView = false;
   bool result = false;
   amd::Image* srcImage = static_cast<amd::Image*>(srcMemory.owner());
   amd::Image::Format newFormat(srcImage->getImageFormat());
@@ -1268,7 +1259,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
     srcView = createView(gpuMem(srcMemory), newFormat, CL_MEM_READ_ONLY);
     if (srcView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -1370,11 +1360,6 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    srcView->owner()->release();
-  }
 
   return result;
 }
@@ -1396,7 +1381,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   amd::Image::Format srcFormat(srcImage->getImageFormat());
   amd::Image::Format dstFormat(dstImage->getImageFormat());
   bool srcRejected = false, dstRejected = false;
-  bool srcReleaseView = false, dstReleaseView = false;
   // Find unsupported source formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
     if (RejectedData[i].clOldType_ == srcFormat.image_channel_data_type) {
@@ -1450,7 +1434,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
     srcView = createView(gpuMem(srcMemory), srcFormat, CL_MEM_READ_ONLY);
     if (srcView != nullptr) {
       srcRejected = false;
-      srcReleaseView = true;
     }
   }
 
@@ -1458,7 +1441,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
     dstView = createView(gpuMem(dstMemory), dstFormat, CL_MEM_WRITE_ONLY);
     if (dstView != nullptr) {
       dstRejected = false;
-      dstReleaseView = true;
     }
   }
 
@@ -1466,14 +1448,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   if (srcRejected || dstRejected) {
     result = DmaBlitManager::copyImage(srcMemory, dstMemory, srcOrigin, dstOrigin, size, entire,
                                        copyMetadata);
-    if (srcReleaseView) {
-      gpu().releaseGpuMemoryFence();
-      srcView->owner()->release();
-    }
-    if (dstReleaseView) {
-      gpu().releaseGpuMemoryFence();
-      dstView->owner()->release();
-    }
     synchronize();
   }
 
@@ -1544,16 +1518,6 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
 
-  if (srcReleaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    srcView->owner()->release();
-  }
-  if (dstReleaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    dstView->owner()->release();
-  }
   synchronize();
 
   return result;
@@ -1830,29 +1794,6 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
-  if (dev().info().largeBar_ && size[0] <= kMaxD2hMemcpySize && !copyMetadata.isAsync_) {
-    if ((srcMemory.owner()->getHostMem() == nullptr) &&
-        (srcMemory.owner()->getSvmPtr() != nullptr)) {
-      // CPU read ahead, hence release GPU memory and force barrier to make sure L2 flush
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host memcpy for ReadBuffer");
-      gpu().releaseGpuMemoryFence();
-      char* src = reinterpret_cast<char*>(srcMemory.owner()->getSvmPtr());
-      std::memcpy(dstHost, src + origin[0], size[0]);
-      // Force HDP Read cache invalidation somewhere in the AQL barrier flags...
-      // @note: This is a workaround for an issue in ROCr/ucode, when the following SDMA transfer
-      //        won't invalidate HDP read and later CPU will receive the old values.
-      //        It's unclear if AQL has the same issue and runtime needs to track extra AQL flags
-      //        if this workaround will be removed in the future
-      // 1. H->D: SDMA
-      // 2. D->H: CPU Read  HDP read cache was updated
-      // 3. H->D: SDMA      Memory updated, ROCr/ucode doesn't invalidate HDP read cache after
-      //                    transfer
-      // 4. D->H: CPU Read  CPU receives the old values from HDP read cache
-      gpu().hasPendingDispatch();
-      return true;
-    }
-  }
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() &&
       !srcMemory.isCpuUncached())) {
@@ -1955,22 +1896,6 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
                                     bool entire, amd::CopyMetadata copyMetadata) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-
-  if (dev().info().largeBar_ && size[0] <= kMaxH2dMemcpySize && !copyMetadata.isAsync_) {
-    if ((dstMemory.owner()->getHostMem() == nullptr) &&
-        (dstMemory.owner()->getSvmPtr() != nullptr)) {
-      // CPU read ahead, hence release GPU memory
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host memcpy for WriteBuffer");
-      gpu().releaseGpuMemoryFence();
-      char* dst = reinterpret_cast<char*>(dstMemory.owner()->getSvmPtr());
-      std::memcpy(dst + origin[0], srcHost, size[0]);
-      // Set hasPendingDispatch_ flag. Then releaseGpuMemoryFence() will use barrier
-      // to invalidate cache
-      gpu().hasPendingDispatch();
-      gpu().releaseGpuMemoryFence();
-      return true;
-    }
-  }
 
   // Use host copy if memory has direct access
   if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
@@ -2449,7 +2374,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   uint32_t iFillColor[4];
 
   bool rejected = false;
-  bool releaseView = false;
 
   // For depth, we need to create a view
   if (newFormat.image_channel_order == CL_sRGBA) {
@@ -2485,7 +2409,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
     memView = createView(gpuMem(memory), newFormat, CL_MEM_WRITE_ONLY);
     if (memView != nullptr) {
       rejected = false;
-      releaseView = true;
     }
   }
 
@@ -2576,11 +2499,6 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   address parameters = captureArguments(kernels_[fillType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
   releaseArguments(parameters);
-  if (releaseView) {
-    // todo SRD programming could be changed to avoid a stall
-    gpu().releaseGpuMemoryFence();
-    memView->owner()->release();
-  }
 
   synchronize();
 
@@ -2746,31 +2664,22 @@ Memory* KernelBlitManager::createView(const Memory& parent, cl_image_format form
                                       cl_mem_flags flags) const {
   assert((parent.owner()->asBuffer() == nullptr) && "View supports images only");
   amd::Image* parentImage = static_cast<amd::Image*>(parent.owner());
-  amd::Image* image =
-      parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags);
-
+  auto parent_dev_image = static_cast<Image*>(parentImage->getDeviceMemory(dev()));
+  amd::Image* image = parent_dev_image->FindView(format);
   if (image == nullptr) {
-    LogError("[OCL] Fail to allocate view of image object");
-    return nullptr;
+    image = parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags);
+    if (image == nullptr) {
+      LogError("[OCL] Fail to allocate view of image object");
+      return nullptr;
+    }
+    if (!parent_dev_image->AddView(image)) {
+      // Another thread already added a view
+      image->release();
+      image = parent_dev_image->FindView(format);
+    }
   }
-
-  Image* devImage = new roc::Image(dev(), *image);
-  if (devImage == nullptr) {
-    LogError("[OCL] Fail to allocate device mem object for the view");
-    image->release();
-    return nullptr;
-  }
-
-  if (!devImage->createView(parent)) {
-    LogError("[OCL] Fail to create device mem object for the view");
-    delete devImage;
-    image->release();
-    return nullptr;
-  }
-
-  image->replaceDeviceMemory(&dev_, devImage);
-
-  return devImage;
+  auto dev_image = static_cast<Image*>(image->getDeviceMemory(dev()));
+  return dev_image;
 }
 
 address KernelBlitManager::captureArguments(const amd::Kernel* kernel) const {

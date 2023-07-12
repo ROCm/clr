@@ -175,6 +175,7 @@ Device::Device(hsa_agent_t bkendDevice)
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
   prefetch_signal_.handle = 0;
+  isXgmi_ = false;
   cache_state_ = Device::CacheState::kCacheStateInvalid;
 }
 
@@ -192,14 +193,20 @@ void Device::setupCpuAgent() {
       }
     }
   }
+  std::vector<amd::Device::LinkAttrType> link_attrs;
+  link_attrs.push_back(std::make_pair(LinkAttribute::kLinkLinkType, 0));
+  if (findLinkInfo(cpu_agents_[0].fine_grain_pool, &link_attrs)) {
+    isXgmi_ = (link_attrs[0].second == HSA_AMD_LINK_INFO_TYPE_XGMI);
+  }
+
   preferred_numa_node_ = index;
   cpu_agent_ = cpu_agents_[index].agent;
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
   system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
-          "coarse=0x%zx) for gpu agent=0x%zx", index, cpu_agent_.handle,
-          system_segment_.handle, system_coarse_segment_.handle, bkendDevice_.handle);
+          "coarse=0x%zx) for gpu agent=0x%zx CPU<->GPU XGMI=%d", index, cpu_agent_.handle,
+          system_segment_.handle, system_coarse_segment_.handle, bkendDevice_.handle, isXgmi_);
 }
 
 void Device::checkAtomicSupport() {
@@ -539,8 +546,6 @@ bool Device::init() {
 }
 
 extern const char* SchedulerSourceCode;
-extern const char* GwsInitSourceCode;
-extern const char* rocBlitLinearSourceCode;
 
 void Device::tearDown() {
   NullDevice::tearDown();
@@ -838,13 +843,7 @@ bool Device::createBlitProgram() {
 
 #if defined(USE_COMGR_LIBRARY)
   if (settings().useLightning_) {
-    if (amd::IS_HIP) {
-      extraKernel = rocBlitLinearSourceCode;
-      if (info().cooperativeGroups_) {
-        extraKernel.append(GwsInitSourceCode);
-      }
-    }
-    else {
+    if (!amd::IS_HIP) {
       extraKernel = SchedulerSourceCode;
     }
 
@@ -1241,19 +1240,21 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(group_segment_size > 0);
 
-  // Find SDMA read mask
-  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
-                                                              &maxSdmaReadMask_)) {
-    return false;
-  }
-  assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
+  if (DEBUG_CLR_USE_SDMA_QUERY) {
+    // Find SDMA read mask
+    if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getCpuAgent(), getBackendDevice(),
+                                                                &maxSdmaReadMask_)) {
+      return false;
+    }
+    assert(maxSdmaReadMask_ > 0 && "No SDMA engines available for Read");
 
-  // Find SDMA write mask
-  if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
-                                                              &maxSdmaWriteMask_)) {
-    return false;
+    // Find SDMA write mask
+    if (HSA_STATUS_SUCCESS != hsa_amd_memory_copy_engine_status(getBackendDevice(), getCpuAgent(),
+                                                                &maxSdmaWriteMask_)) {
+      return false;
+    }
+    assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
   }
-  assert(maxSdmaWriteMask_ > 0 && "No SDMA engines available for Write");
 
   info_.localMemSizePerCU_ = group_segment_size;
   info_.localMemSize_ = group_segment_size;
@@ -1766,6 +1767,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
                          &globalAvailMemory)) {
     LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
+    return false;
   }
 
   globalAvailMemory = globalAvailMemory / Ki;
@@ -2208,142 +2210,6 @@ void Device::updateFreeMemory(size_t size, bool free) {
     freeMem_ -= size;
   }
   ClPrint(amd::LOG_INFO, amd::LOG_MEM, "device=0x%lx, freeMem_ = 0x%zx", this, freeMem_.load());
-}
-
-bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
-  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
-
-  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
-  if (amd_mem_obj == nullptr) {
-    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
-    return false;
-  }
-
-  // Get the original pointer from the amd::Memory object
-  void* orig_dev_ptr = nullptr;
-  if (amd_mem_obj->getSvmPtr() != nullptr) {
-    orig_dev_ptr = amd_mem_obj->getSvmPtr();
-  } else if (amd_mem_obj->getHostMem() != nullptr) {
-    orig_dev_ptr = amd_mem_obj->getHostMem();
-  } else {
-    ShouldNotReachHere();
-  }
-
-  // Check if the dev_ptr is lesser than original dev_ptr
-  if (orig_dev_ptr > dev_ptr) {
-    //If this happens, then revisit FindMemObj logic
-    DevLogPrintfError("Original dev_ptr: 0x%x cannot be greater than dev_ptr: 0x%x",
-                      orig_dev_ptr, dev_ptr);
-    return false;
-  }
-
-  //Calculate the memory offset from the original base ptr
-  *mem_offset = reinterpret_cast<address>(dev_ptr) - reinterpret_cast<address>(orig_dev_ptr);
-  *mem_size = amd_mem_obj->getSize();
-
-  //Check if the dev_ptr is greater than memory allocated
-  if (*mem_offset > *mem_size) {
-    DevLogPrintfError("Memory offset: %u cannot be greater than size of "
-                      "original memory allocated: %u", *mem_size, *mem_offset);
-    return false;
-  }
-
-  hsa_status = hsa_amd_ipc_memory_create(orig_dev_ptr, *mem_size,
-                                         reinterpret_cast<hsa_amd_ipc_memory_t*>(handle));
-
-  if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
-    return false;
-  }
-
-  return true;
-}
-
-bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
-                       unsigned int flags, void** dev_ptr) const {
-  amd::Memory* amd_mem_obj = nullptr;
-  void* orig_dev_ptr = nullptr;
-
-  // Retrieve the devPtr from the handle
-  hsa_status_t hsa_status =
-      hsa_amd_ipc_memory_attach(reinterpret_cast<const hsa_amd_ipc_memory_t*>(handle),
-                                mem_size, (1 + p2p_agents_.size()), p2p_agents_list_,
-                                &orig_dev_ptr);
-
-  if (hsa_status != HSA_STATUS_SUCCESS) {
-    LogPrintfError("HSA failed to attach IPC memory with status: %d \n", hsa_status);
-    return false;
-  }
-
-  amd_mem_obj = amd::MemObjMap::FindMemObj(orig_dev_ptr);
-  if (amd_mem_obj == nullptr) {
-
-    // Memory does not exist, create an amd Memory object for the pointer
-    amd_mem_obj = new (context()) amd::Buffer(context(), flags, mem_size, orig_dev_ptr);
-    if (amd_mem_obj == nullptr) {
-      LogError("failed to create a mem object!");
-      return false;
-    }
-
-    if (!amd_mem_obj->create(nullptr)) {
-      LogError("failed to create a svm hidden buffer!");
-      amd_mem_obj->release();
-      return false;
-    }
-    amd_mem_obj->setIpcShared(true);
-    // Add the original mem_ptr to the MemObjMap with newly created amd_mem_obj
-    amd::MemObjMap::AddMemObj(orig_dev_ptr, amd_mem_obj);
-
-  } else {
-    //Memory already exists, just retain the old one.
-    amd_mem_obj->retain();
-  }
-
-  //Make sure the mem_offset doesnt overflow the allocated memory
-  guarantee((mem_offset < mem_size), "IPC mem offset greater than allocated size");
-
-  // Return orig_dev_ptr
-  *dev_ptr = reinterpret_cast<address>(orig_dev_ptr);
-
-  return true;
-}
-
-bool Device::IpcDetach (void* dev_ptr) const {
-  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
-
-  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
-  if (amd_mem_obj == nullptr) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
-    return false;
-  }
-
-  if (!amd_mem_obj->ipcShared()) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
-    return false;
-  }
-
-  // Get the original pointer from the amd::Memory object
-  void* orig_dev_ptr = nullptr;
-  if (amd_mem_obj->getSvmPtr() != nullptr) {
-    orig_dev_ptr = amd_mem_obj->getSvmPtr();
-  } else if (amd_mem_obj->getHostMem() != nullptr) {
-    orig_dev_ptr = amd_mem_obj->getHostMem();
-  } else {
-    ShouldNotReachHere();
-  }
-
-  if (amd_mem_obj->release() == 0) {
-    amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
-
-    // Detach the memory from HSA
-    hsa_status = hsa_amd_ipc_memory_detach(orig_dev_ptr);
-    if (hsa_status != HSA_STATUS_SUCCESS) {
-      LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
-      return false;
-    }
-  }
-
-  return true;
 }
 
 // ================================================================================================
@@ -2963,7 +2829,32 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue);
 
-    hsa_status_t status = hsa_amd_queue_cu_set_mask(queue, mask.size() * 32, mask.data());
+    std::vector<uint32_t> final_mask = {};
+    // hsa_amd_queue_cu_set_mask expects each bit in cuMask to represent each CU
+    // For wgp mode: Each wgp consists of 2 CUs and CUs must be adjacent pairwise enabled
+    // Convert each bit in the cuMask from wgp to cu by duplicating it
+    if (settings().enableWgpMode_) {
+      final_mask.resize(mask.size() * 2, 0);
+
+      for (int i = 0; i < mask.size(); i++) {
+        for (int j = 0; j < 16; j++) {
+          // Convert least significant 16 bits
+          if (((mask[i] >> j) & 0x1) == 0x1) {
+            final_mask[2 * i] |= (0x3 << (2 * j));
+          }
+
+          // Convert most significant 16 bits
+          if (((mask[i] >> (16 + j)) & 0x1) == 0x1) {
+            final_mask[2 * i + 1] |= (0x3 << (2 * j));
+          }
+        }
+      }
+    } else {
+      final_mask = mask;
+    }
+
+    hsa_status_t status = hsa_amd_queue_cu_set_mask(queue,
+                          final_mask.size() * 32, final_mask.data());
     if (status != HSA_STATUS_SUCCESS) {
       DevLogError("Device::acquireQueue: hsa_amd_queue_cu_set_mask failed!");
       hsa_queue_destroy(queue);

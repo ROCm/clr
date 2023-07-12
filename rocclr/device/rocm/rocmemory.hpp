@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2016 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -100,9 +100,9 @@ class Memory : public device::Memory {
   // batch.
   bool processGLResource(GLResourceOP operation) override { return true; }
 
-  virtual uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
+  uint64_t virtualAddress() const override { return reinterpret_cast<uint64_t>(getDeviceMemory()); }
 
-  virtual uint64_t originalDeviceAddress() const { return virtualAddress(); }
+  uint64_t originalDeviceAddress() const override { return virtualAddress(); }
 
   // Accessors for indirect map memory object
   amd::Memory* mapMemory() const { return mapMemory_; }
@@ -171,6 +171,8 @@ class Buffer : public roc::Memory {
   // Create device memory according to OpenCL memory flag.
   virtual bool create(bool local_alloc = false);
 
+  virtual bool ExportHandle(void* handle) const final;
+
   // Recreate the device memory using new size and alignment.
   bool recreate(size_t newSize, size_t newAlignment, bool forceSystem);
 
@@ -222,6 +224,13 @@ class Image : public roc::Memory {
   amd::Image* CopyImageBuffer() const { return copyImageBuffer_; }
 
   virtual uint64_t originalDeviceAddress() const { return reinterpret_cast<uint64_t>(originalDeviceMemory_); }
+
+  //! Adds an image view to the view cache for the fast blit manager operations
+  bool AddView(amd::Image* image);
+
+  //! Finds an image view of this original image from the cache
+  amd::Image* FindView(cl_image_format format) const;
+
  private:
   //! Disable copy constructor
   Image(const Buffer&);
@@ -244,6 +253,7 @@ class Image : public roc::Memory {
 
   void* originalDeviceMemory_;
   amd::Image* copyImageBuffer_ = nullptr;
+  std::vector<amd::Image*>  view_cache_;  //!< Cache of views for fast access
 };
 }
 #endif

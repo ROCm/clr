@@ -383,18 +383,33 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
 }
 
 hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
-  STREAM_CAPTURE(hipEventRecord, stream, event);
-
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] current capture node EventRecord on stream : %p, Event %p", stream, event);
+  hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
+  getStreamPerThread(stream);
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   e->SetCaptureStream(stream);
-  if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
-    return hipErrorInvalidHandle;
+  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+    s->SetCaptureEvent(event);
+    std::vector<hipGraphNode_t> lastCapturedNodes = s->GetLastCapturedNodes();
+    if (!lastCapturedNodes.empty()) {
+      e->SetNodesPrevToRecorded(lastCapturedNodes);
+    }
+  } else {
+    if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
+      return hipErrorInvalidHandle;
+    }
+    status = e->addMarker(stream, nullptr, true);
   }
-  return e->addMarker(stream, nullptr, true);
+  return status;
 }
 
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
@@ -417,7 +432,7 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
   if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
-    if (e->GetCaptureStatus() == false) {
+    if (s->IsEventCaptured(event) == false) {
       return HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }

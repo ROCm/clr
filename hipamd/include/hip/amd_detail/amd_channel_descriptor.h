@@ -44,7 +44,12 @@ static inline hipChannelFormatDesc hipCreateChannelDescHalf1() {
 
 static inline hipChannelFormatDesc hipCreateChannelDescHalf2() {
     int e = (int)sizeof(unsigned short) * 8;
-    return hipCreateChannelDesc(e, 0, 0, 0, hipChannelFormatKindFloat);
+    return hipCreateChannelDesc(e, e, 0, 0, hipChannelFormatKindFloat);
+}
+
+static inline hipChannelFormatDesc hipCreateChannelDescHalf4() {
+    int e = (int)sizeof(unsigned short) * 8;
+    return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindFloat);
 }
 
 template <typename T>
@@ -276,6 +281,8 @@ inline hipChannelFormatDesc hipCreateChannelDesc<float4>() {
     return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindFloat);
 }
 
+#if !defined(__LP64__)
+
 template <>
 inline hipChannelFormatDesc hipCreateChannelDesc<unsigned long>() {
     int e = (int)sizeof(unsigned long) * 8;
@@ -337,12 +344,13 @@ inline hipChannelFormatDesc hipCreateChannelDesc<long4>() {
     int e = (int)sizeof(signed long) * 8;
     return hipCreateChannelDesc(e, e, e, e, hipChannelFormatKindSigned);
 }
+#endif /* !__LP64__ */
 
 #else
 
 struct hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w,
                                                  enum hipChannelFormatKind f);
 
-#endif
+#endif /* __cplusplus */
 
-#endif
+#endif /* !HIP_INCLUDE_HIP_AMD_DETAIL_CHANNEL_DESCRIPTOR_H */

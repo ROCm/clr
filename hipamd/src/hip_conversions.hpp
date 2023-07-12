@@ -97,7 +97,7 @@ cl_mem_object_type getCLMemObjectType(const unsigned int hipWidth,
                                       const unsigned int hipHeight,
                                       const unsigned int hipDepth,
                                       const unsigned int flags) {
-  if (flags & hipArrayLayered == hipArrayLayered) {
+  if ((flags & hipArrayLayered) == hipArrayLayered) {
     if ((hipWidth != 0) && (hipHeight == 0) && (hipDepth != 0)) {
       return CL_MEM_OBJECT_IMAGE1D_ARRAY;
     } else if ((hipWidth != 0) && (hipHeight != 0) && (hipDepth != 0)) {

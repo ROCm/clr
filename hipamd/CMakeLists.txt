@@ -26,23 +26,19 @@ include(GNUInstallDirs)
 # ROCM_PATH is the path where ROCM is installed
 #  For shared lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #  For static lib of hip-rocclr runtime
 #    For release version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #    For debug version
-#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
+#      cmake -DHIP_COMMON_DIR="$HIP_DIR" -DHIPCC_BIN_DIR="$HIPCC_DIR/bin" -DAMD_OPENCL_PATH=$OPENCL_DIR -DROCCLR_PATH=$ROCCLR_DIR -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="<ROCM_PATH>/" -DCMAKE_INSTALL_PREFIX=</where/to/install/hip> ..
 #  If you don't specify CMAKE_INSTALL_PREFIX, hip-rocclr runtime will be installed to "<ROCM_PATH>/hip".
 #  By default, CMake will search for a folder named vdi or ROCclr relative to the current path. Specify -DROCCLR_PATH=$ROCCLR_DIR if rocclr source is in obscure location.
 #  By default, CMake will search for a folder named opencl or ROCm-OpenCL-Runtime relative to the current path. Specify -DAMD_OPENCL_PATH=$OPENCL_DIR if opencl source is in obscure location.
 list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 
-# required to add the right link to libhsa-runtime in install/lib path
-# CMAKE_PREFIX_PATH is used as rpath to search for libs outside HIP
-set(CMAKE_INSTALL_RPATH "${CMAKE_PREFIX_PATH}/${CMAKE_INSTALL_LIBDIR}")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 #############################
 # Options
@@ -190,12 +186,6 @@ else ()
    set (HIP_LIB_VERSION_PATCH ${HIP_VERSION_PATCH})
 endif ()
 set (HIP_LIB_VERSION_STRING "${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR}.${HIP_LIB_VERSION_PATCH}")
-if (DEFINED ENV{ROCM_RPATH})
-    set (CMAKE_INSTALL_RPATH "$ENV{ROCM_RPATH}")
-    set (CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
-    set (CMAKE_SKIP_BUILD_RPATH TRUE)
-    set (CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
-endif ()
 
 # overwrite HIP_VERSION_PATCH for packaging
 set(HIP_VERSION ${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_PACKAGING_VERSION_PATCH})
@@ -234,11 +224,6 @@ message(STATUS "HIP Compiler: " ${HIP_COMPILER})
 
 add_to_config(_buildInfo HIP_RUNTIME)
 add_to_config(_buildInfo HIP_COMPILER)
-
-# Set default build type
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release")
-endif()
 
 if (NOT DEFINED ROCM_PATH )
      set ( ROCM_PATH "/opt/rocm"  CACHE STRING "Default ROCM installation directory." )
@@ -336,7 +321,11 @@ endif()
 install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
 # Install .hipVersion
-install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
+if(WIN32)
+    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
+else()
+    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version)
+endif()
 
 # Install src, bin, include & cmake if necessary
 execute_process(COMMAND test ${CMAKE_INSTALL_PREFIX} -ef ${CMAKE_CURRENT_SOURCE_DIR}
@@ -390,14 +379,25 @@ install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
 
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
-  set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
-  set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
-  if(WIN32)
-    set(hipcc_bin ${hipcc_bin}.exe)
-    set(hipconfig_bin ${hipconfig_bin}.exe)
+  if(${HIPCC_BIN_DIR}/hipcc.bin)
+    set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
+    set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
+    if(WIN32)
+      set(hipcc_bin ${hipcc_bin}.exe)
+      set(hipconfig_bin ${hipconfig_bin}.exe)
+    endif()
+    if(EXISTS ${hipcc_bin} AND EXISTS ${hipconfig_bin})
+      install(PROGRAMS ${hipcc_bin} DESTINATION bin)
+      install(PROGRAMS ${hipconfig_bin} DESTINATION bin)
+    endif()
   endif()
-  install(PROGRAMS ${hipcc_bin} DESTINATION bin)
-  install(PROGRAMS ${hipconfig_bin} DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
+  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
 endif()
 
 #############################
@@ -412,6 +412,20 @@ configure_package_config_file(
     PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
     )
 
+configure_package_config_file(
+      hip-config-amd.cmake
+      ${CMAKE_CURRENT_BINARY_DIR}/hip-config-amd.cmake
+      INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+      PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+      )
+
+configure_package_config_file(
+      hip-config-nvidia.cmake
+      ${CMAKE_CURRENT_BINARY_DIR}/hip-config-nvidia.cmake
+      INSTALL_DESTINATION ${CONFIG_PACKAGE_INSTALL_DIR}
+      PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR
+      )
+
 write_basic_package_version_file(
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
     VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
@@ -420,6 +434,8 @@ write_basic_package_version_file(
 install(
     FILES
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-amd.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-config-nvidia.cmake
     ${CMAKE_CURRENT_BINARY_DIR}/hip-config-version.cmake
     DESTINATION
     ${CONFIG_PACKAGE_INSTALL_DIR}
@@ -457,6 +473,12 @@ if(${RUN_HIT} EQUAL 0)
     execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
 endif()
 
+file(COPY ${HIPCC_BIN_DIR}/hipcc DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipconfig DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+file(COPY ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION ${HIP_ROOT_DIR}/bin/)
+
 if(HIP_CATCH_TEST EQUAL "1")
 	message(STATUS "Building of catch tests through hipamd is no longer supported. Testing targets will not be available. catch tests have been moved to an independent github project hip-tests. Please refer to hip-tests Readme for build instructions! ")
 else()
@@ -486,6 +508,22 @@ endif()
 #File reorg Backward compatibility function
 if(NOT WIN32)
     if(FILE_REORG_BACKWARD_COMPATIBILITY)
+    # To enabe/disable #error in wrapper header files
+        if(NOT DEFINED ROCM_HEADER_WRAPPER_WERROR)
+            if(DEFINED ENV{ROCM_HEADER_WRAPPER_WERROR})
+                set(ROCM_HEADER_WRAPPER_WERROR "$ENV{ROCM_HEADER_WRAPPER_WERROR}"
+                    CACHE STRING "Header wrapper warnings as errors.")
+            else()
+                set(ROCM_HEADER_WRAPPER_WERROR "OFF" CACHE STRING "Header wrapper warnings as errors.")
+            endif()
+        endif()
+
+        if(ROCM_HEADER_WRAPPER_WERROR)
+            set(deprecated_error 1)
+        else()
+            set(deprecated_error 0)
+        endif()
+
         include(hip-backward-compat.cmake)
-    endif()
+    endif() #FILE_REORG_BACKWARD_COMPATIBILITY
 endif()

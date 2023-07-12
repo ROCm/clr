@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -332,7 +332,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   memcpy(info_.uuid_ + 4, &palProp.pciProperties.busNumber, sizeof(uint32_t));
   memcpy(info_.uuid_ + 8, &palProp.pciProperties.deviceNumber, sizeof(uint32_t));
   memcpy(info_.uuid_ + 12, &palProp.pciProperties.functionNumber, sizeof(uint32_t));
-  
+
   info_.maxWorkItemDimensions_ = 3;
 
   info_.maxComputeUnits_ = settings().enableWgpMode_
@@ -835,8 +835,6 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
-extern const char* GwsInitSourceCode;
-extern const char* palBlitLinearSourceCode;
 
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
@@ -1571,7 +1569,10 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
         type = Resource::P2PAccess;
       }
     }
-
+    params.interprocess_ = (owner.getMemFlags() & ROCCLR_MEM_INTERPROCESS) ? true : false;
+    if (owner.ipcShared()) {
+      type = Resource::IpcMemory;
+    }
     // Create memory object
     result = gpuMemory->create(type, &params);
 
@@ -2503,13 +2504,7 @@ bool Device::createBlitProgram() {
   // Delayed compilation due to brig_loader memory allocation
   std::string extraBlits;
   std::string ocl20;
-  if (amd::IS_HIP) {
-    extraBlits = palBlitLinearSourceCode;
-    if (info().cooperativeGroups_) {
-      extraBlits.append(GwsInitSourceCode);
-    }
-  }
-  else {
+  if (!amd::IS_HIP) {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();
       if (settings().useLightning_) {
@@ -2553,7 +2548,7 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
   return result;
 }
 
-
+// ================================================================================================
 bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& handle,
                                 amd::ExternalSemaphoreHandleType sem_handle_type) {
   Pal::ExternalQueueSemaphoreOpenInfo palOpenInfo = {};

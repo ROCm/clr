@@ -91,6 +91,8 @@ class thread_group {
   struct _tiled_info {
     bool is_tiled;
     unsigned int size;
+    unsigned int meta_group_rank;
+    unsigned int meta_group_size;
   };
 
   struct _coalesced_info {
@@ -225,7 +227,6 @@ class thread_block : public thread_group {
                                                        unsigned int tile_size);
   friend __CG_QUALIFIER__ thread_group tiled_partition(const thread_block& parent,
                                                        unsigned int tile_size);
-
  protected:
   // Construct a workgroup thread group (through the API this_thread_block())
   explicit __CG_QUALIFIER__ thread_block(uint32_t size)
@@ -235,23 +236,27 @@ class thread_block : public thread_group {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
     // Invalid tile size, assert
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
-      __hip_assert(false && "invalid tile size")
+      __hip_assert(false && "invalid tile size");
     }
 
     thread_group tiledGroup = thread_group(internal::cg_tiled_group, tile_size);
     tiledGroup.coalesced_info.tiled_info.size = tile_size;
     tiledGroup.coalesced_info.tiled_info.is_tiled = true;
+    tiledGroup.coalesced_info.tiled_info.meta_group_rank = thread_rank() / tile_size;
+    tiledGroup.coalesced_info.tiled_info.meta_group_size = (size() + tile_size - 1) / tile_size;
     return tiledGroup;
   }
 
  public:
   // 3-dimensional block index within the grid
-  __CG_QUALIFIER__ dim3 group_index() { return internal::workgroup::group_index(); }
+  __CG_STATIC_QUALIFIER__ dim3 group_index() { return internal::workgroup::group_index(); }
   // 3-dimensional thread index within the block
-  __CG_QUALIFIER__ dim3 thread_index() { return internal::workgroup::thread_index(); }
-  __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::workgroup::thread_rank(); }
-  __CG_QUALIFIER__ bool is_valid() const { return internal::workgroup::is_valid(); }
-  __CG_QUALIFIER__ void sync() const { internal::workgroup::sync(); }
+  __CG_STATIC_QUALIFIER__ dim3 thread_index() { return internal::workgroup::thread_index(); }
+  __CG_STATIC_QUALIFIER__ uint32_t thread_rank() { return internal::workgroup::thread_rank(); }
+  __CG_STATIC_QUALIFIER__ uint32_t size() { return internal::workgroup::size(); }
+  __CG_STATIC_QUALIFIER__ bool is_valid() { return internal::workgroup::is_valid(); }
+  __CG_STATIC_QUALIFIER__ void sync() { internal::workgroup::sync(); }
+  __CG_QUALIFIER__ dim3 group_dim() { return internal::workgroup::block_dim(); }
 };
 
 /** \brief   User exposed API interface to construct workgroup cooperative
@@ -286,7 +291,7 @@ class tiled_group : public thread_group {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
 
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
-      __hip_assert(false && "invalid tile size")
+      __hip_assert(false && "invalid tile size");
     }
 
     if (size() <= tile_size) {
@@ -347,6 +352,8 @@ class coalesced_group : public thread_group {
       member_mask <<= (__lane_id() & ~(tile_size - 1));
       coalesced_group coalesced_tile = coalesced_group(member_mask);
       coalesced_tile.coalesced_info.tiled_info.is_tiled = true;
+      coalesced_tile.coalesced_info.tiled_info.meta_group_rank = thread_rank() / tile_size;
+      coalesced_tile.coalesced_info.tiled_info.meta_group_size = size() / tile_size;
       return coalesced_tile;
     }
     // Here the parent coalesced_group is not partitioned.
@@ -368,6 +375,9 @@ class coalesced_group : public thread_group {
         }
       }
       coalesced_group coalesced_tile = coalesced_group(member_mask);
+      coalesced_tile.coalesced_info.tiled_info.meta_group_rank = thread_rank() / tile_size;
+      coalesced_tile.coalesced_info.tiled_info.meta_group_size =
+                                                      (size() + tile_size - 1) / tile_size;
       return coalesced_tile;
     }
      return coalesced_group(0);
@@ -394,6 +404,14 @@ class coalesced_group : public thread_group {
    __CG_QUALIFIER__ void sync() const {
        internal::coalesced_group::sync();
     }
+
+   __CG_QUALIFIER__ unsigned int meta_group_rank() const {
+       return coalesced_info.tiled_info.meta_group_rank;
+    }
+
+   __CG_QUALIFIER__ unsigned int meta_group_size() const {
+       return coalesced_info.tiled_info.meta_group_size;
+   }
 
   template <class T>
   __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
@@ -497,7 +515,7 @@ __CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
       return (static_cast<const coalesced_group*>(this)->thread_rank());
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type")
+      __hip_assert(false && "invalid cooperative group type");
       return -1;
     }
   }
@@ -525,7 +543,7 @@ __CG_QUALIFIER__ bool thread_group::is_valid() const {
       return (static_cast<const coalesced_group*>(this)->is_valid());
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type")
+      __hip_assert(false && "invalid cooperative group type");
       return false;
     }
   }
@@ -558,7 +576,7 @@ __CG_QUALIFIER__ void thread_group::sync() const {
       break;
     }
     default: {
-      __hip_assert(false && "invalid cooperative group type")
+      __hip_assert(false && "invalid cooperative group type");
     }
   }
 }
@@ -646,6 +664,22 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
     return (__shfl_xor(var, laneMask, numThreads));
   }
 };
+/** \brief   User exposed API that captures the state of the parent group pre-partition
+ */
+template <unsigned int tileSize, typename ParentCGTy>
+class parent_group_info {
+public:
+  // Returns the linear rank of the group within the set of tiles partitioned
+  // from a parent group (bounded by meta_group_size)
+  __CG_STATIC_QUALIFIER__ unsigned int meta_group_rank() {
+    return ParentCGTy::thread_rank() / tileSize;
+  }
+
+  // Returns the number of groups created when the parent group was partitioned.
+  __CG_STATIC_QUALIFIER__ unsigned int meta_group_size() {
+    return (ParentCGTy::size() + tileSize - 1) / tileSize;
+  }
+};
 
 /** \brief   Group type - thread_block_tile
  *
@@ -653,25 +687,49 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
  *  @note  This type is implemented on Linux, under developement
  *  on Windows.
  */
-
-template <unsigned int tileSize, class ParentCGTy = void>
-class thread_block_tile_type : public thread_block_tile_base<tileSize>, public tiled_group {
+template <unsigned int tileSize, class ParentCGTy>
+class thread_block_tile_type : public thread_block_tile_base<tileSize>,
+                               public tiled_group,
+                               public parent_group_info<tileSize, ParentCGTy> {
   _CG_STATIC_CONST_DECL_ unsigned int numThreads = tileSize;
+  protected:
+    __CG_QUALIFIER__ thread_block_tile_type() : tiled_group(numThreads) {
+      coalesced_info.tiled_info.size = numThreads;
+      coalesced_info.tiled_info.is_tiled = true;
+    }
+};
 
-  friend class thread_block_tile_type<tileSize, ParentCGTy>;
+// Partial template specialization
+template <unsigned int tileSize>
+class thread_block_tile_type<tileSize, void> : public thread_block_tile_base<tileSize>,
+                               public tiled_group
+                             {
+  _CG_STATIC_CONST_DECL_ unsigned int numThreads = tileSize;
 
   typedef thread_block_tile_base<numThreads> tbtBase;
 
  protected:
-  __CG_QUALIFIER__ thread_block_tile_type() : tiled_group(numThreads) {
+
+    __CG_QUALIFIER__ thread_block_tile_type(unsigned int meta_group_rank, unsigned int meta_group_size)
+        : tiled_group(numThreads) {
     coalesced_info.tiled_info.size = numThreads;
     coalesced_info.tiled_info.is_tiled = true;
+    coalesced_info.tiled_info.meta_group_rank = meta_group_rank;
+    coalesced_info.tiled_info.meta_group_size = meta_group_size;
   }
 
  public:
   using tbtBase::size;
   using tbtBase::sync;
   using tbtBase::thread_rank;
+
+  __CG_QUALIFIER__ unsigned int meta_group_rank() const {
+    return coalesced_info.tiled_info.meta_group_rank;
+  }
+
+  __CG_QUALIFIER__ unsigned int meta_group_size() const {
+    return coalesced_info.tiled_info.meta_group_size;
+  }
 // end of operative group
 /**
 * @}
@@ -725,7 +783,7 @@ class thread_block_tile_internal : public thread_block_tile_type<size, ParentCGT
   template <unsigned int tbtSize, class tbtParentT>
   __CG_QUALIFIER__ thread_block_tile_internal(
       const thread_block_tile_internal<tbtSize, tbtParentT>& g)
-      : thread_block_tile_type<size, ParentCGTy>() {}
+      : thread_block_tile_type<size, ParentCGTy>(g.meta_group_rank(), g.meta_group_size()) {}
 
   __CG_QUALIFIER__ thread_block_tile_internal(const thread_block& g)
       : thread_block_tile_type<size, ParentCGTy>() {}
@@ -759,7 +817,7 @@ class thread_block_tile<size, void> : public impl::thread_block_tile_internal<si
 template <unsigned int size, class ParentCGTy = void> class thread_block_tile;
 
 namespace impl {
-template <unsigned int size, class ParentCGTy = void> struct tiled_partition_internal;
+template <unsigned int size, class ParentCGTy> struct tiled_partition_internal;
 
 template <unsigned int size>
 struct tiled_partition_internal<size, thread_block> : public thread_block_tile<size, thread_block> {

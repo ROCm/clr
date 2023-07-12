@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -883,6 +883,9 @@ class Memory : public amd::HeapObject {
 
   //! Returns CPU pointer to HW state
   virtual const address cpuSrd() const { return nullptr; }
+
+  //! Returns an export handle for the interprocess communication
+  virtual bool ExportHandle(void* handle) const { return false; }
 
   bool getAllowedPeerAccess() const { return (flags_ & AllowedPeerAccess) ? true : false; }
   void setAllowedPeerAccess(bool flag) {
@@ -1894,21 +1897,12 @@ class Device : public RuntimeObject {
   //! Checks if OCL runtime can use hsail for compilation
   bool ValidateHsail();
 
-  virtual bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
-    ShouldNotReachHere();
-    return false;
-  }
+  bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const;
 
-  virtual bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset,
-                         unsigned int flags, void** dev_ptr) const {
-    ShouldNotReachHere();
-    return false;
-  }
+  bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+                 void** dev_ptr) const;
 
-  virtual bool IpcDetach(void* dev_ptr) const {
-    ShouldNotReachHere();
-    return false;
-  }
+  bool IpcDetach(void* dev_ptr) const;
 
   //! Return context
   amd::Context& context() const { return *context_; }
