@@ -683,23 +683,23 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
-  bool useRegularCopyApi = !DEBUG_CLR_USE_SDMA_QUERY;
+  bool kUseRegularCopyApi = 0;
 
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
   auto wait_events = gpu().Barriers().WaitingSignal(engine);
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
-  if (!useRegularCopyApi && engine != HwQueueEngine::Unknown) {
+  if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
       // Check SDMA engine status
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
@@ -723,11 +723,11 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                                                   size[0], wait_events.size(),
                                                   wait_events.data(), active, copyEngine, false);
     } else {
-      useRegularCopyApi = true;
+      kUseRegularCopyApi = true;
     }
   }
 
-  if (engine == HwQueueEngine::Unknown || useRegularCopyApi) {
+  if (engine == HwQueueEngine::Unknown || kUseRegularCopyApi) {
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
             "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
             "completion_signal=0x%zx",
