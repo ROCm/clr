@@ -53,6 +53,7 @@ class BlitManager : public amd::HeapObject {
       uint disableFillImage_ : 1;
       uint disableCopyBufferToImageOpt_ : 1;
       uint disableHwlCopyBuffer_ : 1;
+      uint disableHostCopyBuffer_ : 1;
     };
     uint32_t value_;
     Setup() : value_(0) {}
