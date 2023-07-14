@@ -148,7 +148,9 @@ execute_process(
   RESULT_VARIABLE CLANGRT_BUILTINS_FETCH_EXIT_CODE)
 
 if( CLANGRT_Error )
-  message( STATUS "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
+  if (HIP_CXX_COMPILER MATCHES ".*clang\\+\\+")
+    message( STATUS "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
+  endif()
 else()
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
   if( "${CLANGRT_BUILTINS_FETCH_EXIT_CODE}" STREQUAL "0" )
