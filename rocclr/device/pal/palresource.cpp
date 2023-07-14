@@ -2057,7 +2057,7 @@ bool CoarseMemorySubAllocator::CreateChunk(const Pal::IGpuMemory* reserved_va) {
   createInfo.heaps[0] = Pal::GpuHeapInvisible;
   createInfo.heaps[1] = Pal::GpuHeapLocal;
   createInfo.mallPolicy = static_cast<Pal::GpuMemMallPolicy>(device_->settings().mallPolicy_);
-  if (amd::IS_HIP) {
+  if (amd::IS_HIP && PAL_HIP_IPC_FLAG) {
     //set interprocess for IPC memory support
     createInfo.flags.interprocess = 1;
   }

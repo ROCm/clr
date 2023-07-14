@@ -2266,7 +2266,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   constexpr bool kForceAllocation = true;
   alignment = std::max(alignment, static_cast<size_t>(info_.memBaseAddrAlign_));
 
-  if (amd::IS_HIP) {
+  if (amd::IS_HIP && PAL_HIP_IPC_FLAG) {
     //set interprocess for IPC memory support
     flags |= ROCCLR_MEM_INTERPROCESS;
   }
