@@ -204,6 +204,7 @@ class Memory : public amd::RuntimeObject {
       uint32_t p2pAccess_ : 1;         //!< Memory object allows P2P access
       uint32_t ipcShared_ : 1;         //!< Memory shared between processes
       uint32_t largeBarSystem_ : 1;    //!< VRAM is visiable for host
+      uint32_t image_view_: 1;         //!< Memory object is an image view
     };
     uint32_t flagsEx_;
   };
@@ -326,6 +327,7 @@ class Memory : public amd::RuntimeObject {
   Memory* parent() const { return parent_; }
   void SetParent(amd::Memory* parent) { parent_ = parent; }
   bool isParent() const { return isParent_; }
+  bool ImageView() const { return image_view_; }
 
   size_t getOrigin() const { return origin_; }
   size_t getSize() const { return size_; }

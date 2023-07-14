@@ -593,6 +593,7 @@ Image::Image(const Format& format, Image& parent, uint baseMipLevel, cl_mem_flag
     size_ = getWidth() * getHeight() * parent.getDepth() * format.getElementSize();
   }
   initDimension();
+  image_view_ = true;
 }
 
 Image::Image(Context& context, Type type, Flags flags, const Format& format, size_t width,
