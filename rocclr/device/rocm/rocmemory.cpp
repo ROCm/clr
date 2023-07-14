@@ -1442,8 +1442,8 @@ void Image::destroy() {
     hsa_status_t status = hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
     assert(status == HSA_STATUS_SUCCESS);
   }
-
-  if (owner()->parent() != nullptr) {
+  // Don't destroy memory if it's a view. Parent will destroy the original allocation.
+  if ((owner()->parent() != nullptr) || owner()->ImageView()) {
     return;
   }
 
