@@ -87,7 +87,7 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
 
-  if ((memObj != nullptr) && (count  > (memObj->getSize() - offset))) {
+  if (memObj == nullptr || (memObj && count > (memObj->getSize() - offset))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   if (device != hipCpuDeviceId && (static_cast<size_t>(device) >= g_devices.size())) {
