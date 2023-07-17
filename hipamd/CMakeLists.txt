@@ -302,8 +302,8 @@ endif()
 # Generate .hipInfo
 file(WRITE "${PROJECT_BINARY_DIR}/.hipInfo" ${_buildInfo})
 
-# Generate .hipVersion
-file(WRITE "${PROJECT_BINARY_DIR}/.hipVersion" ${_versionInfo})
+# Generate version
+file(WRITE "${PROJECT_BINARY_DIR}/version" ${_versionInfo})
 
 # Build doxygen documentation
 find_program(DOXYGEN_EXE doxygen)
@@ -326,11 +326,12 @@ endif()
 # Install .hipInfo
 install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-# Install .hipVersion
+# Install version
+install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip)
+# .hipVersion is added to satisfy Windows compute build.
+#TODO to be removed
 if(WIN32)
-    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
-else()
-    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version)
+    install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion)
 endif()
 
 # Install src, bin, include & cmake if necessary
