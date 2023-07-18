@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 #if __cplusplus
 #if !defined(__HIPCC_RTC__)
+#include <hip/amd_detail/amd_hip_runtime.h> // threadId, blockId
 #include <hip/amd_detail/amd_device_functions.h>
 #endif
 #if !defined(__align__)
