@@ -29,8 +29,6 @@ namespace activity_prof {
 
 decltype(report_activity) report_activity{nullptr};
 
-#if USE_PROF_API
-
 #if defined(__linux__)
 __thread activity_correlation_id_t correlation_id __attribute__((tls_model("initial-exec"))) = 0;
 #elif defined(_WIN32)
@@ -105,8 +103,6 @@ void ReportActivity(const amd::Command& command) {
 
   function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
 }
-
-#endif  // USE_PROF_API
 
 }  // namespace activity_prof
 

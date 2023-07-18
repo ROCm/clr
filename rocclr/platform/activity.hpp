@@ -32,10 +32,6 @@ namespace amd {
 class Command;
 }  // namespace amd
 
-#define USE_PROF_API 1
-
-#if USE_PROF_API
-
 enum OpId { OP_ID_DISPATCH = 0, OP_ID_COPY = 1, OP_ID_BARRIER = 2, OP_ID_NUMBER = 3 };
 
 #include "prof_protocol.h"
@@ -80,11 +76,5 @@ bool IsEnabled(OpId operation_id);
 void ReportActivity(const amd::Command& command);
 
 }  // namespace activity_prof
-
-#else  // !USE_PROF_API
-
-static inline void ReportActivity(const amd::Command& command) {}
-
-#endif  // !USE_PROF_API
 
 const char* getOclCommandKindString(cl_command_type kind);
