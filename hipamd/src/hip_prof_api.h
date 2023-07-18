@@ -27,7 +27,6 @@
 #include <shared_mutex>
 #include <utility>
 
-#if USE_PROF_API
 #include "hip/amd_detail/hip_prof_str.h"
 #include "platform/prof_protocol.h"
 
@@ -80,19 +79,4 @@ template <> class api_callbacks_spawner_t<HIP_API_ID_NONE> {
  public:
   template <typename Functor> api_callbacks_spawner_t(Functor) {}
 };
-
-#else
-
-#define HIP_CB_SPAWNER_OBJECT(x)                                                                   \
-  do {                                                                                             \
-  } while (false)
-
-class api_callbacks_table_t {
- public:
-  bool set_activity(hip_api_id_t, activity_sync_callback_t, void*) { return false; }
-  bool set_callback(hip_api_id_t, activity_rtapi_callback_t, void*) { return false; }
-};
-
-#endif
-
 #endif  // HIP_SRC_HIP_PROF_API_H
