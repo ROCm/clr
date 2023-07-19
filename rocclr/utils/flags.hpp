@@ -230,10 +230,8 @@ release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
 release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
          "Force device mem for kernel args.")                                 \
-release(uint, DEBUG_CLR_GRAPH_MAX_AQL_BUFFER_SIZE, 32,                        \
-         "Size of AQL buffering queue")                                       \
-release(bool, DEBUG_CLR_GRAPH_ENABLE_BUFFERING, false,                        \
-         "Enable/Disable graph AQL buffering")                                \
+release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, false,                          \
+         "Enable/Disable graph packet capturing")                             \
 release(cstring, HIPRTC_COMPILE_OPTIONS_APPEND, "",                           \
         "Set compile options needed for hiprtc compilation")                  \
 release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \

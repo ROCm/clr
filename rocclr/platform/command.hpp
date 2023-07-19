@@ -251,13 +251,12 @@ union CopyMetadata {
  */
 class Command : public Event {
  private:
-  HostQueue* queue_;              //!< The command queue this command is enqueue into
-  Command* next_;                 //!< Next GPU command in the queue list
-  Command* batch_head_ = nullptr; //!< The head of the batch commands
-  cl_command_type     type_;      //!< This command's OpenCL type.
+  HostQueue* queue_;               //!< The command queue this command is enqueue into
+  Command* next_;                  //!< Next GPU command in the queue list
+  Command* batch_head_ = nullptr;  //!< The head of the batch commands
+  cl_command_type type_;           //!< This command's OpenCL type.
   void* data_;
-  const Event* waitingEvent_;     //!< Waiting event associated with the marker
-  bool buffering_;                //!< Flag to enable/disable AQL buffering
+  const Event* waitingEvent_;  //!< Waiting event associated with the marker
 
  protected:
   bool cpu_wait_ = false;         //!< If true, then the command was issued for CPU/GPU sync
@@ -281,7 +280,6 @@ class Command : public Event {
         type_(type),
         data_(nullptr),
         waitingEvent_(nullptr),
-        buffering_(false),
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
 
@@ -296,12 +294,6 @@ class Command : public Event {
   }
 
  public:
-  //! Returns AQL buffer state
-  bool getBufferingState() const { return buffering_; }
-
-  //! Sets AQL buffer state
-  void setBufferingState(bool state) { buffering_ = state; }
-
   //! Return the queue this command is enqueued into.
   HostQueue* queue() const { return queue_; }
 
@@ -1083,12 +1075,32 @@ class NDRangeKernelCommand : public Command {
   uint32_t firstDevice_;    //!< Device index of the first device in the gridc
   uint32_t numWorkgroups_;  //!< Total number of workgroups in the current launch
 
+  bool capturing_ = false;           //!< Flag to enable/disable graph gpu packet capture
+  uint8_t* gpuPacket_ = nullptr;     //!< GPU packet to capture, when graph capturing is enabled
+  address kernArgOffset_ = nullptr;  //!< KernelArg buffer to used when graph capturing is enabled
+
  public:
   enum {
     CooperativeGroups = 0x01,
     CooperativeMultiDeviceGroups = 0x02,
     AnyOrderLaunch = 0x04,
   };
+
+  //! Returns AQL buffer state
+  bool getCapturingState() const { return capturing_; }
+
+  //! Sets AQL capture state, aql packet to capture and where to copy kernArgs
+  void setCapturingState(bool state, uint8_t* packet, address kernArgOffset) {
+    capturing_ = state;
+    gpuPacket_ = packet;
+    kernArgOffset_ = kernArgOffset;
+  }
+
+  //! returns the graph executable object command belongs to.
+  const uint8_t* getAqlPacket() const { return gpuPacket_; }
+
+  //! returns the graph executable object command belongs to.
+  const address getKernArgOffset() const { return kernArgOffset_; }
 
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,

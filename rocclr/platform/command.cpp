@@ -317,7 +317,6 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
       type_(type),
       data_(nullptr),
       waitingEvent_(waitingEvent),
-      buffering_(false),
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {
   // Retain the commands from the event wait list.
@@ -354,7 +353,7 @@ void Command::enqueue() {
 
     // Notify all commands about the waiter. Barrier will be sent in order to obtain
     // HSA signal for a wait on the current queue
-    for (const auto &event: eventWaitList()) {
+    for (const auto& event : eventWaitList()) {
       event->notifyCmdQueue(!kCpuWait);
     }
 

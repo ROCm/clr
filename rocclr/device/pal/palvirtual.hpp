@@ -344,6 +344,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   bool isFenceDirty() const { return false; }
 
+  inline bool dispatchAqlPacket(uint8_t* aqlpacket) { return false; }
+
   void resetFenceDirty() {}
 
   //! Returns GPU device object associated with this kernel
