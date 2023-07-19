@@ -145,6 +145,10 @@ static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint3
 
 }  // namespace
 
+namespace device {
+extern const char* HipExtraSourceCode;
+}
+
 bool PalDeviceLoad() {
   bool ret = false;
 
@@ -379,6 +383,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
   if (settings().reportFMA_) {
     info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
+  }
+
+  if (settings().checkExtension(ClKhrFp16)) {
+    info_.halfFPConfig_ = info_.singleFPConfig_;
   }
 
   info_.globalMemCacheLineSize_ = settings().cacheLineSize_;
@@ -2504,7 +2512,9 @@ bool Device::createBlitProgram() {
   // Delayed compilation due to brig_loader memory allocation
   std::string extraBlits;
   std::string ocl20;
-  if (!amd::IS_HIP) {
+  if (amd::IS_HIP) {
+    extraBlits = device::HipExtraSourceCode;
+  } else {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();
       if (settings().useLightning_) {

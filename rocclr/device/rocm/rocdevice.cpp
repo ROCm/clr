@@ -65,6 +65,7 @@
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
 #ifndef WITHOUT_HSA_BACKEND
+
 namespace {
 
 inline bool getIsaMeta(std::string isaName, amd_comgr_metadata_node_t& isaMeta) {
@@ -94,7 +95,7 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 } // namespace
 
 namespace device {
-extern const char* BlitSourceCode;
+extern const char* HipExtraSourceCode;
 } // namespace device
 
 namespace roc {
@@ -843,7 +844,9 @@ bool Device::createBlitProgram() {
 
 #if defined(USE_COMGR_LIBRARY)
   if (settings().useLightning_) {
-    if (!amd::IS_HIP) {
+    if (amd::IS_HIP) {
+      extraKernel = device::HipExtraSourceCode;
+    } else {
       extraKernel = SchedulerSourceCode;
     }
 
@@ -901,6 +904,12 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           return stat;
         }
 
+        // If the flag set is ext scoped fine grain, break the loop
+        if ((global_flag & HSA_REGION_GLOBAL_FLAG_EXTENDED_SCOPE_FINE_GRAINED) != 0) {
+          dev->gpu_ext_fine_grained_segment_ = pool;
+          break;
+        }
+
         if ((global_flag & HSA_REGION_GLOBAL_FLAG_FINE_GRAINED) != 0) {
           dev->gpu_fine_grained_segment_ = pool;
         } else if ((global_flag & HSA_REGION_GLOBAL_FLAG_COARSE_GRAINED) != 0) {
@@ -956,6 +965,12 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
       stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS,
                                           &global_flag);
       if (stat != HSA_STATUS_SUCCESS) {
+        break;
+      }
+
+      // If the flag set is ext scoped fine grain, break the loop
+      if ((global_flag & HSA_REGION_GLOBAL_FLAG_EXTENDED_SCOPE_FINE_GRAINED) != 0) {
+        agentInfo->ext_fine_grain_pool_ = pool;
         break;
       }
 
@@ -1416,6 +1431,10 @@ bool Device::populateOCLDeviceConstants() {
 
   if (settings().singleFpDenorm_) {
     info_.singleFPConfig_ |= CL_FP_DENORM;
+  }
+
+  if (settings().checkExtension(ClKhrFp16)) {
+    info_.halfFPConfig_ = info_.singleFPConfig_;
   }
 
   info_.preferredPlatformAtomicAlignment_ = 0;
@@ -2158,9 +2177,8 @@ bool Device::allowPeerAccess(device::Memory* memory) const {
 }
 
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
-  const hsa_amd_memory_pool_t& pool = (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
-  uint32_t hsa_mem_flags = (atomics && pseudo_fine_grain) ? HSA_AMD_MEMORY_POOL_PCIE_FLAG
-                                                          : HSA_AMD_MEMORY_POOL_STANDARD_FLAG;
+  const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain) ? gpu_ext_fine_grained_segment_
+                                      : (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
 
   if (pool.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
     DevLogPrintfError("Invalid argument, pool_handle: 0x%x , max_alloc: %u \n",
@@ -2169,7 +2187,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain
   }
 
   void* ptr = nullptr;
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, hsa_mem_flags, &ptr);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa device memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation local memory");

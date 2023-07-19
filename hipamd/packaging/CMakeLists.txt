@@ -145,7 +145,11 @@ if (CPACK_RPM_PACKAGE_RELEASE MATCHES "local" )
   #DEBUG SYMBOL pacaking require SOURCE_DIR to be small
   set(CPACK_RPM_BUILD_SOURCE_DIRS_PREFIX ${CPACK_INSTALL_PREFIX})
 endif()
-set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
+
+# Eventhough hip-runtime package has libraries,it was not in the package provides list,
+# since CPACK_RPM_PACKAGE_AUTOREQPROV was set to "no".
+# Use AUTOREQ,(rather than AUTOREQPROV) so that package will also provides the libraries
+set(CPACK_RPM_PACKAGE_AUTOREQ " no")
 set(CPACK_RPM_FILE_NAME "RPM-DEFAULT")
 
 set(CPACK_DEBIAN_FILE_NAME "DEB-DEFAULT")
