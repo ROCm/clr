@@ -182,6 +182,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   static std::unordered_set<GraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
   unsigned int isEnabled_;
+  uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
 
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -229,7 +230,8 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     }
     return true;
   }
-
+  // Return gpu packet address to update with actual packet under capture.
+  uint8_t* GetAqlPacket() { return gpuPacket_; }
   hip::Stream* GetQueue() { return stream_; }
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
@@ -334,11 +336,6 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     for (auto& command : commands_) {
       command->enqueue();
       command->release();
-    }
-  }
-  virtual void EnableBuffering() {
-    for (auto& command : commands_) {
-      command->setBufferingState(true);
     }
   }
   Graph* GetParentGraph() { return parentGraph_; }
@@ -567,7 +564,11 @@ struct GraphExec {
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
-
+  // Graph Kernel arg vars
+  bool device_kernarg_pool_ = false;
+  address kernarg_pool_graph_ = nullptr;
+  uint32_t kernarg_pool_size_graph_ = 0;
+  uint32_t kernarg_pool_cur_graph_offset_ = 0;
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
             std::unordered_map<Node, std::vector<Node>>& nodeWaitLists, struct Graph*& clonedGraph,
@@ -592,6 +593,11 @@ struct GraphExec {
         hip::Stream::Destroy(stream);
       }
     }
+    // Release the kernel arg memory.
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      device->hostFree(kernarg_pool_graph_, kernarg_pool_size_graph_);
+    }
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.erase(this);
     delete clonedGraph_;
@@ -606,7 +612,16 @@ struct GraphExec {
     }
     return clonedNode;
   }
-
+  address allocKernArg(size_t size, size_t alignment) {
+    assert(alignment != 0);
+    address result = nullptr;
+    result = amd::alignUp(kernarg_pool_graph_ + kernarg_pool_cur_graph_offset_, alignment);
+    const size_t pool_new_usage = (result + size) - kernarg_pool_graph_;
+    if (pool_new_usage <= kernarg_pool_size_graph_) {
+      kernarg_pool_cur_graph_offset_ = pool_new_usage;
+    }
+    return result;
+  }
   // check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
 
@@ -617,6 +632,8 @@ struct GraphExec {
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
   hipError_t Run(hipStream_t stream);
+  // Capture GPU Packets from graph commands
+  hipError_t CaptureAQLPackets();
 };
 
 struct ChildGraphNode : public GraphNode {
@@ -742,31 +759,48 @@ struct ChildGraphNode : public GraphNode {
 };
 
 class GraphKernelNode : public GraphNode {
-  hipKernelNodeParams kernelParams_;
-  unsigned int numParams_;
-  hipKernelNodeAttrValue kernelAttr_;
-  unsigned int kernelAttrInUse_;
-  ihipExtKernelEvents kernelEvents_;
+  hipKernelNodeParams kernelParams_;   //!< Kernel node parameters
+  unsigned int numParams_;             //!< No. of kernel params as part of signature
+  hipKernelNodeAttrValue kernelAttr_;  //!< Kernel node attributes
+  unsigned int kernelAttrInUse_;       //!< Kernel attributes in use
+  ihipExtKernelEvents kernelEvents_;   //!< Events for Ext launch kernel
+  size_t alignedKernArgSize_;          //!< Aligned size required for kernel args
+  size_t kernargSegmentByteSize_;      //!< Kernel arg segment byte size
+  size_t kernargSegmentAlignment_;     //!< Kernel arg segment alignment
 
  public:
-    void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
-      out << "[";
-      out << "style";
-      out << "=\"";
-      out << style_;
-      (flag == hipGraphDebugDotFlagsKernelNodeParams ||
-       flag == hipGraphDebugDotFlagsKernelNodeAttributes) ?
-       out << "\n" : out << "\"";
-      out << "shape";
-      out << "=\"";
-      out << GetShape(flag);
-      out << "\"";
-      out << "label";
-      out << "=\"";
-      out << GetLabel(flag);
-      out << "\"";
-      out << "];";
+  size_t GetKerArgSize() const { return alignedKernArgSize_; }
+  size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
+  size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
+    out << "[";
+    out << "style";
+    out << "=\"";
+    out << style_;
+    (flag == hipGraphDebugDotFlagsKernelNodeParams ||
+      flag == hipGraphDebugDotFlagsKernelNodeAttributes) ?
+      out << "\n" : out << "\"";
+    out << "shape";
+    out << "=\"";
+    out << GetShape(flag);
+    out << "\"";
+    out << "label";
+    out << "=\"";
+    out << GetLabel(flag);
+    out << "\"";
+    out << "];";
+    }
+
+    void EnableCapturing(address kernArgOffset) {
+      for (auto& command : commands_) {
+        reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
+            true, GetAqlPacket(), kernArgOffset);
+        // Enqueue command to capture GPU Packet. Packet is not sent to hardware queue.
+
+        command->submit(*(command->queue())->vdev());
+        command->release();
       }
+    }
 
   std::string GetLabel(hipGraphDebugDotFlags flag) {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
@@ -842,6 +876,14 @@ class GraphKernelNode : public GraphNode {
     }
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     amd::Kernel* kernel = function->kernel();
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      auto device = g_devices[ihipGetDevice()]->devices()[0];
+      device::Kernel* devKernel = const_cast<device::Kernel*>(kernel->getDeviceKernel(*device));
+      kernargSegmentByteSize_ = devKernel->KernargSegmentByteSize();
+      kernargSegmentAlignment_ = devKernel->KernargSegmentAlignment();
+      alignedKernArgSize_ =
+          amd::alignUp(devKernel->KernargSegmentByteSize(), devKernel->KernargSegmentAlignment());
+    }
     const amd::KernelSignature& signature = kernel->signature();
     numParams_ = signature.numParameters();
 

@@ -1279,6 +1279,7 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket) = 0;
 
   //! Resets fence state of the VirtualGPU
   virtual void resetFenceDirty() = 0;
@@ -1729,6 +1730,12 @@ class Device : public RuntimeObject {
    */
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = kNoAtomics) const {
+    ShouldNotCallThis();
+    return NULL;
+  }
+
+  virtual void* deviceLocalAlloc(size_t size, bool atomics = false,
+                                 bool pseudo_fine_grain = false) const {
     ShouldNotCallThis();
     return NULL;
   }
