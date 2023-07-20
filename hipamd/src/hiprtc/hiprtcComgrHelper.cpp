@@ -895,7 +895,7 @@ std::string handleMangledName(std::string loweredName) {
   return loweredName;
 }
 
-bool fillMangledNames(std::vector<char>& dataVec, std::vector<std::string>& mangledNames,
+bool fillMangledNames(std::vector<char>& dataVec, std::map<std::string, std::string>& mangledNames,
                       bool isBitcode) {
   amd_comgr_data_t dataObject;
   if (auto res = amd::Comgr::create_data(
@@ -910,48 +910,32 @@ bool fillMangledNames(std::vector<char>& dataVec, std::vector<std::string>& mang
   }
 
   size_t Count;
-  if (auto res = amd::Comgr::populate_mangled_names(dataObject, &Count)) {
+  if (auto res = amd::Comgr::populate_name_expression_map(dataObject, &Count)) {
     amd::Comgr::release_data(dataObject);
     return false;
   }
 
-  for (size_t i = 0; i < Count; i++) {
+  for (auto &it : mangledNames) {
     size_t Size;
-    if (auto res = amd::Comgr::get_mangled_name(dataObject, i, &Size, NULL)) {
+    char *data = const_cast<char*>(it.first.data());
+
+    if (auto res = amd::Comgr::map_name_expression_to_symbol_name(dataObject, &Size, data, NULL)) {
       amd::Comgr::release_data(dataObject);
       return false;
     }
 
-    char* mName = new char[Size]();
-    if (auto res = amd::Comgr::get_mangled_name(dataObject, i, &Size, mName)) {
+    std::unique_ptr<char[]> mName(new char[Size]());
+    if (auto res = amd::Comgr::map_name_expression_to_symbol_name(dataObject, &Size, data, mName.get())) {
       amd::Comgr::release_data(dataObject);
       return false;
     }
 
-    mangledNames.push_back(std::string(mName));
-    delete [] mName;
+    it.second = std::string(mName.get());
   }
 
   amd::Comgr::release_data(dataObject);
   return true;
 }
 
-bool getDemangledNames(const std::vector<std::string>& mangledNames,
-                       std::map<std::string, std::string>& demangledNames) {
-  for (auto& i : mangledNames) {
-    std::string demangledName;
-    if (!demangleName(i, demangledName)) return false;
-    demangledName = handleMangledName(demangledName);
-
-    demangledName.erase(std::remove_if(demangledName.begin(), demangledName.end(),
-                                       [](unsigned char c) { return std::isspace(c); }),
-                        demangledName.end());
-
-    if (auto dres = demangledNames.find(demangledName); dres != demangledNames.end()) {
-      dres->second = i;
-    }
-  }
-  return true;
-}
 }  // namespace helpers
 }  // namespace hiprtc

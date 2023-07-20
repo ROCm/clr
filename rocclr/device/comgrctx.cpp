@@ -115,6 +115,8 @@ bool Comgr::LoadLib(bool is_versioned) {
   GET_COMGR_OPTIONAL_SYMBOL(amd_comgr_demangle_symbol_name)
   GET_COMGR_SYMBOL(amd_comgr_populate_mangled_names)
   GET_COMGR_SYMBOL(amd_comgr_get_mangled_name)
+  GET_COMGR_SYMBOL(amd_comgr_populate_name_expression_map)
+  GET_COMGR_SYMBOL(amd_comgr_map_name_expression_to_symbol_name)
   is_ready_ = true;
   return true;
 }

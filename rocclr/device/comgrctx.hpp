@@ -74,6 +74,8 @@ typedef amd_comgr_status_t (*t_amd_comgr_symbol_get_info)(amd_comgr_symbol_t sym
 typedef amd_comgr_status_t (*t_amd_comgr_demangle_symbol_name)(amd_comgr_data_t MangledSymbolName, amd_comgr_data_t* DemangledSymbolName);
 typedef amd_comgr_status_t (*t_amd_comgr_populate_mangled_names)(amd_comgr_data_t data, size_t *count);
 typedef amd_comgr_status_t (*t_amd_comgr_get_mangled_name)(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name);
+typedef amd_comgr_status_t (*t_amd_comgr_populate_name_expression_map)(amd_comgr_data_t data, size_t *count);
+typedef amd_comgr_status_t (*t_amd_comgr_map_name_expression_to_symbol_name)(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name);
 
 struct ComgrEntryPoints {
   void* handle;
@@ -125,6 +127,8 @@ struct ComgrEntryPoints {
   t_amd_comgr_demangle_symbol_name      amd_comgr_demangle_symbol_name;
   t_amd_comgr_populate_mangled_names    amd_comgr_populate_mangled_names;
   t_amd_comgr_get_mangled_name          amd_comgr_get_mangled_name;
+  t_amd_comgr_populate_name_expression_map  amd_comgr_populate_name_expression_map;
+  t_amd_comgr_map_name_expression_to_symbol_name amd_comgr_map_name_expression_to_symbol_name;
 };
 
 #ifdef COMGR_DYN_DLL
@@ -299,6 +303,12 @@ public:
   }
   static amd_comgr_status_t get_mangled_name(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name) {
     return COMGR_DYN(amd_comgr_get_mangled_name)(data, index, size, mangled_name);
+  }
+  static amd_comgr_status_t populate_name_expression_map(amd_comgr_data_t data, size_t *count) {
+    return COMGR_DYN(amd_comgr_populate_name_expression_map)(data, count);
+  }
+  static amd_comgr_status_t map_name_expression_to_symbol_name(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name) {
+    return COMGR_DYN(amd_comgr_map_name_expression_to_symbol_name)(data, size, name_expression, symbol_name);
   }
 
 
