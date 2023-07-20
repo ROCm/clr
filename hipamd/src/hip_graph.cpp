@@ -26,7 +26,6 @@
 #include "hip_event.hpp"
 #include "hip_mempool_impl.hpp"
 
-
 std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
 amd::Monitor g_streamSetLock{"StreamCaptureset"};
