@@ -871,7 +871,7 @@ bool VirtualGPU::dispatchAqlBuffer() {
 
     packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), firstPacketHeader,
                          aqlBuffer_.front().setup);
-    hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
+    hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index + size - 1);
 
     aqlBuffer_.clear();
   }
