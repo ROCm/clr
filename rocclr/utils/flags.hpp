@@ -239,6 +239,8 @@ release(cstring, HIPRTC_COMPILE_OPTIONS_APPEND, "",                           \
         "Set compile options needed for hiprtc compilation")                  \
 release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \
         "Set link options needed for hiprtc compilation")                     \
+release(bool, HIP_VMEM_MANAGE_SUPPORT, false,                                 \
+        "Virtual Memory Management Support")                                  \
 
 namespace amd {
 

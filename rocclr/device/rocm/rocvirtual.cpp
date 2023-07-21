@@ -2540,6 +2540,51 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
 }
 
 // ================================================================================================
+void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+
+  profilingBegin(vcmd);
+
+  // Find the amd::Memory object for virtual ptr.
+  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
+  if (va == nullptr || !(va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    profilingEnd(vcmd);
+    return;
+  }
+
+  // Get the amd::Memory object for the physical address
+  amd::Memory* pa = vcmd.memory();
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+
+  // If Physical address is not set, then it is map command. If set, it is unmap command.
+  if (pa != nullptr) {
+    // Map the physical to virtual address the hsa api
+    hsa_amd_vmem_alloc_handle_t opaque_hsa_handle;
+    opaque_hsa_handle.handle = pa->getUserData().hsa_handle;
+    if ((hsa_status = hsa_amd_vmem_map(va->getSvmPtr(), va->getSize(), va->getOffset(),
+                                       opaque_hsa_handle, 0)) == HSA_STATUS_SUCCESS) {
+      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
+      // Now that we have mapped physical addr to virtual addr, make an entry in the MemObjMap.
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vcmd.memory());
+    } else {
+      LogError("HSA Command: hsa_amd_vmem_map failed!");
+    }
+  } else {
+    // Unmap the object, since the physical addr is set.
+    if ((hsa_status = hsa_amd_vmem_unmap(va->getSvmPtr(), va->getSize())) == HSA_STATUS_SUCCESS) {
+      // assert the va is mapped and needs to be removed
+      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
+      amd::MemObjMap::RemoveMemObj(vcmd.ptr());
+    } else {
+      LogError("HSA Command: hsa_amd_vmem_unmap failed");
+    }
+  }
+
+  profilingEnd(vcmd);
+}
+
+// ================================================================================================
 void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());

@@ -142,6 +142,7 @@ class RuntimeObject : public ReferenceCountedObject, public ICDDispatchedObject 
     ObjectTypeQueue = 8,
     ObjectTypeSampler = 9,
     ObjectTypeThreadTrace = 10,
+    ObjectTypeVMMAlloc = 11
   };
 
   virtual ObjectType objectType() const = 0;

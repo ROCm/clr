@@ -2385,7 +2385,11 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
     return nullptr;
   }
 
-  if (!mem->create(nullptr, false)) {
+  constexpr bool kSysMemAlloc = false;
+  constexpr bool kSkipAlloc = false;
+  constexpr bool kForceAlloc = true;
+  // Force the alloc now for VA_Range reservation.
+  if (!mem->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
     LogError("failed to create a va range mem object");
     mem->release();
     return nullptr;

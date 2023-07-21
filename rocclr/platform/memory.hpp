@@ -43,6 +43,7 @@
 #define CL_MEM_VA_RANGE_AMD             (1u << 28)
 #define ROCCLR_MEM_HSA_UNCACHED         (1u << 27)
 #define ROCCLR_MEM_INTERPROCESS         (1u << 26)
+#define ROCCLR_MEM_PHYMEM               (1u << 25)
 
 namespace device {
 class Memory;
@@ -148,6 +149,7 @@ class Memory : public amd::RuntimeObject {
   {
      int deviceId = 0;     //!< Device ID memory is allocated on
      void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
+     uint64_t hsa_handle = 0; //!<Opaque hsa handle saved for Virtual memories
      unsigned int flags = 0; //!< HIP memory flags
      //! hipMallocPitch allocates buffer using width & height and returns pitch & device pointer.
      //! Since device pointer is void*, It looses the values of width & height used for allocation.

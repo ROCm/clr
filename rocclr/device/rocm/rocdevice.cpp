@@ -64,6 +64,20 @@
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
+
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kNone)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_NONE),
+              "Vmm Access Flag None mismatch with ROC-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadOnly)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RO),
+              "Vmm Access Flag Read mismatch with ROCr-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kWriteOnly)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_WO),
+              "Vmm Access Flag Write mismatch with ROC-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadWrite)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RW),
+              "Vmm Access Flag Read Write mismatch with ROC-runtime!");
+
 #ifndef WITHOUT_HSA_BACKEND
 
 namespace {
@@ -935,6 +949,14 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           } else {
             dev->info_.largeBar_ = ROC_ENABLE_LARGE_BAR;
           }
+
+          // Query the recommended granularity for this pool.
+          stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE,
+                                              &(dev->info_.virtualMemAllocGranularity_));
+          if (stat != HSA_STATUS_SUCCESS) {
+            LogPrintfError("Cannot query HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE info"
+                           "failed with hsa_status: %d \n", stat);
+          }
         }
 
         if (dev->gpuvm_segment_.handle == 0) {
@@ -1720,7 +1742,17 @@ bool Device::populateOCLDeviceConstants() {
           maxSdmaReadMask_, maxSdmaWriteMask_);
 
   info_.globalCUMask_ = {};
+
+  // Virtual memory Management Support, if set to true then the HW and SW Stack supports VMM.
   info_.virtualMemoryManagement_ = false;
+  if (HIP_VMEM_MANAGE_SUPPORT) {
+    if (HSA_STATUS_SUCCESS != hsa_system_get_info(
+          static_cast<hsa_system_info_t>(HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED),
+          &info_.virtualMemoryManagement_)) {
+      LogError("HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED query failed ");
+    }
+  }
+
   switch (isa().versionMajor()) {
     case (11):
       if (isa().versionMinor() == 0) {
@@ -2212,6 +2244,19 @@ bool Device::allowPeerAccess(device::Memory* memory) const {
   return true;
 }
 
+uint64_t Device::deviceVmemAlloc(size_t size, uint64_t flags) const {
+  hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+
+  // We only allow pinned memory at this time.
+  hsa_status_t hsa_status = hsa_amd_vmem_handle_create(gpuvm_segment_, size, MEMORY_TYPE_PINNED,
+                                                       flags, &hsa_vmem_handle);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_handle_create! Failed with hsa status: %d \n", hsa_status);
+  }
+
+  return hsa_vmem_handle.handle;
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain) ? gpu_ext_fine_grained_segment_
                                       : (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
@@ -2311,13 +2356,83 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   return svmPtr;
 }
 
-void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
-{
-  return nullptr;
+void* Device::virtualAlloc(void* req_addr, size_t size, size_t alignment) {
+  void* vptr = nullptr;
+  // Reserves the address using HSA APIs, with requested address.
+  // There is no guarantee that we will get the requested address.
+  hsa_status_t hsa_status = hsa_amd_vmem_address_reserve(&vptr, size,
+                              reinterpret_cast<uint64_t>(req_addr), 0);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_address_reserve. Failed with status: %d \n", hsa_status);
+    return nullptr;
+  }
+
+  // This mem->create() does not create an actual memory but stores the memory info with given vptr.
+  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, vptr);
+  if (mem == nullptr) {
+    LogError("failed to new a va range mem object!");
+    return nullptr;
+  }
+
+  if (!mem->create(nullptr, false)) {
+    LogError("failed to create a va range mem object");
+    mem->release();
+    return nullptr;
+  }
+
+  // Assert to make sure that amd::Memory object has set the right ptr.
+  guarantee(vptr == mem->getSvmPtr(), "amd::Memory object does not have the right ptr");
+
+  return mem->getSvmPtr();
 }
 
-void Device::virtualFree(void* addr)
-{
+void Device::virtualFree(void* addr) {
+  amd::Memory* memObj = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (memObj == nullptr) {
+    LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", addr);
+  }
+
+  hsa_status_t hsa_status = hsa_amd_vmem_address_free(memObj->getSvmPtr(), memObj->getSize());
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_address_free. Failed with status:%d \n", hsa_status);
+  }
+}
+
+bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_amd_memory_access_desc_t desc;
+  desc.permissions = static_cast<hsa_access_permission_t>(access_flags);
+  desc.agent_handle = getBackendDevice();
+
+  if ((hsa_status = hsa_amd_vmem_set_access(va_addr, va_size, &desc, count))
+                                                      != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_set_access. Failed with status:%d \n", hsa_status);
+    return false;
+  }
+
+  return true;
+}
+
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_access_permission_t perms;
+
+  size_t discard_offset = 0;
+  amd::Memory* va_mem_obj = amd::MemObjMap::FindMemObj(va_addr, &discard_offset);
+  if (va_mem_obj == nullptr) {
+    LogPrintfError("Failed to get Memory Object for va_addr: 0x%x", va_addr);
+    return false;
+  }
+
+  if ((hsa_status = hsa_amd_vmem_get_access(va_mem_obj->getSvmPtr(), &perms, getBackendDevice()))
+                    != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_get_access. Failed with status:%d \n", hsa_status);
+    return false;
+  }
+
+  *access_flags_ptr = static_cast<VmmAccess>(perms);
+
+  return true;
 }
 
 // ================================================================================================
