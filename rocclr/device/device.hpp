@@ -1584,6 +1584,14 @@ class Device : public RuntimeObject {
     kCacheStateSystem = 2
   } CacheState;
 
+  //<! Enum describing the access permissions of Virtual memory
+  enum class VmmAccess {
+    kNone           = 0x0,
+    kReadOnly       = 0x1,
+    kWriteOnly      = 0x2,
+    kReadWrite      = 0x3
+  };
+
   typedef std::pair<LinkAttribute, int32_t /* value */> LinkAttrType;
 
   static constexpr size_t kP2PStagingSize = 4 * Mi;
@@ -1785,6 +1793,25 @@ class Device : public RuntimeObject {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) = 0;
 
   /**
+   * Set Access permisions for a virtual memory object.
+   *
+   * @param va_addr Virtual Address ptr
+   * @param va_size Virtual Address Size
+   * @param access_flags Access permissions
+   * @param count Number of access permissions
+   */
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags,
+                            size_t count) = 0;
+
+  /**
+   * Get Access permisions for a virtual memory object.
+   *
+   * @param va_addr Virtual Address ptr
+   * @param access_flags_ptr Access permissions to be filled
+   */
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) = 0;
+
+  /**
    * Free a VA range
    *
    * @param addr Start address of the range
@@ -1966,6 +1993,7 @@ class Device : public RuntimeObject {
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0) {
     return nullptr;
   }
+
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
   virtual device::UriLocator* createUriLocator() const = 0;

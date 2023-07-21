@@ -748,8 +748,18 @@ bool Buffer::create(bool alloc_local) {
     owner()->setSvmPtr(orig_dev_ptr);
   }
 
+
+
   // Allocate backing storage in device local memory unless UHP or AHP are set
   cl_mem_flags memFlags = owner()->getMemFlags();
+
+  if (memFlags & ROCCLR_MEM_PHYMEM) {
+    // If this is physical memory request, then get an handle and store it in user data
+    owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    if (owner()->getUserData().hsa_handle == 0) {
+      LogError("HSA Opaque Handle returned was null");
+    }
+  }
 
   if ((owner()->parent() == nullptr) &&
       (owner()->getSvmPtr() != nullptr)) {
