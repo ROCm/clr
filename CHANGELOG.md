@@ -2,7 +2,18 @@
 
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
-## (Unreleased) HIP 5.7 (For ROCm 5.7)
+## (Unreleased) HIP 6.0 (For ROCm 6.0)
+### Optimizations
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Known Issues
+
+## HIP 5.7 (For ROCm 5.7)
 
 ### Optimizations
 
@@ -43,6 +54,10 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
 ### Fixed
 
+### Known Issues
+- HIP memory type enum values currently don't support equivalent value to cudaMemoryTypeUnregistered, due to HIP functionality backward compatibility.
+- HIP API hipPointerGetAttributes could return invalid value in case the input memory pointer was not allocated through any HIP API on device or host.
+
 ## HIP 5.6 (For ROCm 5.6)
 
 ### Optimizations
@@ -69,6 +84,8 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Known Issues
 - Limited testing on xnack+ configuration
   - Multiple HIP tests failures (gpuvm fault or hangs)
+- hipSetDevice and hipSetDeviceFlags APIs return hipErrorInvalidDevice instead of hipErrorNoDevice, on a system without GPU
+- Known memory leak when code object files are loaded/unloaded via hipModuleLoad/hipModuleUnload APIs. Issue will be fixed in future release
 
 ### Upcoming changes in future release
 - Removal of gcnarch from hipDeviceProp_t structure
@@ -83,8 +100,14 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
   - surfaceAlignment
   - unifiedAddressing
   - computePreemptionSupported
+  - hostRegisterSupported
   - uuid
 - Removal of deprecated code
-  - hip-hcc codes from hip code tree
-- Correctness of hipArray usage in HIP APIs
-- HIPMEMCPY_3D fields correction (unsigned int -> size_t)
+  -hip-hcc codes from hip code tree
+- Correct hipArray usage in HIP APIs such as hipMemcpyAtoH and hipMemcpyHtoA
+- HIPMEMCPY_3D fields correction to avoid truncation of "size_t" to "unsigned int" inside hipMemcpy3D()
+- Renaming of 'memoryType' in hipPointerAttribute_t structure to 'type'
+- Correct hipGetLastError to return the last error instead of last API call's return code
+- Update hipExternalSemaphoreHandleDesc to add "unsigned int reserved[16]"
+- Correct handling of flag values in hipIpcOpenMemHandle for hipIpcMemLazyEnablePeerAccess
+- Remove hiparray* and make it opaque with hipArray_t
