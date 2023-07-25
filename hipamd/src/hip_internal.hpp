@@ -67,6 +67,20 @@ typedef struct ihipIpcMemHandle_st {
   char reserved[IHIP_IPC_MEM_RESERVED_SIZE];
 } ihipIpcMemHandle_t;
 
+typedef struct hipArray {
+    void* data;  // FIXME: generalize this
+    struct hipChannelFormatDesc desc;
+    unsigned int type;
+    unsigned int width;
+    unsigned int height;
+    unsigned int depth;
+    enum hipArray_Format Format;
+    unsigned int NumChannels;
+    bool isDrv;
+    unsigned int textureType;
+    unsigned int flags;
+}hipArray;
+
 #define IHIP_IPC_EVENT_HANDLE_SIZE 32
 #define IHIP_IPC_EVENT_RESERVED_SIZE LP64_SWITCH(28,24)
 typedef struct ihipIpcEventHandle_st {

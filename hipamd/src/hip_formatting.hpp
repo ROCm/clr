@@ -683,41 +683,6 @@ inline std::ostream& operator<<(std::ostream& os, const hipResourceDesc* s) {
   return os;
 }
 
-
-inline std::ostream& operator<<(std::ostream& os, const hipArray& s) {
-  os << '{'
-  << s.data
-  << ','
-  << s.desc
-  << ','
-  << s.type
-  << ','
-  << s.width
-  << ','
-  << s.height
-  << ','
-  << s.depth
-  << ','
-  << s.Format
-  << ','
-  << s.NumChannels
-  << ','
-  << s.isDrv
-  << ','
-  << s.textureType
-  << '}';
-  return os;
-}
-
-inline std::ostream& operator<<(std::ostream& os, const hipArray* s) {
-  if (s) {
-    os << *s;
-  } else {
-    os << "nullptr";
-  }
-  return os;
-}
-
 inline std::ostream& operator<<(std::ostream& os, const textureReference& s) {
   os << '{'
   << s.normalized

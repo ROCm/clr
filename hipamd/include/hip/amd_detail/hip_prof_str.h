@@ -1173,32 +1173,29 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } __hipPushCallConfiguration;
     struct {
-      hipArray** array;
-      hipArray* array__val;
+      hipArray_t* array;
+      hipArray_t array__val;
       const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray;
       HIP_ARRAY3D_DESCRIPTOR pAllocateArray__val;
     } hipArray3DCreate;
     struct {
       HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor;
       HIP_ARRAY3D_DESCRIPTOR pArrayDescriptor__val;
-      hipArray* array;
-      hipArray array__val;
+      hipArray_t array;
     } hipArray3DGetDescriptor;
     struct {
-      hipArray** pHandle;
-      hipArray* pHandle__val;
+      hipArray_t* pHandle;
+      hipArray_t pHandle__val;
       const HIP_ARRAY_DESCRIPTOR* pAllocateArray;
       HIP_ARRAY_DESCRIPTOR pAllocateArray__val;
     } hipArrayCreate;
     struct {
-      hipArray* array;
-      hipArray array__val;
+      hipArray_t array;
     } hipArrayDestroy;
     struct {
       HIP_ARRAY_DESCRIPTOR* pArrayDescriptor;
       HIP_ARRAY_DESCRIPTOR pArrayDescriptor__val;
-      hipArray* array;
-      hipArray array__val;
+      hipArray_t array;
     } hipArrayGetDescriptor;
     struct {
       hipChannelFormatDesc* desc;
@@ -1207,8 +1204,7 @@ typedef struct hip_api_data_s {
       hipExtent extent__val;
       unsigned int* flags;
       unsigned int flags__val;
-      hipArray* array;
-      hipArray array__val;
+      hipArray_t array;
     } hipArrayGetInfo;
     struct {
       int* device;
@@ -1565,8 +1561,7 @@ typedef struct hip_api_data_s {
       void* ptr;
     } hipFree;
     struct {
-      hipArray* array;
-      hipArray array__val;
+      hipArray_t array;
     } hipFreeArray;
     struct {
       void* dev_ptr;
@@ -2282,8 +2277,8 @@ typedef struct hip_api_data_s {
       unsigned int flags;
     } hipMalloc3DArray;
     struct {
-      hipArray** array;
-      hipArray* array__val;
+      hipArray_t* array;
+      hipArray_t array__val;
       const hipChannelFormatDesc* desc;
       hipChannelFormatDesc desc__val;
       size_t width;
@@ -2584,8 +2579,7 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } hipMemcpy2DFromArrayAsync;
     struct {
-      hipArray* dst;
-      hipArray dst__val;
+      hipArray_t dst;
       size_t wOffset;
       size_t hOffset;
       const void* src;
@@ -2595,8 +2589,7 @@ typedef struct hip_api_data_s {
       hipMemcpyKind kind;
     } hipMemcpy2DToArray;
     struct {
-      hipArray* dst;
-      hipArray dst__val;
+      hipArray_t dst;
       size_t wOffset;
       size_t hOffset;
       const void* src;
@@ -2624,8 +2617,7 @@ typedef struct hip_api_data_s {
     } hipMemcpyAsync;
     struct {
       void* dst;
-      hipArray* srcArray;
-      hipArray srcArray__val;
+      hipArray_t srcArray;
       size_t srcOffset;
       size_t count;
     } hipMemcpyAtoH;
@@ -2675,8 +2667,7 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } hipMemcpyFromSymbolAsync;
     struct {
-      hipArray* dstArray;
-      hipArray dstArray__val;
+      hipArray_t dstArray;
       size_t dstOffset;
       const void* srcHost;
       size_t count;
@@ -2717,8 +2708,7 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } hipMemcpyPeerAsync;
     struct {
-      hipArray* dst;
-      hipArray dst__val;
+      hipArray_t dst;
       size_t wOffset;
       size_t hOffset;
       const void* src;
@@ -3294,36 +3284,36 @@ typedef struct hip_api_data_s {
   cb_data.args.__hipPushCallConfiguration.sharedMem = (size_t)sharedMem; \
   cb_data.args.__hipPushCallConfiguration.stream = (hipStream_t)stream; \
 };
-// hipArray3DCreate[('hipArray**', 'array'), ('const HIP_ARRAY3D_DESCRIPTOR*', 'pAllocateArray')]
+// hipArray3DCreate[('hipArray_t*', 'array'), ('const HIP_ARRAY3D_DESCRIPTOR*', 'pAllocateArray')]
 #define INIT_hipArray3DCreate_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipArray3DCreate.array = (hipArray**)array; \
+  cb_data.args.hipArray3DCreate.array = (hipArray_t*)array; \
   cb_data.args.hipArray3DCreate.pAllocateArray = (const HIP_ARRAY3D_DESCRIPTOR*)pAllocateArray; \
 };
-// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray_t', 'array')]
 #define INIT_hipArray3DGetDescriptor_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipArray3DGetDescriptor.pArrayDescriptor = (HIP_ARRAY3D_DESCRIPTOR*)pArrayDescriptor; \
-  cb_data.args.hipArray3DGetDescriptor.array = (hipArray*)array; \
+  cb_data.args.hipArray3DGetDescriptor.array = (hipArray_t)array; \
 };
-// hipArrayCreate[('hipArray**', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
+// hipArrayCreate[('hipArray_t*', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
 #define INIT_hipArrayCreate_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipArrayCreate.pHandle = (hipArray**)array; \
+  cb_data.args.hipArrayCreate.pHandle = (hipArray_t*)array; \
   cb_data.args.hipArrayCreate.pAllocateArray = (const HIP_ARRAY_DESCRIPTOR*)pAllocateArray; \
 };
-// hipArrayDestroy[('hipArray*', 'array')]
+// hipArrayDestroy[('hipArray_t', 'array')]
 #define INIT_hipArrayDestroy_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipArrayDestroy.array = (hipArray*)array; \
+  cb_data.args.hipArrayDestroy.array = (hipArray_t)array; \
 };
-// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray_t', 'array')]
 #define INIT_hipArrayGetDescriptor_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipArrayGetDescriptor.pArrayDescriptor = (HIP_ARRAY_DESCRIPTOR*)pArrayDescriptor; \
-  cb_data.args.hipArrayGetDescriptor.array = (hipArray*)array; \
+  cb_data.args.hipArrayGetDescriptor.array = (hipArray_t)array; \
 };
-// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray*', 'array')]
+// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray_t', 'array')]
 #define INIT_hipArrayGetInfo_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipArrayGetInfo.desc = (hipChannelFormatDesc*)desc; \
   cb_data.args.hipArrayGetInfo.extent = (hipExtent*)extent; \
   cb_data.args.hipArrayGetInfo.flags = (unsigned int*)flags; \
-  cb_data.args.hipArrayGetInfo.array = (hipArray*)array; \
+  cb_data.args.hipArrayGetInfo.array = (hipArray_t)array; \
 };
 // hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_tR0600*', 'prop')]
 #define INIT_hipChooseDevice_CB_ARGS_DATA(cb_data) { \
@@ -3711,9 +3701,9 @@ typedef struct hip_api_data_s {
 #define INIT_hipFree_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipFree.ptr = (void*)ptr; \
 };
-// hipFreeArray[('hipArray*', 'array')]
+// hipFreeArray[('hipArray_t', 'array')]
 #define INIT_hipFreeArray_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipFreeArray.array = (hipArray*)array; \
+  cb_data.args.hipFreeArray.array = (hipArray_t)array; \
 };
 // hipFreeAsync[('void*', 'dev_ptr'), ('hipStream_t', 'stream')]
 #define INIT_hipFreeAsync_CB_ARGS_DATA(cb_data) { \
@@ -4434,9 +4424,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMalloc3DArray.extent = (hipExtent)extent; \
   cb_data.args.hipMalloc3DArray.flags = (unsigned int)flags; \
 };
-// hipMallocArray[('hipArray**', 'array'), ('const hipChannelFormatDesc*', 'desc'), ('size_t', 'width'), ('size_t', 'height'), ('unsigned int', 'flags')]
+// hipMallocArray[('hipArray_t*', 'array'), ('const hipChannelFormatDesc*', 'desc'), ('size_t', 'width'), ('size_t', 'height'), ('unsigned int', 'flags')]
 #define INIT_hipMallocArray_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipMallocArray.array = (hipArray**)array; \
+  cb_data.args.hipMallocArray.array = (hipArray_t*)array; \
   cb_data.args.hipMallocArray.desc = (const hipChannelFormatDesc*)desc; \
   cb_data.args.hipMallocArray.width = (size_t)width; \
   cb_data.args.hipMallocArray.height = (size_t)height; \
@@ -4740,9 +4730,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpy2DFromArrayAsync.kind = (hipMemcpyKind)kind; \
   cb_data.args.hipMemcpy2DFromArrayAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpy2DToArray[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind')]
+// hipMemcpy2DToArray[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind')]
 #define INIT_hipMemcpy2DToArray_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipMemcpy2DToArray.dst = (hipArray*)dst; \
+  cb_data.args.hipMemcpy2DToArray.dst = (hipArray_t)dst; \
   cb_data.args.hipMemcpy2DToArray.wOffset = (size_t)wOffset; \
   cb_data.args.hipMemcpy2DToArray.hOffset = (size_t)hOffset; \
   cb_data.args.hipMemcpy2DToArray.src = (const void*)src; \
@@ -4751,9 +4741,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpy2DToArray.height = (size_t)height; \
   cb_data.args.hipMemcpy2DToArray.kind = (hipMemcpyKind)kind; \
 };
-// hipMemcpy2DToArrayAsync[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
+// hipMemcpy2DToArrayAsync[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
 #define INIT_hipMemcpy2DToArrayAsync_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipMemcpy2DToArrayAsync.dst = (hipArray*)dst; \
+  cb_data.args.hipMemcpy2DToArrayAsync.dst = (hipArray_t)dst; \
   cb_data.args.hipMemcpy2DToArrayAsync.wOffset = (size_t)wOffset; \
   cb_data.args.hipMemcpy2DToArrayAsync.hOffset = (size_t)hOffset; \
   cb_data.args.hipMemcpy2DToArrayAsync.src = (const void*)src; \
@@ -4780,10 +4770,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyAsync.kind = (hipMemcpyKind)kind; \
   cb_data.args.hipMemcpyAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpyAtoH[('void*', 'dst'), ('hipArray*', 'srcArray'), ('size_t', 'srcOffset'), ('size_t', 'count')]
+// hipMemcpyAtoH[('void*', 'dst'), ('hipArray_t', 'srcArray'), ('size_t', 'srcOffset'), ('size_t', 'count')]
 #define INIT_hipMemcpyAtoH_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyAtoH.dst = (void*)dstHost; \
-  cb_data.args.hipMemcpyAtoH.srcArray = (hipArray*)srcArray; \
+  cb_data.args.hipMemcpyAtoH.srcArray = (hipArray_t)srcArray; \
   cb_data.args.hipMemcpyAtoH.srcOffset = (size_t)srcOffset; \
   cb_data.args.hipMemcpyAtoH.count = (size_t)ByteCount; \
 };
@@ -4839,9 +4829,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyFromSymbolAsync.kind = (hipMemcpyKind)kind; \
   cb_data.args.hipMemcpyFromSymbolAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpyHtoA[('hipArray*', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'count')]
+// hipMemcpyHtoA[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'count')]
 #define INIT_hipMemcpyHtoA_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipMemcpyHtoA.dstArray = (hipArray*)dstArray; \
+  cb_data.args.hipMemcpyHtoA.dstArray = (hipArray_t)dstArray; \
   cb_data.args.hipMemcpyHtoA.dstOffset = (size_t)dstOffset; \
   cb_data.args.hipMemcpyHtoA.srcHost = (const void*)srcHost; \
   cb_data.args.hipMemcpyHtoA.count = (size_t)ByteCount; \
@@ -4885,9 +4875,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyPeerAsync.sizeBytes = (size_t)sizeBytes; \
   cb_data.args.hipMemcpyPeerAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpyToArray[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'count'), ('hipMemcpyKind', 'kind')]
+// hipMemcpyToArray[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'count'), ('hipMemcpyKind', 'kind')]
 #define INIT_hipMemcpyToArray_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipMemcpyToArray.dst = (hipArray*)dst; \
+  cb_data.args.hipMemcpyToArray.dst = (hipArray_t)dst; \
   cb_data.args.hipMemcpyToArray.wOffset = (size_t)wOffset; \
   cb_data.args.hipMemcpyToArray.hOffset = (size_t)hOffset; \
   cb_data.args.hipMemcpyToArray.src = (const void*)src; \
@@ -5542,36 +5532,32 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // __hipPushCallConfiguration[('dim3', 'gridDim'), ('dim3', 'blockDim'), ('size_t', 'sharedMem'), ('hipStream_t', 'stream')]
     case HIP_API_ID___hipPushCallConfiguration:
       break;
-// hipArray3DCreate[('hipArray**', 'array'), ('const HIP_ARRAY3D_DESCRIPTOR*', 'pAllocateArray')]
+// hipArray3DCreate[('hipArray_t*', 'array'), ('const HIP_ARRAY3D_DESCRIPTOR*', 'pAllocateArray')]
     case HIP_API_ID_hipArray3DCreate:
       if (data->args.hipArray3DCreate.array) data->args.hipArray3DCreate.array__val = *(data->args.hipArray3DCreate.array);
       if (data->args.hipArray3DCreate.pAllocateArray) data->args.hipArray3DCreate.pAllocateArray__val = *(data->args.hipArray3DCreate.pAllocateArray);
       break;
-// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+// hipArray3DGetDescriptor[('HIP_ARRAY3D_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray_t', 'array')]
     case HIP_API_ID_hipArray3DGetDescriptor:
       if (data->args.hipArray3DGetDescriptor.pArrayDescriptor) data->args.hipArray3DGetDescriptor.pArrayDescriptor__val = *(data->args.hipArray3DGetDescriptor.pArrayDescriptor);
-      if (data->args.hipArray3DGetDescriptor.array) data->args.hipArray3DGetDescriptor.array__val = *(data->args.hipArray3DGetDescriptor.array);
       break;
-// hipArrayCreate[('hipArray**', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
+// hipArrayCreate[('hipArray_t*', 'pHandle'), ('const HIP_ARRAY_DESCRIPTOR*', 'pAllocateArray')]
     case HIP_API_ID_hipArrayCreate:
       if (data->args.hipArrayCreate.pHandle) data->args.hipArrayCreate.pHandle__val = *(data->args.hipArrayCreate.pHandle);
       if (data->args.hipArrayCreate.pAllocateArray) data->args.hipArrayCreate.pAllocateArray__val = *(data->args.hipArrayCreate.pAllocateArray);
       break;
-// hipArrayDestroy[('hipArray*', 'array')]
+// hipArrayDestroy[('hipArray_t', 'array')]
     case HIP_API_ID_hipArrayDestroy:
-      if (data->args.hipArrayDestroy.array) data->args.hipArrayDestroy.array__val = *(data->args.hipArrayDestroy.array);
       break;
-// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray*', 'array')]
+// hipArrayGetDescriptor[('HIP_ARRAY_DESCRIPTOR*', 'pArrayDescriptor'), ('hipArray_t', 'array')]
     case HIP_API_ID_hipArrayGetDescriptor:
       if (data->args.hipArrayGetDescriptor.pArrayDescriptor) data->args.hipArrayGetDescriptor.pArrayDescriptor__val = *(data->args.hipArrayGetDescriptor.pArrayDescriptor);
-      if (data->args.hipArrayGetDescriptor.array) data->args.hipArrayGetDescriptor.array__val = *(data->args.hipArrayGetDescriptor.array);
       break;
-// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray*', 'array')]
+// hipArrayGetInfo[('hipChannelFormatDesc*', 'desc'), ('hipExtent*', 'extent'), ('unsigned int*', 'flags'), ('hipArray_t', 'array')]
     case HIP_API_ID_hipArrayGetInfo:
       if (data->args.hipArrayGetInfo.desc) data->args.hipArrayGetInfo.desc__val = *(data->args.hipArrayGetInfo.desc);
       if (data->args.hipArrayGetInfo.extent) data->args.hipArrayGetInfo.extent__val = *(data->args.hipArrayGetInfo.extent);
       if (data->args.hipArrayGetInfo.flags) data->args.hipArrayGetInfo.flags__val = *(data->args.hipArrayGetInfo.flags);
-      if (data->args.hipArrayGetInfo.array) data->args.hipArrayGetInfo.array__val = *(data->args.hipArrayGetInfo.array);
       break;
 // hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_tR0600*', 'prop')]
     case HIP_API_ID_hipChooseDevice:
@@ -5857,9 +5843,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipFree[('void*', 'ptr')]
     case HIP_API_ID_hipFree:
       break;
-// hipFreeArray[('hipArray*', 'array')]
+// hipFreeArray[('hipArray_t', 'array')]
     case HIP_API_ID_hipFreeArray:
-      if (data->args.hipFreeArray.array) data->args.hipFreeArray.array__val = *(data->args.hipFreeArray.array);
       break;
 // hipFreeAsync[('void*', 'dev_ptr'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipFreeAsync:
@@ -6331,7 +6316,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipMalloc3DArray.array) data->args.hipMalloc3DArray.array__val = *(data->args.hipMalloc3DArray.array);
       if (data->args.hipMalloc3DArray.desc) data->args.hipMalloc3DArray.desc__val = *(data->args.hipMalloc3DArray.desc);
       break;
-// hipMallocArray[('hipArray**', 'array'), ('const hipChannelFormatDesc*', 'desc'), ('size_t', 'width'), ('size_t', 'height'), ('unsigned int', 'flags')]
+// hipMallocArray[('hipArray_t*', 'array'), ('const hipChannelFormatDesc*', 'desc'), ('size_t', 'width'), ('size_t', 'height'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipMallocArray:
       if (data->args.hipMallocArray.array) data->args.hipMallocArray.array__val = *(data->args.hipMallocArray.array);
       if (data->args.hipMallocArray.desc) data->args.hipMallocArray.desc__val = *(data->args.hipMallocArray.desc);
@@ -6511,13 +6496,11 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpy2DFromArrayAsync[('void*', 'dst'), ('size_t', 'dpitch'), ('hipArray_const_t', 'src'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpy2DFromArrayAsync:
       break;
-// hipMemcpy2DToArray[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind')]
+// hipMemcpy2DToArray[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind')]
     case HIP_API_ID_hipMemcpy2DToArray:
-      if (data->args.hipMemcpy2DToArray.dst) data->args.hipMemcpy2DToArray.dst__val = *(data->args.hipMemcpy2DToArray.dst);
       break;
-// hipMemcpy2DToArrayAsync[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
+// hipMemcpy2DToArrayAsync[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'spitch'), ('size_t', 'width'), ('size_t', 'height'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpy2DToArrayAsync:
-      if (data->args.hipMemcpy2DToArrayAsync.dst) data->args.hipMemcpy2DToArrayAsync.dst__val = *(data->args.hipMemcpy2DToArrayAsync.dst);
       break;
 // hipMemcpy3D[('const hipMemcpy3DParms*', 'p')]
     case HIP_API_ID_hipMemcpy3D:
@@ -6530,9 +6513,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpyAsync[('void*', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyAsync:
       break;
-// hipMemcpyAtoH[('void*', 'dst'), ('hipArray*', 'srcArray'), ('size_t', 'srcOffset'), ('size_t', 'count')]
+// hipMemcpyAtoH[('void*', 'dst'), ('hipArray_t', 'srcArray'), ('size_t', 'srcOffset'), ('size_t', 'count')]
     case HIP_API_ID_hipMemcpyAtoH:
-      if (data->args.hipMemcpyAtoH.srcArray) data->args.hipMemcpyAtoH.srcArray__val = *(data->args.hipMemcpyAtoH.srcArray);
       break;
 // hipMemcpyDtoD[('hipDeviceptr_t', 'dst'), ('hipDeviceptr_t', 'src'), ('size_t', 'sizeBytes')]
     case HIP_API_ID_hipMemcpyDtoD:
@@ -6555,9 +6537,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpyFromSymbolAsync[('void*', 'dst'), ('const void*', 'symbol'), ('size_t', 'sizeBytes'), ('size_t', 'offset'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyFromSymbolAsync:
       break;
-// hipMemcpyHtoA[('hipArray*', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'count')]
+// hipMemcpyHtoA[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'count')]
     case HIP_API_ID_hipMemcpyHtoA:
-      if (data->args.hipMemcpyHtoA.dstArray) data->args.hipMemcpyHtoA.dstArray__val = *(data->args.hipMemcpyHtoA.dstArray);
       break;
 // hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes')]
     case HIP_API_ID_hipMemcpyHtoD:
@@ -6579,9 +6560,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpyPeerAsync[('void*', 'dst'), ('int', 'dstDeviceId'), ('const void*', 'src'), ('int', 'srcDevice'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyPeerAsync:
       break;
-// hipMemcpyToArray[('hipArray*', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'count'), ('hipMemcpyKind', 'kind')]
+// hipMemcpyToArray[('hipArray_t', 'dst'), ('size_t', 'wOffset'), ('size_t', 'hOffset'), ('const void*', 'src'), ('size_t', 'count'), ('hipMemcpyKind', 'kind')]
     case HIP_API_ID_hipMemcpyToArray:
-      if (data->args.hipMemcpyToArray.dst) data->args.hipMemcpyToArray.dst__val = *(data->args.hipMemcpyToArray.dst);
       break;
 // hipMemcpyToSymbol[('const void*', 'symbol'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('size_t', 'offset'), ('hipMemcpyKind', 'kind')]
     case HIP_API_ID_hipMemcpyToSymbol:
@@ -6979,8 +6959,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << "hipArray3DGetDescriptor(";
       if (data->args.hipArray3DGetDescriptor.pArrayDescriptor == NULL) oss << "pArrayDescriptor=NULL";
       else { oss << "pArrayDescriptor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DGetDescriptor.pArrayDescriptor__val); }
-      if (data->args.hipArray3DGetDescriptor.array == NULL) oss << ", array=NULL";
-      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DGetDescriptor.array__val); }
+      oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArray3DGetDescriptor.array);
       oss << ")";
     break;
     case HIP_API_ID_hipArrayCreate:
@@ -6993,16 +6972,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipArrayDestroy:
       oss << "hipArrayDestroy(";
-      if (data->args.hipArrayDestroy.array == NULL) oss << "array=NULL";
-      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayDestroy.array__val); }
+      oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayDestroy.array);
       oss << ")";
     break;
     case HIP_API_ID_hipArrayGetDescriptor:
       oss << "hipArrayGetDescriptor(";
       if (data->args.hipArrayGetDescriptor.pArrayDescriptor == NULL) oss << "pArrayDescriptor=NULL";
       else { oss << "pArrayDescriptor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetDescriptor.pArrayDescriptor__val); }
-      if (data->args.hipArrayGetDescriptor.array == NULL) oss << ", array=NULL";
-      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetDescriptor.array__val); }
+      oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetDescriptor.array);
       oss << ")";
     break;
     case HIP_API_ID_hipArrayGetInfo:
@@ -7014,7 +6991,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipArrayGetInfo.flags == NULL) oss << ", flags=NULL";
       else { oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.flags__val); }
       if (data->args.hipArrayGetInfo.array == NULL) oss << ", array=NULL";
-      else { oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.array__val); }
+      oss << ", array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipArrayGetInfo.array);
       oss << ")";
     break;
     case HIP_API_ID_hipChooseDevice:
@@ -7537,8 +7514,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipFreeArray:
       oss << "hipFreeArray(";
-      if (data->args.hipFreeArray.array == NULL) oss << "array=NULL";
-      else { oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeArray.array__val); }
+      oss << "array="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFreeArray.array);
       oss << ")";
     break;
     case HIP_API_ID_hipFreeAsync:
@@ -8890,8 +8866,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipMemcpy2DToArray:
       oss << "hipMemcpy2DToArray(";
-      if (data->args.hipMemcpy2DToArray.dst == NULL) oss << "dst=NULL";
-      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.dst__val); }
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.dst);
       oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.wOffset);
       oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.hOffset);
       oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArray.src);
@@ -8903,8 +8878,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipMemcpy2DToArrayAsync:
       oss << "hipMemcpy2DToArrayAsync(";
-      if (data->args.hipMemcpy2DToArrayAsync.dst == NULL) oss << "dst=NULL";
-      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.dst__val); }
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.dst);
       oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.wOffset);
       oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.hOffset);
       oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy2DToArrayAsync.src);
@@ -8940,8 +8914,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipMemcpyAtoH:
       oss << "hipMemcpyAtoH(";
       oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.dst);
-      if (data->args.hipMemcpyAtoH.srcArray == NULL) oss << ", srcArray=NULL";
-      else { oss << ", srcArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.srcArray__val); }
+      oss << ", srcArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.srcArray);
       oss << ", srcOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.srcOffset);
       oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoH.count);
       oss << ")";
@@ -9007,8 +8980,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipMemcpyHtoA:
       oss << "hipMemcpyHtoA(";
-      if (data->args.hipMemcpyHtoA.dstArray == NULL) oss << "dstArray=NULL";
-      else { oss << "dstArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.dstArray__val); }
+      oss << "dstArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.dstArray);
       oss << ", dstOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.dstOffset);
       oss << ", srcHost="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.srcHost);
       oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyHtoA.count);
@@ -9063,8 +9035,7 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipMemcpyToArray:
       oss << "hipMemcpyToArray(";
-      if (data->args.hipMemcpyToArray.dst == NULL) oss << "dst=NULL";
-      else { oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.dst__val); }
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.dst);
       oss << ", wOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.wOffset);
       oss << ", hOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.hOffset);
       oss << ", src="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyToArray.src);
