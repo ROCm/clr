@@ -399,7 +399,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   e->SetCaptureStream(stream);
   if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     s->SetCaptureEvent(event);
-    std::vector<hipGraphNode_t> lastCapturedNodes = s->GetLastCapturedNodes();
+    std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
     if (!lastCapturedNodes.empty()) {
       e->SetNodesPrevToRecorded(lastCapturedNodes);
     }
