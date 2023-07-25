@@ -136,14 +136,14 @@ hipError_t hipMemcpyToSymbolAsync_spt(const void* symbol, const void* src, size_
 hipError_t hipMemcpyFromArray_spt(void* dst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffset,
                                   size_t count, hipMemcpyKind kind);
 
-hipError_t hipMemcpy2DToArray_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
+hipError_t hipMemcpy2DToArray_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src,
                                   size_t spitch, size_t width, size_t height, hipMemcpyKind kind);
 
 hipError_t hipMemcpy2DFromArrayAsync_spt(void* dst, size_t dpitch, hipArray_const_t src,
                                   size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height,
                                   hipMemcpyKind kind, hipStream_t stream);
 
-hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src,
+hipError_t hipMemcpy2DToArrayAsync_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src,
                                   size_t spitch, size_t width, size_t height, hipMemcpyKind kind,
                                   hipStream_t stream);
 
