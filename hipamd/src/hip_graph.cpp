@@ -394,7 +394,7 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
   return hipSuccess;
 }
 
-hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
+hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
                                           size_t& hOffset, const void*& src, size_t& spitch,
                                           size_t& width, size_t& height, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
@@ -477,7 +477,7 @@ hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*
   return hipSuccess;
 }
 
-hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray*& srcArray,
+hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray_t& srcArray,
                                      size_t& srcOffset, size_t& ByteCount) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node MemcpyParam2D on stream : %p", stream);
@@ -505,7 +505,7 @@ hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArr
   return hipSuccess;
 }
 
-hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, size_t& dstOffset,
+hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray_t& dstArray, size_t& dstOffset,
                                      const void*& srcHost, size_t& ByteCount) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node MemcpyParam2D on stream : %p", stream);

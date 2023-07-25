@@ -711,7 +711,7 @@ hipError_t hipHostFree(void* ptr) {
   HIP_RETURN(ihipFree(ptr));
 }
 
-hipError_t ihipArrayDestroy(hipArray* array) {
+hipError_t ihipArrayDestroy(hipArray_t array) {
   if (array == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -737,7 +737,7 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   return hipSuccess;
 }
 
-hipError_t hipFreeArray(hipArray* array) {
+hipError_t hipFreeArray(hipArray_t array) {
   HIP_INIT_API(hipFreeArray, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
@@ -1033,7 +1033,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   return image;
 }
 
-hipError_t ihipArrayCreate(hipArray** array,
+hipError_t ihipArrayCreate(hipArray_t* array,
                            const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray,
                            unsigned int numMipmapLevels) {
   if (array == nullptr) {
@@ -1096,7 +1096,7 @@ hipError_t ihipArrayCreate(hipArray** array,
   return hipSuccess;
 }
 
-hipError_t hipArrayCreate(hipArray** array,
+hipError_t hipArrayCreate(hipArray_t* array,
                           const HIP_ARRAY_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArrayCreate, array, pAllocateArray);
   if (pAllocateArray == nullptr) {
@@ -1114,7 +1114,7 @@ hipError_t hipArrayCreate(hipArray** array,
 }
 
 
-hipError_t hipMallocArray(hipArray** array,
+hipError_t hipMallocArray(hipArray_t* array,
                           const hipChannelFormatDesc* desc,
                           size_t width,
                           size_t height,
@@ -1136,7 +1136,7 @@ hipError_t hipMallocArray(hipArray** array,
   HIP_RETURN(ihipArrayCreate(array, &allocateArray, 0 /* numMipLevels */));
 }
 
-hipError_t hipArray3DCreate(hipArray** array,
+hipError_t hipArray3DCreate(hipArray_t* array,
                             const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArray3DCreate, array, pAllocateArray);
   CHECK_STREAM_CAPTURE_SUPPORTED();
@@ -1522,7 +1522,7 @@ hipError_t hipMemcpyDtoHAsync(void* dstHost, hipDeviceptr_t srcDevice, size_t By
       ihipMemcpy(dstHost, srcDevice, ByteCount, kind, *hip_stream, true));
 }
 
-hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoDValidate(hipArray_t srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch,
                                   amd::Memory*& dstMemory, amd::Image*& srcImage,
@@ -1564,7 +1564,7 @@ hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coor
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray* srcArray, void* dstDevice,
+hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray_t srcArray, void* dstDevice,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t dstRowPitch, size_t dstSlicePitch,
                                  hip::Stream* stream) {
@@ -1595,7 +1595,7 @@ hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray* srcArray, voi
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray_t dstArray, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t srcRowPitch, size_t srcSlicePitch, amd::Image*& dstImage,
                                   amd::Memory*& srcMemory, amd::BufferRect& dstRect,
@@ -1637,7 +1637,7 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coor
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyDtoACommand(amd::Command*& command, void* srcDevice, hipArray* dstArray,
+hipError_t ihipMemcpyDtoACommand(amd::Command*& command, void* srcDevice, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t srcRowPitch, size_t srcSlicePitch,
                                  hip::Stream* stream) {
@@ -1906,7 +1906,7 @@ hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOr
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoAValidate(hipArray* srcArray, hipArray* dstArray, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoAValidate(hipArray_t srcArray, hipArray_t dstArray, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   amd::Image*& srcImage, amd::Image*& dstImage) {
   if (dstArray == nullptr || srcArray == nullptr) {
@@ -1937,7 +1937,7 @@ hipError_t ihipMemcpyAtoAValidate(hipArray* srcArray, hipArray* dstArray, amd::C
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hipArray* dstArray,
+hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray_t srcArray, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, hip::Stream* stream) {
   amd::Image* srcImage;
@@ -1965,7 +1965,7 @@ hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hip
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
+hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray_t dstArray,
                                   amd::Coord3D& srcOrigin, amd::Coord3D& dstOrigin,
                                   amd::Coord3D& copyRegion, size_t srcRowPitch,
                                   size_t srcSlicePitch, amd::Image*& dstImage,
@@ -1995,7 +1995,7 @@ hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hipArray* dstArray,
+hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t srcRowPitch, size_t srcSlicePitch,
                                  hip::Stream* stream, bool isAsync = false) {
@@ -2026,7 +2026,7 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch, amd::Image*& srcImage,
                                   amd::BufferRect& dstRect) {
@@ -2056,7 +2056,7 @@ hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray* srcArray, void* dstHost,
+hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray_t srcArray, void* dstHost,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t dstRowPitch, size_t dstSlicePitch,
                                  hip::Stream* stream, bool isAsync = false) {
@@ -2481,7 +2481,7 @@ hipError_t ihipMemcpy2DToArray(hipArray_t dst, size_t wOffset, size_t hOffset, c
   return ihipMemcpyParam2D(&desc, stream, isAsync);
 }
 
-hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffset,
+hipError_t hipMemcpy2DToArray_common(hipArray_t dst, size_t wOffset, size_t hOffset,
                                      const void* src, size_t spitch, size_t width,
                                      size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr,
                                      bool isAsync = false) {
@@ -2499,20 +2499,20 @@ hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffs
   return ihipMemcpy2DToArray(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, isAsync);
 }
 
-hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
+hipError_t hipMemcpy2DToArray(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DToArray, dst, wOffset, hOffset, src, spitch, width, height, kind);
   CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind));
 }
 
-hipError_t hipMemcpy2DToArray_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
+hipError_t hipMemcpy2DToArray_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DToArray, dst, wOffset, hOffset, src, spitch, width, height, kind);
   CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch,
                       width, height, kind, getPerThreadDefaultStream()));
 }
 
-hipError_t hipMemcpyToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind) {
+hipError_t hipMemcpyToArray(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyToArray, dst, wOffset, hOffset, src, count, kind);
   CHECK_STREAM_CAPTURING();
   if (dst == nullptr) {
@@ -2582,7 +2582,7 @@ hipError_t hipMemcpyFromArray_spt(void* dst, hipArray_const_t src, size_t wOffse
                       getPerThreadDefaultStream()));
 }
 
-hipError_t ihipMemcpyAtoD(hipArray* srcArray, void* dstDevice, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoD(hipArray_t srcArray, void* dstDevice, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t dstRowPitch,
                           size_t dstSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2596,7 +2596,7 @@ hipError_t ihipMemcpyAtoD(hipArray* srcArray, void* dstDevice, amd::Coord3D srcO
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyDtoA(void* srcDevice, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyDtoA(void* srcDevice, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
                           size_t srcSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2655,7 +2655,7 @@ hipError_t ihipMemcpyHtoD(const void* srcHost, void* dstDevice, amd::Coord3D src
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyAtoA(hipArray* srcArray, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoA(hipArray_t srcArray, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, hipStream_t stream,
                           bool isAsync = false) {
   amd::Command* command;
@@ -2668,7 +2668,7 @@ hipError_t ihipMemcpyAtoA(hipArray* srcArray, hipArray* dstArray, amd::Coord3D s
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
                           size_t srcSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2682,7 +2682,7 @@ hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray* dstArray, amd::Coord3D 
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyAtoH(hipArray* srcArray, void* dstHost, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoH(hipArray_t srcArray, void* dstHost, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t dstRowPitch,
                           size_t dstSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2697,7 +2697,7 @@ hipError_t ihipMemcpyAtoH(hipArray* srcArray, void* dstHost, amd::Coord3D srcOri
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
 
-hipError_t hipMemcpyHtoA(hipArray* dstArray,
+hipError_t hipMemcpyHtoA(hipArray_t dstArray,
                          size_t dstOffset,
                          const void* srcHost,
                          size_t ByteCount) {
@@ -2707,7 +2707,7 @@ hipError_t hipMemcpyHtoA(hipArray* dstArray,
 }
 
 hipError_t hipMemcpyAtoH(void* dstHost,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoH, dstHost, srcArray, srcOffset, ByteCount);
@@ -3674,14 +3674,14 @@ hipError_t hipDrvPointerGetAttributes(unsigned int numAttributes, hipPointer_att
 }
 
 // ================================================================================================
-hipError_t hipArrayDestroy(hipArray* array) {
+hipError_t hipArrayDestroy(hipArray_t array) {
   HIP_INIT_API(hipArrayDestroy, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
 }
 
 hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
-                                    hipArray* array) {
+                                    hipArray_t array) {
   {
     amd::ScopedLock lock(hip::hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
@@ -3702,7 +3702,7 @@ hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
 hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc,
                            hipExtent* extent,
                            unsigned int* flags,
-                           hipArray* array) {
+                           hipArray_t array) {
   HIP_INIT_API(hipArrayGetInfo, desc, extent, flags, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3739,7 +3739,7 @@ hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc,
 }
 
 hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
-                                 hipArray* array) {
+                                 hipArray_t array) {
   HIP_INIT_API(hipArrayGetDescriptor, pArrayDescriptor, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3766,7 +3766,7 @@ hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
 }
 
 hipError_t hipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor,
-                                   hipArray* array) {
+                                   hipArray_t array) {
   HIP_INIT_API(hipArray3DGetDescriptor, pArrayDescriptor, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3875,14 +3875,14 @@ hipError_t hipMemcpy2DFromArrayAsync_spt(void* dst, size_t dpitch, hipArray_cons
   HIP_RETURN_DURATION(hipMemcpy2DFromArray_common(dst, dpitch, src, wOffsetSrc, hOffsetSrc, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
+hipError_t hipMemcpy2DToArrayAsync(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
                  kind);
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
+hipError_t hipMemcpy2DToArrayAsync_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
@@ -3890,9 +3890,9 @@ hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOf
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpyAtoA(hipArray* dstArray,
+hipError_t hipMemcpyAtoA(hipArray_t dstArray,
                          size_t dstOffset,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoA, dstArray, dstOffset, srcArray, srcOffset, ByteCount);
@@ -3901,7 +3901,7 @@ hipError_t hipMemcpyAtoA(hipArray* dstArray,
 }
 
 hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoD, dstDevice, srcArray, srcOffset, ByteCount);
@@ -3910,7 +3910,7 @@ hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice,
 }
 
 hipError_t hipMemcpyAtoHAsync(void* dstHost,
-                              hipArray* srcArray,
+                              hipArray_t srcArray,
                               size_t srcOffset,
                               size_t ByteCount,
                               hipStream_t stream) {
@@ -3919,7 +3919,7 @@ hipError_t hipMemcpyAtoHAsync(void* dstHost,
   HIP_RETURN_DURATION(ihipMemcpyAtoH(srcArray, dstHost, {srcOffset, 0, 0}, {0, 0, 0}, {ByteCount, 1, 1}, 0, 0, stream, true));
 }
 
-hipError_t hipMemcpyDtoA(hipArray* dstArray,
+hipError_t hipMemcpyDtoA(hipArray_t dstArray,
                         size_t dstOffset,
                         hipDeviceptr_t srcDevice,
                         size_t ByteCount) {
@@ -3928,7 +3928,7 @@ hipError_t hipMemcpyDtoA(hipArray* dstArray,
   HIP_RETURN_DURATION(ihipMemcpyDtoA(srcDevice, dstArray, {0, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, 0, 0, nullptr));
 }
 
-hipError_t hipMemcpyHtoAAsync(hipArray* dstArray,
+hipError_t hipMemcpyHtoAAsync(hipArray_t dstArray,
                               size_t dstOffset,
                               const void* srcHost,
                               size_t ByteCount,
