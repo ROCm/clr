@@ -8,6 +8,36 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
 ### Added
 - Added meta_group_size/rank for getting the number of tiles and rank of a tile in the partition
+- Added new APIs supporting Windows only, under development on Linux
+
+    - hipMallocMipmappedArray for allocating a mipmapped array on the device
+
+    - hipFreeMipmappedArray for freeing a mipmapped array on the device
+
+    - hipGetMipmappedArrayLevel for getting a mipmap level of a HIP mipmapped array
+
+    - hipMipmappedArrayCreate for creating a mipmapped array
+
+    - hipMipmappedArrayDestroy for destroy a mipmapped array
+
+    - hipMipmappedArrayGetLevel for getting a mipmapped array on a mipmapped level
+
+- Added new HIP APIs, still under developement
+
+    - hipGraphAddExternalSemaphoresWaitNode for creating a external semaphor wait node and adds it to a graph
+
+    - hipGraphAddExternalSemaphoresSignalNode for creating a external semaphor signal node and adds it to a graph
+
+    - hipGraphExternalSemaphoresSignalNodeSetParams for updating node parameters in the external semaphore signal node
+    - hipGraphExternalSemaphoresWaitNodeSetParams for updating node parameters in the external semaphore wait node
+
+    - hipGraphExternalSemaphoresSignalNodeGetParams for returning external semaphore signal node params
+
+    - hipGraphExternalSemaphoresWaitNodeGetParams for returning external semaphore wait node params
+
+    - hipGraphExecExternalSemaphoresSignalNodeSetParams for updating node parameters in the external semaphore signal node in the given graphExec
+
+    - hipGraphExecExternalSemaphoresWaitNodeSetParams for updating node parameters in the external semaphore wait node in the given graphExec
 
 ### Changed
 
