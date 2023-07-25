@@ -552,6 +552,12 @@ bool LightningKernel::postLoad() {
   if (workGroupInfo_.size_ == 0) {
     return false;
   }
+  if ((workGroupInfo_.usedStackSize_ & 0x1) == 0x1) {
+    workGroupInfo_.scratchRegs_ =
+        std::max<uint32_t>(device().StackSize(), workGroupInfo_.scratchRegs_ * sizeof(uint32_t)) ;
+    workGroupInfo_.scratchRegs_ = amd::alignUp(workGroupInfo_.scratchRegs_, 16) / sizeof(uint32_t);
+    workGroupInfo_.privateMemSize_ = workGroupInfo_.scratchRegs_ * sizeof(uint32_t);
+  }
 
   // handle the printf metadata if any
   std::vector<std::string> printfStr;
