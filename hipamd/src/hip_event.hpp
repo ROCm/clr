@@ -94,7 +94,7 @@ class Event {
   /// capture stream where event is recorded
   hipStream_t captureStream_ = nullptr;
   /// Previous captured nodes before event record
-  std::vector<hipGraphNode_t> nodesPrevToRecorded_;
+  std::vector<hip::GraphNode*> nodesPrevToRecorded_;
  protected:
   bool CheckHwEvent(eventType type) {
     bool ready;
@@ -153,9 +153,9 @@ class Event {
   /// Set capture stream where event is recorded
   void SetCaptureStream(hipStream_t stream) { captureStream_ = stream; }
   /// Returns previous captured nodes before event record
-  std::vector<hipGraphNode_t> GetNodesPrevToRecorded() const { return nodesPrevToRecorded_; }
+  std::vector<hip::GraphNode*> GetNodesPrevToRecorded() const { return nodesPrevToRecorded_; }
   /// Set last captured graph node before event record
-  void SetNodesPrevToRecorded(std::vector<hipGraphNode_t>& graphNode) {
+  void SetNodesPrevToRecorded(std::vector<hip::GraphNode*>& graphNode) {
     nodesPrevToRecorded_ = graphNode;
   }
   virtual hipError_t GetHandle(ihipIpcEventHandle_t* handle) {
