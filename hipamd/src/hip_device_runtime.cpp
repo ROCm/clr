@@ -344,6 +344,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributeVirtualMemoryManagementSupported:
     *pi = static_cast<int>(g_devices[device]->devices()[0]->info().virtualMemoryManagement_);
     break;
+  case hipDeviceAttributeHostRegisterSupported:
+    *pi = true;
+    break;
   default:
     HIP_RETURN(hipErrorInvalidValue);
   }
