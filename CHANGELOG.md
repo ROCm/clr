@@ -2,6 +2,12 @@
 
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
+## HIP 5.6.1 (For ROCm 5.6.1)
+### Fixed
+- Enabled xnack+ check in HIP catch2 tests hang while tests execution
+- Memory leak when code object files are loaded/unloaded via hipModuleLoad/hipModuleUnload APIs
+- Fixed a crash happening while using hipGraphAddMemFreeNode
+
 ## HIP 5.6 (For ROCm 5.6)
 
 ### Optimizations
