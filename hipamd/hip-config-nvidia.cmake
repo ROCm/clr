@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.3)
-
 add_library(hip::device INTERFACE IMPORTED)
 add_library(hip::host INTERFACE IMPORTED)
 add_library(hip::amdhip64 INTERFACE IMPORTED)
