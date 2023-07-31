@@ -2034,6 +2034,7 @@ inline static hipError_t hipGetDeviceProperties(hipDeviceProp_t* p_prop, int dev
     p_prop->maxSharedMemoryPerMultiProcessor = cdprop.sharedMemPerMultiprocessor;
     p_prop->isMultiGpuBoard = cdprop.isMultiGpuBoard;
     p_prop->canMapHostMemory = cdprop.canMapHostMemory;
+    p_prop->gcnArch = 0; // Not a GCN arch
     p_prop->integrated = cdprop.integrated;
     p_prop->cooperativeLaunch = cdprop.cooperativeLaunch;
     p_prop->cooperativeMultiDeviceLaunch = cdprop.cooperativeMultiDeviceLaunch;
