@@ -344,6 +344,9 @@ struct Info : public amd::EmbeddedObject {
   //! Max width of 2D image in pixels.
   size_t image2DMaxWidth_;
 
+  //! Max width of 2DA image in pixels.
+  size_t image2DAMaxWidth_[2];
+
   //! Max height of 2D image in pixels.
   size_t image2DMaxHeight_;
 
@@ -479,6 +482,9 @@ struct Info : public amd::EmbeddedObject {
 
   //! Returns max number of pixels for a 1D image
   size_t image1DMaxWidth_;
+
+  //! Returns max number of pixels for a 1DA image
+  size_t image1DAMaxWidth_;
 
   //! Returns max number of pixels for a 1D image created from a buffer object
   size_t imageMaxBufferSize_;
@@ -1526,7 +1532,6 @@ class Isa {
   uint32_t memChannelBankWidth_;   //!< Memory channel bank width.
   uint32_t localMemSizePerCU_;     //!< Local memory size per CU.
   uint32_t localMemBanks_;         //!< Number of banks of local memory.
-
 }; // class Isa
 
 /*! \addtogroup Runtime

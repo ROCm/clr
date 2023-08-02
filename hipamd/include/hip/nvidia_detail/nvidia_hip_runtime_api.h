@@ -1980,87 +1980,143 @@ inline static hipError_t hipMemset3DAsync(hipPitchedPtr pitchedDevPtr, int  valu
 }
 
 inline static hipError_t hipGetDeviceProperties(hipDeviceProp_t* p_prop, int device) {
-
     if (p_prop == NULL) {
-      return hipErrorInvalidValue;
+       return hipErrorInvalidValue;
     }
 
     struct cudaDeviceProp cdprop;
-    cudaError_t cerror;
-    cerror = cudaGetDeviceProperties(&cdprop, device);
+    hipError_t error = hipCUDAErrorTohipError(cudaGetDeviceProperties(&cdprop, device));
+
+    if (error != hipSuccess) {
+       return error;
+    }
 
     strncpy(p_prop->name, cdprop.name, 256);
+    strncpy(p_prop->uuid.bytes, cdprop.uuid.bytes, 16);
+    strncpy(p_prop->luid, cdprop.luid, 8);
+    p_prop->luidDeviceNodeMask = cdprop.luidDeviceNodeMask;
     p_prop->totalGlobalMem = cdprop.totalGlobalMem;
     p_prop->sharedMemPerBlock = cdprop.sharedMemPerBlock;
     p_prop->regsPerBlock = cdprop.regsPerBlock;
-    p_prop->warpSize = cdprop.warpSize;
+    p_prop->memPitch = cdprop.memPitch;
     p_prop->maxThreadsPerBlock = cdprop.maxThreadsPerBlock;
-    for (int i = 0; i < 3; i++) {
-        p_prop->maxThreadsDim[i] = cdprop.maxThreadsDim[i];
-        p_prop->maxGridSize[i] = cdprop.maxGridSize[i];
-    }
+    p_prop->maxThreadsDim[0] = cdprop.maxThreadsDim[0];
+    p_prop->maxThreadsDim[1] = cdprop.maxThreadsDim[1];
+    p_prop->maxThreadsDim[2] = cdprop.maxThreadsDim[2];
+    p_prop->maxGridSize[0] = cdprop.maxGridSize[0];
+    p_prop->maxGridSize[1] = cdprop.maxGridSize[1];
+    p_prop->maxGridSize[2] = cdprop.maxGridSize[2];
     p_prop->clockRate = cdprop.clockRate;
-    p_prop->memoryClockRate = cdprop.memoryClockRate;
-    p_prop->memoryBusWidth = cdprop.memoryBusWidth;
     p_prop->totalConstMem = cdprop.totalConstMem;
     p_prop->major = cdprop.major;
     p_prop->minor = cdprop.minor;
+    p_prop->textureAlignment = cdprop.textureAlignment;
+    p_prop->texturePitchAlignment = cdprop.texturePitchAlignment;
+    p_prop->deviceOverlap = cdprop.deviceOverlap;
     p_prop->multiProcessorCount = cdprop.multiProcessorCount;
-    p_prop->l2CacheSize = cdprop.l2CacheSize;
-    p_prop->maxThreadsPerMultiProcessor = cdprop.maxThreadsPerMultiProcessor;
-    p_prop->computeMode = cdprop.computeMode;
-    p_prop->clockInstructionRate = cdprop.clockRate; // Same as clock-rate:
-
-    int ccVers = p_prop->major * 100 + p_prop->minor * 10;
-    p_prop->arch.hasGlobalInt32Atomics = (ccVers >= 110);
-    p_prop->arch.hasGlobalFloatAtomicExch = (ccVers >= 110);
-    p_prop->arch.hasSharedInt32Atomics = (ccVers >= 120);
-    p_prop->arch.hasSharedFloatAtomicExch = (ccVers >= 120);
-    p_prop->arch.hasFloatAtomicAdd = (ccVers >= 200);
-    p_prop->arch.hasGlobalInt64Atomics = (ccVers >= 120);
-    p_prop->arch.hasSharedInt64Atomics = (ccVers >= 110);
-    p_prop->arch.hasDoubles = (ccVers >= 130);
-    p_prop->arch.hasWarpVote = (ccVers >= 120);
-    p_prop->arch.hasWarpBallot = (ccVers >= 200);
-    p_prop->arch.hasWarpShuffle = (ccVers >= 300);
-    p_prop->arch.hasFunnelShift = (ccVers >= 350);
-    p_prop->arch.hasThreadFenceSystem = (ccVers >= 200);
-    p_prop->arch.hasSyncThreadsExt = (ccVers >= 200);
-    p_prop->arch.hasSurfaceFuncs = (ccVers >= 200);
-    p_prop->arch.has3dGrid = (ccVers >= 200);
-    p_prop->arch.hasDynamicParallelism = (ccVers >= 350);
-
-    p_prop->concurrentKernels = cdprop.concurrentKernels;
-    p_prop->pciDomainID = cdprop.pciDomainID;
-    p_prop->pciBusID = cdprop.pciBusID;
-    p_prop->pciDeviceID = cdprop.pciDeviceID;
-    p_prop->maxSharedMemoryPerMultiProcessor = cdprop.sharedMemPerMultiprocessor;
-    p_prop->isMultiGpuBoard = cdprop.isMultiGpuBoard;
-    p_prop->canMapHostMemory = cdprop.canMapHostMemory;
-    p_prop->gcnArch = 0; // Not a GCN arch
+    p_prop->kernelExecTimeoutEnabled = cdprop.kernelExecTimeoutEnabled;
     p_prop->integrated = cdprop.integrated;
-    p_prop->cooperativeLaunch = cdprop.cooperativeLaunch;
-    p_prop->cooperativeMultiDeviceLaunch = cdprop.cooperativeMultiDeviceLaunch;
-    p_prop->cooperativeMultiDeviceUnmatchedFunc = 0;
-    p_prop->cooperativeMultiDeviceUnmatchedGridDim = 0;
-    p_prop->cooperativeMultiDeviceUnmatchedBlockDim = 0;
-    p_prop->cooperativeMultiDeviceUnmatchedSharedMem = 0;
-
-    p_prop->maxTexture1D    = cdprop.maxTexture1D;
+    p_prop->canMapHostMemory = cdprop.canMapHostMemory;
+    p_prop->computeMode = cdprop.computeMode;
+    p_prop->maxTexture1D = cdprop.maxTexture1D;
+    p_prop->maxTexture1DMipmap = cdprop.maxTexture1DMipmap;
+    p_prop->maxTexture1DLinear = cdprop.maxTexture1DLinear;
     p_prop->maxTexture2D[0] = cdprop.maxTexture2D[0];
     p_prop->maxTexture2D[1] = cdprop.maxTexture2D[1];
+    p_prop->maxTexture2DMipmap[0] = cdprop.maxTexture2DMipmap[0];
+    p_prop->maxTexture2DMipmap[1] = cdprop.maxTexture2DMipmap[1];
+    p_prop->maxTexture2DLinear[0] = cdprop.maxTexture2DLinear[0];
+    p_prop->maxTexture2DLinear[1] = cdprop.maxTexture2DLinear[1];
+    p_prop->maxTexture2DLinear[2] = cdprop.maxTexture2DLinear[2];
+    p_prop->maxTexture2DGather[0] = cdprop.maxTexture2DGather[0];
+    p_prop->maxTexture2DGather[1] = cdprop.maxTexture2DGather[1];
     p_prop->maxTexture3D[0] = cdprop.maxTexture3D[0];
     p_prop->maxTexture3D[1] = cdprop.maxTexture3D[1];
     p_prop->maxTexture3D[2] = cdprop.maxTexture3D[2];
+    p_prop->maxTexture3DAlt[0] = cdprop.maxTexture3DAlt[0];
+    p_prop->maxTexture3DAlt[1] = cdprop.maxTexture3DAlt[1];
+    p_prop->maxTexture3DAlt[2] = cdprop.maxTexture3DAlt[2];
+    p_prop->maxTextureCubemap = cdprop.maxTextureCubemap;
+    p_prop->maxTexture1DLayered[0] = cdprop.maxTexture1DLayered[0];
+    p_prop->maxTexture1DLayered[1] = cdprop.maxTexture1DLayered[1];
+    p_prop->maxTexture2DLayered[0] = cdprop.maxTexture2DLayered[0];
+    p_prop->maxTexture2DLayered[1] = cdprop.maxTexture2DLayered[1];
+    p_prop->maxTexture2DLayered[2] = cdprop.maxTexture2DLayered[2];
+    p_prop->maxTextureCubemapLayered[0] = cdprop.maxTextureCubemapLayered[0];
+    p_prop->maxTextureCubemapLayered[1] = cdprop.maxTextureCubemapLayered[1];
+    p_prop->maxSurface1D = cdprop.maxSurface1D;
+    p_prop->maxSurface2D[0] = cdprop.maxSurface2D[0];
+    p_prop->maxSurface2D[1] = cdprop.maxSurface2D[1];
+    p_prop->maxSurface3D[0] = cdprop.maxSurface3D[0];
+    p_prop->maxSurface3D[1] = cdprop.maxSurface3D[1];
+    p_prop->maxSurface3D[2] = cdprop.maxSurface3D[2];
+    p_prop->maxSurface1DLayered[0] = cdprop.maxSurface1DLayered[0];
+    p_prop->maxSurface1DLayered[1] = cdprop.maxSurface1DLayered[1];
+    p_prop->maxSurface2DLayered[0] = cdprop.maxSurface2DLayered[0];
+    p_prop->maxSurface2DLayered[1] = cdprop.maxSurface2DLayered[1];
+    p_prop->maxSurface2DLayered[2] = cdprop.maxSurface2DLayered[2];
+    p_prop->maxSurfaceCubemap = cdprop.maxSurfaceCubemap;
+    p_prop->maxSurfaceCubemapLayered[0] = cdprop.maxSurfaceCubemapLayered[0];
+    p_prop->maxSurfaceCubemapLayered[1] = cdprop.maxSurfaceCubemapLayered[1];
+    p_prop->surfaceAlignment = cdprop.surfaceAlignment;
+    p_prop->concurrentKernels = cdprop.concurrentKernels;
+    p_prop->ECCEnabled = cdprop.ECCEnabled;
+    p_prop->pciBusID = cdprop.pciBusID;
+    p_prop->pciDeviceID = cdprop.pciDeviceID;
+    p_prop->pciDomainID = cdprop.pciDomainID;
+    p_prop->tccDriver = cdprop.tccDriver;
+    p_prop->asyncEngineCount = cdprop.asyncEngineCount;
+    p_prop->unifiedAddressing = cdprop.unifiedAddressing;
+    p_prop->memoryClockRate = cdprop.memoryClockRate;
+    p_prop->memoryBusWidth = cdprop.memoryBusWidth;
+    p_prop->l2CacheSize = cdprop.l2CacheSize;
+    p_prop->maxThreadsPerMultiProcessor = cdprop.maxThreadsPerMultiProcessor;
+    p_prop->streamPrioritiesSupported = cdprop.streamPrioritiesSupported;
+    p_prop->globalL1CacheSupported = cdprop.globalL1CacheSupported;
+    p_prop->localL1CacheSupported = cdprop.localL1CacheSupported;
+    p_prop->sharedMemPerMultiprocessor = cdprop.sharedMemPerMultiprocessor;
+    p_prop->regsPerMultiprocessor = cdprop.regsPerMultiprocessor;
+    p_prop->managedMemory = cdprop.managedMemory;
+    p_prop->isMultiGpuBoard = cdprop.isMultiGpuBoard;
+    p_prop->multiGpuBoardGroupID = cdprop.multiGpuBoardGroupID;
+    p_prop->hostNativeAtomicSupported = cdprop.hostNativeAtomicSupported;
+    p_prop->singleToDoublePrecisionPerfRatio = cdprop.singleToDoublePrecisionPerfRatio;
+    p_prop->pageableMemoryAccess = cdprop.pageableMemoryAccess;
+    p_prop->concurrentManagedAccess = cdprop.concurrentManagedAccess;
+    p_prop->computePreemptionSupported = cdprop.computePreemptionSupported;
+    p_prop->canUseHostPointerForRegisteredMem = cdprop.canUseHostPointerForRegisteredMem;
+    p_prop->cooperativeLaunch = cdprop.cooperativeLaunch;
+    p_prop->cooperativeMultiDeviceLaunch = cdprop.cooperativeMultiDeviceLaunch;
+    p_prop->sharedMemPerBlockOptin = cdprop.sharedMemPerBlockOptin;
+    p_prop->pageableMemoryAccessUsesHostPageTables = cdprop.pageableMemoryAccessUsesHostPageTables;
+    p_prop->directManagedMemAccessFromHost = cdprop.directManagedMemAccessFromHost;
 
-    p_prop->memPitch                 = cdprop.memPitch;
-    p_prop->textureAlignment         = cdprop.textureAlignment;
-    p_prop->texturePitchAlignment    = cdprop.texturePitchAlignment;
-    p_prop->kernelExecTimeoutEnabled = cdprop.kernelExecTimeoutEnabled;
-    p_prop->ECCEnabled               = cdprop.ECCEnabled;
-    p_prop->tccDriver                = cdprop.tccDriver;
 
-    return hipCUDAErrorTohipError(cerror);
+#if CUDA_VERSION >= 11010
+    p_prop->accessPolicyMaxWindowSize = cdprop.accessPolicyMaxWindowSize;
+    p_prop->maxBlocksPerMultiProcessor = cdprop.maxBlocksPerMultiProcessor;
+    p_prop->persistingL2CacheMaxSize = cdprop.persistingL2CacheMaxSize;
+    p_prop->reservedSharedMemPerBlock = cdprop.reservedSharedMemPerBlock;
+    p_prop->warpSize = cdprop.warpSize;
+#endif
+
+#if CUDA_VERSION >= 12000
+    p_prop->clusterLaunch = cdprop.clusterLaunch;
+    p_prop->deferredMappingHipArraySupported = cdprop.deferredMappingCudaArraySupported;
+    p_prop->gpuDirectRDMAFlushWritesOptions = cdprop.gpuDirectRDMAFlushWritesOptions;
+    p_prop->gpuDirectRDMASupported = cdprop.gpuDirectRDMASupported;
+    p_prop->gpuDirectRDMAWritesOrdering = cdprop.gpuDirectRDMAWritesOrdering;
+    p_prop->hostRegisterReadOnlySupported = cdprop.hostRegisterReadOnlySupported;
+    p_prop->hostRegisterSupported = cdprop.hostRegisterSupported;
+    p_prop->ipcEventSupported = cdprop.ipcEventSupported;
+    p_prop->memoryPoolSupportedHandleTypes = cdprop.memoryPoolSupportedHandleTypes;
+    p_prop->memoryPoolsSupported = cdprop.memoryPoolsSupported;
+    p_prop->sparseHipArraySupported = cdprop.sparseCudaArraySupported;
+    p_prop->timelineSemaphoreInteropSupported = cdprop.timelineSemaphoreInteropSupported;
+    p_prop->unifiedFunctionPointers = cdprop.unifiedFunctionPointers;
+#endif
+
+    return error;
 }
 
 inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device) {
@@ -2187,6 +2243,9 @@ inline static hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t att
             break;
         case hipDeviceAttributeCooperativeMultiDeviceLaunch:
             cdattr = cudaDevAttrCooperativeMultiDeviceLaunch;
+            break;
+        case hipDeviceAttributeHostRegisterSupported:
+            cdattr = cudaDevAttrHostRegisterSupported;
             break;
         case hipDeviceAttributeConcurrentManagedAccess:
             cdattr = cudaDevAttrConcurrentManagedAccess;
