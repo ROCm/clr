@@ -526,3 +526,10 @@ global:
 local:
     *;
 } hip_5.5;
+
+hip_6.0 {
+global:
+    hipGetDevicePropertiesR0600;
+local:
+    *;
+} hip_5.6;

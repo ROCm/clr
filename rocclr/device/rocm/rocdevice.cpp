@@ -1521,6 +1521,27 @@ bool Device::populateOCLDeviceConstants() {
 
     info_.imageMaxArraySize_ = max_array_size;
 
+    uint32_t max_image1da_width = 0;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(bkendDevice_,
+                           static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1DA_MAX_ELEMENTS),
+                           &max_image1da_width)) {
+      return false;
+    }
+
+    info_.image1DAMaxWidth_ = max_image1da_width;
+
+    uint32_t max_image2da_width[2] = {0, 0};
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(bkendDevice_,
+                           static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_2DA_MAX_ELEMENTS),
+                           &max_image2da_width)) {
+      return false;
+    }
+
+    info_.image2DAMaxWidth_[0] = max_image2da_width[0];
+    info_.image2DAMaxWidth_[1] = max_image2da_width[1];
+
     uint32_t max_image1d_width = 0;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(bkendDevice_,

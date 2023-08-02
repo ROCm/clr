@@ -93,7 +93,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipGetDevice = 78,
   HIP_API_ID_hipGetDeviceCount = 79,
   HIP_API_ID_hipGetDeviceFlags = 80,
-  HIP_API_ID_hipGetDeviceProperties = 81,
+  HIP_API_ID_hipGetDevicePropertiesR0600 = 81,
   HIP_API_ID_RESERVED_82 = 82,
   HIP_API_ID_hipGetErrorString = 83,
   HIP_API_ID_hipGetLastError = 84,
@@ -518,7 +518,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGetDevice: return "hipGetDevice";
     case HIP_API_ID_hipGetDeviceCount: return "hipGetDeviceCount";
     case HIP_API_ID_hipGetDeviceFlags: return "hipGetDeviceFlags";
-    case HIP_API_ID_hipGetDeviceProperties: return "hipGetDeviceProperties";
+    case HIP_API_ID_hipGetDevicePropertiesR0600: return "hipGetDevicePropertiesR0600";
     case HIP_API_ID_hipGetErrorString: return "hipGetErrorString";
     case HIP_API_ID_hipGetLastError: return "hipGetLastError";
     case HIP_API_ID_hipGetMipmappedArrayLevel: return "hipGetMipmappedArrayLevel";
@@ -885,7 +885,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGetDevice", name) == 0) return HIP_API_ID_hipGetDevice;
   if (strcmp("hipGetDeviceCount", name) == 0) return HIP_API_ID_hipGetDeviceCount;
   if (strcmp("hipGetDeviceFlags", name) == 0) return HIP_API_ID_hipGetDeviceFlags;
-  if (strcmp("hipGetDeviceProperties", name) == 0) return HIP_API_ID_hipGetDeviceProperties;
+  if (strcmp("hipGetDevicePropertiesR0600", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0600;
   if (strcmp("hipGetErrorString", name) == 0) return HIP_API_ID_hipGetErrorString;
   if (strcmp("hipGetLastError", name) == 0) return HIP_API_ID_hipGetLastError;
   if (strcmp("hipGetMipmappedArrayLevel", name) == 0) return HIP_API_ID_hipGetMipmappedArrayLevel;
@@ -1213,8 +1213,8 @@ typedef struct hip_api_data_s {
     struct {
       int* device;
       int device__val;
-      const hipDeviceProp_t* prop;
-      hipDeviceProp_t prop__val;
+      const hipDeviceProp_tR0600* prop;
+      hipDeviceProp_tR0600 prop__val;
     } hipChooseDevice;
     struct {
       dim3 gridDim;
@@ -1628,10 +1628,10 @@ typedef struct hip_api_data_s {
       unsigned int flags__val;
     } hipGetDeviceFlags;
     struct {
-      hipDeviceProp_t* props;
-      hipDeviceProp_t props__val;
+      hipDeviceProp_tR0600* props;
+      hipDeviceProp_tR0600 props__val;
       hipDevice_t device;
-    } hipGetDeviceProperties;
+    } hipGetDevicePropertiesR0600;
     struct {
       hipArray_t* levelArray;
       hipArray_t levelArray__val;
@@ -3325,10 +3325,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipArrayGetInfo.flags = (unsigned int*)flags; \
   cb_data.args.hipArrayGetInfo.array = (hipArray*)array; \
 };
-// hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_t*', 'prop')]
+// hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_tR0600*', 'prop')]
 #define INIT_hipChooseDevice_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipChooseDevice.device = (int*)device; \
-  cb_data.args.hipChooseDevice.prop = (const hipDeviceProp_t*)properties; \
+  cb_data.args.hipChooseDevice.prop = (const hipDeviceProp_tR0600*)properties; \
 };
 // hipConfigureCall[('dim3', 'gridDim'), ('dim3', 'blockDim'), ('size_t', 'sharedMem'), ('hipStream_t', 'stream')]
 #define INIT_hipConfigureCall_CB_ARGS_DATA(cb_data) { \
@@ -3779,10 +3779,10 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetDeviceFlags_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGetDeviceFlags.flags = (unsigned int*)flags; \
 };
-// hipGetDeviceProperties[('hipDeviceProp_t*', 'props'), ('hipDevice_t', 'device')]
-#define INIT_hipGetDeviceProperties_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipGetDeviceProperties.props = (hipDeviceProp_t*)props; \
-  cb_data.args.hipGetDeviceProperties.device = (hipDevice_t)device; \
+// hipGetDeviceProperties[('hipDeviceProp_tR0600*', 'props'), ('hipDevice_t', 'device')]
+#define INIT_hipGetDevicePropertiesR0600_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetDevicePropertiesR0600.props = (hipDeviceProp_tR0600*)props; \
+  cb_data.args.hipGetDevicePropertiesR0600.device = (hipDevice_t)device; \
 };
 // hipGetErrorString[]
 #define INIT_hipGetErrorString_CB_ARGS_DATA(cb_data) { \
@@ -5573,7 +5573,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipArrayGetInfo.flags) data->args.hipArrayGetInfo.flags__val = *(data->args.hipArrayGetInfo.flags);
       if (data->args.hipArrayGetInfo.array) data->args.hipArrayGetInfo.array__val = *(data->args.hipArrayGetInfo.array);
       break;
-// hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_t*', 'prop')]
+// hipChooseDevice[('int*', 'device'), ('const hipDeviceProp_tR0600*', 'prop')]
     case HIP_API_ID_hipChooseDevice:
       if (data->args.hipChooseDevice.device) data->args.hipChooseDevice.device__val = *(data->args.hipChooseDevice.device);
       if (data->args.hipChooseDevice.prop) data->args.hipChooseDevice.prop__val = *(data->args.hipChooseDevice.prop);
@@ -5908,9 +5908,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGetDeviceFlags:
       if (data->args.hipGetDeviceFlags.flags) data->args.hipGetDeviceFlags.flags__val = *(data->args.hipGetDeviceFlags.flags);
       break;
-// hipGetDeviceProperties[('hipDeviceProp_t*', 'props'), ('hipDevice_t', 'device')]
-    case HIP_API_ID_hipGetDeviceProperties:
-      if (data->args.hipGetDeviceProperties.props) data->args.hipGetDeviceProperties.props__val = *(data->args.hipGetDeviceProperties.props);
+// hipGetDevicePropertiesR0600[('hipDeviceProp_tR0600*', 'props'), ('hipDevice_t', 'device')]
+    case HIP_API_ID_hipGetDevicePropertiesR0600:
+      if (data->args.hipGetDevicePropertiesR0600.props) data->args.hipGetDevicePropertiesR0600.props__val = *(data->args.hipGetDevicePropertiesR0600.props);
       break;
 // hipGetErrorString[]
     case HIP_API_ID_hipGetErrorString:
@@ -7626,11 +7626,11 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceFlags.flags__val); }
       oss << ")";
     break;
-    case HIP_API_ID_hipGetDeviceProperties:
-      oss << "hipGetDeviceProperties(";
-      if (data->args.hipGetDeviceProperties.props == NULL) oss << "props=NULL";
-      else { oss << "props="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceProperties.props__val); }
-      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDeviceProperties.device);
+    case HIP_API_ID_hipGetDevicePropertiesR0600:
+      oss << "hipGetDevicePropertiesR0600(";
+      if (data->args.hipGetDevicePropertiesR0600.props == NULL) oss << "props=NULL";
+      else { oss << "props="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDevicePropertiesR0600.props__val); }
+      oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDevicePropertiesR0600.device);
       oss << ")";
     break;
     case HIP_API_ID_hipGetErrorString:

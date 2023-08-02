@@ -563,6 +563,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                        info_.maxMemAllocSize_ / kPixelRgbaSize);
   info_.image1DMaxWidth_ = maxTextureSize;
   info_.imageMaxArraySize_ = MaxImageArraySize;
+  info_.image2DAMaxWidth_[0] = MaxImageArraySize;
+  info_.image2DAMaxWidth_[1] = MaxImageArraySize;
+  info_.image1DAMaxWidth_ = maxTextureSize;
   info_.preferredInteropUserSync_ = true;
   info_.printfBufferSize_ = PrintfDbg::WorkitemDebugSize * info().maxWorkGroupSize_;
 

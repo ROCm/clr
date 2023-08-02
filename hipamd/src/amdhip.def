@@ -63,6 +63,7 @@ hipFuncSetSharedMemConfig
 hipGetDevice
 hipGetDeviceCount
 hipGetDeviceProperties
+hipGetDevicePropertiesR0600
 hipGetErrorName
 hipGetErrorString
 hipGetLastError
