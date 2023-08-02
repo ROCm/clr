@@ -3411,10 +3411,16 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
       attributes->type = hipMemoryTypeManaged;
     }
     HIP_RETURN(hipSuccess);
+  } else {
+    attributes->type = hipMemoryTypeUnregistered;
+    attributes->devicePointer = nullptr;
+    attributes->hostPointer = nullptr;
+    attributes->isManaged = false;
+    attributes->allocationFlags = 0;
+    attributes->device = hipInvalidDeviceId;
+    LogPrintfError("Cannot get amd_mem_obj for ptr: 0x%x \n", ptr);
   }
-
-  LogPrintfError("Cannot get amd_mem_obj for ptr: %p \n", ptr);
-  HIP_RETURN(hipErrorInvalidValue);
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
