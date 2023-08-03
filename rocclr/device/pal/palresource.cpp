@@ -1798,8 +1798,9 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
       Pal::SubresLayout layout;
       image_->GetSubresourceLayout(ImgSubresId, &layout);
       *pitch = layout.rowPitch / elementSize();
+    } else {
+      *pitch = desc().width_;
     }
-    *pitch = desc().width_;
     if (Pal::Result::Success == resource->Map(&address)) {
       return address;
     } else {
