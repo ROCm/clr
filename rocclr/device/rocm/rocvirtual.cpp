@@ -779,8 +779,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         WriteAqlArgAt(const_cast<address>(params), mem, sizeof(void*), it->second);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-        "Arg%d: %s %s = val:%lld", i, desc.typeName_.c_str(), desc.name_.c_str(),
-        *reinterpret_cast<const long long*>(srcArgPtr));
+        "Arg%d: %s %s = val:%s", i, desc.typeName_.c_str(), desc.name_.c_str(),
+        (desc.size_ == 4) ? std::to_string(*reinterpret_cast<const int*>(srcArgPtr)).c_str() :
+        (desc.size_ == 8) ? std::to_string(*reinterpret_cast<const long long*>(srcArgPtr)).c_str()
+        : "");
     }
     else if (desc.type_ == T_SAMPLER) {
       uint32_t index = desc.info_.arrayIndex_;
