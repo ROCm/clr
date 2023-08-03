@@ -128,6 +128,10 @@ hipError_t Function::getDynFunc(hipFunction_t* hfunc, hipModule_t hmod) {
 hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
   guarantee(modules_ != nullptr, "Module not initialized");
 
+  if (dFunc_.size() != g_devices.size()) {
+    return hipErrorSharedObjectInitFailed;
+  }
+
   hipModule_t hmod = nullptr;
   IHIP_RETURN_ONFAIL((*modules_)->BuildProgram(deviceId));
   IHIP_RETURN_ONFAIL((*modules_)->GetModule(deviceId, &hmod));
