@@ -182,10 +182,16 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
 
 #ifdef _WIN32
+  if (semHandleDesc->handle.win32.handle == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.win32.handle,
                                  static_cast <amd::ExternalSemaphoreHandleType>
                                  (semHandleDesc->type))) {
 #else
+  if (semHandleDesc->handle.fd == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   if (device->importExtSemaphore(extSem_out, semHandleDesc->handle.fd,
                                  static_cast <amd::ExternalSemaphoreHandleType>
                                  (semHandleDesc->type))) {
@@ -211,6 +217,11 @@ hipError_t hipSignalExternalSemaphoresAsync(
 
   for (unsigned int i = 0; i < numExtSems; i++) {
     if (extSemArray[i] != nullptr) {
+     if (paramsArray[i].flags != 0) {
+       // flags should be 0 for any type other than hipExternalSemaphoreHandleTypeNvSciSync.
+       // But hipExternalSemaphoreHandleTypeNvSciSync is not supported on AMD device.
+       HIP_RETURN(hipErrorInvalidValue);
+      }
       amd::ExternalSemaphoreCmd* command =
           new amd::ExternalSemaphoreCmd(*hip_stream, extSemArray[i], paramsArray[i].params.fence.value,
                                         amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
@@ -236,6 +247,9 @@ hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemAr
   if (extSemArray == nullptr || paramsArray == nullptr || !hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -243,6 +257,11 @@ hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemAr
 
   for (unsigned int i = 0; i < numExtSems; i++) {
     if (extSemArray[i] != nullptr) {
+      if (paramsArray[i].flags != 0) {
+        // flags should be 0 for any type other than hipExternalSemaphoreHandleTypeNvSciSync.
+        // But hipExternalSemaphoreHandleTypeNvSciSync is not supported on AMD device.
+        HIP_RETURN(hipErrorInvalidValue);
+      }
       amd::ExternalSemaphoreCmd* command =
           new amd::ExternalSemaphoreCmd(*hip_stream, extSemArray[i], paramsArray[i].params.fence.value,
                                         amd::ExternalSemaphoreCmd::COMMAND_WAIT_EXTSEMAPHORE);
