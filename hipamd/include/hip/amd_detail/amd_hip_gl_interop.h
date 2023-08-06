@@ -23,6 +23,9 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_AMD_HIP_GL_INTEROP_H
 #define HIP_INCLUDE_AMD_HIP_GL_INTEROP_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
 /**
  *-------------------------------------------------------------------------------------------------
  *-------------------------------------------------------------------------------------------------
@@ -89,4 +92,7 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
 hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint image,
                                       GLenum target, unsigned int flags);
 
-#endif
+#if defined(__cplusplus)
+}
+#endif /* __cplusplus */
+#endif /* HIP_INCLUDE_AMD_HIP_GL_INTEROP_H */

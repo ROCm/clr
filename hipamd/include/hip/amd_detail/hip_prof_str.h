@@ -7,6 +7,8 @@
 #define _HIP_PROF_STR_H
 #define HIP_PROF_VER 1
 
+#include <hip/amd_detail/amd_hip_gl_interop.h>
+
 // HIP API callbacks ID enumeration
 enum hip_api_id_t {
   HIP_API_ID_NONE = 0,
