@@ -23,6 +23,40 @@ if(NOT DEFINED HIP_CLANG_NUM_PARALLEL_JOBS)
   set(HIP_CLANG_NUM_PARALLEL_JOBS 1)
 endif()
 
+# Windows Specific Definition here:
+if(WIN32)
+  if(DEFINED ENV{HIP_PATH})
+    file(TO_CMAKE_PATH "$ENV{HIP_PATH}" HIP_PATH)
+  elseif(DEFINED ENV{HIP_DIR})
+    file(TO_CMAKE_PATH "$ENV{HIP_DIR}" HIP_DIR)
+  else()
+    # using the HIP found
+    set(HIP_PATH ${PACKAGE_PREFIX_DIR})
+  endif()
+else()
+  # Linux
+  # If HIP is not installed under ROCm, need this to find HSA assuming HSA is under ROCm
+  if(DEFINED ENV{ROCM_PATH})
+    set(ROCM_PATH "$ENV{ROCM_PATH}")
+  endif()
+
+  # set a default path for ROCM_PATH
+  if(NOT DEFINED ROCM_PATH)
+    set(ROCM_PATH ${PACKAGE_PREFIX_DIR})
+  endif()
+
+endif()
+
+if(WIN32)
+  # Using SDK folder
+  file(TO_CMAKE_PATH "${HIP_PATH}" HIP_CLANG_ROOT)
+  if (NOT EXISTS "${HIP_CLANG_ROOT}/bin/clang.exe")
+    # if using install folder
+    file(TO_CMAKE_PATH "${HIP_PATH}/../lc" HIP_CLANG_ROOT)
+  endif()
+else()
+  set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
+endif()
 if(NOT HIP_CXX_COMPILER)
   set(HIP_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 endif()
