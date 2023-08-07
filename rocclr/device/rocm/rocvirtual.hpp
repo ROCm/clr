@@ -46,7 +46,7 @@ constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 // Active wait time out incase same sdma engine is used again,
 // then just wait instead of adding dependency wait signal.
-constexpr static uint64_t kForcedTimeout = 10;
+constexpr static uint64_t kForcedTimeout10us = 10;
 
 template <bool active_wait_timeout = false>
 inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
@@ -56,8 +56,8 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
       timeout = kUnlimitedWait;
     }
     if (active_wait_timeout) {
-      // If diff engine, wait to 10 ms. Otherwise no wait
-      timeout = (forced_wait ? kForcedTimeout : ROC_ACTIVE_WAIT_TIMEOUT) * K;
+      // If forced wait is set, then wait for 10us, else dont wait. (ns * K = us)
+      timeout = (forced_wait ? kForcedTimeout10us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
       if (timeout == 0) {
         return false;
       }
@@ -232,7 +232,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Finds a free signal for the upcomming operation
     hsa_signal_t ActiveSignal(hsa_signal_value_t init_val = kInitSignalValueOne,
-                              Timestamp* ts = nullptr);
+                              Timestamp* ts = nullptr, bool forceHostWait = true);
 
     //! Wait for the curent active signal. Can idle the queue
     bool WaitCurrent() {

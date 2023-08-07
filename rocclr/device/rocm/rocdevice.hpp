@@ -81,14 +81,28 @@ public:
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
-  bool          done_;    //!< True if signal is done
   amd::Monitor  lock_;    //!< Signal lock for update
+
+  typedef union {
+    struct {
+      uint32_t          done_            :  1; //!< True if signal is done
+      uint32_t          forceHostWait_   :  1; //!< Force Host Wait for dependency signals
+      uint32_t          reserved_        : 30;
+    };
+    uint32_t data_;
+  } Flags;
+
+  Flags flags_;
+
   ProfilingSignal()
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
-    , done_(true)
     , lock_("Signal Ops Lock", true)
-    { signal_.handle = 0; }
+    {
+      signal_.handle = 0;
+      flags_.done_ = true;
+      flags_.forceHostWait_ = true;
+    }
 
   virtual ~ProfilingSignal();
   amd::Monitor& LockSignalOps() { return lock_; }
