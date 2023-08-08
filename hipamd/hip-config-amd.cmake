@@ -95,7 +95,7 @@ set_target_properties(hip::amdhip64 PROPERTIES
 )
 
 get_target_property(amdhip64_type hip::amdhip64 TYPE)
-message(STATUS "hip::amdhip64 is ${amdhip64_type}")
+message(DEBUG "hip::amdhip64 is ${amdhip64_type}")
 
 if(NOT WIN32)
   set_target_properties(hip::device PROPERTIES
@@ -122,7 +122,7 @@ foreach(GPU_TARGET ${GPU_TARGETS})
     endif()
     hip_add_interface_link_flags(hip::device --offload-arch=${GPU_TARGET})
 endforeach()
-#Add support for parallel build and link
+# Add support for parallel build and link
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
   check_cxx_compiler_flag("-parallel-jobs=1" HIP_CLANG_SUPPORTS_PARALLEL_JOBS)
 endif()
@@ -133,7 +133,7 @@ if(HIP_CLANG_NUM_PARALLEL_JOBS GREATER 1)
     endif()
     hip_add_interface_link_flags(hip::device -parallel-jobs=${HIP_CLANG_NUM_PARALLEL_JOBS})
   else()
-    message("clang compiler doesn't support parallel jobs")
+    message(DEBUG "clang compiler doesn't support parallel jobs")
   endif()
 endif()
 
@@ -148,7 +148,7 @@ execute_process(
   RESULT_VARIABLE CLANGRT_BUILTINS_FETCH_EXIT_CODE)
 
 if( CLANGRT_Error )
-  message( STATUS "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
+  message(DEBUG "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
 else()
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
   if( "${CLANGRT_BUILTINS_FETCH_EXIT_CODE}" STREQUAL "0" )
@@ -156,6 +156,6 @@ else()
     set_property(TARGET hip::host APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
     set_property(TARGET hip::device APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
   else()
-    message(STATUS "clangrt builtins lib not found: ${CLANGRT_BUILTINS_FETCH_EXIT_CODE}")
+    message(DEBUG "clangrt builtins lib not found: ${CLANGRT_BUILTINS_FETCH_EXIT_CODE}")
   endif() # CLANGRT_BUILTINS_FETCH_EXIT_CODE Check
 endif() # CLANGRT_Error Check
