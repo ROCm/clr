@@ -41,7 +41,9 @@ find_package(Threads REQUIRED)
 
 find_package(AMD_OPENCL)
 
-add_library(rocclr STATIC)
+if(NOT TARGET rocclr)
+  add_library(rocclr STATIC)
+endif()
 
 include(ROCclrCompilerOptions)
 
