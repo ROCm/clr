@@ -18,8 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-project(clr)
 cmake_minimum_required(VERSION 3.16.8)
+cmake_policy(VERSION 3.16...3.27)
+project(clr)
 
 ##########
 # Defaults
