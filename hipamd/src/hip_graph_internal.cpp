@@ -495,8 +495,8 @@ hipError_t GraphExec::Init() {
 
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& topoOrder, std::vector<amd::Command*>& rootCommands,
-                        amd::Command*& endCommand, hip::Stream* stream) {
+                        std::vector<Node>& topoOrder, Graph* clonedGraph,
+                        amd::Command*& graphStart, amd::Command*& graphEnd, hip::Stream* stream) {
   hipError_t status;
   for (auto& node : topoOrder) {
     // TODO: clone commands from next launch
@@ -510,44 +510,48 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
     }
     node->UpdateEventWaitLists(waitList);
   }
-  // rootCommand ensures graph is started (all parallel branches) after all the previous work is
-  // finished
-  bool first = true;
-  for (auto& singleList : parallelLists) {
-    if (first) {
-      first = false;
-      continue;
-    }
-    // marker from the same queue as the list
-    amd::Command* rootCommand = new amd::Marker(*singleList[0]->GetQueue(), false, {});
-    amd::Command::EventWaitList waitList;
-    waitList.push_back(rootCommand);
-    if (!singleList.empty()) {
-      auto commands = singleList[0]->GetCommands();
+  std::vector<Node> rootNodes = clonedGraph->GetRootNodes();
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE,
+          "[hipGraph] RootCommand get launched on stream (stream:%p)\n", stream);
+  for (auto& root : rootNodes) {
+    //If rootnode is launched on to the same stream dont add dependency
+    if (root->GetQueue() != stream) {
+      if (graphStart == nullptr) {
+        graphStart = new amd::Marker(*stream, false, {});
+        if (graphStart == nullptr) {
+          return hipErrorOutOfMemory;
+        }
+      }
+      amd::Command::EventWaitList waitList;
+      waitList.push_back(graphStart);
+      auto commands = root->GetCommands();
       if (!commands.empty()) {
         commands[0]->updateEventWaitList(waitList);
-        rootCommands.push_back(rootCommand);
       }
     }
   }
-  // endCommand ensures next enqueued ones start after graph is finished (all parallel branches)
+
+  // graphEnd ensures next enqueued ones start after graph is finished (all parallel branches)
   amd::Command::EventWaitList graphLastCmdWaitList;
-  first = true;
-  for (auto& singleList : parallelLists) {
-    if (first) {
-      first = false;
-      continue;
-    }
-    if (!singleList.empty()) {
-      auto commands = singleList.back()->GetCommands();
+  std::vector<Node> leafNodes = clonedGraph->GetLeafNodes();
+
+  for (auto& leaf : leafNodes) {
+    // If leaf node is launched on to the same stream dont add dependency
+    if (leaf->GetQueue() != stream) {
+      amd::Command::EventWaitList waitList;
+      waitList.push_back(graphEnd);
+      auto commands = leaf->GetCommands();
       if (!commands.empty()) {
         graphLastCmdWaitList.push_back(commands.back());
       }
     }
   }
   if (!graphLastCmdWaitList.empty()) {
-    endCommand = new amd::Marker(*stream, false, graphLastCmdWaitList);
-    if (endCommand == nullptr) {
+    graphEnd = new amd::Marker(*stream, false, graphLastCmdWaitList);
+    ClPrint(amd::LOG_INFO, amd::LOG_CODE,
+            "[hipGraph] EndCommand will get launched on stream (stream:%p)\n", stream);
+    if (graphEnd == nullptr) {
+      graphStart->release();
       return hipErrorOutOfMemory;
     }
   }
@@ -592,25 +596,24 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeMemAlloc &&
           static_cast<GraphMemAllocNode*>(node)->IsActiveMem() == true) {
-          return hipErrorInvalidValue;
+        return hipErrorInvalidValue;
       }
     }
-  }
-  else {
+  } else {
     repeatLaunch_ = true;
   }
 
   UpdateStream(parallelLists_, hip_stream, this);
-  std::vector<amd::Command*> rootCommands;
+  amd::Command* rootCommand = nullptr;
   amd::Command* endCommand = nullptr;
-  status =
-      FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, rootCommands, endCommand, hip_stream);
+  status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
+                        endCommand, hip_stream);
   if (status != hipSuccess) {
     return status;
   }
-  for (auto& cmd : rootCommands) {
-    cmd->enqueue();
-    cmd->release();
+  if (rootCommand != nullptr) {
+    rootCommand->enqueue();
+    rootCommand->release();
   }
   for (int i = 0; i < topoOrder_.size(); i++) {
     if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
@@ -618,8 +621,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
       if (parallelLists_.size() == 1) {
         // Peep through the next node. If current and next node are kernel then enable AQL
         // buffering
-        if (((i + 1) != topoOrder_.size()) &&
-            topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
+        if (((i + 1) != topoOrder_.size()) && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
             topoOrder_[i + 1]->GetType() == hipGraphNodeTypeKernel) {
           topoOrder_[i]->EnableBuffering();
         }
