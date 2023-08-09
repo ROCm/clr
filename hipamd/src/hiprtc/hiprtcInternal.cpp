@@ -439,95 +439,116 @@ RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
 bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                                       void** options_vals_ptr) {
   for (size_t opt_idx = 0; opt_idx < num_options; ++opt_idx) {
-    if (options_vals_ptr[opt_idx] == nullptr) {
-      LogError("Options value can not be nullptr");
-      return false;
-    }
 
     switch (options_ptr[opt_idx]) {
       case HIPRTC_JIT_MAX_REGISTERS:
-        link_args_.max_registers_ = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.max_registers_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_THREADS_PER_BLOCK:
         link_args_.threads_per_block_ =
-            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_WALL_TIME:
         link_args_.wall_time_ = *(reinterpret_cast<long*>(options_vals_ptr[opt_idx]));
         break;
-      case HIPRTC_JIT_INFO_LOG_BUFFER:
+      case HIPRTC_JIT_INFO_LOG_BUFFER: {
+        if (options_vals_ptr[opt_idx] == nullptr) {
+          LogError("Options value can not be nullptr");
+          return false;
+        }
         link_args_.info_log_ = (reinterpret_cast<char*>(options_vals_ptr[opt_idx]));
         break;
+      }
       case HIPRTC_JIT_INFO_LOG_BUFFER_SIZE_BYTES:
         link_args_.info_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
         break;
-      case HIPRTC_JIT_ERROR_LOG_BUFFER:
+      case HIPRTC_JIT_ERROR_LOG_BUFFER: {
+        if (options_vals_ptr[opt_idx] == nullptr) {
+          LogError("Options value can not be nullptr");
+          return false;
+        }
         link_args_.error_log_ = reinterpret_cast<char*>(options_vals_ptr[opt_idx]);
         break;
+      }
       case HIPRTC_JIT_ERROR_LOG_BUFFER_SIZE_BYTES:
         link_args_.error_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_OPTIMIZATION_LEVEL:
         link_args_.optimization_level_ =
-            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_TARGET_FROM_HIPCONTEXT:
         link_args_.target_from_hip_context_ =
-            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_TARGET:
-        link_args_.jit_target_ = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.jit_target_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_FALLBACK_STRATEGY:
         link_args_.fallback_strategy_ =
-            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_GENERATE_DEBUG_INFO:
-        link_args_.generate_debug_info_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.generate_debug_info_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_LOG_VERBOSE:
         link_args_.log_verbose_ = reinterpret_cast<size_t>(options_vals_ptr[opt_idx]);
         break;
       case HIPRTC_JIT_GENERATE_LINE_INFO:
-        link_args_.generate_line_info_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.generate_line_info_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_CACHE_MODE:
-        link_args_.cache_mode_ = *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+        link_args_.cache_mode_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_NEW_SM3X_OPT:
-        link_args_.sm3x_opt_ = *(reinterpret_cast<bool*>(options_vals_ptr[opt_idx]));
+        link_args_.sm3x_opt_ = *(reinterpret_cast<bool*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_FAST_COMPILE:
-        link_args_.fast_compile_ = *(reinterpret_cast<bool*>(options_vals_ptr[opt_idx]));
+        link_args_.fast_compile_ = *(reinterpret_cast<bool*>(&options_vals_ptr[opt_idx]));
         break;
-      case HIPRTC_JIT_GLOBAL_SYMBOL_NAMES:
+      case HIPRTC_JIT_GLOBAL_SYMBOL_NAMES: {
+        if (options_vals_ptr[opt_idx] == nullptr) {
+          LogError("Options value can not be nullptr");
+          return false;
+        }
         link_args_.global_symbol_names_ = reinterpret_cast<const char**>(options_vals_ptr[opt_idx]);
         break;
-      case HIPRTC_JIT_GLOBAL_SYMBOL_ADDRESS:
+      }
+      case HIPRTC_JIT_GLOBAL_SYMBOL_ADDRESS: {
+        if (options_vals_ptr[opt_idx] == nullptr) {
+          LogError("Options value can not be nullptr");
+          return false;
+        }
         link_args_.global_symbol_addresses_ = reinterpret_cast<void**>(options_vals_ptr[opt_idx]);
         break;
+      }
       case HIPRTC_JIT_GLOBAL_SYMBOL_COUNT:
         link_args_.global_symbol_count_ =
-            *(reinterpret_cast<unsigned int*>(options_vals_ptr[opt_idx]));
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_LTO:
-        link_args_.lto_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.lto_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_FTZ:
-        link_args_.ftz_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.ftz_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_PREC_DIV:
-        link_args_.prec_div_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.prec_div_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_PREC_SQRT:
-        link_args_.prec_sqrt_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.prec_sqrt_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
       case HIPRTC_JIT_FMA:
-        link_args_.fma_ = *(reinterpret_cast<int*>(options_vals_ptr[opt_idx]));
+        link_args_.fma_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
         break;
-      case HIPRTC_JIT_IR_TO_ISA_OPT_EXT:
+      case HIPRTC_JIT_IR_TO_ISA_OPT_EXT: {
+        if (options_vals_ptr[opt_idx] == nullptr) {
+          LogError("Options value can not be nullptr");
+          return false;
+        }
         link_args_.linker_ir2isa_args_ = reinterpret_cast<const char**>(options_vals_ptr[opt_idx]);
         break;
+      }
       case HIPRTC_JIT_IR_TO_ISA_OPT_COUNT_EXT:
         link_args_.linker_ir2isa_args_count_ = reinterpret_cast<size_t>(options_vals_ptr[opt_idx]);
         break;
