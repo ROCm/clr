@@ -1507,7 +1507,6 @@ hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coor
     return hipErrorInvalidValue;
   }
   dstRect.start_ += dstOffset;
-  dstRect.end_ += dstOffset;
 
   const size_t copySizeInBytes =
       copyRegion[0] * copyRegion[1] * copyRegion[2] * srcImage->getImageFormat().getElementSize();
@@ -1576,7 +1575,6 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coor
     return hipErrorInvalidValue;
   }
   srcRect.start_ += srcOffset;
-  srcRect.end_ += srcOffset;
 
   if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
                       dstImage->getRowPitch(), dstImage->getSlicePitch())) {
@@ -1642,7 +1640,6 @@ hipError_t ihipMemcpyDtoDValidate(void* srcDevice, void* dstDevice, amd::Coord3D
     return hipErrorInvalidValue;
   }
   srcRect.start_ += srcOffset;
-  srcRect.end_ += srcOffset;
 
   amd::Coord3D srcStart(srcRect.start_, 0, 0);
   amd::Coord3D srcSize(srcRect.end_, 1, 1);
@@ -1655,7 +1652,6 @@ hipError_t ihipMemcpyDtoDValidate(void* srcDevice, void* dstDevice, amd::Coord3D
     return hipErrorInvalidValue;
   }
   dstRect.start_ += dstOffset;
-  dstRect.end_ += dstOffset;
 
   amd::Coord3D dstStart(dstRect.start_, 0, 0);
   amd::Coord3D dstSize(dstRect.end_, 1, 1);
@@ -1715,7 +1711,6 @@ hipError_t ihipMemcpyDtoHValidate(void* srcDevice, void* dstHost, amd::Coord3D& 
     return hipErrorInvalidValue;
   }
   srcRect.start_ += srcOffset;
-  srcRect.end_ += srcOffset;
 
   amd::Coord3D srcStart(srcRect.start_, 0, 0);
   amd::Coord3D srcSize(srcRect.end_, 1, 1);
@@ -1785,7 +1780,6 @@ hipError_t ihipMemcpyHtoDValidate(const void* srcHost, void* dstDevice, amd::Coo
     return hipErrorInvalidValue;
   }
   dstRect.start_ += dstOffset;
-  dstRect.end_ += dstOffset;
 
   amd::Coord3D dstStart(dstRect.start_, 0, 0);
   amd::Coord3D dstSize(dstRect.end_, 1, 1);
