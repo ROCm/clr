@@ -84,11 +84,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       return hipErrorInvalidValue;
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
-    if (image_ == nullptr && !amd::Os::MemoryMapFileDesc(fdesc_, fsize_, foffset_, &image_)
-                          && (image_mapped_ = true)) {
-      LogError("Cannot map the file descriptor");
-      amd::Os::CloseFileHandle(fdesc_);
-      return hipErrorInvalidValue;
+    if (image_ == nullptr) {
+      if(!amd::Os::MemoryMapFileDesc(fdesc_, fsize_, foffset_, &image_)) {
+        LogError("Cannot map the file descriptor");
+        amd::Os::CloseFileHandle(fdesc_);
+        return hipErrorInvalidValue;
+      }
+      image_mapped_ = true;
     }
   }
 
