@@ -369,9 +369,9 @@ void OCLPerfMemLatency::run(void) {
   char buf[256];
   char buf2[32];
   if (makeRW)
-    SNPRINTF(buf2, sizeof(buf), "volatileRW");
+    SNPRINTF(buf2, sizeof(buf2), "volatileRW");
   else if (makeVolatile)
-    SNPRINTF(buf2, sizeof(buf), "volatile");
+    SNPRINTF(buf2, sizeof(buf2), "volatile");
   else
     buf2[0] = '\0';
   SNPRINTF(buf, sizeof(buf), "%10s %2d threads, %8d reads, %5d repeats (ns)",
