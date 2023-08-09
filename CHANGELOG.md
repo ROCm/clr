@@ -7,7 +7,11 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Changed
 - HIPRTC now assumes WGP mode for gfx10+. CU mode can be enabled by passing `-mcumode` to the compile options from `hiprtcCompileProgram`.
 
-## (Unreleased) HIP 6.0 (For ROCm 6.0)
+### Added
+- Added HIPRTC support for hip headers driver_types, math_functions, library_types, math_functions, hip_math_constants, channel_descriptor, device_functions, hip_complex, surface_types, texture_types.
+
+## HIP 6.0 (For ROCm 6.0)
+
 ### Optimizations
 
 ### Added
