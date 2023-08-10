@@ -168,7 +168,9 @@ Device::Device(hsa_agent_t bkendDevice)
     , coopHostcallBuffer_(nullptr)
     , queueWithCUMaskPool_(QueuePriority::Total)
     , numOfVgpus_(0)
-    , preferred_numa_node_(0) {
+    , preferred_numa_node_(0)
+    , maxSdmaReadMask_(0)
+    , maxSdmaWriteMask_(0) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
