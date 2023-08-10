@@ -181,6 +181,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
         flags_ |= SubMemoryObject | (parent_->flags_ & HostMemoryDirectAccess);
         break;
       }
+      case Resource::ImageExternalBuffer:
       case Resource::ImageBuffer: {
         Resource::ImageBufferParams* view = reinterpret_cast<Resource::ImageBufferParams*>(params);
         parent_ = reinterpret_cast<const Memory*>(view->memory_);

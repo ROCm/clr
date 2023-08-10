@@ -376,7 +376,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipArrayGetDescriptor = 361,
   HIP_API_ID_hipArrayGetInfo = 362,
   HIP_API_ID_hipStreamGetDevice = 363,
-  HIP_API_ID_LAST = 363,
+  HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray = 364,
+  HIP_API_ID_LAST = 364,
 
   HIP_API_ID_hipBindTexture = HIP_API_ID_NONE,
   HIP_API_ID_hipBindTexture2D = HIP_API_ID_NONE,
@@ -779,6 +780,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipUserObjectRelease: return "hipUserObjectRelease";
     case HIP_API_ID_hipUserObjectRetain: return "hipUserObjectRetain";
     case HIP_API_ID_hipWaitExternalSemaphoresAsync: return "hipWaitExternalSemaphoresAsync";
+    case HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray:  return "hipExternalMemoryGetMappedMipmappedArray";
   };
   return "unknown";
 };
@@ -1145,6 +1147,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipUserObjectRelease", name) == 0) return HIP_API_ID_hipUserObjectRelease;
   if (strcmp("hipUserObjectRetain", name) == 0) return HIP_API_ID_hipUserObjectRetain;
   if (strcmp("hipWaitExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipWaitExternalSemaphoresAsync;
+  if (strcmp("hipExternalMemoryGetMappedMipmappedArray", name) == 0)  return HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray;
   return HIP_API_ID_NONE;
 }
 
@@ -3266,6 +3269,12 @@ typedef struct hip_api_data_s {
       unsigned int numExtSems;
       hipStream_t stream;
     } hipWaitExternalSemaphoresAsync;
+    struct {
+      hipMipmappedArray_t* mipmap;
+      hipExternalMemory_t extMem;
+      const hipExternalMemoryMipmappedArrayDesc* mipmapDesc;
+      hipExternalMemoryMipmappedArrayDesc mipmapDesc__val;
+    } hipExternalMemoryGetMappedMipmappedArray;
   } args;
   uint64_t *phase_data;
 } hip_api_data_t;
@@ -3692,6 +3701,12 @@ typedef struct hip_api_data_s {
   cb_data.args.hipExternalMemoryGetMappedBuffer.extMem = (hipExternalMemory_t)extMem; \
   cb_data.args.hipExternalMemoryGetMappedBuffer.bufferDesc = (const hipExternalMemoryBufferDesc*)bufferDesc; \
 };
+// hipExternalMemoryGetMappedMipmappedArray[('hipMipmappedArray_t*', 'mipmap'), ('hipExternalMemory_t', 'extMem'), ('const hipExternalMemoryMipmappedArrayDesc*', 'mipmapDesc')]
+#define INIT_hipExternalMemoryGetMappedMipmappedArray_CB_ARGS_DATA(cb_data) { \
+    cb_data.args.hipExternalMemoryGetMappedMipmappedArray.mipmap = (hipMipmappedArray_t*)mipmap; \
+    cb_data.args.hipExternalMemoryGetMappedMipmappedArray.extMem = (hipExternalMemory_t)extMem;  \
+    cb_data.args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc = (const hipExternalMemoryMipmappedArrayDesc*)mipmapDesc; \
+  };
 // hipFree[('void*', 'ptr')]
 #define INIT_hipFree_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipFree.ptr = (void*)ptr; \
@@ -5835,6 +5850,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipExternalMemoryGetMappedBuffer.devPtr) data->args.hipExternalMemoryGetMappedBuffer.devPtr__val = *(data->args.hipExternalMemoryGetMappedBuffer.devPtr);
       if (data->args.hipExternalMemoryGetMappedBuffer.bufferDesc) data->args.hipExternalMemoryGetMappedBuffer.bufferDesc__val = *(data->args.hipExternalMemoryGetMappedBuffer.bufferDesc);
       break;
+// hipExternalMemoryGetMappedMipmappedArray[('hipMipmappedArray_t*', 'mipmap'), ('hipExternalMemory_t', 'extMem'), ('const hipExternalMemoryMipmappedArrayDesc*', 'mipmapDesc')]
+    case HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray:
+      if (data->args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc) data->args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc__val = *(data->args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc);
+      break;
 // hipFree[('void*', 'ptr')]
     case HIP_API_ID_hipFree:
       break;
@@ -7503,6 +7522,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", bufferDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedBuffer.bufferDesc__val); }
       oss << ")";
     break;
+    case HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray:
+      oss << "hipExternalMemoryGetMappedMipmappedArray(";
+      oss << "mipmap="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedMipmappedArray.mipmap);
+      oss << ", extMem="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedMipmappedArray.extMem);
+      if (data->args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc == NULL) oss << ", mipmapDesc=NULL";
+      else { oss << ", mipmapDesc="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExternalMemoryGetMappedMipmappedArray.mipmapDesc__val); }
+      oss << ")";
+      break;
     case HIP_API_ID_hipFree:
       oss << "hipFree(";
       oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipFree.ptr);

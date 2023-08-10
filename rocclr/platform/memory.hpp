@@ -566,7 +566,7 @@ class Image : public Memory {
         size_t depth, size_t rowPitch, size_t slicePitch, uint mipLevels = 1);
 
   Image(Buffer& buffer, Type type, Flags flags, const Format& format, size_t width, size_t height,
-        size_t depth, size_t rowPitch, size_t slicePitch);
+        size_t depth, size_t rowPitch, size_t slicePitch, uint mipLevels = 1, size_t offset = 0);
 
   //! Validate image dimensions with supported sizes
   static bool validateDimensions(

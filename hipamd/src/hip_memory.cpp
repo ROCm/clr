@@ -875,6 +875,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                             const size_t imageRowPitch,
                             const size_t imageSlicePitch,
                             const uint32_t numMipLevels,
+                            const size_t offset,
                             amd::Memory* buffer,
                             hipError_t& status) {
   status = hipSuccess;
@@ -925,9 +926,34 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   }
 
   // TODO validate the image descriptor.
-
+  bool isExternalBuffer = buffer != nullptr ? buffer->isInterop() : false;
   amd::Image* image = nullptr;
-  if (buffer != nullptr) {
+  if (isExternalBuffer) {
+     // We will create mipmap image view on top of external buffer which is from Vulkan or D3D
+     // image. The buffer contains subchunks of tiled image, or it's just a linear image. Lower
+     // level PAL will infer memory layout (offset, pitch, slice pitch, size) for each level
+     // array in terms of tiling mode(linear or optimal), extent, format and mipmap levels.
+     // Note that RocR will support mipmap in the future.
+     switch (imageType) {
+       case CL_MEM_OBJECT_IMAGE1D:
+       case CL_MEM_OBJECT_IMAGE2D:
+       case CL_MEM_OBJECT_IMAGE3D:
+         image = new (context) amd::Image(*buffer->asBuffer(),
+                                          imageType,
+                                          CL_MEM_READ_WRITE,
+                                          imageFormat,
+                                          imageWidth,
+                                          (imageHeight == 0) ? 1 : imageHeight,
+                                          (imageDepth == 0) ? 1 : imageDepth,
+                                          imageRowPitch,
+                                          imageSlicePitch,
+                                          numMipLevels,
+                                          offset);
+       break;
+       default:
+        LogPrintfError("Cannot create image of imageType: 0x%x for external buffer\n", imageType);
+     }
+  } else if (buffer != nullptr) {
     switch (imageType) {
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
     case CL_MEM_OBJECT_IMAGE2D:
@@ -939,7 +965,9 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                        (imageHeight == 0) ? 1 : imageHeight,
                                        (imageDepth == 0) ? 1 : imageDepth,
                                        imageRowPitch,
-                                       imageSlicePitch);
+                                       imageSlicePitch,
+                                       numMipLevels,
+                                       offset);
       break;
     default:
       LogPrintfError("Cannot create image of imageType: 0x%x \n", imageType);
@@ -1040,7 +1068,7 @@ hipError_t ihipArrayCreate(hipArray** array,
                                       pAllocateArray->Depth, /* array size */
                                       0, /* row pitch */
                                       0, /* slice pitch */
-                                      numMipmapLevels,
+                                      numMipmapLevels, 0,
                                       nullptr, /* buffer */
                                       status);
 
@@ -3933,7 +3961,8 @@ hipError_t hipDrvMemcpy2DUnaligned(const hip_Memcpy2D* pCopy) {
 
 hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                  HIP_ARRAY3D_DESCRIPTOR* mipmapped_array_desc_ptr,
-                                 unsigned int num_mipmap_levels) {
+                                 unsigned int num_mipmap_levels,
+                                 size_t offset = 0, amd::Memory* buffer = nullptr) {
   bool mipMapSupport = true;
   amd::Context& context = *hip::getCurrentDevice()->asContext();
   const std::vector<amd::Device*>& devices = context.devices();
@@ -3966,7 +3995,8 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
                                       0 /* row pitch */,
                                       0 /* slice pitch */,
                                       num_mipmap_levels,
-                                      nullptr, /* buffer */
+                                      offset,
+                                      buffer,
                                       status);
 
   if (image == nullptr) {
@@ -3985,7 +4015,7 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
   (*mipmapped_array_pptr)->height = mipmapped_array_desc_ptr->Height;
   (*mipmapped_array_pptr)->depth = mipmapped_array_desc_ptr->Depth;
   (*mipmapped_array_pptr)->min_mipmap_level = 0;
-  (*mipmapped_array_pptr)->max_mipmap_level = num_mipmap_levels;
+  (*mipmapped_array_pptr)->max_mipmap_level = num_mipmap_levels - 1;
   (*mipmapped_array_pptr)->flags = mipmapped_array_desc_ptr->Flags;
   (*mipmapped_array_pptr)->format = mipmapped_array_desc_ptr->Format;
   (*mipmapped_array_pptr)->num_channels = mipmapped_array_desc_ptr->NumChannels;
@@ -4127,3 +4157,31 @@ hipError_t hipGetMipmappedArrayLevel(hipArray_t *levelArray,
                                         const_cast<hipMipmappedArray_t>(mipmappedArray),
                                         level));
 }
+// ================================================================================================
+hipError_t hipExternalMemoryGetMappedMipmappedArray(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
+  HIP_INIT_API(hipExternalMemoryGetMappedMipmappedArray, mipmap, extMem, mipmapDesc);
+  if (mipmap == nullptr || extMem == nullptr || mipmapDesc == nullptr ||
+      mipmapDesc->flags != hipArrayDefault) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+
+  auto buf = reinterpret_cast<amd::ExternalBuffer*>(extMem);
+  const device::Memory* devMem = buf->getDeviceMemory(*hip::getCurrentDevice()->devices()[0]);
+
+  HIP_ARRAY3D_DESCRIPTOR allocateArray = {mipmapDesc->extent.width,
+                                          mipmapDesc->extent.height,
+                                          mipmapDesc->extent.depth,
+                                          hip::getArrayFormat(mipmapDesc->formatDesc),
+                                          hip::getNumChannels(mipmapDesc->formatDesc),
+                                          mipmapDesc->flags};
+  if (!hip::CheckArrayFormat(mipmapDesc->formatDesc)) {
+    return HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,
+                                   (size_t)mipmapDesc->offset, buf));
+}
+

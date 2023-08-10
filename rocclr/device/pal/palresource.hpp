@@ -178,7 +178,8 @@ class Resource : public amd::HeapObject {
     P2PAccess,         //!< resource is a shared resource for P2P access
     VkInterop,         //!< resource is a Vulkan memory object
     VaRange,           //!< reousrce is a virtual address range
-    IpcMemory          //!< reousrce is a IPC memory object
+    IpcMemory,         //!< reousrce is a IPC memory object
+    ImageExternalBuffer //!< resource is an image view of an external buffer
   };
 
   //! Resource map flags

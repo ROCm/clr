@@ -613,7 +613,7 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     ImgSubresRange.startSubres.arraySlice = imageView->layer_;
     viewOwner_ = imageView->resource_;
     image_ = viewOwner_->image_;
-  } else if (memoryType() == ImageBuffer) {
+  } else if (memoryType() == ImageBuffer || memoryType() == ImageExternalBuffer) {
     ImageBufferParams* imageBuffer = reinterpret_cast<ImageBufferParams*>(params);
     viewOwner_ = imageBuffer->resource_;
   }
@@ -639,6 +639,14 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
         (memoryType() == ImageBuffer)) {
       tiling = Pal::ImageTiling::Linear;
+    } else if (memoryType() == ImageExternalBuffer) {
+      // We cannot get tiling info from vulkan/d3d driver now. So assume it to be optimal.
+      // When we get tiling info, we can easily update here
+      tiling = Pal::ImageTiling::Optimal;
+      // Pal will infer row pitch. If rowPitch != 0 and Pal inferred row picth isn't equal to
+      // rowPitch, assert(false) will be called
+      rowPitch = 0;
+      offset_ += params->owner_->getOrigin();
     } else if (memoryType() == ImageView) {
       tiling = viewOwner_->image_->GetImageCreateInfo().tiling;
       // Find the new pitch in pixels for the new format
@@ -677,7 +685,8 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     // createInfo.priority;
   }
 
-  if ((memoryType() != ImageView) && (memoryType() != ImageBuffer)) {
+  if ((memoryType() != ImageView) && (memoryType() != ImageBuffer) &&
+      (memoryType() != ImageExternalBuffer)) {
     Pal::GpuMemoryCreateInfo createInfo = {};
     createInfo.size = amd::alignUp(req.size, MaxGpuAlignment);
     createInfo.alignment = std::max(req.alignment, MaxGpuAlignment);
@@ -710,7 +719,13 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     mapCount_++;
   }
   result = image_->BindGpuMemory(memRef_->gpuMem_, offset_);
+
   if (result != Pal::Result::Success) {
+    LogPrintfError(
+        "BindGpuMemory return %d, offset_=%zu, req.size=%zu,  "
+        "viewOwner_->iMem()->Desc().size=%zu\n",
+        result, offset_, req.size,
+        viewOwner_ && viewOwner_->iMem() ? viewOwner_->iMem()->Desc().size : 0);
     return false;
   }
 
@@ -1345,8 +1360,8 @@ void Resource::free() {
     return;
   }
 
-  const bool wait =
-      (memoryType() != ImageView) && (memoryType() != ImageBuffer) && (memoryType() != View);
+  const bool wait = (memoryType() != ImageView) && (memoryType() != ImageBuffer) &&
+      (memoryType() != ImageExternalBuffer) && (memoryType() != View);
 
   // OCL has to wait, even if resource is placed in the cache, since reallocation can occur
   // and resource can be reused on another async queue without a wait on a busy operation
