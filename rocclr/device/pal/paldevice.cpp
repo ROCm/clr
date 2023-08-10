@@ -1719,9 +1719,9 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
       params.owner_ = &owner;
       params.resource_ = buffer;
       params.memory_ = buffer;
-
       // Create memory object
-      result = gpuImage->create(Resource::ImageBuffer, &params);
+      result = gpuImage->create(amd::IS_HIP && owner.parent()->isInterop() ?
+                   Resource::ImageExternalBuffer : Resource::ImageBuffer, &params);
     } else if (directAccess && (owner.getMemFlags() & CL_MEM_ALLOC_HOST_PTR)) {
       Resource::PinnedParams params;
       params.owner_ = &owner;

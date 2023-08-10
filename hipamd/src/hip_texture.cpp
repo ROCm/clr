@@ -67,6 +67,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                             const size_t imageRowPitch,
                             const size_t imageSlicePitch,
                             const uint32_t numMipLevels,
+                            const size_t offset,
                             amd::Memory* buffer,
                             hipError_t& status);
 
@@ -301,6 +302,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             0, /* imageRowPitch */
                             0, /* imageSlicePitch */
                             0, /* numMipLevels */
+                            0, /* offset */
                             buffer,
                             status);
     buffer->release();
@@ -328,6 +330,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             pResDesc->res.pitch2D.pitchInBytes, /* imageRowPitch */
                             0, /* imageSlicePitch */
                             0, /* numMipLevels */
+                            0, /* offset */
                             buffer,
                             status);
     if (buffer != nullptr) {

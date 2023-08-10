@@ -1284,6 +1284,7 @@ typedef enum cudaExternalMemoryHandleType hipExternalMemoryHandleType;
 typedef struct cudaExternalMemoryHandleDesc hipExternalMemoryHandleDesc;
 typedef struct cudaExternalMemoryBufferDesc hipExternalMemoryBufferDesc;
 typedef cudaExternalMemory_t hipExternalMemory_t;
+typedef cudaExternalMemoryMipmappedArrayDesc hipExternalMemoryMipmappedArrayDesc;
 
 typedef enum cudaExternalSemaphoreHandleType hipExternalSemaphoreHandleType;
 #define hipExternalSemaphoreHandleTypeOpaqueFd cudaExternalSemaphoreHandleTypeOpaqueFd
@@ -2942,6 +2943,14 @@ inline static hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out
 
 inline static hipError_t hipExternalMemoryGetMappedBuffer(void **devPtr, hipExternalMemory_t extMem, const hipExternalMemoryBufferDesc *bufferDesc) {
   return hipCUDAErrorTohipError(cudaExternalMemoryGetMappedBuffer(devPtr, extMem, (const struct cudaExternalMemoryBufferDesc*)bufferDesc));
+}
+
+inline static hipError_t hipExternalMemoryGetMappedMipmappedArray(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
+  return hipCUDAErrorTohipError(cudaExternalMemoryGetMappedMipmappedArray(
+      (cudaMipmappedArray_t*)mipmap, (cudaExternalMemory_t)extMem,
+      (const struct cudaExternalMemoryMipmappedArrayDesc*)mipmapDesc));
 }
 
 inline static hipError_t hipDestroyExternalMemory(hipExternalMemory_t extMem) {
