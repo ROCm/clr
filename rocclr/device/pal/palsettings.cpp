@@ -205,6 +205,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     // Fall through for Navi2x ...
     case Pal::AsicRevision::Phoenix1:
     case Pal::AsicRevision::Phoenix2:
+    case Pal::AsicRevision::HawkPoint1:
+    case Pal::AsicRevision::HawkPoint2:
     case Pal::AsicRevision::Raphael:
     case Pal::AsicRevision::Rembrandt:
     case Pal::AsicRevision::Navi24:
