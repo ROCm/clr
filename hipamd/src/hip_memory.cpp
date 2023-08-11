@@ -3379,6 +3379,9 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
         ((memObj->getMemFlags() & kManagedAlloc) == kManagedAlloc) ? true : false;
     attributes->allocationFlags = memObj->getUserData().flags;
     attributes->device = memObj->getUserData().deviceId;
+    if (attributes->isManaged) {
+      attributes->type = hipMemoryTypeManaged;
+    }
     HIP_RETURN(hipSuccess);
   }
 
