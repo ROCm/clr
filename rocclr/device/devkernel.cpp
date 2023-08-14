@@ -421,8 +421,10 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
           return AMD_COMGR_STATUS_ERROR;
         }
         lcArg->accessQualifier_ = itAccQual->second;
-        lcArg->info_.readOnly_ =
+        if (!lcArg->info_.isReadOnlyByCompiler) {
+          lcArg->info_.readOnly_ =
             (lcArg->accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
+        }
       }
       break;
     case ArgField::ActualAccQual:
@@ -431,7 +433,9 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
         if (itAccQual == ArgAccQualV3.end()) {
             return AMD_COMGR_STATUS_ERROR;
         }
-        //lcArg->mActualAccQual = itAccQual->second;
+        lcArg->info_.isReadOnlyByCompiler = true;
+        lcArg->info_.readOnly_ =
+          (itAccQual->second == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
       }
       break;
     case ArgField::IsConst:
@@ -1332,13 +1336,17 @@ void Kernel::InitParameters(const amd_comgr_metadata_node_t kernelMD) {
       }
     }
 
-    // LC doesn't report correct address qualifier for images and pipes,
-    // hence overwrite it
     if ((desc.info_.oclObject_ == amd::KernelParameterDescriptor::ImageObject) ||
         (desc.typeQualifier_  & CL_KERNEL_ARG_TYPE_PIPE)) {
+      // LC doesn't report correct address qualifier for images and pipes,
+      // hence overwrite it
+      // We will remove this when newer LC is ready
       desc.addressQualifier_ = CL_KERNEL_ARG_ADDRESS_GLOBAL;
-
+    } else {
+      // According to CL spec, otherwise must be CL_KERNEL_ARG_ACCESS_NONE,
+      desc.accessQualifier_ = CL_KERNEL_ARG_ACCESS_NONE;
     }
+
     size_t size = desc.size_;
 
     // Allocate the hidden arguments, but abstraction layer will skip them
