@@ -78,7 +78,7 @@ struct KernelParameterDescriptor {
       uint32_t defined_ : 1;      //!< The argument was defined by the app
       uint32_t hidden_ : 1;       //!< It's a hidden argument
       uint32_t shared_ : 1;       //!< Dynamic shared memory
-      uint32_t reserved_ : 1;     //!< Reserved
+      uint32_t isReadOnlyByCompiler : 1; //!< Compiler determine it is read only
       uint32_t arrayIndex_ : 20;  //!< Index in the objects array or LDS alignment
     };
     uint32_t allValues_;
