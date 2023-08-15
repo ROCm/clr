@@ -2352,9 +2352,12 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
 
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-
-  // Use host fill if memory has direct access
-  if (setup_.disableFillImage_ || memory.isHostMemDirectAccess()) {
+  constexpr size_t kFillImageThreshold = 256 * 256;
+  
+  // Use host fill if memory has direct access and image is small
+  if (setup_.disableFillImage_ ||
+      (gpuMem(memory).isHostMemDirectAccess() && 
+      (size.c[0] * size.c[1] * size.c[2]) <= kFillImageThreshold)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::fillImage(memory, pattern, origin, size, entire);
