@@ -1193,7 +1193,8 @@ bool Image::Format::isSupported(const Context& context, cl_mem_object_type image
 
 // ================================================================================================
 Image* Image::createView(const Context& context, const Format& format, device::VirtualDevice* vDev,
-                         uint baseMipLevel, cl_mem_flags flags, bool createMipmapView) {
+                         uint baseMipLevel, cl_mem_flags flags, bool createMipmapView,
+                         bool forceAlloc) {
 
   // Find the image dimensions and create a corresponding object
   Image* view = new (context) Image(format, *this, baseMipLevel, flags, createMipmapView);
@@ -1208,7 +1209,7 @@ Image* Image::createView(const Context& context, const Format& format, device::V
     view->initDeviceMemory();
 
     // Check if runtime has to allocate memory
-    if ((context.devices().size() == 1) || DISABLE_DEFERRED_ALLOC) {
+    if ((context.devices().size() == 1) || DISABLE_DEFERRED_ALLOC || forceAlloc) {
       for (uint i = 0; i < numDevices_; ++i) {
         // Make sure the parent's device memory is avaialbe
         if ((deviceMemories_[i].ref_ != nullptr) &&

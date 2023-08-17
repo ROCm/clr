@@ -2667,7 +2667,8 @@ Memory* KernelBlitManager::createView(const Memory& parent, cl_image_format form
   auto parent_dev_image = static_cast<Image*>(parentImage->getDeviceMemory(dev()));
   amd::Image* image = parent_dev_image->FindView(format);
   if (image == nullptr) {
-    image = parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags);
+    image = parentImage->createView(parent.owner()->getContext(), format, &gpu(), 0, flags,
+                                    false, true);
     if (image == nullptr) {
       LogError("[OCL] Fail to allocate view of image object");
       return nullptr;

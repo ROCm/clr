@@ -596,12 +596,13 @@ class Image : public Memory {
                        ) const;
 
   //! Creates a view memory object
-  virtual Image* createView(const Context& context,       //!< Context for a view creation
-                            const Format& format,         //!< The new format for a view
-                            device::VirtualDevice* vDev,  //!< Virtual device object
-                            uint baseMipLevel = 0,        //!< Base mip level for a view
-                            cl_mem_flags flags = 0,       //!< Memory allocation flags
-                            bool createMipmapView = false //!< To create mipmap view based on this image
+  virtual Image* createView(const Context& context,         //!< Context for a view creation
+                            const Format& format,           //!< The new format for a view
+                            device::VirtualDevice* vDev,    //!< Virtual device object
+                            uint baseMipLevel = 0,          //!< Base mip level for a view
+                            cl_mem_flags flags = 0,         //!< Memory allocation flags
+                            bool createMipmapView = false,  //!< To create mipmap view based on this image
+                            bool forceAlloc = false         //!< To bypass deffered alloc
   );
 
   //! Returns the impl for this image.
