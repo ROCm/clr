@@ -64,6 +64,8 @@
 #include "protocols/driverControlServer.h"
 #endif // PAL_GPUOPEN_OCL
 
+extern struct r_debug* _amdgpu_r_debug_ptr;
+
 namespace {
 
 //! Define the mapping from PAL asic revision enumeration values to the
@@ -1142,6 +1144,15 @@ bool Device::initializeHeapResources() {
     if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
       return false;
     }
+#ifdef PAL_DEBUGGER
+    Pal::RuntimeSetup setup;
+    setup.r_debug = reinterpret_cast<uint64_t>(_amdgpu_r_debug_ptr);
+    if (iDev()->RegisterRuntimeState(&setup) != Pal::Result::Success) {
+      LogError("Couldn't register debug state from the loader!");
+      // Note: ignore debug state error, since it's not a critical
+      // error for the execution
+    }
+#endif
 
     heapInitComplete_ = true;
 
@@ -1391,7 +1402,6 @@ void Device::tearDown() {
     delete platformObj_;
     platform_ = nullptr;
   }
-
 #if defined(WITH_COMPILER_LIB)
   if (compiler_ != nullptr) {
     amd::Hsail::CompilerFini(compiler_);
@@ -2595,6 +2605,7 @@ bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& ha
   return true;
 }
 
+// ================================================================================================
 void Device::DestroyExtSemaphore(void* extSemaphore) {
   Pal::IQueueSemaphore* sem = reinterpret_cast<Pal::IQueueSemaphore*>(extSemaphore);
   sem->Destroy();

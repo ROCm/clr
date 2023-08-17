@@ -242,6 +242,14 @@ inline static std::vector<std::string> splitSpaceSeparatedString(char* str) {
   return vec;
 }
 
+inline static std::string GetUriFromMemoryAddress(const void* memory, size_t size) {
+  int pid = amd::Os::getProcessId();
+  std::ostringstream uri_stream;
+  uri_stream << "memory://" << pid << "#offset=0x" << std::hex <<
+    reinterpret_cast<uintptr_t>(memory) << std::dec << "&size=" << size;
+  return uri_stream.str();
+}
+
 bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                  bool internalKernel) {
 #if defined(WITH_COMPILER_LIB)
@@ -256,7 +264,8 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
   code_object.handle = reinterpret_cast<uint64_t>(binary);
 
   hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
-  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
+  auto uri = GetUriFromMemoryAddress(binary, binSize);
+  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr, uri);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
     return false;
@@ -762,8 +771,8 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
   code_object.handle = reinterpret_cast<uint64_t>(binary);
 
   hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
-
-  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr);
+  auto uri = GetUriFromMemoryAddress(binary, binSize);
+  hsa_status_t status = executable_->LoadCodeObject(agent, code_object, nullptr, uri);
   if (status != HSA_STATUS_SUCCESS) {
     LogError("Error: AMD HSA Code Object loading failed.");
     return false;
