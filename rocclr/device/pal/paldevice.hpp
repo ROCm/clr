@@ -231,11 +231,13 @@ class Sampler : public device::Sampler {
 class Device : public NullDevice {
  public:
   struct QueueRecycleInfo : public amd::HeapObject {
-    int counter_;                 //!< Lock usage counter
-    Pal::EngineType engineType_;  //!< Engine type
-    uint32_t index_;              //!< HW queue index for scratch buffer access
-    amd::Monitor queue_lock_;     //!< Queue lock for access
-    QueueRecycleInfo() : counter_(1), engineType_(Pal::EngineTypeCompute), index_(0) {}
+    int counter_;                   //!< Lock usage counter
+    Pal::EngineType engineType_;    //!< Engine type
+    uint32_t index_;                //!< HW queue index for scratch buffer access
+    amd::Monitor queue_lock_;       //!< Queue lock for access
+    AqlPacketMgmt aql_packet_mgmt_; //!< AQL packets management class for debugger support
+    QueueRecycleInfo() : counter_(1), engineType_(Pal::EngineTypeCompute), index_(0),
+          queue_lock_("Queue lock for sharing", true) {}
   };
 
   //! Locks any access to the virtual GPUs

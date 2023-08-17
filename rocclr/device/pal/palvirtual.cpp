@@ -151,7 +151,14 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
       // Create PAL queue object
       if (index < GPU_MAX_HW_QUEUES) {
         Device::QueueRecycleInfo* info = new (qSize) Device::QueueRecycleInfo();
+        if (info == nullptr) {
+          LogError("Could not create QueueRecycleInfo!");
+          return nullptr;
+        }
         addrQ = reinterpret_cast<address>(&info[1]);
+#ifdef PAL_DEBUGGER
+        qCreateInfo.aqlPacketList = info->AqlPacketList();
+#endif
         result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
         if (result == Pal::Result::Success) {
           const_cast<Device&>(gpu.dev()).QueuePool().insert({queue->iQueue_, info});
@@ -183,11 +190,22 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
         gpu.dev().QueuePool().find(queue->iQueue_)->second->counter_++;
       }
       Device::QueueRecycleInfo* info = gpu.dev().QueuePool().find(queue->iQueue_)->second;
+      queue->aql_mgmt_ = &info->aql_packet_mgmt_;
       queue->lock_ = &info->queue_lock_;
       addrQ = reinterpret_cast<address>(&queue[1]);
     } else {
+      Device::QueueRecycleInfo* info = new Device::QueueRecycleInfo();
+      if (info == nullptr) {
+        LogError("Could not create QueueRecycleInfo!");
+        return nullptr;
+      }
+      queue->info_ = info;
+      queue->aql_mgmt_ = &info->aql_packet_mgmt_;
       // Exclusive compute path
       addrQ = reinterpret_cast<address>(&queue[1]);
+#ifdef PAL_DEBUGGER
+      qCreateInfo.aqlPacketList = info->AqlPacketList();
+#endif
       result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
     }
     if (result != Pal::Result::Success) {
@@ -226,6 +244,8 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
 }
 
 VirtualGPU::Queue::~Queue() {
+  delete reinterpret_cast<Device::QueueRecycleInfo*>(info_);
+
   if (nullptr != iQueue_) {
     // Make sure the queues are idle
     // It's unclear why PAL could still have a busy queue
@@ -349,6 +369,8 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
 
 // ================================================================================================
 bool VirtualGPU::Queue::flush() {
+  amd::ScopedLock l(lock_);
+
   if (!gpu_.dev().settings().alwaysResident_ && palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
@@ -398,10 +420,8 @@ bool VirtualGPU::Queue::flush() {
   // Submit command buffer to OS
   Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
-    amd::ScopedLock l(lock_);
     result = gpu_.dev().rgpCaptureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
   } else {
-    amd::ScopedLock l(lock_);
     result = iQueue_->Submit(submitInfo);
   }
   if (Pal::Result::Success != result) {
@@ -475,7 +495,9 @@ bool VirtualGPU::Queue::flush() {
   return true;
 }
 
+// ================================================================================================
 bool VirtualGPU::Queue::waitForEvent(uint id) {
+  amd::ScopedLock l(lock_);
   if (isDone(id)) {
     return true;
   }
@@ -492,7 +514,9 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
   return result;
 }
 
+// ================================================================================================
 bool VirtualGPU::Queue::isDone(uint id) {
+  amd::ScopedLock l(lock_);
   if ((id <= cmbBufIdRetired_) || (id > cmdBufIdCurrent_)) {
     return true;
   }
@@ -512,6 +536,7 @@ bool VirtualGPU::Queue::isDone(uint id) {
   return true;
 }
 
+// ================================================================================================
 void VirtualGPU::Queue::DumpMemoryReferences() const {
   std::fstream dump;
   std::stringstream file_name("ocl_hang_dump.txt");
@@ -1079,6 +1104,14 @@ VirtualGPU::~VirtualGPU() {
   amd::ScopedLock k(dev().lockAsyncOps());
   amd::ScopedLock lock(dev().vgpusAccess());
 
+  // Clear all timestamps, associated with this virtual GPU
+  auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
+  for (uint32_t i = 0; i < AqlPacketMgmt::kAqlPacketsListSize; ++i) {
+    if (mgmt.aql_vgpus_[i] == this) {
+      mgmt.aql_vgpus_[i] = nullptr;
+      mgmt.aql_events_[i].invalidate();
+    }
+  }
   // Destroy RGP trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->FinishRGPTrace(this, true);
@@ -2661,9 +2694,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
 
     uint64_t vmParentWrap = 0;
+    uint32_t aql_index = 0;
     // Program the kernel arguments for the GPU execution
     hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-        *this, kernel, tmpSizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap);
+        *this, kernel, tmpSizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap, &aql_index);
     if (nullptr == aqlPkt) {
       LogError("Couldn't load kernel arguments");
       return false;
@@ -2684,6 +2718,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     dispatchParam.wavesPerSh = (enqueueEvent != nullptr) ? enqueueEvent->profilingInfo().waves_ : 0;
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
+#ifdef PAL_DEBUGGER
+    dispatchParam.aqlPacketIndex = aql_index;
+#endif
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);
@@ -2692,6 +2729,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       LogError("Something is wrong. ID mismatch!\n");
     }
     eventEnd(MainEngine, gpuEvent);
+    AqlPacketUpdateTs(aql_index, gpuEvent);
 
     // Execute scheduler for device enqueue
     if (hsaKernel.dynamicParallelism()) {
@@ -2730,6 +2768,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   return true;
 }
 
+// ================================================================================================
 void VirtualGPU::submitNativeFn(amd::NativeFnCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
