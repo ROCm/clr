@@ -1508,8 +1508,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = dstOrigin[0];
-    copyRegion.imageOffset.y = dstOrigin[1];
-    copyRegion.imageOffset.z = dstOrigin[2];
+    copyRegion.imageOffset.y = img1Darray ? 0 : dstOrigin[1];
+    copyRegion.imageOffset.z = (img1Darray || img2Darray) ? 0 : dstOrigin[2];
     copyRegion.imageExtent.width = size[0];
     copyRegion.imageExtent.height = size[1];
     copyRegion.imageExtent.depth = size[2];
@@ -1533,8 +1533,8 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
-    copyRegion.imageOffset.y = srcOrigin[1];
-    copyRegion.imageOffset.z = srcOrigin[2];
+    copyRegion.imageOffset.y = img1Darray ? 0 : srcOrigin[1];
+    copyRegion.imageOffset.z = (img1Darray || img2Darray) ? 0 : srcOrigin[2];
     copyRegion.imageExtent.width = size[0];
     copyRegion.imageExtent.height = size[1];
     copyRegion.imageExtent.depth = size[2];
