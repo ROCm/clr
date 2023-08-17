@@ -897,3 +897,33 @@ void PlatformState::popExec(ihipExec_t& exec) {
   exec = std::move(hip::tls.exec_stack_.top());
   hip::tls.exec_stack_.pop();
 }
+
+std::shared_ptr<UniqueFD> PlatformState::GetUniqueFileHandle(const std::string& file_path) {
+  amd::ScopedLock lock(ufd_lock_);
+
+  if (ufd_map_.cend() == ufd_map_.find(file_path)) {
+    // Get the file desc and file size from amd::Os API
+    amd::Os::FileDesc fdesc;
+    size_t fsize = 0;
+    if (!amd::Os::GetFileHandle(file_path.c_str(), &fdesc, &fsize)) {
+      return nullptr;
+    }
+    ufd_map_.insert(std::make_pair(file_path, std::make_shared<UniqueFD>(file_path, fdesc, fsize)));
+  }
+
+  // we should have an entry at this time.
+  return ufd_map_[file_path];
+}
+
+bool PlatformState::CloseUniqueFileHandle(const std::shared_ptr<UniqueFD>& ufd) {
+  amd::ScopedLock lock(ufd_lock_);
+
+  // if use_count is 2, then there is 1 entry in the map and the current entry is the last close.
+  if (ufd.use_count() == 2) {
+    ufd_map_.erase(ufd->fpath_);
+    if (!amd::Os::CloseFileHandle(ufd->fdesc_)) {
+      return false;
+    }
+  }
+  return true;
+}

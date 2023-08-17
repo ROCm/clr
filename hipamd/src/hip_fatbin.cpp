@@ -24,6 +24,7 @@ THE SOFTWARE.
 
 #include <unordered_map>
 #include "hip_code_object.hpp"
+#include "hip_platform.hpp"
 
 namespace hip {
 
@@ -50,28 +51,50 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image) : fdesc_(amd:
 
 FatBinaryInfo::~FatBinaryInfo() {
 
-  for (auto* fbd: fatbin_dev_info_) {
-    if (fbd != nullptr) {
-      delete fbd;
+  if (!HIP_USE_RUNTIME_UNBUNDLER) {
+    // Using COMGR Unbundler
+    if (ufd_ && ufd_->fdesc_ > 0) {
+      // Check for ufd_ != nullptr, since sometimes, we never create unique_file_desc.
+      if (ufd_->fsize_ && image_mapped_
+           && !amd::Os::MemoryUnmapFile(image_, ufd_->fsize_)) {
+        LogPrintfError("Cannot unmap file for fdesc: %d fsize: %d", ufd_->fdesc_, ufd_->fsize_);
+        assert(false);
+      }
+      if (!PlatformState::instance().CloseUniqueFileHandle(ufd_)) {
+        LogPrintfError("Cannot close file for fdesc: %d", ufd_->fdesc_);
+        assert(false);
+      }
     }
-  }
 
-  if (fdesc_ > 0) {
-    if (fsize_
-        && (HIP_USE_RUNTIME_UNBUNDLER || image_mapped_)
-        && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
-      guarantee(false, "Cannot unmap file for fdesc: %d fsize: %d \n", fdesc_, fsize_);
-    }
-    if (!amd::Os::CloseFileHandle(fdesc_)) {
-      guarantee(false, "Cannot close file for fdesc: %d \n", fdesc_);
-    }
-  }
+    fname_ = std::string();
+    fdesc_ = amd::Os::FDescInit();
+    fsize_ = 0;
+    image_ = nullptr;
+    uri_ = std::string();
 
-  fname_ = std::string();
-  fdesc_ = amd::Os::FDescInit();
-  fsize_ = 0;
-  image_ = nullptr;
-  uri_ = std::string();
+    if (0 == PlatformState::instance().UfdMapSize()) {
+      LogError("All Unique FDs are closed");
+    }
+
+  } else {
+    // Using Runtime Unbundler
+    if (fdesc_ > 0) {
+      if (fsize_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
+        LogPrintfError("Cannot unmap file for fdesc: %d fsize: %d", fdesc_, fsize_);
+        assert(false);
+      }
+      if (!amd::Os::CloseFileHandle(fdesc_)) {
+        LogPrintfError("Cannot close file for fdesc: %d", fdesc_);
+        assert(false);
+      }
+    }
+
+    fname_ = std::string();
+    fdesc_ = amd::Os::FDescInit();
+    fsize_ = 0;
+    image_ = nullptr;
+    uri_ = std::string();
+  }
 }
 
 void ListAllDeviceWithNoCOFromBundle(const std::unordered_map<std::string,
@@ -108,18 +131,21 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   // COMGR file slice APIs.
   if (fname_.size() > 0) {
     // Get File Handle & size of the file.
-    if (!amd::Os::GetFileHandle(fname_.c_str(), &fdesc_, &fsize_))
+    ufd_ = PlatformState::instance().GetUniqueFileHandle(fname_.c_str());
+    if (ufd_ == nullptr) {
       return hipErrorFileNotFound;
+    }
 
     // If the file name exists but the file size is 0, the something wrong with the file or its path
-    if (fsize_ == 0)
+    if (ufd_->fsize_ == 0) {
       return hipErrorInvalidValue;
+    }
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
     if (image_ == nullptr) {
-      if(!amd::Os::MemoryMapFileDesc(fdesc_, fsize_, foffset_, &image_)) {
+      if(!amd::Os::MemoryMapFileDesc(ufd_->fdesc_, ufd_->fsize_, foffset_, &image_)) {
         LogError("Cannot map the file descriptor");
-        amd::Os::CloseFileHandle(fdesc_);
+        PlatformState::instance().CloseUniqueFileHandle(ufd_);
         return hipErrorInvalidValue;
       }
       image_mapped_ = true;
