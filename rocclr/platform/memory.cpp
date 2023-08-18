@@ -288,7 +288,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
   }
 
   const std::vector<Device*>& devices = context_().devices();
-  if (devices.size() == 1 && devices[0]->info().largeBar_) {
+  if (IS_LINUX && (devices.size() == 1) && devices[0]->info().largeBar_) {
       largeBarSystem_ = 1;
   }
 
