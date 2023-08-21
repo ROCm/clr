@@ -282,48 +282,48 @@ typedef struct dim3 {
 } dim3;
 #endif // !defined(__HIPCC_RTC__)
 
-template <typename F>
-struct __HIP_Coordinates {
-  using R = decltype(F{}(0));
+extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_size(uint);
 
-  struct __X {
+#ifdef __cplusplus
+template <typename F> struct __HIP_Coordinates {
+    using R = decltype(F{}(0));
+
+    struct __X {
     __device__ operator R() const noexcept { return F{}(0); }
     __device__ R operator+=(const R& rhs) { return F{}(0) + rhs; }
-  };
-  struct __Y {
+    };
+    struct __Y {
     __device__ operator R() const noexcept { return F{}(1); }
     __device__ R operator+=(const R& rhs) { return F{}(1) + rhs; }
-  };
-  struct __Z {
+    };
+    struct __Z {
     __device__ operator R() const noexcept { return F{}(2); }
     __device__ R operator+=(const R& rhs) { return F{}(2) + rhs; }
-  };
+    };
 
-  static constexpr __X x{};
-  static constexpr __Y y{};
-  static constexpr __Z z{};
-#ifdef __cplusplus
-  __device__ operator dim3() const { return dim3(x, y, z); }
-#endif
-
-};
-template <typename F>
 #if !defined(_MSC_VER)
-__attribute__((weak))
+    __attribute__((weak))
 #endif
+    __device__ static constexpr __X x{};
+#if !defined(_MSC_VER)
+    __attribute__((weak))
+#endif
+    __device__ static constexpr __Y y{};
+#if !defined(_MSC_VER)
+    __attribute__((weak))
+#endif
+    __device__ static constexpr __Z z{};
+
+    __device__ operator dim3() const { return dim3(x, y, z); }
+};
+
+template <typename F>
 constexpr typename __HIP_Coordinates<F>::__X __HIP_Coordinates<F>::x;
 template <typename F>
-#if !defined(_MSC_VER)
-__attribute__((weak))
-#endif
 constexpr typename __HIP_Coordinates<F>::__Y __HIP_Coordinates<F>::y;
 template <typename F>
-#if !defined(_MSC_VER)
-__attribute__((weak))
-#endif
 constexpr typename __HIP_Coordinates<F>::__Z __HIP_Coordinates<F>::z;
 
-extern "C" __device__ __attribute__((const)) size_t __ockl_get_global_size(uint);
 inline
 __device__
 std::uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__X,
@@ -365,6 +365,7 @@ static constexpr __HIP_Coordinates<__HIP_BlockDim> blockDim{};
 static constexpr __HIP_Coordinates<__HIP_BlockIdx> blockIdx{};
 static constexpr __HIP_Coordinates<__HIP_GridDim> gridDim{};
 static constexpr __HIP_Coordinates<__HIP_ThreadIdx> threadIdx{};
+#endif // __cplusplus
 
 extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_id(uint);
 #define hipThreadIdx_x (__ockl_get_local_id(0))
