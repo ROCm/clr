@@ -285,7 +285,7 @@ std::vector<Node> Graph::GetRootNodes() const {
   for (auto entry : vertices_) {
     if (entry->GetInDegree() == 0) {
       roots.push_back(entry);
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] root node: %s(%p)\n",
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Root node: %s(%p)\n",
               GetGraphNodeTypeString(entry->GetType()), entry);
     }
   }
@@ -388,7 +388,7 @@ void Graph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
   for (size_t i = 0; i < parallelLists.size(); i++) {
     for (size_t j = 0; j < parallelLists[i].size(); j++) {
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] list %d - %s(%p)\n", i + 1,
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] List %d - %s(%p)\n", i + 1,
               GetGraphNodeTypeString(parallelLists[i][j]->GetType()), parallelLists[i][j]);
     }
   }

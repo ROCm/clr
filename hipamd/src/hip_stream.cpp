@@ -511,9 +511,6 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
 
 // ================================================================================================
 hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsigned int flags) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
-          event);
   hipError_t status = hipSuccess;
   if (event == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidHandle;
@@ -523,6 +520,9 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
 
   if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
+    ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] Current capture node StreamWaitEvent on stream : %p, Event %p", stream,
+          event);
     if (waitStream == nullptr) {
       return hipErrorInvalidHandle;
     }

@@ -383,8 +383,6 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
 }
 
 hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node EventRecord on stream : %p, Event %p", stream, event);
   hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
@@ -398,6 +396,8 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   hip::Stream* hip_stream = hip::getStream(stream);
   e->SetCaptureStream(stream);
   if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+    ClPrint(amd::LOG_INFO, amd::LOG_API,
+        "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
     if (!lastCapturedNodes.empty()) {
