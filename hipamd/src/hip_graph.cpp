@@ -2232,6 +2232,15 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
   }
   for (std::vector<hip::GraphNode*>::size_type i = 0; i != newGraphNodes.size(); i++) {
     if (newGraphNodes[i]->GetType() == oldGraphExecNodes[i]->GetType()) {
+      if (newGraphNodes[i]->GetType() != hipGraphNodeTypeHost &&
+          newGraphNodes[i]->GetType() != hipGraphNodeTypeEmpty) {
+        if (newGraphNodes[i]->GetParentGraph()->device_ !=
+            oldGraphExecNodes[i]->GetParentGraph()->device_) {
+          *updateResult_out = hipGraphExecUpdateErrorUnsupportedFunctionChange;
+          *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
+          return hipErrorGraphExecUpdateFailure;
+        }
+      }
       hipError_t status = oldGraphExecNodes[i]->SetParams(newGraphNodes[i]);
       if (status != hipSuccess) {
         *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
