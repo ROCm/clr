@@ -35,6 +35,11 @@
 #include "hip_mempool_impl.hpp"
 #include "hip_vm.hpp"
 
+typedef struct ihipExtKernelEvents {
+  hipEvent_t startEvent_;
+  hipEvent_t stopEvent_;
+} ihipExtKernelEvents;
+
 namespace hip {
 struct Graph;
 struct GraphNode;
@@ -741,6 +746,7 @@ class GraphKernelNode : public GraphNode {
   unsigned int numParams_;
   hipKernelNodeAttrValue kernelAttr_;
   unsigned int kernelAttrInUse_;
+  ihipExtKernelEvents kernelEvents_;
 
  public:
     void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
@@ -823,8 +829,6 @@ class GraphKernelNode : public GraphNode {
       // capturehipExtModuleLaunchKernel() mixes host function with hipFunction_t, so we convert
       // here. If it's wrong, later functions will fail
       func = static_cast<hipFunction_t>(params.func);
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-              "[hipGraph] capturehipExtModuleLaunchKernel() should be called", status);
     } else if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] getStatFunc() failed with err %d", status);
     }
@@ -887,9 +891,13 @@ class GraphKernelNode : public GraphNode {
     return hipSuccess;
   }
 
-  GraphKernelNode(const hipKernelNodeParams* pNodeParams)
+  GraphKernelNode(const hipKernelNodeParams* pNodeParams, const ihipExtKernelEvents* pEvents)
       : GraphNode(hipGraphNodeTypeKernel, "bold", "octagon", "KERNEL") {
     kernelParams_ = *pNodeParams;
+    kernelEvents_ = { 0 };
+    if (pEvents != nullptr) {
+      kernelEvents_ = *pEvents;
+    }
     if (copyParams(pNodeParams) != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to copy params");
     }
@@ -923,6 +931,7 @@ class GraphKernelNode : public GraphNode {
 
   GraphKernelNode(const GraphKernelNode& rhs) : GraphNode(rhs) {
     kernelParams_ = rhs.kernelParams_;
+    kernelEvents_ = rhs.kernelEvents_;
     hipError_t status = copyParams(&rhs.kernelParams_);
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to allocate memory to copy params");
@@ -957,8 +966,8 @@ class GraphKernelNode : public GraphNode {
         kernelParams_.gridDim.y * kernelParams_.blockDim.y,
         kernelParams_.gridDim.z * kernelParams_.blockDim.z, kernelParams_.blockDim.x,
         kernelParams_.blockDim.y, kernelParams_.blockDim.z, kernelParams_.sharedMemBytes,
-        stream, kernelParams_.kernelParams, kernelParams_.extra, nullptr, nullptr, 0, 0, 0, 0, 0,
-        0, 0);
+        stream, kernelParams_.kernelParams, kernelParams_.extra, kernelEvents_.startEvent_,
+        kernelEvents_.stopEvent_, 0, 0, 0, 0, 0, 0, 0);
     commands_.emplace_back(command);
     return status;
   }
@@ -1472,7 +1481,7 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
     amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
     if (dstMemory == nullptr && kind != hipMemcpyDeviceToHost && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
-    } else if (dstMemory != nullptr && dstMemory->getMemFlags() == 0 && 
+    } else if (dstMemory != nullptr && dstMemory->getMemFlags() == 0 &&
                kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
     } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyHostToDevice) {
@@ -1766,7 +1775,7 @@ class GraphEventRecordNode : public GraphNode {
       hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] enqueue event record command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue event record command failed for node %p - status %d\n", this,
                 status);
       }
     }
@@ -1818,7 +1827,7 @@ class GraphEventWaitNode : public GraphNode {
       hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] enqueue stream wait command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue stream wait command failed for node %p - status %d\n", this,
                 status);
       }
       commands_[0]->release();
