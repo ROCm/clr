@@ -24,6 +24,10 @@ THE SOFTWARE.
 
 hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 
+hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy);
+
+hipError_t ihipDrvMemcpy3DParamValidate(const HIP_MEMCPY3D* pCopy);
+
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
 
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
@@ -31,7 +35,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
 
 void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, hip::Stream& stream);
 
-bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind);
+bool IsHtoHMemcpy(void* dst, const void* src);
 
 hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
                                      uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
@@ -55,6 +59,9 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
 
 hipError_t ihipMemcpy3DCommand(amd::Command*& command, const hipMemcpy3DParms* p,
                                hip::Stream* stream);
+
+hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3D* pCopy,
+                                       hip::Stream* stream);
 
 hipError_t ihipMemsetCommand(std::vector<amd::Command*>& commands, void* dst, int64_t value,
                              size_t valueSize, size_t sizeBytes, hip::Stream* stream);
