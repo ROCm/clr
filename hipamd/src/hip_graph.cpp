@@ -111,6 +111,23 @@ hipError_t ihipGraphAddMemcpyNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   return status;
 }
 
+hipError_t ihipDrvGraphAddMemcpyNode(hip::GraphNode** pGraphNode, hip::Graph* graph,
+                                     hip::GraphNode* const* pDependencies, size_t numDependencies,
+                                     const HIP_MEMCPY3D* pCopyParams, hipCtx_t ctx,
+                                     bool capture = true) {
+  if (pGraphNode == nullptr || graph == nullptr ||
+      (numDependencies > 0 && pDependencies == nullptr) || pCopyParams == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  hipError_t status = ihipDrvMemcpy3DParamValidate(pCopyParams);
+  if (status != hipSuccess) {
+    return status;
+  }
+  *pGraphNode = new hip::GraphDrvMemcpyNode(pCopyParams);
+  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
+  return status;
+}
+
 hipError_t ihipGraphAddMemcpyNode1D(hip::GraphNode** pGraphNode, hip::Graph* graph,
                                     hip::GraphNode* const* pDependencies, size_t numDependencies,
                                     void* dst, const void* src, size_t count, hipMemcpyKind kind,
@@ -1033,6 +1050,24 @@ hipError_t hipGraphAddMemcpyNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies, pCopyParams,
       false);
   *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipDrvGraphAddMemcpyNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                    const hipGraphNode_t* dependencies, size_t numDependencies,
+                                    const HIP_MEMCPY3D* copyParams, hipCtx_t ctx) {
+  HIP_INIT_API(hipDrvGraphAddMemcpyNode, phGraphNode, hGraph, dependencies, numDependencies,
+               copyParams, ctx);
+  if (phGraphNode == nullptr || hGraph == nullptr ||
+      (numDependencies > 0 && dependencies == nullptr) || ctx == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* node;
+  hipError_t status = ihipDrvGraphAddMemcpyNode(
+    &node, reinterpret_cast<hip::Graph*>(hGraph),
+    reinterpret_cast<hip::GraphNode* const*>(dependencies),
+    numDependencies, copyParams, ctx, false);
+  *phGraphNode = reinterpret_cast<hipGraphNode_t>(node);
   HIP_RETURN(status);
 }
 

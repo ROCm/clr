@@ -102,158 +102,16 @@ hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t 
 }
 
 hipError_t GraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) {
-  hipError_t status = ihipMemcpy3D_validate(pNodeParams);
+  hipError_t status;
+  status = ihipMemcpy3D_validate(pNodeParams);
   if (status != hipSuccess) {
     return status;
   }
-  size_t offset = 0;
+
   const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pNodeParams);
-  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
-  // (unified virtual address space) base address of the source data and the bytes per row to apply.
-  // {src/dst}Array is ignored.
-  hipMemoryType srcMemoryType = pCopy.srcMemoryType;
-  if (srcMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy.srcDevice, offset);
-    srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    if (srcMemoryType == hipMemoryTypeHost) {
-      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
-      // memory.
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcHost = pCopy.srcDevice;
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
-    }
-  }
-  offset = 0;
-  hipMemoryType dstMemoryType = pCopy.dstMemoryType;
-  if (dstMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy.dstDevice, offset);
-    dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    if (dstMemoryType == hipMemoryTypeHost) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstHost = pCopy.dstDevice;
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
-    }
-  }
-  offset = 0;
-  // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
-  // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
-  if (srcMemoryType == hipMemoryTypeHost) {
-    srcMemoryType = getMemoryObject(pCopy.srcHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-
-    if (srcMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
-    }
-  }
-  offset = 0;
-  if (dstMemoryType == hipMemoryTypeHost) {
-    dstMemoryType = getMemoryObject(pCopy.dstHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-
-    if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
-    }
-  }
-
-  amd::Coord3D srcOrigin = {pCopy.srcXInBytes, pCopy.srcY, pCopy.srcZ};
-  amd::Coord3D dstOrigin = {pCopy.dstXInBytes, pCopy.dstY, pCopy.dstZ};
-  amd::Coord3D copyRegion = {pCopy.WidthInBytes, pCopy.Height, pCopy.Depth};
-
-  if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Host to Device.
-
-    amd::Memory* dstMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-
-    status =
-        ihipMemcpyHtoDValidate(pCopy.srcHost, pCopy.dstDevice, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
-                               pCopy.dstPitch * pCopy.dstHeight, dstMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeHost)) {
-    // Device to Host.
-    amd::Memory* srcMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-    status =
-        ihipMemcpyDtoHValidate(pCopy.srcDevice, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
-                               pCopy.dstPitch * pCopy.dstHeight, srcMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Device to Device.
-    amd::Memory* srcMemory;
-    amd::Memory* dstMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-
-    status = ihipMemcpyDtoDValidate(pCopy.srcDevice, pCopy.dstDevice, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
-                                    pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcMemory,
-                                    dstMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
-    amd::Image* dstImage;
-    size_t start = 0;
-    status =
-        ihipMemcpyHtoAValidate(pCopy.srcHost, pCopy.dstArray, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, dstImage, start);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
-    // Image to Host.
-    amd::Image* srcImage;
-    size_t start = 0;
-
-    status =
-        ihipMemcpyAtoHValidate(pCopy.srcArray, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcImage, start);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeArray)) {
-    // Device to Image.
-    amd::Image* dstImage;
-    amd::Memory* srcMemory;
-    amd::BufferRect dstRect;
-    amd::BufferRect srcRect;
-    status = ihipMemcpyDtoAValidate(pCopy.srcDevice, pCopy.dstArray, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
-                                    dstImage, srcMemory, dstRect, srcRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Image to Device.
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-    amd::Memory* dstMemory;
-    amd::Image* srcImage;
-    status = ihipMemcpyAtoDValidate(pCopy.srcArray, pCopy.dstDevice, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight,
-                                    dstMemory, srcImage, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeArray)) {
-    amd::Image* srcImage;
-    amd::Image* dstImage;
-
-    status = ihipMemcpyAtoAValidate(pCopy.srcArray, pCopy.dstArray, srcOrigin, dstOrigin,
-                                    copyRegion, srcImage, dstImage);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else {
-    return hipErrorInvalidValue;
+  status = ihipDrvMemcpy3D_validate(&pCopy);
+  if (status != hipSuccess) {
+    return status;
   }
   return hipSuccess;
 }

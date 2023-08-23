@@ -523,6 +523,7 @@ global:
     hipArrayGetInfo;
     hipArrayGetDescriptor;
     hipArray3DGetDescriptor;
+    hipDrvGraphAddMemcpyNode;
 local:
     *;
 } hip_5.5;

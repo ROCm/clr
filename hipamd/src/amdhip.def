@@ -445,3 +445,4 @@ hipGraphAddMemAllocNode
 hipGraphMemAllocNodeGetParams
 hipGraphAddMemFreeNode
 hipGraphMemFreeNodeGetParams
+hipDrvGraphAddMemcpyNode
