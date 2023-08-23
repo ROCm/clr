@@ -490,7 +490,7 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
       // Check if skip wait optimization is enabled. It will try to predict the same engine in ROCr
       // and ignore the signal wait, relying on in-order engine execution
       const Settings& settings = gpu_.dev().settings();
-      if (!settings.skip_copy_sync_ && (engine != HwQueueEngine::Compute)) {
+      if (engine != HwQueueEngine::Compute) {
         explicit_wait = true;
       }
     }

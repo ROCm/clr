@@ -70,19 +70,17 @@ class Settings : public device::Settings {
       uint gfx10Plus_ : 1;              //!< gfx10 and post gfx10 features
       uint threadTraceEnable_ : 1;      //!< Thread trace enable
       uint linearPersistentImage_ : 1;  //!< Allocates linear images in persistent
-      uint useSingleScratch_ : 1;       //!< Allocates single scratch per device
       uint svmAtomics_ : 1;             //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;     //!< SVM fine grain system support
       uint useDeviceQueue_ : 1;         //!< Submit to separate device queue
       uint sdamPageFaultWar_ : 1;       //!< SDMA page fault workaround
       uint rgpSqttWaitIdle_ : 1;        //!< Wait for idle after SQTT trace
       uint rgpSqttForceDisable_ : 1;    //!< Disables SQTT
-      uint splitSizeForWin7_ : 1;       //!< DMA flush split size for Win 7
       uint enableHwP2P_ : 1;            //!< Forces HW P2P path for testing
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint disableSdma_ : 1;            //!< Disable SDMA support
       uint alwaysResident_ : 1;         //!< Make resources resident at allocation time
-      uint reserved_ : 7;
+      uint reserved_ : 9;
     };
     uint value_;
   };
@@ -92,9 +90,6 @@ class Settings : public device::Settings {
   uint hwLDSSize_;               //!< HW local data store size
   uint maxWorkGroupSize_;        //!< Requested workgroup size for this device
   uint preferredWorkGroupSize_;  //!< Requested preferred workgroup size for this device
-  uint workloadSplitSize_;       //!< Workload split size
-  uint minWorkloadTime_;         //!< Minimal workload time in 0.1 ms
-  uint maxWorkloadTime_;         //!< Maximum workload time in 0.1 ms
   uint blitEngine_;              //!< Blit engine type
   uint cacheLineSize_;           //!< Cache line size in bytes
   uint cacheSize_;               //!< L1 cache size in bytes

@@ -300,7 +300,7 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
                                nullptr,
                                nullptr,
                                nullptr,
-                               AMD_OCL_SC_LIB};
+                               nullptr};
     // Initialize the compiler handle
     acl_error error;
     compiler_ = amd::Hsail::CompilerInit(&opts, &error);
@@ -1029,7 +1029,7 @@ bool Device::create(Pal::IDevice* device) {
                                nullptr,
                                nullptr,
                                nullptr,
-                               AMD_OCL_SC_LIB};
+                               nullptr};
     // Initialize the compiler handle
     acl_error error;
     compiler_ = amd::Hsail::CompilerInit(&opts, &error);
