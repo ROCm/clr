@@ -2812,6 +2812,7 @@ void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
 
   if (cmd.semaphoreCmd() ==
       amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE) {
+    flushDMA(MainEngine);
     queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
                                                        cmd.fence());
   } else {
