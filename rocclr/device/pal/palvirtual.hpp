@@ -290,36 +290,6 @@ class VirtualGPU : public device::VirtualDevice {
     size_t maxMemObjectsInQueue_;     //!< Maximum number of mem objects in the queue
   };
 
-  class DmaFlushMgmt : public amd::EmbeddedObject {
-   public:
-    DmaFlushMgmt(const Device& dev);
-
-    // Resets DMA command buffer workload
-    void resetCbWorkload(const Device& dev);
-
-    // Finds split size for the current dispatch
-    void findSplitSize(const Device& dev,  //!< GPU device object
-                       uint64_t threads,   //!< Total number of execution threads
-                       uint instructions   //!< Number of ALU instructions
-    );
-
-    // Returns TRUE if DMA command buffer is ready for a flush
-    bool isCbReady(VirtualGPU& gpu,   //!< Virtual GPU object
-                   uint64_t threads,  //!< Total number of execution threads
-                   uint instructions  //!< Number of ALU instructions
-    );
-
-    // Returns dispatch split size
-    uint dispatchSplitSize() const { return dispatchSplitSize_; }
-
-   private:
-    uint64_t maxDispatchWorkload_;  //!< Maximum number of operations for a single dispatch
-    uint64_t maxCbWorkload_;        //!< Maximum number of operations for DMA command buffer
-    uint64_t cbWorkload_;           //!< Current number of operations in DMA command buffer
-    uint aluCnt_;                   //!< All ALUs on the chip
-    uint dispatchSplitSize_;        //!< Dispath split size in elements
-  };
-
  public:
   VirtualGPU(Device& device);
   //! Creates virtual gpu object
@@ -469,9 +439,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns hsaQueueMem_
   const Memory* hsaQueueMem() const { return hsaQueueMem_; }
-
-  //! Returns DMA flush management structure
-  const DmaFlushMgmt& dmaFlushMgmt() const { return dmaFlushMgmt_; }
 
   //! Returns the HW ring used on this virtual device
   uint hwRing() const { return hwRing_; }
@@ -694,8 +661,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   TimeStampCache* tsCache_;            //!< TimeStamp cache
   MemoryDependency memoryDependency_;  //!< Memory dependency class
-
-  DmaFlushMgmt dmaFlushMgmt_;  //!< DMA flush management
 
   std::vector<amd::Memory*> pinnedMems_;  //!< Pinned memory list
 

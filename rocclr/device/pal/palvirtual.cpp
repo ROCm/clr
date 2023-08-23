@@ -697,61 +697,6 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
   }
 }
 
-VirtualGPU::DmaFlushMgmt::DmaFlushMgmt(const Device& dev) : cbWorkload_(0), dispatchSplitSize_(0) {
-  aluCnt_ = dev.properties().gfxipProperties.shaderCore.numSimdsPerCu * dev.info().simdWidth_ *
-      dev.info().maxComputeUnits_;
-  maxDispatchWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
-      // find time in us
-      dev.settings().maxWorkloadTime_ * aluCnt_;
-  resetCbWorkload(dev);
-}
-
-void VirtualGPU::DmaFlushMgmt::resetCbWorkload(const Device& dev) {
-  cbWorkload_ = 0;
-  maxCbWorkload_ = static_cast<uint64_t>(dev.info().maxEngineClockFrequency_) *
-      // find time in us
-      dev.settings().minWorkloadTime_ * aluCnt_;
-}
-
-void VirtualGPU::DmaFlushMgmt::findSplitSize(const Device& dev, uint64_t threads,
-                                             uint instructions) {
-  if (!dev.settings().splitSizeForWin7_) {
-    dispatchSplitSize_ = 0;
-    return;
-  }
-
-  uint64_t workload = threads * instructions;
-  if (maxDispatchWorkload_ < workload) {
-    dispatchSplitSize_ = static_cast<uint>(maxDispatchWorkload_ / instructions);
-    uint fullLoad = dev.info().maxComputeUnits_ * dev.info().preferredWorkGroupSize_;
-    if ((dispatchSplitSize_ % fullLoad) != 0) {
-      dispatchSplitSize_ = (dispatchSplitSize_ / fullLoad + 1) * fullLoad;
-    }
-  } else {
-    dispatchSplitSize_ =
-        (threads > dev.settings().workloadSplitSize_) ? dev.settings().workloadSplitSize_ : 0;
-  }
-}
-
-bool VirtualGPU::DmaFlushMgmt::isCbReady(VirtualGPU& gpu, uint64_t threads, uint instructions) {
-  bool cbReady = false;
-  uint64_t workload = amd::alignUp(threads, 4 * aluCnt_) * instructions;
-  // Add current workload to the overall workload in the current DMA
-  cbWorkload_ += workload;
-  // Did it exceed maximum?
-  if (cbWorkload_ > maxCbWorkload_) {
-    // Reset DMA workload
-    cbWorkload_ = 0;
-    // Increase workload of the next DMA buffer by 50%
-    maxCbWorkload_ = maxCbWorkload_ * 3 / 2;
-    if (maxCbWorkload_ > maxDispatchWorkload_) {
-      maxCbWorkload_ = maxDispatchWorkload_;
-    }
-    cbReady = true;
-  }
-  return cbReady;
-}
-
 void VirtualGPU::addPinnedMem(amd::Memory* mem) {
   if (nullptr == findPinnedMem(mem->getHostMem(), mem->getSize())) {
     if (pinnedMems_.size() > 7) {
@@ -897,7 +842,6 @@ VirtualGPU::VirtualGPU(Device& device)
       gpuDevice_(static_cast<Device&>(device)),
       printfDbgHSA_(nullptr),
       tsCache_(nullptr),
-      dmaFlushMgmt_(device),
       managedBuffer_(*this, device.settings().stagedXferSize_ + 32 * Ki),
       writeBuffer_(device, managedBuffer_, device.settings().stagedXferSize_),
       hwRing_(0),
@@ -931,11 +875,6 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   // Resize the list of device resources always,
   // because destructor calls eraseResourceList() even if create() failed
   dev().resizeResoureList(index());
-
-  if (index() >= GPU_MAX_COMMAND_QUEUES) {
-    // Cap the maximum number of concurrent Virtual GPUs
-    return false;
-  }
 
   // Virtual GPU will have profiling enabled
   state_.profiling_ = profiling;
@@ -2632,16 +2571,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
   // Add ISA memory object to the resource tracking list
   AddKernel(kernel);
 
-  bool needFlush = false;
-  // Avoid flushing when PerfCounter is enabled, to make sure PerfStart/dispatch/PerfEnd
-  // are in the same cmdBuffer
-  if (!state_.perfCounterEnabled_) {
-    dmaFlushMgmt_.findSplitSize(dev(), sizes.global().product(), hsaKernel.aqlCodeSize());
-    if (dmaFlushMgmt().dispatchSplitSize() != 0) {
-      needFlush = true;
-    }
-  }
-
   // Check if it is blit kernel. If it is, then check if split is needed.
   if (hsaKernel.isInternalKernel()) {
     // Calculate new group size for each submission
@@ -2737,7 +2666,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
 
     // Update the global GPU event
-    setGpuEvent(gpuEvent, needFlush);
+    constexpr bool kNeedFLush = false;
+    setGpuEvent(gpuEvent, kNeedFLush);
 
     if (printfEnabled && !printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
       LogError("Couldn't read printf data from the buffer!\n");
@@ -2798,10 +2728,6 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     // Event should be in the current command batch
     if (!foundEvent) {
       state_.forceWait_ = true;
-    }
-    // If we don't have any more batches, then assume GPU is idle
-    else if (cbQueue_.empty()) {
-      dmaFlushMgmt_.resetCbWorkload(dev());
     }
   }
 }
@@ -3325,11 +3251,8 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
       cb->lastTS_->value(&startTimeStampGPU, &endTimeStampGPU);
 
       uint64_t endTimeStampCPU = amd::Os::timeNanos();
-      // Make sure the command batch has a valid GPU TS
-      if (!GPU_RAW_TIMESTAMP) {
-        // Adjust the base time by the execution time
-        readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
-      }
+      // Adjust the base time by the execution time
+      readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
     }
   }
 }
