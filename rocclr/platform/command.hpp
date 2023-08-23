@@ -1223,7 +1223,8 @@ class ExternalSemaphoreCmd : public Command {
  public:
   ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, uint64_t fence,
                        ExternalSemaphoreCmdType cmd_type)
-      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
+      : Command::Command(queue, CL_COMMAND_USER, nullWaitList, cmd_type == COMMAND_SIGNAL_EXTSEMAPHORE ? 1 : 0),
+        sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
 
   virtual void submit(device::VirtualDevice& device) {
     device.submitExternalSemaphoreCmd(*this);
