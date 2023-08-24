@@ -101,10 +101,6 @@ uint64_t Event::recordProfilingInfo(int32_t status, uint64_t timeStamp) {
       break;
     default:
       profilingInfo_.end_ = timeStamp;
-      if (profilingInfo_.callback_ != nullptr) {
-        profilingInfo_.callback_->callback(timeStamp - profilingInfo_.start_,
-            profilingInfo_.waves_);
-      }
       break;
   }
   return timeStamp;
@@ -429,15 +425,12 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
     firstDevice_(firstDevice) {
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
-  profilingInfo_.setCallback(devKernel->getProfilingCallback(
-    queue.vdev()), devKernel->getWavesPerSH(queue.vdev()));
   if (cooperativeGroups()) {
     setNumWorkgroups();
   }
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
-    profilingInfo_.callback_ = nullptr;
     profilingInfo_.marker_ts_ = true;
   }
   kernel_.retain();

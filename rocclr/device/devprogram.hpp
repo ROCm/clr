@@ -26,7 +26,6 @@
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
-#include "devwavelimiter.hpp"
 
 #if defined(USE_COMGR_LIBRARY)
 #include "amd_comgr/amd_comgr.h"

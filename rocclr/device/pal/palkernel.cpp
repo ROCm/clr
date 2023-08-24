@@ -224,8 +224,6 @@ bool HSAILKernel::init() {
     return false;
   }
 
-  waveLimiter_.enable();
-
   size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
   error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
                                 openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,

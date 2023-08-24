@@ -26,7 +26,6 @@
 #include "platform/context.hpp"
 #include "platform/object.hpp"
 #include "platform/memory.hpp"
-#include "devwavelimiter.hpp"
 
 namespace amd {
 class Device;
@@ -435,16 +434,6 @@ class Kernel : public amd::HeapObject {
 
   size_t getWorkGroupSizeHint(int dim) const { return workGroupInfo_.compileSizeHint_[dim]; }
 
-  //! Get profiling callback object
-  amd::ProfilingCallback* getProfilingCallback(const device::VirtualDevice* vdev) {
-    return waveLimiter_.getProfilingCallback(vdev);
-  };
-
-  //! Get waves per shader array to be used for kernel execution.
-  uint getWavesPerSH(const device::VirtualDevice* vdev) const {
-    return waveLimiter_.getWavesPerSH(vdev);
-  };
-
   //! Returns GPU device object, associated with this kernel
   const amd::Device& device() const { return dev_; }
 
@@ -567,7 +556,6 @@ class Kernel : public amd::HeapObject {
   amd::KernelSignature* signature_; //!< kernel signature
   std::string buildLog_;            //!< build log
   std::vector<PrintfInfo> printf_;  //!< Format strings for GPU printf support
-  WaveLimiterManager waveLimiter_;  //!< adaptively control number of waves
   std::string runtimeHandle_;       //!< Runtime handle for context loader
 
   uint64_t kernelCodeHandle_ = 0;   //!< Kernel code handle (aka amd_kernel_code_t)

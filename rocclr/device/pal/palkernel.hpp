@@ -30,7 +30,6 @@
 #include "device/pal/palvirtual.hpp"
 #include "amd_hsa_kernel_code.h"
 #include "device/pal/palprintf.hpp"
-#include "device/devwavelimiter.hpp"
 #include "hsa.h"
 
 namespace amd {
