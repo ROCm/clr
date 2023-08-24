@@ -311,7 +311,6 @@ class VirtualGPU : public device::VirtualDevice {
       const amd::Kernel& kernel,           //!< Kernel for execution
       const_address parameters,            //!< Parameters for the kernel
       bool nativeMem = true,               //!< Native memory objects
-      amd::Event* enqueueEvent = nullptr,  //!< Event provided in the enqueue kernel command
       uint32_t sharedMemBytes = 0,         //!< Shared memory size
       bool cooperativeGroups = false       //!< TRUE if cooperative groups mode is required
   );

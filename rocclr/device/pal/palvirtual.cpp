@@ -2473,8 +2473,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
-                                     &vcmd.event(), vcmd.sharedMemBytes(),
-                                     vcmd.cooperativeGroups())) {
+                                     vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -2489,7 +2488,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     profilingBegin(vcmd);
 
     // Submit kernel to HW
-    if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false, &vcmd.event(),
+    if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
                               vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
@@ -2499,9 +2498,9 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 }
 
 // ================================================================================================
-bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const amd::Kernel& kernel,
-                                      const_address parameters, bool nativeMem,
-                                      amd::Event* enqueueEvent, uint32_t sharedMemBytes,
+bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
+                                      const amd::Kernel& kernel, const_address parameters,
+                                      bool nativeMem, uint32_t sharedMemBytes,
                                       bool cooperativeGroup) {
   size_t newOffset[3] = {0, 0, 0};
   size_t newGlobalSize[3] = {0, 0, 0};
@@ -2648,7 +2647,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    dispatchParam.wavesPerSh = (enqueueEvent != nullptr) ? enqueueEvent->profilingInfo().waves_ : 0;
+    dispatchParam.wavesPerSh = 0;
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
 #ifdef PAL_DEBUGGER

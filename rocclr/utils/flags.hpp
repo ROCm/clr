@@ -118,8 +118,6 @@ release(uint, OCL_SET_SVM_SIZE, 4*16384,                                      \
         "set SVM space size for discrete GPU")                                \
 release(uint, GPU_WAVES_PER_SIMD, 0,                                          \
         "Force the number of waves per SIMD (1-10)")                          \
-release(bool, GPU_WAVE_LIMIT_ENABLE, false,                                   \
-        "1 = Enable adaptive wave limiter")                                   \
 release(bool, OCL_STUB_PROGRAMS, false,                                       \
         "1 = Enables OCL programs stubing")                                   \
 release(bool, GPU_ANALYZE_HANG, false,                                        \
@@ -128,16 +126,6 @@ release(uint, GPU_MAX_REMOTE_MEM_SIZE, 2,                                     \
         "Maximum size (in Ki) that allows device memory substitution with system") \
 release(bool, GPU_ADD_HBCC_SIZE, false,                                        \
         "Add HBCC size to the reported device memory")                        \
-release_on_stg(uint, GPU_WAVE_LIMIT_CU_PER_SH, 0,                             \
-        "Assume the number of CU per SH for wave limiter")                    \
-release_on_stg(uint, GPU_WAVE_LIMIT_MAX_WAVE, 10,                             \
-        "Set maximum waves per SIMD to try for wave limiter")                 \
-release_on_stg(uint, GPU_WAVE_LIMIT_RUN, 20,                                  \
-        "Set running factor for wave limiter")                                \
-release_on_stg(cstring, GPU_WAVE_LIMIT_DUMP, "",                              \
-        "File path prefix for dumping wave limiter output")                   \
-release_on_stg(cstring, GPU_WAVE_LIMIT_TRACE, "",                             \
-        "File path prefix for tracing wave limiter")                          \
 release(bool, PAL_DISABLE_SDMA, false,                                        \
         "1 = Disable SDMA for PAL")                                           \
 release(uint, PAL_RGP_DISP_COUNT, 10000,                                      \
