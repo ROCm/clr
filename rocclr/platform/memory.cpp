@@ -94,6 +94,7 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       vDev_(NULL),
       mapCount_(0),
       svmHostAddress_(svmPtr),
+      resOffset_(0),
       flagsEx_(0),
       lockMemoryOps_("Memory Ops Lock", true) {
   svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
@@ -117,6 +118,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       vDev_(NULL),
       mapCount_(0),
       svmHostAddress_(parent.getSvmPtr()),
+      resOffset_(0),
       flagsEx_(0),
       lockMemoryOps_("Memory Ops Lock", true) {
   svmPtrCommited_ = parent.isSvmPtrCommited();
@@ -591,6 +593,7 @@ Image::Image(const Format& format, Image& parent, uint baseMipLevel, cl_mem_flag
     size_ = getWidth() * getHeight() * parent.getDepth() * format.getElementSize();
   }
   initDimension();
+  image_view_ = true;
 }
 
 Image::Image(Context& context, Type type, Flags flags, const Format& format, size_t width,

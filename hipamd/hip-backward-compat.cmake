@@ -23,6 +23,7 @@ set(HIP_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 set(HIP_WRAPPER_DIR ${HIP_BUILD_DIR}/wrapper_dir)
 set(HIP_WRAPPER_INC_DIR ${HIP_WRAPPER_DIR}/include/hip)
 set(HIP_WRAPPER_BIN_DIR ${HIP_WRAPPER_DIR}/bin)
+set(HIP_WRAPPER_DATA_DIR ${HIP_WRAPPER_DIR}/share)
 set(HIP_WRAPPER_LIB_DIR ${HIP_WRAPPER_DIR}/lib)
 set(HIP_WRAPPER_CMAKE_DIR ${HIP_WRAPPER_DIR}/cmake)
 set(HIP_WRAPPER_FINDHIP_DIR ${HIP_WRAPPER_DIR}/FindHIP)
@@ -109,8 +110,6 @@ function(create_binary_symlink)
   file(MAKE_DIRECTORY ${HIP_WRAPPER_BIN_DIR})
   #get all  binaries
   file(GLOB binary_files ${HIP_SRC_BIN_DIR}/*)
-  #Add .hipVersion to binary list
-  set(binary_files "${binary_files}" ".hipVersion")
   foreach(binary_file ${binary_files})
     get_filename_component(file_name ${binary_file} NAME)
     add_custom_target(link_${file_name} ALL
@@ -166,7 +165,7 @@ function(create_cmake_symlink)
 
   #create symlink to hip-lang
   file(MAKE_DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang)
-  file(GLOB config_files ${HIP_BUILD_DIR}/src/hip-lang-config*)
+  file(GLOB config_files ${HIP_BUILD_DIR}/hip-lang-config*)
   foreach(config_name ${config_files})
     get_filename_component(file_name ${config_name} NAME)
     add_custom_target(link_${file_name} ALL
@@ -217,6 +216,15 @@ generate_wrapper_header()
 install(DIRECTORY ${HIP_WRAPPER_INC_DIR} DESTINATION hip/include  COMPONENT dev)
 # Create symlink to binaries
 create_binary_symlink()
+
+# version file
+file(MAKE_DIRECTORY ${HIP_WRAPPER_DATA_DIR} ${HIP_WRAPPER_DATA_DIR}/hip)
+add_custom_target(link_version ALL
+                  WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                  COMMAND ${CMAKE_COMMAND} -E create_symlink
+                  ../../../share/hip/version ${HIP_WRAPPER_DATA_DIR}/hip/version)
+
+install(DIRECTORY ${HIP_WRAPPER_DATA_DIR} DESTINATION hip COMPONENT dev)
 install(DIRECTORY ${HIP_WRAPPER_BIN_DIR} DESTINATION hip COMPONENT dev)
 
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
@@ -242,7 +250,7 @@ endif()#End HIP_PLATFORM AMD
 install(FILES ${HIP_WRAPPER_LIB_DIR}/${HIP_INFO_FILE} DESTINATION hip/lib COMPONENT binary)
 #create symlink to cmake files
 create_cmake_symlink()
-install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang DESTINATION hip/lib/cmake COMPONENT binary)
+install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang DESTINATION hip/lib/cmake COMPONENT dev)
 install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hiprtc DESTINATION hip/lib/cmake COMPONENT binary)
 install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip DESTINATION hip/lib/cmake COMPONENT dev)
 install(DIRECTORY ${HIP_WRAPPER_FINDHIP_DIR}/ DESTINATION hip/cmake COMPONENT dev)

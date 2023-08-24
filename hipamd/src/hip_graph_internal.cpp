@@ -48,18 +48,19 @@ const char* GetGraphNodeTypeString(uint32_t op) {
   return case_string;
 };
 
-int hipGraphNode::nextID = 0;
-int ihipGraph::nextID = 0;
-std::unordered_set<hipGraphNode*> hipGraphNode::nodeSet_;
-amd::Monitor hipGraphNode::nodeSetLock_{"Guards global node set"};
-std::unordered_set<ihipGraph*> ihipGraph::graphSet_;
-amd::Monitor ihipGraph::graphSetLock_{"Guards global graph set"};
-std::unordered_set<hipGraphExec*> hipGraphExec::graphExecSet_;
-amd::Monitor hipGraphExec::graphExecSetLock_{"Guards global exec graph set"};
-std::unordered_set<hipUserObject*> hipUserObject::ObjectSet_;
-amd::Monitor hipUserObject::UserObjectLock_{"Guards global user object"};
+namespace hip {
+int GraphNode::nextID = 0;
+int Graph::nextID = 0;
+std::unordered_set<GraphNode*> GraphNode::nodeSet_;
+amd::Monitor GraphNode::nodeSetLock_{"Guards global node set"};
+std::unordered_set<Graph*> Graph::graphSet_;
+amd::Monitor Graph::graphSetLock_{"Guards global graph set"};
+std::unordered_set<GraphExec*> GraphExec::graphExecSet_;
+amd::Monitor GraphExec::graphExecSetLock_{"Guards global exec graph set"};
+std::unordered_set<UserObject*> UserObject::ObjectSet_;
+amd::Monitor UserObject::UserObjectLock_{"Guards global user object"};
 
-hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
+hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
   hipError_t status = ihipMemcpy_validate(dst, src, count, kind);
   if (status != hipSuccess) {
@@ -100,7 +101,7 @@ hipError_t hipGraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size
   return hipSuccess;
 }
 
-hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) {
+hipError_t GraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) {
   hipError_t status = ihipMemcpy3D_validate(pNodeParams);
   if (status != hipSuccess) {
     return status;
@@ -258,7 +259,7 @@ hipError_t hipGraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParam
   return hipSuccess;
 }
 
-bool ihipGraph::isGraphValid(ihipGraph* pGraph) {
+bool Graph::isGraphValid(Graph* pGraph) {
   amd::ScopedLock lock(graphSetLock_);
   if (graphSet_.find(pGraph) == graphSet_.end()) {
     return false;
@@ -266,20 +267,20 @@ bool ihipGraph::isGraphValid(ihipGraph* pGraph) {
   return true;
 }
 
-void ihipGraph::AddNode(const Node& node) {
+void Graph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
   ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)\n",
           GetGraphNodeTypeString(node->GetType()), node);
   node->SetParentGraph(this);
 }
 
-void ihipGraph::RemoveNode(const Node& node) {
+void Graph::RemoveNode(const Node& node) {
   vertices_.erase(std::remove(vertices_.begin(), vertices_.end(), node), vertices_.end());
   delete node;
 }
 
 // root nodes are all vertices with 0 in-degrees
-std::vector<Node> ihipGraph::GetRootNodes() const {
+std::vector<Node> Graph::GetRootNodes() const {
   std::vector<Node> roots;
   for (auto entry : vertices_) {
     if (entry->GetInDegree() == 0) {
@@ -293,7 +294,7 @@ std::vector<Node> ihipGraph::GetRootNodes() const {
 }
 
 // leaf nodes are all vertices with 0 out-degrees
-std::vector<Node> ihipGraph::GetLeafNodes() const {
+std::vector<Node> Graph::GetLeafNodes() const {
   std::vector<Node> leafNodes;
   for (auto entry : vertices_) {
     if (entry->GetOutDegree() == 0) {
@@ -303,7 +304,7 @@ std::vector<Node> ihipGraph::GetLeafNodes() const {
   return leafNodes;
 }
 
-size_t ihipGraph::GetLeafNodeCount() const {
+size_t Graph::GetLeafNodeCount() const {
   int numLeafNodes = 0;
   for (auto entry : vertices_) {
     if (entry->GetOutDegree() == 0) {
@@ -313,7 +314,7 @@ size_t ihipGraph::GetLeafNodeCount() const {
   return numLeafNodes;
 }
 
-std::vector<std::pair<Node, Node>> ihipGraph::GetEdges() const {
+std::vector<std::pair<Node, Node>> Graph::GetEdges() const {
   std::vector<std::pair<Node, Node>> edges;
   for (const auto& i : vertices_) {
     for (const auto& j : i->GetEdges()) {
@@ -323,7 +324,7 @@ std::vector<std::pair<Node, Node>> ihipGraph::GetEdges() const {
   return edges;
 }
 
-void ihipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
+void Graph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
                                std::vector<Node>& singleList,
                                std::vector<std::vector<Node>>& parallelLists,
                                std::unordered_map<Node, std::vector<Node>>& dependencies) {
@@ -369,7 +370,7 @@ void ihipGraph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
 }
 // The function to do Topological Sort.
 // It uses recursive GetRunListUtil()
-void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
+void Graph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
                            std::unordered_map<Node, std::vector<Node>>& dependencies) {
   std::vector<Node> singleList;
 
@@ -392,7 +393,7 @@ void ihipGraph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
     }
   }
 }
-bool ihipGraph::TopologicalOrder(std::vector<Node>& TopoOrder) {
+bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
   std::queue<Node> q;
   std::unordered_map<Node, int> inDegree;
   for (auto entry : vertices_) {
@@ -418,10 +419,10 @@ bool ihipGraph::TopologicalOrder(std::vector<Node>& TopoOrder) {
   }
   return false;
 }
-ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
-  ihipGraph* newGraph = new ihipGraph(device_, this);
+Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
+  Graph* newGraph = new Graph(device_, this);
   for (auto entry : vertices_) {
-    hipGraphNode* node = entry->clone();
+    GraphNode* node = entry->clone();
     node->SetParentGraph(newGraph);
     newGraph->vertices_.push_back(node);
     clonedNodes[entry] = node;
@@ -448,12 +449,12 @@ ihipGraph* ihipGraph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
   return newGraph;
 }
 
-ihipGraph* ihipGraph::clone() const {
+Graph* Graph::clone() const {
   std::unordered_map<Node, Node> clonedNodes;
   return clone(clonedNodes);
 }
 
-bool hipGraphExec::isGraphExecValid(hipGraphExec* pGraphExec) {
+bool GraphExec::isGraphExecValid(GraphExec* pGraphExec) {
   amd::ScopedLock lock(graphExecSetLock_);
   if (graphExecSet_.find(pGraphExec) == graphExecSet_.end()) {
     return false;
@@ -461,7 +462,7 @@ bool hipGraphExec::isGraphExecValid(hipGraphExec* pGraphExec) {
   return true;
 }
 
-hipError_t hipGraphExec::CreateStreams(uint32_t num_streams) {
+hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
   parallel_streams_.reserve(num_streams);
   for (uint32_t i = 0; i < num_streams; ++i) {
     auto stream = new hip::Stream(hip::getCurrentDevice(),
@@ -478,7 +479,7 @@ hipError_t hipGraphExec::CreateStreams(uint32_t num_streams) {
   return hipSuccess;
 }
 
-hipError_t hipGraphExec::Init() {
+hipError_t GraphExec::Init() {
   hipError_t status;
   size_t min_num_streams = 1;
 
@@ -554,7 +555,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
 }
 
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
-                 hipGraphExec* ptr) {
+                 GraphExec* ptr) {
   int i = 0;
   for (const auto& list : parallelLists) {
     // first parallel list will be launched on the same queue as parent
@@ -572,7 +573,7 @@ void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* st
   }
 }
 
-hipError_t hipGraphExec::Run(hipStream_t stream) {
+hipError_t GraphExec::Run(hipStream_t stream) {
   hipError_t status;
 
   if (hip::getStream(stream) == nullptr) {
@@ -590,7 +591,7 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   if (repeatLaunch_ == true) {
     for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeMemAlloc &&
-          static_cast<hipGraphMemAllocNode*>(node)->IsActiveMem() == true) {
+          static_cast<GraphMemAllocNode*>(node)->IsActiveMem() == true) {
           return hipErrorInvalidValue;
       }
     }
@@ -611,8 +612,20 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
     cmd->enqueue();
     cmd->release();
   }
-  for (auto& node : topoOrder_) {
-    node->EnqueueCommands(stream);
+  for (int i = 0; i < topoOrder_.size(); i++) {
+    if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
+      // Enable buffering for graph with single branch
+      if (parallelLists_.size() == 1) {
+        // Peep through the next node. If current and next node are kernel then enable AQL
+        // buffering
+        if (((i + 1) != topoOrder_.size()) &&
+            topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
+            topoOrder_[i + 1]->GetType() == hipGraphNodeTypeKernel) {
+          topoOrder_[i]->EnableBuffering();
+        }
+      }
+    }
+    topoOrder_[i]->EnqueueCommands(stream);
   }
   if (endCommand != nullptr) {
     endCommand->enqueue();
@@ -621,3 +634,4 @@ hipError_t hipGraphExec::Run(hipStream_t stream) {
   ResetQueueIndex();
   return status;
 }
+}  // namespace hip

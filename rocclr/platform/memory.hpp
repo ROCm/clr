@@ -194,6 +194,7 @@ class Memory : public amd::RuntimeObject {
   device::VirtualDevice* vDev_;  //!< Memory object belongs to a virtual device only
   std::atomic_uint mapCount_;    //!< Keep track of number of mappings for a memory object
   void* svmHostAddress_;         //!< svm host address;
+  size_t resOffset_;             //!< resource offset
   union {
     struct {
       uint32_t isParent_ : 1;          //!< This object is a parent
@@ -203,6 +204,7 @@ class Memory : public amd::RuntimeObject {
       uint32_t p2pAccess_ : 1;         //!< Memory object allows P2P access
       uint32_t ipcShared_ : 1;         //!< Memory shared between processes
       uint32_t largeBarSystem_ : 1;    //!< VRAM is visiable for host
+      uint32_t image_view_: 1;         //!< Memory object is an image view
     };
     uint32_t flagsEx_;
   };
@@ -323,7 +325,9 @@ class Memory : public amd::RuntimeObject {
 
   // Accessors
   Memory* parent() const { return parent_; }
+  void SetParent(amd::Memory* parent) { parent_ = parent; }
   bool isParent() const { return isParent_; }
+  bool ImageView() const { return image_view_; }
 
   size_t getOrigin() const { return origin_; }
   size_t getSize() const { return size_; }
@@ -371,6 +375,10 @@ class Memory : public amd::RuntimeObject {
 
   void* getSvmPtr() const { return svmHostAddress_; }   //!< svm pointer accessor;
   void setSvmPtr(void* ptr) { svmHostAddress_ = ptr; }  //!< svm pointer setter;
+
+  size_t getOffset() const { return resOffset_; }         //!< resource offset accessor;
+  void setOffset(size_t offset) { resOffset_ = offset; }  //!< resource offset setter;
+
   bool isSvmPtrCommited() const {
     return svmPtrCommited_;
   }                        //!< svm host address committed accessor;
@@ -678,8 +686,9 @@ public:
 class IpcBuffer : public Buffer {
  public:
   IpcBuffer(Context& context, Flags flags, size_t offset, size_t size, const void* handle)
-    : Buffer(context, flags, offset, size), handle_(handle) {
+    : Buffer(context, flags, size), handle_(handle) {
     setIpcShared(true);
+    setOffset(offset);
   }
 
   virtual void initDeviceMemory();

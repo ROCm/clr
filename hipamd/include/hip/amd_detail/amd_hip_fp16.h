@@ -1617,7 +1617,7 @@ THE SOFTWARE.
             __half hrcp(__half x)
             {
                 return __half_raw{
-                    static_cast<_Float16>(__builtin_amdgcn_rcph(static_cast<__half_raw>(x).data))};
+                    static_cast<_Float16>(1.0f) /static_cast<__half_raw>(x).data};
             }
             inline
             __device__
@@ -1721,8 +1721,8 @@ THE SOFTWARE.
             inline
             __HOST_DEVICE__
             __half2 h2rcp(__half2 x) {
-                return _Float16_2{static_cast<_Float16>(__builtin_amdgcn_rcph(x.x)),
-                                  static_cast<_Float16>(__builtin_amdgcn_rcph(x.y))};
+                return _Float16_2{
+                    _Float16_2{static_cast<_Float16>(1.0f), static_cast<_Float16>(1.0f)} / x.data};
             }
             inline
             __HOST_DEVICE__

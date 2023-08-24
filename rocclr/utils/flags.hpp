@@ -253,6 +253,8 @@ release(bool, HIP_MEM_POOL_SUPPORT, false,                                    \
         "Enables memory pool support in HIP")                                 \
 release(bool, HIP_MEM_POOL_USE_VM, IS_WINDOWS,                                \
         "Enables memory pool support in HIP")                                 \
+release(bool, PAL_HIP_IPC_FLAG, false,                                        \
+        "Enable interprocess flag for device allocation in PAL HIP")          \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
         "Force a specific asic revision for all devices")                     \
 release(bool, PAL_EMBED_KERNEL_MD, false,                                     \
@@ -286,8 +288,10 @@ release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
 release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
          "Force device mem for kernel args.")                                 \
-release(bool, DEBUG_CLR_USE_SDMA_QUERY, 0,                                    \
-         "Use SDMA query API to make copy decisions.")
+release(uint, DEBUG_CLR_GRAPH_MAX_AQL_BUFFER_SIZE, 32,                        \
+         "Size of AQL buffering queue")                                       \
+release(bool, DEBUG_CLR_GRAPH_ENABLE_BUFFERING, false,                        \
+         "Enable/Disable graph AQL buffering")
 
 namespace amd {
 

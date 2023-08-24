@@ -52,6 +52,13 @@
 #define IHIP_IPC_MEM_HANDLE_SIZE   32
 #define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
 
+namespace hip {
+struct Graph;
+struct GraphNode;
+struct GraphExec;
+struct UserObject;
+}
+
 typedef struct ihipIpcMemHandle_st {
   char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
   size_t psize;
@@ -238,7 +245,7 @@ namespace hip {
     /// Current capture status of the stream
     hipStreamCaptureStatus captureStatus_;
     /// Graph that is constructed with capture
-    hipGraph_t pCaptureGraph_;
+    hip::Graph* pCaptureGraph_;
     /// Based on mode stream capture places restrictions on API calls that can be made within or
     /// concurrently
     hipStreamCaptureMode captureMode_{hipStreamCaptureModeGlobal};
@@ -247,9 +254,9 @@ namespace hip {
     /// dependencies
     hipStream_t parentStream_ = nullptr;
     /// Last graph node captured in the stream
-    std::vector<hipGraphNode_t> lastCapturedNodes_;
+    std::vector<hip::GraphNode*> lastCapturedNodes_;
     /// dependencies removed via API hipStreamUpdateCaptureDependencies
-    std::vector<hipGraphNode_t> removedDependencies_;
+    std::vector<hip::GraphNode*> removedDependencies_;
     /// Derived streams/Paralell branches from the origin stream
     std::vector<hipStream_t> parallelCaptureStreams_;
     /// Capture events
@@ -307,20 +314,20 @@ namespace hip {
     bool IsOriginStream() const { return originStream_; }
     void SetOriginStream() { originStream_ = true; }
     /// Returns captured graph
-    hipGraph_t GetCaptureGraph() const { return pCaptureGraph_; }
+    hip::Graph* GetCaptureGraph() const { return pCaptureGraph_; }
     /// Returns last captured graph node
-    const std::vector<hipGraphNode_t>& GetLastCapturedNodes() const { return lastCapturedNodes_; }
+    const std::vector<hip::GraphNode*>& GetLastCapturedNodes() const { return lastCapturedNodes_; }
     /// Set last captured graph node
-    void SetLastCapturedNode(hipGraphNode_t graphNode) {
+    void SetLastCapturedNode(hip::GraphNode* graphNode) {
       lastCapturedNodes_.clear();
       lastCapturedNodes_.push_back(graphNode);
     }
     /// returns updated dependencies removed
-    const std::vector<hipGraphNode_t>& GetRemovedDependencies() {
+    const std::vector<hip::GraphNode*>& GetRemovedDependencies() {
       return removedDependencies_;
     }
     /// Append captured node via the wait event cross stream
-    void AddCrossCapturedNode(std::vector<hipGraphNode_t> graphNodes, bool replace = false) {
+    void AddCrossCapturedNode(std::vector<hip::GraphNode*> graphNodes, bool replace = false) {
       // replace dependencies as per flag hipStreamSetCaptureDependencies
       if (replace == true) {
         for (auto node : lastCapturedNodes_) {
@@ -333,7 +340,7 @@ namespace hip {
       }
     }
     /// Set graph that is being captured
-    void SetCaptureGraph(hipGraph_t pGraph) {
+    void SetCaptureGraph(hip::Graph* pGraph) {
       pCaptureGraph_ = pGraph;
       captureStatus_ = hipStreamCaptureStatusActive;
     }
@@ -464,11 +471,16 @@ namespace hip {
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-   hip::Stream* NullStream();
-   Stream* GetNullStream();
+    hip::Stream* NullStream();
+    Stream* GetNullStream();
+
+    void SetActiveStatus() {
+      isActive_ = true;
+    }
 
     bool GetActiveStatus() {
       amd::ScopedLock lock(lock_);
+      /// Either stream is active or device is active
       if (isActive_) return true;
       if (Stream::existsActiveStreamForDevice(this)) {
         isActive_ = true;

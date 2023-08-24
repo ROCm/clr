@@ -3525,7 +3525,7 @@ inline static hipError_t hipStreamGetCaptureInfo(hipStream_t stream,
     return hipCUDAErrorTohipError(cudaStreamGetCaptureInfo(stream, pCaptureStatus, pId));
 }
 
-#if CUDA_VERSION >= CUDA_11030
+#if CUDA_VERSION >= CUDA_11030 || defined(__CUDA_API_VERSION_INTERNAL)
 inline static hipError_t hipStreamGetCaptureInfo_v2(
     hipStream_t stream, hipStreamCaptureStatus* captureStatus_out,
     unsigned long long* id_out __dparm(0), hipGraph_t* graph_out __dparm(0),

@@ -46,10 +46,7 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" ON)
-# Disable file reorg backward compatibility for ASAN packaging
-if(NOT ENABLE_ASAN_PACKAGING)
-    option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" ON)
-endif()
+option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
 
 if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
@@ -302,8 +299,8 @@ endif()
 # Generate .hipInfo
 file(WRITE "${PROJECT_BINARY_DIR}/.hipInfo" ${_buildInfo})
 
-# Generate .hipVersion
-file(WRITE "${PROJECT_BINARY_DIR}/.hipVersion" ${_versionInfo})
+# Generate version
+file(WRITE "${PROJECT_BINARY_DIR}/version" ${_versionInfo})
 
 # Build doxygen documentation
 find_program(DOXYGEN_EXE doxygen)
@@ -326,11 +323,12 @@ endif()
 # Install .hipInfo
 install(FILES ${PROJECT_BINARY_DIR}/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR})
 
-# Install .hipVersion
+# Install version
+install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip)
+# .hipVersion is added to satisfy Windows compute build.
+#TODO to be removed
 if(WIN32)
-    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR})
-else()
-    install(FILES ${PROJECT_BINARY_DIR}/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version)
+    install(FILES ${PROJECT_BINARY_DIR}/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion)
 endif()
 
 # Install src, bin, include & cmake if necessary
@@ -446,8 +444,42 @@ install(
     DESTINATION
     ${CONFIG_PACKAGE_INSTALL_DIR}
     )
-# Packaging invokes UNIX commands, which are not available on Windows.
 
+configure_package_config_file(
+    ${HIP_COMMON_DIR}/hip-lang-config.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
+    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
+
+configure_package_config_file(
+    hip-lang-config-amd.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-amd.cmake
+    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
+    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
+
+configure_package_config_file(
+    hip-lang-config-nvidia.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-nvidia.cmake
+    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
+    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
+  
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
+  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
+  COMPATIBILITY SameMajorVersion)
+
+install(
+    FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-amd.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-nvidia.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
+    DESTINATION
+    ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
+    )
+
+# Packaging invokes UNIX commands, which are not available on Windows.
 if(NOT WIN32)
     add_subdirectory(packaging)
 endif()

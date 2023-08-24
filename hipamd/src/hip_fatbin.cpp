@@ -52,6 +52,16 @@ FatBinaryInfo::~FatBinaryInfo() {
   uri_ = std::string();
 }
 
+void ListAllDeviceWithNoCOFromBundle(const std::unordered_map<std::string,
+                                     std::pair<size_t, size_t>> unique_isa_names) {
+  LogError("Missing CO for these ISAs - ");
+  for (const auto& unique_isa : unique_isa_names) {
+    if (unique_isa.second.first == 0) {
+      LogPrintfError("     %s", unique_isa.first.c_str());
+    }
+  }
+}
+
 hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices) {
   amd_comgr_data_t data_object;
   amd_comgr_status_t comgr_status = AMD_COMGR_STATUS_SUCCESS;
@@ -84,11 +94,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       return hipErrorInvalidValue;
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
-    if (image_ == nullptr && !amd::Os::MemoryMapFileDesc(fdesc_, fsize_, foffset_, &image_)
-                          && (image_mapped_ = true)) {
-      LogError("Cannot map the file descriptor");
-      amd::Os::CloseFileHandle(fdesc_);
-      return hipErrorInvalidValue;
+    if (image_ == nullptr) {
+      if(!amd::Os::MemoryMapFileDesc(fdesc_, fsize_, foffset_, &image_)) {
+        LogError("Cannot map the file descriptor");
+        amd::Os::CloseFileHandle(fdesc_);
+        return hipErrorInvalidValue;
+      }
+      image_mapped_ = true;
     }
   }
 
@@ -184,6 +196,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
       std::string device_name = devices[dev_idx]->devices()[0]->isa().isaName();
       auto dev_it = unique_isa_names.find(device_name);
+      // If the size is 0, then COMGR API could not find the CO for this GPU device/ISA
+      if (dev_it->second.first == 0) {
+        LogPrintfError("Cannot find CO in the bundle for ISA: %s \n", device_name.c_str());
+        hip_status = hipErrorNoBinaryForGpu;
+        ListAllDeviceWithNoCOFromBundle(unique_isa_names);
+        break;
+      }
       guarantee(unique_isa_names.cend() != dev_it,
                 "Cannot find the device name in the unique device name");
       fatbin_dev_info_[devices[dev_idx]->deviceId()]
@@ -192,6 +211,11 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                                            dev_it->second.second);
       fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_
         = new amd::Program(*devices[dev_idx]->asContext());
+    }
+
+    if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
+      return hipErrorInvalidValue;
     }
 
   } while(0);

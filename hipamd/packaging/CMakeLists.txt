@@ -63,8 +63,6 @@ if(HIP_PLATFORM STREQUAL "amd" )
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
 
 install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
-
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT binary)
 install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
 
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc COMPONENT binary)
@@ -96,15 +94,19 @@ install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/hip_version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT dev)
+# .hipVersion is added to satisfy Windows compute build.
+#TODO to be removed
 if(WIN32)
-    install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipVersion DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
-else()
-    install(FILES ${CMAKE_BINARY_DIR}/hipamd/.hipVersion DESTINATION ${CMAKE_INSTALL_DATADIR}/hip RENAME version COMPONENT dev)
+    install(FILES ${CMAKE_BINARY_DIR}/hipamd/version DESTINATION ${CMAKE_INSTALL_BINDIR} RENAME .hipVersion COMPONENT dev)
 endif()
 install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config-amd.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config-nvidia.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-amd.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-nvidia.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
 #End dev files install
 
 #Begin doc files install
@@ -200,13 +202,13 @@ configure_file(hip-devel.postinst ${CMAKE_CURRENT_BINARY_DIR}/dev/postinst @ONLY
 configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
 
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), liburi-encode-perl, libfile-basedir-perl, libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core, hipcc")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, libc6, file, rocm-core")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-File-BaseDir, perl-URI-Encode, file, rocm-core, hipcc")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, file, rocm-core")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")

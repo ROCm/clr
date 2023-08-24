@@ -95,12 +95,12 @@ function setupENV()
     if [ "$OS_NAME" == "Ubuntu" ]
     then
       sudo apt-get update
-      sudo apt-get install dpkg-dev rpm doxygen libelf-dev rename liburi-encode-perl \
-         libfile-basedir-perl libfile-copy-recursive-perl libfile-listing-perl
+      sudo apt-get install dpkg-dev rpm doxygen libelf-dev rename \
+         libfile-copy-recursive-perl libfile-listing-perl
     elif [ "$OS_NAME" == "CentOS" ]
     then
       yum install dpkg-dev rpm-build doxygen elfutils-libelf-devel prename \
-         perl-URI-Encode perl-File-Listing perl-File-BaseDir
+         perl-File-Listing
     fi
 }
 

@@ -69,7 +69,8 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+       !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().Barriers().WaitCurrent();
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
@@ -162,10 +163,12 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+       !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().Barriers().WaitCurrent();
-    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire, copyMetadata);
+    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size,
+                                           entire, copyMetadata);
   } else {
     Memory& xferBuf = dev().xferRead().acquire();
     address staging = xferBuf.getDeviceMemory();
@@ -233,8 +236,8 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire, amd::CopyMetadata copyMetadata) const {
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) {
+  if ((setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
@@ -330,8 +333,8 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
   gpu().releaseGpuMemoryFence();
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) {
+  if ((setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
                                             copyMetadata);
   } else {
@@ -387,8 +390,9 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
                                 const amd::Coord3D& size, bool entire,
                                 amd::CopyMetadata copyMetadata) const {
   if (setup_.disableCopyBuffer_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
-      (dev().agent_profile() != HSA_PROFILE_FULL) && dstMemory.isHostMemDirectAccess())) {
+      (!setup_.disableHostCopyBuffer_ && srcMemory.isHostMemDirectAccess() &&
+      !srcMemory.isCpuUncached() && (dev().agent_profile() != HSA_PROFILE_FULL) &&
+      dstMemory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size, false,
@@ -406,8 +410,8 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
                                     const amd::Coord3D& size, bool entire,
                                     amd::CopyMetadata copyMetadata) const {
   if (setup_.disableCopyBufferRect_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
-       dstMemory.isHostMemDirectAccess())) {
+      (!setup_.disableHostCopyBuffer_ && srcMemory.isHostMemDirectAccess() &&
+      !srcMemory.isCpuUncached() && dstMemory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire,
@@ -679,23 +683,23 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
-  bool useRegularCopyApi = !DEBUG_CLR_USE_SDMA_QUERY;
+  bool kUseRegularCopyApi = 0;
 
   HwQueueEngine engine = HwQueueEngine::Unknown;
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = useRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
   auto wait_events = gpu().Barriers().WaitingSignal(engine);
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
-  if (!useRegularCopyApi && engine != HwQueueEngine::Unknown) {
+  if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
       // Check SDMA engine status
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
@@ -719,11 +723,11 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                                                   size[0], wait_events.size(),
                                                   wait_events.data(), active, copyEngine, false);
     } else {
-      useRegularCopyApi = true;
+      kUseRegularCopyApi = true;
     }
   }
 
-  if (engine == HwQueueEngine::Unknown || useRegularCopyApi) {
+  if (engine == HwQueueEngine::Unknown || kUseRegularCopyApi) {
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
             "HSA Async Copy dst=0x%zx, src=0x%zx, size=%ld, wait_event=0x%zx, "
             "completion_signal=0x%zx",
@@ -1796,7 +1800,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() &&
-      !srcMemory.isCpuUncached())) {
+      !srcMemory.isCpuUncached() && !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
@@ -1848,7 +1852,8 @@ bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+       !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire,
@@ -1899,7 +1904,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
 
   // Use host copy if memory has direct access
   if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) {
+      gpuMem(dstMemory).IsPersistentDirectMap() && !setup_.disableHostCopyBuffer_) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
@@ -1950,8 +1955,8 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) {
+  if ((setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
@@ -2031,7 +2036,8 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
   bool result = false;
 
   // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
+  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess() &&
+      !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);
@@ -2130,7 +2136,8 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
   bool result = false;
 
     // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
+  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess() &&
+      !setup_.disableHostCopyBuffer_)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);

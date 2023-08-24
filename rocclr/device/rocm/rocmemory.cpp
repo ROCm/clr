@@ -961,8 +961,9 @@ bool Buffer::create(bool alloc_local) {
                                     dev().SystemSegment() :
                                     (dev().SystemCoarseSegment().handle != 0 ?
                                         dev().SystemCoarseSegment() : dev().SystemSegment());
+      hsa_agent_t hsa_agent = dev().getBackendDevice();
       hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(),
-          owner()->getSize(), nullptr, 0, pool, 0, &deviceMemory_);
+          owner()->getSize(), &hsa_agent, 1, pool, 0, &deviceMemory_);
       ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, HostPtr = %p,"
               " DevPtr = %p", pool, owner()->getSize(), owner()->getHostMem(), deviceMemory_ );
       if (status != HSA_STATUS_SUCCESS) {
@@ -1442,8 +1443,8 @@ void Image::destroy() {
     hsa_status_t status = hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
     assert(status == HSA_STATUS_SUCCESS);
   }
-
-  if (owner()->parent() != nullptr) {
+  // Don't destroy memory if it's a view. Parent will destroy the original allocation.
+  if ((owner()->parent() != nullptr) || owner()->ImageView()) {
     return;
   }
 
@@ -1497,6 +1498,7 @@ bool Image::AddView(amd::Image* image) {
   view_cache_.push_back(image);
   // Remove parent dependency on the child, since cache will be destroyed within the parent
   owner()->release();
+  image->SetParent(nullptr);
   return true;
 }
 

@@ -18,8 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.3)
-
 # Number of parallel jobs by default is 1
 if(NOT DEFINED HIP_CLANG_NUM_PARALLEL_JOBS)
   set(HIP_CLANG_NUM_PARALLEL_JOBS 1)
@@ -148,7 +146,9 @@ execute_process(
   RESULT_VARIABLE CLANGRT_BUILTINS_FETCH_EXIT_CODE)
 
 if( CLANGRT_Error )
-  message( STATUS "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
+  if (HIP_CXX_COMPILER MATCHES ".*clang\\+\\+")
+    message( STATUS "${HIP_CXX_COMPILER}: CLANGRT compiler options not supported.")
+  endif()
 else()
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
   if( "${CLANGRT_BUILTINS_FETCH_EXIT_CODE}" STREQUAL "0" )

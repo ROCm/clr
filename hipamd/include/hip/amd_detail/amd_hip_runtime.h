@@ -31,6 +31,14 @@ THE SOFTWARE.
 
 #include <hip/amd_detail/amd_hip_common.h>
 
+#if !defined(__HIPCC_RTC__)
+#ifdef __cplusplus
+#include <cstddef>
+#else
+#include <stddef.h>
+#endif  // __cplusplus
+#endif  // !defined(__HIPCC_RTC__)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -71,14 +79,13 @@ size_t amd_dbgapi_get_build_id();
 // Top part of file can be compiled with any compiler
 
 #if !defined(__HIPCC_RTC__)
-//#include <cstring>
-#if __cplusplus
+#ifdef __cplusplus
 #include <cmath>
 #include <cstdint>
+#include <tuple>
 #else
 #include <math.h>
-#include <string.h>
-#include <stddef.h>
+#include <stdint.h>
 #endif // __cplusplus
 #else
 typedef unsigned int uint32_t;

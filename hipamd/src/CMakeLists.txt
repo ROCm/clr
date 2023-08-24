@@ -224,9 +224,9 @@ if(USE_PROF_API)
 
   if(NOT ${CPP_HEADER_PARSER} EQUAL 0)
     message(FATAL_ERROR "\
-The \"CppHeaderParser\" Python3 package is not installed. \
-Please install it using the following command: \"pip3 install CppHeaderParser\".\
-")
+    The \"CppHeaderParser\" Python3 package is not installed. \
+    Please install it using the following command: \"pip3 install CppHeaderParser\".\
+  ")
   endif()
 
   add_custom_command(OUTPUT ${PROF_API_STR}
@@ -242,22 +242,23 @@ Please install it using the following command: \"pip3 install CppHeaderParser\".
 
   find_path(PROF_API_HEADER_DIR prof_protocol.h
     HINTS
-      ${PROF_API_HEADER_PATH}
+    ${PROF_API_HEADER_PATH}
     PATHS
-      ${ROCM_PATH}/roctracer
+    ${ROCM_PATH}/roctracer
     PATH_SUFFIXES
-      include/ext)
+    include/ext)
 
   if(NOT PROF_API_HEADER_DIR)
     message(WARNING "Profiling API header not found. Disabling roctracer integration. Use -DPROF_API_HEADER_PATH=<path to prof_protocol.h header>")
   else()
-    target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
     target_include_directories(amdhip64 PUBLIC ${PROF_API_HEADER_DIR})
     message(STATUS "Profiling API: ${PROF_API_HEADER_DIR}")
   endif()
 
   add_dependencies(amdhip64 gen-prof-api-str-header)
 endif()
+
+target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
 
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
   ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
@@ -290,24 +291,3 @@ INSTALL(TARGETS amdhip64 host device
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 INSTALL(EXPORT hip-lang-targets DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR} NAMESPACE hip-lang::)
-
-include(CMakePackageConfigHelpers)
-
-configure_package_config_file(
-  ${HIP_COMMON_DIR}/hip-lang-config.cmake.in
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-  INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
-  PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
-
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
-  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
-  COMPATIBILITY SameMajorVersion)
-install(
-    FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
-    DESTINATION
-    ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
-    )
-

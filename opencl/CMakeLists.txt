@@ -17,10 +17,7 @@ include(GNUInstallDirs)
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
 option(BUILD_ICD "Enable building OpenCL ICD Loader" ON)
 option(EMU_ENV "Enable building for emulation environment" OFF)
-# Disable file reorg backward compatibilty for ASAN build
-if(NOT ENABLE_ASAN_PACKAGING)
-  option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" ON)
-endif()
+option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" OFF)
 
 # Add flags to generate PDB files with full symbolic information
 if(MSVC)
