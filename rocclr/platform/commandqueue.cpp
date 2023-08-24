@@ -42,6 +42,9 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       tail_(nullptr),
       isActive_(false),
       markerTsCount_(0) {
+  if (GPU_FORCE_QUEUE_PROFILING) {
+    properties().set(CL_QUEUE_PROFILING_ENABLE);
+  }
   if (AMD_DIRECT_DISPATCH) {
     // Initialize the queue
     thread_.Init(this);
@@ -51,10 +54,6 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       thread_.start(this);
       queueLock_.wait();
     }
-  }
-
-  if (GPU_FORCE_QUEUE_PROFILING) {
-    properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
 }
 
@@ -239,7 +238,7 @@ void HostQueue::append(Command& command) {
 
   // Set last submitted command
   Command* prevLastEnqueueCommand = nullptr;
- 
+
   // Attach only real commands and skip internal notifications for CPU queue
   if (command.waitingEvent() == nullptr) {
     command.retain();
