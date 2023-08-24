@@ -101,7 +101,6 @@ Settings::Settings() {
 bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor,
                       uint32_t gfxStepping, bool enableXNACK, bool coop_groups) {
   customHostAllocator_ = false;
-  uint32_t gcnArch = gfxipMajor * 100 + gfxipMinor * 10 + gfxStepping;
 
   if (fullProfile) {
     pinnedXferSize_ = 0;
@@ -156,7 +155,7 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
     enableExtension(ClAmdFp64);
   }
 
-  if (gcnArch == 910) {
+  if (gfxipMajor == 9 && gfxipMinor == 1 && gfxStepping == 0) {
     // Barrier Value packet is only supported on MI200 for now
     barrier_value_packet_ = true;
   }
@@ -174,7 +173,8 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
   }
 
-  if (gcnArch >= 940) {
+  // No GWS init kernel necessary for these archs
+  if ((gfxipMajor == 9 && gfxipMinor == 4) || gfxipMajor >= 11) {
     coop_sync_ = true;
   }
 
