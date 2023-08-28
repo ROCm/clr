@@ -668,7 +668,9 @@ void PlatformState::init() {
   initialized_ = true;
   for (auto& it : statCO_.modules_) {
     hipError_t err = digestFatBinary(it.first, it.second);
-    if (err != hipSuccess) {
+    if (err == hipErrorNoBinaryForGpu) {
+      HIP_ERROR_PRINT(err, "continue parsing remaining modules");
+    } else if (err != hipSuccess) {
       HIP_ERROR_PRINT(err);
       return;
     }
