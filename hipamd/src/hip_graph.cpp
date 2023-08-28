@@ -2146,9 +2146,12 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
       reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetNodes();
   if (newGraphNodes.size() != oldGraphExecNodes.size()) {
     *updateResult_out = hipGraphExecUpdateErrorTopologyChanged;
+    *hErrorNode_out = nullptr;
     HIP_RETURN(hipErrorGraphExecUpdateFailure);
   }
+
   for (std::vector<hip::GraphNode*>::size_type i = 0; i != newGraphNodes.size(); i++) {
+    // Checks if all the node types are same before updating
     if (newGraphNodes[i]->GetType() == oldGraphExecNodes[i]->GetType()) {
       if (newGraphNodes[i]->GetType() != hipGraphNodeTypeHost &&
           newGraphNodes[i]->GetType() != hipGraphNodeTypeEmpty) {
@@ -2159,6 +2162,35 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
           return hipErrorGraphExecUpdateFailure;
         }
       }
+
+      switch(newGraphNodes[i]->GetType()) {
+        case hipGraphNodeTypeMemcpy: {
+          // Checks if the memcpy node's parameters are same
+          const hip::GraphMemcpyNode* newMemcpyNode =
+             static_cast<hip::GraphMemcpyNode const*>(newGraphNodes[i]);
+          const hip::GraphMemcpyNode* oldMemcpyNode =
+             static_cast<hip::GraphMemcpyNode const*>(oldGraphExecNodes[i]);
+          hipMemcpyKind newKind, oldKind;
+          newKind = newMemcpyNode->GetMemcpyKind();
+          oldKind = oldMemcpyNode->GetMemcpyKind();
+          if (newKind != oldKind) {
+            *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
+            *updateResult_out = hipGraphExecUpdateErrorParametersChanged;
+            HIP_RETURN(hipErrorGraphExecUpdateFailure);
+          }
+        }
+      }
+      // Checks if all the node's dependencies are same
+      const std::vector<hip::GraphNode*>& newGraphDependencies =
+                        newGraphNodes[i]->GetDependencies();
+      const std::vector<hip::GraphNode*>& oldGraphDependencies =
+                        oldGraphExecNodes[i]->GetDependencies();
+      if (newGraphDependencies.size() != oldGraphDependencies.size()) {
+        *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
+        *updateResult_out = hipGraphExecUpdateErrorTopologyChanged;
+        HIP_RETURN(hipErrorGraphExecUpdateFailure);
+      }
+
       hipError_t status = oldGraphExecNodes[i]->SetParams(newGraphNodes[i]);
       if (status != hipSuccess) {
         *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
