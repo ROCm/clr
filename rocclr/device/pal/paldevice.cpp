@@ -1398,7 +1398,7 @@ bool Device::init() {
 
 void Device::tearDown() {
   if (platform_ != nullptr) {
-    // platform_->Destroy();
+    platform_->Destroy();
     delete platformObj_;
     platform_ = nullptr;
   }
