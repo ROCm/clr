@@ -602,23 +602,12 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   } else {
     repeatLaunch_ = true;
   }
-
-  UpdateStream(parallelLists_, hip_stream, this);
-  amd::Command* rootCommand = nullptr;
-  amd::Command* endCommand = nullptr;
-  status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
-                        endCommand, hip_stream);
-  if (status != hipSuccess) {
-    return status;
-  }
-  if (rootCommand != nullptr) {
-    rootCommand->enqueue();
-    rootCommand->release();
-  }
-  for (int i = 0; i < topoOrder_.size(); i++) {
-    if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
-      // Enable buffering for graph with single branch
-      if (parallelLists_.size() == 1) {
+  if (parallelLists_.size() == 1) {
+    for (int i = 0; i < topoOrder_.size(); i++) {
+      topoOrder_[i]->SetStream(hip_stream, this);
+      status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
+      if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
+        // Enable buffering for graph with single branch
         // Peep through the next node. If current and next node are kernel then enable AQL
         // buffering
         if (((i + 1) != topoOrder_.size()) && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
@@ -626,12 +615,28 @@ hipError_t GraphExec::Run(hipStream_t stream) {
           topoOrder_[i]->EnableBuffering();
         }
       }
+      topoOrder_[i]->EnqueueCommands(stream);
     }
-    topoOrder_[i]->EnqueueCommands(stream);
-  }
-  if (endCommand != nullptr) {
-    endCommand->enqueue();
-    endCommand->release();
+  } else {
+    UpdateStream(parallelLists_, hip_stream, this);
+    amd::Command* rootCommand = nullptr;
+    amd::Command* endCommand = nullptr;
+    status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
+                          endCommand, hip_stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+    if (rootCommand != nullptr) {
+      rootCommand->enqueue();
+      rootCommand->release();
+    }
+    for (int i = 0; i < topoOrder_.size(); i++) {
+      topoOrder_[i]->EnqueueCommands(stream);
+    }
+    if (endCommand != nullptr) {
+      endCommand->enqueue();
+      endCommand->release();
+    }
   }
   ResetQueueIndex();
   return status;
