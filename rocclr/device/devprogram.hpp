@@ -457,8 +457,7 @@ class Program : public amd::HeapObject {
   bool linkLLVMBitcode(const amd_comgr_data_set_t inputs,
     const std::vector<std::string>& options,
     amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
-    char* binaryData[] = nullptr, size_t* binarySize = nullptr,
-    const bool link_dev_libs = true);
+    char* binaryData[] = nullptr, size_t* binarySize = nullptr);
 
   //! Create the bitcode of the compiled input dataset
   bool compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,

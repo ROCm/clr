@@ -348,7 +348,7 @@ amd_comgr_status_t Program::createAction(const amd_comgr_language_t oclver,
 bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
                               const std::vector<std::string>& options,
                               amd::option::Options* amdOptions, amd_comgr_data_set_t* output,
-                              char* binaryData[], size_t* binarySize, const bool link_dev_libs) {
+                              char* binaryData[], size_t* binarySize) {
 
   amd_comgr_language_t langver = getCOMGRLanguage(isHIP(), *amdOptions);
   if (langver == AMD_COMGR_LANGUAGE_NONE) {
@@ -357,28 +357,12 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   //  Create the action for linking
   amd_comgr_action_info_t action;
-  amd_comgr_data_set_t dataSetDevLibs;
   bool hasAction = false;
-  bool hasDataSetDevLibs = false;
 
   amd_comgr_status_t status = createAction(langver, options, &action, &hasAction);
 
-  if (link_dev_libs) {
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd::Comgr::create_data_set(&dataSetDevLibs);
-    }
-
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      hasDataSetDevLibs = true;
-      status = amd::Comgr::do_action(AMD_COMGR_ACTION_ADD_DEVICE_LIBRARIES, action, inputs,
-                                    dataSetDevLibs);
-      extractBuildLog(dataSetDevLibs);
-    }
-  }
-
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action,
-      (link_dev_libs) ? dataSetDevLibs : inputs, *output);
+    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, inputs, *output);
     extractBuildLog(*output);
   }
 
@@ -393,10 +377,6 @@ bool Program::linkLLVMBitcode(const amd_comgr_data_set_t inputs,
 
   if (hasAction) {
     amd::Comgr::destroy_action_info(action);
-  }
-
-  if (hasDataSetDevLibs) {
-    amd::Comgr::destroy_data_set(dataSetDevLibs);
   }
 
   return (status == AMD_COMGR_STATUS_SUCCESS);
@@ -479,7 +459,7 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
 
   //  Compiling the source codes with precompiled headers or directly compileInputs
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_BC,
+    status = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_WITH_DEVICE_LIBS_TO_BC,
                                  action, input, output);
     extractBuildLog(output);
   }
@@ -968,9 +948,8 @@ bool Program::linkImplLC(const std::vector<Program*>& inputPrograms,
   char* binaryData = nullptr;
   size_t binarySize = 0;
   std::vector<std::string> linkOptions;
-  constexpr bool kLinkDevLibs = false;
   bool ret = linkLLVMBitcode(inputs, linkOptions, options, &output, &binaryData,
-                             &binarySize, kLinkDevLibs);
+                             &binarySize);
 
   amd::Comgr::destroy_data_set(output);
   amd::Comgr::destroy_data_set(inputs);
@@ -1140,14 +1119,19 @@ bool Program::linkImplLC(amd::option::Options* options) {
     return false;
   }
 
-  bool bLinkLLVMBitcode = true;
   if (llvmBinary_.empty()) {
     continueCompileFrom = getNextCompilationStageFromBinary(options);
   }
 
+
   switch (continueCompileFrom) {
     case FILE_TYPE_CG:
     case FILE_TYPE_LLVMIR_BINARY: {
+      if(addCodeObjData(llvmBinary_.data(), llvmBinary_.size(),
+                        AMD_COMGR_DATA_KIND_BC,
+                        "LLVM Binary.bc", &inputs) != AMD_COMGR_STATUS_SUCCESS) {
+          return false;
+      }
       break;
     }
     case FILE_TYPE_ASM_TEXT: {
@@ -1162,7 +1146,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
         return false;
       }
 
-      bLinkLLVMBitcode = false;
       break;
     }
     case FILE_TYPE_ISA: {
@@ -1183,59 +1166,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
       buildLog_ += "Error while Codegen phase: the binary is incomplete \n";
       amd::Comgr::destroy_data_set(inputs);
       return false;
-  }
-
-  // call LinkLLVMBitcode
-  if (bLinkLLVMBitcode) {
-    // open the bitcode libraries
-    std::vector<std::string> linkOptions;
-
-    if (options->oVariables->FP32RoundDivideSqrt) {
-        linkOptions.push_back("correctly_rounded_sqrt");
-    }
-    if (options->oVariables->DenormsAreZero || AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-        (device().isa().versionMajor() < 9 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0)) {
-        linkOptions.push_back("daz_opt");
-    }
-    if (options->oVariables->FiniteMathOnly || options->oVariables->FastRelaxedMath) {
-        linkOptions.push_back("finite_only");
-    }
-    if (options->oVariables->UnsafeMathOpt || options->oVariables->FastRelaxedMath) {
-        linkOptions.push_back("unsafe_math");
-    }
-    if (device().settings().lcWavefrontSize64_) {
-        linkOptions.push_back("wavefrontsize64");
-    }
-    linkOptions.push_back("code_object_v" + std::to_string(options->oVariables->LCCodeObjectVersion));
-
-    amd_comgr_status_t status = addCodeObjData(llvmBinary_.data(), llvmBinary_.size(),
-                                               AMD_COMGR_DATA_KIND_BC,
-                                               "LLVM Binary", &inputs);
-
-    amd_comgr_data_set_t linked_bc;
-    bool hasLinkedBC = false;
-
-    if (status == AMD_COMGR_STATUS_SUCCESS) {
-      status = amd::Comgr::create_data_set(&linked_bc);
-    }
-
-    bool ret = (status == AMD_COMGR_STATUS_SUCCESS);
-    if (ret) {
-      hasLinkedBC = true;
-      ret = linkLLVMBitcode(inputs, linkOptions, options, &linked_bc);
-    }
-
-    amd::Comgr::destroy_data_set(inputs);
-
-    if (!ret) {
-      if (hasLinkedBC) {
-        amd::Comgr::destroy_data_set(linked_bc);
-      }
-      buildLog_ += "Error: Linking bitcode failed: linking source & IR libraries.\n";
-      return false;
-    }
-
-    inputs = linked_bc;
   }
 
   std::vector<std::string> codegenOptions;
