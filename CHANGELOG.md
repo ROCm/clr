@@ -3,6 +3,8 @@
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
 ## HIP 5.6.1 (For ROCm 5.6.1)
+### Changed
+- hipMemcpy device-to-device (intra device) was made asynchronous with respect to the host
 ### Fixed
 - Enabled xnack+ check in HIP catch2 tests hang while tests execution
 - Memory leak when code object files are loaded/unloaded via hipModuleLoad/hipModuleUnload APIs
