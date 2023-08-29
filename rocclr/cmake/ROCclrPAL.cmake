@@ -75,5 +75,5 @@ target_link_libraries(rocclr PUBLIC pal amdhsaloader)
 
 # support for OGL/D3D interop
 if(WIN32)
-  target_link_libraries(rocclr PUBLIC opengl32.lib dxguid.lib)
+  target_link_libraries(rocclr PUBLIC dxguid.lib)
 endif()

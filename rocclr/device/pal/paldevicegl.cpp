@@ -73,6 +73,10 @@ static PFNGLXRESOURCEDETACHAMD glxResourceReleaseAMD = nullptr;
 static PFNGLXRESOURCEDETACHAMD glXResourceDetachAMD = nullptr;
 static PFNGLXGETCONTEXTMVPUINFOAMD glXGetContextMVPUInfoAMD = nullptr;
 #else
+typedef PROC(WINAPI* PFNWGLGETPROCADDRESS)(LPCSTR name);
+typedef HGLRC(WINAPI* PFNWGLGETCURRENTCONTEXT)(void);
+static PFNWGLGETPROCADDRESS pfnWglGetProcAddress = nullptr;
+static PFNWGLGETCURRENTCONTEXT pfnWglGetCurrentContext = nullptr;
 static PFNWGLBEGINCLINTEROPAMD wglBeginCLInteropAMD = nullptr;
 static PFNWGLENDCLINTEROPAMD wglEndCLInteropAMD = nullptr;
 static PFNWGLRESOURCEATTACHAMD wglResourceAttachAMD = nullptr;
@@ -702,32 +706,33 @@ bool Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceCont
     return false;
   }
 #else
-  if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
+  if (!pfnWglGetProcAddress || !pfnWglGetCurrentContext ||
+      !wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
       !wglResourceDetachAMD || !wglGetContextGPUInfoAMD) {
-    HGLRC fakeRC = nullptr;
-
-    if (!wglGetCurrentContext()) {
-      fakeRC = wglCreateContext((HDC)GLdeviceContext);
-      wglMakeCurrent((HDC)GLdeviceContext, fakeRC);
+    HMODULE h = static_cast<HMODULE>(amd::Os::loadLibrary("OpenGL32.dll"));
+    if (nullptr != h) {
+      pfnWglGetProcAddress =
+          reinterpret_cast<PFNWGLGETPROCADDRESS>(GetProcAddress(h, "wglGetProcAddress"));
+      pfnWglGetCurrentContext =
+          reinterpret_cast<PFNWGLGETCURRENTCONTEXT>(GetProcAddress(h, "wglGetCurrentContext"));
     }
-
-    wglBeginCLInteropAMD =
-        (PFNWGLBEGINCLINTEROPAMD)wglGetProcAddress("wglBeginCLInteroperabilityAMD");
-    wglEndCLInteropAMD = (PFNWGLENDCLINTEROPAMD)wglGetProcAddress("wglEndCLInteroperabilityAMD");
-    wglResourceAttachAMD = (PFNWGLRESOURCEATTACHAMD)wglGetProcAddress("wglResourceAttachAMD");
-    wglResourceAcquireAMD = (PFNWGLRESOURCEDETACHAMD)wglGetProcAddress("wglResourceAcquireAMD");
-    wglResourceReleaseAMD = (PFNWGLRESOURCEDETACHAMD)wglGetProcAddress("wglResourceReleaseAMD");
-    wglResourceDetachAMD = (PFNWGLRESOURCEDETACHAMD)wglGetProcAddress("wglResourceDetachAMD");
-    wglGetContextGPUInfoAMD =
-        (PFNWGLGETCONTEXTGPUINFOAMD)wglGetProcAddress("wglGetContextGPUInfoAMD");
-
-    if (fakeRC) {
-      wglMakeCurrent(nullptr, nullptr);
-      wglDeleteContext(fakeRC);
+    if (pfnWglGetProcAddress != nullptr) {
+      wglBeginCLInteropAMD =
+          (PFNWGLBEGINCLINTEROPAMD)pfnWglGetProcAddress("wglBeginCLInteroperabilityAMD");
+      wglEndCLInteropAMD =
+          (PFNWGLENDCLINTEROPAMD)pfnWglGetProcAddress("wglEndCLInteroperabilityAMD");
+      wglResourceAttachAMD = (PFNWGLRESOURCEATTACHAMD)pfnWglGetProcAddress("wglResourceAttachAMD");
+      wglResourceAcquireAMD =
+          (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceAcquireAMD");
+      wglResourceReleaseAMD =
+          (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceReleaseAMD");
+      wglResourceDetachAMD = (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceDetachAMD");
+      wglGetContextGPUInfoAMD =
+          (PFNWGLGETCONTEXTGPUINFOAMD)pfnWglGetProcAddress("wglGetContextGPUInfoAMD");
     }
   }
   if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
-      !wglResourceDetachAMD || !wglGetContextGPUInfoAMD) {
+      !wglResourceDetachAMD || !wglGetContextGPUInfoAMD || !pfnWglGetCurrentContext) {
     return false;
   }
 #endif
@@ -776,13 +781,6 @@ bool Device::glAssociate(void* GLplatformContext, void* GLdeviceContext) const {
       !glCanInterop(GLplatformContext, GLdeviceContext)) {
     return false;
   }
-
-/*
-    if (m_adp->pAsicInfo->svmFineGrainSystem)
-    {
-        flags = GL_INTEROP_SVM;
-    }
-*/
 #ifdef ATI_OS_LINUX
   GLXContext ctx = (GLXContext)GLplatformContext;
   return (glXBeginCLInteropAMD(ctx, 0)) ? true : false;
@@ -793,12 +791,6 @@ bool Device::glAssociate(void* GLplatformContext, void* GLdeviceContext) const {
 }
 
 bool Device::glDissociate(void* GLplatformContext, void* GLdeviceContext) const {
-/*
-    if (m_adp->pAsicInfo->svmFineGrainSystem)
-    {
-        flags = GL_INTEROP_SVM;
-    }
-*/
 #ifdef ATI_OS_LINUX
   GLXContext ctx = (GLXContext)GLplatformContext;
   if (glXEndCLInteropAMD == nullptr) {
@@ -897,7 +889,7 @@ bool Device::resGLAcquire(void* GLplatformContext, void* mbResHandle, uint type)
   GLXContext ctx = (GLXContext)GLplatformContext;
   return (glxResourceAcquireAMD(ctx, &hRes)) ? true : false;
 #else
-  HGLRC hRC = wglGetCurrentContext();
+  HGLRC hRC = pfnWglGetCurrentContext();
   //! @todo A temporary workaround for MT issue in conformance fence_sync
   if (0 == hRC) {
     return true;
@@ -919,7 +911,7 @@ bool Device::resGLRelease(void* GLplatformContext, void* mbResHandle, uint type)
   return (glxResourceReleaseAMD(ctx, &hRes)) ? true : false;
 #else
   // Make the call into the GL driver only if the application GL context is current
-  HGLRC hRC = wglGetCurrentContext();
+  HGLRC hRC = pfnWglGetCurrentContext();
   //! @todo A temporary workaround for MT issue in conformance fence_sync
   if (0 == hRC) {
     return true;
