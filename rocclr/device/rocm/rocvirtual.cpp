@@ -3208,6 +3208,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         case amd::KernelParameterDescriptor::HiddenQueuePtr:
           WriteAqlArgAt(hidden_arguments, gpu_queue_, it.size_, it.offset_);
           break;
+        case amd::KernelParameterDescriptor::HiddenDynamicLdsSize:
+          WriteAqlArgAt(hidden_arguments, sharedMemBytes, it.size_, it.offset_);
+          break;
       }
     }
 
