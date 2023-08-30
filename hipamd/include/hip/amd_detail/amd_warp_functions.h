@@ -31,6 +31,7 @@ THE SOFTWARE.
 #pragma clang diagnostic ignored "-Wold-style-cast"
 #pragma clang diagnostic ignored "-Wc++98-compat"
 #pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 #endif
 
 __device__ static inline unsigned __hip_ds_bpermute(int index, unsigned src) {
