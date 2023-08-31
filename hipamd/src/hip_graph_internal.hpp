@@ -920,7 +920,7 @@ class GraphKernelNode : public GraphNode {
       kernelParams_.kernelParams = nullptr;
     }
     // Deallocate memory allocated for kernargs passed via 'extra'
-    else {
+    else if (kernelParams_.extra != nullptr) {
       free(kernelParams_.extra[1]);
       free(kernelParams_.extra[3]);
       memset(kernelParams_.extra, 0, 5 * sizeof(kernelParams_.extra[0]));  // 5 items

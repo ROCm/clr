@@ -234,6 +234,11 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
+  const amd::KernelSignature& signature = kernel->signature();
+  if ((signature.numParameters() > 0) && (kernelParams == nullptr) && (extra == nullptr)) {
+    LogPrintfError("%s","At least one of kernelParams or extra Params should be provided");
+    return hipErrorInvalidValue;
+  }
   if (!kernel->getDeviceKernel(*device)) {
     return hipErrorInvalidDevice;
   }
@@ -285,7 +290,6 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     kernargs = reinterpret_cast<address>(extra[1]);
   }
 
-  const amd::KernelSignature& signature = kernel->signature();
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     if (kernelParams == nullptr) {
