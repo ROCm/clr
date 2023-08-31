@@ -76,12 +76,6 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
     return hipErrorInvalidValue;
   }
 
-  // If neither 'kernelParams' or 'extra' are provided or if both are provided, return error
-  if ((pNodeParams->kernelParams == nullptr && pNodeParams->extra == nullptr) ||
-      (pNodeParams->kernelParams != nullptr && pNodeParams->extra != nullptr)) {
-    return hipErrorInvalidValue;
-  }
-
   hipError_t status = hip::GraphKernelNode::validateKernelParams(pNodeParams);
   if (hipSuccess != status) {
     return status;
