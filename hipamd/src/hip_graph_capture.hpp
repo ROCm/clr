@@ -52,17 +52,9 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
                                             size_t& hOffsetSrc, size_t& width, size_t& height,
                                             hipMemcpyKind& kind);
 
-hipError_t capturehipMemcpyFromArrayAsync(hipStream_t& stream, void*& dst, hipArray_const_t& src,
-                                          size_t& wOffsetSrc, size_t& hOffsetSrc, size_t& count,
-                                          hipMemcpyKind& kind);
-
 hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
                                           size_t& hOffset, const void*& src, size_t& spitch,
                                           size_t& width, size_t& height, hipMemcpyKind& kind);
-
-hipError_t capturehipMemcpyToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
-                                        size_t& hOffset, const void*& src, size_t& count,
-                                        hipMemcpyKind& kind);
 
 hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray*& srcArray,
                                      size_t& srcOffset, size_t& ByteCount);

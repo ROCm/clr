@@ -400,44 +400,6 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
   return hipSuccess;
 }
 
-hipError_t capturehipMemcpyFromArrayAsync(hipStream_t& stream, void*& dst, hipArray_const_t& src,
-                                          size_t& wOffsetSrc, size_t& hOffsetSrc, size_t& count,
-                                          hipMemcpyKind& kind) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] Current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hip::GraphNode* pGraphNode;
-  hipMemcpy3DParms p = {};
-  memset(&p, 0, sizeof(p));
-  p.srcPos = {wOffsetSrc, hOffsetSrc, 0};
-  p.kind = kind;
-  p.srcPtr.ptr = nullptr;
-  p.srcArray = const_cast<hipArray*>(src);
-
-  p.kind = kind;
-  p.dstPtr.ptr = dst;
-  p.dstArray = nullptr;  // Ignored.
-  p.dstPtr.pitch = 0;
-  const size_t arrayHeight = (src->height != 0) ? src->height : 1;
-  const size_t widthInBytes = count / arrayHeight;
-  const size_t height = (count / src->width) / hip::getElementSize(src);
-  p.extent = {widthInBytes / hip::getElementSize(p.srcArray), height, 1};
-  hipError_t status =
-      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &p);
-  if (status != hipSuccess) {
-    return status;
-  }
-  s->SetLastCapturedNode(pGraphNode);
-  return hipSuccess;
-}
-
 hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
                                           size_t& hOffset, const void*& src, size_t& spitch,
                                           size_t& width, size_t& height, hipMemcpyKind& kind) {
@@ -463,44 +425,6 @@ hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, s
   p.srcArray = nullptr;  // Ignored.
   p.srcPtr.pitch = spitch;
   p.extent = {width / hip::getElementSize(p.dstArray), height, 1};
-  hipError_t status =
-      ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &p);
-  if (status != hipSuccess) {
-    return status;
-  }
-  s->SetLastCapturedNode(pGraphNode);
-  return hipSuccess;
-}
-
-hipError_t capturehipMemcpyToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
-                                        size_t& hOffset, const void*& src, size_t& count,
-                                        hipMemcpyKind& kind) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] Current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hip::GraphNode* pGraphNode;
-  hipMemcpy3DParms p = {};
-  memset(&p, 0, sizeof(p));
-  p.dstPos = {wOffset, hOffset, 0};
-  p.kind = kind;
-  p.dstPtr.ptr = nullptr;
-  p.dstArray = dst;  // Ignored.
-
-  p.kind = kind;
-  p.srcPtr.ptr = const_cast<void*>(src);
-  p.srcArray = nullptr;  // Ignored.
-  p.srcPtr.pitch = 0;
-  const size_t arrayHeight = (dst->height != 0) ? dst->height : 1;
-  const size_t widthInBytes = count / arrayHeight;
-  const size_t height = (count / dst->width) / hip::getElementSize(dst);
-  p.extent = {widthInBytes / hip::getElementSize(p.dstArray), height, 1};
   hipError_t status =
       ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                              s->GetLastCapturedNodes().size(), &p);
