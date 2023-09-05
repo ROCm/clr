@@ -468,7 +468,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->grid_size_x = global[0];
   hsaDisp->grid_size_y = (sizes.dimensions() > 1) ? global[1] : 1;
   hsaDisp->grid_size_z = (sizes.dimensions() > 2) ? global[2] : 1;
-  hsaDisp->reserved2 = 0;
+  hsaDisp->reserved0 = 0;
 
   // Initialize kernel ISA and execution buffer requirements
   hsaDisp->private_segment_size = spillSegSize();
