@@ -74,7 +74,7 @@ bool Runtime::init() {
 
   if (!Flag::init() || !option::init() || !Device::init()
       // Agent initializes last
-      || !Agent::init()) {
+      || (!amd::IS_HIP && !Agent::init())) {
     ClPrint(LOG_ERROR, LOG_INIT, "Runtime initialization failed");
     return false;
   }
