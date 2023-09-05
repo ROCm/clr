@@ -1503,13 +1503,13 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   gpu.queue(gpu.engineID_).addCmdMemRef(memRef());
   gpu.queue(gpu.engineID_).addCmdMemRef(dstResource.memRef());
   if (desc().buffer_ && !dstResource.desc().buffer_) {
-    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : img1Darray ? dstOrigin[1] : 0;
     Pal::SubresId ImgSubresId = {0, dstResource.desc().baseLevel_, arraySliceIdx};
     Pal::MemoryImageCopyRegion copyRegion = {};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = dstOrigin[0];
-    copyRegion.imageOffset.y = dstOrigin[1];
-    copyRegion.imageOffset.z = dstOrigin[2];
+    copyRegion.imageOffset.y = img1Darray ? 0 : dstOrigin[1];
+    copyRegion.imageOffset.z = (img1Darray || img2Darray) ? 0 : dstOrigin[2];
     copyRegion.imageExtent.width = size[0];
     copyRegion.imageExtent.height = size[1];
     copyRegion.imageExtent.depth = size[2];
@@ -1529,12 +1529,12 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : 0;
+    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : img1Darray ? dstOrigin[1] : 0;
     Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
-    copyRegion.imageOffset.y = srcOrigin[1];
-    copyRegion.imageOffset.z = srcOrigin[2];
+    copyRegion.imageOffset.y = img1Darray ? 0 : srcOrigin[1];
+    copyRegion.imageOffset.z = (img1Darray || img2Darray) ? 0 : srcOrigin[2];
     copyRegion.imageExtent.width = size[0];
     copyRegion.imageExtent.height = size[1];
     copyRegion.imageExtent.depth = size[2];
@@ -1798,8 +1798,9 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
       Pal::SubresLayout layout;
       image_->GetSubresourceLayout(ImgSubresId, &layout);
       *pitch = layout.rowPitch / elementSize();
+    } else {
+      *pitch = desc().width_;
     }
-    *pitch = desc().width_;
     if (Pal::Result::Success == resource->Map(&address)) {
       return address;
     } else {

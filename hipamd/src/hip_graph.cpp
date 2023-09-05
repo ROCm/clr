@@ -1227,15 +1227,13 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   }
   std::vector<std::vector<hip::GraphNode*>> parallelLists;
   std::unordered_map<hip::GraphNode*, std::vector<hip::GraphNode*>> nodeWaitLists;
-  std::unordered_set<hip::UserObject*> graphExeUserObj;
   clonedGraph->GetRunList(parallelLists, nodeWaitLists);
   std::vector<hip::GraphNode*> graphNodes;
   if (false == clonedGraph->TopologicalOrder(graphNodes)) {
     return hipErrorInvalidValue;
   }
-  clonedGraph->GetUserObjs(graphExeUserObj);
-  *pGraphExec = new hip::GraphExec(graphNodes, parallelLists, nodeWaitLists, clonedNodes,
-                                   graphExeUserObj, flags);
+  *pGraphExec =
+      new hip::GraphExec(graphNodes, parallelLists, nodeWaitLists, clonedGraph, clonedNodes, flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
     return (*pGraphExec)->Init();

@@ -34,6 +34,7 @@
 #include "hip_platform.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_vm.hpp"
+
 namespace hip {
 struct Graph;
 struct GraphNode;
@@ -42,8 +43,8 @@ struct UserObject;
 typedef GraphNode* Node;
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-                        std::vector<Node>& topoOrder, std::vector<amd::Command*>& rootCommands,
-                        amd::Command*& endCommand, hip::Stream* stream);
+                        std::vector<Node>& topoOrder, Graph* clonedGraph, amd::Command*& graphStart,
+                        amd::Command*& graphEnd, hip::Stream* stream);
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                   GraphExec* ptr);
 
@@ -552,27 +553,26 @@ struct GraphExec {
   // Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
+  struct Graph* clonedGraph_;
   std::vector<hip::Stream*> parallel_streams_;
   uint currentQueueIndex_;
   std::unordered_map<Node, Node> clonedNodes_;
   amd::Command* lastEnqueuedCommand_;
   static std::unordered_set<GraphExec*> graphExecSet_;
-  std::unordered_set<UserObject*> graphExeUserObj_;
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
+
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
-               std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
-               std::unordered_map<Node, Node>& clonedNodes,
-               std::unordered_set<UserObject*>& userObjs,
-               uint64_t flags = 0)
+            std::unordered_map<Node, std::vector<Node>>& nodeWaitLists, struct Graph*& clonedGraph,
+            std::unordered_map<Node, Node>& clonedNodes, uint64_t flags = 0)
       : parallelLists_(lists),
         topoOrder_(topoOrder),
         nodeWaitLists_(nodeWaitLists),
+        clonedGraph_(clonedGraph),
         clonedNodes_(clonedNodes),
         lastEnqueuedCommand_(nullptr),
-        graphExeUserObj_(userObjs),
         currentQueueIndex_(0),
         flags_(flags) {
     amd::ScopedLock lock(graphExecSetLock_);
@@ -587,12 +587,9 @@ struct GraphExec {
         hip::Stream::Destroy(stream);
       }
     }
-    for (auto it = clonedNodes_.begin(); it != clonedNodes_.end(); it++) delete it->second;
     amd::ScopedLock lock(graphExecSetLock_);
-    for (auto userobj : graphExeUserObj_) {
-      userobj->release();
-    }
     graphExecSet_.erase(this);
+    delete clonedGraph_;
   }
 
   Node GetClonedNode(Node node) {
@@ -623,11 +620,14 @@ struct ChildGraphNode : public GraphNode {
   std::vector<std::vector<Node>> parallelLists_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
   amd::Command* lastEnqueuedCommand_;
-
+  amd::Command* startCommand_;
+  amd::Command* endCommand_;
  public:
   ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle") {
     childGraph_ = g->clone();
     lastEnqueuedCommand_ = nullptr;
+    startCommand_ = nullptr;
+    endCommand_ = nullptr;
   }
 
   ~ChildGraphNode() { delete childGraph_; }
@@ -672,44 +672,41 @@ struct ChildGraphNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-    commands_.reserve(2);
-    std::vector<amd::Command*> rootCommands;
-    amd::Command* endCommand = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, rootCommands,
-                          endCommand, stream);
-    for (auto& cmd : rootCommands) {
-      commands_.push_back(cmd);
-    }
-    if (endCommand != nullptr) {
-      commands_.push_back(endCommand);
-    }
+    startCommand_ = nullptr;
+    endCommand_ = nullptr;
+    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, childGraph_,
+                          startCommand_, endCommand_, stream);
     return status;
   }
 
   //
   void UpdateEventWaitLists(amd::Command::EventWaitList waitList) {
-    parallelLists_[0].front()->UpdateEventWaitLists(waitList);
+    if (startCommand_ != nullptr) {
+      startCommand_->updateEventWaitList(waitList);
+    }
   }
 
   void GetRunList(std::vector<std::vector<Node>>& parallelList,
                   std::unordered_map<Node, std::vector<Node>>& dependencies) {
     childGraph_->GetRunList(parallelLists_, nodeWaitLists_);
   }
-  bool TopologicalOrder(std::vector<Node>& TopoOrder) { return childGraph_->TopologicalOrder(TopoOrder); }
+  bool TopologicalOrder(std::vector<Node>& TopoOrder) {
+    return childGraph_->TopologicalOrder(TopoOrder);
+  }
   void EnqueueCommands(hipStream_t stream) {
     // enqueue child graph start command
-    if (commands_.size() == 1) {
-      commands_[0]->enqueue();
-      commands_[0]->release();
+    if (startCommand_ != nullptr) {
+      startCommand_->enqueue();
+      startCommand_->release();
     }
     // enqueue nodes in child graph in level order
     for (auto& node : childGraphNodeOrder_) {
       node->EnqueueCommands(stream);
     }
     // enqueue child graph end command
-    if (commands_.size() == 2) {
-      commands_[1]->enqueue();
-      commands_[1]->release();
+    if (endCommand_ != nullptr) {
+      endCommand_->enqueue();
+      endCommand_->release();
     }
   }
 

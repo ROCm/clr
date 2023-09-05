@@ -383,7 +383,7 @@ install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
 
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
-  if(${HIPCC_BIN_DIR}/hipcc.bin)
+  if(EXISTS ${HIPCC_BIN_DIR}/hipcc.bin)
     set(hipcc_bin ${HIPCC_BIN_DIR}/hipcc.bin)
     set(hipconfig_bin ${HIPCC_BIN_DIR}/hipconfig.bin)
     if(WIN32)
