@@ -1578,7 +1578,7 @@ typedef struct hip_api_data_s {
     struct {
       int* value;
       int value__val;
-      hipFunction_attribute attrib;
+      hipFuncAttribute  attrib;
       hipFunction_t hfunc;
     } hipFuncGetAttribute;
     struct {
@@ -3713,10 +3713,10 @@ typedef struct hip_api_data_s {
 #define INIT_hipFreeMipmappedArray_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipFreeMipmappedArray.mipmappedArray = (hipMipmappedArray_t)mipmappedArray; \
 };
-// hipFuncGetAttribute[('int*', 'value'), ('hipFunction_attribute', 'attrib'), ('hipFunction_t', 'hfunc')]
+// hipFuncGetAttribute[('int*', 'value'), ('hipFuncAttribute ', 'attrib'), ('hipFunction_t', 'hfunc')]
 #define INIT_hipFuncGetAttribute_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipFuncGetAttribute.value = (int*)value; \
-  cb_data.args.hipFuncGetAttribute.attrib = (hipFunction_attribute)attrib; \
+  cb_data.args.hipFuncGetAttribute.attrib = (hipFuncAttribute )attrib; \
   cb_data.args.hipFuncGetAttribute.hfunc = (hipFunction_t)hfunc; \
 };
 // hipFuncGetAttributes[('hipFuncAttributes*', 'attr'), ('const void*', 'func')]
@@ -5851,7 +5851,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipFreeMipmappedArray[('hipMipmappedArray_t', 'mipmappedArray')]
     case HIP_API_ID_hipFreeMipmappedArray:
       break;
-// hipFuncGetAttribute[('int*', 'value'), ('hipFunction_attribute', 'attrib'), ('hipFunction_t', 'hfunc')]
+// hipFuncGetAttribute[('int*', 'value'), ('hipFuncAttribute ', 'attrib'), ('hipFunction_t', 'hfunc')]
     case HIP_API_ID_hipFuncGetAttribute:
       if (data->args.hipFuncGetAttribute.value) data->args.hipFuncGetAttribute.value__val = *(data->args.hipFuncGetAttribute.value);
       break;
