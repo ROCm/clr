@@ -273,14 +273,6 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
   return findIsa();
 }
 
-static inline uint getArchMajorVersion(std::string &isa) {
-  if (const amd::Isa *isaIter = amd::Isa::findIsa(isa.data())) {
-    return isaIter->versionMajor();
-  }
-
-  return static_cast<uint>(-1);
-}
-
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
 
 bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
@@ -304,17 +296,6 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   if (!transformOptions(compileOpts)) {
     LogError("Error in hiprtc: unable to transform options");
     return false;
-  }
-
-  // Decide whether to enable wave64 compilation
-  auto majorVer = getArchMajorVersion(isa_);
-  if (majorVer <= 9 || !GPU_ENABLE_WAVE32_MODE) {
-    if (majorVer > 9) {
-       LogWarning("Wavefront size 64 is experimental for gfx10 and above. Warp "
-                  "functions may not work");
-    }
-    compileOpts.push_back("-mwavefrontsize64");
-    link_options_.push_back("wavefrontsize64");
   }
 
   if (!compileToBitCode(compile_input_, isa_, compileOpts, build_log_, LLVMBitcode_)) {
