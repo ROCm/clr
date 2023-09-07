@@ -95,9 +95,6 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-target_link_libraries(hiprtc PRIVATE ${FIXME_DIR}/fixme.cpp${CMAKE_CXX_OUTPUT_EXTENSION})
-add_dependencies(hiprtc amdhip64)
-
 if(WIN32)
   target_link_libraries(hiprtc PRIVATE Dbghelp.lib)
 endif()

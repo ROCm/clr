@@ -188,7 +188,6 @@ endif()
 
 set(HIPRTC_OBJECTS)
 # Add hiprtc
-set(FIXME_DIR ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/amdhip64.dir)
 add_subdirectory(hiprtc)
 
 if(NOT WIN32)
