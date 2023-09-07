@@ -444,7 +444,7 @@ typedef struct cudaArray* hipArray_const_t;
 typedef struct cudaFuncAttributes hipFuncAttributes;
 typedef struct cudaLaunchParams hipLaunchParams;
 typedef CUDA_LAUNCH_PARAMS hipFunctionLaunchParams;
-#define hipFunction_attribute CUfunction_attribute
+#define hipFuncAttribute  CUfunction_attribute
 #define hipPointer_attribute CUpointer_attribute
 #define hip_Memcpy2D CUDA_MEMCPY2D
 #define HIP_MEMCPY3D CUDA_MEMCPY3D
@@ -2764,7 +2764,7 @@ inline static hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const voi
     return hipCUDAErrorTohipError(cudaFuncGetAttributes(attr, func));
 }
 
-inline static hipError_t hipFuncGetAttribute (int* value, hipFunction_attribute attrib, hipFunction_t hfunc) {
+inline static hipError_t hipFuncGetAttribute (int* value, hipFuncAttribute  attrib, hipFunction_t hfunc) {
     return hipCUResultTohipError(cuFuncGetAttribute(value, attrib, hfunc));
 }
 
