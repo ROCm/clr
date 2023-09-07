@@ -209,9 +209,10 @@ bool RTCCompileProgram::addBuiltinHeader() {
   return true;
 }
 
-bool RTCCompileProgram::findLLVMOptions(const std::vector<std::string>& options,
-                                        std::vector<std::string>& llvm_options) {
+bool RTCCompileProgram::findExeOptions(const std::vector<std::string>& options,
+                                        std::vector<std::string>& exe_options) {
   for (size_t i = 0; i < options.size(); ++i) {
+    // -mllvm options passed by the app such as "-mllvm" "-amdgpu-early-inline-all=true"
     if (options[i] == "-mllvm") {
       if (options.size() == (i + 1)) {
         LogInfo(
@@ -219,8 +220,12 @@ bool RTCCompileProgram::findLLVMOptions(const std::vector<std::string>& options,
             "this");
         return false;
       }
-      llvm_options.push_back(options[i]);
-      llvm_options.push_back(options[i + 1]);
+      exe_options.push_back(options[i]);
+      exe_options.push_back(options[i + 1]);
+    }
+    // Options like -Rpass=inline
+    if (options[i].find("-Rpass=") == 0) {
+      exe_options.push_back(options[i]);
     }
   }
   return true;
@@ -335,21 +340,21 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
     return false;
   }
 
-  std::vector<std::string> llvmOptions;
-  // Find the -mllvm options passed by the app such as "-mllvm" "-amdgpu-early-inline-all=true"
-  if (!findLLVMOptions(options, llvmOptions)) {
-    LogError("Error in hiprtc: unable to match -mllvm options");
+  std::vector<std::string> exe_options;
+  // Find the options passed by the app which can be used during BC to Relocatable phase.
+  if (!findExeOptions(options, exe_options)) {
+    LogError("Error in hiprtc: unable to find executable options");
     return false;
   }
 
   std::vector<std::string> exeOpts(exe_options_);
-  exeOpts.reserve(exeOpts.size() + llvmOptions.size() + 2);
-  // Add these options by default for optimizations during BC to Relocatable phase.
+  exeOpts.reserve(exeOpts.size() + exe_options.size() + 2);
+  // Add these below options by default for optimizations during BC to Relocatable phase.
   exeOpts.push_back("-mllvm");
   exeOpts.push_back("-amdgpu-internalize-symbols");
-  // User provided -mllvm options are appended at the end since they can override the above
+  // User provided options are appended at the end since they can override the above
   // default options if necessary
-  exeOpts.insert(exeOpts.end(), llvmOptions.begin(), llvmOptions.end());
+  exeOpts.insert(exeOpts.end(), exe_options.begin(), exe_options.end());
 
   if (settings_.dumpISA) {
     if (!dumpIsaFromBC(exec_input_, isa_, exeOpts, name_, build_log_)) {

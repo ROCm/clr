@@ -156,8 +156,8 @@ class RTCCompileProgram : public RTCProgram {
   bool addSource_impl();
   bool addBuiltinHeader();
   bool transformOptions(std::vector<std::string>& compile_options);
-  bool findLLVMOptions(const std::vector<std::string>& options,
-                       std::vector<std::string>& llvm_options);
+  bool findExeOptions(const std::vector<std::string>& options,
+                       std::vector<std::string>& exe_options);
   void AppendCompileOptions() {
     AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_);
   }
