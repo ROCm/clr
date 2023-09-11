@@ -278,7 +278,7 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
 
   size_t kernelNamesSize = 0;
   acl_error errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_,
-    RT_KERNEL_NAMES, nullptr, nullptr, &kernelNamesSize);
+                                              RT_KERNEL_NAMES, nullptr, nullptr, &kernelNamesSize);
   if (errorCode != ACL_SUCCESS) {
     buildLog_ += "Error: Querying of kernel names size from the binary failed.\n";
     return false;
@@ -286,7 +286,7 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
   if (kernelNamesSize > 0) {
     std::vector<char> kernelNames(kernelNamesSize);
     errorCode = amd::Hsail::QueryInfo(palNullDevice().compiler(), binaryElf_, RT_KERNEL_NAMES,
-      nullptr, kernelNames.data(), &kernelNamesSize);
+                                      nullptr, kernelNames.data(), &kernelNamesSize);
     if (errorCode != ACL_SUCCESS) {
       buildLog_ += "Error: Querying of kernel names from the binary failed.\n";
       return false;
@@ -737,30 +737,34 @@ bool LightningProgram::createBinary(amd::option::Options* options) {
   return true;
 }
 
+// ================================================================================================
 bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,
                                      bool internalKernel) {
 #if defined(USE_COMGR_LIBRARY)
-   // Find the size of global variables from the binary
-  if (!FindGlobalVarSize(binary, binSize)) {
-    buildLog_ += "Error: Cannot Find Global Var Sizes\n";
-    return false;
-  }
-
-  for (const auto& kernelMeta : kernelMetadataMap_) {
-    auto kernelName = kernelMeta.first;
-    auto kernel = new LightningKernel(kernelName, this, internalKernel);
-    if (kernel == nullptr) {
+  // Skip metadata look-up and kernel creation for assembly and internal kernel.
+  // @note: Runtime compiles only the second level trap handler from assembly
+  if ((owner()->language() != amd::Program::Assembly) || !internal_) {
+    // Find the size of global variables from the binary
+    if (!FindGlobalVarSize(binary, binSize)) {
+      buildLog_ += "Error: Cannot Find Global Var Sizes\n";
       return false;
     }
-    if (!kernel->init()) {
-      buildLog_ += "[ROC][Kernel] Could not get Code Prop Meta Data \n";
-      return false;
+
+    for (const auto& kernelMeta : kernelMetadataMap_) {
+      auto kernelName = kernelMeta.first;
+      auto kernel = new LightningKernel(kernelName, this, internalKernel);
+      if (kernel == nullptr) {
+        return false;
+      }
+      if (!kernel->init()) {
+        buildLog_ += "[ROC][Kernel] Could not get Code Prop Meta Data \n";
+        return false;
+      }
+      kernels()[kernelName] = kernel;
+
+      kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
     }
-    kernels()[kernelName] = kernel;
-
-    kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);
   }
-
   executable_ = loader_->CreateExecutable(HSA_PROFILE_FULL, nullptr);
   if (executable_ == nullptr) {
     LogError("Error: Executable for AMD HSA Code Object isn't created.");
@@ -787,13 +791,14 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
   return true;
 }
 
-bool LightningProgram::setKernels(void* binary, size_t binSize,
-                                  amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
+// ================================================================================================
+bool LightningProgram::setKernels(void* binary, size_t binSize, amd::Os::FileDesc fdesc,
+                                  size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   // Collect the information about compiled binary
   if (!isNull() && (palDevice().rgpCaptureMgr() != nullptr)) {
-    apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(binary, binSize, binary, binSize,
-                                                         codeSegGpu_->iMem(), codeSegGpu_->offset());
+    apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(
+        binary, binSize, binary, binSize, codeSegGpu_->iMem(), codeSegGpu_->offset());
   }
 
   for (auto& kit : kernels()) {
@@ -810,6 +815,17 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
   DestroySegmentCpuAccess();
 #endif  // defined(USE_COMGR_LIBRARY)
   return true;
+}
+
+// ================================================================================================
+uint64_t LightningProgram::GetTrapHandlerAddress() const {
+  uint64_t address = 0;
+  hsa_agent_t agent = {amd::Device::toHandle(&(device()))};
+  auto trap_sym = executable_->GetSymbol("trap_entry", &agent);
+  if (trap_sym != nullptr) {
+    trap_sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, &address);
+  }
+  return address;
 }
 
 }  // namespace pal

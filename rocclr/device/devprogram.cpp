@@ -514,8 +514,8 @@ bool Program::compileToLLVMBitcode(const amd_comgr_data_set_t compileInputs,
 bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
                                        const std::vector<std::string>& options,
                                        amd::option::Options* amdOptions,
-                                       char* executable[], size_t* executableSize) {
-
+                                       char* executable[], size_t* executableSize,
+                                       file_type_t continueCompileFrom) {
   // create the linked output
   amd_comgr_action_info_t action;
   amd_comgr_data_set_t output;
@@ -567,16 +567,18 @@ bool Program::compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
 
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     hasRelocatableData = true;
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
-                                 action, inputs, relocatableData);
+    amd_comgr_action_kind_t kind = (continueCompileFrom == FILE_TYPE_ASM_TEXT)
+        ? AMD_COMGR_ACTION_ASSEMBLE_SOURCE_TO_RELOCATABLE
+        : AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE;
+    status = amd::Comgr::do_action(kind, action, inputs, relocatableData);
     extractBuildLog(relocatableData);
   }
 
   // Create executable from the relocatable data set
   amd::Comgr::action_info_set_option_list(action, nullptr, 0);
   if (status == AMD_COMGR_STATUS_SUCCESS) {
-    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
-                                 action, relocatableData, output);
+    status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE, action,
+                                   relocatableData, output);
     extractBuildLog(output);
   }
 
@@ -688,7 +690,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     driverOptions.push_back("-mwavefrontsize64");
   }
   driverOptions.push_back("-mcode-object-version=" + std::to_string(options->oVariables->LCCodeObjectVersion));
-
+ 
   // Iterate through each source code and dump it into tmp
   std::fstream f;
   std::vector<std::string> headerFileNames(headers.size());
@@ -1289,7 +1291,7 @@ bool Program::linkImplLC(amd::option::Options* options) {
   char* executable = nullptr;
   size_t executableSize = 0;
   bool ret = compileAndLinkExecutable(inputs, codegenOptions, options, &executable,
-                                      &executableSize);
+                                      &executableSize, continueCompileFrom);
   amd::Comgr::destroy_data_set(inputs);
 
   if (!ret) {
