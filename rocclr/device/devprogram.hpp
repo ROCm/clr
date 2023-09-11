@@ -466,8 +466,8 @@ class Program : public amd::HeapObject {
 
   //! Compile and create the excutable of the input dataset
   bool compileAndLinkExecutable(const amd_comgr_data_set_t inputs,
-    const std::vector<std::string>& options, amd::option::Options* amdOptions,
-    char* executable[], size_t* executableSize);
+    const std::vector<std::string>& options, amd::option::Options* amdOptions, char* executable[],
+    size_t* executableSize, file_type_t continueCompileFrom);
 
   //! Create the map for the kernel name and its metadata for fast access
   bool createKernelMetadataMap(void* binary, size_t binSize);

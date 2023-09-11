@@ -713,6 +713,7 @@ class Device : public NullDevice {
   Pal::GpuMemoryHeapProperties
       heaps_[Pal::GpuHeapCount];         //!< Information about heaps, returned from PAL
   std::map<Pal::IQueue*, QueueRecycleInfo*> queue_pool_;  //!< Pool of PAL queues for recycling
+  amd::Program* trap_handler_ = nullptr;  //!< Trap handler program for debugger setup
 };
 
 /*@}*/  // namespace pal

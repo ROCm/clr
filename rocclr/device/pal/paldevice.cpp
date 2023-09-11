@@ -816,6 +816,10 @@ Device::~Device() {
   // Destroy transfer queue
   delete xferQueue_;
 
+  if (trap_handler_ != nullptr) {
+    trap_handler_->release();
+  }
+
   // Destroy blit program
   delete blitProgram_;
 
@@ -847,6 +851,7 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
+extern const char* TrapHandlerCode;
 
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
@@ -1197,6 +1202,32 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
+    // Setup trap handler if available
+    if (trap_handler_ != nullptr) {
+      auto program = reinterpret_cast<pal::LightningProgram*>(
+          trap_handler_->getDeviceProgram(*this));
+      if (program != nullptr) {
+        Pal::Result result{Pal::Result::Success};
+        Pal::GpuMemoryRef memRef = {};
+        memRef.pGpuMemory = program->codeSegGpu().iMem();
+        if (!settings().alwaysResident_) {
+          // Make sure trap handler is always resident in memory
+          // note: this code path is for OpenCL only, since HIP has alwaysResident_ enabled
+          result = iDev()->AddGpuMemoryReferences(1, &memRef, nullptr, Pal::GpuMemoryRefCantTrim);
+        }
+        if (result == Pal::Result::Success) {
+          // Find an offset in memory for the trap handler.
+          // Loader returns an absolute address, but PAL accepts base + offset, hense find offset
+          auto offset = program->GetTrapHandlerAddress() - memRef.pGpuMemory->Desc().gpuVirtAddr;
+#ifdef PAL_DEBUGGER
+          // Bind trap handler to the kernel mode driver
+          iDev()->BindTrapHandler(Pal::PipelineBindPoint::Compute, memRef.pGpuMemory, offset);
+#endif
+        } else {
+          LogError("Failed to make trap handler resident in memory");
+        }
+      }
+    }
   }
   return true;
 }
@@ -2552,6 +2583,29 @@ bool Device::createBlitProgram() {
     LogError("Couldn't create blit kernels!");
     result = false;
   }
+
+#ifdef PAL_DEBUGGER
+  if (settings().useLightning_) {
+    const std::string TrapHandlerAsm = TrapHandlerCode;
+    // Create a program for trap handler
+    // note: It's not critical for runtime functionality to fail trap handler initialization
+    trap_handler_ = new amd::Program(*context_, TrapHandlerAsm.c_str(), amd::Program::Assembly);
+    if (trap_handler_ != nullptr) {
+      std::vector<amd::Device*> devices;
+      devices.push_back(this);
+      std::string opt = "-cl-internal-kernel ";
+      if (auto retval =
+              trap_handler_->build(devices, opt.c_str(), nullptr, nullptr, false) != CL_SUCCESS) {
+        DevLogPrintfError("Build failed for trap handler with error code: %d\n", retval);
+      }
+      if (!trap_handler_->load()) {
+        DevLogPrintfError("Could not load the trap handler \n");
+      }
+    } else {
+      DevLogPrintfError("Trap handler creation failed\n");
+    }
+  }
+#endif
   return result;
 }
 
