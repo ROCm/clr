@@ -390,6 +390,8 @@ class coalesced_group : public thread_group {
     coalesced_info.member_mask = member_mask; // Which threads are active
     coalesced_info.size = __popcll(coalesced_info.member_mask); // How many threads are active
     coalesced_info.tiled_info.is_tiled = false; // Not a partitioned group
+    coalesced_info.tiled_info.meta_group_rank = 0;
+    coalesced_info.tiled_info.meta_group_size = 1;
   }
 
  public:
