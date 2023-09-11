@@ -3284,7 +3284,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     // Add a dependency into the device queue on the current queue
     queue->Barriers().AddExternalSignal(Barriers().GetLastSignal());
 
-    if (!dev().settings().coop_sync_) {
+    if (dev().settings().gwsInitSupported_ == true) {
       uint32_t workgroups = vcmd.numWorkgroups();
       static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups - 1);
     }

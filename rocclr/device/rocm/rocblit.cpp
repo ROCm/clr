@@ -2785,6 +2785,11 @@ bool KernelBlitManager::RunGwsInit(
   uint32_t value) const {
   amd::ScopedLock k(lockXferOps_);
 
+  if (dev().settings().gwsInitSupported_ == false) {
+    LogError("GWS Init is not supported on this target");
+    return false;
+  }
+
   size_t globalWorkOffset[1] = { 0 };
   size_t globalWorkSize[1] = { 1 };
   size_t localWorkSize[1] = { 1 };

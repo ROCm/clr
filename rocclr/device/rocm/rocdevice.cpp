@@ -96,6 +96,7 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 
 namespace device {
 extern const char* HipExtraSourceCode;
+extern const char* HipExtraSourceCodeNoGWS;
 } // namespace device
 
 namespace roc {
@@ -847,7 +848,11 @@ bool Device::createBlitProgram() {
 #if defined(USE_COMGR_LIBRARY)
   if (settings().useLightning_) {
     if (amd::IS_HIP) {
-      extraKernel = device::HipExtraSourceCode;
+      if (settings().gwsInitSupported_) {
+        extraKernel = device::HipExtraSourceCode;
+      } else {
+        extraKernel = device::HipExtraSourceCodeNoGWS;
+      }
     } else {
       extraKernel = SchedulerSourceCode;
     }
@@ -1752,6 +1757,7 @@ bool Device::populateOCLDeviceConstants() {
     info_.sgprsPerSimd_ =
         std::numeric_limits<uint32_t>::max();  // gfx10+ does not share SGPRs between waves
   }
+
   return true;
 }
 

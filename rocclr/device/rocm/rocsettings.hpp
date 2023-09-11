@@ -51,9 +51,8 @@ class Settings : public device::Settings {
       uint cpu_wait_for_signal_ : 1;    //!< Wait for HSA signal on CPU
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
-      uint coop_sync_ : 1;              //!< grid and multi-grid sync for gfx940+
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint reserved_ : 20;
+      uint reserved_ : 21;
     };
     uint value_;
   };

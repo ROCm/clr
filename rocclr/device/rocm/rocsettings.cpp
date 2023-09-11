@@ -92,9 +92,9 @@ Settings::Settings() {
 
   // Use coarse grain system memory for kernel arguments by default (to keep GPU cache)
   fgs_kernel_arg_ = false;
-  // by default for asics < gfx940 old single grid sync path is followed
-  coop_sync_ = false;
   barrier_value_packet_ = false;
+
+  gwsInitSupported_ = true;
 }
 
 // ================================================================================================
@@ -173,12 +173,11 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
   }
 
-  // No GWS init kernel necessary for these archs
-  if ((gfxipMajor == 9 && gfxipMinor == 4) || gfxipMajor >= 11) {
-    coop_sync_ = true;
-  }
-
   lcWavefrontSize64_ = !enableWave32Mode_;
+
+  if (gfxipMajor > 10 || (gfxipMajor == 9 && gfxipMinor == 4)) {
+    gwsInitSupported_ = false;
+  }
 
   // Override current device settings
   override();
