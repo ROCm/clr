@@ -1293,7 +1293,16 @@ bool Device::populateOCLDeviceConstants() {
         GPU_SINGLE_ALLOC_PERCENT = 75;
       }
     }
-
+    // Limit gpu single allocation percentage on MI300 1P which has one gpu.
+    if ((isa().versionMajor() == 9) && (isa().versionMinor() == 4) &&
+        (isa().versionStepping() == 0)) {
+      if (gpu_agents_.size() == 1 || p2p_agents_.size() == 0) {
+        if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {
+            GPU_SINGLE_ALLOC_PERCENT = 60;
+        }
+      }
+    }
+     
     gpuvm_segment_max_alloc_ =
         uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
     assert(gpuvm_segment_max_alloc_ > 0);
