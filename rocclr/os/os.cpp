@@ -37,6 +37,16 @@
 
 namespace amd {
 
+bool Os::isValidFileDesc(const amd::Os::FileDesc& desc) {
+  #if defined(_WIN32)
+    return reinterpret_cast<int>(desc) > 0;
+  #else
+    return static_cast<int>(desc) > 0;
+  #endif
+  return false;
+}
+
+
 void* Os::loadLibrary(const char* libraryname) {
   void* handle;
 
