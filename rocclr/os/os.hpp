@@ -292,6 +292,8 @@ class Os : AllStatic {
   //
   typedef bool (*SymbolCallback)(std::string, const void*, void*);
 
+  //! checks if file descriptor is valid
+  static bool isValidFileDesc(const amd::Os::FileDesc& desc);
   //! Load the shared library named by \a filename
   static void* loadLibrary(const char* filename);
   //! Unload the shared library.

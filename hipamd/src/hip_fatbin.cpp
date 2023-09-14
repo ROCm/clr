@@ -78,7 +78,7 @@ FatBinaryInfo::~FatBinaryInfo() {
 
   } else {
     // Using Runtime Unbundler
-    if (fdesc_ > 0) {
+    if (amd::Os::isValidFileDesc(fdesc_)) {
       if (fsize_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
         LogPrintfError("Cannot unmap file for fdesc: %d fsize: %d", fdesc_, fsize_);
         assert(false);
@@ -183,7 +183,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
 #if !defined(_WIN32)
     // Using the file descriptor and file size, map the data object.
-    if (fdesc_ > 0) {
+    if (amd::Os::isValidFileDesc(fdesc_)) {
       guarantee(fsize_ > 0, "Cannot have a file size of 0, fdesc: %d fname: %s \n",
                              fdesc_, fname_.c_str());
       if ((comgr_status = amd_comgr_set_data_from_file_slice(data_object, fdesc_, foffset_,

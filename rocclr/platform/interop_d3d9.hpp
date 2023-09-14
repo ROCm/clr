@@ -119,7 +119,7 @@ public:
             if(pQuery_) pQuery_->Release();
             //if the resouce is being used
             if(resources_.size()) {
-                for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
+                for(auto it = resources_.cbegin(); it != resources_.cend(); it++) {
                     if( surfInfo_.resource &&
                         ((*it).first.surfInfo.resource == surfInfo_.resource) &&
                         ((*it).first.surfPlane == surfPlane_)) {

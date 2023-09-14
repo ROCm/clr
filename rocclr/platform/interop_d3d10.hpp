@@ -123,7 +123,7 @@ public:
             if(pQuery_) pQuery_->Release();
             // Check if this resource has already been used for interop
             if(resources_.size()) {
-                for(auto& it = resources_.cbegin(); it != resources_.cend(); it++) {
+                for(auto it = resources_.cbegin(); it != resources_.cend(); it++) {
                     if(((pD3D10ResOrig_ && (*it).first == (void*) pD3D10ResOrig_)
                         || ((*it).first == (void*) pD3D10Res_))
                         && (*it).second == subRes_) {
