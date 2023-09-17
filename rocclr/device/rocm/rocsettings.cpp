@@ -94,7 +94,6 @@ Settings::Settings() {
   // Use coarse grain system memory for kernel arguments by default (to keep GPU cache)
   fgs_kernel_arg_ = false;
   barrier_value_packet_ = false;
-
   kernel_arg_impl_ = KernelArgImpl::HostKernelArgs;
   gwsInitSupported_ = true;
   limit_blit_wg_ = 16;
