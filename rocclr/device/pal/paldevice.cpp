@@ -157,6 +157,7 @@ static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint3
 
 namespace device {
 extern const char* HipExtraSourceCode;
+extern const char* HipExtraSourceCodeNoGWS;
 }
 
 bool PalDeviceLoad() {
@@ -2669,7 +2670,11 @@ bool Device::createBlitProgram() {
   std::string extraBlits;
   std::string ocl20;
   if (amd::IS_HIP) {
-    extraBlits = device::HipExtraSourceCode;
+    if (settings().gwsInitSupported_) {
+      extraBlits = device::HipExtraSourceCode;
+    } else {
+      extraBlits = device::HipExtraSourceCodeNoGWS;
+    }
   } else {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();

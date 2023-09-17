@@ -1057,8 +1057,9 @@ Settings::Settings() : value_(0) {
     if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {
       GPU_SINGLE_ALLOC_PERCENT = 100;
     }
-
   }
+
+  gwsInitSupported_ = true;
 }
 
 void Memory::saveMapInfo(const void* mapAddress, const amd::Coord3D origin,
