@@ -88,16 +88,22 @@ size_t amd_dbgapi_get_build_id();
 #include <stdint.h>
 #endif // __cplusplus
 #else
+#if !__HIP_NO_STD_DEFS__
 typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
+typedef long long ptrdiff_t;
+typedef long clock_t;
 namespace std {
 using ::uint32_t;
 using ::uint64_t;
 using ::int32_t;
 using ::int64_t;
+using ::ptrdiff_t;
+using ::clock_t;
 }
+#endif // __HIP_NO_STD_DEFS__
 #endif // !defined(__HIPCC_RTC__)
 
 #if __HIP_CLANG_ONLY__
