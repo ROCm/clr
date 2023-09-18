@@ -46,17 +46,10 @@ THE SOFTWARE.
 #include <hip/amd_detail/hip_cooperative_groups_helper.h>
 #endif
 
-#define __hip_abort()                                                                              \
-  { asm("trap;"); }
 #if defined(NDEBUG)
 #define __hip_assert(COND)
 #else
-#define __hip_assert(COND)                                                                         \
-  {                                                                                                \
-    if (!COND) {                                                                                   \
-      __hip_abort();                                                                               \
-    }                                                                                              \
-  }
+#define __hip_assert(COND) assert();
 #endif
 
 namespace cooperative_groups {
