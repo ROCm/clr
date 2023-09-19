@@ -2,6 +2,11 @@
 
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
+## HIP 5.7.1 (For ROCm 5.7.1)
+
+### Fixed
+- hipPointerGetAttributes API returns the correct hip memory type as hipMemoryTypeManaged for managed memory.
+
 ## HIP 5.7 (For ROCm 5.7)
 
 ### Optimizations
