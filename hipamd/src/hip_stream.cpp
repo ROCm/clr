@@ -122,7 +122,7 @@ int Stream::DeviceId(const hipStream_t hStream) {
 }
 
 // ================================================================================================
-void Stream::SyncAllStreams(int deviceId) {
+void Stream::SyncAllStreams(int deviceId, bool cpu_wait) {
   // Make a local copy to avoid stalls for GPU finish with multiple threads
   std::vector<hip::Stream*> streams;
   streams.reserve(streamSet.size());
@@ -136,7 +136,7 @@ void Stream::SyncAllStreams(int deviceId) {
     }
   }
   for (auto it : streams) {
-    it->finish();
+    it->finish(cpu_wait);
     it->release();
   }
 }
@@ -442,8 +442,9 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
     }
   }
   bool wait = (stream == nullptr) ? true : false;
+  constexpr bool kDontWaitForCpu = false;
   // Wait for the current host queue
-  hip::getStream(stream, wait)->finish();
+  hip::getStream(stream, wait)->finish(kDontWaitForCpu);
   return hipSuccess;
 }
 

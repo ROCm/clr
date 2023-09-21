@@ -231,7 +231,7 @@ class HostQueue : public CommandQueue {
   }
 
   //! Finish all queued commands
-  void finish();
+  void finish(bool cpu_wait = false);
 
   //! Check if hostQueue empty snapshot
   bool isEmpty();
