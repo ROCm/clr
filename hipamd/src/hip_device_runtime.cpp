@@ -509,7 +509,7 @@ hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
 hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   HIP_INIT_API(hipDeviceSetSharedMemConfig, config);
   if (config != hipSharedMemBankSizeDefault &&
-      config != hipSharedMemBankSizeFourByte && 
+      config != hipSharedMemBankSizeFourByte &&
       config != hipSharedMemBankSizeEightByte) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -520,7 +520,8 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
 
 hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
-  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId());
+  constexpr bool kDontWaitForCpu = false;
+  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId(), kDontWaitForCpu);
   HIP_RETURN(hipSuccess);
 }
 

@@ -113,7 +113,7 @@ bool HostQueue::terminate() {
   return true;
 }
 
-void HostQueue::finish() {
+void HostQueue::finish(bool cpu_wait) {
   Command* command = nullptr;
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
@@ -121,7 +121,8 @@ void HostQueue::finish() {
       return;
     }
   }
-  if (nullptr == command || vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
+  if (nullptr == command || command->type() != CL_COMMAND_MARKER ||
+      vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }
@@ -135,7 +136,7 @@ void HostQueue::finish() {
   }
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
     ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
   }
