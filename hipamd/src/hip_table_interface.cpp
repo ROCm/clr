@@ -798,6 +798,12 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc) {
   return hip::GetHipDispatchTable()->hipImportExternalSemaphore_fn(extSem_out, semHandleDesc);
 }
+hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                 const hipGraphNode_t* dependencies, size_t numDependencies,
+                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+  return hip::GetHipDispatchTable()->hipDrvGraphAddMemsetNode_fn(phGraphNode, hGraph,
+                                            dependencies, numDependencies, memsetParams, ctx);
+}
 hipError_t hipInit(unsigned int flags) { return hip::GetHipDispatchTable()->hipInit_fn(flags); }
 hipError_t hipIpcCloseMemHandle(void* devPtr) {
   return hip::GetHipDispatchTable()->hipIpcCloseMemHandle_fn(devPtr);

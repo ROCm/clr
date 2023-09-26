@@ -1668,7 +1668,6 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
                      memcpyNode->kind_);
   }
 };
-
 class GraphMemsetNode : public GraphNode {
   hipMemsetParams memsetParams_;
 
@@ -1749,7 +1748,16 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(params, &memsetParams_, sizeof(hipMemsetParams));
   }
 
-  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
+  void GetParams(HIP_MEMSET_NODE_PARAMS* params) {
+    params->dst = memsetParams_.dst;
+    params->elementSize = memsetParams_.elementSize;
+    params->height = memsetParams_.height;
+    params->pitch = memsetParams_.pitch;
+    params->value = memsetParams_.value;
+    params->width = memsetParams_.width;
+  }
+
+  hipError_t SetParamsInternal(const hipMemsetParams* params, bool isExec) {
     hipError_t hip_error = hipSuccess;
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
@@ -1811,7 +1819,19 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(&memsetParams_, params, sizeof(hipMemsetParams));
     return hipSuccess;
   }
-
+  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
+    return SetParamsInternal(params, isExec);
+  }
+  hipError_t SetParams(const HIP_MEMSET_NODE_PARAMS* params, bool isExec = false) {
+    hipMemsetParams pmemsetParams;
+    pmemsetParams.dst = params->dst;
+    pmemsetParams.elementSize = params->elementSize;
+    pmemsetParams.height = params->height;
+    pmemsetParams.pitch = params->pitch;
+    pmemsetParams.value = params->value;
+    pmemsetParams.width = params->width;
+    return SetParamsInternal(&pmemsetParams, isExec);
+  }
   hipError_t SetParams(GraphNode* node) {
     const GraphMemsetNode* memsetNode = static_cast<GraphMemsetNode const*>(node);
     return SetParams(&memsetNode->memsetParams_);
