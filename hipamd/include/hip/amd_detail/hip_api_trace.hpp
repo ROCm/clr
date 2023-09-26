@@ -209,6 +209,9 @@ typedef hipError_t (*t_hipGraphAddDependencies)(hipGraph_t graph, const hipGraph
 typedef hipError_t (*t_hipGraphAddEmptyNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                              const hipGraphNode_t* pDependencies,
                                              size_t numDependencies);
+typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                 const hipGraphNode_t* dependencies, size_t numDependencies,
+                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
 typedef hipError_t (*t_hipGraphAddEventRecordNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                                    const hipGraphNode_t* pDependencies,
                                                    size_t numDependencies, hipEvent_t event);
@@ -1001,6 +1004,7 @@ struct HipDispatchTable {
   t_hipGraphAddChildGraphNode hipGraphAddChildGraphNode_fn;
   t_hipGraphAddDependencies hipGraphAddDependencies_fn;
   t_hipGraphAddEmptyNode hipGraphAddEmptyNode_fn;
+  t_hipDrvGraphAddMemsetNode hipDrvGraphAddMemsetNode_fn;
   t_hipGraphAddEventRecordNode hipGraphAddEventRecordNode_fn;
   t_hipGraphAddEventWaitNode hipGraphAddEventWaitNode_fn;
   t_hipGraphAddHostNode hipGraphAddHostNode_fn;

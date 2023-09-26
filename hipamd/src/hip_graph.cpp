@@ -160,7 +160,6 @@ hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph
       pMemsetParams->elementSize != sizeof(int32_t)) {
     return hipErrorInvalidValue;
   }
-
   hipError_t status;
   status = ihipGraphMemsetParams_validate(pMemsetParams);
   if (status != hipSuccess) {
@@ -1135,6 +1134,31 @@ hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                              reinterpret_cast<hip::GraphNode* const*>(pDependencies),
                              numDependencies, pMemsetParams, false);
   *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                 const hipGraphNode_t* dependencies, size_t numDependencies,
+                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+  HIP_INIT_API(hipDrvGraphAddMemsetNode, phGraphNode, hGraph, dependencies, numDependencies,
+               memsetParams, ctx);
+  if (phGraphNode == nullptr || hGraph == nullptr ||
+      (numDependencies > 0 && dependencies == nullptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* node;
+  hipMemsetParams pmemsetParams;
+  pmemsetParams.dst = reinterpret_cast<void*>(memsetParams->dst);
+  pmemsetParams.elementSize = memsetParams->elementSize;
+  pmemsetParams.height = memsetParams->height;
+  pmemsetParams.pitch = memsetParams->pitch;
+  pmemsetParams.value = memsetParams->value;
+  pmemsetParams.width = memsetParams->width;
+  hipError_t status =
+      ihipGraphAddMemsetNode(&node, reinterpret_cast<hip::Graph*>(hGraph),
+                             reinterpret_cast<hip::GraphNode* const*>(dependencies),
+                             numDependencies, &pmemsetParams, false);
+  *phGraphNode = reinterpret_cast<hipGraphNode_t>(node);
   HIP_RETURN(status);
 }
 

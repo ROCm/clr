@@ -330,6 +330,9 @@ hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out,
                                    const hipExternalMemoryHandleDesc* memHandleDesc);
 hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc);
+hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                 const hipGraphNode_t* dependencies, size_t numDependencies,
+                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
 hipError_t hipInit(unsigned int flags);
 hipError_t hipIpcCloseMemHandle(void* devPtr);
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event);
@@ -1193,6 +1196,8 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipStreamGetCaptureInfo_v2_spt_fn = hip::hipStreamGetCaptureInfo_v2_spt;
   ptrDispatchTable->hipLaunchHostFunc_spt_fn = hip::hipLaunchHostFunc_spt;
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
+  ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
+
 }
 
 namespace hip {
