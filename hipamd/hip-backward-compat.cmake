@@ -165,7 +165,7 @@ function(create_cmake_symlink)
 
   #create symlink to hip-lang
   file(MAKE_DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang)
-  file(GLOB config_files ${HIP_BUILD_DIR}/hip-lang-config*)
+  file(GLOB config_files ${HIP_BUILD_DIR}/src/hip-lang-config*)
   foreach(config_name ${config_files})
     get_filename_component(file_name ${config_name} NAME)
     add_custom_target(link_${file_name} ALL
@@ -250,7 +250,7 @@ endif()#End HIP_PLATFORM AMD
 install(FILES ${HIP_WRAPPER_LIB_DIR}/${HIP_INFO_FILE} DESTINATION hip/lib COMPONENT binary)
 #create symlink to cmake files
 create_cmake_symlink()
-install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang DESTINATION hip/lib/cmake COMPONENT dev)
+install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip-lang DESTINATION hip/lib/cmake COMPONENT binary)
 install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hiprtc DESTINATION hip/lib/cmake COMPONENT binary)
 install(DIRECTORY ${HIP_WRAPPER_CMAKE_DIR}/hip DESTINATION hip/lib/cmake COMPONENT dev)
 install(DIRECTORY ${HIP_WRAPPER_FINDHIP_DIR}/ DESTINATION hip/cmake COMPONENT dev)

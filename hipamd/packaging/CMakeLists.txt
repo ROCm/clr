@@ -63,6 +63,8 @@ if(HIP_PLATFORM STREQUAL "amd" )
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
 
 install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
+
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT binary)
 install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
 
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc COMPONENT binary)
@@ -104,9 +106,6 @@ install(DIRECTORY ${HIP_COMMON_DIR}/cmake/ DESTINATION ${CMAKE_INSTALL_LIBDIR}/c
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config-amd.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-config-nvidia.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-amd.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/hip-lang-config-nvidia.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
 #End dev files install
 
 #Begin doc files install

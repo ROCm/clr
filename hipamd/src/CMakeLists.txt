@@ -293,3 +293,26 @@ INSTALL(TARGETS amdhip64 host device
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 INSTALL(EXPORT hip-lang-targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang NAMESPACE hip-lang::)
+
+include(CMakePackageConfigHelpers)
+
+configure_package_config_file(
+  ${HIP_COMMON_DIR}/hip-lang-config.cmake.in
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
+  INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
+  NO_SET_AND_CHECK_MACRO
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+  PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
+  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
+  COMPATIBILITY SameMajorVersion)
+install(
+    FILES
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
+    DESTINATION
+    ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
+    )
+
