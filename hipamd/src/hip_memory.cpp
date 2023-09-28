@@ -1543,13 +1543,15 @@ hipError_t ihipMemcpyAtoDValidate(hipArray_t srcArray, void* dstDevice, amd::Coo
   static_cast<size_t*>(srcOrigin)[0] /= elementSize;
   static_cast<size_t*>(copyRegion)[0] /= elementSize;
 
+  amd::Coord3D copyRegionReal = copyRegion;
+  if (hip::isLayered1D(srcArray)) copyRegionReal.c[1] = 1;
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegionReal),
                       srcImage->getRowPitch(), srcImage->getSlicePitch())) {
     return hipErrorInvalidValue;
   }
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegionReal),
                       dstRowPitch, dstSlicePitch)) {
     return hipErrorInvalidValue;
   }
@@ -1616,14 +1618,16 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray_t dstArray, amd::Coo
   static_cast<size_t*>(dstOrigin)[0] /= elementSize;
   static_cast<size_t*>(copyRegion)[0] /= elementSize;
 
+  amd::Coord3D copyRegionReal = copyRegion;
+  if (hip::isLayered1D(dstArray)) copyRegionReal.c[1] = 1;
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegionReal),
                       srcRowPitch, srcSlicePitch)) {
     return hipErrorInvalidValue;
   }
   srcRect.start_ += srcOffset;
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegionReal),
                       dstImage->getRowPitch(), dstImage->getSlicePitch())) {
     return hipErrorInvalidValue;
   }
@@ -1965,11 +1969,22 @@ hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray_t srcArray, hi
   return hipSuccess;
 }
 
+size_t ihipGetbufferStart(const size_t* bufferOrigin, const size_t* region, size_t bufferRowPitch,
+                          size_t bufferSlicePitch) {
+  size_t rowPitch_ = (bufferRowPitch != 0) ? bufferRowPitch : region[0];
+  // Find the buffer's slice pitch
+  size_t slicePitch_ = (bufferSlicePitch != 0) ? bufferSlicePitch : rowPitch_ * region[1];
+  // Find the region start offset
+  // For the layered 1D image, bufferOrigin[2] is always 0; for 1D image, bufferOrigin[1] is
+  // always 0. So the logic still holds true for all cases.
+  return bufferOrigin[2] * slicePitch_ + bufferOrigin[1] * rowPitch_ + bufferOrigin[0];
+}
+
 hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray_t dstArray,
                                   amd::Coord3D& srcOrigin, amd::Coord3D& dstOrigin,
                                   amd::Coord3D& copyRegion, size_t srcRowPitch,
                                   size_t srcSlicePitch, amd::Image*& dstImage,
-                                  amd::BufferRect& srcRect) {
+                                  size_t &start) {
   if ((srcHost == nullptr) || dstArray == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -1978,10 +1993,8 @@ hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray_t dstArray,
     return hipErrorInvalidValue;
   }
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
-                      srcRowPitch, srcSlicePitch)) {
-    return hipErrorInvalidValue;
-  }
+  start = ihipGetbufferStart(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+                             srcRowPitch, srcSlicePitch);
 
   dstImage = as_amd(dstMemObj)->asImage();
   // HIP assumes the width is in bytes, but OCL assumes it's in pixels.
@@ -2000,10 +2013,10 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
                                  amd::Coord3D copyRegion, size_t srcRowPitch, size_t srcSlicePitch,
                                  hip::Stream* stream, bool isAsync = false) {
   amd::Image* dstImage;
-  amd::BufferRect srcRect;
+  size_t start = 0;  //!< Start offset for the copy region
 
   hipError_t status = ihipMemcpyHtoAValidate(srcHost, dstArray, srcOrigin, dstOrigin, copyRegion,
-                                             srcRowPitch, srcSlicePitch, dstImage, srcRect);
+                                             srcRowPitch, srcSlicePitch, dstImage, start);
   if (status != hipSuccess) {
     return status;
   }
@@ -2011,7 +2024,7 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::WriteMemoryCommand* writeMemCmd = new amd::WriteMemoryCommand(
       *stream, CL_COMMAND_WRITE_IMAGE, amd::Command::EventWaitList{}, *dstImage, dstOrigin,
-      copyRegion, static_cast<const char*>(srcHost) + srcRect.start_, srcRowPitch, srcSlicePitch,
+      copyRegion, static_cast<const char*>(srcHost) + start, srcRowPitch, srcSlicePitch,
       copyMetadata);
 
   if (writeMemCmd == nullptr) {
@@ -2029,7 +2042,7 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
 hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch, amd::Image*& srcImage,
-                                  amd::BufferRect& dstRect) {
+                                  size_t &start) {
   if (srcArray == nullptr || (dstHost == nullptr)) {
     return hipErrorInvalidValue;
   }
@@ -2038,10 +2051,8 @@ hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord
     return hipErrorInvalidValue;
   }
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
-                      dstRowPitch, dstSlicePitch)) {
-    return hipErrorInvalidValue;
-  }
+  start = ihipGetbufferStart(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+                             dstRowPitch, dstSlicePitch);
 
   srcImage = as_amd(srcMemObj)->asImage();
   // HIP assumes the width is in bytes, but OCL assumes it's in pixels.
@@ -2063,16 +2074,17 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray_t srcArray, vo
   amd::Image* srcImage;
   amd::BufferRect dstRect;
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  size_t start = 0;  //!< Start offset for the copy region
 
   hipError_t status = ihipMemcpyAtoHValidate(srcArray, dstHost, srcOrigin, dstOrigin, copyRegion,
-                                             dstRowPitch, dstSlicePitch, srcImage, dstRect);
+                                             dstRowPitch, dstSlicePitch, srcImage, start);
   if (status != hipSuccess) {
     return status;
   }
 
   amd::ReadMemoryCommand* readMemCmd = new amd::ReadMemoryCommand(
       *stream, CL_COMMAND_READ_IMAGE, amd::Command::EventWaitList{}, *srcImage, srcOrigin,
-      copyRegion, static_cast<char*>(dstHost) + dstRect.start_, dstRowPitch, dstSlicePitch,
+      copyRegion, static_cast<char*>(dstHost) + start, dstRowPitch, dstSlicePitch,
       copyMetadata);
 
   if (readMemCmd == nullptr) {
@@ -2732,7 +2744,7 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   // If the source and destination are both arrays, hipMemcpy3D() will return an error if they do
   // not have the same element size.
   if (((p->srcArray != nullptr) && (p->dstArray != nullptr)) &&
-      (hip::getElementSize(p->dstArray) != hip::getElementSize(p->dstArray))) {
+      (hip::getElementSize(p->srcArray) != hip::getElementSize(p->dstArray))) {
     return hipErrorInvalidValue;
   }
 

@@ -116,6 +116,16 @@ cl_mem_object_type getCLMemObjectType(const unsigned int hipWidth,
   return CL_MEM_OBJECT_ALLOCATION_FAILURE;
 }
 
+inline cl_mem_object_type getCLMemObjectType(const hipArray* arr) {
+  const cl_mem dstMemObj = reinterpret_cast<const cl_mem>(arr->data);
+  const amd::Image* dstImage = as_amd(dstMemObj)->asImage();
+  return dstImage ? dstImage->getType() : CL_MEM_OBJECT_ALLOCATION_FAILURE;
+}
+
+inline bool isLayered1D(const hipArray* arr) {
+  return CL_MEM_OBJECT_IMAGE1D_ARRAY == getCLMemObjectType(arr);
+}
+
 inline
 cl_addressing_mode getCLAddressingMode(const hipTextureAddressMode hipAddressMode) {
   switch (hipAddressMode) {
@@ -654,11 +664,15 @@ HIP_MEMCPY3D getDrvMemcpy3DDesc(const hipMemcpy3DParms& desc) {
   descDrv.dstZ = desc.dstPos.z;
   descDrv.dstLOD = 0;
 
+  bool is1DArraySrc = false;
+  bool is1DArrayDst = false;
+
   if (desc.srcArray != nullptr) {
     descDrv.srcMemoryType = hipMemoryTypeArray;
     descDrv.srcArray = desc.srcArray;
     // When reffering to array memory, hipPos::x is in elements.
     descDrv.srcXInBytes *= getElementSize(desc.srcArray);
+    is1DArraySrc = isLayered1D(descDrv.srcArray);
   }
 
   if (desc.srcPtr.ptr != nullptr) {
@@ -674,6 +688,7 @@ HIP_MEMCPY3D getDrvMemcpy3DDesc(const hipMemcpy3DParms& desc) {
     descDrv.dstArray = desc.dstArray;
     // When reffering to array memory, hipPos::x is in elements.
     descDrv.dstXInBytes *= getElementSize(desc.dstArray);
+    is1DArrayDst = isLayered1D(descDrv.dstArray);
   }
 
   if (desc.dstPtr.ptr != nullptr) {
@@ -693,6 +708,25 @@ HIP_MEMCPY3D getDrvMemcpy3DDesc(const hipMemcpy3DParms& desc) {
     descDrv.WidthInBytes *= getElementSize(desc.dstArray);
   }
 
+  // The following will happen in
+  // buffer to/from layered 1D, layered 1D to/from layered 1D
+  size_t t = 0;
+  if (is1DArraySrc) {
+    t = descDrv.srcY;
+    descDrv.srcY = descDrv.srcZ;
+    descDrv.srcZ = t;
+  }
+  if (is1DArrayDst) {
+    t = descDrv.dstY;
+    descDrv.dstY = descDrv.dstZ;
+    descDrv.dstZ = t;
+  }
+
+  if (is1DArraySrc || is1DArrayDst) {
+    t = descDrv.Height;
+    descDrv.Height = descDrv.Depth;
+    descDrv.Depth = t;
+  }
   return descDrv;
 }
 
