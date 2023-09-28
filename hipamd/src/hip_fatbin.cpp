@@ -51,6 +51,13 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image) : fdesc_(amd:
 
 FatBinaryInfo::~FatBinaryInfo() {
 
+  // Release per device fat bin info.
+  for (auto* fbd: fatbin_dev_info_) {
+    if (fbd != nullptr) {
+      delete fbd;
+    }
+  }
+
   if (!HIP_USE_RUNTIME_UNBUNDLER) {
     // Using COMGR Unbundler
     if (ufd_ && amd::Os::isValidFileDesc(ufd_->fdesc_)) {
