@@ -121,7 +121,15 @@ void HostQueue::finish(bool cpu_wait) {
       return;
     }
   }
-  if (nullptr == command || command->type() != CL_COMMAND_MARKER ||
+  // If command doesn't contain HW event and runtime didn't request CPU wait,
+  // then force marker submit
+  bool force_marker = false;
+  if (AMD_DIRECT_DISPATCH && (command != nullptr) && !cpu_wait) {
+    void* hw_event =
+      (command->NotifyEvent() != nullptr) ? command->NotifyEvent()->HwEvent() : command->HwEvent();
+    force_marker = (hw_event == nullptr);
+  }
+  if (nullptr == command || force_marker ||
       vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
