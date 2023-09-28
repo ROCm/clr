@@ -201,22 +201,21 @@ hipError_t GraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) 
     }
   } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
     amd::Image* dstImage;
-    amd::BufferRect srcRect;
-
+    size_t start = 0;
     status =
         ihipMemcpyHtoAValidate(pCopy.srcHost, pCopy.dstArray, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, dstImage, srcRect);
+                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, dstImage, start);
     if (status != hipSuccess) {
       return status;
     }
   } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
     // Image to Host.
     amd::Image* srcImage;
-    amd::BufferRect dstRect;
+    size_t start = 0;
 
     status =
         ihipMemcpyAtoHValidate(pCopy.srcArray, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcImage, dstRect);
+                               pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcImage, start);
     if (status != hipSuccess) {
       return status;
     }
