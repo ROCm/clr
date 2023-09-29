@@ -104,10 +104,9 @@ class Event : public RuntimeObject {
   static const EventWaitList nullWaitList;
 
   struct ProfilingInfo {
-    ProfilingInfo(bool enabled = false) : enabled_(enabled), waves_(0), marker_ts_(false) {
+    ProfilingInfo(bool enabled = false) : enabled_(enabled), marker_ts_(false) {
       if (enabled) {
         clear();
-        callback_ = nullptr;
         correlation_id_ = activity_prof::correlation_id;
       }
     }
@@ -116,26 +115,15 @@ class Event : public RuntimeObject {
     uint64_t submitted_;
     uint64_t start_;
     uint64_t end_;
-    bool enabled_;        //!< Profiling enabled for the wave limiter
-    uint32_t waves_;      //!< The number of waves used in a dispatch
-    ProfilingCallback* callback_;
     uint64_t correlation_id_;
-    bool marker_ts_;      //!< TS marker
+    bool enabled_;    //!< Profiling enabled for the wave limiter
+    bool marker_ts_;  //!< TS marker
 
     void clear() {
       queued_ = 0ULL;
       submitted_ = 0ULL;
       start_ = 0ULL;
       end_ = 0ULL;
-    }
-    void setCallback(ProfilingCallback* callback, uint32_t waves) {
-      if (callback == NULL) {
-        return;
-      }
-      enabled_ = true;
-      waves_ = waves;
-      clear();
-      callback_ = callback;
     }
   } profilingInfo_;
 
@@ -163,7 +151,6 @@ class Event : public RuntimeObject {
   void EnableProfiling() {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
-    profilingInfo_.callback_ = nullptr;
     profilingInfo_.correlation_id_ = activity_prof::correlation_id;
   }
 

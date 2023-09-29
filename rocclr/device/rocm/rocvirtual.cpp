@@ -151,7 +151,7 @@ void Timestamp::checkGpuTime() {
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
           "end = %ld time taken= %ld ns", it->signal_.handle, start, end, end - start);
       }
-      it->done_ = true;
+      it->flags_.done_ = true;
     }
     signals_.clear();
     if (end != 0) {
@@ -341,6 +341,9 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::Create() {
   uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
+  if (activity_prof::IsEnabled(OP_ID_DISPATCH) || gpu_.profiling_) {
+    kSignalListSize = !flagIsDefault(ROC_SIGNAL_POOL_SIZE) ? ROC_SIGNAL_POOL_SIZE : 4 * Ki;
+  }
   signal_list_.resize(kSignalListSize);
 
   hsa_agent_t agent = gpu_.gpu_device();
@@ -361,7 +364,7 @@ bool VirtualGPU::HwQueueTracker::Create() {
 
 // ================================================================================================
 hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
-    hsa_signal_value_t init_val, Timestamp* ts) {
+    hsa_signal_value_t init_val, Timestamp* ts, bool forceHostWait) {
   bool new_signal = false;
 
   // Peep signal +2 ahead to see if its done
@@ -422,8 +425,9 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   ProfilingSignal* prof_signal = signal_list_[current_id_];
   // Reset the signal and return
   hsa_signal_silent_store_relaxed(prof_signal->signal_, init_val);
-  prof_signal->done_ = false;
+  prof_signal->flags_.done_ = false;
   prof_signal->engine_ = engine_;
+  prof_signal->flags_.forceHostWait_ = forceHostWait;
   if (ts != 0) {
     // Save HSA signal earlier to make sure the possible callback will have a valid
     // value for processing
@@ -473,12 +477,8 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
 // ================================================================================================
 std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine) {
   bool explicit_wait = false;
-  bool sdma_wait = false;
   // Reset all current waiting signals
   waiting_signals_.clear();
-
-  if(engine != HwQueueEngine::Compute)
-    sdma_wait = true;
 
   // Does runtime switch the active engine?
   if (engine != engine_) {
@@ -493,11 +493,12 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
       // Check if skip wait optimization is enabled. It will try to predict the same engine in ROCr
       // and ignore the signal wait, relying on in-order engine execution
       const Settings& settings = gpu_.dev().settings();
-      if (!settings.skip_copy_sync_ && (engine != HwQueueEngine::Compute)) {
+      if (engine != HwQueueEngine::Compute) {
         explicit_wait = true;
       }
     }
   }
+
   // Check if a wait is required
   if (explicit_wait) {
     bool skip_internal_signal = false;
@@ -520,8 +521,10 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
 
       if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
         const Settings& settings = gpu_.dev().settings();
-        // Actively wait on CPU to avoid extra overheads of signal tracking on GPU
-        if (!WaitForSignal<true>(external_signals_[i]->signal_, false, sdma_wait)) {
+        // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
+        // For small copies set forced wait
+        if (!WaitForSignal<true>(external_signals_[i]->signal_, false,
+                                 external_signals_[i]->flags_.forceHostWait_)) {
           if (settings.cpu_wait_for_signal_) {
             // Wait on CPU for completion if requested
             CpuWaitForSignal(external_signals_[i]);
@@ -556,7 +559,7 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
       LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
       return false;
     }
-    signal->done_ = true;
+    signal->flags_.done_ = true;
   }
   return true;
 }
@@ -1280,12 +1283,12 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
     dispatchPacketHeaderNoSync_ =
       (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
       (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE) |
-      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+      (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
     dispatchPacketHeader_=
       (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
       (1 << HSA_PACKET_HEADER_BARRIER) |
       (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE) |
-      (HSA_FENCE_SCOPE_NONE << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+      (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
   }
 
   aqlHeader_ = dispatchPacketHeader_;
@@ -3345,7 +3348,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     // Add a dependency into the device queue on the current queue
     queue->Barriers().AddExternalSignal(Barriers().GetLastSignal());
 
-    if (!Settings().coop_sync_) {
+    if (!dev().settings().coop_sync_) {
       uint32_t workgroups = vcmd.numWorkgroups();
       static_cast<KernelBlitManager&>(queue->blitMgr()).RunGwsInit(workgroups - 1);
     }

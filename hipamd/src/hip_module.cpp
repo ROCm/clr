@@ -234,6 +234,11 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
+  const amd::KernelSignature& signature = kernel->signature();
+  if ((signature.numParameters() > 0) && (kernelParams == nullptr) && (extra == nullptr)) {
+    LogPrintfError("%s","At least one of kernelParams or extra Params should be provided");
+    return hipErrorInvalidValue;
+  }
   if (!kernel->getDeviceKernel(*device)) {
     return hipErrorInvalidDevice;
   }
@@ -285,7 +290,6 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     kernargs = reinterpret_cast<address>(extra[1]);
   }
 
-  const amd::KernelSignature& signature = kernel->signature();
   for (size_t i = 0; i < signature.numParameters(); ++i) {
     const amd::KernelParameterDescriptor& desc = signature.at(i);
     if (kernelParams == nullptr) {
@@ -440,8 +444,8 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
   STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
                  blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra);
   if (gridDimX > std::numeric_limits<int32_t>::max() ||
-      gridDimY > std::numeric_limits<int32_t>::max() ||
-      gridDimZ > std::numeric_limits<int32_t>::max()) {
+      gridDimY > std::numeric_limits<int32_t>::max()/1024 ||
+      gridDimZ > std::numeric_limits<int32_t>::max()/1024) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
@@ -486,20 +490,6 @@ hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
                                     void** extra, hipEvent_t startEvent, hipEvent_t stopEvent) {
   HIP_INIT_API(hipHccModuleLaunchKernel, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
-               blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
-               startEvent, stopEvent);
-
-  HIP_RETURN(ihipModuleLaunchKernel(f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX,
-                                    blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams,
-                                    extra, startEvent, stopEvent));
-}
-
-hipError_t hipModuleLaunchKernelExt(hipFunction_t f, uint32_t globalWorkSizeX,
-                                    uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                    uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
-                                    size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
-                                    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent) {
-  HIP_INIT_API(hipModuleLaunchKernelExt, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
                blockDimX, blockDimY, blockDimZ, sharedMemBytes, hStream, kernelParams, extra,
                startEvent, stopEvent);
 

@@ -28,6 +28,9 @@ THE SOFTWARE.
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 
+// Forward declaration for Unique FD
+struct UniqueFD;
+
 namespace hip {
 
 //Fat Binary Per Device info
@@ -66,7 +69,6 @@ public:
   hipError_t AddDevProgram(const int device_id);
   hipError_t BuildProgram(const int device_id);
 
-
   // Device Id bounds check
   inline void DeviceIdCheck(const int device_id) const {
     guarantee(device_id >= 0, "Invalid DeviceId less than 0");
@@ -91,22 +93,24 @@ public:
   }
 
 private:
-  std::string fname_;        // File name
-  amd::Os::FileDesc fdesc_;  // File descriptor
-  size_t fsize_;             // Total file size
-  size_t foffset_;           // File Offset where the fat binary is present.
+  std::string fname_;        //!< File name
+  amd::Os::FileDesc fdesc_;  //!< File descriptor
+  size_t fsize_;             //!< Total file size
+  size_t foffset_;           //!< File Offset where the fat binary is present.
 
   // Even when file is passed image will be mmapped till ~desctructor.
-  const void* image_;        // Image
-  bool image_mapped_;        // flag to detect if image is mapped
+  const void* image_;        //!< Image
+  bool image_mapped_;        //!< flag to detect if image is mapped
 
   // Only used for FBs where image is directly passed
-  std::string uri_;          // Uniform resource indicator
+  std::string uri_;          //!< Uniform resource indicator
 
   // Per Device Info, like corresponding binary ptr, size.
   std::vector<FatBinaryDeviceInfo*> fatbin_dev_info_;
+
+  std::shared_ptr<UniqueFD> ufd_; //!< Unique file descriptor
 };
 
-}; /* namespace hip */
+}; // namespace hip
 
-#endif /* HIP_FAT_BINARY_HPP */
+#endif // HIP_FAT_BINARY_HPP

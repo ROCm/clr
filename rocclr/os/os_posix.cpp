@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -214,7 +214,7 @@ address Os::reserveMemory(address start, size_t size, size_t alignment, MemProt 
                                 MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS, 0, 0);
 
   // check for out of memory
-  if (mem == NULL) return NULL;
+  if (mem == MAP_FAILED) return NULL;
 
   address aligned = alignUp(mem, alignment);
 
@@ -230,6 +230,17 @@ address Os::reserveMemory(address start, size_t size, size_t alignment, MemProt 
     assert(&aligned[size] < &mem[requested] && "check this code");
     if (::munmap(&aligned[size], &mem[requested] - &aligned[size]) != 0) {
       assert(!"::munmap failed");
+    }
+  }
+
+  // Hint to enable THP for large host allocations which can help in performance gain
+  constexpr size_t kLargePageSize = 2 * Mi;
+  if (size >= kLargePageSize) {
+    int status = madvise(aligned, size, MADV_HUGEPAGE);
+    if (status) {
+      ClPrint(amd::LOG_DEBUG, amd::LOG_CODE, "madvise with advice MADV_HUGEPAGE"
+              " starting at address %p and page size 0x%zx, returned %d, errno: %s",
+              aligned, size, status, strerror(errno));
     }
   }
 
@@ -842,7 +853,7 @@ bool Os::MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const v
   }
 
   *mmap_ptr = mmap(NULL, fsize, PROT_READ, MAP_SHARED, fdesc, foffset);
-  return true;
+  return (*mmap_ptr == MAP_FAILED) ? false : true;
 }
 
 bool Os::MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size) {
@@ -874,7 +885,7 @@ bool Os::MemoryMapFile(const char* fname, const void** mmap_ptr, size_t* mmap_si
 
   close(fd);
 
-  if (*mmap_ptr == nullptr) {
+  if (*mmap_ptr == MAP_FAILED) {
     return false;
   }
 
@@ -899,7 +910,7 @@ bool Os::MemoryMapFileTruncated(const char* fname, const void** mmap_ptr, size_t
 
   close(fd);
 
-  if (*mmap_ptr == nullptr) {
+  if (*mmap_ptr == MAP_FAILED) {
     return false;
   }
 

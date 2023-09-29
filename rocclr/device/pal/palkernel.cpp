@@ -224,8 +224,6 @@ bool HSAILKernel::init() {
     return false;
   }
 
-  waveLimiter_.enable();
-
   size_t sizeOfWorkGroupSizeHint = sizeof(workGroupInfo_.compileSizeHint_);
   error = amd::Hsail::QueryInfo(palNullDevice().compiler(), prog().binaryElf(), RT_WORK_GROUP_SIZE_HINT,
                                 openClKernelName.c_str(), workGroupInfo_.compileSizeHint_,
@@ -265,11 +263,10 @@ const HSAILProgram& HSAILKernel::prog() const {
 }
 
 // ================================================================================================
-hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const amd::Kernel& kernel,
-                                                         const amd::NDRangeContainer& sizes,
-                                                         const_address params,
-                                                         size_t ldsAddress, uint64_t vmDefQueue,
-                                                         uint64_t* vmParentWrap) const {
+hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
+    VirtualGPU& gpu, const amd::Kernel& kernel, const amd::NDRangeContainer& sizes,
+    const_address params, size_t ldsAddress, uint64_t vmDefQueue,
+    uint64_t* vmParentWrap, uint32_t* aql_index) const {
   // Provide private and local heap addresses
   static constexpr uint AddressShift = LP64_SWITCH(0, 32);
   const_address parameters = params;
@@ -451,9 +448,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
                                            signature.paramsSize()));
   }
 
-  // hsa_kernel_dispatch_packet_t disp;
-  hsa_kernel_dispatch_packet_t* hsaDisp =
-      reinterpret_cast<hsa_kernel_dispatch_packet_t*>(gpu.cb(0)->SysMemCopy());
+  hsa_kernel_dispatch_packet_t* hsaDisp = gpu.GetAqlPacketSlot(aql_index);
 
   constexpr uint16_t kDispatchPacketHeader =
       (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
@@ -471,7 +466,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(VirtualGPU& gpu, const 
   hsaDisp->grid_size_x = global[0];
   hsaDisp->grid_size_y = (sizes.dimensions() > 1) ? global[1] : 1;
   hsaDisp->grid_size_z = (sizes.dimensions() > 2) ? global[2] : 1;
-  hsaDisp->reserved2 = 0;
+  hsaDisp->reserved0 = 0;
 
   // Initialize kernel ISA and execution buffer requirements
   hsaDisp->private_segment_size = spillSegSize();

@@ -30,7 +30,6 @@
 #include "device/pal/palvirtual.hpp"
 #include "amd_hsa_kernel_code.h"
 #include "device/pal/palprintf.hpp"
-#include "device/devwavelimiter.hpp"
 #include "hsa.h"
 
 namespace amd {
@@ -109,7 +108,8 @@ class HSAILKernel : public device::Kernel {
       const_address params,                //!< Application arguments for the kernel
       size_t ldsAddress,                   //!< LDS address that includes all arguments.
       uint64_t vmDefQueue,                 //!< GPU VM default queue pointer
-      uint64_t* vmParentWrap               //!< GPU VM parent aql wrap object
+      uint64_t* vmParentWrap,              //!< GPU VM parent aql wrap object
+      uint32_t* aql_index                  //!< AQL packet index in the packets array for debugger
       ) const;
 
   //! Returns the kernel index in the program

@@ -870,7 +870,7 @@ bool Os::MemoryMapFileDesc(FileDesc fdesc, size_t fsize, size_t foffset, const v
 
   *mmap_ptr = MapViewOfFile(map_handle, FILE_MAP_READ, 0,0,0);
 
-  return true;
+  return (*mmap_ptr == NULL) ? false : true;
 }
 
 bool Os::MemoryUnmapFile(const void* mmap_ptr, size_t mmap_size) {

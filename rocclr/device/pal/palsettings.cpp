@@ -33,19 +33,6 @@
 
 namespace pal {
 
-/*! \brief information for adjusting maximum workload time
- *
- *  This structure contains the time and OS minor version for max workload time
- *  adjustment for Windows 7 or 8.
- */
-struct ModifyMaxWorkload {
-  uint32_t time;          //!< max work load time (10x ms)
-  uint32_t minorVersion;  //!< OS minor version
-#if defined(_WIN32)
-  BYTE comparisonOps;  //!< Comparison option
-#endif
-};
-
 Settings::Settings() {
   // Initialize the GPU device default settings
   oclVersion_ = OpenCL12;
@@ -72,9 +59,6 @@ Settings::Settings() {
   hostMemDirectAccess_ = HostMemDisable;
 
   libSelector_ = amd::LibraryUndefined;
-
-  // Enable workload split by default (for 24 bit arithmetic or timeout)
-  workloadSplitSize_ = 1 << GPU_WORKLOAD_SPLIT;
 
   // By default use host blit
   blitEngine_ = BlitEngineHost;
@@ -117,14 +101,9 @@ Settings::Settings() {
   // Number of compute rings.
   numComputeRings_ = 0;
 
-  minWorkloadTime_ = 1;       // 0.1 ms
-  maxWorkloadTime_ = 500000;  // 500 ms
-
   // Controls tiled images in persistent
   //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
   linearPersistentImage_ = false;
-
-  useSingleScratch_ = GPU_USE_SINGLE_SCRATCH;
 
   // Device enqueuing settings
   numDeviceEvents_ = 1024;
@@ -177,14 +156,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Disable thread trace by default for all devices
   threadTraceEnable_ = false;
-  bool doublePrecision = true;
-
-  // Update GPU specific settings and info structure if we have any
-#if defined(_WIN32)
-  ModifyMaxWorkload modifyMaxWorkload = {0, 1, VER_EQUAL};
-#else
-  ModifyMaxWorkload modifyMaxWorkload = {0};
-#endif
 
   // APU systems
   if (palProp.gpuType == Pal::GpuType::Integrated) {
@@ -193,6 +164,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   enableXNACK_ = enableXNACK;
   hsailExplicitXnack_ = enableXNACK;
+  bool useWavefront64 = false;
+
   std::string appName = {};
   std::string appPathAndName = {};
   amd::Os::getAppPathAndFileName(appName, appPathAndName);
@@ -213,6 +186,14 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi23:
     case Pal::AsicRevision::Navi22:
     case Pal::AsicRevision::Navi21:
+      // set wavefront 64 for Geekbench 5
+      {
+        if (appName == "Geekbench 5.exe" ||
+            appName == "geekbench_x86_64.exe" ||
+            appName == "geekbench5.exe") {
+          useWavefront64 = true;
+        }
+      }
     // Fall through for Navi1x ...
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
@@ -232,18 +213,13 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
         enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
       }
+      if (useWavefront64) {
+        enableWave32Mode_ = 0;
+      }
       lcWavefrontSize64_ = !enableWave32Mode_;
       if (palProp.gfxLevel == Pal::GfxIpLevel::GfxIp10_1) {
         // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
         imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
-      }
-      if (false) {
-        // UnknownDevice0 HW doesn't have SDMA engine
-        disableSdma_ = true;
-        // And LDS is limited to 32KB
-        hwLDSSize_ = 32 * Ki;
-        // No fp64 support
-        doublePrecision = false;
       }
       // Fall through to AI (gfx9) ...
     case Pal::AsicRevision::Vega20:
@@ -264,15 +240,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Carrizo:
     case Pal::AsicRevision::Bristol:
     case Pal::AsicRevision::Stoney:
-      if (!aiPlus_) {
-        // Fix BSOD/TDR issues observed on Stoney Win7/8.1/10
-        minWorkloadTime_ = 1000;
-        modifyMaxWorkload.time = 1000;       // Decided by experiment
-        modifyMaxWorkload.minorVersion = 1;  // Win 7
-#if defined(_WIN32)
-        modifyMaxWorkload.comparisonOps = VER_EQUAL;  // Limit to Win 7 only
-#endif
-      }
     case Pal::AsicRevision::Iceland:
     case Pal::AsicRevision::Tonga:
     case Pal::AsicRevision::Fiji:
@@ -294,15 +261,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Godavari:
     case Pal::AsicRevision::Spectre:
     case Pal::AsicRevision::Spooky:
-      if (!viPlus_) {
-        // Fix BSOD/TDR issues observed on Kaveri Win7 (EPR#416903)
-        modifyMaxWorkload.time = 250000;     // 250ms
-        modifyMaxWorkload.minorVersion = 1;  // Win 7
-#if defined(_WIN32)
-        modifyMaxWorkload.comparisonOps = VER_EQUAL;  // limit to Win 7
-#endif
-      }
-    // Fall through ...
     case Pal::AsicRevision::Bonaire:
     case Pal::AsicRevision::Hawaii:
     case Pal::AsicRevision::HawaiiPro:
@@ -318,13 +276,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
       libSelector_ = amd::GPU_Library_CI;
       if (LP64_SWITCH(false, true)) {
-        oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/
-            ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR))
-            : OpenCL12;
-      }
-      if (GPU_FORCE_OCL20_32BIT) {
-        force32BitOcl20_ = true;
-        oclVersion_ = !reportAsOCL12Device /*&& calAttr.isOpenCL200Device*/
+        oclVersion_ = !reportAsOCL12Device
             ? XCONCAT(OpenCL, XCONCAT(OPENCL_MAJOR, OPENCL_MINOR))
             : OpenCL12;
       }
@@ -335,28 +287,14 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
       // Cap at OpenCL20 for now
       if (oclVersion_ > OpenCL20) oclVersion_ = OpenCL20;
-
-      // This needs to be cleaned once 64bit addressing is stable
-      if (oclVersion_ < OpenCL20) {
-        use64BitPtr_ = flagIsDefault(GPU_FORCE_64BIT_PTR)
-            ? LP64_SWITCH(false,
-                          /*calAttr.isWorkstation ||*/ true)
-            : GPU_FORCE_64BIT_PTR;
-      } else {
-        if (GPU_FORCE_64BIT_PTR || LP64_SWITCH(false, true)) {
-          use64BitPtr_ = true;
-        }
-      }
+      
+      use64BitPtr_ = LP64_SWITCH(false, true);
 
       if (oclVersion_ >= OpenCL20) {
         supportDepthsRGB_ = true;
       }
       if (use64BitPtr_) {
-        if (GPU_ENABLE_LARGE_ALLOCATION) {
-          maxAllocSize_ = 64ULL * Gi;
-        } else {
-          maxAllocSize_ = 4048 * Mi;
-        }
+        maxAllocSize_ = 64ULL * Gi;
       } else {
         maxAllocSize_ = 3ULL * Gi;
       }
@@ -381,26 +319,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Image DMA must be disabled if SDMA is disabled
   imageDMA_ &= !disableSdma_;
-
-  splitSizeForWin7_ = false;
-
-#if defined(_WIN32)
-  OSVERSIONINFOEX versionInfo = {0};
-  versionInfo.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-  versionInfo.dwMajorVersion = 6;
-  versionInfo.dwMinorVersion = modifyMaxWorkload.minorVersion;
-
-  DWORDLONG conditionMask = 0;
-  VER_SET_CONDITION(conditionMask, VER_MAJORVERSION, modifyMaxWorkload.comparisonOps);
-  VER_SET_CONDITION(conditionMask, VER_MINORVERSION, modifyMaxWorkload.comparisonOps);
-
-  if (VerifyVersionInfo(&versionInfo, VER_MAJORVERSION | VER_MINORVERSION, conditionMask)) {
-    splitSizeForWin7_ = true;  // Update flag of DMA flush split size for Win 7
-    if (modifyMaxWorkload.time > 0) {
-      maxWorkloadTime_ = modifyMaxWorkload.time;  // Update max workload time
-    }
-  }
-#endif  // defined(_WIN32)
 
   // Enable atomics support
   enableExtension(ClKhrInt64BaseAtomics);
@@ -444,23 +362,19 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   // HW doesn't support untiled image writes
   // hostMemDirectAccess_ |= HostMemImage;
 
-  if (doublePrecision) {
-    // Report FP_FAST_FMA define if double precision HW
-    reportFMA_ = true;
-    // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
-    // Bonaire, Kalindi, Spectre and Spooky so disable
-    // FP_FMA_FMAF for those parts in switch below
-    reportFMAF_ = true;
-  }
+  // Report FP_FAST_FMA define if double precision HW
+  reportFMA_ = true;
+  // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
+  // Bonaire, Kalindi, Spectre and Spooky so disable
+  // FP_FMA_FMAF for those parts in switch below
+  reportFMAF_ = true;
 
-  // Make sure device actually supports double precision
-  doublePrecision_ = (doublePrecision) ? doublePrecision_ : false;
   if (doublePrecision_) {
     // Enable KHR double precision extension
     enableExtension(ClKhrFp64);
   }
 
-  if (!useLightning_ && doublePrecision) {
+  if (!useLightning_) {
     // Enable AMD double precision extension
     doublePrecision_ = true;
     enableExtension(ClAmdFp64);

@@ -440,7 +440,7 @@ hipError_t CodeObject::ExtractCodeObjectFromFile(
     std::vector<std::pair<const void*, size_t>>& code_objs) {
   hipError_t hip_error = hipSuccess;
 
-  if (fdesc < 0) {
+  if (!amd::Os::isValidFileDesc(fdesc)) {
     return hipErrorFileNotFound;
   }
 

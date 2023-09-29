@@ -344,6 +344,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   case hipDeviceAttributeVirtualMemoryManagementSupported:
     *pi = static_cast<int>(g_devices[device]->devices()[0]->info().virtualMemoryManagement_);
     break;
+  case hipDeviceAttributeHostRegisterSupported:
+    *pi = true;
+    break;
   default:
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -443,10 +446,12 @@ hipError_t hipDeviceGetPCIBusId ( char* pciBusId, int  len, int  device ) {
 
   hipDeviceProp_t prop;
   HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
-  snprintf (pciBusId, len, "%04x:%02x:%02x.0",
+  auto* deviceHandle = g_devices[device]->devices()[0];
+  snprintf (pciBusId, len, "%04x:%02x:%02x.%01x",
                     prop.pciDomainID,
                     prop.pciBusID,
-                    prop.pciDeviceID);
+                    prop.pciDeviceID,
+                    deviceHandle->info().deviceTopology_.pcie.function);
 
   HIP_RETURN(len <= 12 ? hipErrorInvalidValue : hipSuccess);
 }
@@ -504,7 +509,7 @@ hipError_t hipDeviceSetLimit ( hipLimit_t limit, size_t value ) {
 hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
   HIP_INIT_API(hipDeviceSetSharedMemConfig, config);
   if (config != hipSharedMemBankSizeDefault &&
-      config != hipSharedMemBankSizeFourByte && 
+      config != hipSharedMemBankSizeFourByte &&
       config != hipSharedMemBankSizeEightByte) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -515,7 +520,8 @@ hipError_t hipDeviceSetSharedMemConfig ( hipSharedMemConfig config ) {
 
 hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
-  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId());
+  constexpr bool kDontWaitForCpu = false;
+  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId(), kDontWaitForCpu);
   HIP_RETURN(hipSuccess);
 }
 

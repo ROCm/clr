@@ -53,6 +53,22 @@ class BlitManager;
 class ThreadTrace;
 class HSAILKernel;
 
+struct AqlPacketMgmt : public amd::EmbeddedObject {
+  static constexpr uint32_t kAqlPacketsListSize = 4 * Ki;
+  AqlPacketMgmt()
+      : packet_index_(0) {
+    memset(aql_vgpus_, 0, sizeof(aql_vgpus_));
+  }
+
+  //! Returns the aql packet list
+  uintptr_t AqlPacketList() const { return reinterpret_cast<uintptr_t>(&aql_packets_); }
+
+  hsa_kernel_dispatch_packet_t aql_packets_[kAqlPacketsListSize];  //!< The list of AQL packets
+  GpuEvent aql_events_[kAqlPacketsListSize];    //!< The list of gpu for each AQL packet
+  VirtualGPU* aql_vgpus_[kAqlPacketsListSize];  //!< The list of vgpus which had submissions
+  std::atomic<uint64_t> packet_index_;          //!< The active packet slot index
+};
+
 //! Virtual GPU
 class VirtualGPU : public device::VirtualDevice {
  public:
@@ -77,8 +93,7 @@ class VirtualGPU : public device::VirtualDevice {
                          uint max_command_buffers  //!< Number of allocated command buffers
     );
 
-    Queue(VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit,
-          uint max_command_buffers)
+    Queue(VirtualGPU& gpu, Pal::IDevice* iDev, uint64_t residency_limit, uint max_command_buffers)
         : lock_(nullptr),
           iQueue_(nullptr),
           iCmdBuffs_(max_command_buffers, nullptr),
@@ -173,6 +188,8 @@ class VirtualGPU : public device::VirtualDevice {
     std::vector<Pal::ICmdBuffer*> iCmdBuffs_;  //!< PAL command buffers
     std::vector<Pal::IFence*> iCmdFences_;     //!< PAL fences, associated with CMD
     const amd::Kernel* last_kernel_;           //!< Last submitted kernel
+    AqlPacketMgmt* aql_mgmt_;                  //!< AQL packet emulation managment
+    void* info_ = nullptr;                     //!< Queue info for RT queues
 
    private:
     void DumpMemoryReferences() const;
@@ -273,37 +290,6 @@ class VirtualGPU : public device::VirtualDevice {
     size_t maxMemObjectsInQueue_;     //!< Maximum number of mem objects in the queue
   };
 
-
-  class DmaFlushMgmt : public amd::EmbeddedObject {
-   public:
-    DmaFlushMgmt(const Device& dev);
-
-    // Resets DMA command buffer workload
-    void resetCbWorkload(const Device& dev);
-
-    // Finds split size for the current dispatch
-    void findSplitSize(const Device& dev,  //!< GPU device object
-                       uint64_t threads,   //!< Total number of execution threads
-                       uint instructions   //!< Number of ALU instructions
-    );
-
-    // Returns TRUE if DMA command buffer is ready for a flush
-    bool isCbReady(VirtualGPU& gpu,   //!< Virtual GPU object
-                   uint64_t threads,  //!< Total number of execution threads
-                   uint instructions  //!< Number of ALU instructions
-    );
-
-    // Returns dispatch split size
-    uint dispatchSplitSize() const { return dispatchSplitSize_; }
-
-   private:
-    uint64_t maxDispatchWorkload_;  //!< Maximum number of operations for a single dispatch
-    uint64_t maxCbWorkload_;        //!< Maximum number of operations for DMA command buffer
-    uint64_t cbWorkload_;           //!< Current number of operations in DMA command buffer
-    uint aluCnt_;                   //!< All ALUs on the chip
-    uint dispatchSplitSize_;        //!< Dispath split size in elements
-  };
-
  public:
   VirtualGPU(Device& device);
   //! Creates virtual gpu object
@@ -325,7 +311,6 @@ class VirtualGPU : public device::VirtualDevice {
       const amd::Kernel& kernel,           //!< Kernel for execution
       const_address parameters,            //!< Parameters for the kernel
       bool nativeMem = true,               //!< Native memory objects
-      amd::Event* enqueueEvent = nullptr,  //!< Event provided in the enqueue kernel command
       uint32_t sharedMemBytes = 0,         //!< Shared memory size
       bool cooperativeGroups = false       //!< TRUE if cooperative groups mode is required
   );
@@ -402,8 +387,8 @@ class VirtualGPU : public device::VirtualDevice {
   );
 
   //! Embeds memory handle info into the CB associated with this VGPU
-  inline void logVmMemory(const std::string name, //!< Brief description of the memory object
-                          const Memory* memory //!< GPU memory object
+  inline void logVmMemory(const std::string name,  //!< Brief description of the memory object
+                          const Memory* memory     //!< GPU memory object
   );
 
   //! Adds a memory handle into the PAL memory array for Virtual Heap
@@ -412,11 +397,11 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Adds the last submitted kernel to the queue for tracking a possible hang
   inline void AddKernel(const amd::Kernel& kernel  //!< AMD kernel object
-                        ) const;
+  ) const;
 
   //! Checks if runtime dispatches the same kernel as previously
   inline bool IsSameKernel(const amd::Kernel& kernel  //!< AMD kernel object
-                           ) const;
+  ) const;
 
   //! Adds a dopp desktop texture reference
   void addDoppRef(const Memory* memory,  //!< GPU memory object
@@ -453,9 +438,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Returns hsaQueueMem_
   const Memory* hsaQueueMem() const { return hsaQueueMem_; }
-
-  //! Returns DMA flush management structure
-  const DmaFlushMgmt& dmaFlushMgmt() const { return dmaFlushMgmt_; }
 
   //! Returns the HW ring used on this virtual device
   uint hwRing() const { return hwRing_; }
@@ -494,12 +476,10 @@ class VirtualGPU : public device::VirtualDevice {
     barrier.pPipePoints = &point;
     barrier.transitionCount = 1;
     uint32_t cacheMask = (flushL2) ? Pal::CoherCopy : Pal::CoherShader;
-    Pal::BarrierTransition trans = {cacheMask,
-                                    cacheMask,
-                                    {nullptr,
-                                     {{0, 0, 0}, 0, 0, 0},
-                                     Pal::LayoutShaderRead,
-                                     Pal::LayoutShaderRead}};
+    Pal::BarrierTransition trans = {
+        cacheMask,
+        cacheMask,
+        {nullptr, {{0, 0, 0}, 0, 0, 0}, Pal::LayoutShaderRead, Pal::LayoutShaderRead}};
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
     barrier.reason = static_cast<uint32_t>(reason);
@@ -576,6 +556,25 @@ class VirtualGPU : public device::VirtualDevice {
     if (amd::IS_HIP) {
       WaitForIdleCompute();
     }
+  }
+
+  //! Updates timestamp for AQL packet index
+  void AqlPacketUpdateTs(uint32_t index, GpuEvent gpu_event) {
+    // Save the new CB ID for this slot
+    queues_[MainEngine]->aql_mgmt_->aql_events_[index] = gpu_event;
+    queues_[MainEngine]->aql_mgmt_->aql_vgpus_[index] = this;
+  }
+
+  //! Returns the current active slot for AQL packet
+  hsa_kernel_dispatch_packet_t* GetAqlPacketSlot(uint32_t* index) {
+    auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
+    // Atomic increment global AQL index and wrap around max AQL list size
+    *index = ++mgmt.packet_index_ % AqlPacketMgmt::kAqlPacketsListSize;
+    if (mgmt.aql_events_[*index].isValid()) {
+      // Make sure GPU doesn't process this slot
+      mgmt.aql_vgpus_[*index]->waitForEvent(&mgmt.aql_events_[*index]);
+    }
+    return &mgmt.aql_packets_[*index];
   }
 
  protected:
@@ -661,8 +660,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   TimeStampCache* tsCache_;            //!< TimeStamp cache
   MemoryDependency memoryDependency_;  //!< Memory dependency class
-
-  DmaFlushMgmt dmaFlushMgmt_;  //!< DMA flush management
 
   std::vector<amd::Memory*> pinnedMems_;  //!< Pinned memory list
 

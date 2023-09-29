@@ -397,7 +397,6 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpyFromArrayAsync = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyHtoAAsync = HIP_API_ID_NONE,
   HIP_API_ID_hipMemcpyToArrayAsync = HIP_API_ID_NONE,
-  HIP_API_ID_hipModuleLaunchKernelExt = HIP_API_ID_NONE,
   HIP_API_ID_hipSetValidDevices = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectCreate = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectDestroy = HIP_API_ID_NONE,
@@ -5477,8 +5476,6 @@ typedef struct hip_api_data_s {
 #define INIT_hipMemcpyHtoAAsync_CB_ARGS_DATA(cb_data) {};
 // hipMemcpyToArrayAsync()
 #define INIT_hipMemcpyToArrayAsync_CB_ARGS_DATA(cb_data) {};
-// hipModuleLaunchKernelExt()
-#define INIT_hipModuleLaunchKernelExt_CB_ARGS_DATA(cb_data) {};
 // hipSetValidDevices()
 #define INIT_hipSetValidDevices_CB_ARGS_DATA(cb_data) {};
 // hipTexObjectCreate()

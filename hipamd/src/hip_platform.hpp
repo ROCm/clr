@@ -31,10 +31,23 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     hipFunction_t func, int inputBlockSize, size_t dynamicSMemSize, bool bCalcPotentialBlkSz);
 } /* namespace hip_impl*/
 
+// Unique file descriptor class
+struct UniqueFD {
+  UniqueFD(const std::string& fpath, amd::Os::FileDesc fdesc, size_t fsize)
+           : fpath_(fpath), fdesc_(fdesc), fsize_(fsize) {}
+
+  const std::string fpath_;        //!< File path of this unique file
+  const amd::Os::FileDesc fdesc_;  //!< File Descriptor
+  const size_t fsize_;             //!< File Size
+};
+
 class PlatformState {
   amd::Monitor lock_{"Guards PlatformState globals", true};
 
-  /* Singleton object */
+  // global level lock for unique file descritor map: ufd_map_
+  amd::Monitor ufd_lock_{"Unique FD Store Lock", true};
+
+  // Singleton object
   static PlatformState* platform_;
   PlatformState() {}
   ~PlatformState() {}
@@ -55,7 +68,7 @@ class PlatformState {
   hipError_t getDynTexGlobalVar(textureReference* texRef, hipDeviceptr_t* dev_ptr,
                                 size_t* size_ptr);
 
-  /* Singleton instance */
+  // Singleton instance
   static PlatformState& instance() {
     if (platform_ == nullptr) {
       // __hipRegisterFatBinary() will call this when app starts, thus
@@ -87,10 +100,17 @@ class PlatformState {
   void configureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem, hipStream_t stream);
   void popExec(ihipExec_t& exec);
 
+  std::shared_ptr<UniqueFD> GetUniqueFileHandle(const std::string& file_path);
+  bool CloseUniqueFileHandle(const std::shared_ptr<UniqueFD>& ufd);
+
+  size_t UfdMapSize() const { return ufd_map_.size(); }
+
  private:
   // Dynamic Code Object map, keyin module to get the corresponding object
   std::unordered_map<hipModule_t, hip::DynCO*> dynCO_map_;
-  hip::StatCO statCO_;  // Static Code object var
+  hip::StatCO statCO_;  //!< Static Code object var
   bool initialized_{false};
   std::unordered_map<textureReference*, std::pair<hipModule_t, std::string>> texRef_map_;
+
+  std::unordered_map<std::string, std::shared_ptr<UniqueFD>> ufd_map_; //!< Unique File Desc Map
 };

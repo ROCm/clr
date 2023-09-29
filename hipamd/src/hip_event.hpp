@@ -82,7 +82,6 @@ class EventMarker : public amd::Marker {
               int32_t scope = amd::Device::kCacheStateInvalid)
       : amd::Marker(stream, disableFlush) {
     profilingInfo_.enabled_ = true;
-    profilingInfo_.callback_ = nullptr;
     profilingInfo_.marker_ts_ = markerTs;
     profilingInfo_.clear();
     setEventScope(scope);

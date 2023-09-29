@@ -58,8 +58,8 @@ bool amd::ClGlEvent::waitForFence() {
 // create a new GL context on this thread, which is shared with the original context
 
 #ifdef _WIN32
-  HDC tempDC_ = wglGetCurrentDC();
-  HGLRC tempGLRC_ = wglGetCurrentContext();
+  HDC tempDC_ = context().glenv()->wglGetCurrentDC_();
+  HGLRC tempGLRC_ = context().glenv()->wglGetCurrentContext_();
   // Set DC and GLRC
   if (tempDC_ && tempGLRC_) {
     ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,

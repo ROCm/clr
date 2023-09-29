@@ -293,7 +293,7 @@ namespace hip {
     const std::vector<uint32_t> GetCUMask() const { return cuMask_; }
 
     /// Sync all streams
-    static void SyncAllStreams(int deviceId);
+    static void SyncAllStreams(int deviceId, bool cpu_wait = true);
 
     /// Check whether any blocking stream running
     static bool StreamCaptureBlocking();
@@ -552,7 +552,7 @@ namespace hip {
   /// Get ROCclr queue associated with hipStream
   /// Note: This follows the CUDA spec to sync with default streams
   ///       and Blocking streams
-  extern hip::Stream* getStream(hipStream_t stream);
+  extern hip::Stream* getStream(hipStream_t stream, bool wait = true);
   /// Get default stream associated with the ROCclr context
   extern hip::Stream* getNullStream(amd::Context&);
   /// Get default stream of the thread

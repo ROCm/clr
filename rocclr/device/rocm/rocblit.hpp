@@ -271,6 +271,8 @@ class DmaBlitManager : public device::HostBlitManager {
                      address staging,        //!< Staging resource
                      bool hostToDev          //!< True if data is copied from Host To Device
                      ) const;
+
+  bool forceHostWaitFunc(size_t copy_size) const;
 };
 
 //! Kernel Blit Manager

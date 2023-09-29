@@ -64,6 +64,8 @@
 #include "protocols/driverControlServer.h"
 #endif // PAL_GPUOPEN_OCL
 
+extern struct r_debug* _amdgpu_r_debug_ptr;
+
 namespace {
 
 //! Define the mapping from PAL asic revision enumeration values to the
@@ -298,7 +300,7 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
                                nullptr,
                                nullptr,
                                nullptr,
-                               AMD_OCL_SC_LIB};
+                               nullptr};
     // Initialize the compiler handle
     acl_error error;
     compiler_ = amd::Hsail::CompilerInit(&opts, &error);
@@ -814,6 +816,10 @@ Device::~Device() {
   // Destroy transfer queue
   delete xferQueue_;
 
+  if (trap_handler_ != nullptr) {
+    trap_handler_->release();
+  }
+
   // Destroy blit program
   delete blitProgram_;
 
@@ -845,6 +851,7 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
+extern const char* TrapHandlerCode;
 
 Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
 uint32_t gStartDevice = 0;
@@ -1027,7 +1034,7 @@ bool Device::create(Pal::IDevice* device) {
                                nullptr,
                                nullptr,
                                nullptr,
-                               AMD_OCL_SC_LIB};
+                               nullptr};
     // Initialize the compiler handle
     acl_error error;
     compiler_ = amd::Hsail::CompilerInit(&opts, &error);
@@ -1142,6 +1149,15 @@ bool Device::initializeHeapResources() {
     if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
       return false;
     }
+#ifdef PAL_DEBUGGER
+    Pal::RuntimeSetup setup;
+    setup.r_debug = reinterpret_cast<uint64_t>(_amdgpu_r_debug_ptr);
+    if (iDev()->RegisterRuntimeState(&setup) != Pal::Result::Success) {
+      LogError("Couldn't register debug state from the loader!");
+      // Note: ignore debug state error, since it's not a critical
+      // error for the execution
+    }
+#endif
 
     heapInitComplete_ = true;
 
@@ -1186,6 +1202,32 @@ bool Device::initializeHeapResources() {
       return false;
     }
     xferQueue_->enableSyncedBlit();
+    // Setup trap handler if available
+    if (trap_handler_ != nullptr) {
+      auto program = reinterpret_cast<pal::LightningProgram*>(
+          trap_handler_->getDeviceProgram(*this));
+      if (program != nullptr) {
+        Pal::Result result{Pal::Result::Success};
+        Pal::GpuMemoryRef memRef = {};
+        memRef.pGpuMemory = program->codeSegGpu().iMem();
+        if (!settings().alwaysResident_) {
+          // Make sure trap handler is always resident in memory
+          // note: this code path is for OpenCL only, since HIP has alwaysResident_ enabled
+          result = iDev()->AddGpuMemoryReferences(1, &memRef, nullptr, Pal::GpuMemoryRefCantTrim);
+        }
+        if (result == Pal::Result::Success) {
+          // Find an offset in memory for the trap handler.
+          // Loader returns an absolute address, but PAL accepts base + offset, hense find offset
+          auto offset = program->GetTrapHandlerAddress() - memRef.pGpuMemory->Desc().gpuVirtAddr;
+#ifdef PAL_DEBUGGER
+          // Bind trap handler to the kernel mode driver
+          iDev()->BindTrapHandler(Pal::PipelineBindPoint::Compute, memRef.pGpuMemory, offset);
+#endif
+        } else {
+          LogError("Failed to make trap handler resident in memory");
+        }
+      }
+    }
   }
   return true;
 }
@@ -1387,11 +1429,10 @@ bool Device::init() {
 
 void Device::tearDown() {
   if (platform_ != nullptr) {
-    // platform_->Destroy();
+    platform_->Destroy();
     delete platformObj_;
     platform_ = nullptr;
   }
-
 #if defined(WITH_COMPILER_LIB)
   if (compiler_ != nullptr) {
     amd::Hsail::CompilerFini(compiler_);
@@ -2542,6 +2583,29 @@ bool Device::createBlitProgram() {
     LogError("Couldn't create blit kernels!");
     result = false;
   }
+
+#ifdef PAL_DEBUGGER
+  if (settings().useLightning_) {
+    const std::string TrapHandlerAsm = TrapHandlerCode;
+    // Create a program for trap handler
+    // note: It's not critical for runtime functionality to fail trap handler initialization
+    trap_handler_ = new amd::Program(*context_, TrapHandlerAsm.c_str(), amd::Program::Assembly);
+    if (trap_handler_ != nullptr) {
+      std::vector<amd::Device*> devices;
+      devices.push_back(this);
+      std::string opt = "-cl-internal-kernel ";
+      if (auto retval =
+              trap_handler_->build(devices, opt.c_str(), nullptr, nullptr, false) != CL_SUCCESS) {
+        DevLogPrintfError("Build failed for trap handler with error code: %d\n", retval);
+      }
+      if (!trap_handler_->load()) {
+        DevLogPrintfError("Could not load the trap handler \n");
+      }
+    } else {
+      DevLogPrintfError("Trap handler creation failed\n");
+    }
+  }
+#endif
   return result;
 }
 
@@ -2595,6 +2659,7 @@ bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& ha
   return true;
 }
 
+// ================================================================================================
 void Device::DestroyExtSemaphore(void* extSemaphore) {
   Pal::IQueueSemaphore* sem = reinterpret_cast<Pal::IQueueSemaphore*>(extSemaphore);
   sem->Destroy();

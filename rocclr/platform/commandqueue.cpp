@@ -42,6 +42,9 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       tail_(nullptr),
       isActive_(false),
       markerTsCount_(0) {
+  if (GPU_FORCE_QUEUE_PROFILING) {
+    properties().set(CL_QUEUE_PROFILING_ENABLE);
+  }
   if (AMD_DIRECT_DISPATCH) {
     // Initialize the queue
     thread_.Init(this);
@@ -51,10 +54,6 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       thread_.start(this);
       queueLock_.wait();
     }
-  }
-
-  if (GPU_FORCE_QUEUE_PROFILING) {
-    properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
 }
 
@@ -114,7 +113,7 @@ bool HostQueue::terminate() {
   return true;
 }
 
-void HostQueue::finish() {
+void HostQueue::finish(bool cpu_wait) {
   Command* command = nullptr;
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
@@ -122,7 +121,8 @@ void HostQueue::finish() {
       return;
     }
   }
-  if (nullptr == command || vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
+  if (nullptr == command || command->type() != CL_COMMAND_MARKER ||
+      vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }
@@ -136,7 +136,7 @@ void HostQueue::finish() {
   }
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
     ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
   }
@@ -239,7 +239,7 @@ void HostQueue::append(Command& command) {
 
   // Set last submitted command
   Command* prevLastEnqueueCommand = nullptr;
- 
+
   // Attach only real commands and skip internal notifications for CPU queue
   if (command.waitingEvent() == nullptr) {
     command.retain();

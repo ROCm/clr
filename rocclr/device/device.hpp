@@ -640,7 +640,6 @@ class Settings : public amd::HeapObject {
   uint64_t extensions_;  //!< Supported OCL extensions
   union {
     struct {
-      uint overrideLclSet : 3;        //!< Bit mask to override the local size
       uint apuSystem_ : 1;            //!< Device is APU system with shared memory
       uint supportRA_ : 1;            //!< Support RA channel order format
       uint waitCommand_ : 1;          //!< Enables a wait for every submitted command
@@ -660,13 +659,10 @@ class Settings : public amd::HeapObject {
       uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
-      uint reserved_ : 11;
+      uint reserved_ : 14;
     };
     uint value_;
   };
-
-  uint commandQueues_;  //!< Field value for maximum number
-                        //!< concurrent Virtual GPUs for each backend
 
   //! Default constructor
   Settings();
@@ -1383,7 +1379,7 @@ class Isa {
 
   /// @returns If the ROCm runtime supports the ISA.
   bool runtimeRocSupported() const {
-    if (!IS_HIP && !ROC_ENABLE_PRE_VEGA && (versionMajor_ == 8)) {
+    if (!IS_HIP && (versionMajor_ == 8)) {
       return false;
     }
     return runtimeRocSupported_;

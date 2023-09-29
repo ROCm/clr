@@ -20,7 +20,7 @@
 
 set(PAL_CLIENT "OCL")
 
-set(PAL_CLIENT_INTERFACE_MAJOR_VERSION     792)
+set(PAL_CLIENT_INTERFACE_MAJOR_VERSION     818)
 set(GPUOPEN_CLIENT_INTERFACE_MAJOR_VERSION 42)
 set(GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION 0)
 set(AMD_DK_ROOT $ENV{DK_ROOT})
@@ -75,5 +75,5 @@ target_link_libraries(rocclr PUBLIC pal amdhsaloader)
 
 # support for OGL/D3D interop
 if(WIN32)
-  target_link_libraries(rocclr PUBLIC opengl32.lib dxguid.lib)
+  target_link_libraries(rocclr PUBLIC dxguid.lib)
 endif()

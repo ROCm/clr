@@ -110,6 +110,19 @@ bool RTCProgram::findIsa() {
 }
 
 // RTC Compile Program Member Functions
+void RTCProgram::AppendOptions(const std::string app_env_var, std::vector<std::string>* options) {
+
+  if (options == nullptr) {
+    LogError("Append options passed is nullptr.");
+    return;
+  }
+
+  std::stringstream ss(app_env_var);
+  std::istream_iterator<std::string> begin{ss}, end;
+  options->insert(options->end(), begin, end);
+}
+
+// RTC Compile Program Member Functions
 RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgpu_rdc_(false) {
   if ((amd::Comgr::create_data_set(&compile_input_) != AMD_COMGR_STATUS_SUCCESS) ||
       (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS)) {
@@ -150,6 +163,7 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back("-fms-extensions");
   compile_options_.push_back("-fms-compatibility");
 #endif
+  AppendCompileOptions();
 
   exe_options_.push_back("-O3");
 }
@@ -259,14 +273,6 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
   return findIsa();
 }
 
-static inline uint getArchMajorVersion(std::string &isa) {
-  if (const amd::Isa *isaIter = amd::Isa::findIsa(isa.data())) {
-    return isaIter->versionMajor();
-  }
-
-  return static_cast<uint>(-1);
-}
-
 amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
 
 bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
@@ -290,17 +296,6 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   if (!transformOptions(compileOpts)) {
     LogError("Error in hiprtc: unable to transform options");
     return false;
-  }
-
-  // Decide whether to enable wave64 compilation
-  auto majorVer = getArchMajorVersion(isa_);
-  if (majorVer <= 9 || !GPU_ENABLE_WAVE32_MODE) {
-    if (majorVer > 9) {
-       LogWarning("Wavefront size 64 is experimental for gfx10 and above. Warp "
-                  "functions may not work");
-    }
-    compileOpts.push_back("-mwavefrontsize64");
-    link_options_.push_back("wavefrontsize64");
   }
 
   if (!compileToBitCode(compile_input_, isa_, compileOpts, build_log_, LLVMBitcode_)) {
@@ -669,9 +664,10 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
     return false;
   }
 
+  AppendLinkerOptions();
+
   std::vector<char> linked_llvm_bitcode;
-  std::vector<std::string> linkopts;
-  if (!linkLLVMBitcode(link_input_, isa_, linkopts, build_log_, linked_llvm_bitcode)) {
+  if (!linkLLVMBitcode(link_input_, isa_, link_options_, build_log_, linked_llvm_bitcode)) {
     LogError("Error in hiprtc: unable to add device libs to linked bitcode");
     return false;
   }

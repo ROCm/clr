@@ -81,14 +81,28 @@ public:
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
-  bool          done_;    //!< True if signal is done
   amd::Monitor  lock_;    //!< Signal lock for update
+
+  typedef union {
+    struct {
+      uint32_t          done_            :  1; //!< True if signal is done
+      uint32_t          forceHostWait_   :  1; //!< Force Host Wait for dependency signals
+      uint32_t          reserved_        : 30;
+    };
+    uint32_t data_;
+  } Flags;
+
+  Flags flags_;
+
   ProfilingSignal()
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
-    , done_(true)
     , lock_("Signal Ops Lock", true)
-    { signal_.handle = 0; }
+    {
+      signal_.handle = 0;
+      flags_.done_ = true;
+      flags_.forceHostWait_ = true;
+    }
 
   virtual ~ProfilingSignal();
   amd::Monitor& LockSignalOps() { return lock_; }
@@ -219,7 +233,7 @@ class NullDevice : public amd::Device {
 
   //! Determine if we can use device memory for SVM
   const bool forceFineGrain(amd::Memory* memory) const {
-    return !settings().enableCoarseGrainSVM_ || (memory->getContext().devices().size() > 1);
+    return (memory->getContext().devices().size() > 1);
   }
 
   virtual bool importExtSemaphore(void** extSemahore, const amd::Os::FileDesc& handle,

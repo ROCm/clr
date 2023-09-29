@@ -269,6 +269,7 @@ class LightningProgram : public HSAILProgram {
     isHIP_ = (owner.language() == amd::Program::HIP);
   }
   virtual ~LightningProgram() {}
+  uint64_t GetTrapHandlerAddress() const;
 
  protected:
   virtual bool createKernels(void* binary, size_t binSize, bool useUniformWorkGroupSize,

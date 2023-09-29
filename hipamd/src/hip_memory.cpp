@@ -3379,6 +3379,9 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
         ((memObj->getMemFlags() & kManagedAlloc) == kManagedAlloc) ? true : false;
     attributes->allocationFlags = memObj->getUserData().flags;
     attributes->device = memObj->getUserData().deviceId;
+    if (attributes->isManaged) {
+      attributes->type = hipMemoryTypeManaged;
+    }
     HIP_RETURN(hipSuccess);
   }
 
@@ -3798,12 +3801,6 @@ hipError_t hipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOf
   HIP_RETURN_DURATION(ihipMemcpy2DArrayToArray(dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind, nullptr));
 }
 
-hipError_t hipMemcpyArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height, hipMemcpyKind kind) {
-  HIP_INIT_API(hipMemcpyArrayToArray, dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind);
-  CHECK_STREAM_CAPTURING();
-  HIP_RETURN_DURATION(ihipMemcpy2DArrayToArray(dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind, nullptr));
-}
-
 hipError_t hipMemcpy2DFromArray_common(void* dst, size_t dpitch, hipArray_const_t src,
                                        size_t wOffsetSrc, size_t hOffset, size_t width,
                                        size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr,
@@ -3850,22 +3847,6 @@ hipError_t hipMemcpy2DFromArrayAsync_spt(void* dst, size_t dpitch, hipArray_cons
   HIP_RETURN_DURATION(hipMemcpy2DFromArray_common(dst, dpitch, src, wOffsetSrc, hOffsetSrc, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpyFromArrayAsync(void* dst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc, size_t count, hipMemcpyKind kind, hipStream_t stream) {
-  HIP_INIT_API(hipMemcpyFromArrayAsync, dst, src, wOffsetSrc, hOffsetSrc, count, kind, stream);
-  STREAM_CAPTURE(hipMemcpyFromArrayAsync, stream, dst, src, wOffsetSrc, hOffsetSrc, count, kind);
-
-  if (src == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  const size_t arrayHeight = (src->height != 0) ? src->height : 1;
-  const size_t widthInBytes = count / arrayHeight;
-
-  const size_t height = (count / src->width) / hip::getElementSize(src);
-
-  HIP_RETURN_DURATION(ihipMemcpy2DFromArray(dst, 0 /* dpitch */, src, wOffsetSrc, hOffsetSrc, widthInBytes, height, kind, stream, true));
-}
-
 hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
@@ -3879,22 +3860,6 @@ hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOf
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
                  kind);
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, true));
-}
-
-hipError_t hipMemcpyToArrayAsync(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind, hipStream_t stream) {
-  HIP_INIT_API(hipMemcpyToArrayAsync, dst, wOffset, hOffset, src, count, kind);
-  STREAM_CAPTURE(hipMemcpyToArrayAsync, stream, dst, wOffset, hOffset, src, count, kind);
-
-  if (dst == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  const size_t arrayHeight = (dst->height != 0) ? dst->height : 1;
-  const size_t widthInBytes = count / arrayHeight;
-
-  const size_t height = (count / dst->width) / hip::getElementSize(dst);
-
-  HIP_RETURN_DURATION(ihipMemcpy2DToArray(dst, wOffset, hOffset, src, 0 /* spitch */, widthInBytes, height, kind, stream, true));
 }
 
 hipError_t hipMemcpyAtoA(hipArray* dstArray,

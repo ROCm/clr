@@ -122,7 +122,7 @@ int Stream::DeviceId(const hipStream_t hStream) {
 }
 
 // ================================================================================================
-void Stream::SyncAllStreams(int deviceId) {
+void Stream::SyncAllStreams(int deviceId, bool cpu_wait) {
   // Make a local copy to avoid stalls for GPU finish with multiple threads
   std::vector<hip::Stream*> streams;
   streams.reserve(streamSet.size());
@@ -136,7 +136,7 @@ void Stream::SyncAllStreams(int deviceId) {
     }
   }
   for (auto it : streams) {
-    it->finish();
+    it->finish(cpu_wait);
     it->release();
   }
 }
@@ -441,8 +441,10 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
+  bool wait = (stream == nullptr) ? true : false;
+  constexpr bool kDontWaitForCpu = false;
   // Wait for the current host queue
-  hip::getStream(stream)->finish();
+  hip::getStream(stream, wait)->finish(kDontWaitForCpu);
   return hipSuccess;
 }
 
@@ -511,9 +513,6 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
 
 // ================================================================================================
 hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsigned int flags) {
-  ClPrint(amd::LOG_INFO, amd::LOG_API,
-          "[hipGraph] current capture node StreamWaitEvent on stream : %p, Event %p", stream,
-          event);
   hipError_t status = hipSuccess;
   if (event == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidHandle;
@@ -523,6 +522,9 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
 
   if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
+    ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] Current capture node StreamWaitEvent on stream : %p, Event %p", stream,
+          event);
     if (waitStream == nullptr) {
       return hipErrorInvalidHandle;
     }
@@ -572,7 +574,8 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
-  hip::Stream* hip_stream = hip::getStream(stream);
+  bool wait = (stream == nullptr) ? true : false;
+  hip::Stream* hip_stream = hip::getStream(stream, wait);
 
   amd::Command* command = hip_stream->getLastQueuedCommand(true);
   if (command == nullptr) {

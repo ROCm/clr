@@ -30,6 +30,8 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 "#pragma clang diagnostic push\n\
 #pragma clang diagnostic ignored \"-Wreserved-id-macro\"\n\
 #pragma clang diagnostic ignored \"-Wc++98-compat-pedantic\"\n\
+#pragma clang diagnostic ignored \"-Wreserved-macro-identifier\"\n\
+#pragma clang diagnostic ignored \"-Wundef\"\n\
 #define __device__ __attribute__((device))\n\
 #define __host__ __attribute__((host))\n\
 #define __global__ __attribute__((global))\n\
@@ -40,7 +42,11 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define __noinline__ __attribute__((noinline))\n\
 #endif\n\
 #define __forceinline__ inline __attribute__((always_inline))\n\
-
+#if __HIP_NO_IMAGE_SUPPORT\n\
+#define __hip_img_chk__ __attribute__((unavailable(\"The image/texture API not supported on the device\")))\n\
+#else\n\
+#define __hip_img_chk__\n\
+#endif\n\
 #define launch_bounds_impl0(requiredMaxThreadsPerBlock)                                       \\\n\
     __attribute__((amdgpu_flat_work_group_size(1, requiredMaxThreadsPerBlock)))\n\
 #define launch_bounds_impl1(requiredMaxThreadsPerBlock, minBlocksPerMultiprocessor)           \\\n\
@@ -49,13 +55,11 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define select_impl_(_1, _2, impl_, ...) impl_\n\
 #define __launch_bounds__(...)                                                                \\\n\
     select_impl_(__VA_ARGS__, launch_bounds_impl1, launch_bounds_impl0)(__VA_ARGS__)           \n\
-#pragma clang diagnostic pop\n\
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_H\n\
-#pragma clang diagnostic push\n\
-#pragma clang diagnostic ignored \"-Wreserved-macro-identifier\"\n\
 #define _HIP_BFLOAT16_H_\n\
-#pragma clang diagnostic pop\n\
-#define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H"
+#define HIP_INCLUDE_HIP_MATH_FUNCTIONS_H\n\
+#define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H\n\
+#pragma clang diagnostic pop"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
 
@@ -64,20 +68,15 @@ if(HIPRTC_ADD_MACROS)
   message(STATUS "Appending hiprtc macros to ${HIPRTC_PREPROCESSED_FILE}.")
   get_hiprtc_macros(HIPRTC_DEFINES)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_DEFINES}")
-  FILE(READ "${HIPRTC_WARP_HEADER_FILE}" HIPRTC_WARP_HEADER)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_WARP_HEADER}")
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-  FILE(READ "${HIPRTC_COOP_HELPER_FILE}" HIPRTC_COOP_HELPER)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_COOP_HELPER}")
-  FILE(READ "${HIPRTC_COOP_HEADER_FILE}" HIPRTC_COOP_HEADER)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_COOP_HEADER}")
-  FILE(READ "${HIPRTC_UNSAFE_ATOMICS_FILE}" HIPRTC_UNSAFE_ATOMICS)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_UNSAFE_ATOMICS}")
-  FILE(READ "${HIPRTC_FP16_MATH_FWD_FILE}" HIPRTC_FP16_MATH_FWD)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_FP16_MATH_FWD}")
-  FILE(READ "${HIPRTC_FP16_HEADER_FILE}" HIPRTC_FP16_HEADER)
-  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_FP16_HEADER}")
+  set(HIPRTC_HEADER_LIST ${HIPRTC_HEADERS})
+  separate_arguments(HIPRTC_HEADER_LIST)
+# appends all the headers from the list to the hiprtc preprocessed file
+  foreach(header ${HIPRTC_HEADER_LIST})
+    FILE(READ "${header}" HEADER_FILE)
+    FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HEADER_FILE}")
+  endforeach()
 #pragma clang diagnostic pop
 endif()
 

@@ -100,12 +100,12 @@ void setCurrentDevice(unsigned int index) {
   amd::Os::setPreferredNumaNode(preferredNumaNode);
 }
 
-hip::Stream* getStream(hipStream_t stream) {
+hip::Stream* getStream(hipStream_t stream, bool wait) {
  if (stream == nullptr) {
     return getNullStream();
   } else {
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);
-    if (!(hip_stream->Flags() & hipStreamNonBlocking)) {
+    if (wait && !(hip_stream->Flags() & hipStreamNonBlocking)) {
       constexpr bool WaitNullStreamOnly = true;
       iHipWaitActiveStreams(hip_stream, WaitNullStreamOnly);
     }
