@@ -257,43 +257,43 @@ inline std::ostream& operator<<(std::ostream& os, const hipResourceViewFormat& s
   return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os, const hipFuncAttribute& s) {
+inline std::ostream& operator<<(std::ostream& os, const hipFunction_attribute& s) {
   switch (s) {
-    case hipFuncAttributeMaxThreadsPerBlock:
-      os << "hipFuncAttributeMaxThreadsPerBlock";
+    case HIP_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK:
+      os << "HIP_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK";
       break;
-    case hipFuncAttributeSharedSizeBytes:
-      os << "hipFuncAttributeSharedSizeBytes";
+    case HIP_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES:
+      os << "HIP_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES";
       break;
-    case hipFuncAttributeConstSizeBytes:
-      os << "hipFuncAttributeConstSizeBytes";
+    case HIP_FUNC_ATTRIBUTE_CONST_SIZE_BYTES:
+      os << "HIP_FUNC_ATTRIBUTE_CONST_SIZE_BYTES";
       break;
-    case hipFuncAttributeLocalSizeBytes:
-      os << "hipFuncAttributeLocalSizeBytes";
+    case HIP_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES:
+      os << "HIP_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES";
       break;
-    case hipFuncAttributeNumRegs:
-      os << "hipFuncAttributeNumRegs";
+    case HIP_FUNC_ATTRIBUTE_NUM_REGS:
+      os << "HIP_FUNC_ATTRIBUTE_NUM_REGS";
       break;
-    case hipFuncAttributePTXVersion:
-      os << "hipFuncAttributePTXVersion";
+    case HIP_FUNC_ATTRIBUTE_PTX_VERSION:
+      os << "HIP_FUNC_ATTRIBUTE_PTX_VERSION";
       break;
-    case hipFuncAttributeBinaryVersion:
-      os << "hipFuncAttributeBinaryVersion";
+    case HIP_FUNC_ATTRIBUTE_BINARY_VERSION:
+      os << "HIP_FUNC_ATTRIBUTE_BINARY_VERSION";
       break;
-    case hipFuncAttributeCacheModeCA:
-      os << "hipFuncAttributeCacheModeCA";
+    case HIP_FUNC_ATTRIBUTE_CACHE_MODE_CA:
+      os << "HIP_FUNC_ATTRIBUTE_CACHE_MODE_CA";
       break;
-    case hipFuncAttributeMaxDynamicSharedMemorySize:
-      os << "hipFuncAttributeMaxDynamicSharedSizeBytes";
+    case HIP_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES:
+      os << "HIP_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES";
       break;
-    case hipFuncAttributePreferredSharedMemoryCarveout:
-      os << "hipFuncAttributePreferredSharedMemoryCarveout";
+    case HIP_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT:
+      os << "HIP_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT";
       break;
-    case hipFuncAttributeMax:
-      os << "hipFuncAttributeMax";
+    case HIP_FUNC_ATTRIBUTE_MAX:
+      os << "HIP_FUNC_ATTRIBUTE_MAX";
       break;
     default:
-      os << "hipFuncAttributeMax";
+      os << "HIP_FUNC_ATTRIBUTE_MAX";
   };
   return os;
 }
