@@ -111,7 +111,7 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipFuncGetAttribute(int* value, hipFuncAttribute  attrib, hipFunction_t hfunc) {
+hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunction_t hfunc) {
   HIP_INIT_API(hipFuncGetAttribute, value, attrib, hfunc);
 
   if ((value == nullptr)) {
@@ -135,34 +135,34 @@ hipError_t hipFuncGetAttribute(int* value, hipFuncAttribute  attrib, hipFunction
   }
 
   switch (attrib) {
-    case hipFuncAttributeSharedSizeBytes:
+    case HIP_FUNC_ATTRIBUTE_SHARED_SIZE_BYTES:
       *value = static_cast<int>(wrkGrpInfo->localMemSize_);
       break;
-    case hipFuncAttributeMaxThreadsPerBlock:
+    case HIP_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK:
       *value = static_cast<int>(wrkGrpInfo->size_);
       break;
-    case hipFuncAttributeConstSizeBytes:
+    case HIP_FUNC_ATTRIBUTE_CONST_SIZE_BYTES:
       *value = 0;
       break;
-    case hipFuncAttributeLocalSizeBytes:
+    case HIP_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES:
       *value = static_cast<int>(wrkGrpInfo->privateMemSize_);
       break;
-    case hipFuncAttributeNumRegs:
+    case HIP_FUNC_ATTRIBUTE_NUM_REGS:
       *value = static_cast<int>(wrkGrpInfo->usedVGPRs_);
       break;
-    case hipFuncAttributePTXVersion:
+    case HIP_FUNC_ATTRIBUTE_PTX_VERSION:
       *value = 30;  // Defaults to 3.0 as HCC
       break;
-    case hipFuncAttributeBinaryVersion:
+    case HIP_FUNC_ATTRIBUTE_BINARY_VERSION:
       *value = static_cast<int>(kernel->signature().version());
       break;
-    case hipFuncAttributeCacheModeCA:
+    case HIP_FUNC_ATTRIBUTE_CACHE_MODE_CA:
       *value = 0;
       break;
-    case hipFuncAttributeMaxDynamicSharedMemorySize:
+    case HIP_FUNC_ATTRIBUTE_MAX_DYNAMIC_SHARED_SIZE_BYTES:
       *value = static_cast<int>(wrkGrpInfo->availableLDSSize_ - wrkGrpInfo->localMemSize_);
       break;
-    case hipFuncAttributePreferredSharedMemoryCarveout:
+    case HIP_FUNC_ATTRIBUTE_PREFERRED_SHARED_MEMORY_CARVEOUT:
       *value = 0;
       break;
     default:
