@@ -6,11 +6,54 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Optimizations
 
 ### Added
+- New fields for external resource interoperability,
+  Structs,
+    - hipExternalMemoryHandleDesc_st
+    - hipExternalMemoryBufferDesc_st
+    - hipExternalSemaphoreHandleDesc_st
+    - hipExternalSemaphoreSignalParams_st
+    - hipExternalSemaphoreWaitParams_st
+  Enumerations,
+    - hipExternalMemoryHandleType_enum
+    - hipExternalSemaphoreHandleType_enum
+    - hipExternalMemoryHandleType_enum
 
 ### Changed
+- Some OpenGL Interop HIP APIs are moved from the hip_runtime_api header to a new header file hip_gl_interop.h for the AMD platform, as following,
+    - hipGLGetDevices
+    - hipGraphicsGLRegisterBuffer
+    - hipGraphicsGLRegisterImage
 
+### Changes Impacting Backward Incompatibility
+- Data types for members in HIP_MEMCPY3D structure are changed from "unsigned int" to "size_t".
+- The value of the flag hipIpcMemLazyEnablePeerAccess is changed to “0x01”, which was previously defined as “0”.
+- Some device property attributes are not currently support in HIP runtime, in order to maintain consistency, the following related enumeration names are changed in hipDeviceAttribute_t
+    - hipDeviceAttributeName is changed to hipDeviceAttributeUnused1
+    - hipDeviceAttributeUuid is changed to hipDeviceAttributeUnused2
+    - hipDeviceAttributeArch is changed to hipDeviceAttributeUnused3
+    - hipDeviceAttributeGcnArch is changed to hipDeviceAttributeUnused4
+    - hipDeviceAttributeGcnArchName is changed to hipDeviceAttributeUnused5
 ### Fixed
-
+- Kernel launch maximum dimension validation is added specifically on gridY and gridZ in the HIP API hipModule-LaunchKernel. As a result,when hipGetDeviceAttribute is called for the value of hipDeviceAttributeMaxGrid-Dim, the behavior on the AMD platform is equivalent to NVIDIA.
+- The HIP stream synchronisation behaviour is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
+The change won't affect usage of applications, and makes them behave the same on the AMD platform as NVIDIA.
+- Error handling behavior on unsupported GPU is fixed, HIP runtime will log out error message, instead of creating signal abortion error which is invisible to developers but continued kernel execution process. This is for the case when developers compile any application via hipcc, setting the option --offload-arch with GPU ID which is different from the one on the system.
+### Deprecated And Removed
+- Deprecated Heterogeneous Compute (HCC) symbols and flags are removed from the HIP source code, including,
+    - Build options on obsolete HCC_OPTIONS was removed from cmake.
+    - Micro definitions are removed.
+      HIP_INCLUDE_HIP_HCC_DETAIL_DRIVER_TYPES_H
+      HIP_INCLUDE_HIP_HCC_DETAIL_HOST_DEFINES_H
+    - Compilation flags for the platform definitions,
+      AMD platform,
+      __HIP_PLATFORM_HCC__
+      __HCC__
+      __HIP_ROCclr__
+      NVIDIA platform,
+      __HIP_PLATFORM_NVCC__
+- File directories in the clr repository are removed,
+  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/hcc_detail
+  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/nvcc_detail
 ### Known Issues
 
 ## HIP 5.7.1 (For ROCm 5.7.1)
