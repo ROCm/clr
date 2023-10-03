@@ -51,26 +51,15 @@ void init(bool* status) {
   const std::vector<amd::Device*>& devices = amd::Device::getDevices(CL_DEVICE_TYPE_GPU, false);
 
   for (unsigned int i=0; i<devices.size(); i++) {
-    const std::vector<amd::Device*> device(1, devices[i]);
-    amd::Context* context = new amd::Context(device, amd::Context::Info());
-    if (!context) {
+    // Enable active wait on the device by default
+    devices[i]->SetActiveWait(true);
+    // use the eternal contexts that already exist for new hip::Device's here
+    auto device = new Device(&devices[i]->context(), i);
+    if ((device == nullptr) || !device->Create()) {
       *status = false;
       return;
     }
-
-    // Enable active wait on the device by default
-    devices[i]->SetActiveWait(true);
-
-    if (context && CL_SUCCESS != context->create(nullptr)) {
-      context->release();
-    } else {
-      auto device = new Device(context, i);
-      if ((device == nullptr) || !device->Create()) {
-        *status = false;
-        return;
-      }
-      g_devices.push_back(device);
-    }
+    g_devices.push_back(device);
   }
 
   amd::Context* hContext = new amd::Context(devices, amd::Context::Info());
