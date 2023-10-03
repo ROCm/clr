@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <cstdint>
 
 static void checkPrintf(FILE* stream, int* outCount, const char* fmt, ...) {
   va_list args;
