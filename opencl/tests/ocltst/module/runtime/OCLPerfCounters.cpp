@@ -760,8 +760,10 @@ void OCLPerfCounters::run(void) {
   _wrapper->clSetDeviceClockModeAMD(global_device, setClockModeInput,
                                     &setClockModeOutput);
 
-  _wrapper->clGetPerfCounterInfoAMD(perfCounter, CL_PERFCOUNTER_DATA,
+  error_ = _wrapper->clGetPerfCounterInfoAMD(perfCounter, CL_PERFCOUNTER_DATA,
                                     sizeof(cl_ulong), &result, NULL);
+  CHECK_RESULT(error_ != CL_SUCCESS,
+    "clGetPerfCounterInfoAMD failed (Hint (Linux): install hsa-amd-aqlprofile)\n");
 
   err = _wrapper->clReleasePerfCounterAMD(perfCounter);
   CHECK_RESULT(err != CL_SUCCESS, "Release PerfCounter failed\n");

@@ -3636,6 +3636,11 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     // one to get the profile object
     amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[0]);
     PerfCounter* counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
+    if (counter == nullptr) {
+      LogError("Invalid Performance Counter");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+      return;
+    }
     PerfCounterProfile* profileRef =  counter->profileRef();
 
     // create the AQL packet for stop profiling
