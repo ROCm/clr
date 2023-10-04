@@ -412,7 +412,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
                                            uint32_t gridId, uint32_t numGrids,
                                            uint64_t prevGridSum, uint64_t allGridSum,
                                            uint32_t firstDevice, bool forceProfiling) :
-    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL),
+    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL |
+                                                            (HIP_LAUNCH_BLOCKING << 1)),
     kernel_(kernel),
     sizes_(sizes),
     sharedMemBytes_(sharedMemBytes),
