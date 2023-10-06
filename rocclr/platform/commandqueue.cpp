@@ -126,7 +126,7 @@ void HostQueue::finish(bool cpu_wait) {
   bool force_marker = false;
   // Force CPU wait if profiler is enabled. Pytorch tests may use tracer's plugin and rely on
   // profiling information to be available right after finish.
-  cpu_wait = activity_prof::IsEnabled(OP_ID_DISPATCH);
+  cpu_wait |= activity_prof::IsEnabled(OP_ID_DISPATCH);
   if (AMD_DIRECT_DISPATCH && (command != nullptr) && !cpu_wait) {
     void* hw_event =
       (command->NotifyEvent() != nullptr) ? command->NotifyEvent()->HwEvent() : command->HwEvent();
