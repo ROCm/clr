@@ -90,10 +90,14 @@ install(DIRECTORY ${hip_SOURCE_DIR}/bin DESTINATION . COMPONENT dev
 install(DIRECTORY ${HIP_COMMON_DIR}/include DESTINATION . COMPONENT dev)
 install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/amd_detail
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
-install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/nvidia_detail
+if(DEFINED HIPNV_DIR)
+    install(DIRECTORY ${HIPNV_DIR}/include/hip/nvidia_detail
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
+endif()
+if(HIP_PLATFORM STREQUAL "amd" )
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/amd_detail COMPONENT dev)
+endif()
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/include/hip/hip_version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/version DESTINATION ${CMAKE_INSTALL_DATADIR}/hip COMPONENT dev)
