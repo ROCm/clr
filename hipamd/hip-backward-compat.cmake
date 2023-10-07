@@ -88,7 +88,7 @@ function(generate_wrapper_header)
   endforeach()
 
   #find all header files from include/hip/nvidia_detail
-  file(GLOB include_files ${HIP_SRC_INC_DIR}/${HIP_NVIDIA_DETAIL_DIR}/*)
+  file(GLOB include_files ${HIPNV_DIR}/include/hip/${HIP_NVIDIA_DETAIL_DIR}/*)
   #Convert the list of files into #includes
   foreach(header_file ${include_files})
     # set include guard
