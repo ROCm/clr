@@ -705,12 +705,18 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
-      // Check SDMA engine status
-      status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
-              status, freeEngineMask);
-      // Return a mask with the rightmost bit set
-      copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+      // Check if there a recently used SDMA engine for the stream
+      copyMask = gpu().getLastUsedSdmaEngine();
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      if (copyMask == 0) {
+        // Check SDMA engine status
+        status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
+        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
+                status, freeEngineMask);
+        // Return a mask with the rightmost bit set
+        copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+        gpu().setLastUsedSdmaEngine(copyMask);
+      }
     }
 
     if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
@@ -718,7 +724,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-              "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
+              "HSA Async Copy on copy_engine=0x%x, dst=0x%zx, src=0x%zx, "
               "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
               dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
               active.handle);
@@ -2357,10 +2363,10 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   constexpr size_t kFillImageThreshold = 256 * 256;
-  
+
   // Use host fill if memory has direct access and image is small
   if (setup_.disableFillImage_ ||
-      (gpuMem(memory).isHostMemDirectAccess() && 
+      (gpuMem(memory).isHostMemDirectAccess() &&
       (size.c[0] * size.c[1] * size.c[2]) <= kFillImageThreshold)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
