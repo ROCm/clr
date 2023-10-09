@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,7 @@ THE SOFTWARE.
 #define GENERIC_GRID_LAUNCH 1
 #endif
 
-#if defined(__clang__) && defined(__HIP__)
-
+#if defined(__cplusplus)
 namespace __hip_internal {
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -112,6 +111,57 @@ template<typename _Tp, bool = is_arithmetic<_Tp>::value>
 template<typename _Tp>
   struct is_signed<_Tp, true> : public true_or_false_type<_Tp(-1) < _Tp(0)> {};
 
+template<class T>
+    auto test_returnable(int) -> decltype(
+        void(static_cast<T(*)()>(nullptr)), true_type{});
+template<class>
+    auto test_returnable(...) -> false_type;
+
+template<class T>
+    struct type_identity { using type = T; };
+
+template<class T> // Note that `cv void&` is a substitution failure
+    auto try_add_lvalue_reference(int) -> type_identity<T&>;
+template<class T> // Handle T = cv void case
+    auto try_add_lvalue_reference(...) -> type_identity<T>;
+
+template<class T>
+    auto try_add_rvalue_reference(int) -> type_identity<T&&>;
+template<class T>
+    auto try_add_rvalue_reference(...) -> type_identity<T>;
+
+template<class T>
+struct add_lvalue_reference
+    : decltype(try_add_lvalue_reference<T>(0)) {};
+
+template<class T>
+struct add_rvalue_reference
+    : decltype(try_add_rvalue_reference<T>(0)) {};
+
+template<typename T>
+typename add_rvalue_reference<T>::type declval() noexcept;
+
+template<class From, class To>
+    auto test_implicitly_convertible(int) -> decltype(
+        void(declval<void(&)(To)>()(declval<From>())), true_type{});
+
+template<class, class>
+    auto test_implicitly_convertible(...) -> false_type;
+
+template<class T> struct remove_cv { typedef T type; };
+template<class T> struct remove_cv<const T> { typedef T type; };
+template<class T> struct remove_cv<volatile T> { typedef T type; };
+template<class T> struct remove_cv<const volatile T> { typedef T type; };
+
+template<class T>
+struct is_void : public is_same<void, typename remove_cv<T>::type> {};
+
+template<class From, class To>
+struct is_convertible : public integral_constant<bool,
+    (decltype(test_returnable<To>(0))::value &&
+     decltype(test_implicitly_convertible<From, To>(0))::value) ||
+    (is_void<From>::value && is_void<To>::value)> {};
+
 template<typename _CharT> struct char_traits;
 template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_istream;
 template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_ostream;
@@ -136,7 +186,9 @@ typedef __hip_internal::int8_t __hip_int8_t;
 typedef __hip_internal::int16_t __hip_int16_t;
 typedef __hip_internal::int32_t __hip_int32_t;
 typedef __hip_internal::int64_t __hip_int64_t;
+#endif // defined(__cplusplus)
 
+#if defined(__clang__) && defined(__HIP__)
 #if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 #define __host__ __attribute__((host))
 #define __device__ __attribute__((device))
@@ -175,6 +227,6 @@ typedef __hip_internal::int64_t __hip_int64_t;
 #define __constant__
 
 #define __hip_img_chk__
-#endif
+#endif // defined(__clang__) && defined(__HIP__)
 
 #endif

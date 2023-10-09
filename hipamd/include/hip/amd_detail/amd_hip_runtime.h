@@ -90,14 +90,10 @@ size_t amd_dbgapi_get_build_id();
 #else
 #if !__HIP_NO_STD_DEFS__
 typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
 typedef signed int int32_t;
-typedef signed long long int64_t;
 namespace std {
 using ::uint32_t;
-using ::uint64_t;
 using ::int32_t;
-using ::int64_t;
 }
 #endif // __HIP_NO_STD_DEFS__
 #endif // !defined(__HIPCC_RTC__)
