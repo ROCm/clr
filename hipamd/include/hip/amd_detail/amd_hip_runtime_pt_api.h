@@ -25,7 +25,7 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
 #define HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H
 
-#if defined(__HIP_PLATFORM_AMD__) && !defined(__HIP_PLATFORM_NVIDIA__)
+#if (defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
 
 /// hipStreamPerThread implementation
 #if defined(HIP_API_PER_THREAD_DEFAULT_STREAM)
@@ -192,5 +192,5 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 }
 #endif // extern "C"
 
-#endif //defined(__HIP_PLATFORM_AMD__) && !defined(__HIP_PLATFORM_NVIDIA__)
+#endif //(defined(__HIP_PLATFORM_HCC__) || defined(__HIP_PLATFORM_AMD__)) && !(defined(__HIP_PLATFORM_NVCC__) || defined(__HIP_PLATFORM_NVIDIA__))
 #endif //HIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H

@@ -23,11 +23,19 @@ CURRENTDIR=`pwd`
 
 HIPINCDIR=$ROCMDIR/@CMAKE_INSTALL_INCLUDEDIR@/hip
 ([ ! -d $HIPINCDIR ]) && exit 0
+cd $HIPINCDIR
+rm hcc_detail
+rm nvcc_detail
+cd $CURRENTDIR
 
 #FILE_REORG_BACKWARD_COMPATIBILITY
   #backward copatibility code , to be removed later
 HIPDIR=$ROCMDIR/hip
 HIPINCDIR=$ROCMDIR/hip/include/hip
 ([ ! -d $HIPINCDIR ]) && exit 0
+cd $HIPINCDIR
+rm -f hcc_detail
+rm -f nvcc_detail
+cd $CURRENTDIR
 ([ ! -d $HIPDIR ]) && exit 0
 rmdir --ignore-fail-on-non-empty $HIPDIR
