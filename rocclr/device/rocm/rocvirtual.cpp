@@ -214,6 +214,9 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Update the batch, since signal is complete
   ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
 
+  // Reset last used SDMA engine mask
+  ts->gpu()->setLastUsedSdmaEngine(0);
+
   // Reset API callback signal. It will release AQL queue and start commands processing
   if (callback_signal.handle != 0) {
     hsa_signal_subtract_relaxed(callback_signal, 1);
@@ -1184,7 +1187,8 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       priority_(priority),
       copy_command_type_(0),
       fence_state_(Device::CacheState::kCacheStateInvalid),
-      fence_dirty_(false)
+      fence_dirty_(false),
+      lastUsedSdmaEngineMask_(0)
 {
   index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();
