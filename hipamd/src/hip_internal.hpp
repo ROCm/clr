@@ -336,7 +336,10 @@ namespace hip {
         lastCapturedNodes_.clear();
       }
       for (auto node : graphNodes) {
-        lastCapturedNodes_.push_back(node);
+        if (std::find(lastCapturedNodes_.begin(), lastCapturedNodes_.end(), node) ==
+            lastCapturedNodes_.end()) {
+          lastCapturedNodes_.push_back(node);
+        }
       }
     }
     /// Set graph that is being captured
