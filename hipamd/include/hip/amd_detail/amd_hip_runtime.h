@@ -93,19 +93,11 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
-#if defined(__GLIBCXX__)
-typedef long int ptrdiff_t;
-#else
-typedef long long ptrdiff_t;
-#endif
-typedef long clock_t;
 namespace std {
 using ::uint32_t;
 using ::uint64_t;
 using ::int32_t;
 using ::int64_t;
-using ::ptrdiff_t;
-using ::clock_t;
 }
 #endif // __HIP_NO_STD_DEFS__
 #endif // !defined(__HIPCC_RTC__)
