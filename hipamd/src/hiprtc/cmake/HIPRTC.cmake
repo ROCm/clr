@@ -59,6 +59,18 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define _HIP_BFLOAT16_H_\n\
 #define HIP_INCLUDE_HIP_MATH_FUNCTIONS_H\n\
 #define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H\n\
+#if !__HIP_NO_STD_DEFS__\n\
+#if defined(__HIPRTC_PTRDIFF_T_IS_LONG_LONG__) && __HIPRTC_PTRDIFF_T_IS_LONG_LONG__==1\n\
+typedef long long ptrdiff_t;\n\
+#else\n\
+typedef __PTRDIFF_TYPE__ ptrdiff_t;\n\
+#endif\n\
+typedef long clock_t;\n\
+namespace std {\n\
+using ::ptrdiff_t;\n\
+using ::clock_t;\n\
+}\n\
+#endif // __HIP_NO_STD_DEFS__\n\
 #pragma clang diagnostic pop"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
