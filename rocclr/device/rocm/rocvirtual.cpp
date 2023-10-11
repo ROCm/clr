@@ -521,7 +521,6 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
     // Validate all signals for the wait and skip already completed
     for (uint32_t i = 0; i < external_signals_.size(); ++i) {
       // Early signal status check
-
       if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
         const Settings& settings = gpu_.dev().settings();
         // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
@@ -829,6 +828,13 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   // Check for queue full and wait if needed.
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, size);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
+  if (addSystemScope_) {
+    header &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE |
+                HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+    header |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE |
+               HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+    addSystemScope_ = false;
+  }
 
   auto expected_fence_state = extractAqlBits(header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
@@ -898,6 +904,10 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index - 1);
 
+  // Mark the flag indicating if a dispatch is outstanding.
+  // We are not waiting after every dispatch.
+  hasPendingDispatch_ = true;
+
   // Wait on signal ?
   if (blocking) {
     LogInfo("Runtime reachead the AQL queue limit. SW is much ahead of HW. Blocking AQL queue!");
@@ -929,18 +939,14 @@ void VirtualGPU::dispatchBlockingWait() {
 bool VirtualGPU::dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header,
                                    uint16_t rest, bool blocking, bool capturing,
                                    const uint8_t* aqlPacket) {
-  dispatchBlockingWait();
   if (capturing == true) {
     packet->header = header;
     packet->setup = rest;
-    if (timestamp_ != nullptr) {
-      // Get active signal for current dispatch if profiling is necessary
-      packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
-    }
     amd::Os::fastMemcpy(const_cast<uint8_t*>(aqlPacket), packet,
                         sizeof(hsa_kernel_dispatch_packet_t));
     return true;
   } else {
+    dispatchBlockingWait();
     return dispatchGenericAqlPacket(packet, header, rest, blocking);
   }
 }
@@ -1053,12 +1059,16 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
 }
 
 inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket) {
+  dispatchBlockingWait();
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
   // If rocprof tracing is enabled, store the correlation ID in the dispatch packet.
   // The profiler can retrieve this correlation ID to attribute waves to specific dispatch
   // locations.
-  if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+  if (activity_prof::IsEnabled(OP_ID_DISPATCH) ||
+      (roc_device_.info().queueProperties_ & CL_QUEUE_PROFILING_ENABLE)) {
     packet->reserved2 = activity_prof::correlation_id;
+    // Get active signal for current dispatch if profiling is necessary
+    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
   }
   dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
   return true;
@@ -3227,13 +3237,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       aqlHeaderWithOrder &= kAqlHeaderMask;
     }
 
-    if (addSystemScope_ || (vcmd != nullptr &&
-        vcmd->getEventScope() == amd::Device::kCacheStateSystem)) {
-      aqlHeaderWithOrder &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE |
-                              HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
-      aqlHeaderWithOrder |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE |
-                             HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
-      addSystemScope_ = false;
+    if (vcmd != nullptr && vcmd->getEventScope() == amd::Device::kCacheStateSystem) {
+      addSystemScope_ = true;
     }
 
     // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
@@ -3267,10 +3272,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
   }
-
-  // Mark the flag indicating if a dispatch is outstanding.
-  // We are not waiting after every dispatch.
-  hasPendingDispatch_ = true;
 
   // Output printf buffer
   if (!printfDbg()->output(*this, printfEnabled, gpuKernel.printfInfo())) {

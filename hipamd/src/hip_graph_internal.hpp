@@ -463,6 +463,7 @@ struct Graph {
       graphExeUserObjs.insert(userObj);
     }
   }
+
   Graph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
   Graph* clone() const;
   void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
@@ -612,6 +613,7 @@ struct GraphExec {
     }
     return clonedNode;
   }
+
   address allocKernArg(size_t size, size_t alignment) {
     assert(alignment != 0);
     address result = nullptr;
@@ -622,12 +624,19 @@ struct GraphExec {
     }
     return result;
   }
+
   // check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
 
   std::vector<Node>& GetNodes() { return topoOrder_; }
 
-  hip::Stream* GetAvailableStreams() { return parallel_streams_[currentQueueIndex_++]; }
+  hip::Stream* GetAvailableStreams() {
+    if (currentQueueIndex_ < parallel_streams_.size()) {
+      return parallel_streams_[currentQueueIndex_++];
+    }
+    return nullptr;
+  }
+
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
@@ -791,12 +800,12 @@ class GraphKernelNode : public GraphNode {
     out << "];";
     }
 
-    void EnableCapturing(address kernArgOffset) {
+    void CaptureAndFormPacket(address kernArgOffset) {
       for (auto& command : commands_) {
         reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
             true, GetAqlPacket(), kernArgOffset);
-        // Enqueue command to capture GPU Packet. Packet is not sent to hardware queue.
 
+        // Enqueue command to capture GPU Packet. Packet is not sent to hardware queue.
         command->submit(*(command->queue())->vdev());
         command->release();
       }
