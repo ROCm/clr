@@ -1758,6 +1758,11 @@ class Device : public RuntimeObject {
     return NULL;
   }
 
+  virtual bool isXgmi() const {
+    ShouldNotCallThis();
+    return false;
+  }
+
   virtual bool deviceAllowAccess(void* dst) const {
     ShouldNotCallThis();
     return true;

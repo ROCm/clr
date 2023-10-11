@@ -494,51 +494,65 @@ hipError_t GraphExec::Init() {
 
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
-  size_t KernArgSizeForGraph = 0;
-  bool GraphHasOnlyKerns = true;
-  // GPU packet capture is enabled for kernel nodes. Calculate the kernel arg size required for all
-  // graph kernel nodes to allocate
-  for (const auto& list : parallelLists_) {
-    hip::Stream* stream = GetAvailableStreams();
-    for (auto& node : list) {
-      node->SetStream(stream, this);
-      if (node->GetType() == hipGraphNodeTypeKernel) {
-        KernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
-      } else {
-        GraphHasOnlyKerns = false;
+  if (parallelLists_.size() == 1) {
+    size_t kernArgSizeForGraph = 0;
+    // GPU packet capture is enabled for kernel nodes. Calculate the kernel
+    // arg size required for all graph kernel nodes to allocate
+    for (const auto& list : parallelLists_) {
+      hip::Stream* stream = GetAvailableStreams();
+      for (auto& node : list) {
+        node->SetStream(stream, this);
+        if (node->GetType() == hipGraphNodeTypeKernel) {
+          kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
+        }
       }
     }
-  }
 
-  auto device = g_devices[ihipGetDevice()]->devices()[0];
-  const auto& info = device->info();
-  // Enable allocating kerns on device memory if graph as only kernels. memcpy nodes require hdp
-  // flush. ToDo: Work on enabling device kern args later for all type of nodes for large bar
-  if (GraphHasOnlyKerns == true && info.largeBar_) {
-    kernarg_pool_graph_ = reinterpret_cast<address>(device->deviceLocalAlloc(KernArgSizeForGraph));
-    device_kernarg_pool_ = true;
-  } else {
-    kernarg_pool_graph_ = reinterpret_cast<address>(
-        device->hostAlloc(KernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
-  }
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    if (device->info().largeBar_) {
+      // Pad kernel argument buffer with sentinal size bytes to do a readback later
+      kernArgSizeForGraph += sizeof(int);
+      kernarg_pool_graph_ =
+          reinterpret_cast<address>(device->deviceLocalAlloc(kernArgSizeForGraph));
+      device_kernarg_pool_ = true;
+    } else {
+      kernarg_pool_graph_ = reinterpret_cast<address>(
+          device->hostAlloc(kernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
+    }
 
-  if (kernarg_pool_graph_ == nullptr) {
-    return hipErrorMemoryAllocation;
-  }
-  kernarg_pool_size_graph_ = KernArgSizeForGraph;
+    if (kernarg_pool_graph_ == nullptr) {
+      return hipErrorMemoryAllocation;
+    }
+    kernarg_pool_size_graph_ = kernArgSizeForGraph;
 
-  for (auto& node : topoOrder_) {
-    if (node->GetType() == hipGraphNodeTypeKernel) {
-      auto kernelnode = reinterpret_cast<hip::GraphKernelNode*>(node);
-      status = node->CreateCommand(node->GetQueue());
-      // From the kernel pool allocate the kern arg size required for the current kernel node.
-      address kernArgOffset = allocKernArg(kernelnode->GetKernargSegmentByteSize(),
-                                           kernelnode->GetKernargSegmentAlignment());
-      if (kernArgOffset == nullptr) {
-        return hipErrorMemoryAllocation;
+    for (auto& node : topoOrder_) {
+      if (node->GetType() == hipGraphNodeTypeKernel) {
+        auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
+        status = node->CreateCommand(node->GetQueue());
+        // From the kernel pool allocate the kern arg size required for the current kernel node.
+        address kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
+                                             kernelNode->GetKernargSegmentAlignment());
+        if (kernArgOffset == nullptr) {
+          return hipErrorMemoryAllocation;
+        }
+        // Form GPU packet capture for the kernel node.
+        kernelNode->CaptureAndFormPacket(kernArgOffset);
       }
-      // Enable GPU packet capture for the kernel node.
-      kernelnode->EnableCapturing(kernArgOffset);
+    }
+
+    if (device_kernarg_pool_) {
+      // Write HDP_MEM_COHERENCY_FLUSH_CNTL reg to initiate flush read to HDP mem. Verify mem
+      // by readback of sentinal value at the tail end of the kernarg surface (allocated above)
+      // This needs to be done for PCIE connected devices only. HDP path is disabled for XGMI
+      // between CPU<->GPU
+      if (!device->isXgmi()) {
+        static int host_val = 1;
+        address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
+        *dev_ptr = host_val;
+        *device->info().hdpMemFlushCntl = 1;
+        while (*dev_ptr != host_val);
+        host_val++;
+      }
     }
   }
   return status;
@@ -561,9 +575,11 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
     }
     node->UpdateEventWaitLists(waitList);
   }
+
   std::vector<Node> rootNodes = clonedGraph->GetRootNodes();
   ClPrint(amd::LOG_INFO, amd::LOG_CODE,
           "[hipGraph] RootCommand get launched on stream (stream:%p)\n", stream);
+
   for (auto& root : rootNodes) {
     //If rootnode is launched on to the same stream dont add dependency
     if (root->GetQueue() != stream) {
@@ -653,14 +669,16 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   } else {
     repeatLaunch_ = true;
   }
+
   if (parallelLists_.size() == 1) {
     if (device_kernarg_pool_) {
-      // If kernelArgs are in device memory flush the HDP.
+      // If kernelArgs are in device memory flush/invalidate L2
       amd::Command* startCommand = nullptr;
       startCommand = new amd::Marker(*hip_stream, false);
       startCommand->enqueue();
       startCommand->release();
     }
+
     for (int i = 0; i < topoOrder_.size(); i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket());
@@ -670,6 +688,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
         topoOrder_[i]->EnqueueCommands(stream);
       }
     }
+
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       amd::Command* endCommand = nullptr;
       endCommand = new amd::Marker(*hip_stream, false);
