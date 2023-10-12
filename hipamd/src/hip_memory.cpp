@@ -379,7 +379,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   amd::Device* queueDevice = &stream.device();
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
     hip::Stream* pStream = &stream;
     if (queueDevice != dstMemory->getContext().devices()[0]) {
@@ -424,7 +424,6 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
       hip::Stream* pStream = &stream;
       if ((srcMemory->getContext().devices()[0] == dstMemory->getContext().devices()[0]) &&
           (queueDevice != srcMemory->getContext().devices()[0])) {
-        copyMetadata.copyEnginePreference_ = amd::CopyMetadata::CopyEnginePreference::NONE;
         pStream = hip::getNullStream(srcMemory->getContext());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -449,6 +448,10 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
           }
         }
       }
+
+      copyMetadata.copyEnginePreference_ = (kind == hipMemcpyDeviceToDeviceNoCU) ?
+                                            amd::CopyMetadata::CopyEnginePreference::SDMA :
+                                            amd::CopyMetadata::CopyEnginePreference::NONE;
       command = new amd::CopyMemoryCommand(*pStream, CL_COMMAND_COPY_BUFFER, waitList,
           *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, sizeBytes,
           copyMetadata);
@@ -2807,7 +2810,7 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
       }
     }
   }
-  
+
   if (p->kind < hipMemcpyHostToHost || p->kind > hipMemcpyDefault) {
     return hipErrorInvalidMemcpyDirection;
   }

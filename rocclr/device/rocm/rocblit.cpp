@@ -398,7 +398,7 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size, false,
                                        copyMetadata);
   } else {
-    return hsaCopy(gpuMem(srcMemory), gpuMem(dstMemory), srcOrigin, dstOrigin, size);
+    return hsaCopy(gpuMem(srcMemory), gpuMem(dstMemory), srcOrigin, dstOrigin, size, copyMetadata);
   }
 
   return true;
@@ -638,7 +638,7 @@ bool DmaBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMem
 // ================================================================================================
 bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                              const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
-                             const amd::Coord3D& size) const {
+                             const amd::Coord3D& size, amd::CopyMetadata copyMetadata) const {
   address src = reinterpret_cast<address>(srcMemory.getDeviceMemory());
   address dst = reinterpret_cast<address>(dstMemory.getDeviceMemory());
 
@@ -684,10 +684,14 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
   bool kUseRegularCopyApi = 0;
-
+  bool forceSDMA = (copyMetadata.copyEnginePreference_ ==
+                      amd::CopyMetadata::CopyEnginePreference::SDMA);
   HwQueueEngine engine = HwQueueEngine::Unknown;
+
+  // Determine engine and assign a copy mask for the new versatile ROCr API
+  // If engine preferred is SDMA, assign the SdmaWrite path
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
-      (dstAgent.handle != dev().getCpuAgent().handle)) {
+      (dstAgent.handle != dev().getCpuAgent().handle) || forceSDMA) {
     engine = HwQueueEngine::SdmaWrite;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
@@ -711,8 +715,8 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       if (copyMask == 0) {
         // Check SDMA engine status
         status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
-                status, freeEngineMask);
+        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, "
+                "free_engine mask 0x%x", status, freeEngineMask);
         // Return a mask with the rightmost bit set
         copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
         gpu().setLastUsedSdmaEngine(copyMask);
@@ -725,13 +729,14 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
               "HSA Async Copy on copy_engine=0x%x, dst=0x%zx, src=0x%zx, "
-              "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
-              dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+              "size=%ld, forceSDMA=%d, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
+              dst, src, size[0], forceSDMA, (wait_events.size() != 0) ? wait_events[0].handle : 0,
               active.handle);
 
       status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
                                                   size[0], wait_events.size(),
-                                                  wait_events.data(), active, copyEngine, false);
+                                                  wait_events.data(), active, copyEngine,
+                                                  forceSDMA);
     } else {
       kUseRegularCopyApi = true;
     }
@@ -2258,7 +2263,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
                            (!srcMemory.isHostMemDirectAccess() &&
                             !dstMemory.isHostMemDirectAccess() &&
-                            !(p2p || asan) && !ipcShared);
+                            !(p2p || asan) && !ipcShared &&
+                            !(copyMetadata.copyEnginePreference_ ==
+                              amd::CopyMetadata::CopyEnginePreference::SDMA));
 
   if (!useShaderCopyPath) {
     if (amd::IS_HIP) {
