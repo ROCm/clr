@@ -401,8 +401,10 @@ if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION bin)
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION bin)
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION bin)
-  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
-  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
+  if(WIN32)
+    install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
+    install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
+  endif()
 endif()
 
 #############################
