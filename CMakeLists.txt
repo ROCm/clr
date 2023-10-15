@@ -18,8 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-project(clr)
 cmake_minimum_required(VERSION 3.16.8)
+project(clr)
 
 ##########
 # Defaults
@@ -42,7 +42,7 @@ endif()
 #############
 if(CLR_BUILD_HIP)
     if(NOT EXISTS ${HIPCC_BIN_DIR}/hipconfig)
-        message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR. Passed HIPCC_BIN_DIR: "${HIPCC_BIN_DIR})
+        message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR. Passed HIPCC_BIN_DIR: ${HIPCC_BIN_DIR}")
     endif()
     if(NOT DEFINED HIP_COMMON_DIR)
         message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
