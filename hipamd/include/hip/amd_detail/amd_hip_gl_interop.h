@@ -23,12 +23,15 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_AMD_HIP_GL_INTEROP_H
 #define HIP_INCLUDE_AMD_HIP_GL_INTEROP_H
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /**
- *-------------------------------------------------------------------------------------------------
- *-------------------------------------------------------------------------------------------------
- *  @defgroup GL OpenGL Interop
- *  @{
- *  This section describes the OpenGL and graphics interoperability functions of HIP runtime API.
+ *
+ * @addtogroup GlobalDefs
+ * @{
+ *
  */
 
 /**
@@ -47,7 +50,15 @@ typedef enum hipGLDeviceList {
 typedef unsigned int GLuint;
 /** GLenum as uint.*/
 typedef unsigned int GLenum;
+/*
+* @}
+*/
 
+/**
+ *  @ingroup GL
+ *  @{
+ *
+ */
 /**
  * @brief Queries devices associated with the current OpenGL context.
  *
@@ -55,9 +66,9 @@ typedef unsigned int GLenum;
  * @param [out] pHipDevices - Pointer of devices on the current OpenGL context.
  * @param [in] hipDeviceCount - Size of device.
  * @param [in] deviceList - The setting of devices. It could be either hipGLDeviceListCurrentFrame
- * for the devices used to render the current frame, or hipGLDeviceListAll for all devices. 
+ * for the devices used to render the current frame, or hipGLDeviceListAll for all devices.
  * The default setting is Invalid deviceList value.
- * 
+ *
  * @returns #hipSuccess, #hipErrorInvalidValue, #hipErrorNotSupported
  *
  */
@@ -82,11 +93,16 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
  * @param [in] image - Image to be registered.
  * @param [in] target - Valid target value Id.
  * @param [in] flags - Register flags.
- * 
+ *
  * @returns #hipSuccess, #hipErrorInvalidValue, #hipErrorUnknown, #hipErrorInvalidResourceHandle
  *
  */
 hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint image,
                                       GLenum target, unsigned int flags);
-
-#endif
+/*
+* @}
+*/
+#if defined(__cplusplus)
+}
+#endif /* __cplusplus */
+#endif /* HIP_INCLUDE_AMD_HIP_GL_INTEROP_H */

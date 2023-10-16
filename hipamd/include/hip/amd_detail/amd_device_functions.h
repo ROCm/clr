@@ -40,6 +40,7 @@ THE SOFTWARE.
 #endif
 
 #if !defined(__HIPCC_RTC__)
+#include <hip/amd_detail/amd_hip_common.h>
 #include "host_defines.h"
 #include "math_fwd.h"
 #include <hip/hip_runtime_api.h>

@@ -51,9 +51,16 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image) : fdesc_(amd:
 
 FatBinaryInfo::~FatBinaryInfo() {
 
+  // Release per device fat bin info.
+  for (auto* fbd: fatbin_dev_info_) {
+    if (fbd != nullptr) {
+      delete fbd;
+    }
+  }
+
   if (!HIP_USE_RUNTIME_UNBUNDLER) {
     // Using COMGR Unbundler
-    if (ufd_ && ufd_->fdesc_ > 0) {
+    if (ufd_ && amd::Os::isValidFileDesc(ufd_->fdesc_)) {
       // Check for ufd_ != nullptr, since sometimes, we never create unique_file_desc.
       if (ufd_->fsize_ && image_mapped_
            && !amd::Os::MemoryUnmapFile(image_, ufd_->fsize_)) {
@@ -282,7 +289,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       image_mapped_ = false;
     }
 
-    if (fdesc_ > 0) {
+    if (amd::Os::isValidFileDesc(fdesc_)) {
       guarantee(fsize_ > 0, "Size has to greater than 0 too");
       if (!amd::Os::CloseFileHandle(fdesc_))
         guarantee(false, "Cannot close the file handle");

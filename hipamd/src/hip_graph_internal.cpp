@@ -480,7 +480,7 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
 }
 
 hipError_t GraphExec::Init() {
-  hipError_t status;
+  hipError_t status = hipSuccess;
   size_t min_num_streams = 1;
 
   for (auto& node : topoOrder_) {
@@ -493,11 +493,63 @@ hipError_t GraphExec::Init() {
   return status;
 }
 
+hipError_t GraphExec::CaptureAQLPackets() {
+  hipError_t status = hipSuccess;
+  size_t KernArgSizeForGraph = 0;
+  bool GraphHasOnlyKerns = true;
+  // GPU packet capture is enabled for kernel nodes. Calculate the kernel arg size required for all
+  // graph kernel nodes to allocate
+  for (const auto& list : parallelLists_) {
+    hip::Stream* stream = GetAvailableStreams();
+    for (auto& node : list) {
+      node->SetStream(stream, this);
+      if (node->GetType() == hipGraphNodeTypeKernel) {
+        KernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
+      } else {
+        GraphHasOnlyKerns = false;
+      }
+    }
+  }
+
+  auto device = g_devices[ihipGetDevice()]->devices()[0];
+  const auto& info = device->info();
+  // Enable allocating kerns on device memory if graph as only kernels. memcpy nodes require hdp
+  // flush. ToDo: Work on enabling device kern args later for all type of nodes for large bar
+  if (GraphHasOnlyKerns == true && info.largeBar_) {
+    kernarg_pool_graph_ = reinterpret_cast<address>(device->deviceLocalAlloc(KernArgSizeForGraph));
+    device_kernarg_pool_ = true;
+  } else {
+    kernarg_pool_graph_ = reinterpret_cast<address>(
+        device->hostAlloc(KernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
+  }
+
+  if (kernarg_pool_graph_ == nullptr) {
+    return hipErrorMemoryAllocation;
+  }
+  kernarg_pool_size_graph_ = KernArgSizeForGraph;
+
+  for (auto& node : topoOrder_) {
+    if (node->GetType() == hipGraphNodeTypeKernel) {
+      auto kernelnode = reinterpret_cast<hip::GraphKernelNode*>(node);
+      status = node->CreateCommand(node->GetQueue());
+      // From the kernel pool allocate the kern arg size required for the current kernel node.
+      address kernArgOffset = allocKernArg(kernelnode->GetKernargSegmentByteSize(),
+                                           kernelnode->GetKernargSegmentAlignment());
+      if (kernArgOffset == nullptr) {
+        return hipErrorMemoryAllocation;
+      }
+      // Enable GPU packet capture for the kernel node.
+      kernelnode->EnableCapturing(kernArgOffset);
+    }
+  }
+  return status;
+}
+
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         std::unordered_map<Node, std::vector<Node>>& nodeWaitLists,
                         std::vector<Node>& topoOrder, Graph* clonedGraph,
                         amd::Command*& graphStart, amd::Command*& graphEnd, hip::Stream* stream) {
-  hipError_t status;
+  hipError_t status = hipSuccess;
   for (auto& node : topoOrder) {
     // TODO: clone commands from next launch
     status = node->CreateCommand(node->GetQueue());
@@ -578,7 +630,7 @@ void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* st
 }
 
 hipError_t GraphExec::Run(hipStream_t stream) {
-  hipError_t status;
+  hipError_t status = hipSuccess;
 
   if (hip::getStream(stream) == nullptr) {
     return hipErrorInvalidResourceHandle;
@@ -603,19 +655,30 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
   if (parallelLists_.size() == 1) {
+    if (device_kernarg_pool_) {
+      // If kernelArgs are in device memory flush the HDP.
+      amd::Command* startCommand = nullptr;
+      startCommand = new amd::Marker(*hip_stream, false);
+      startCommand->enqueue();
+      startCommand->release();
+    }
     for (int i = 0; i < topoOrder_.size(); i++) {
-      topoOrder_[i]->SetStream(hip_stream, this);
-      status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
-      if (DEBUG_CLR_GRAPH_ENABLE_BUFFERING) {
-        // Enable buffering for graph with single branch
-        // Peep through the next node. If current and next node are kernel then enable AQL
-        // buffering
-        if (((i + 1) != topoOrder_.size()) && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
-            topoOrder_[i + 1]->GetType() == hipGraphNodeTypeKernel) {
-          topoOrder_[i]->EnableBuffering();
-        }
+      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
+        hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket());
+      } else {
+        topoOrder_[i]->SetStream(hip_stream, this);
+        status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
+        topoOrder_[i]->EnqueueCommands(stream);
       }
-      topoOrder_[i]->EnqueueCommands(stream);
+    }
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      amd::Command* endCommand = nullptr;
+      endCommand = new amd::Marker(*hip_stream, false);
+      // Since the end command is for graph completion tracking,
+      // it may not need release scopes
+      endCommand->setEventScope(amd::Device::kCacheStateIgnore);
+      endCommand->enqueue();
+      endCommand->release();
     }
   } else {
     UpdateStream(parallelLists_, hip_stream, this);

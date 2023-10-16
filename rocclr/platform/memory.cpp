@@ -114,7 +114,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       flags_(flags),
       version_(parent.getVersion()),
       lastWriter_(parent.getLastWriter()),
-      interopObj_(parent.getInteropObj()),
+      interopObj_(nullptr),
       vDev_(NULL),
       mapCount_(0),
       svmHostAddress_(parent.getSvmPtr()),
@@ -606,10 +606,11 @@ Image::Image(Context& context, Type type, Flags flags, const Format& format, siz
 }
 
 Image::Image(Buffer& buffer, Type type, Flags flags, const Format& format, size_t width,
-             size_t height, size_t depth, size_t rowPitch, size_t slicePitch)
-    : Memory(buffer, flags, 0, buffer.getSize(), type),
+             size_t height, size_t depth, size_t rowPitch, size_t slicePitch, uint mipLevels,
+             size_t offset)
+    : Memory(buffer, flags, offset, buffer.getSize(), type),
       impl_(format, Coord3D(width, height, depth), rowPitch, slicePitch),
-      mipLevels_(1),
+      mipLevels_(mipLevels),
       baseMipLevel_(0) {
   initDimension();
 }

@@ -93,7 +93,11 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
+#if defined(__GLIBCXX__)
+typedef long int ptrdiff_t;
+#else
 typedef long long ptrdiff_t;
+#endif
 typedef long clock_t;
 namespace std {
 using ::uint32_t;

@@ -71,25 +71,4 @@ namespace amd
 
     virtual ~ExternalBuffer() {}
   };
-
-  // to be modified once image requirments are known, for now, implement like buffer
-  class ExternalImage final : public Buffer, public ExternalMemory
-  {
-  protected:
-    // Initializes device memory array, which is located after ExternalImage object in memory
-    void initDeviceMemory() {
-      deviceMemories_ =
-        reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(ExternalImage));
-      memset(deviceMemories_, 0, context_().devices().size() * sizeof(DeviceMemory));
-    }
-
-  public:
-    ExternalImage(Context& amdContext, size_t size_in_bytes, amd::Os::FileDesc handle,
-        ExternalMemory::HandleType handle_type)
-        : Buffer(amdContext, 0, size_in_bytes), ExternalMemory(handle, handle_type) {
-      setInteropObj(this);
-    }
-
-    virtual ~ExternalImage() {}
-  };
 }

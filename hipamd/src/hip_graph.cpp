@@ -1177,6 +1177,10 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
   hip::GraphExec* ge;
   hipError_t status = ihipGraphInstantiate(&ge, reinterpret_cast<hip::Graph*>(graph));
   *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    // For graph nodes capture AQL packets to dispatch them directly during graph launch.
+    status = ge->CaptureAQLPackets();
+  }
   HIP_RETURN(status);
 }
 

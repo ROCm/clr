@@ -30,6 +30,7 @@ THE SOFTWARE.
 
 #if !defined(__HIPCC_RTC__)
 #include "host_defines.h"
+#include "amd_hip_vector_types.h"  // For Native_vec_
 #endif
 
 #if defined(__cplusplus)

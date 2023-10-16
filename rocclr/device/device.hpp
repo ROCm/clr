@@ -659,7 +659,8 @@ class Settings : public amd::HeapObject {
       uint enableCoopMultiDeviceGroups_ : 1; //!< Enable cooperative groups multi device
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
-      uint reserved_ : 14;
+      uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
+      uint reserved_ : 10;
     };
     uint value_;
   };
@@ -1279,6 +1280,7 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket) = 0;
 
   //! Resets fence state of the VirtualGPU
   virtual void resetFenceDirty() = 0;
@@ -1729,6 +1731,12 @@ class Device : public RuntimeObject {
    */
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = kNoAtomics) const {
+    ShouldNotCallThis();
+    return NULL;
+  }
+
+  virtual void* deviceLocalAlloc(size_t size, bool atomics = false,
+                                 bool pseudo_fine_grain = false) const {
     ShouldNotCallThis();
     return NULL;
   }

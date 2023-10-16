@@ -444,42 +444,8 @@ install(
     DESTINATION
     ${CONFIG_PACKAGE_INSTALL_DIR}
     )
-
-configure_package_config_file(
-    ${HIP_COMMON_DIR}/hip-lang-config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
-    NO_CHECK_REQUIRED_COMPONENTS_MACRO
-    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
-
-configure_package_config_file(
-    hip-lang-config-amd.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-amd.cmake
-    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
-    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
-
-configure_package_config_file(
-    hip-lang-config-nvidia.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-nvidia.cmake
-    INSTALL_DESTINATION ${CONFIG_LANG_PACKAGE_INSTALL_DIR}
-    PATH_VARS LIB_INSTALL_DIR INCLUDE_INSTALL_DIR BIN_INSTALL_DIR)
-  
-write_basic_package_version_file(
-  ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
-  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
-  COMPATIBILITY SameMajorVersion)
-
-install(
-    FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-amd.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-nvidia.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/hip-lang-config-version.cmake
-    DESTINATION
-    ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
-    )
-
 # Packaging invokes UNIX commands, which are not available on Windows.
+
 if(NOT WIN32)
     add_subdirectory(packaging)
 endif()
@@ -500,34 +466,22 @@ endif()
 #############################
 # HIT is not compatible with Windows
 if(NOT WIN32)
-set(HIP_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-if(HIP_PLATFORM STREQUAL "nvidia")
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/include" "${HIP_ROOT_DIR}/include" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-endif()
-execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_INCLUDE_DIR}/hip/" "${HIP_ROOT_DIR}/include/hip/" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/cmake" "${HIP_ROOT_DIR}/cmake" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-if(${RUN_HIT} EQUAL 0)
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE RUN_HIT ERROR_QUIET)
-endif()
-
-file(COPY ${HIPCC_BIN_DIR}/hipcc DESTINATION ${HIP_ROOT_DIR}/bin/)
-file(COPY ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
-file(COPY ${HIPCC_BIN_DIR}/hipconfig DESTINATION ${HIP_ROOT_DIR}/bin/)
-file(COPY ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
-file(COPY ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION ${HIP_ROOT_DIR}/bin/)
-
-if(HIP_CATCH_TEST EQUAL "1")
-	message(STATUS "Building of catch tests through hipamd is no longer supported. Testing targets will not be available. catch tests have been moved to an independent github project hip-tests. Please refer to hip-tests Readme for build instructions! ")
-else()
-    if(${RUN_HIT} EQUAL 0)
-        set(CMAKE_MODULE_PATH "${HIP_ROOT_DIR}/cmake" ${CMAKE_MODULE_PATH})
-        include(${HIP_COMMON_DIR}/tests/hit/HIT.cmake)
-        include(${HIP_COMMON_DIR}/tests/Tests.cmake)
-    else()
-        message(STATUS "Testing targets will not be available. To enable them please ensure that the HIP installation directory is writeable. Use -DCMAKE_INSTALL_PREFIX to specify a suitable location")
+    set(HIP_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+    if(HIP_PLATFORM STREQUAL "nvidia")
+        execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/include" "${HIP_ROOT_DIR}/include" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
     endif()
-endif()
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_INCLUDE_DIR}/hip/" "${HIP_ROOT_DIR}/include/hip/" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
+    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/cmake" "${HIP_ROOT_DIR}/cmake" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
+    if(${COPY_COMMAND_OP} EQUAL 0)
+        execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
+    endif()
+
+    file(COPY ${HIPCC_BIN_DIR}/hipcc DESTINATION ${HIP_ROOT_DIR}/bin/)
+    file(COPY ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+    file(COPY ${HIPCC_BIN_DIR}/hipconfig DESTINATION ${HIP_ROOT_DIR}/bin/)
+    file(COPY ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
+    file(COPY ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION ${HIP_ROOT_DIR}/bin/)
 endif()
 
 #############################

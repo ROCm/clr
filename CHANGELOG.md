@@ -13,6 +13,11 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
 ### Known Issues
 
+## HIP 5.7.1 (For ROCm 5.7.1)
+
+### Fixed
+- hipPointerGetAttributes API returns the correct HIP memory type as hipMemoryTypeManaged for managed memory.
+
 ## HIP 5.7 (For ROCm 5.7)
 
 ### Optimizations
@@ -33,23 +38,6 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
     - hipMipmappedArrayGetLevel for getting a mipmapped array on a mipmapped level
 
-- Added new HIP APIs, still under developement
-
-    - hipGraphAddExternalSemaphoresWaitNode for creating a external semaphor wait node and adds it to a graph
-
-    - hipGraphAddExternalSemaphoresSignalNode for creating a external semaphor signal node and adds it to a graph
-
-    - hipGraphExternalSemaphoresSignalNodeSetParams for updating node parameters in the external semaphore signal node
-    - hipGraphExternalSemaphoresWaitNodeSetParams for updating node parameters in the external semaphore wait node
-
-    - hipGraphExternalSemaphoresSignalNodeGetParams for returning external semaphore signal node params
-
-    - hipGraphExternalSemaphoresWaitNodeGetParams for returning external semaphore wait node params
-
-    - hipGraphExecExternalSemaphoresSignalNodeSetParams for updating node parameters in the external semaphore signal node in the given graphExec
-
-    - hipGraphExecExternalSemaphoresWaitNodeSetParams for updating node parameters in the external semaphore wait node in the given graphExec
-
 ### Changed
 
 ### Fixed
@@ -57,6 +45,37 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Known Issues
 - HIP memory type enum values currently don't support equivalent value to cudaMemoryTypeUnregistered, due to HIP functionality backward compatibility.
 - HIP API hipPointerGetAttributes could return invalid value in case the input memory pointer was not allocated through any HIP API on device or host.
+
+### Upcoming changes in ROCm 6.0 release
+- Removal of gcnarch from hipDeviceProp_t structure
+- Addition of new fields in hipDeviceProp_t structure
+  - maxTexture1D
+  - maxTexture2D
+  - maxTexture1DLayered
+  - maxTexture2DLayered
+  - sharedMemPerMultiprocessor
+  - deviceOverlap
+  - asyncEngineCount
+  - surfaceAlignment
+  - unifiedAddressing
+  - computePreemptionSupported
+  - hostRegisterSupported
+  - uuid
+- Removal of deprecated code
+  -hip-hcc codes from hip code tree
+- Correct hipArray usage in HIP APIs such as hipMemcpyAtoH and hipMemcpyHtoA
+- HIPMEMCPY_3D fields correction to avoid truncation of "size_t" to "unsigned int" inside hipMemcpy3D()
+- Renaming of 'memoryType' in hipPointerAttribute_t structure to 'type'
+- Correct hipGetLastError to return the last error instead of last API call's return code
+- Update hipExternalSemaphoreHandleDesc to add "unsigned int reserved[16]"
+- Correct handling of flag values in hipIpcOpenMemHandle for hipIpcMemLazyEnablePeerAccess
+- Remove hiparray* and make it opaque with hipArray_t
+
+## HIP 5.6.1 (For ROCm 5.6.1)
+### Fixed
+- Enabled xnack+ check in HIP catch2 tests hang while tests execution
+- Memory leak when code object files are loaded/unloaded via hipModuleLoad/hipModuleUnload APIs
+- Fixed a crash happening while using hipGraphAddMemFreeNode
 
 ## HIP 5.6 (For ROCm 5.6)
 
@@ -103,7 +122,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
   - hostRegisterSupported
   - uuid
 - Removal of deprecated code
-  -hip-hcc codes from hip code tree
+  -hip-hcc codes from HIP code tree
 - Correct hipArray usage in HIP APIs such as hipMemcpyAtoH and hipMemcpyHtoA
 - HIPMEMCPY_3D fields correction to avoid truncation of "size_t" to "unsigned int" inside hipMemcpy3D()
 - Renaming of 'memoryType' in hipPointerAttribute_t structure to 'type'

@@ -84,7 +84,7 @@ endif()
 set(_IMPORT_PREFIX ${HIP_PACKAGE_PREFIX_DIR})
 # Right now this is only supported for amd platforms
 set_target_properties(hip::host PROPERTIES
-  INTERFACE_COMPILE_DEFINITIONS "__HIP_PLATFORM_AMD__=1"
+  INTERFACE_COMPILE_DEFINITIONS "__HIP_PLATFORM_HCC__=1;__HIP_PLATFORM_AMD__=1"
 )
 
 set_target_properties(hip::amdhip64 PROPERTIES
