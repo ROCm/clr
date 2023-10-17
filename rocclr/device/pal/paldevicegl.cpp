@@ -75,8 +75,14 @@ static PFNGLXGETCONTEXTMVPUINFOAMD glXGetContextMVPUInfoAMD = nullptr;
 #else
 typedef PROC(WINAPI* PFNWGLGETPROCADDRESS)(LPCSTR name);
 typedef HGLRC(WINAPI* PFNWGLGETCURRENTCONTEXT)(void);
+typedef HGLRC(WINAPI* PFNWGLCREATECONTEXT)(HDC hdc);
+typedef BOOL(WINAPI* PFNWGLDELETECONTEXT)(HGLRC hglrc);
+typedef BOOL(WINAPI* PFNWGLMAKECURRENT)(HDC hdc, HGLRC hglrc);
 static PFNWGLGETPROCADDRESS pfnWglGetProcAddress = nullptr;
 static PFNWGLGETCURRENTCONTEXT pfnWglGetCurrentContext = nullptr;
+static PFNWGLCREATECONTEXT pfnWglCreateContext = nullptr;
+static PFNWGLDELETECONTEXT pfnWglDeleteContext = nullptr;
+static PFNWGLMAKECURRENT pfnWglMakeCurrent = nullptr;
 static PFNWGLBEGINCLINTEROPAMD wglBeginCLInteropAMD = nullptr;
 static PFNWGLENDCLINTEROPAMD wglEndCLInteropAMD = nullptr;
 static PFNWGLRESOURCEATTACHAMD wglResourceAttachAMD = nullptr;
@@ -84,6 +90,7 @@ static PFNWGLRESOURCEDETACHAMD wglResourceAcquireAMD = nullptr;
 static PFNWGLRESOURCEDETACHAMD wglResourceReleaseAMD = nullptr;
 static PFNWGLRESOURCEDETACHAMD wglResourceDetachAMD = nullptr;
 static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = nullptr;
+bool gGlFuncInit = false;
 #endif
 
 namespace pal {
@@ -706,36 +713,55 @@ bool Device::initGLInteropPrivateExt(void* GLplatformContext, void* GLdeviceCont
     return false;
   }
 #else
-  if (!pfnWglGetProcAddress || !pfnWglGetCurrentContext ||
-      !wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
-      !wglResourceDetachAMD || !wglGetContextGPUInfoAMD) {
-    HMODULE h = static_cast<HMODULE>(amd::Os::loadLibrary("OpenGL32.dll"));
+  if (!gGlFuncInit) {
+    HMODULE h = static_cast<HMODULE>(amd::Os::loadLibrary("opengl32.dll"));
     if (nullptr != h) {
       pfnWglGetProcAddress =
           reinterpret_cast<PFNWGLGETPROCADDRESS>(GetProcAddress(h, "wglGetProcAddress"));
       pfnWglGetCurrentContext =
           reinterpret_cast<PFNWGLGETCURRENTCONTEXT>(GetProcAddress(h, "wglGetCurrentContext"));
+      pfnWglCreateContext =
+        reinterpret_cast<PFNWGLCREATECONTEXT>(GetProcAddress(h, "wglCreateContext"));
+      pfnWglDeleteContext =
+        reinterpret_cast<PFNWGLDELETECONTEXT>(GetProcAddress(h, "wglDeleteContext"));
+      pfnWglMakeCurrent =
+        reinterpret_cast<PFNWGLMAKECURRENT>(GetProcAddress(h, "wglMakeCurrent"));
+      if (!pfnWglGetProcAddress || !pfnWglGetCurrentContext || !pfnWglCreateContext ||
+          !pfnWglDeleteContext || !pfnWglMakeCurrent) {
+        LogError("Couldn't obtain WGL context API");
+        return false;
+      }
     }
-    if (pfnWglGetProcAddress != nullptr) {
-      wglBeginCLInteropAMD =
-          (PFNWGLBEGINCLINTEROPAMD)pfnWglGetProcAddress("wglBeginCLInteroperabilityAMD");
-      wglEndCLInteropAMD =
-          (PFNWGLENDCLINTEROPAMD)pfnWglGetProcAddress("wglEndCLInteroperabilityAMD");
-      wglResourceAttachAMD = (PFNWGLRESOURCEATTACHAMD)pfnWglGetProcAddress("wglResourceAttachAMD");
-      wglResourceAcquireAMD =
-          (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceAcquireAMD");
-      wglResourceReleaseAMD =
-          (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceReleaseAMD");
-      wglResourceDetachAMD = (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceDetachAMD");
-      wglGetContextGPUInfoAMD =
-          (PFNWGLGETCONTEXTGPUINFOAMD)pfnWglGetProcAddress("wglGetContextGPUInfoAMD");
+    HGLRC fakeRC = nullptr;
+    // @note: For unclear reason runtime can't get AMD API entry points without a context...
+    if (!pfnWglGetCurrentContext()) {
+      fakeRC = pfnWglCreateContext((HDC)GLdeviceContext);
+      pfnWglMakeCurrent((HDC)GLdeviceContext, fakeRC);
+    }
+    wglBeginCLInteropAMD =
+      (PFNWGLBEGINCLINTEROPAMD)pfnWglGetProcAddress("wglBeginCLInteroperabilityAMD");
+    wglEndCLInteropAMD =
+       (PFNWGLENDCLINTEROPAMD)pfnWglGetProcAddress("wglEndCLInteroperabilityAMD");
+    wglResourceAttachAMD = (PFNWGLRESOURCEATTACHAMD)pfnWglGetProcAddress("wglResourceAttachAMD");
+    wglResourceAcquireAMD =
+      (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceAcquireAMD");
+    wglResourceReleaseAMD =
+      (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceReleaseAMD");
+    wglResourceDetachAMD = (PFNWGLRESOURCEDETACHAMD)pfnWglGetProcAddress("wglResourceDetachAMD");
+    wglGetContextGPUInfoAMD =
+      (PFNWGLGETCONTEXTGPUINFOAMD)pfnWglGetProcAddress("wglGetContextGPUInfoAMD");
+    if (fakeRC) {
+      pfnWglMakeCurrent(nullptr, nullptr);
+      pfnWglDeleteContext(fakeRC);
     }
   }
   if (!wglBeginCLInteropAMD || !wglEndCLInteropAMD || !wglResourceAttachAMD ||
-      !wglResourceDetachAMD || !wglGetContextGPUInfoAMD || !pfnWglGetCurrentContext) {
+      !wglResourceDetachAMD || !wglGetContextGPUInfoAMD) {
+    LogError("Couldn't obtain WGL AMD API");
     return false;
   }
 #endif
+  gGlFuncInit = true;
   return true;
 }
 
