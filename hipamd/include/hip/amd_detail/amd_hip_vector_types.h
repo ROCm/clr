@@ -38,6 +38,7 @@ THE SOFTWARE.
 
 #if defined(__has_attribute)
     #if __has_attribute(ext_vector_type)
+        #define __HIP_USE_NATIVE_VECTOR__ 1
         #define __NATIVE_VECTOR__(n, T) T __attribute__((ext_vector_type(n)))
     #else
         #define __NATIVE_VECTOR__(n, T) T[n]
@@ -427,7 +428,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator+=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data += x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] += x.data[i];
+#endif
             return *this;
         }
         template<
@@ -443,7 +448,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator-=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data -= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] -= x.data[i];
+#endif
             return *this;
         }
         template<
@@ -459,7 +468,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator*=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data *= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] *= x.data[i];
+#endif
             return *this;
         }
 
@@ -488,7 +501,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator/=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data /= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] /= x.data[i];
+#endif
             return *this;
         }
         template<
@@ -508,7 +525,11 @@ THE SOFTWARE.
         HIP_vector_type operator-() const noexcept
         {
             auto tmp(*this);
+#if __HIP_USE_NATIVE_VECTOR__
             tmp.data = -tmp.data;
+#else
+            for (auto i = 0u; i != rank; ++i) tmp.data[i] = -tmp.data[i];
+#endif
             return tmp;
         }
 
@@ -519,7 +540,11 @@ THE SOFTWARE.
         HIP_vector_type operator~() const noexcept
         {
             HIP_vector_type r{*this};
+#if __HIP_USE_NATIVE_VECTOR__
             r.data = ~r.data;
+#else
+            for (auto i = 0u; i != rank; ++i) r.data[i] = ~r.data[i];
+#endif
             return r;
         }
 
@@ -529,7 +554,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator%=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data %= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] %= x.data[i];
+#endif
             return *this;
         }
 
@@ -539,7 +568,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator^=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data ^= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] ^= x.data[i];
+#endif
             return *this;
         }
 
@@ -549,7 +582,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator|=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data |= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] |= x.data[i];
+#endif
             return *this;
         }
 
@@ -559,7 +596,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator&=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data &= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] &= x.data[i];
+#endif
             return *this;
         }
 
@@ -569,7 +610,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator>>=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data >>= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] >>= x.data[i];
+#endif
             return *this;
         }
 
@@ -579,7 +624,11 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator<<=(const HIP_vector_type& x) noexcept
         {
+#if __HIP_USE_NATIVE_VECTOR__
             data <<= x.data;
+#else
+            for (auto i = 0u; i != rank; ++i) data[i] <<= x.data[i];
+#endif
             return *this;
         }
     };
@@ -682,10 +731,10 @@ THE SOFTWARE.
     __HOST_DEVICE__
     inline
     constexpr
-    bool _hip_any_zero(const V& x, int n) noexcept
+    bool _hip_compare(const V& x, const V& y, int n) noexcept
     {
         return
-            (n == -1) ? true : ((x[n] == 0) ? false : _hip_any_zero(x, n - 1));
+            (n == -1) ? true : ((x[n] != y[n]) ? false : _hip_compare(x, y, n - 1));
     }
 
     template<typename T, unsigned int n>
@@ -695,7 +744,7 @@ THE SOFTWARE.
     bool operator==(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return _hip_any_zero(x.data == y.data, n - 1);
+        return _hip_compare(x.data, y.data, n - 1);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
