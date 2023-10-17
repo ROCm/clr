@@ -159,6 +159,7 @@ hipError_t hipCtxCreate(hipCtx_t *ctx, unsigned int flags,  hipDevice_t device) 
 
   // Increment ref count for device primary context
   g_devices[device]->retain();
+  g_devices[device]->setFlags(flags);
   tls.ctxt_stack_.push(g_devices[device]);
 
   HIP_RETURN(hipSuccess);
