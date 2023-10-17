@@ -186,7 +186,8 @@ class NullDevice : public amd::Device {
                       const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
                       size_t maxTextureSize,         //!< Maximum texture size supported in HW
                       uint numComputeRings,          //!< Number of compute rings
-                      uint numExclusiveComputeRings  //!< Number of exclusive compute rings
+                      uint numExclusiveComputeRings, //!< Number of exclusive compute rings
+                      Pal::IDevice* pal_device       //!< PAL device for which info is filled
   );
 };
 

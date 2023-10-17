@@ -638,6 +638,10 @@ struct Info : public amd::EmbeddedObject {
   uint32_t vgprsPerSimd_;
   uint32_t vgprAllocGranularity_;
   uint32_t numSDMAengines_; //!< Number of available SDMA engines
+
+  uint32_t luidLowPart_;        //!< Luid low 4 bytes, available in Windows only
+  uint32_t luidHighPart_;       //!< Luid high 4 bytes, available in Windows only
+  uint32_t luidDeviceNodeMask_; //!< Luid node mask
 };
 
 //! Device settings
