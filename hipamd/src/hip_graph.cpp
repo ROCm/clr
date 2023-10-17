@@ -2624,15 +2624,150 @@ hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipGraphAddExternalSemaphoresSignalNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
-                                 const hipGraphNode_t* pDependencies, size_t numDependencies,
-                                 const hipExternalSemaphoreSignalNodeParams* nodeParams) {
-  HIP_INIT_API(hipGraphAddExternalSemaphoresSignalNode, pGraphNode, graph, pDependencies,
-               numDependencies, nodeParams);
+hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                           const hipGraphNode_t *pDependencies, size_t numDependencies,
+                           hipGraphNodeParams *nodeParams) {
+  HIP_INIT_API(hipGraphAddNode, pGraphNode, graph, pDependencies, numDependencies, nodeParams);
   if (pGraphNode == nullptr || graph == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || nodeParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  hipGraphNodeType nodeType = nodeParams->type;
+  hip::GraphNode* node;
+  hipError_t status = hipSuccess;
+  hip::GraphMemAllocNode* mem_alloc_node;
+  amd::Memory* memory;
+  size_t offset;
+  hipMemAllocNodeParams params;
+
+  switch(nodeType) {
+    case hipGraphNodeTypeKernel:
+      status = ihipGraphAddKernelNode(
+        &node, reinterpret_cast<hip::Graph*>(graph),
+        reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies,
+        &nodeParams->kernel,
+        nullptr, false);
+      break;
+    case hipGraphNodeTypeMemcpy:
+      status = ihipGraphAddMemcpyNode(
+      &node, reinterpret_cast<hip::Graph*>(graph),
+      reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies,
+      &nodeParams->memcpy.copyParams,
+      false);
+      break;
+    case hipGraphNodeTypeMemset:
+      status =
+      ihipGraphAddMemsetNode(&node, reinterpret_cast<hip::Graph*>(graph),
+                             reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                             numDependencies, &nodeParams->memset, false);
+      break;
+    case hipGraphNodeTypeHost:
+      if(nodeParams->host.fn == nullptr)
+      {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      node = new hip::GraphHostNode(&nodeParams->host);
+      status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                                       reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                                       numDependencies, false);
+      break;
+    case hipGraphNodeTypeGraph:
+      if(nodeParams->graph.graph == nullptr)
+      {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      node = new hip::ChildGraphNode(reinterpret_cast<hip::Graph*>(nodeParams->graph.graph));
+      status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                                       reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                                       numDependencies, false);
+      break;
+    case hipGraphNodeTypeWaitEvent:
+      if(nodeParams->eventWait.event == nullptr)
+      {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      node = new hip::GraphEventWaitNode(nodeParams->eventWait.event);
+      status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                                       reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                                       numDependencies, false);
+      break;
+    case hipGraphNodeTypeEventRecord:
+      if(nodeParams->eventRecord.event == nullptr)
+      {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      node = new hip::GraphEventRecordNode(nodeParams->eventRecord.event);
+      status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                                       reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                                       numDependencies, false);
+      break;
+    case hipGraphNodeTypeExtSemaphoreSignal:
+      status = hipSuccess;
+      // to be added.
+      break;
+    case hipGraphNodeTypeExtSemaphoreWait:
+      status = hipSuccess;
+      // to be added.
+      break;
+    case hipGraphNodeTypeMemAlloc:
+      params = nodeParams->alloc;
+      if (params.bytesize == 0 ||
+            params.poolProps.allocType != hipMemAllocationTypePinned ||
+            params.poolProps.location.type != hipMemLocationTypeDevice) {
+            params.dptr = nullptr;
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      if (params.poolProps.location.type == hipMemLocationTypeDevice) {
+        if (params.poolProps.location.id < 0 ||
+            params.poolProps.location.id >= g_devices.size()) {
+          HIP_RETURN(hipErrorInvalidValue);
+        }
+      }
+      // Clear the pointer to allocated memory because it may contain stale/uninitialized data
+      params.dptr = nullptr;
+      mem_alloc_node = new hip::GraphMemAllocNode(&params);
+      node = mem_alloc_node;
+      status =
+          ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                       reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
+      // The address must be provided during the node creation time
+      nodeParams->alloc.dptr =
+        (HIP_MEM_POOL_USE_VM) ? mem_alloc_node->ReserveAddress() : mem_alloc_node->Execute();
+      break;
+    case hipGraphNodeTypeMemFree:
+      if(nodeParams->free.dptr == nullptr) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      // Is memory passed to be free'd valid
+      offset = 0;
+      memory = getMemoryObject(nodeParams->free.dptr, offset);
+      if (memory == nullptr) {
+      if (HIP_MEM_POOL_USE_VM) {
+        // When VM is on the address must be valid and may point to a VA object
+        memory = amd::MemObjMap::FindVirtualMemObj(nodeParams->free.dptr);
+      }
+      if (memory == nullptr) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+    }
+    node = new hip::GraphMemFreeNode(nodeParams->free.dptr);
+    status =
+      ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+                       reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
+      break;
+    default:
+      status = hipErrorInvalidValue;
+      break;
+  }
+  *pGraphNode = reinterpret_cast<hipGraphNode*>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipGraphAddExternalSemaphoresSignalNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                                 const hipGraphNode_t* pDependencies, size_t numDependencies,
+                                 const hipExternalSemaphoreSignalNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphAddExternalSemaphoresSignalNode, pGraphNode, graph, pDependencies,
+               numDependencies, nodeParams);  
   hip::GraphNode* node = new hip::hipGraphExternalSemSignalNode(nodeParams);
   hipError_t status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
                          reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);

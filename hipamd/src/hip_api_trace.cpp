@@ -223,6 +223,9 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
 hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
                                  const hipMemsetParams* pMemsetParams);
+hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                           const hipGraphNode_t *pDependencies, size_t numDependencies,
+                           hipGraphNodeParams *nodeParams);
 hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGraph);
 hipError_t hipGraphClone(hipGraph_t* pGraphClone, hipGraph_t originalGraph);
 hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags);
@@ -885,6 +888,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphAddMemcpyNodeFromSymbol_fn = hip::hipGraphAddMemcpyNodeFromSymbol;
   ptrDispatchTable->hipGraphAddMemcpyNodeToSymbol_fn = hip::hipGraphAddMemcpyNodeToSymbol;
   ptrDispatchTable->hipGraphAddMemsetNode_fn = hip::hipGraphAddMemsetNode;
+  ptrDispatchTable->hipGraphAddNode_fn = hip::hipGraphAddNode;
   ptrDispatchTable->hipGraphChildGraphNodeGetGraph_fn = hip::hipGraphChildGraphNodeGetGraph;
   ptrDispatchTable->hipGraphClone_fn = hip::hipGraphClone;
   ptrDispatchTable->hipGraphCreate_fn = hip::hipGraphCreate;

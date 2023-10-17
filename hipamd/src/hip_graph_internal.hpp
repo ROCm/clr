@@ -2364,9 +2364,9 @@ class hipGraphExternalSemSignalNode : public GraphNode {
     for (unsigned int i = 0; i < numExtSems; i++) {
       if (externalSemaphorNodeParam_.extSemArray[i] != nullptr) {
         amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
-                                        externalSemaphorNodeParam_.extSemArray[i],
-                                        externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
-                                        amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
+                                      externalSemaphorNodeParam_.extSemArray[i],
+                                      externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
+                                      amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
         if (command == nullptr) {
           return hipErrorOutOfMemory;
         }
