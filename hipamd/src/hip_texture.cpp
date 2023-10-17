@@ -744,8 +744,11 @@ hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc,
                              hipArray_const_t array) {
   HIP_INIT_API(hipGetChannelDesc, desc, array);
 
-  if ((desc == nullptr) || (array == nullptr)) {
+  if (desc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (array == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
