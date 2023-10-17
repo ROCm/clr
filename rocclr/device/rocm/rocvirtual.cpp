@@ -211,11 +211,11 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Save callback signal
   hsa_signal_t callback_signal = ts->GetCallbackSignal();
 
-  // Update the batch, since signal is complete
-  ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
-
   // Reset last used SDMA engine mask
   ts->gpu()->setLastUsedSdmaEngine(0);
+
+  // Update the batch, since signal is complete
+  ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
 
   // Reset API callback signal. It will release AQL queue and start commands processing
   if (callback_signal.handle != 0) {
