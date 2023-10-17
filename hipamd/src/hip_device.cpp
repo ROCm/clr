@@ -447,9 +447,10 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, hipDevice_t devi
   deviceProps.gpuDirectRDMASupported = 0;
   deviceProps.gpuDirectRDMAFlushWritesOptions = 0;
   deviceProps.gpuDirectRDMAWritesOrdering = 0;
-  // luid - TODO populate it only on windows
-  std::memset(deviceProps.luid, 0, sizeof(deviceProps.luid));
-  deviceProps.luidDeviceNodeMask = 0;
+  *reinterpret_cast<uint32_t*>(&deviceProps.luid[0]) = info.luidLowPart_;
+  *reinterpret_cast<uint32_t*>(&deviceProps.luid[sizeof(uint32_t)]) = info.luidHighPart_;
+  deviceProps.luidDeviceNodeMask = info.luidDeviceNodeMask_;
+
   deviceProps.sparseHipArraySupported = 0;
   deviceProps.timelineSemaphoreInteropSupported = 0;
   deviceProps.unifiedFunctionPointers = 0;

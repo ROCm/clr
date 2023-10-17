@@ -177,6 +177,10 @@ NullDevice::Compiler* NullDevice::compiler_;
 #endif
 AppProfile Device::appProfile_;
 
+Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
+uint32_t gStartDevice = 0;
+uint32_t gNumDevices = 0;
+
 NullDevice::NullDevice() : amd::Device(), ipLevel_(Pal::GfxIpLevel::None), palName_(nullptr) {}
 
 bool NullDevice::init() {
@@ -283,7 +287,7 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
   }
 
   // Fill the device info structure
-  fillDeviceInfo(properties, heaps, 4096, 1, 0);
+  fillDeviceInfo(properties, heaps, 4096, 1, 0, nullptr);
 
   // Runtime doesn't know what local size could be on the real board
   info_.maxGlobalVariableSize_ = static_cast<size_t>(512 * Mi);
@@ -332,7 +336,7 @@ device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Opt
 void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                 const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
                                 size_t maxTextureSize, uint numComputeRings,
-                                uint numExclusiveComputeRings) {
+                                uint numExclusiveComputeRings, Pal::IDevice* pal_device) {
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = palProp.vendorId;
   // Set uuid
@@ -369,7 +373,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.maxMemoryClockFrequency_ = (palProp.gpuMemoryProperties.performance.maxMemClock != 0)
       ? palProp.gpuMemoryProperties.performance.maxMemClock
       : 555;
-  info_.wallClockFrequency_ = palProp.timestampFrequency / 1000; // in KHz
+  info_.wallClockFrequency_ = palProp.timestampFrequency / 1000;  // in KHz
   info_.vramBusBitWidth_ = palProp.gpuMemoryProperties.performance.vramBusBitWidth;
   info_.l2CacheSize_ = palProp.gfxipProperties.shaderCore.tccSizeInBytes;
   info_.maxParameterSize_ = 1024;
@@ -405,8 +409,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   if (GPU_ADD_HBCC_SIZE) {
     localRAM = heaps[Pal::GpuHeapLocal].logicalSize + heaps[Pal::GpuHeapInvisible].logicalSize;
   } else {
-    localRAM =
-        heaps[Pal::GpuHeapLocal].physicalSize + heaps[Pal::GpuHeapInvisible].physicalSize;
+    localRAM = heaps[Pal::GpuHeapLocal].physicalSize + heaps[Pal::GpuHeapInvisible].physicalSize;
   }
 
   info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
@@ -417,8 +420,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       ? 75
       : 50;
   if (settings().apuSystem_) {
-    info_.globalMemSize_ += (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) *
-      uswcPercentAvailable) / 100;
+    info_.globalMemSize_ +=
+        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) * uswcPercentAvailable) /
+        100;
   }
 
   // Find the largest heap form FB memory
@@ -432,9 +436,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
 #if defined(ATI_OS_WIN)
   if (settings().apuSystem_) {
-    info_.maxMemAllocSize_ =
-      std::max((static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) *
-               uswcPercentAvailable) / 100, info_.maxMemAllocSize_);
+    info_.maxMemAllocSize_ = std::max(
+        (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) * uswcPercentAvailable) /
+            100,
+        info_.maxMemAllocSize_);
   }
 #endif
   info_.maxMemAllocSize_ =
@@ -559,8 +564,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   // Clamp max image buffer size to the maximum buffer size we can create.
   // Image format has max 4 channels per pixel, 1 DWORD per channel.
   constexpr size_t kPixelRgbaSize = 4 * sizeof(int);
-  info_.imageMaxBufferSize_ = std::min<size_t>(MaxImageBufferSize,
-                                       info_.maxMemAllocSize_ / kPixelRgbaSize);
+  info_.imageMaxBufferSize_ =
+      std::min<size_t>(MaxImageBufferSize, info_.maxMemAllocSize_ / kPixelRgbaSize);
   info_.image1DMaxWidth_ = maxTextureSize;
   info_.imageMaxArraySize_ = MaxImageArraySize;
   info_.image2DAMaxWidth_[0] = MaxImageArraySize;
@@ -612,8 +617,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.deviceTopology_.pcie.function = palProp.pciProperties.functionNumber;
 
     info_.simdPerCU_ = settings().enableWgpMode_
-                       ? (2 * palProp.gfxipProperties.shaderCore.numSimdsPerCu)
-                       : palProp.gfxipProperties.shaderCore.numSimdsPerCu;
+        ? (2 * palProp.gfxipProperties.shaderCore.numSimdsPerCu)
+        : palProp.gfxipProperties.shaderCore.numSimdsPerCu;
     info_.cuPerShaderArray_ = palProp.gfxipProperties.shaderCore.numCusPerShaderArray;
     info_.simdWidth_ = isa().simdWidth();
     info_.simdInstructionWidth_ = 1;
@@ -664,6 +669,17 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
+
+  info_.luidLowPart_ = palProp.osProperties.luidLowPart;
+  info_.luidHighPart_ = palProp.osProperties.luidHighPart;
+  // Setup the node mask for MGPU only case from the original PAL list of all devices
+  if ((gNumDevices > 1) && (pal_device != nullptr)) {
+    for (uint32_t i = 0; i < gNumDevices; ++i) {
+      if (gDeviceList[i] == pal_device) {
+        info_.luidDeviceNodeMask_ = 1 << i;
+      }
+    }
+  }
 }
 
 Device::XferBuffers::~XferBuffers() {
@@ -856,10 +872,6 @@ extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
 extern const char* TrapHandlerCode;
 
-Pal::IDevice* gDeviceList[Pal::MaxDevices] = {};
-uint32_t gStartDevice = 0;
-uint32_t gNumDevices = 0;
-
 bool Device::create(Pal::IDevice* device) {
   resourceList_ = new std::unordered_set<Resource*>();
   if (nullptr == resourceList_) {
@@ -971,7 +983,7 @@ bool Device::create(Pal::IDevice* device) {
   }
 
   // Fill the device info structure
-  fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines());
+  fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines(), iDev());
 
   if (!ValidateComgr()) {
     LogError("Code object manager initialization failed!");
