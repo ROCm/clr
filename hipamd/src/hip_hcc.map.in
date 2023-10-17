@@ -524,6 +524,7 @@ global:
     hipGraphMemAllocNodeGetParams;
     hipGraphAddMemFreeNode;
     hipGraphMemFreeNodeGetParams;
+    hipGraphAddNode;
 local:
     *;
 } hip_5.3;
