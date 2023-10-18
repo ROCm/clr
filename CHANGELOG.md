@@ -17,7 +17,9 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
     - hipExternalMemoryHandleType_enum
     - hipExternalSemaphoreHandleType_enum
     - hipExternalMemoryHandleType_enum
-
+- New environment variable HIP_LAUNCH_BLOCKING
+It is used for serialization on kernel execution.
+The default value is 0 (disable), kernel will execute normally as defined in the queue. When this environment variable is set as 1 (enable), HIP runtime will serialize kernel enqueue, behaves the same as AMD_SERIALIZE_KERNEL.
 ### Changed
 - Some OpenGL Interop HIP APIs are moved from the hip_runtime_api header to a new header file hip_gl_interop.h for the AMD platform, as following,
     - hipGLGetDevices
@@ -38,6 +40,17 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 - The HIP stream synchronisation behaviour is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
 The change won't affect usage of applications, and makes them behave the same on the AMD platform as NVIDIA.
 - Error handling behavior on unsupported GPU is fixed, HIP runtime will log out error message, instead of creating signal abortion error which is invisible to developers but continued kernel execution process. This is for the case when developers compile any application via hipcc, setting the option --offload-arch with GPU ID which is different from the one on the system.
+- HIP complex vector type multiplication and division operations.
+On AMD platform, some duplicated complex operators are removed to avoid compilation failures.
+In HIP, hipFloatComplex and hipDoubleComplex are defined as complex data types,
+typedef float2 hipFloatComplex;
+typedef double2 hipDoubleComplex;
+Any application uses complex multiplication and division operations, need to update '*' and '/' operators with the following,
+    - hipCmulf() and hipCdivf() for hipFloatComplex
+    - hipCmul() and hipCdiv() for hipDoubleComplex
+
+    Note: These complex operations are equivalent to corresponding types/functions on NVIDIA platform.
+
 ### Deprecated And Removed
 - Deprecated Heterogeneous Compute (HCC) symbols and flags are removed from the HIP source code, including,
     - Build options on obsolete HCC_OPTIONS was removed from cmake.
