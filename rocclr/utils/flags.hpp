@@ -40,7 +40,7 @@ debug(size_t, CPU_MEMORY_GUARD_PAGE_SIZE, 64,                                 \
         "Size in KB of CPU memory guard page")                                \
 debug(size_t, CPU_MEMORY_ALIGNMENT_SIZE, 256,                                 \
         "Size in bytes for the default alignment for guarded memory on CPU")  \
-debug(size_t, PARAMETERS_MIN_ALIGNMENT, 16,                                   \
+debug(size_t, PARAMETERS_MIN_ALIGNMENT, NATIVE_ALIGNMENT_SIZE,                \
         "Minimum alignment required for the abstract parameters stack")       \
 debug(size_t, MEMOBJ_BASE_ADDR_ALIGN, 4*Ki,                                   \
         "Alignment of the base address of any allocate memory object")        \
