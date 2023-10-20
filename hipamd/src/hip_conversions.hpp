@@ -604,6 +604,7 @@ std::pair<hipMemoryType, hipMemoryType> getMemoryType(const hipMemcpyKind kind) 
     case hipMemcpyDeviceToHost:
       return {hipMemoryTypeDevice, hipMemoryTypeHost};
     case hipMemcpyDeviceToDevice:
+    case hipMemcpyDeviceToDeviceNoCU:
       return {hipMemoryTypeDevice, hipMemoryTypeDevice};
     case hipMemcpyDefault:
       return {hipMemoryTypeUnified, hipMemoryTypeUnified};

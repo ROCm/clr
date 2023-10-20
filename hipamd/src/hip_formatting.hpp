@@ -86,6 +86,9 @@ inline std::ostream& operator<<(std::ostream& os, const hipMemcpyKind& s) {
     case hipMemcpyDefault:
       os << "hipMemcpyDefault";
       break;
+    case hipMemcpyDeviceToDeviceNoCU:
+      os << "hipMemcpyDeviceToDeviceNoCU";
+      break;
     default:
       os << "hipMemcpyDefault";
   };

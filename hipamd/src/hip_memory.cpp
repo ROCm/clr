@@ -337,6 +337,8 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   return hipSuccess;
 }
+
+// ================================================================================================
 bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
@@ -349,6 +351,8 @@ bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   }
   return true;
 }
+
+// ================================================================================================
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
                                       hipMemcpyKind kind) {
   if (dst == nullptr || src == nullptr) {
@@ -371,6 +375,7 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
                              hipMemcpyKind kind, hip::Stream& stream, bool isAsync) {
   amd::Command::EventWaitList waitList;
@@ -465,6 +470,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   }
   return hipSuccess;
 }
+
+// ================================================================================================
 bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
@@ -477,10 +484,13 @@ bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind) {
   }
   return false;
 }
+
+// ================================================================================================
 void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, hip::Stream& stream) {
   stream.finish();
   memcpy(dst, src, sizeBytes);
 }
+
 // ================================================================================================
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                       hip::Stream& stream, bool isHostAsync, bool isGPUAsync) {
@@ -1281,8 +1291,10 @@ hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_RETURN(ihipMalloc(ptr, sizeBytes, flags), (ptr != nullptr)? *ptr : nullptr);
 };
 
-inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset, size_t &sym_size, hipDeviceptr_t &device_ptr) {
-  HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(), &device_ptr, &sym_size));
+inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes,
+  size_t offset, size_t &sym_size, hipDeviceptr_t &device_ptr) {
+  HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(),
+                                                               &device_ptr, &sym_size));
 
   /* Size Check to make sure offset is correct */
   if ((offset + sizeBytes) > sym_size) {
@@ -1299,7 +1311,8 @@ hipError_t hipMemcpyToSymbol_common(const void* symbol, const void* src, size_t 
                              size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1332,7 +1345,8 @@ hipError_t hipMemcpyFromSymbol_common(void* dst, const void* symbol, size_t size
                                size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1365,7 +1379,8 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
                                   size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1397,7 +1412,8 @@ hipError_t hipMemcpyFromSymbolAsync_common(void* dst, const void* symbol, size_t
                                     size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     return hipErrorInvalidMemcpyDirection;
   }
 
