@@ -1535,7 +1535,8 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
     if (dstMemory == nullptr && kind != hipMemcpyDeviceToHost && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
     } else if (dstMemory != nullptr && dstMemory->getMemFlags() == 0 &&
-               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
+               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
+               && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
     } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyHostToDevice) {
       return hipErrorInvalidMemcpyDirection;
@@ -1625,7 +1626,8 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
     if (srcMemory == nullptr && kind != hipMemcpyHostToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
     } else if (srcMemory != nullptr && srcMemory->getMemFlags() == 0 &&
-               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
+               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
+               && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
     } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyDeviceToHost) {
       return hipErrorInvalidValue;
