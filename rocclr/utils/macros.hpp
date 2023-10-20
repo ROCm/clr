@@ -126,6 +126,14 @@
 #define IS_WINDOWS false
 #endif
 
+#if defined(__AVX512F__)
+#define NATIVE_ALIGNMENT_SIZE 64
+#elif defined(__AVX__)
+#define NATIVE_ALIGNMENT_SIZE 32
+#else
+#define NATIVE_ALIGNMENT_SIZE 16
+#endif
+
 #define IF_LEFT_true(x) x
 #define IF_LEFT_false(x)
 #define IF_RIGHT_true(x)
