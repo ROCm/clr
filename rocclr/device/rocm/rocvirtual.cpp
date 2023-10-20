@@ -1014,9 +1014,10 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
     barrier_packet_.completion_signal = signal;
   }
 
-  // Reset fence_dirty_ flag if we submit a barrier
+  // Reset fence_dirty_ and addSystemScope_ flag if we submit a barrier with system scopes
   if (cache_state == amd::Device::kCacheStateSystem) {
     fence_dirty_ = false;
+    addSystemScope_ = false;
   }
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
