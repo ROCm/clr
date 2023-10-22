@@ -802,11 +802,13 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         engine = HwQueueEngine::SdmaWrite;
       }
       gpu().Barriers().SetActiveEngine(engine);
+      auto wait_events = gpu().Barriers().WaitingSignal(engine);
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
       memcpy(hsaBuffer, hostSrc + offset, size);
-      status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
-                                         srcAgent, size, 0, nullptr, active);
+      status = hsa_amd_memory_async_copy(
+          hostDst + offset, dev().getBackendDevice(), hsaBuffer, srcAgent, size,
+          wait_events.size(), wait_events.data(), active);
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
           "HSA Async Copy staged H2D dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
           hostDst + offset, hsaBuffer, size, active.handle);
@@ -834,11 +836,13 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       engine = HwQueueEngine::SdmaRead;
     }
     gpu().Barriers().SetActiveEngine(engine);
+    auto wait_events = gpu().Barriers().WaitingSignal(engine);
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
     // Copy data from Device to Host
-    status = hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
-        dev().getBackendDevice(), size, 0, nullptr, active);
+    status = hsa_amd_memory_async_copy(
+        hsaBuffer, dstAgent, hostSrc + offset, dev().getBackendDevice(), size,
+        wait_events.size(), wait_events.data(), active);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
             "HSA Async Copy staged D2H dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
             hsaBuffer, hostSrc + offset, size, active.handle);
