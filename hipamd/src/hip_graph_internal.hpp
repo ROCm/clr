@@ -494,32 +494,21 @@ struct Graph {
   void* ReserveAddress(size_t size) const {
     void* startAddress = nullptr;
     void* ptr;
-    for (auto& dev : g_devices) {
-      const auto& dev_info = dev->devices()[0]->info();
-      ptr = dev->devices()[0]->virtualAlloc(startAddress, size,
-          dev_info.virtualMemAllocGranularity_);
+    const auto& dev_info = g_devices[0]->devices()[0]->info();
 
-      // if addr==0 then runtime will use the first VA on other devices
-      if (startAddress == nullptr) {
-        startAddress = ptr;
-      } else if (ptr != startAddress) {
-        // if runtime cannot reserve the same VA on other devices, just fail
-        for (auto& d : g_devices) {
-          if (d == dev) {
-            d->devices()[0]->virtualFree(ptr);
-            return nullptr;
-          }
-          d->devices()[0]->virtualFree(startAddress);
-        }
-      }
+    // Single virtual alloc would reserve for all devices.
+    ptr = g_devices[0]->devices()[0]->virtualAlloc(startAddress, size,
+            dev_info.virtualMemAllocGranularity_);
+    if (ptr == nullptr) {
+      LogError("Failed to reserve Virtual Address");
     }
+
     return ptr;
   }
 
   void FreeAddress(void* ptr) const {
-    for (auto& dev : g_devices) {
-      dev->devices()[0]->virtualFree(ptr);
-    }
+    // Single Free would free for all devices.
+    g_devices[0]->devices()[0]->virtualFree(ptr);
   }
 
   void FreeMemory(void* dev_ptr, hip::Stream* stream) const {

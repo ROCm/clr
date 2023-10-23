@@ -2395,7 +2395,7 @@ void Device::svmFree(void* ptr) const {
 // ================================================================================================
 void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
   // create a hidden buffer, which will allocated on the device later
-  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, addr);
+  auto mem = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_VA_RANGE_AMD, size, addr);
   if (mem == nullptr) {
     LogError("failed to new a va range mem object!");
     return nullptr;
