@@ -20,6 +20,36 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 - New environment variable HIP_LAUNCH_BLOCKING
 It is used for serialization on kernel execution.
 The default value is 0 (disable), kernel will execute normally as defined in the queue. When this environment variable is set as 1 (enable), HIP runtime will serialize kernel enqueue, behaves the same as AMD_SERIALIZE_KERNEL.
+- More members are added in HIP struct hipDeviceProp_t, for new feature capabilities including,
+    - Texture
+        - int maxTexture1DMipmap;
+        - int maxTexture2DMipmap[2];
+        - int maxTexture2DLinear[3];
+        - int maxTexture2DGather[2];
+        - int maxTexture3DAlt[3];
+        - int maxTextureCubemap;
+        - int maxTexture1DLayered[2];
+        - int maxTexture2DLayered[3];
+        - int maxTextureCubemapLayered[2];
+    - Surface
+        - int maxSurface1D;
+        - int maxSurface2D[2];
+        - int maxSurface3D[3];
+        - int maxSurface1DLayered[2];
+        - int maxSurface2DLayered[3];
+        - int maxSurfaceCubemap;
+        - int maxSurfaceCubemapLayered[2];
+    - Device
+        - hipUUID uuid;
+        - char luid[8]; this is 8-byte unique identifier. Only valid on windows
+        - unsigned int luidDeviceNodeMask;
+- LUID (Locally Unique Identifier) is supported for interoperability between devices.
+In HIP, more members are added in the struct hipDeviceProp_t, as properties to identify each device,
+    - char luid[8];
+    - unsigned int luidDeviceNodeMask;
+
+    Note: HIP supports LUID only on Windows OS.
+
 ### Changed
 - Some OpenGL Interop HIP APIs are moved from the hip_runtime_api header to a new header file hip_gl_interop.h for the AMD platform, as following,
     - hipGLGetDevices
@@ -35,6 +65,9 @@ The default value is 0 (disable), kernel will execute normally as defined in the
     - hipDeviceAttributeArch is changed to hipDeviceAttributeUnused3
     - hipDeviceAttributeGcnArch is changed to hipDeviceAttributeUnused4
     - hipDeviceAttributeGcnArchName is changed to hipDeviceAttributeUnused5
+- HIP struct hipArray is removed from driver type header to be comlpying with cuda
+- hipArray_t replaces hipArray*, as the pointer to array.
+    - This allows hipMemcpyAtoH and hipMemcpyHtoA to have the correct array type which is equivalent to coresponding CUDA driver APIs.
 ### Fixed
 - Kernel launch maximum dimension validation is added specifically on gridY and gridZ in the HIP API hipModule-LaunchKernel. As a result,when hipGetDeviceAttribute is called for the value of hipDeviceAttributeMaxGrid-Dim, the behavior on the AMD platform is equivalent to NVIDIA.
 - The HIP stream synchronisation behaviour is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
@@ -45,7 +78,7 @@ On AMD platform, some duplicated complex operators are removed to avoid compilat
 In HIP, hipFloatComplex and hipDoubleComplex are defined as complex data types,
 typedef float2 hipFloatComplex;
 typedef double2 hipDoubleComplex;
-Any application uses complex multiplication and division operations, need to update '*' and '/' operators with the following,
+Any application uses complex multiplication and division operations, need to replace '*' and '/' operators with the following,
     - hipCmulf() and hipCdivf() for hipFloatComplex
     - hipCmul() and hipCdiv() for hipDoubleComplex
 
@@ -67,6 +100,9 @@ Any application uses complex multiplication and division operations, need to upd
 - File directories in the clr repository are removed,
   https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/hcc_detail
   https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/nvcc_detail
+- Deprecated gcnArch is removed from hip device struct hipDeviceProp_t.
+- Deprecated "enum hipMemoryType memoryType;" is removed from HIP struct hipPointerAttribute_t union.
+
 ### Known Issues
 
 ## HIP 5.7.1 (For ROCm 5.7.1)
