@@ -1064,8 +1064,7 @@ inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket) {
   // If rocprof tracing is enabled, store the correlation ID in the dispatch packet.
   // The profiler can retrieve this correlation ID to attribute waves to specific dispatch
   // locations.
-  if (activity_prof::IsEnabled(OP_ID_DISPATCH) ||
-      (roc_device_.info().queueProperties_ & CL_QUEUE_PROFILING_ENABLE)) {
+  if (activity_prof::IsEnabled(OP_ID_DISPATCH) || profiling_) {
     packet->reserved2 = activity_prof::correlation_id;
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
