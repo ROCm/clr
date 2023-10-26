@@ -529,9 +529,14 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   }
 
   if (parallelLists_.size() == 1) {
+    amd::AccumulateCommand* accumulate = nullptr;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      accumulate = new amd::AccumulateCommand(*hip_stream);
+    }
+
     for (int i = 0; i < topoOrder_.size(); i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
-        hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket());
+        hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
       } else {
         topoOrder_[i]->SetStream(hip_stream, this);
         status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
@@ -540,13 +545,8 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     }
 
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      amd::Command* endCommand = nullptr;
-      endCommand = new amd::Marker(*hip_stream, false);
-      // Since the end command is for graph completion tracking,
-      // it may not need release scopes
-      endCommand->setEventScope(amd::Device::kCacheStateIgnore);
-      endCommand->enqueue();
-      endCommand->release();
+      accumulate->enqueue();
+      accumulate->release();
     }
   } else {
     UpdateStream(parallelLists_, hip_stream, this);

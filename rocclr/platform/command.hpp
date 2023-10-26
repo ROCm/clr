@@ -269,7 +269,8 @@ class Command : public Event {
   uint32_t commandWaitBits_;
 
   //! Construct a new command of the given OpenCL type.
-  Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList = nullWaitList,
+  Command(HostQueue& queue, cl_command_type type,
+          const EventWaitList& eventWaitList = nullWaitList,
           uint32_t commandWaitBits = 0, const Event* waitingEvent = nullptr);
 
   //! Construct a new command of the given OpenCL type.
@@ -857,7 +858,7 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
       : TwoMemoryArgsCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory),
         srcOrigin_(srcOrigin),
         dstOrigin_(dstOrigin),
-        size_(size), 
+        size_(size),
         copyMetadata_(copyMetadata){
     // Sanity checks
     assert(size.c[0] > 0 && "invalid");
@@ -1222,7 +1223,8 @@ class ExternalSemaphoreCmd : public Command {
  public:
   ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, uint64_t fence,
                        ExternalSemaphoreCmdType cmd_type)
-      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
+      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence),
+                         cmd_type_(cmd_type) {}
 
   virtual void submit(device::VirtualDevice& device) {
     device.submitExternalSemaphoreCmd(*this);
@@ -1239,10 +1241,26 @@ class Marker : public Command {
   //! Create a new Marker
   Marker(HostQueue& queue, bool userVisible, const EventWaitList& eventWaitList = nullWaitList,
          const Event* waitingEvent = nullptr, bool cpu_wait = false)
-      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent) { cpu_wait_ = cpu_wait; }
+      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent)
+    {
+      cpu_wait_ = cpu_wait;
+    }
 
   //! The actual command implementation.
   virtual void submit(device::VirtualDevice& device) { device.submitMarker(*this); }
+};
+
+class AccumulateCommand : public Command {
+ public:
+  //! Create a new Marker
+  AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
+         const Event* waitingEvent = nullptr)
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent) {}
+
+  //! The command implementation
+  virtual void submit(device::VirtualDevice& device) {
+    device.submitAccumulate(*this);
+  }
 };
 
 /*! \brief  Maps CL objects created from external ones and syncs the contents (blocking).
@@ -1516,8 +1534,9 @@ class SvmFreeMemoryCommand : public Command {
   void* userData_;                  //!< Data passed to user-defined callback
 
  public:
-  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList, uint32_t numSvmPointers,
-                       void** svmPointers, freeCallBack pfnFreeFunc, void* userData)
+  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList,
+                       uint32_t numSvmPointers, void** svmPointers,
+                       freeCallBack pfnFreeFunc, void* userData)
       : Command(queue, CL_COMMAND_SVM_FREE, eventWaitList),
         //! We copy svmPointers since it can be reused/deallocated after
         //  command creation

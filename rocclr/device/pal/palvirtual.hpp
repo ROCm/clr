@@ -318,6 +318,7 @@ class VirtualGPU : public device::VirtualDevice {
   void submitFillMemory(amd::FillMemoryCommand& vcmd);
   void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
   void submitMarker(amd::Marker& vcmd);
+  void submitAccumulate(amd::AccumulateCommand& vcmd);
   void submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd);
   void submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd);
   void submitPerfCounter(amd::PerfCounterCommand& vcmd);
@@ -342,7 +343,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   bool isFenceDirty() const { return false; }
 
-  inline bool dispatchAqlPacket(uint8_t* aqlpacket) { return false; }
+  inline bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) {
+     return false; }
 
   void resetFenceDirty() {}
 
