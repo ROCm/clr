@@ -1582,6 +1582,9 @@ hipError_t ihipMemcpyAtoDValidate(hipArray_t srcArray, void* dstDevice, amd::Coo
       !dstMemory->validateRegion(dstOrigin, {copySizeInBytes, 0, 0})) {
     return hipErrorInvalidValue;
   }
+
+  dstOrigin.c[0] = dstRect.offset(0, 0, 0);  // Get the physical offset of the logic origin
+  dstOrigin.c[1] = dstOrigin.c[2] = 0;
   return hipSuccess;
 }
 
@@ -1657,6 +1660,8 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray_t dstArray, amd::Coo
       !dstImage->validateRegion(dstOrigin, copyRegion)) {
     return hipErrorInvalidValue;
   }
+  srcOrigin.c[0] = srcRect.offset(0, 0, 0); // Get the physical offset of the logic origin
+  srcOrigin.c[1] = srcOrigin.c[2] = 0;
   return hipSuccess;
 }
 
