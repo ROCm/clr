@@ -1,4 +1,4 @@
-/* Copyright (c) 2013 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2013 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -127,7 +127,6 @@ void Timestamp::checkGpuTime() {
 
     for (auto it : signals_) {
       amd::ScopedLock lock(it->LockSignalOps());
-
       // Ignore the wait if runtime processes API callback, because the signal value is bigger
       // than expected and the value reset will occur after API callback is done
       if (GetCallbackSignal().handle == 0) {
@@ -149,7 +148,8 @@ void Timestamp::checkGpuTime() {
         start = std::min(time.start, start);
         end = std::max(time.end, end);
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
-          "end = %ld time taken= %ld ns", it->signal_.handle, start, end, end - start);
+          "end = %ld time taken= %ld ns", it->signal_.handle, time.start, time.end,
+          time.end - time.start);
       }
       it->flags_.done_ = true;
     }
@@ -848,6 +848,13 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   if (timestamp_ != nullptr) {
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
+
+    // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
+    // retrieve this correlation ID to attribute waves to specific dispatch locations.
+    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value) {
+      auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
+      dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
+    }
   }
 
   // Make sure the slot is free for usage
@@ -955,6 +962,24 @@ bool VirtualGPU::dispatchAqlPacket(
 }
 
 // ================================================================================================
+inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd) {
+  amd::ScopedLock lock(execution());
+  if (vcmd != nullptr) {
+    profilingBegin(*vcmd, true, true);
+  }
+  dispatchBlockingWait();
+  auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
+
+  constexpr size_t kPacketSize = 1;
+  Timestamp* ts = reinterpret_cast<Timestamp*>(vcmd->data());
+  dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
+  if (vcmd != nullptr) {
+    profilingEnd(*vcmd, true);
+  }
+  return true;
+}
+
+// ================================================================================================
 bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
                                           const uint32_t gfxVersion, bool blocking,
                                           const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi) {
@@ -1054,21 +1079,6 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   barrier_packet_.dep_signal[2] = hsa_signal_t{};
   barrier_packet_.dep_signal[3] = hsa_signal_t{};
   barrier_packet_.dep_signal[4] = hsa_signal_t{};
-}
-
-inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket) {
-  dispatchBlockingWait();
-  auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
-  // If rocprof tracing is enabled, store the correlation ID in the dispatch packet.
-  // The profiler can retrieve this correlation ID to attribute waves to specific dispatch
-  // locations.
-  if (activity_prof::IsEnabled(OP_ID_DISPATCH) || profiling_) {
-    packet->reserved2 = activity_prof::correlation_id;
-    // Get active signal for current dispatch if profiling is necessary
-    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
-  }
-  dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
-  return true;
 }
 
 // ================================================================================================
@@ -1430,17 +1440,23 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
 * and then calls start() to get the current host timestamp.
 */
-void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
+void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling, bool useCommandTs) {
   if (command.profilingInfo().enabled_) {
     if (timestamp_ != nullptr) {
       LogWarning("Trying to create a second timestamp in VirtualGPU. \
                   This could have unintended consequences.");
       return;
     }
-    // Without barrier profiling will wait for each individual signal
-    timestamp_ = new Timestamp(this, command);
-    command.setData(timestamp_);
-    timestamp_->start();
+    Timestamp* ts = useCommandTs ? reinterpret_cast<Timestamp*>(command.data()) : timestamp_;
+
+    if (ts == nullptr) {
+      // Without barrier profiling will wait for each individual signal
+      timestamp_ = new Timestamp(this, command);
+      command.setData(timestamp_);
+      timestamp_->start();
+    } else {
+      timestamp_ = ts;
+    }
 
     // Enable SDMA profiling on the first access if profiling is set
     // Its not per command basis
@@ -1473,10 +1489,11 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
 * created for whatever command we are running and calls end() to get the
 * current host timestamp if no signal is available.
 */
-void VirtualGPU::profilingEnd(amd::Command& command) {
+void VirtualGPU::profilingEnd(amd::Command& command, bool useCommandTs) {
   if (command.profilingInfo().enabled_) {
-    if (timestamp_->HwProfiling() == false) {
-      timestamp_->end();
+    Timestamp* ts = useCommandTs ? reinterpret_cast<Timestamp*>(command.data()) : timestamp_;
+    if (ts->HwProfiling() == false) {
+      ts->end();
     }
     timestamp_ = nullptr;
   }
@@ -3238,11 +3255,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       addSystemScope_ = true;
     }
 
-    // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
-    // retrieve this correlation ID to attribute waves to specific dispatch locations.
-    if (vcmd != nullptr && vcmd->profilingInfo().enabled_) {
-      dispatchPacket.reserved2 = vcmd->profilingInfo().correlation_id_;
-    }
 
     // Copy scheduler's AQL packet for possible relaunch from the scheduler itself
     if (aql_packet != nullptr) {
@@ -3374,7 +3386,6 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
 // ================================================================================================
 void VirtualGPU::submitNativeFn(amd::NativeFnCommand& cmd) {
-  // std::cout<<__FUNCTION__<<" not implemented"<<"*********"<<std::endl;
 }
 
 // ================================================================================================
@@ -3411,6 +3422,20 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     }
 
   }
+}
+
+// ================================================================================================
+void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
+  // Make sure VirtualGPU has an exclusive access to the resources
+  amd::ScopedLock lock(execution());
+  profilingBegin(vcmd, true, true);
+  const Settings& settings = dev().settings();
+  if (settings.barrier_value_packet_) {
+    dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
+  } else {
+    dispatchBarrierPacket(kNopPacketHeader, false);
+  }
+  profilingEnd(vcmd, true);
 }
 
 // ================================================================================================

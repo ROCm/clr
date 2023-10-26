@@ -79,6 +79,7 @@ class PerfCounterCommand;
 class ReleaseObjectCommand;
 class StallQueueCommand;
 class Marker;
+class AccumulateCommand;
 class ThreadTraceCommand;
 class ThreadTraceMemObjectsCommand;
 class SignalCommand;
@@ -1248,6 +1249,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitKernel(amd::NDRangeKernelCommand& command) = 0;
   virtual void submitNativeFn(amd::NativeFnCommand& cmd) = 0;
   virtual void submitMarker(amd::Marker& cmd) = 0;
+  virtual void submitAccumulate(amd::AccumulateCommand& cmd) = 0;
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) = 0;
   virtual void submitFillMemory(amd::FillMemoryCommand& cmd) = 0;
   virtual void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd) = 0;
@@ -1287,7 +1289,9 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
-  virtual bool dispatchAqlPacket(uint8_t* aqlpacket) = 0;
+
+  //! Dispatch captured AQL packet
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
 
   //! Resets fence state of the VirtualGPU
   virtual void resetFenceDirty() = 0;

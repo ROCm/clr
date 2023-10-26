@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2023 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -299,8 +299,8 @@ class VirtualGPU : public device::VirtualDevice {
   bool create();
   const Device& dev() const { return roc_device_; }
 
-  void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
-  void profilingEnd(amd::Command& command);
+  void profilingBegin(amd::Command& command, bool sdmaProfiling = false, bool useCommandTs = false);
+  void profilingEnd(amd::Command& command, bool useCommandTs = false);
 
   void updateCommandsState(amd::Command* list) const;
 
@@ -321,7 +321,7 @@ class VirtualGPU : public device::VirtualDevice {
                             );
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);
-
+  void submitAccumulate(amd::AccumulateCommand& cmd);
   void submitAcquireExtObjects(amd::AcquireExtObjectsCommand& cmd);
   void submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& cmd);
   void submitPerfCounter(amd::PerfCounterCommand& cmd);
@@ -416,7 +416,7 @@ class VirtualGPU : public device::VirtualDevice {
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();
 
-  inline bool dispatchAqlPacket(uint8_t* aqlpacket);
+  inline bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr);
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest,
                          bool blocking = true, bool capturing = false,
                          const uint8_t* aqlPacket = nullptr);

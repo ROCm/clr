@@ -2709,6 +2709,7 @@ void VirtualGPU::submitNativeFn(amd::NativeFnCommand& vcmd) {
   Unimplemented();  //!< @todo: Unimplemented
 }
 
+// ================================================================================================
 void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   //!@note runtime doesn't need to lock this command on execution
 
@@ -2735,6 +2736,11 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   }
 }
 
+// ================================================================================================
+void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
+}
+
+// ================================================================================================
 void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
 
   const Pal::IQueueSemaphore* sem = reinterpret_cast<const Pal::IQueueSemaphore*>(cmd.sem_ptr());
@@ -2748,9 +2754,7 @@ void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
     queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
                                                        cmd.fence());
   }
-
 }
-
 
 void VirtualGPU::releaseMemory(GpuMemoryReference* mem) {
   queues_[MainEngine]->removeCmdMemRef(mem);
