@@ -671,14 +671,6 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   }
 
   if (parallelLists_.size() == 1) {
-    if (device_kernarg_pool_) {
-      // If kernelArgs are in device memory flush/invalidate L2
-      amd::Command* startCommand = nullptr;
-      startCommand = new amd::Marker(*hip_stream, false);
-      startCommand->enqueue();
-      startCommand->release();
-    }
-
     for (int i = 0; i < topoOrder_.size(); i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket());
