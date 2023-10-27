@@ -455,6 +455,7 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
   --acquiredCnt_;
 }
 
+// ================================================================================================
 bool Device::init() {
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
 
@@ -543,19 +544,52 @@ bool Device::init() {
     roc_device.release()->registerDevice();
   }
 
-  if (0 != Device::numDevices(CL_DEVICE_TYPE_GPU, false)) {
+  // Query active devices only
+  constexpr bool kNoOfflineDevices = false;
+  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  if (devices.size() > 0) {
+    bool p2p_available = false;
     // Loop through all available devices
-    for (auto device1: Device::devices()) {
+    for (auto device1: devices) {
       // Find all agents that can have access to the current device
       for (auto agent: static_cast<Device*>(device1)->p2pAgents()) {
         // Find cl_device_id associated with the current agent
-        for (auto device2: Device::devices()) {
+        for (auto device2: devices) {
           if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
             // Device2 can have access to device1
             device2->p2pDevices_.push_back(as_cl(device1));
             device1->p2p_access_devices_.push_back(device2);
+            p2p_available = true;
           }
         }
+      }
+    }
+
+    // Create a dummy context for internal memory allocations on all reported devices
+    glb_ctx_ = new amd::Context(devices, amd::Context::Info());
+    if (glb_ctx_ == nullptr) {
+      return false;
+    }
+
+    // Allocate a staging buffer for P2P emulation path
+    if ((devices.size() >= 1) && !p2p_available) {
+      amd::Buffer* buf =
+          new (*glb_ctx_) amd::Buffer(*glb_ctx_, CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
+      if ((buf != nullptr) && buf->create()) {
+        p2p_stage_ = buf;
+      } else {
+        delete buf;
+        return false;
+      }
+    }
+
+    // Allocate mgpu sync buffer for cooperative launches
+    if (amd::IS_HIP) {
+      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
+          *glb_ctx_, (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
+          kMGInfoSizePerDevice * devices.size(), kMGInfoSizePerDevice));
+      if (mg_sync_ == nullptr) {
+        return false;
       }
     }
   }
@@ -740,44 +774,6 @@ bool Device::create() {
   }
   // Use just 1 entry by default for the map cache
   mapCache_->push_back(nullptr);
-
-  if ((glb_ctx_ == nullptr) && (gpu_agents_.size() >= 1) &&
-      // Allow creation for the last device in the list.
-      (gpu_agents_[gpu_agents_.size() - 1].handle == bkendDevice_.handle)) {
-    std::vector<amd::Device*> devices;
-    uint32_t numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
-    // Add all PAL devices
-    for (uint32_t i = 0; i < numDevices; ++i) {
-      devices.push_back(amd::Device::devices()[i]);
-    }
-    // Add current
-    devices.push_back(this);
-    // Create a dummy context
-    glb_ctx_ = new amd::Context(devices, info);
-    if (glb_ctx_ == nullptr) {
-      return false;
-    }
-
-    if ((p2p_agents_.size() < (devices.size()-1)) && (devices.size() > 1)) {
-      amd::Buffer* buf = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
-      if ((buf != nullptr) && buf->create()) {
-        p2p_stage_ = buf;
-      }
-      else {
-        delete buf;
-        return false;
-      }
-    }
-    // Check if sync buffer wasn't allocated yet
-    if (amd::IS_HIP && mg_sync_ == nullptr) {
-      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
-          GlbCtx(), (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
-          kMGInfoSizePerDevice * GlbCtx().devices().size(), kMGInfoSizePerDevice));
-      if (mg_sync_ == nullptr) {
-        return false;
-      }
-    }
-  }
 
   if (settings().stagedXferSize_ != 0) {
     // Initialize staged write buffers
