@@ -872,6 +872,7 @@ extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
 extern const char* TrapHandlerCode;
 
+// ================================================================================================
 bool Device::create(Pal::IDevice* device) {
   resourceList_ = new std::unordered_set<Resource*>();
   if (nullptr == resourceList_) {
@@ -1064,33 +1065,6 @@ bool Device::create(Pal::IDevice* device) {
   srdManager_ = new SrdManager(*this, std::max(HsaImageObjectSize, HsaSamplerObjectSize), 64 * Ki);
   if (srdManager_ == nullptr) {
     return false;
-  }
-
-  if ((glb_ctx_ == nullptr) && (gNumDevices > 1) && (device == gDeviceList[gNumDevices - 1])) {
-    std::vector<amd::Device*> devices;
-    uint32_t numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, true);
-    // Add all PAL devices
-    for (uint32_t i = gStartDevice; i < numDevices; ++i) {
-      devices.push_back(amd::Device::devices()[i]);
-    }
-    // Add current
-    devices.push_back(this);
-
-    if (devices.size() > 1) {
-      // Create a dummy context
-      glb_ctx_ = new amd::Context(devices, info);
-      if (glb_ctx_ == nullptr) {
-        return false;
-      }
-      amd::Buffer* buf =
-          new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
-      if ((buf != nullptr) && buf->create()) {
-        p2p_stage_ = buf;
-      } else {
-        delete buf;
-        return false;
-      }
-    }
   }
 
   return true;
@@ -1333,6 +1307,7 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
   }
 }
 
+// ================================================================================================
 bool Device::init() {
   gStartDevice = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, true);
   bool useDeviceList = false;
@@ -1438,10 +1413,34 @@ bool Device::init() {
         }
       }
     }
+
+    // Query active devices only
+    constexpr bool kNoOfflineDevices = false;
+    std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+    if (devices.size() > 0) {
+      // Create a dummy context for internal memory allocations on all reported devices
+      glb_ctx_ = new amd::Context(devices, amd::Context::Info());
+      if (glb_ctx_ == nullptr) {
+        return false;
+      }
+      // Allocate a staging buffer for P2P emulation path
+      if (devices.size() > 1) {
+        amd::Buffer* buf =
+            new (*glb_ctx_) amd::Buffer(*glb_ctx_, CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
+        if ((buf != nullptr) && buf->create()) {
+          p2p_stage_ = buf;
+        } else {
+          delete buf;
+          return false;
+        }
+      }
+    }
   }
+
   return true;
 }
 
+// ================================================================================================
 void Device::tearDown() {
   if (platform_ != nullptr) {
     platform_->Destroy();
