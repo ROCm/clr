@@ -57,6 +57,7 @@ if(WIN32)
 else()
   set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
 endif()
+
 if(NOT HIP_CXX_COMPILER)
   set(HIP_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 endif()
@@ -64,7 +65,32 @@ endif()
 if(NOT WIN32)
   find_dependency(AMDDeviceLibs)
 endif()
-set(AMDGPU_TARGETS "" CACHE STRING "AMD GPU targets to compile for")
+
+# If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
+# of all the devices present in the machine
+if(NOT AMDGPU_TARGETS)
+  if (WIN32)
+    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
+  else()
+    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch")
+  endif()
+  execute_process(
+    COMMAND ${AMDGPU_ARCH}
+    RESULT_VARIABLE AMDGPU_ARCH_RESULT
+    OUTPUT_VARIABLE AMDGPU_ARCH_OUTPUT
+    ERROR_VARIABLE  AMDGPU_ARCH_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_STRIP_TRAILING_WHITESPACE)
+
+  if(AMDGPU_ARCH_ERROR)
+    message(AUTHOR_WARNING "amdgpu-arch failed with error ${AMDGPU_ARCH_ERROR}")
+    message("and the output is ${AMDGPU_ARCH_OUTPUT}")
+  else()
+    string(REPLACE "\n" ";" AMDGPU_ARCH_OUTPUT ${AMDGPU_ARCH_OUTPUT})
+    set(AMDGPU_TARGETS ${AMDGPU_ARCH_OUTPUT} CACHE STRING "AMD GPU targets to compile for")
+  endif()
+endif()
+
 set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU targets to compile for")
 
 if(NOT WIN32)
