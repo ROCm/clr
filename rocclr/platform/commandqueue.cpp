@@ -40,8 +40,7 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
       tail_(nullptr),
-      isActive_(false),
-      markerTsCount_(0) {
+      isActive_(false) {
   if (GPU_FORCE_QUEUE_PROFILING) {
     properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
@@ -132,8 +131,7 @@ void HostQueue::finish(bool cpu_wait) {
       (command->NotifyEvent() != nullptr) ? command->NotifyEvent()->HwEvent() : command->HwEvent();
     force_marker = (hw_event == nullptr);
   }
-  if (nullptr == command || force_marker ||
-      vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
+  if (nullptr == command || force_marker || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }
