@@ -479,6 +479,78 @@ inline std::ostream& operator<<(std::ostream& os, const hipDataType& s) {
     case HIP_C_64F:
       os << "HIP_C_64F";
       break;
+    case HIP_R_8I:
+      os << "HIP_R_8I";
+      break;
+    case HIP_C_8I:
+      os << "HIP_C_8I";
+      break;
+    case HIP_R_8U:
+      os << "HIP_R_8U";
+      break;
+    case HIP_C_8U:
+      os << "HIP_C_8U";
+      break;
+    case HIP_R_32I:
+      os << "HIP_R_32I";
+      break;
+    case HIP_C_32I:
+      os << "HIP_C_32I";
+      break;
+    case HIP_R_32U:
+      os << "HIP_R_32U";
+      break;
+    case HIP_C_32U:
+      os << "HIP_C_32U";
+      break;
+    case HIP_R_16BF:
+      os << "HIP_R_16BF";
+      break;
+    case HIP_C_16BF:
+      os << "HIP_C_16BF";
+      break;
+    case HIP_R_4I:
+      os << "HIP_R_4I";
+      break;
+    case HIP_C_4I:
+      os << "HIP_C_4I";
+      break;
+    case HIP_R_4U:
+      os << "HIP_R_4U";
+      break;
+    case HIP_C_4U:
+      os << "HIP_C_4U";
+      break;
+    case HIP_R_16I:
+      os << "HIP_R_16I";
+      break;
+    case HIP_C_16I:
+      os << "HIP_C_16I";
+      break;
+    case HIP_R_16U:
+      os << "HIP_R_16U";
+      break;
+    case HIP_C_16U:
+      os << "HIP_C_16U";
+      break;
+    case HIP_R_64I:
+      os << "HIP_R_64I";
+      break;
+    case HIP_C_64I:
+      os << "HIP_C_64I";
+      break;
+    case HIP_R_64U:
+      os << "HIP_R_64U";
+      break;
+    case HIP_C_64U:
+      os << "HIP_C_64U";
+      break;
+    case HIP_R_8F_E4M3_FNUZ:
+      os << "HIP_R_8F_E4M3_FNUZ";
+      break;
+    case HIP_R_8F_E5M2_FNUZ:
+      os << "HIP_R_8F_E5M2_FNUZ";
+      break;
     default:
       os << "HIP_R_16F";
   };
