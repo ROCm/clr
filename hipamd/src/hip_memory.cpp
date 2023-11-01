@@ -2411,12 +2411,6 @@ hipError_t hipMemcpy2D_common(void* dst, size_t dpitch, const void* src, size_t 
   if ((validateParams = hipMemcpy2DValidateParams(kind,stream)) != hipSuccess) {
     return validateParams;
   }
-  if ((validateSrc = hipMemcpy2DValidateBuffer(src,spitch,width)) != hipSuccess) {
-    return validateSrc;
-  }
-  if ((validateDst = hipMemcpy2DValidateBuffer(dst,dpitch, width)) != hipSuccess) {
-    return validateDst;
-  }
   return ihipMemcpy2D(dst, dpitch, src, spitch, width, height, kind, stream, isAsync);
 }
 
