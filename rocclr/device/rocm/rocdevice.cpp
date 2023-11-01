@@ -1308,7 +1308,8 @@ bool Device::populateOCLDeviceConstants() {
     }
 
     assert(global_segment_size > 0);
-    info_.globalMemSize_ = static_cast<uint64_t>(global_segment_size);
+    info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                            static_cast<uint64_t>(global_segment_size)) / 100u;
 
     // For APU with vram size <= 512MiB, use a smaller single alloc percentage
     if (info_.globalMemSize_ <= 536870912) {
@@ -1344,6 +1345,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.globalMemSize_ =
         uint64_t(sysconf(_SC_PAGESIZE)) * uint64_t(sysconf(_SC_PHYS_PAGES)) / 2;
     info_.globalMemSize_ = std::max(info_.globalMemSize_, uint64_t(1 * Gi));
+    info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                            static_cast<uint64_t>(info_.globalMemSize_)) / 100u;
+
     info_.maxMemAllocSize_ =
         uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
