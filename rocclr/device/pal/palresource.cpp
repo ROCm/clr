@@ -1828,9 +1828,7 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
 // ================================================================================================
 void Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const {
   if (desc_.cardMemory_ && !isPersistentDirectMap()) {
-    // @todo remove const cast
     Unimplemented();
-    //        const_cast<Device&>(dev()).resUnmapLocal(resource);
   } else {
     Pal::Result result = resource->Unmap();
     if (Pal::Result::Success != result) {
@@ -1926,6 +1924,10 @@ bool Resource::isPersistentDirectMap(bool writeMap) const {
     //!@note IOL for Linux doesn't support tiling aperture
     // and runtime doesn't force linear images in persistent
     directMap = IS_WINDOWS && !dev().settings().linearPersistentImage_;
+  }
+
+  if (memoryType() == View) {
+    directMap = viewOwner_->isPersistentDirectMap();
   }
 
   return directMap;

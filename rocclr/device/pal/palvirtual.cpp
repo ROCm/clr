@@ -949,8 +949,17 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
-  if (!managedBuffer_.create(Resource::RemoteUSWC)) {
-    return false;
+  // Create buffers for kernel arg management
+  if (!managedBuffer_.create(
+      dev().settings().useDeviceKernelArg_ ? Resource::Persistent : Resource::RemoteUSWC)) {
+    // Try just USWC if persistent memory failed
+    if (dev().settings().useDeviceKernelArg_) {
+      if (!managedBuffer_.create(Resource::RemoteUSWC)) {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 
   // Diable double copy optimization,

@@ -147,6 +147,7 @@ Settings::Settings() {
   alwaysResident_ = amd::IS_HIP ? true : false;
   prepinnedMinSize_ = 0;
   cpDmaCopySizeMax_ = GPU_CP_DMA_COPY_SIZE * Ki;
+  useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? false : HIP_FORCE_DEV_KERNARG;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
