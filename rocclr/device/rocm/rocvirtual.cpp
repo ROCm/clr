@@ -462,12 +462,10 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
           ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
             prof_signal->signal_.handle, prof_signal);
         }
-        SetHandlerPending(false);
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
       } else if (ts->command().profilingInfo().marker_ts_) {
-        SetHandlerPending(true);
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
