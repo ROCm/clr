@@ -22,23 +22,33 @@
 
 #include "hip_internal.hpp"
 
-hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* properties) {
-  HIP_INIT_API(hipChooseDevice, device, properties);
+#undef hipChooseDevice
+#undef hipDeviceProp_t
 
+template <typename DeviceProp>
+hipError_t ihipChooseDevice(int* device, const DeviceProp* properties) {
   if (device == nullptr || properties == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   *device = 0;
   cl_uint maxMatchedCount = 0;
   int count = 0;
-  HIP_RETURN_ONFAIL(ihipDeviceGetCount(&count));
+  IHIP_RETURN_ONFAIL(ihipDeviceGetCount(&count));
 
   for (cl_int i = 0; i < count; ++i) {
-    hipDeviceProp_t currentProp = {0};
+    DeviceProp currentProp = {0};
     cl_uint validPropCount = 0;
     cl_uint matchedCount = 0;
-    hipError_t err = ihipGetDeviceProperties(&currentProp, i);
+    hipError_t err = hipSuccess;
+
+    if constexpr (std::is_same_v<DeviceProp, hipDeviceProp_tR0600>){
+      err = ihipGetDeviceProperties(&currentProp, i);
+    }
+    else {
+      err = hipGetDevicePropertiesR0000(&currentProp, i);
+    }
+    
     if (properties->major != 0) {
       validPropCount++;
       if (currentProp.major >= properties->major) {
@@ -130,7 +140,23 @@ hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* properties) {
     }
   }
 
+  return hipSuccess;
+}
+
+hipError_t hipChooseDeviceR0600(int* device, const hipDeviceProp_tR0600* properties) {
+  HIP_INIT_API(hipChooseDeviceR0600, device, properties);
+  HIP_RETURN(ihipChooseDevice(device, properties));
+}
+
+hipError_t hipChooseDeviceR0000(int* device, const hipDeviceProp_tR0000* properties) {
+  HIP_INIT_API(hipChooseDeviceR0000, device, properties);
+  HIP_RETURN(ihipChooseDevice(device, properties));
   HIP_RETURN(hipSuccess);
+}
+
+extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties);
+hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties) {
+  return hipChooseDeviceR0000(device, properties);
 }
 
 hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device) {
@@ -148,7 +174,7 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
   }
 
   // FIXME: should we cache the props, or just select from deviceHandle->info_?
-  hipDeviceProp_t prop = {0};
+  hipDeviceProp_tR0600 prop = {0};
   HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
@@ -440,7 +466,7 @@ hipError_t hipDeviceGetByPCIBusId(int* device, const char* pciBusIdstr) {
     HIP_RETURN_ONFAIL(ihipDeviceGetCount(&count));
     for (cl_int i = 0; i < count; i++) {
       hipDevice_t dev;
-      hipDeviceProp_t prop;
+      hipDeviceProp_tR0600 prop;
       HIP_RETURN_ONFAIL(ihipDeviceGet(&dev, i));
       HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, dev));
 
@@ -480,7 +506,7 @@ hipError_t hipDeviceGetLimit(size_t* pValue, hipLimit_t limit) {
 
   switch (limit) {
     case hipLimitMallocHeapSize:
-      hipDeviceProp_t prop;
+      hipDeviceProp_tR0600 prop;
       HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, ihipGetDevice()));
       *pValue = prop.totalGlobalMem;
       break;
@@ -509,7 +535,7 @@ hipError_t hipDeviceGetPCIBusId(char* pciBusId, int len, int device) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  hipDeviceProp_t prop;
+  hipDeviceProp_tR0600 prop;
   HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
   snprintf(pciBusId, len, "%04x:%02x:%02x.0", prop.pciDomainID, prop.pciBusID, prop.pciDeviceID);
 
