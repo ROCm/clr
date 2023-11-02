@@ -86,8 +86,8 @@ bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
 std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator
 Heap::EraseAllocaton(std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator& it) {
   const device::Memory* dev_mem = it->first->getDeviceMemory(*device_->devices()[0]);
-  amd::SvmBuffer::free(it->first->getContext(), reinterpret_cast<void*>(dev_mem->virtualAddress()));
   total_size_ -= it->first->getSize();
+  amd::SvmBuffer::free(it->first->getContext(), reinterpret_cast<void*>(dev_mem->virtualAddress()));
   // Clear HIP event
   it->second.SetEvent(nullptr);
   // Remove the allocation from the map
