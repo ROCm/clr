@@ -3195,6 +3195,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
+    constexpr uint64_t kSentinel = 0xdeadbeefdeadbeefull;
+    const auto pcieKernargs = !dev().isXgmi() && HIP_FORCE_DEV_KERNARG;
+
     address argBuffer = hidden_arguments;
     // Find all parameters for the current kernel
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
@@ -3202,13 +3205,22 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       if(vcmd != nullptr && vcmd->getCapturingState()) {
         argBuffer = vcmd->getKernArgOffset();
       } else {
-        argBuffer = reinterpret_cast<address>(allocKernArg(gpuKernel.KernargSegmentByteSize(),
-                                            gpuKernel.KernargSegmentAlignment()));
+        const auto kernargSize = gpuKernel.KernargSegmentByteSize() +
+                                  sizeof(kSentinel) * pcieKernargs;
+        argBuffer = reinterpret_cast<address>(allocKernArg(kernargSize,
+                                              gpuKernel.KernargSegmentAlignment()));
       }
       // Load all kernel arguments
       nontemporalMemcpy(argBuffer, parameters,
                         std::min(gpuKernel.KernargSegmentByteSize(),
                                  signature.paramsSize()));
+      if (pcieKernargs) {
+        nontemporalMemcpy(argBuffer + gpuKernel.KernargSegmentByteSize(),
+                          &kSentinel, sizeof(kSentinel));
+        if (dev().settings().host_hdp_flush_) {
+          *dev().info().hdpMemFlushCntl = 1u;
+        }
+      }
     }
 
     // Check for group memory overflow
@@ -3268,6 +3280,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) |
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
+    }
+    if (pcieKernargs) {
+      __builtin_ia32_mfence();
+      while (*reinterpret_cast<volatile decltype(kSentinel)*>(
+        argBuffer + gpuKernel.KernargSegmentByteSize()) != kSentinel);
     }
     if (vcmd == nullptr) {
       // Dispatch the packet

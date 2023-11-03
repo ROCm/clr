@@ -94,6 +94,7 @@ Settings::Settings() {
   fgs_kernel_arg_ = false;
   barrier_value_packet_ = false;
 
+  host_hdp_flush_ = true;
   gwsInitSupported_ = true;
 }
 
@@ -155,9 +156,13 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
     enableExtension(ClAmdFp64);
   }
 
-  if (gfxipMajor == 9 && gfxipMinor == 1 && gfxStepping == 0) {
-    // Barrier Value packet is only supported on MI200 for now
+  if ((gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10) ||
+     ((gfxipMajor == 9 && gfxipMinor == 4 &&
+      (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)))) {
+    // Enable Barrier Value packet is only for MI2XX/300
     barrier_value_packet_ = true;
+    // On MI200 and MI300, the HDP will not cache RO=0 writes, so no flush is needed
+    host_hdp_flush_ = false;
   }
 
   if (gfxipMajor >= 10) {
