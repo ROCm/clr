@@ -453,7 +453,7 @@ __HOST_DEVICE__ __hip_bfloat16 operator*(const __hip_bfloat16& l, const __hip_bf
  * \ingroup HIP_INTRINSIC_BFLOAT16_ARITH
  * \brief Operator to multiply-assign two __hip_bfloat16 numbers
  */
-__HOST_DEVICE__ __hip_bfloat16 operator*=(__hip_bfloat16& l, const __hip_bfloat16& r) {
+__HOST_DEVICE__ __hip_bfloat16& operator*=(__hip_bfloat16& l, const __hip_bfloat16& r) {
   l = __hmul(l, r);
   return l;
 }
@@ -529,7 +529,7 @@ __HOST_DEVICE__ __hip_bfloat16& operator--(__hip_bfloat16& l) {
  * \brief Operator to add-assign two __hip_bfloat16 numbers
  */
 __HOST_DEVICE__ __hip_bfloat16& operator+=(__hip_bfloat16& l, const __hip_bfloat16& r) {
-  l = l + r;
+  l = __hadd(l, r);
   return l;
 }
 
@@ -538,7 +538,7 @@ __HOST_DEVICE__ __hip_bfloat16& operator+=(__hip_bfloat16& l, const __hip_bfloat
  * \brief Operator to subtract-assign two __hip_bfloat16 numbers
  */
 __HOST_DEVICE__ __hip_bfloat16& operator-=(__hip_bfloat16& l, const __hip_bfloat16& r) {
-  l = l - r;
+  l = __hsub(l, r);
   return l;
 }
 
@@ -555,7 +555,7 @@ __HOST_DEVICE__ __hip_bfloat16 operator/(const __hip_bfloat16& l, const __hip_bf
  * \brief Operator to divide-assign two __hip_bfloat16 numbers
  */
 __HOST_DEVICE__ __hip_bfloat16& operator/=(__hip_bfloat16& l, const __hip_bfloat16& r) {
-  l = l / r;
+  l = __hdiv(l, r);
   return l;
 }
 
@@ -571,7 +571,7 @@ __HOST_DEVICE__ __hip_bfloat162 operator*(const __hip_bfloat162& l, const __hip_
  * \ingroup HIP_INTRINSIC_BFLOAT162_ARITH
  * \brief Operator to multiply-assign two __hip_bfloat162 numbers
  */
-__HOST_DEVICE__ __hip_bfloat162 operator*=(__hip_bfloat162& l, const __hip_bfloat162& r) {
+__HOST_DEVICE__ __hip_bfloat162& operator*=(__hip_bfloat162& l, const __hip_bfloat162& r) {
   l = __hmul2(l, r);
   return l;
 }
@@ -647,7 +647,7 @@ __HOST_DEVICE__ __hip_bfloat162& operator--(__hip_bfloat162& l) {
  * \brief Operator to add-assign two __hip_bfloat162 numbers
  */
 __HOST_DEVICE__ __hip_bfloat162& operator+=(__hip_bfloat162& l, const __hip_bfloat162& r) {
-  l = l + r;
+  l = __hadd2(l, r);
   return l;
 }
 
@@ -656,7 +656,7 @@ __HOST_DEVICE__ __hip_bfloat162& operator+=(__hip_bfloat162& l, const __hip_bflo
  * \brief Operator to subtract-assign two __hip_bfloat162 numbers
  */
 __HOST_DEVICE__ __hip_bfloat162& operator-=(__hip_bfloat162& l, const __hip_bfloat162& r) {
-  l = l - r;
+  l = __hsub2(l, r);
   return l;
 }
 
@@ -673,7 +673,7 @@ __HOST_DEVICE__ __hip_bfloat162 operator/(const __hip_bfloat162& l, const __hip_
  * \brief Operator to divide-assign two __hip_bfloat162 numbers
  */
 __HOST_DEVICE__ __hip_bfloat162& operator/=(__hip_bfloat162& l, const __hip_bfloat162& r) {
-  l = l / r;
+  l = __h2div(l, r);
   return l;
 }
 
