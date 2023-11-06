@@ -585,6 +585,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (amd::IS_HIP && ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
     }
+
+    info_.pcie_atomics_ = palProp.pciProperties.flags.atomicOpsSupported ? true : false;
+
     // OpenCL2.0 device info fields
     info_.maxWriteImageArgs_ = MaxReadWriteImage;  //!< For compatibility
     info_.maxReadWriteImageArgs_ = MaxReadWriteImage;
