@@ -23,22 +23,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#pragma clang diagnostic ignored "-Wimplicit-int-conversion"
-#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
-#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
-#pragma clang diagnostic ignored "-Wshift-count-overflow"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
 #include "host_defines.h"
@@ -459,10 +443,6 @@ __device__ static inline unsigned long long int __double2ull_ru(double x) {
 __device__ static inline unsigned long long int __double2ull_rz(double x) {
   return (unsigned long long int)x;
 }
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#endif
 __device__ static inline long long int __double_as_longlong(double x) {
     static_assert(sizeof(long long) == sizeof(double), "");
 
@@ -471,9 +451,6 @@ __device__ static inline long long int __double_as_longlong(double x) {
 
     return tmp;
 }
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 /*
 __device__ unsigned short __float2half_rn(float x);
@@ -1120,9 +1097,5 @@ static inline __device__ void* memset(void* ptr, int val, size_t size) {
     return __hip_hc_memset(ptr, val8, size);
 }
 #endif // !__OPENMP_AMDGCN__
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 #endif
