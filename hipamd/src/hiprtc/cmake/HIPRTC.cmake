@@ -65,11 +65,16 @@ endfunction(get_hiprtc_macros)
 
 # To allow concatenating above macros during build time, call this file in script mode.
 if(HIPRTC_ADD_MACROS)
+# Read the existing content of the preprocessed file into a temporary variable
+  FILE(READ "${HIPRTC_PREPROCESSED_FILE}" ORIGINAL_PREPROCESSED_FILE)
+# Prepend the pragma to the original content
+  set(MODIFIED_PREPROCESSED_FILE "#pragma clang diagnostic ignored \"-Weverything\"
+      \n${ORIGINAL_PREPROCESSED_FILE}")
+# Write the modified preprocessed content back to the original file
+  FILE(WRITE ${HIPRTC_PREPROCESSED_FILE} "${MODIFIED_PREPROCESSED_FILE}")
   message(STATUS "Appending hiprtc macros to ${HIPRTC_PREPROCESSED_FILE}.")
   get_hiprtc_macros(HIPRTC_DEFINES)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_DEFINES}")
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
   set(HIPRTC_HEADER_LIST ${HIPRTC_HEADERS})
   separate_arguments(HIPRTC_HEADER_LIST)
 # appends all the headers from the list to the hiprtc preprocessed file
@@ -77,7 +82,6 @@ if(HIPRTC_ADD_MACROS)
     FILE(READ "${header}" HEADER_FILE)
     FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HEADER_FILE}")
   endforeach()
-#pragma clang diagnostic pop
 endif()
 
 macro(generate_hiprtc_header HiprtcHeader)

@@ -22,11 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include <hip/hip_vector_types.h>
 #endif
@@ -180,7 +175,3 @@ __device__ int __ockl_image_channel_order_CM(unsigned int ADDRESS_SPACE_CONSTANT
 __device__ int __ockl_image_channel_order_CMa(unsigned int ADDRESS_SPACE_CONSTANT* i);
 
 }
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif

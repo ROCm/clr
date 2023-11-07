@@ -24,20 +24,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-#pragma clang diagnostic ignored "-Wc++98-compat"
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#pragma clang diagnostic ignored "-Wfloat-conversion"
-#pragma clang diagnostic ignored "-Wdouble-promotion"
-#pragma clang diagnostic ignored "-Wnested-anon-types"
-#pragma clang diagnostic ignored "-Wgnu-anonymous-struct"
-#pragma clang diagnostic ignored "-Wfloat-equal"
-#endif
-
 #if defined(__HIPCC_RTC__)
   #define __HOST_DEVICE__ __device__
 #else
@@ -1819,9 +1805,5 @@ THE SOFTWARE.
       #include "hip_fp16_gcc.h"
     #endif
 #endif // !defined(__clang__) && defined(__GNUC__)
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 #endif // HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP16_H
