@@ -104,7 +104,8 @@ class Event : public RuntimeObject {
   static const EventWaitList nullWaitList;
 
   struct ProfilingInfo {
-    ProfilingInfo(bool enabled = false) : enabled_(enabled), marker_ts_(false) {
+    ProfilingInfo(bool enabled = false)
+      : enabled_(enabled), marker_ts_(false), multiple_ts_(false) {
       if (enabled) {
         clear();
         correlation_id_ = activity_prof::correlation_id;
@@ -115,15 +116,19 @@ class Event : public RuntimeObject {
     uint64_t submitted_;
     uint64_t start_;
     uint64_t end_;
-    uint64_t correlation_id_;
-    bool enabled_;    //!< Profiling enabled for the wave limiter
-    bool marker_ts_;  //!< TS marker
+    std::vector<std::pair<uint64_t, uint64_t>> tsList_;
 
-    void clear() {
+    uint64_t correlation_id_;
+    bool enabled_;        //!< Profiling enabled for the wave limiter
+    bool marker_ts_;      //!< TS marker
+    bool multiple_ts_;    //!< Multiple TS
+
+   void clear() {
       queued_ = 0ULL;
       submitted_ = 0ULL;
       start_ = 0ULL;
       end_ = 0ULL;
+      tsList_.clear();
     }
   } profilingInfo_;
 
@@ -220,6 +225,11 @@ class Event : public RuntimeObject {
 
   //! Set release scope for the event
   void setEventScope(int32_t scope) { event_scope_ = scope; }
+
+  //! Add a timestamp to the list
+  void AddTimeStamps(uint64_t start, uint64_t end) {
+    profilingInfo_.tsList_.push_back(std::make_pair(start, end));
+  }
 };
 
 union CopyMetadata {
@@ -1255,7 +1265,9 @@ class AccumulateCommand : public Command {
   //! Create a new Marker
   AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
          const Event* waitingEvent = nullptr)
-      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent) {}
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent) {
+        profilingInfo_.multiple_ts_ = true;
+      }
 
   //! The command implementation
   virtual void submit(device::VirtualDevice& device) {

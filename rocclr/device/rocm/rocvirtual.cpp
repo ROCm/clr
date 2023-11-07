@@ -134,7 +134,8 @@ void Timestamp::checkGpuTime() {
       }
       // Avoid profiling data for the sync barrier, in tiny performance tests the first call
       // to ROCr is very slow and that also affects the overall performance of the callback thread
-      if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_) {
+      if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_
+          || command().profilingInfo().multiple_ts_) {
         hsa_amd_profiling_dispatch_time_t time = {};
         if (it->engine_ == HwQueueEngine::Compute) {
           hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
@@ -147,6 +148,11 @@ void Timestamp::checkGpuTime() {
 
         start = std::min(time.start, start);
         end = std::max(time.end, end);
+
+        if (command().profilingInfo().multiple_ts_) {
+          command().AddTimeStamps(time.start, time.end);
+        }
+
         ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
           "end = %ld time taken= %ld ns", it->signal_.handle, time.start, time.end,
           time.end - time.start);

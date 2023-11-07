@@ -417,6 +417,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   if (cooperativeGroups()) {
     setNumWorkgroups();
   }
+
+  // This optimization will set marker_ts_ but may not submit a batch.
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
