@@ -113,6 +113,7 @@ macro(generate_hiprtc_mcin HiprtcMcin HiprtcPreprocessedInput)
     set(HIPRTC_TYPE_LINUX_ONLY "")
   else()
     set(HIPRTC_TYPE_LINUX_ONLY
+      "  .section .note.GNU-stack,\"\",@progbits\n"
       "  .type __hipRTC_header,@object\n"
       "  .type __hipRTC_header_size,@object")
   endif()

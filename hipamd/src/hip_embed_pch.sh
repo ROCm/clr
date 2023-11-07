@@ -110,8 +110,17 @@ cat >$tmp/hip_pch.h <<EOF
 #include "hip/hip_fp16.h"
 EOF
 
-cat >$tmp/hip_pch.mcin <<EOF
+cat << EOF > $tmp/hip_pch.mcin
   .type __hip_pch_wave32,@object
+EOF
+
+  if [[ $isWindows -eq 0 ]]; then
+cat << EOF >> $tmp/hip_pch.mcin
+  .section .note.GNU-stack,"",@progbits
+EOF
+  fi
+
+cat << EOF >> $tmp/hip_pch.mcin
   .section .hip_pch_wave32,"aMS",@progbits,1
   .data
   .globl __hip_pch_wave32
@@ -178,6 +187,7 @@ EOF
 
   echo "// Automatically generated script for HIP RTC." > $mcinFile
   if [[ $isWindows -eq 0 ]]; then
+    echo "  .section .note.GNU-stack,"",@progbits" >> $mcinFile
     echo "  .type __hipRTC_header,@object" >> $mcinFile
     echo "  .type __hipRTC_header_size,@object" >> $mcinFile
   fi
