@@ -112,16 +112,16 @@ typedef enum {
  */
 namespace multi_grid {
 
-__CG_STATIC_QUALIFIER__ uint32_t num_grids() {
-  return static_cast<uint32_t>(__ockl_multi_grid_num_grids()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_grids() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_num_grids()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t grid_rank() {
-  return static_cast<uint32_t>(__ockl_multi_grid_grid_rank()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t grid_rank() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_grid_rank()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t size() { return static_cast<uint32_t>(__ockl_multi_grid_size()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t size() { return static_cast<__hip_uint32_t>(__ockl_multi_grid_size()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return static_cast<uint32_t>(__ockl_multi_grid_thread_rank()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_thread_rank()); }
 
 __CG_STATIC_QUALIFIER__ bool is_valid() { return static_cast<bool>(__ockl_multi_grid_is_valid()); }
 
@@ -135,23 +135,23 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
  */
 namespace grid {
 
-__CG_STATIC_QUALIFIER__ uint32_t size() {
-  return static_cast<uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
+__CG_STATIC_QUALIFIER__ __hip_uint32_t size() {
+  return static_cast<__hip_uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
                     (blockDim.x * gridDim.x));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
   // Compute global id of the workgroup to which the current thread belongs to
-  uint32_t blkIdx = static_cast<uint32_t>((blockIdx.z * gridDim.y * gridDim.x) +
+  __hip_uint32_t blkIdx = static_cast<__hip_uint32_t>((blockIdx.z * gridDim.y * gridDim.x) +
                                (blockIdx.y * gridDim.x) + (blockIdx.x));
 
   // Compute total number of threads being passed to reach current workgroup
   // within grid
-  uint32_t num_threads_till_current_workgroup =
-      static_cast<uint32_t>(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
+  __hip_uint32_t num_threads_till_current_workgroup =
+      static_cast<__hip_uint32_t>(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
 
   // Compute thread local rank within current workgroup
-  uint32_t local_thread_rank = static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
+  __hip_uint32_t local_thread_rank = static_cast<__hip_uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                                           (threadIdx.y * blockDim.x) + (threadIdx.x));
 
   return (num_threads_till_current_workgroup + local_thread_rank);
@@ -171,21 +171,21 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 namespace workgroup {
 
 __CG_STATIC_QUALIFIER__ dim3 group_index() {
-  return (dim3(static_cast<uint32_t>(blockIdx.x), static_cast<uint32_t>(blockIdx.y),
-               static_cast<uint32_t>(blockIdx.z)));
+  return (dim3(static_cast<__hip_uint32_t>(blockIdx.x), static_cast<__hip_uint32_t>(blockIdx.y),
+               static_cast<__hip_uint32_t>(blockIdx.z)));
 }
 
 __CG_STATIC_QUALIFIER__ dim3 thread_index() {
-  return (dim3(static_cast<uint32_t>(threadIdx.x), static_cast<uint32_t>(threadIdx.y),
-               static_cast<uint32_t>(threadIdx.z)));
+  return (dim3(static_cast<__hip_uint32_t>(threadIdx.x), static_cast<__hip_uint32_t>(threadIdx.y),
+               static_cast<__hip_uint32_t>(threadIdx.z)));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t size() {
-  return (static_cast<uint32_t>(blockDim.x * blockDim.y * blockDim.z));
+__CG_STATIC_QUALIFIER__ __hip_uint32_t size() {
+  return (static_cast<__hip_uint32_t>(blockDim.x * blockDim.y * blockDim.z));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return (static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
+  return (static_cast<__hip_uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                      (threadIdx.y * blockDim.x) + (threadIdx.x)));
 }
 
@@ -196,8 +196,8 @@ __CG_STATIC_QUALIFIER__ bool is_valid() {
 __CG_STATIC_QUALIFIER__ void sync() { __syncthreads(); }
 
 __CG_STATIC_QUALIFIER__ dim3 block_dim() {
-  return (dim3(static_cast<uint32_t>(blockDim.x), static_cast<uint32_t>(blockDim.y),
-          static_cast<uint32_t>(blockDim.z)));
+  return (dim3(static_cast<__hip_uint32_t>(blockDim.x), static_cast<__hip_uint32_t>(blockDim.y),
+          static_cast<__hip_uint32_t>(blockDim.z)));
 }
 
 }  // namespace workgroup

@@ -60,13 +60,6 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define HIP_INCLUDE_HIP_MATH_FUNCTIONS_H\n\
 #define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H\n\
 #if !__HIP_NO_STD_DEFS__\n\
-#if defined(_WIN32)\n\
-typedef unsigned long long uint64_t;\n\
-typedef signed long long int64_t;\n\
-#else\n\
-typedef unsigned long uint64_t;\n\
-typedef signed long int64_t;\n\
-#endif\n\
 #if defined(__HIPRTC_PTRDIFF_T_IS_LONG_LONG__) && __HIPRTC_PTRDIFF_T_IS_LONG_LONG__==1\n\
 typedef long long ptrdiff_t;\n\
 #else\n\
@@ -74,8 +67,6 @@ typedef __PTRDIFF_TYPE__ ptrdiff_t;\n\
 #endif\n\
 typedef long clock_t;\n\
 namespace std {\n\
-using ::uint64_t;\n\
-using ::int64_t;\n\
 using ::ptrdiff_t;\n\
 using ::clock_t;\n\
 }\n\
