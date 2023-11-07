@@ -305,6 +305,9 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   }
 
   amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
+  if (va && va->getSize() != size) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   auto& queue = *g_devices[va->getUserData().deviceId]->NullStream();
 
   amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
