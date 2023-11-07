@@ -31,13 +31,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_LIBRARY_DECLS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_LIBRARY_DECLS_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include "hip/amd_detail/host_defines.h"
 #endif
@@ -136,9 +129,5 @@ __device__ inline static __local void* __to_local(unsigned x) { return (__local 
 // Using hip.amdgcn.bc - sync threads
 #define __CLK_LOCAL_MEM_FENCE    0x01
 typedef unsigned __cl_mem_fence_flags;
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 #endif

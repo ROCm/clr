@@ -23,19 +23,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_SURFACE_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_SURFACE_FUNCTIONS_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-#pragma clang diagnostic ignored "-Wc++17-extensions"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wc++98-compat"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wextra-semi-stmt"
-#pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wunused-template"
-#endif
-
 #if defined(__cplusplus)
 
 #if !defined(__HIPCC_RTC__)
@@ -252,10 +239,6 @@ static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfa
     __ockl_image_store_lod_CM(i, int2(x, y).data, face, layer, tmp);
 }
 
-#endif
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
 #endif
 
 #endif

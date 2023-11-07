@@ -23,11 +23,6 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_CHANNEL_DESCRIPTOR_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_CHANNEL_DESCRIPTOR_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include <hip/hip_common.h>
 #include <hip/driver_types.h>
@@ -359,9 +354,5 @@ struct hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w,
                                                  enum hipChannelFormatKind f);
 
 #endif /* __cplusplus */
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 #endif /* !HIP_INCLUDE_HIP_AMD_DETAIL_CHANNEL_DESCRIPTOR_H */

@@ -22,17 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++17-extensions"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wc++98-compat"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wunused-variable"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wunused-template"
-#endif
-
 #if defined(__cplusplus)
 
 #if !defined(__HIPCC_RTC__)
@@ -486,8 +475,4 @@ static __device__ __hip_img_chk__ void texCubemapLayeredGrad(T *ptr, hipTextureO
     *ptr = texCubemapLayeredGrad<T>(textureObject, x, y, z, layer, dPdx, dPdy);
 }
 
-#endif
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
 #endif
