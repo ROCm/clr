@@ -50,19 +50,19 @@ bool IsEnabled(OpId operation_id) {
 }
 
 void ReportActivity(const amd::Command& command) {
-  assert(command.profilingInfo().enabled_ && "profiling must be enabled for this command");
+  assert(command.profilingInfo().enabled_ && "Profiling must be enabled for this command");
   activity_op_t operation_id = OperationId(command.type());
-  if (operation_id >= OP_ID_NUMBER)
+  if (operation_id >= OP_ID_NUMBER) {
     // This command does not translate into a profiler activity (dispatch, memcopy, etc...), there
     // is nothing to report to the profiler.
     return;
+  }
 
   auto function = report_activity.load(std::memory_order_relaxed);
   if (!function) return;
 
   const auto* queue = command.queue();
   assert(queue != nullptr);
-
   activity_record_t record{
       ACTIVITY_DOMAIN_HIP_OPS,                  // activity domain
       command.type(),                           // activity kind
@@ -101,7 +101,17 @@ void ReportActivity(const amd::Command& command) {
       break;
   }
 
-  function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
+  if (command.profilingInfo().tsList_.size() > 0) {
+    for (auto& it : command.profilingInfo().tsList_) {
+      record.begin_ns = it.first;
+      record.end_ns = it.second;
+      function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
+    }
+  } else {
+      record.begin_ns = command.profilingInfo().start_;
+      record.end_ns = command.profilingInfo().end_;
+      function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
+  }
 }
 
 }  // namespace activity_prof
