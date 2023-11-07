@@ -87,15 +87,6 @@ size_t amd_dbgapi_get_build_id();
 #include <math.h>
 #include <stdint.h>
 #endif // __cplusplus
-#else
-#if !__HIP_NO_STD_DEFS__
-typedef unsigned int uint32_t;
-typedef signed int int32_t;
-namespace std {
-using ::uint32_t;
-using ::int32_t;
-}
-#endif // __HIP_NO_STD_DEFS__
 #endif // !defined(__HIPCC_RTC__)
 
 #if __HIP_CLANG_ONLY__
@@ -249,34 +240,35 @@ extern "C" __device__ __attribute__((const)) size_t __ockl_get_local_size(unsign
 extern "C" __device__ __attribute__((const)) size_t __ockl_get_num_groups(unsigned int);
 struct __HIP_BlockIdx {
   __device__
-  std::uint32_t operator()(std::uint32_t x) const noexcept { return __ockl_get_group_id(x); }
+  __hip_uint32_t operator()(__hip_uint32_t x) const noexcept { return __ockl_get_group_id(x); }
 };
 struct __HIP_BlockDim {
   __device__
-  std::uint32_t operator()(std::uint32_t x) const noexcept {
+  __hip_uint32_t operator()(__hip_uint32_t x) const noexcept {
     return __ockl_get_local_size(x);
   }
 };
 struct __HIP_GridDim {
   __device__
-  std::uint32_t operator()(std::uint32_t x) const noexcept {
+  __hip_uint32_t operator()(__hip_uint32_t x) const noexcept {
     return __ockl_get_num_groups(x);
   }
 };
 struct __HIP_ThreadIdx {
   __device__
-  std::uint32_t operator()(std::uint32_t x) const noexcept {
+  __hip_uint32_t operator()(__hip_uint32_t x) const noexcept {
     return __ockl_get_local_id(x);
   }
 };
 
 #if defined(__HIPCC_RTC__)
 typedef struct dim3 {
-    uint32_t x;  ///< x
-    uint32_t y;  ///< y
-    uint32_t z;  ///< z
+    __hip_uint32_t x;  ///< x
+    __hip_uint32_t y;  ///< y
+    __hip_uint32_t z;  ///< z
 #ifdef __cplusplus
-    constexpr __device__ dim3(uint32_t _x = 1, uint32_t _y = 1, uint32_t _z = 1) : x(_x), y(_y), z(_z){};
+    constexpr __device__ dim3(__hip_uint32_t _x = 1, __hip_uint32_t _y = 1, __hip_uint32_t _z = 1)
+            : x(_x), y(_y), z(_z){};
 #endif
 } dim3;
 #endif // !defined(__HIPCC_RTC__)
@@ -325,37 +317,37 @@ constexpr typename __HIP_Coordinates<F>::__Z __HIP_Coordinates<F>::z;
 
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__X,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__X,
                         __HIP_Coordinates<__HIP_BlockDim>::__X) noexcept {
   return __ockl_get_global_size(0);
 }
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__X,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__X,
                         __HIP_Coordinates<__HIP_GridDim>::__X) noexcept {
   return __ockl_get_global_size(0);
 }
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__Y,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__Y,
                         __HIP_Coordinates<__HIP_BlockDim>::__Y) noexcept {
   return __ockl_get_global_size(1);
 }
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__Y,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__Y,
                         __HIP_Coordinates<__HIP_GridDim>::__Y) noexcept {
   return __ockl_get_global_size(1);
 }
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__Z,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_GridDim>::__Z,
                         __HIP_Coordinates<__HIP_BlockDim>::__Z) noexcept {
   return __ockl_get_global_size(2);
 }
 inline
 __device__
-std::uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__Z,
+__hip_uint32_t operator*(__HIP_Coordinates<__HIP_BlockDim>::__Z,
                         __HIP_Coordinates<__HIP_GridDim>::__Z) noexcept {
   return __ockl_get_global_size(2);
 }
