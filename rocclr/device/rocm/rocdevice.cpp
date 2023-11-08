@@ -88,6 +88,10 @@ inline bool getIsaMeta(std::string isaName, amd_comgr_metadata_node_t& isaMeta) 
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
 }
 
+inline bool releaseIsaMeta(amd_comgr_metadata_node_t& isaMeta) {
+  return AMD_COMGR_STATUS_SUCCESS == amd::Comgr::destroy_metadata(isaMeta);
+}
+
 bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
                          std::string& retValue) {
   amd_comgr_status_t status;
@@ -101,6 +105,9 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     retValue.resize(size - 1);
     status = amd::Comgr::get_metadata_string(valMeta, &size, &(retValue[0]));
+  }
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::destroy_metadata(valMeta);
   }
 
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
@@ -1726,6 +1733,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.availableSGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumSGPRs", sgprValue))
         ? (atoi(sgprValue.c_str()))
         : 0;
+    if (!releaseIsaMeta(isaMeta)) {
+      LogInfo("Can not release the isa meta node");
+    }
   }
 
   // Generic support for HMM interfaces
