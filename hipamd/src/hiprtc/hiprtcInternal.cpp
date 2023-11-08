@@ -706,9 +706,7 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
   }
 
   *size_out = executable_.size();
-  char* bin_out_c = new char[*size_out];
-  std::copy(executable_.begin(), executable_.end(), bin_out_c);
-  *bin_out = reinterpret_cast<void*>(bin_out_c);
+  *bin_out = executable_.data();
 
   return true;
 }

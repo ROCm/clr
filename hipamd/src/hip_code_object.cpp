@@ -35,18 +35,14 @@ hipError_t ihipFree(void* ptr);
 // forward declaration of methods required for managed variables
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 namespace {
-size_t constexpr strLiteralLength(char const* str) {
-  return *str ? 1 + strLiteralLength(str + 1) : 0;
-}
-constexpr char const* CLANG_OFFLOAD_BUNDLER_MAGIC_STR = "__CLANG_OFFLOAD_BUNDLE__";
-constexpr char const* OFFLOAD_KIND_HIP = "hip";
-constexpr char const* OFFLOAD_KIND_HIPV4 = "hipv4";
-constexpr char const* OFFLOAD_KIND_HCC = "hcc";
-constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
+constexpr char kOffloadBundleMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
+constexpr char kOffloadKindHip[] = "hip";
+constexpr char kOffloadKindHipv4[] = "hipv4";
+constexpr char kOffloadKindHcc[] = "hcc";
+constexpr char kAmdgcnTargetTriple[] = "amdgcn-amd-amdhsa-";
 
 // ClangOFFLOADBundle info.
-static constexpr size_t bundle_magic_string_size =
-    strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
+static constexpr size_t kOffloadBundleMagicStrSize = sizeof(kOffloadBundleMagicStr);
 
 // Clang Offload bundler description & Header.
 struct __ClangOffloadBundleInfo {
@@ -57,7 +53,7 @@ struct __ClangOffloadBundleInfo {
 };
 
 struct __ClangOffloadBundleHeader {
-  const char magic[bundle_magic_string_size - 1];
+  const char magic[kOffloadBundleMagicStrSize - 1];
   uint64_t numOfCodeObjects;
   __ClangOffloadBundleInfo desc[1];
 };
@@ -66,8 +62,8 @@ struct __ClangOffloadBundleHeader {
 namespace hip {
 
 bool CodeObject::IsClangOffloadMagicBundle(const void* data) {
-  std::string magic(reinterpret_cast<const char*>(data), bundle_magic_string_size);
-  return magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR) ? false : true;
+  std::string magic(reinterpret_cast<const char*>(data), kOffloadBundleMagicStrSize - 1);
+  return magic.compare(kOffloadBundleMagicStr) ? false : true;
 }
 
 uint64_t CodeObject::ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
@@ -276,7 +272,7 @@ static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string
 
   std::string proc_name;
   if (!getProcName(ehdr->e_flags, proc_name, isXnackSupported, isSramEccSupported)) return false;
-  target_id = std::string(AMDGCN_TARGET_TRIPLE) + '-' + proc_name;
+  target_id = std::string(kAmdgcnTargetTriple) + '-' + proc_name;
 
   switch (ehdr->e_ident[EI_ABIVERSION]) {
     case ELFABIVERSION_AMDGPU_HSA_V2: {
@@ -377,11 +373,11 @@ static bool getTargetIDValue(std::string& input, std::string& processor, char& s
 static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
                               std::string& co_triple_target_id) {
   std::string offload_kind = trimName(bundled_co_entry_id, '-');
-  if (offload_kind != OFFLOAD_KIND_HIPV4 && offload_kind != OFFLOAD_KIND_HIP &&
-      offload_kind != OFFLOAD_KIND_HCC)
+  if (offload_kind != kOffloadKindHipv4 && offload_kind != kOffloadKindHip &&
+      offload_kind != kOffloadKindHcc)
     return false;
 
-  if (offload_kind != OFFLOAD_KIND_HIPV4)
+  if (offload_kind != kOffloadKindHipv4)
     return getTripleTargetIDFromCodeObject(code_object, co_triple_target_id);
 
   // For code object V4 onwards the bundled code object entry ID correctly
@@ -396,7 +392,7 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   if (co_triple_target_id == agent_triple_target_id) return true;
 
   // Parse code object triple target id
-  if (!consume(co_triple_target_id, std::string(AMDGCN_TARGET_TRIPLE) + '-')) {
+  if (!consume(co_triple_target_id, std::string(kAmdgcnTargetTriple) + '-')) {
     return false;
   }
 
@@ -409,7 +405,7 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   if (!co_triple_target_id.empty()) return false;
 
   // Parse agent isa triple target id
-  if (!consume(agent_triple_target_id, std::string(AMDGCN_TARGET_TRIPLE) + '-')) {
+  if (!consume(agent_triple_target_id, std::string(kAmdgcnTargetTriple) + '-')) {
     return false;
   }
 
@@ -469,8 +465,8 @@ hipError_t CodeObject::ExtractCodeObjectFromMemory(
 hipError_t CodeObject::extractCodeObjectFromFatBinary(
     const void* data, const std::vector<std::string>& agent_triple_target_ids,
     std::vector<std::pair<const void*, size_t>>& code_objs) {
-  std::string magic((const char*)data, bundle_magic_string_size);
-  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR)) {
+  std::string magic((const char*)data, kOffloadBundleMagicStrSize);
+  if (magic.compare(kOffloadBundleMagicStr)) {
     return hipErrorInvalidKernelFile;
   }
 
