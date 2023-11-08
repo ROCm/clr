@@ -354,10 +354,11 @@ hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
   if (parallelLists_.size() == 1) {
     size_t kernArgSizeForGraph = 0;
+    hip::Stream* stream = nullptr;
     // GPU packet capture is enabled for kernel nodes. Calculate the kernel
     // arg size required for all graph kernel nodes to allocate
     for (const auto& list : parallelLists_) {
-      hip::Stream* stream = GetAvailableStreams();
+      stream = GetAvailableStreams();
       for (auto& node : list) {
         node->SetStream(stream, this);
         if (node->GetType() == hipGraphNodeTypeKernel) {
@@ -407,11 +408,21 @@ hipError_t GraphExec::CaptureAQLPackets() {
         static int host_val = 1;
         address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
         *dev_ptr = host_val;
-        *device->info().hdpMemFlushCntl = 1;
+        if (device->info().hdpMemFlushCntl == nullptr) {
+          amd::Command* command = new amd::Marker(*stream, true);
+          if (command != nullptr) {
+            command->enqueue();
+            command->release();
+          }
+        } else {
+          *device->info().hdpMemFlushCntl = 1;
+        }
         while (*dev_ptr != host_val);
         host_val++;
       }
     }
+
+    ResetQueueIndex();
   }
   return status;
 }
