@@ -926,7 +926,7 @@ int __syncthreads_or(int predicate)
   PIPE_ID     7:6     Pipeline from which the wave was dispatched.
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
-  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940
+  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940-942
               14:13   Shader Engine the wave is assigned to for Vega.
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
@@ -955,7 +955,7 @@ int __syncthreads_or(int predicate)
 #if (defined(__gfx908__) || defined(__gfx90a__) || \
      defined(__GFX11__))
   #define HW_ID_SE_ID_SIZE    3
-#else //4 SEs/XCC for gfx940
+#else //4 SEs/XCC for gfx940-942
   #define HW_ID_SE_ID_SIZE    2
 #endif
 #if (defined(__GFX10__) || defined(__GFX11__))
@@ -966,7 +966,7 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__))
+#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
   #define XCC_ID_XCC_ID_OFFSET     0
@@ -1004,7 +1004,7 @@ unsigned __smid(void)
       unsigned sa_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(HW_ID_SA_ID_SIZE - 1, HW_ID_SA_ID_OFFSET, HW_ID));
     #else
-      #if defined(__gfx940__)
+      #if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
       unsigned xcc_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(XCC_ID_XCC_ID_SIZE - 1, XCC_ID_XCC_ID_OFFSET, XCC_ID));
       #endif
@@ -1017,7 +1017,7 @@ unsigned __smid(void)
       temp = (temp << HW_ID_WGP_ID_SIZE) | wgp_id;
       return temp;
       //TODO : CU Mode impl
-    #elif defined(__gfx940__)
+    #elif (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
       unsigned temp = xcc_id;
       temp = (temp << HW_ID_SE_ID_SIZE) | se_id;
       temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;
