@@ -360,6 +360,7 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
   hsa_status_t stat = hsa_agent_get_info(agent, HSA_AGENT_INFO_DEVICE, &dev_type);
 
   if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("HSA_AGENT_INFO_DEVICE failed with %x", stat);
     return stat;
   }
 
@@ -458,21 +459,25 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
 // ================================================================================================
 bool Device::init() {
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
-
+  hsa_status_t status = HSA_STATUS_SUCCESS;
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {
+    LogError("initCompiler failed.");
     return false;
   }
 
-  if (HSA_STATUS_SUCCESS != hsa_init()) {
-    LogError("hsa_init failed.");
+  status = hsa_init();
+  if (status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("hsa_init failed with %x", status);
     return false;
   }
 
   hsa_system_get_major_extension_table(HSA_EXTENSION_AMD_LOADER, 1, sizeof(amd_loader_ext_table),
                                        &amd_loader_ext_table);
 
-  if (HSA_STATUS_SUCCESS != hsa_iterate_agents(iterateAgentCallback, nullptr)) {
+  status = hsa_iterate_agents(iterateAgentCallback, nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("hsa_iterate_agents failed with %x", status);
     return false;
   }
 
@@ -512,6 +517,8 @@ bool Device::init() {
     } while (pos < ordinals.size());
     gpu_agents_ = valid_agents;
   }
+
+  LogPrintfInfo("Enumerated GPU agents = %lu", gpu_agents_.size());
 
   for (auto agent : gpu_agents_) {
     std::unique_ptr<Device> roc_device(new Device(agent));
@@ -568,6 +575,7 @@ bool Device::init() {
     // Create a dummy context for internal memory allocations on all reported devices
     glb_ctx_ = new amd::Context(devices, amd::Context::Info());
     if (glb_ctx_ == nullptr) {
+      LogError("glb_ctx failed");
       return false;
     }
 
@@ -579,6 +587,7 @@ bool Device::init() {
         p2p_stage_ = buf;
       } else {
         delete buf;
+        LogError("p2p stg buffer alloc failed");
         return false;
       }
     }
@@ -589,6 +598,7 @@ bool Device::init() {
           *glb_ctx_, (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
           kMGInfoSizePerDevice * devices.size(), kMGInfoSizePerDevice));
       if (mg_sync_ == nullptr) {
+        LogError("mgpu sync buffer alloc failed");
         return false;
       }
     }
@@ -973,6 +983,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
 
 hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {
   if (data == nullptr) {
+    LogError("CpuMemoryPoolCallback invalid args");
     return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
 
@@ -980,6 +991,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   hsa_status_t stat =
       hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_SEGMENT, &segment_type);
   if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("HSA_AMD_MEMORY_POOL_INFO_SEGMENT query failed with %x", stat);
     return stat;
   }
   AgentInfo* agentInfo = reinterpret_cast<AgentInfo*>(data);
@@ -990,6 +1002,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
       stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS,
                                           &global_flag);
       if (stat != HSA_STATUS_SUCCESS) {
+        LogPrintfError("HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS query failed with %x", stat);
         break;
       }
 
