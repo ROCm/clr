@@ -974,10 +974,8 @@ inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCom
     profilingBegin(*vcmd, true, true);
   }
   dispatchBlockingWait();
-  auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
-
   constexpr size_t kPacketSize = 1;
-  Timestamp* ts = reinterpret_cast<Timestamp*>(vcmd->data());
+  auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
   dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
   if (vcmd != nullptr) {
     profilingEnd(*vcmd, true);
@@ -3435,12 +3433,22 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd, true, true);
-  const Settings& settings = dev().settings();
-  if (settings.barrier_value_packet_) {
-    dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
+
+  uint8_t* aqlPacket = vcmd.getLastPacket();
+  if (aqlPacket != nullptr) {
+    dispatchBlockingWait();
+    constexpr size_t kPacketSize = 1;
+    auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlPacket);
+    dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
   } else {
-    dispatchBarrierPacket(kNopPacketHeader, false);
+    const Settings& settings = dev().settings();
+    if (settings.barrier_value_packet_) {
+      dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
+    } else {
+      dispatchBarrierPacket(kNopPacketHeader, false);
+    }
   }
+
   profilingEnd(vcmd, true);
 }
 

@@ -1261,14 +1261,19 @@ class Marker : public Command {
 };
 
 class AccumulateCommand : public Command {
+ private:
+  uint8_t* lastPacket_;
  public:
   //! Create a new Marker
   AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
-         const Event* waitingEvent = nullptr)
-      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent) {
+         const Event* waitingEvent = nullptr, uint8_t* lastPacket = nullptr)
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent),
+        lastPacket_(lastPacket)
+      {
         profilingInfo_.multiple_ts_ = true;
       }
-
+  // Return last packet
+  uint8_t* getLastPacket() const { return lastPacket_; }
   //! The command implementation
   virtual void submit(device::VirtualDevice& device) {
     device.submitAccumulate(*this);
