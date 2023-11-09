@@ -377,7 +377,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipArrayGetInfo = 362,
   HIP_API_ID_hipStreamGetDevice = 363,
   HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray = 364,
-  HIP_API_ID_LAST = 364,
+  HIP_API_ID_hipExtGetLastError = 365,
+  HIP_API_ID_LAST = 365,
 
   HIP_API_ID_hipBindTexture = HIP_API_ID_NONE,
   HIP_API_ID_hipBindTexture2D = HIP_API_ID_NONE,
@@ -781,6 +782,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipUserObjectRetain: return "hipUserObjectRetain";
     case HIP_API_ID_hipWaitExternalSemaphoresAsync: return "hipWaitExternalSemaphoresAsync";
     case HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray:  return "hipExternalMemoryGetMappedMipmappedArray";
+    case HIP_API_ID_hipExtGetLastError: return "hipExtGetLastError";
   };
   return "unknown";
 };
@@ -1148,6 +1150,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipUserObjectRetain", name) == 0) return HIP_API_ID_hipUserObjectRetain;
   if (strcmp("hipWaitExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipWaitExternalSemaphoresAsync;
   if (strcmp("hipExternalMemoryGetMappedMipmappedArray", name) == 0)  return HIP_API_ID_hipExternalMemoryGetMappedMipmappedArray;
+  if (strcmp("hipExtGetLastError", name) == 0) return HIP_API_ID_hipExtGetLastError;
   return HIP_API_ID_NONE;
 }
 
@@ -5448,6 +5451,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipWaitExternalSemaphoresAsync.numExtSems = (unsigned int)numExtSems; \
   cb_data.args.hipWaitExternalSemaphoresAsync.stream = (hipStream_t)stream; \
 };
+// hipExtGetLastError[]
+#define INIT_hipExtGetLastError_CB_ARGS_DATA(cb_data) { \
+};
 #define INIT_CB_ARGS_DATA(cb_id, cb_data) INIT_##cb_id##_CB_ARGS_DATA(cb_data)
 
 // Macros for non-public API primitives
@@ -5917,6 +5923,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipGetLastError[]
     case HIP_API_ID_hipGetLastError:
+      break;
+// hipExtGetLastError[]
+    case HIP_API_ID_hipExtGetLastError:
       break;
 // hipGetMipmappedArrayLevel[('hipArray_t*', 'levelArray'), ('hipMipmappedArray_const_t', 'mipmappedArray'), ('unsigned int', 'level')]
     case HIP_API_ID_hipGetMipmappedArrayLevel:
@@ -7639,6 +7648,10 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipGetLastError:
       oss << "hipGetLastError(";
+      oss << ")";
+    break;
+    case HIP_API_ID_hipExtGetLastError:
+      oss << "hipExtGetLastError(";
       oss << ")";
     break;
     case HIP_API_ID_hipGetMipmappedArrayLevel:

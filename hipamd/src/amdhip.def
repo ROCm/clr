@@ -444,3 +444,4 @@ hipGraphAddMemAllocNode
 hipGraphMemAllocNodeGetParams
 hipGraphAddMemFreeNode
 hipGraphMemFreeNodeGetParams
+hipExtGetLastError

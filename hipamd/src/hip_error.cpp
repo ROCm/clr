@@ -22,6 +22,14 @@
 
 #include "hip_internal.hpp"
 
+hipError_t hipExtGetLastError()
+{
+  HIP_INIT_API(hipExtGetLastError);
+  hipError_t err = hip::tls.last_error_;
+  hip::tls.last_error_ = hipSuccess;
+  return err;
+}
+
 hipError_t hipGetLastError()
 {
   HIP_INIT_API(hipGetLastError);
