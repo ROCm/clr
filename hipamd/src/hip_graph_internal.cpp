@@ -541,11 +541,14 @@ hipError_t GraphExec::Run(hipStream_t stream) {
 
   if (parallelLists_.size() == 1) {
     amd::AccumulateCommand* accumulate = nullptr;
+    bool isLastPacketKernel = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      accumulate = new amd::AccumulateCommand(*hip_stream);
+      uint8_t* lastCapturedPacket = (topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) ?
+                                  topoOrder_.back()->GetAqlPacket() : nullptr;
+      accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
     }
 
-    for (int i = 0; i < topoOrder_.size(); i++) {
+    for (int i = 0; i < topoOrder_.size() - 1; i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
       } else {
@@ -555,7 +558,20 @@ hipError_t GraphExec::Run(hipStream_t stream) {
       }
     }
 
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    // If last captured packet is kernel, optimize to detect completion of last kernel
+    // This saves on extra packet submitted to determine end of graph
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) {
+      accumulate->enqueue();
+      accumulate->release();
+      isLastPacketKernel = true;
+    } else {
+      topoOrder_.back()->SetStream(hip_stream, this);
+      status = topoOrder_.back()->CreateCommand(topoOrder_.back()->GetQueue());
+      topoOrder_.back()->EnqueueCommands(stream);
+    }
+
+    // If last packet is not kernel, submit a marker to detect end of graph
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && !isLastPacketKernel) {
       accumulate->enqueue();
       accumulate->release();
     }
