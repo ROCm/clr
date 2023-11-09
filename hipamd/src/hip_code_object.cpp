@@ -438,8 +438,6 @@ hipError_t CodeObject::ExtractCodeObjectFromFile(
     amd::Os::FileDesc fdesc, size_t fsize, const void** image,
     const std::vector<std::string>& device_names,
     std::vector<std::pair<const void*, size_t>>& code_objs) {
-  hipError_t hip_error = hipSuccess;
-
   if (!amd::Os::isValidFileDesc(fdesc)) {
     return hipErrorFileNotFound;
   }
@@ -452,9 +450,7 @@ hipError_t CodeObject::ExtractCodeObjectFromFile(
   }
 
   // retrieve code_objs{binary_image, binary_size} for devices
-  hip_error = extractCodeObjectFromFatBinary(*image, device_names, code_objs);
-
-  return hip_error;
+  return extractCodeObjectFromFatBinary(*image, device_names, code_objs);
 }
 
 // This will be moved to COMGR eventually
@@ -534,14 +530,13 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
       bool valid_co = getTripleTargetID(bundleEntryId, image, co_triple_target_id);
 
       if (valid_co) {
-        LogPrintfError("    %s - [code object targetID is %s]", bundleEntryId.c_str(),
+        LogPrintfError("    %s - [Code object targetID is %s]", bundleEntryId.c_str(),
                        co_triple_target_id.c_str());
       } else {
         LogPrintfError("    %s - [Unsupported]", bundleEntryId.c_str());
       }
     }
 
-    LogPrintfError("hipErrorNoBinaryForGpu: Unable to find code object for all current devices! - %d",hipErrorNoBinaryForGpu);
     return hipErrorNoBinaryForGpu;
   }
 }
