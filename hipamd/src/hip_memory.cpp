@@ -4265,6 +4265,7 @@ hipError_t ihipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
   (*level_array_pptr)->NumChannels = hip::getNumChannels((*level_array_pptr)->desc);
   (*level_array_pptr)->isDrv = 0;
   (*level_array_pptr)->textureType = 0;
+  (*level_array_pptr)->flags = mipmapped_array_ptr->flags;
 
   amd::ScopedLock lock(hip::hipArraySetLock);
   hip::hipArraySet.insert(*level_array_pptr);
@@ -4338,8 +4339,7 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
     hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
     const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
   HIP_INIT_API(hipExternalMemoryGetMappedMipmappedArray, mipmap, extMem, mipmapDesc);
-  if (mipmap == nullptr || extMem == nullptr || mipmapDesc == nullptr ||
-      mipmapDesc->flags != hipArrayDefault) {
+  if (mipmap == nullptr || extMem == nullptr || mipmapDesc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   CHECK_STREAM_CAPTURE_SUPPORTED();

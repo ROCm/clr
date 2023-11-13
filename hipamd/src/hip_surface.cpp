@@ -60,6 +60,11 @@ hipError_t ihipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
     return hipErrorInvalidValue;
   }
 
+  if (pResDesc->res.array.array->flags != hipArrayDefault &&
+     (pResDesc->res.array.array->flags & hipArraySurfaceLoadStore) == 0) {
+    return hipErrorInvalidValue;
+  }
+
   amd::Image* image = nullptr;
   cl_mem memObj = reinterpret_cast<cl_mem>(pResDesc->res.array.array->data);
   if (!is_valid(memObj)) {
