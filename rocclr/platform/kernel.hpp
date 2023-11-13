@@ -159,7 +159,7 @@ class KernelParameters : protected HeapObject {
         deviceKernelArgs_(false) {
     totalSize_ = signature.paramsSize() + (signature.numMemories() +
         signature.numSamplers() + signature.numQueues()) * sizeof(void*);
-    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
+    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), PARAMETERS_MIN_ALIGNMENT);
     memoryObjOffset_ = signature_.paramsSize();
     memoryObjects_ = reinterpret_cast<amd::Memory**>(values_ + memoryObjOffset_);
     samplerObjOffset_ = memoryObjOffset_ + signature_.numMemories() * sizeof(amd::Memory*);
@@ -183,7 +183,7 @@ class KernelParameters : protected HeapObject {
         execNewVcop_(rhs.execNewVcop_),
         execPfpaVcop_(rhs.execPfpaVcop_),
         deviceKernelArgs_(false) {
-    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), 16);
+    values_ = reinterpret_cast<address>(this) + alignUp(sizeof(KernelParameters), PARAMETERS_MIN_ALIGNMENT);
     memoryObjOffset_ = signature_.paramsSize();
     memoryObjects_ = reinterpret_cast<amd::Memory**>(values_ + memoryObjOffset_);
     samplerObjOffset_ = memoryObjOffset_ + signature_.numMemories() * sizeof(amd::Memory*);
@@ -220,7 +220,7 @@ class KernelParameters : protected HeapObject {
   //! Allocate memory for this instance as well as the required storage for
   //  the values_, defined_, and rawPointer_ arrays.
   void* operator new(size_t size, const KernelSignature& signature) {
-    size_t requiredSize = alignUp(size, 16) + signature.paramsSize() +
+    size_t requiredSize = alignUp(size, PARAMETERS_MIN_ALIGNMENT) + signature.paramsSize() +
       (signature.numMemories() + signature.numSamplers() + signature.numQueues()) *
        sizeof(void*);
     return AlignedMemory::allocate(requiredSize, PARAMETERS_MIN_ALIGNMENT);
