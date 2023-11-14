@@ -769,7 +769,10 @@ bool Device::create() {
                    pciDeviceId_);
     return false;
   }
-
+  hsaSettings->limit_blit_wg_ = info().maxComputeUnits_;
+  if (!flagIsDefault(DEBUG_CLR_LIMIT_BLIT_WG)) {
+    hsaSettings->limit_blit_wg_ = std::max(DEBUG_CLR_LIMIT_BLIT_WG, 0x1U);
+  }
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;
   devices.push_back(this);

@@ -78,7 +78,7 @@ class BlitManager : public amd::HeapObject {
                           const amd::Coord3D& origin,  //!< Source origin
                           const amd::Coord3D& size,    //!< Size of the copy region
                           bool entire = false,         //!< Entire buffer will be updated
-                          amd::CopyMetadata copyMetadata = 
+                          amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata()//!< Memory copy MetaData
                           ) const = 0;
 
@@ -89,7 +89,7 @@ class BlitManager : public amd::HeapObject {
                               const amd::BufferRect& hostRect,  //!< Destination rectangle
                               const amd::Coord3D& size,         //!< Size of the copy region
                               bool entire = false,              //!< Entire buffer will be updated
-                              amd::CopyMetadata copyMetadata = 
+                              amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata()         //!< Memory copy MetaData
                               ) const = 0;
 
@@ -101,7 +101,7 @@ class BlitManager : public amd::HeapObject {
                          size_t rowPitch,             //!< Row pitch for host memory
                          size_t slicePitch,           //!< Slice pitch for host memory
                          bool entire = false,          //!< Entire buffer will be updated
-                         amd::CopyMetadata copyMetadata = 
+                         amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata()//!< Memory copy MetaData
                          ) const = 0;
 
@@ -111,7 +111,7 @@ class BlitManager : public amd::HeapObject {
                            const amd::Coord3D& origin,  //!< Destination origin
                            const amd::Coord3D& size,    //!< Size of the copy region
                            bool entire = false,         //!< Entire buffer will be updated
-                           amd::CopyMetadata copyMetadata = 
+                           amd::CopyMetadata copyMetadata =
                                      amd::CopyMetadata() //!< Memory copy MetaData
                            ) const = 0;
 
@@ -122,7 +122,7 @@ class BlitManager : public amd::HeapObject {
                                const amd::BufferRect& bufRect,   //!< Source rectangle
                                const amd::Coord3D& size,         //!< Size of the copy region
                                bool entire = false,              //!< Entire buffer will be updated
-                               amd::CopyMetadata copyMetadata = 
+                               amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata()          //!< Memory copy MetaData
                                ) const = 0;
 
@@ -134,7 +134,7 @@ class BlitManager : public amd::HeapObject {
                           size_t rowPitch,             //!< Row pitch for host memory
                           size_t slicePitch,           //!< Slice pitch for host memory
                           bool entire = false,          //!< Entire buffer will be updated
-                          amd::CopyMetadata copyMetadata = 
+                          amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata() //!< Memory copy MetaData
                           ) const = 0;
 
@@ -193,7 +193,7 @@ class BlitManager : public amd::HeapObject {
                          const amd::Coord3D& dstOrigin,  //!< Destination origin
                          const amd::Coord3D& size,       //!< Size of the copy region
                          bool entire = false,            //!< Entire buffer will be updated
-                         amd::CopyMetadata copyMetadata = 
+                         amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata() //!< Memory copy MetaData
                          ) const = 0;
 
@@ -301,7 +301,7 @@ class HostBlitManager : public device::BlitManager {
                          size_t rowPitch,             //!< Row pitch for host memory
                          size_t slicePitch,           //!< Slice pitch for host memory
                          bool entire = false,         //!< Entire buffer will be updated
-                         amd::CopyMetadata copyMetadata = 
+                         amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata() //!< Memory copy MetaData
                          ) const;
 
@@ -334,7 +334,7 @@ class HostBlitManager : public device::BlitManager {
                           size_t rowPitch,             //!< Row pitch for host memory
                           size_t slicePitch,           //!< Slice pitch for host memory
                           bool entire = false,         //!< Entire buffer will be updated
-                          amd::CopyMetadata copyMetadata = 
+                          amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata() //!< Memory copy MetaData
                           ) const;
 
@@ -393,7 +393,7 @@ class HostBlitManager : public device::BlitManager {
                          const amd::Coord3D& dstOrigin,  //!< Destination origin
                          const amd::Coord3D& size,       //!< Size of the copy region
                          bool entire = false,            //!< Entire buffer will be updated
-                         amd::CopyMetadata copyMetadata = 
+                         amd::CopyMetadata copyMetadata =
                                     amd::CopyMetadata()  //!< Memory copy MetaData
                          ) const;
 
@@ -423,35 +423,23 @@ class HostBlitManager : public device::BlitManager {
   const amd::Device& dev_;  //!< Physical device
 
   // Packed Fill Buffer
-  class FillBufferInfo {
-  public:
-    FillBufferInfo(): fill_size_(0), expanded_pattern_(0), pattern_expanded_(false) {}
+  struct FillBufferInfo {
+    static constexpr uint32_t kExtendedSize = 2 * sizeof(uint64_t);
 
-    static bool PackInfo(const device::Memory& memory, size_t fill_size,
-                  size_t fill_origin, const void* pattern, size_t pattern_size,
-                  std::vector<FillBufferInfo>& packed_info);
+    static void PackInfo(const device::Memory& memory, size_t fill_size,
+                         size_t fill_origin, const void* pattern, size_t pattern_size,
+                         std::vector<FillBufferInfo>& packed_info);
 
-  private:
-    static bool ExpandPattern64(uint64_t pattern, size_t pattern_size, uint64_t& pattern64);
-
-    static inline void ClearBits64(uint64_t& pattern, uint64_t num_bits) {
-      pattern &= ~(~(static_cast<uint64_t>(0)) << num_bits);
-
+    FillBufferInfo(size_t fill_size): fill_size_(fill_size), pattern_expanded_(false) {
+      memset(&expanded_pattern_, 0, sizeof(expanded_pattern_));
     }
 
-    void clearInfo () {
-      fill_size_ = 0;
-      expanded_pattern_ = 0;
-      pattern_expanded_ = false;
-    }
+    void ExpandPattern(uint32_t pattern_size, const void* pattern);
 
-  public:
-    size_t fill_size_;          // Fill size for this command
-    uint64_t expanded_pattern_; // Pattern for this command
-    bool pattern_expanded_;     // Boolean to check if pattern is expanded
+    size_t fill_size_;                        //!< Fill size for this command
+    uint8_t expanded_pattern_[kExtendedSize]; //!< Pattern for this command - 16 bytes
+    bool pattern_expanded_;                   //!< Boolean to check if pattern is expanded
   };
-
-
 
  private:
   //! Disable copy constructor
