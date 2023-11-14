@@ -19,9 +19,13 @@
  THE SOFTWARE. */
 
 #include <hip/hip_runtime.h>
+#include <hip/hip_deprecated.h>
 
 #include "hip_internal.hpp"
 #include "hip_mempool_impl.hpp"
+
+#undef hipGetDeviceProperties
+#undef hipDeviceProp_t
 
 namespace hip {
 
@@ -139,12 +143,12 @@ Device::~Device() {
     graph_mem_pool_->release();
   }
 
-  if (null_stream_!= nullptr) {
+  if (null_stream_ != nullptr) {
     hip::Stream::Destroy(null_stream_);
   }
 }
 
-}
+}  // namespace hip
 
 void ihipDestroyDevice() {
   for (auto deviceHandle : g_devices) {
@@ -171,8 +175,7 @@ hipError_t hipDeviceGet(hipDevice_t* device, int deviceId) {
   HIP_RETURN(ihipDeviceGet(device, deviceId));
 }
 
-hipError_t hipDeviceTotalMem (size_t *bytes, hipDevice_t device) {
-
+hipError_t hipDeviceTotalMem(size_t* bytes, hipDevice_t device) {
   HIP_INIT_API(hipDeviceTotalMem, bytes, device);
 
   if (device < 0 || static_cast<size_t>(device) >= g_devices.size()) {
@@ -191,8 +194,7 @@ hipError_t hipDeviceTotalMem (size_t *bytes, hipDevice_t device) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipDeviceComputeCapability(int *major, int *minor, hipDevice_t device) {
-
+hipError_t hipDeviceComputeCapability(int* major, int* minor, hipDevice_t device) {
   HIP_INIT_API(hipDeviceComputeCapability, major, minor, device);
 
   if (device < 0 || static_cast<size_t>(device) >= g_devices.size()) {
@@ -232,8 +234,7 @@ hipError_t ihipDeviceGetCount(int* count) {
   return hipSuccess;
 }
 
-hipError_t hipDeviceGetName(char *name, int len, hipDevice_t device) {
-
+hipError_t hipDeviceGetName(char* name, int len, hipDevice_t device) {
   HIP_INIT_API(hipDeviceGetName, (void*)name, len, device);
 
   if (device < 0 || static_cast<size_t>(device) >= g_devices.size()) {
@@ -275,7 +276,7 @@ hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
+hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   if (props == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -286,8 +287,199 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   auto* deviceHandle = g_devices[device]->devices()[0];
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
-  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max())+1;
-  hipDeviceProp_t deviceProps = {0};
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
+  hipDeviceProp_tR0600 deviceProps = {0};
+
+  const auto& info = deviceHandle->info();
+  const auto& isa = deviceHandle->isa();
+  ::strncpy(deviceProps.name, info.boardName_, sizeof(info.boardName_));
+  ::strncpy(deviceProps.uuid.bytes, info.uuid_, sizeof(info.uuid_));
+  deviceProps.totalGlobalMem = info.globalMemSize_;
+  deviceProps.sharedMemPerBlock = info.localMemSizePerCU_;
+  deviceProps.sharedMemPerMultiprocessor = info.localMemSizePerCU_ * info.numRTCUs_;
+  deviceProps.regsPerBlock = info.availableRegistersPerCU_;
+  deviceProps.warpSize = info.wavefrontWidth_;
+  deviceProps.maxThreadsPerBlock = info.maxWorkGroupSize_;
+  deviceProps.maxThreadsDim[0] = info.maxWorkItemSizes_[0];
+  deviceProps.maxThreadsDim[1] = info.maxWorkItemSizes_[1];
+  deviceProps.maxThreadsDim[2] = info.maxWorkItemSizes_[2];
+  deviceProps.maxGridSize[0] = int32_max;
+  deviceProps.maxGridSize[1] = uint16_max;
+  deviceProps.maxGridSize[2] = uint16_max;
+  deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
+  deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
+  deviceProps.memoryBusWidth = info.globalMemChannels_;
+  deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
+  deviceProps.major = isa.versionMajor();
+  deviceProps.minor = isa.versionMinor();
+  deviceProps.multiProcessorCount = info.maxComputeUnits_;
+  deviceProps.l2CacheSize = info.l2CacheSize_;
+  deviceProps.maxThreadsPerMultiProcessor = info.maxThreadsPerCU_;
+  deviceProps.maxBlocksPerMultiProcessor = int(info.maxThreadsPerCU_ / info.maxWorkGroupSize_);
+  deviceProps.computeMode = 0;
+  deviceProps.clockInstructionRate = info.timeStampFrequency_;
+  deviceProps.arch.hasGlobalInt32Atomics = 1;
+  deviceProps.arch.hasGlobalFloatAtomicExch = 1;
+  deviceProps.arch.hasSharedInt32Atomics = 1;
+  deviceProps.arch.hasSharedFloatAtomicExch = 1;
+  deviceProps.arch.hasFloatAtomicAdd = 1;
+  deviceProps.arch.hasGlobalInt64Atomics = 1;
+  deviceProps.arch.hasSharedInt64Atomics = 1;
+  deviceProps.hostNativeAtomicSupported = info.pcie_atomics_ ? 1 : 0;
+  deviceProps.arch.hasDoubles = 1;
+  deviceProps.arch.hasWarpVote = 1;
+  deviceProps.arch.hasWarpBallot = 1;
+  deviceProps.arch.hasWarpShuffle = 1;
+  deviceProps.arch.hasFunnelShift = 0;
+  deviceProps.arch.hasThreadFenceSystem = 1;
+  deviceProps.arch.hasSyncThreadsExt = 0;
+  deviceProps.arch.hasSurfaceFuncs = 0;
+  deviceProps.arch.has3dGrid = 1;
+  deviceProps.arch.hasDynamicParallelism = 0;
+  deviceProps.concurrentKernels = 1;
+  deviceProps.pciDomainID = info.pciDomainID;
+  deviceProps.pciBusID = info.deviceTopology_.pcie.bus;
+  deviceProps.pciDeviceID = info.deviceTopology_.pcie.device;
+  deviceProps.maxSharedMemoryPerMultiProcessor = info.localMemSizePerCU_;
+  deviceProps.canMapHostMemory = 1;
+  deviceProps.regsPerMultiprocessor = info.availableRegistersPerCU_;
+  sprintf(deviceProps.gcnArchName, "%s", isa.targetId());
+  deviceProps.cooperativeLaunch = info.cooperativeGroups_;
+  deviceProps.cooperativeMultiDeviceLaunch = info.cooperativeMultiDeviceGroups_;
+
+  deviceProps.cooperativeMultiDeviceUnmatchedFunc = info.cooperativeMultiDeviceGroups_;
+  deviceProps.cooperativeMultiDeviceUnmatchedGridDim = info.cooperativeMultiDeviceGroups_;
+  deviceProps.cooperativeMultiDeviceUnmatchedBlockDim = info.cooperativeMultiDeviceGroups_;
+  deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
+
+  deviceProps.maxTexture1DLinear =
+      std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
+  deviceProps.maxTexture1DMipmap = std::min(16 * info.imageMaxBufferSize_, int32_max);
+  deviceProps.maxTexture1D = deviceProps.maxSurface1D = std::min(info.image1DMaxWidth_, int32_max);
+  deviceProps.maxTexture2D[0] = deviceProps.maxSurface2D[0] =
+      std::min(info.image2DMaxWidth_, int32_max);
+  deviceProps.maxTexture2D[1] = deviceProps.maxSurface2D[1] =
+      std::min(info.image2DMaxHeight_, int32_max);
+  deviceProps.maxTexture3D[0] = deviceProps.maxSurface3D[0] =
+      std::min(info.image3DMaxWidth_, int32_max);
+  deviceProps.maxTexture3D[1] = deviceProps.maxSurface3D[1] =
+      std::min(info.image3DMaxHeight_, int32_max);
+  deviceProps.maxTexture3D[2] = deviceProps.maxSurface3D[2] =
+      std::min(info.image3DMaxDepth_, int32_max);
+  deviceProps.maxTexture1DLayered[0] = deviceProps.maxSurface1DLayered[0] =
+      std::min(info.image1DAMaxWidth_, int32_max);
+  deviceProps.maxTexture1DLayered[1] = deviceProps.maxSurface1DLayered[1] =
+      std::min(info.imageMaxArraySize_, int32_max);
+  deviceProps.maxTexture2DLayered[0] = deviceProps.maxSurface2DLayered[0] =
+      std::min(info.image2DAMaxWidth_[0], int32_max);
+  deviceProps.maxTexture2DLayered[1] = deviceProps.maxSurface2DLayered[1] =
+      std::min(info.image2DAMaxWidth_[1], int32_max);
+  deviceProps.maxTexture2DLayered[2] = deviceProps.maxSurface2DLayered[2] =
+      std::min(info.imageMaxArraySize_, int32_max);
+  deviceProps.hdpMemFlushCntl = info.hdpMemFlushCntl;
+  deviceProps.hdpRegFlushCntl = info.hdpRegFlushCntl;
+
+  deviceProps.memPitch = std::min(info.maxMemAllocSize_, int32_max);
+  deviceProps.textureAlignment = deviceProps.surfaceAlignment = info.imageBaseAddressAlignment_;
+  deviceProps.texturePitchAlignment = info.imagePitchAlignment_;
+  deviceProps.kernelExecTimeoutEnabled = 0;
+  deviceProps.ECCEnabled = info.errorCorrectionSupport_ ? 1 : 0;
+  deviceProps.isLargeBar = info.largeBar_ ? 1 : 0;
+  deviceProps.asicRevision = info.asicRevision_;
+  deviceProps.ipcEventSupported = 1;
+  deviceProps.streamPrioritiesSupported = 1;
+  deviceProps.multiGpuBoardGroupID = info.deviceTopology_.pcie.device;
+
+  // HMM capabilities
+  deviceProps.asyncEngineCount = info.numAsyncQueues_;
+  deviceProps.deviceOverlap = (info.numAsyncQueues_ > 0) ? 1 : 0;
+  deviceProps.unifiedAddressing = info.hmmDirectHostAccess_;
+  deviceProps.managedMemory = info.hmmSupported_;
+  deviceProps.concurrentManagedAccess = info.hmmSupported_;
+  deviceProps.directManagedMemAccessFromHost = info.hmmDirectHostAccess_;
+  deviceProps.canUseHostPointerForRegisteredMem = info.hostUnifiedMemory_;
+  deviceProps.pageableMemoryAccess = info.hmmCpuMemoryAccessible_;
+  deviceProps.hostRegisterSupported = info.hostUnifiedMemory_;
+  deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
+
+  // Mem pool
+  deviceProps.memoryPoolsSupported = HIP_MEM_POOL_SUPPORT;
+  deviceProps.memoryPoolSupportedHandleTypes = 0;
+
+  // Caching behavior
+  deviceProps.globalL1CacheSupported = 1;
+  deviceProps.localL1CacheSupported = 1;
+  deviceProps.persistingL2CacheMaxSize = info.l2CacheSize_;
+  deviceProps.reservedSharedMemPerBlock = 0;
+  deviceProps.sharedMemPerBlockOptin = 0;
+
+  // Unsupported features
+  // Single to double precision perf ratio
+  deviceProps.singleToDoublePrecisionPerfRatio = 0;
+  // Flag hipHostRegisterReadOnly
+  deviceProps.hostRegisterReadOnlySupported = 0;
+  // Compute preemption
+  deviceProps.computePreemptionSupported = 0;
+  // Cubemaps
+  deviceProps.maxTextureCubemap = 0;
+  deviceProps.maxTextureCubemapLayered[0] = 0;
+  deviceProps.maxTextureCubemapLayered[1] = 0;
+  deviceProps.maxSurfaceCubemap = 0;
+  deviceProps.maxSurfaceCubemapLayered[0] = 0;
+  deviceProps.maxSurfaceCubemapLayered[1] = 0;
+  // Texture gather ops
+  deviceProps.maxTexture2DGather[0] = 0;
+  deviceProps.maxTexture2DGather[1] = 0;
+  // Textures bound to pitch memory
+  deviceProps.maxTexture2DLinear[0] = 0;
+  deviceProps.maxTexture2DLinear[1] = 0;
+  deviceProps.maxTexture2DLinear[2] = 0;
+  // Alternate 3D texture
+  deviceProps.maxTexture3DAlt[0] = 0;
+  deviceProps.maxTexture3DAlt[1] = 0;
+  deviceProps.maxTexture3DAlt[2] = 0;
+  // access policy
+  deviceProps.accessPolicyMaxWindowSize = 0;
+  // cluster launch
+  deviceProps.clusterLaunch = 0;
+  // Mapping HIP array
+  deviceProps.deferredMappingHipArraySupported = 0;
+  // RDMA options
+  deviceProps.gpuDirectRDMASupported = 0;
+  deviceProps.gpuDirectRDMAFlushWritesOptions = 0;
+  deviceProps.gpuDirectRDMAWritesOrdering = 0;
+  // luid - TODO populate it only on windows
+  std::memset(deviceProps.luid, 0, sizeof(deviceProps.luid));
+  deviceProps.luidDeviceNodeMask = 0;
+  deviceProps.sparseHipArraySupported = 0;
+  deviceProps.timelineSemaphoreInteropSupported = 0;
+  deviceProps.unifiedFunctionPointers = 0;
+
+  *props = deviceProps;
+  return hipSuccess;
+}
+
+hipError_t hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* prop, int device) {
+  HIP_INIT_API(hipGetDevicePropertiesR0600, prop, device);
+
+  HIP_RETURN(ihipGetDeviceProperties(prop, device));
+}
+
+hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
+  HIP_INIT_API(hipGetDevicePropertiesR0000, prop, device);
+
+  if (prop == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (unsigned(device) >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+  auto* deviceHandle = g_devices[device]->devices()[0];
+
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
+  hipDeviceProp_tR0000 deviceProps = {0};
 
   const auto& info = deviceHandle->info();
   const auto& isa = deviceHandle->isa();
@@ -348,8 +540,9 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.cooperativeMultiDeviceUnmatchedBlockDim = info.cooperativeMultiDeviceGroups_;
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
-  deviceProps.maxTexture1DLinear = std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
-  deviceProps.maxTexture1D    = std::min(info.image1DMaxWidth_, int32_max);
+  deviceProps.maxTexture1DLinear =
+      std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
+  deviceProps.maxTexture1D = std::min(info.image1DMaxWidth_, int32_max);
   deviceProps.maxTexture2D[0] = std::min(info.image2DMaxWidth_, int32_max);
   deviceProps.maxTexture2D[1] = std::min(info.image2DMaxHeight_, int32_max);
   deviceProps.maxTexture3D[0] = std::min(info.image3DMaxWidth_, int32_max);
@@ -373,12 +566,11 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
   deviceProps.pageableMemoryAccess = info.hmmCpuMemoryAccessible_;
   deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
 
-  *props = deviceProps;
-  return hipSuccess;
+  *prop = deviceProps;
+  HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device) {
-  HIP_INIT_API(hipGetDeviceProperties, props, device);
-
-  HIP_RETURN(ihipGetDeviceProperties(props, device));
+extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device);
+hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device) {
+  return hipGetDevicePropertiesR0000(props, device);
 }

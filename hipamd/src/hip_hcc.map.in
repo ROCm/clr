@@ -1,6 +1,7 @@
 hip_4.2 {
 global:
     hipChooseDevice;
+    hipChooseDeviceR0000;
     hipCtxCreate;
     hipCtxDestroy;
     hipCtxDisablePeerAccess;
@@ -62,6 +63,7 @@ global:
     hipGetDevice;
     hipGetDeviceCount;
     hipGetDeviceProperties;
+    hipGetDevicePropertiesR0000;
     hipGetErrorName;
     hipGetErrorString;
     hipGetLastError;
@@ -530,6 +532,8 @@ local:
 hip_6.0 {
 global:
     hipExtGetLastError;
+    hipChooseDeviceR0600;
+    hipGetDevicePropertiesR0600;
 local:
     *;
 } hip_5.6;
