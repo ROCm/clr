@@ -96,6 +96,7 @@ Settings::Settings() {
 
   host_hdp_flush_ = true;
   gwsInitSupported_ = true;
+  limit_blit_wg_ = 16;
 }
 
 // ================================================================================================

@@ -148,6 +148,8 @@ Settings::Settings() {
   prepinnedMinSize_ = 0;
   cpDmaCopySizeMax_ = GPU_CP_DMA_COPY_SIZE * Ki;
   useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? false : HIP_FORCE_DEV_KERNARG;
+
+  limit_blit_wg_ = 16;
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
@@ -288,7 +290,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
       // Cap at OpenCL20 for now
       if (oclVersion_ > OpenCL20) oclVersion_ = OpenCL20;
-      
+
       use64BitPtr_ = LP64_SWITCH(false, true);
 
       if (oclVersion_ >= OpenCL20) {
@@ -435,6 +437,10 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     prepinnedMinSize_ = PAL_PREPINNED_MEMORY_SIZE * Ki;
   }
 
+  limit_blit_wg_ = enableWgpMode_
+      ? palProp.gfxipProperties.shaderCore.numAvailableCus / 2
+      : palProp.gfxipProperties.shaderCore.numAvailableCus;
+
   // Override current device settings
   override();
 
@@ -500,6 +506,10 @@ void Settings::override() {
 
   if (!flagIsDefault(PAL_ALWAYS_RESIDENT)) {
     alwaysResident_ = PAL_ALWAYS_RESIDENT;
+  }
+
+  if (!flagIsDefault(DEBUG_CLR_LIMIT_BLIT_WG)) {
+    limit_blit_wg_ = std::max(DEBUG_CLR_LIMIT_BLIT_WG, 0x1U);
   }
 }
 

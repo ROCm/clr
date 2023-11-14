@@ -76,6 +76,7 @@ class Settings : public device::Settings {
   size_t sdmaCopyThreshold_;  //!< Use SDMA to copy above this size
 
   uint32_t  hmmFlags_;        //!< HMM functionality control flags
+  uint32_t  limit_blit_wg_;   //!< The number of workgroups for blit execution
 
   //! Default constructor
   Settings();

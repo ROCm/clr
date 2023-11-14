@@ -778,6 +778,9 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   // Add mask array for AmdAqlWrap slots
   allocSize += amd::alignUp(numSlots, DeviceQueueMaskSize) / 8;
 
+  // Align size to 64 bytes for more efficient fill operation
+  allocSize = amd::alignUp(allocSize, 8 * sizeof(uint64_t));
+
   virtualQueue_ = new Memory(dev(), allocSize);
   Resource::MemoryType type = (GPU_PRINT_CHILD_KERNEL == 0) ? Resource::Local : Resource::Remote;
   if ((virtualQueue_ == nullptr) || !virtualQueue_->create(type)) {

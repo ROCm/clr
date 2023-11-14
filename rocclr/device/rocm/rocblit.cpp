@@ -2048,9 +2048,10 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
 }
 
 // ================================================================================================
-bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern, size_t patternSize,
-                                     const amd::Coord3D& surface, const amd::Coord3D& origin,
-                                     const amd::Coord3D& size, bool entire, bool forceBlit) const {
+bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern,
+                                     size_t patternSize, const amd::Coord3D& surface,
+                                     const amd::Coord3D& origin, const amd::Coord3D& size,
+                                     bool entire, bool forceBlit) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -2063,79 +2064,90 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
     synchronize();
     return result;
   } else {
-
     // Pack the fill buffer info, that handles unaligned memories.
     std::vector<FillBufferInfo> packed_vector{};
     FillBufferInfo::PackInfo(memory, size[0], origin[0], pattern, patternSize, packed_vector);
 
     size_t overall_offset = origin[0];
     for (auto& packed_obj: packed_vector) {
-      uint fillType = FillBufferAligned;
-
-      uint32_t kpattern_size32 = (packed_obj.pattern_expanded_) ? sizeof(size_t) : patternSize;
-      size_t kfill_size = packed_obj.fill_size_/kpattern_size32;
+      constexpr uint32_t kFillType = FillBufferAligned;
+      uint32_t kpattern_size = (packed_obj.pattern_expanded_) ?
+                                HostBlitManager::FillBufferInfo::kExtendedSize : patternSize;
+      size_t kfill_size = packed_obj.fill_size_ / kpattern_size;
       size_t koffset = overall_offset;
       overall_offset += packed_obj.fill_size_;
 
       size_t globalWorkOffset[3] = {0, 0, 0};
-      size_t globalWorkSize = amd::alignUp(kfill_size, 256);
-      size_t localWorkSize = 256;
-
-      uint32_t alignment = (kpattern_size32 & 0x7) == 0 ?
-                            sizeof(uint64_t) :
-                            (kpattern_size32 & 0x3) == 0 ?
-                            sizeof(uint32_t) :
-                            (kpattern_size32 & 0x1) == 0 ?
-                            sizeof(uint16_t) : sizeof(uint8_t);
-
+      uint32_t alignment = (kpattern_size & 0xf) == 0 ? 2 * sizeof(uint64_t) :
+                           (kpattern_size & 0x7) == 0 ? sizeof(uint64_t) :
+                           (kpattern_size & 0x3) == 0 ? sizeof(uint32_t) :
+                           (kpattern_size & 0x1) == 0 ? sizeof(uint16_t) : sizeof(uint8_t);
       // Program kernels arguments for the fill operation
       cl_mem mem = as_cl<amd::Memory>(memory.owner());
-      if (alignment == sizeof(uint64_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
+      if (alignment == 2 * sizeof(uint64_t)) {
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), &mem);
+      } else if (alignment == sizeof(uint64_t)) {
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else if (alignment == sizeof(uint32_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else if (alignment == sizeof(uint16_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       }
+      const size_t localWorkSize = 256;
+      size_t globalWorkSize =
+          std::min(dev().settings().limit_blit_wg_ * localWorkSize, kfill_size);
+      globalWorkSize = amd::alignUp(globalWorkSize, localWorkSize);
 
       auto constBuf = gpu().allocKernArg(kCBSize, kCBAlignment);
 
       // If pattern has been expanded, use the expanded pattern, otherwise use the default pattern.
       if (packed_obj.pattern_expanded_) {
-        memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size32);
+        memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size);
       } else {
-        memcpy(constBuf, pattern, kpattern_size32);
+        memcpy(constBuf, pattern, kpattern_size);
       }
       constexpr bool kDirectVa = true;
-      setArgument(kernels_[fillType], 4, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
+      setArgument(kernels_[kFillType], 5, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
 
+      // Adjust the pattern size in the copy type size
+      kpattern_size /= alignment;
+      setArgument(kernels_[kFillType], 6, sizeof(uint32_t), &kpattern_size);
       koffset /= alignment;
-      kpattern_size32 /= alignment;
-
-      setArgument(kernels_[fillType], 5, sizeof(uint32_t), &kpattern_size32);
-      setArgument(kernels_[fillType], 6, sizeof(koffset), &koffset);
-      setArgument(kernels_[fillType], 7, sizeof(kfill_size), &kfill_size);
+      setArgument(kernels_[kFillType], 7, sizeof(koffset), &koffset);
+      // Calculate max id
+      kfill_size = memory.virtualAddress() + (koffset + kfill_size * kpattern_size) * alignment;
+      setArgument(kernels_[kFillType], 8, sizeof(kfill_size), &kfill_size);
+      uint32_t next_chunk = globalWorkSize * kpattern_size;
+      setArgument(kernels_[kFillType], 9, sizeof(uint32_t), &next_chunk);
 
       // Create ND range object for the kernel's execution
       amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
 
       // Execute the blit
-      address parameters = captureArguments(kernels_[fillType]);
-      result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
+      address parameters = captureArguments(kernels_[kFillType]);
+      result = gpu().submitKernelInternal(ndrange, *kernels_[kFillType], parameters, nullptr);
       releaseArguments(parameters);
     }
   }

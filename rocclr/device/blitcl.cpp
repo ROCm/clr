@@ -47,16 +47,57 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
 
   extern void __ockl_gws_init(uint nwm1, uint rid);
 
-  // Implementation
-  __kernel void __amd_rocclr_fillBufferAligned(__global uchar* bufUChar,
-                                               __global ushort* bufUShort,
-                                               __global uint* bufUInt,
-                                               __global ulong* bufULong,
-                                               __constant uchar* pattern,
-                                               uint patternSize, ulong offset,
-                                               ulong size) {
-    __amd_fillBufferAligned(bufUChar, bufUShort, bufUInt, bufULong,
-                            pattern, patternSize, offset, size);
+  __kernel void __amd_rocclr_fillBufferAligned(
+      __global uchar* bufUChar, __global ushort* bufUShort, __global uint* bufUInt,
+      __global ulong* bufULong, __global ulong2* bufULong2, __constant uchar* pattern,
+      uint pattern_size, ulong offset, ulong end_ptr, uint next_chunk) {
+    int id = get_global_id(0);
+    long cur_id = offset + id * pattern_size;
+    if (bufULong2) {
+      __global ulong2* element = &bufULong2[cur_id];
+      __constant ulong2* pt = (__constant ulong2*)pattern;
+      while ((ulong)element < end_ptr) {
+        for (uint i = 0; i < pattern_size; ++i) {
+          element[i] = pt[i];
+        }
+        element += next_chunk;
+      }
+    } else if (bufULong) {
+      __global ulong* element = &bufULong[cur_id];
+      __constant ulong* pt = (__constant ulong*)pattern;
+      while ((ulong)element < end_ptr) {
+        for (uint i = 0; i < pattern_size; ++i) {
+          element[i] = pt[i];
+        }
+        element += next_chunk;
+      }
+    } else if (bufUInt) {
+      __global uint* element = &bufUInt[cur_id];
+      __constant uint* pt = (__constant uint*)pattern;
+      while ((ulong)element < end_ptr) {
+        for (uint i = 0; i < pattern_size; ++i) {
+          element[i] = pt[i];
+        }
+        element += next_chunk;
+      }
+    } else if (bufUShort) {
+      __global ushort* element = &bufUShort[cur_id];
+      __constant ushort* pt = (__constant ushort*)pattern;
+      while ((ulong)element < end_ptr) {
+        for (uint i = 0; i < pattern_size; ++i) {
+          element[i] = pt[i];
+        }
+        element += next_chunk;
+      }
+    } else {
+      __global uchar* element = &bufUChar[cur_id];
+      while ((ulong)element < end_ptr) {
+        for (uint i = 0; i < pattern_size; ++i) {
+          element[i] = pattern[i];
+        }
+        element += next_chunk;
+      }
+    }
   }
 
   __kernel void __amd_rocclr_fillBufferAligned2D(__global uchar* bufUChar,
