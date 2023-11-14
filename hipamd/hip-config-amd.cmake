@@ -163,7 +163,8 @@ endif()
 # Use HIP_CXX option -print-libgcc-file-name --rtlib=compiler-rt
 # To fetch the compiler rt library file name.
 execute_process(
-  COMMAND ${HIP_CXX_COMPILER} -print-libgcc-file-name --rtlib=compiler-rt
+  COMMAND ${CMAKE_COMMAND} -E env HIPCC_VERBOSE=0
+  ${HIP_CXX_COMPILER} -print-libgcc-file-name --rtlib=compiler-rt
   OUTPUT_VARIABLE CLANGRT_BUILTINS
   ERROR_VARIABLE  CLANGRT_Error
   OUTPUT_STRIP_TRAILING_WHITESPACE
