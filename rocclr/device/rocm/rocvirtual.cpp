@@ -1857,7 +1857,10 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
                             amd::CopyMetadata copyMetadata) {
   Memory* srcDevMem = dev().getRocMemory(&srcMem);
   Memory* dstDevMem = dev().getRocMemory(&dstMem);
-
+  if (srcDevMem == nullptr || dstDevMem == nullptr) {
+    LogError("submitCopyMemory failed!");
+    return false;
+  }
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;
   syncFlags.skipEntire_ = entire;
