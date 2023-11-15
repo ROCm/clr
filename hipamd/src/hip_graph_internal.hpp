@@ -183,6 +183,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   static amd::Monitor nodeSetLock_;
   unsigned int isEnabled_;
   uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
+  std::string capturedKernelName_;
 
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -232,7 +233,10 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   // Return gpu packet address to update with actual packet under capture.
   uint8_t* GetAqlPacket() { return gpuPacket_; }
-  hip::Stream* GetQueue() { return stream_; }
+  void SetKernelName(std::string kernelName) { capturedKernelName_ = kernelName; }
+  const std::string& GetKernelName() const { return capturedKernelName_; }
+
+  hip::Stream* GetQueue() const { return stream_; }
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
     stream_ = stream;
@@ -805,8 +809,11 @@ class GraphKernelNode : public GraphNode {
         reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
             true, GetAqlPacket(), kernArgOffset);
 
-        // Enqueue command to capture GPU Packet. Packet is not sent to hardware queue.
+        // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
+        // The packet is stored in gpuPacket_ and submitted during graph launch.
         command->submit(*(command->queue())->vdev());
+        // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
+        SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
         command->release();
       }
     }
