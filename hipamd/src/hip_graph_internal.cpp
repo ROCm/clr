@@ -551,6 +551,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     for (int i = 0; i < topoOrder_.size() - 1; i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
+        accumulate->addKernelName(topoOrder_[i]->GetKernelName());
       } else {
         topoOrder_[i]->SetStream(hip_stream, this);
         status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
@@ -561,6 +562,8 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     // If last captured packet is kernel, optimize to detect completion of last kernel
     // This saves on extra packet submitted to determine end of graph
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) {
+      // Add the last kernel node name to the accumulate command
+      accumulate->addKernelName(topoOrder_.back()->GetKernelName());
       accumulate->enqueue();
       accumulate->release();
       isLastPacketKernel = true;

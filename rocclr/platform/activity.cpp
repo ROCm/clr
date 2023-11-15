@@ -101,10 +101,14 @@ void ReportActivity(const amd::Command& command) {
       break;
   }
 
-  if (command.profilingInfo().tsList_.size() > 0) {
-    for (auto& it : command.profilingInfo().tsList_) {
+  if (command.type() == CL_COMMAND_TASK) {
+    auto timestamps = static_cast<const amd::AccumulateCommand&>(command).getTimestamps();
+    for (uint32_t i = 0; i < timestamps.size(); i++) {
+      auto it = timestamps[i];
       record.begin_ns = it.first;
       record.end_ns = it.second;
+      record.kernel_name =
+        static_cast<const amd::AccumulateCommand&>(command).getKernelNames()[i].c_str();
       function(ACTIVITY_DOMAIN_HIP_OPS, operation_id, &record);
     }
   } else {
