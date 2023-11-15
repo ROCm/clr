@@ -54,6 +54,8 @@ In HIP, more members are added in the struct hipDeviceProp_t, as properties to i
     - unsigned int luidDeviceNodeMask;
 
     Note: HIP supports LUID only on Windows OS.
+- Added `amd_hip_bf16.h` which adds `bfloat16` type. These definitions are accessible via `#include <hip/hip_bf16.h>`
+This header exists alongside the older bfloat16 header in`amd_hip_bfloat16.h` which is included via `hip/hip_bfloat16.h`. Users are recommended to use `<hip/hip_bf16.h>` instead of `<hip/hip_bfloat16.h>`.
 
 ### Changed
 - Some OpenGL Interop HIP APIs are moved from the hip_runtime_api header to a new header file hip_gl_interop.h for the AMD platform, as following,
