@@ -1,7 +1,5 @@
 EXPORTS
 hipChooseDevice
-hipChooseDeviceR0000
-hipChooseDeviceR0600
 hipCtxCreate
 hipCtxDestroy
 hipCtxDisablePeerAccess
@@ -65,7 +63,6 @@ hipFuncSetSharedMemConfig
 hipGetDevice
 hipGetDeviceCount
 hipGetDeviceProperties
-hipGetDevicePropertiesR0000
 hipGetDevicePropertiesR0600
 hipGetErrorName
 hipGetErrorString

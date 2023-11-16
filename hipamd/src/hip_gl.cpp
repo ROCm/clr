@@ -20,7 +20,6 @@
 
 #include "top.hpp"
 #include "hip/hip_runtime.h"
-#include "hip/hip_gl_interop.h"
 #include "hip_internal.hpp"
 #include "platform/interop_gl.hpp"
 #include "cl_common.hpp"
