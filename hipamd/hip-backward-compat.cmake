@@ -195,7 +195,7 @@ function(create_cmake_symlink)
     add_custom_target(link_${file_name} ALL
                   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                   COMMAND ${CMAKE_COMMAND} -E create_symlink
-                  ../../../${CMAKE_INSTALL_LIBDIR}/cmake/hip/FindHIP/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/FindHIP/${file_name})
+                  ${CMAKE_ROOT}/Modules/FindHIP/${file_name} ${HIP_WRAPPER_FINDHIP_DIR}/FindHIP/${file_name})
   endforeach()
   unset(config_files)
 
