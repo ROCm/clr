@@ -1172,10 +1172,6 @@ bool Program::linkImplLC(amd::option::Options* options) {
     if (options->oVariables->FP32RoundDivideSqrt) {
         linkOptions.push_back("correctly_rounded_sqrt");
     }
-    if (options->oVariables->DenormsAreZero || AMD_GPU_FORCE_SINGLE_FP_DENORM == 0 ||
-        (device().isa().versionMajor() < 9 && AMD_GPU_FORCE_SINGLE_FP_DENORM < 0)) {
-        linkOptions.push_back("daz_opt");
-    }
     if (options->oVariables->FiniteMathOnly || options->oVariables->FastRelaxedMath) {
         linkOptions.push_back("finite_only");
     }
