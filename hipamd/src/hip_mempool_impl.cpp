@@ -322,6 +322,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
         return hipErrorInvalidValue;
       }
       free_heap_.SetMaxTotalSize(reset);
+      break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
       return hipErrorInvalidValue;
