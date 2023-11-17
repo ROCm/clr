@@ -314,7 +314,6 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
     case hipMemPoolAttrReservedMemCurrent:
       // Should be GetAttribute only
       return hipErrorInvalidValue;
-      break;
     case hipMemPoolAttrReservedMemHigh:
       reset = *reinterpret_cast<uint64_t*>(value);
       // Only 0 is accepted
@@ -322,10 +321,10 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
         return hipErrorInvalidValue;
       }
       free_heap_.SetMaxTotalSize(reset);
+      break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
       return hipErrorInvalidValue;
-      break;
     case hipMemPoolAttrUsedMemHigh:
       reset = *reinterpret_cast<uint64_t*>(value);
       // Only 0 is accepted
