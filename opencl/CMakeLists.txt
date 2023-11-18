@@ -44,11 +44,12 @@ endif()
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2/CL"
         DESTINATION include
         COMPONENT DEV
-        USE_SOURCE_PERMISSIONS
         PATTERN cl_d3d10.h EXCLUDE
         PATTERN cl_d3d11.h EXCLUDE
         PATTERN cl_dx9_media_sharing.h EXCLUDE
-        PATTERN cl_egl.h EXCLUDE)
+        PATTERN cl_egl.h EXCLUDE
+        PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        )
 
 #############################
 # Packaging steps
