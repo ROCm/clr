@@ -3492,6 +3492,7 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
   amd::Memory* amd_mem_obj = nullptr;
   amd::Device* device = nullptr;
   ihipIpcMemHandle_t* ihandle = nullptr;
+  size_t offset = 0;
 
   if (dev_ptr == nullptr || flags != hipIpcMemLazyEnablePeerAccess) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -3515,6 +3516,9 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
                       "ipc_offset: %u flags: %u", ihandle->psize, flags);
     HIP_RETURN(hipErrorInvalidDevicePointer);
   }
+
+  amd_mem_obj = getMemoryObject(*dev_ptr, offset);
+  amd_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
   HIP_RETURN(hipSuccess);
 }
