@@ -131,7 +131,8 @@ void HostQueue::finish(bool cpu_wait) {
       (command->NotifyEvent() != nullptr) ? command->NotifyEvent()->HwEvent() : command->HwEvent();
     force_marker = (hw_event == nullptr);
   }
-  if (nullptr == command || force_marker || vdev()->isFenceDirty()) {
+  if (nullptr == command || force_marker ||
+      vdev()->isHandlerPending() || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }
