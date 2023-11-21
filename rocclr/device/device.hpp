@@ -1287,6 +1287,9 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns true if device has active wait setting
   bool ActiveWait() const;
 
+  //! Returns the status of queue handler callback
+  virtual bool isHandlerPending() const = 0;
+
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
 

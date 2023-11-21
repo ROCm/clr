@@ -341,6 +341,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void profilerAttach(bool enable = false) {}
 
+  bool isHandlerPending() const { return false; }
+
   bool isFenceDirty() const { return false; }
 
   inline bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) {
