@@ -247,6 +247,11 @@ class Device : public NullDevice {
     AqlPacketMgmt aql_packet_mgmt_; //!< AQL packets management class for debugger support
     QueueRecycleInfo() : counter_(1), engineType_(Pal::EngineTypeCompute), index_(0),
           queue_lock_("Queue lock for sharing", true) {}
+
+    //! Returns the aql packet list
+    uintptr_t AqlPacketList() const {
+      return reinterpret_cast<uintptr_t>(&aql_packet_mgmt_.aql_packets_);
+    }
   };
 
   //! Locks any access to the virtual GPUs
