@@ -237,6 +237,8 @@ release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
          "Force device mem for kernel args.")                                 \
 release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, false,                          \
          "Enable/Disable graph packet capturing")                             \
+release(bool, GPU_DEBUG_ENABLE, false,                                        \
+        "Enables collection of extra info for debugger at some perf cost")    \
 release(cstring, HIPRTC_COMPILE_OPTIONS_APPEND, "",                           \
         "Set compile options needed for hiprtc compilation")                  \
 release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \
