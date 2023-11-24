@@ -43,7 +43,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
 #include <immintrin.h>
+#endif
 
 
 /**
@@ -2900,6 +2902,7 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 __attribute__((optimize("unroll-all-loops"), always_inline))
 static inline void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
                               uint16_t size) {
+#if defined(__x86_64__) || defined(_M_X64) || defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
   #if defined(__AVX512F__)
     for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
       _mm512_stream_si512(reinterpret_cast<__m512i* __restrict&>(dst)++,
@@ -2932,6 +2935,9 @@ static inline void nontemporalMemcpy(void* __restrict dst, const void* __restric
     _mm_stream_si32(reinterpret_cast<int* __restrict&>(dst)++,
                     *reinterpret_cast<const int* __restrict&>(src)++);
   }
+#else
+  memcpy(dst, src, size);
+#endif
 }
 
 // ================================================================================================
