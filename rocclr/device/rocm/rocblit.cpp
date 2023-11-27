@@ -2236,7 +2236,6 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
     setArgument(kernels_[fillType], 8, sizeof(height), &height);
     setArgument(kernels_[fillType], 9, sizeof(pitch), &pitch);
 
-
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(2, globalWorkOffset, globalWorkSize, localWorkSize);
 
@@ -2298,76 +2297,57 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   }
 
   if (!result) {
-    uint blitType = BlitCopyBuffer;
-    size_t dim = 1;
-    size_t globalWorkOffset[3] = {0, 0, 0};
-    size_t globalWorkSize = 0;
-    size_t localWorkSize = 0;
+    constexpr uint32_t kBlitType = BlitCopyBuffer;
+    constexpr uint32_t kMaxAlignment = 2 * sizeof(uint64_t);
+    amd::Coord3D size(sizeIn[0]);
 
-    // todo LC shows much better performance with the unaligned version
-    const static uint CopyBuffAlignment[3] = {1 /*16*/, 1 /*4*/, 1};
-    amd::Coord3D size(sizeIn[0], sizeIn[1], sizeIn[2]);
+    // Check alignments for source and destination
+    bool aligned = ((srcOrigin[0] % kMaxAlignment) == 0) && ((dstOrigin[0] % kMaxAlignment) == 0);
+    uint32_t aligned_size = (aligned) ? kMaxAlignment : sizeof(uint32_t);
 
-    uint i;
-    for (i = 0; i < sizeof(CopyBuffAlignment) / sizeof(uint); i++) {
-      bool aligned = false;
-      // Check source alignments
-      aligned = ((srcOrigin[0] % CopyBuffAlignment[i]) == 0);
-      // Check destination alignments
-      aligned &= ((dstOrigin[0] % CopyBuffAlignment[i]) == 0);
-      // Check copy size alignment in the first dimension
-      aligned &= ((sizeIn[0] % CopyBuffAlignment[i]) == 0);
-
-      if (aligned) {
-        if (CopyBuffAlignment[i] != 1) {
-          blitType = BlitCopyBufferAligned;
-        }
-        break;
-      }
-    }
-
-    uint32_t remain;
-    if (blitType == BlitCopyBufferAligned) {
-      size.c[0] /= CopyBuffAlignment[i];
-    } else {
-      remain = size[0] % 4;
-      size.c[0] /= 4;
-      size.c[0] += 1;
-    }
+    // Setup copy size accordingly to the alignment
+    uint32_t remainder = size[0] % aligned_size;
+    size.c[0] /= aligned_size;
+    size.c[0] += (remainder != 0) ? 1 : 0;
 
     // Program the dispatch dimensions
-    localWorkSize = 256;
-    globalWorkSize = amd::alignUp(size[0], 256);
+    const size_t localWorkSize = (aligned) ? 512 : 1024;
+    size_t globalWorkSize = std::min(dev().settings().limit_blit_wg_ * localWorkSize, size[0]);
+    globalWorkSize = amd::alignUp(globalWorkSize, localWorkSize);
 
     // Program kernels arguments for the blit operation
     cl_mem mem = as_cl<amd::Memory>(srcMemory.owner());
-    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
+    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
     mem = as_cl<amd::Memory>(dstMemory.owner());
-    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
+    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
+
     // Program source origin
-    uint64_t srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
-    setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);
+    uint64_t srcOffset = srcOrigin[0];
+    setArgument(kernels_[kBlitType], 2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
-    uint64_t dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
-    setArgument(kernels_[blitType], 3, sizeof(dstOffset), &dstOffset);
+    uint64_t dstOffset = dstOrigin[0];
+    setArgument(kernels_[kBlitType], 3, sizeof(dstOffset), &dstOffset);
 
-    uint64_t copySize = size[0];
-    setArgument(kernels_[blitType], 4, sizeof(copySize), &copySize);
+    uint64_t copySize = sizeIn[0];
+    setArgument(kernels_[kBlitType], 4, sizeof(copySize), &copySize);
 
-    if (blitType == BlitCopyBufferAligned) {
-      int32_t alignment = CopyBuffAlignment[i];
-      setArgument(kernels_[blitType], 5, sizeof(alignment), &alignment);
-    } else {
-      setArgument(kernels_[blitType], 5, sizeof(remain), &remain);
-    }
+    setArgument(kernels_[kBlitType], 5, sizeof(remainder), &remainder);
+    setArgument(kernels_[kBlitType], 6, sizeof(aligned_size), &aligned_size);
+
+    // End pointer is the aligned copy size
+    uint64_t end_ptr = dstMemory.virtualAddress() + sizeIn[0] - remainder;
+    setArgument(kernels_[kBlitType], 7, sizeof(end_ptr), &end_ptr);
+
+    uint32_t next_chunk = globalWorkSize;
+    setArgument(kernels_[kBlitType], 8, sizeof(next_chunk), &next_chunk);
 
     // Create ND range object for the kernel's execution
-    amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
+    amd::NDRangeContainer ndrange(1, nullptr, &globalWorkSize, &localWorkSize);
 
     // Execute the blit
-    address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
+    address parameters = captureArguments(kernels_[kBlitType]);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[kBlitType], parameters, nullptr);
     releaseArguments(parameters);
   }
 

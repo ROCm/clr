@@ -116,9 +116,34 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
   }
 
   __kernel void __amd_rocclr_copyBuffer(__global uchar* srcI, __global uchar* dstI,
-                                        ulong srcOrigin, ulong dstOrigin, ulong size,
-                                        uint remain) {
-    __amd_copyBuffer(srcI, dstI, srcOrigin, dstOrigin, size, remain);
+                                          ulong srcOrigin, ulong dstOrigin, ulong size, uint remainder,
+                                          uint aligned_size, ulong end_ptr, uint next_chunk) {
+    ulong id = get_global_id(0);
+    ulong id_remainder = id;
+
+    __global uchar* src = srcI + srcOrigin;
+    __global uchar* dst = dstI + dstOrigin;
+
+    if (aligned_size == sizeof(ulong2)) {
+      __global ulong2* srcD = (__global ulong2*)(src);
+      __global ulong2* dstD = (__global ulong2*)(dst);
+      while ((ulong)(&dstD[id]) < end_ptr) {
+        dstD[id] = srcD[id];
+        id += next_chunk;
+      }
+    } else {
+      __global uint* srcD = (__global uint*)(src);
+      __global uint* dstD = (__global uint*)(dst);
+      while ((ulong)(&dstD[id]) < end_ptr) {
+        dstD[id] = srcD[id];
+        id += next_chunk;
+      }
+    }
+    if ((remainder != 0) && (id_remainder == 0)) {
+      for (ulong i = size - remainder; i < size; ++i) {
+        dst[i] = src[i];
+      }
+    }
   }
 
   __kernel void __amd_rocclr_copyBufferAligned(__global uint* src, __global uint* dst,
