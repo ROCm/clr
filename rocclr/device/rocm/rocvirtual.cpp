@@ -43,8 +43,14 @@
 #include <string>
 #include <thread>
 #include <vector>
-#include <immintrin.h>
 
+#if defined(__AVX__)
+#if defined(__MINGW64__)
+#include <intrin.h>
+#else
+#include <immintrin.h>
+#endif
+#endif
 
 /**
 * HSA image object size in bytes (see HSAIL spec)
@@ -2900,23 +2906,24 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
 
 // ================================================================================================
 __attribute__((optimize("unroll-all-loops"), always_inline))
-static inline void nontemporalMemcpy(void* __restrict dst, const void* __restrict src,
-                              uint16_t size) {
-  #if defined(__AVX512F__)
-    for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
-      _mm512_stream_si512(reinterpret_cast<__m512i* __restrict&>(dst)++,
-                          *reinterpret_cast<const __m512i* __restrict&>(src)++);
-    }
-    size = size % sizeof(__m512i);
-  #endif
+static inline void nontemporalMemcpy(
+    void* __restrict dst, const void* __restrict src, uint16_t size) {
+#if defined(ATI_ARCH_X86)
+#if defined(__AVX512F__)
+  for (auto i = 0u; i != size / sizeof(__m512i); ++i) {
+    _mm512_stream_si512(reinterpret_cast<__m512i* __restrict&>(dst)++,
+                        *reinterpret_cast<const __m512i* __restrict&>(src)++);
+  }
+  size = size % sizeof(__m512i);
+#endif
 
-  #if defined(__AVX__)
-    for (auto i = 0u; i != size / sizeof(__m256i); ++i) {
-      _mm256_stream_si256(reinterpret_cast<__m256i* __restrict&>(dst)++,
-                          *reinterpret_cast<const __m256i* __restrict&>(src)++);
-    }
-    size = size % sizeof(__m256i);
-  #endif
+#if defined(__AVX__)
+  for (auto i = 0u; i != size / sizeof(__m256i); ++i) {
+    _mm256_stream_si256(reinterpret_cast<__m256i* __restrict&>(dst)++,
+                        *reinterpret_cast<const __m256i* __restrict&>(src)++);
+  }
+  size = size % sizeof(__m256i);
+#endif
 
   for (auto i = 0u; i != size / sizeof(__m128i); ++i) {
     _mm_stream_si128(reinterpret_cast<__m128i* __restrict&>(dst)++,
@@ -2934,6 +2941,9 @@ static inline void nontemporalMemcpy(void* __restrict dst, const void* __restric
     _mm_stream_si32(reinterpret_cast<int* __restrict&>(dst)++,
                     *reinterpret_cast<const int* __restrict&>(src)++);
   }
+#else
+  amd::Os::fastMemcpy(dst, src, size);
+#endif
 }
 
 // ================================================================================================
