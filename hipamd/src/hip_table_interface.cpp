@@ -1518,7 +1518,14 @@ extern "C" hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w,
                                                      hipChannelFormatKind f) {
   return hip::GetHipDispatchTable()->hipCreateChannelDesc_fn(x, y, z, w, f);
 }
-hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+
+#ifdef _WIN32
+# define DllExport __declspec(dllexport)
+#else // !_WIN32
+# define DllExport
+#endif // !_WIN32
+
+DllExport hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -1528,7 +1535,8 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
       f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, localWorkSizeX, localWorkSizeY,
       localWorkSizeZ, sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent, flags);
 }
-hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+
+DllExport hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -1538,6 +1546,7 @@ hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
       f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, localWorkSizeX, localWorkSizeY,
       localWorkSizeZ, sharedMemBytes, hStream, kernelParams, extra, startEvent, stopEvent);
 }
+
 hipError_t hipMemcpy_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind) {
   return hip::GetHipDispatchTable()->hipMemcpy_spt_fn(dst, src, sizeBytes, kind);
 }
