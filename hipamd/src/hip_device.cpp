@@ -402,7 +402,16 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
 
   // Mem pool
   deviceProps.memoryPoolsSupported = HIP_MEM_POOL_SUPPORT;
-  deviceProps.memoryPoolSupportedHandleTypes = 0;
+  unsigned int memPoolHandleType = 0;
+  if (HIP_MEM_POOL_SUPPORT) {
+#if defined(__linux__)
+    memPoolHandleType |= hipMemHandleTypePosixFileDescriptor;
+#elif defined(_WIN32)
+    memPoolHandleType |= hipMemHandleTypeWin32;
+    memPoolHandleType |= hipMemHandleTypeWin32Kmt;
+#endif
+  }
+  deviceProps.memoryPoolSupportedHandleTypes = memPoolHandleType;
 
   // Caching behavior
   deviceProps.globalL1CacheSupported = 1;
