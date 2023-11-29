@@ -398,6 +398,10 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
   f.write('#define _HIP_PROF_STR_H\n');
   f.write('#define HIP_PROF_VER 1\n')
 
+  f.write('\n#include <hip/hip_runtime_api.h>\n')
+  f.write('#include <hip/hip_deprecated.h>\n')
+  f.write('#include "amd_hip_gl_interop.h"\n')
+
   # Check for non-public API
   for name in sorted(opts_map.keys()):
     if not name in api_map:
@@ -407,6 +411,9 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
       priv_lst.append(name)
       message("Private: " + name)
 
+  f.write('\n#define HIP_API_ID_CONCAT_HELPER(a,b) a##b\n');
+  f.write('#define HIP_API_ID_CONCAT(a,b) HIP_API_ID_CONCAT_HELPER(a,b)\n');
+
   # Generating the callbacks ID enumaration
   f.write('\n// HIP API callbacks ID enumeration\n')
   f.write('enum hip_api_id_t {\n')
@@ -415,6 +422,7 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
 
   cb_id_map = {}
   last_cb_id = 0
+  versioned_functions = set()
   for name, cb_id in callback_ids:
     if not name in api_map:
       f.write('  HIP_API_ID_RESERVED_' + str(cb_id) + ' = ' + str(cb_id) + ',\n')
@@ -422,17 +430,29 @@ def generate_prof_header(f, api_map, callback_ids, opts_map):
       f.write('  HIP_API_ID_' + name + ' = ' + str(cb_id) + ',\n')
     cb_id_map[name] = cb_id
     if cb_id > last_cb_id: last_cb_id = cb_id
+    m = re.match(r'(.*)R[0-9][0-9][0-9][0-9]$', name)
+    if m: versioned_functions.add(m.group(1))
 
   for name in sorted(api_map.keys()):
     if not name in cb_id_map:
       last_cb_id += 1
       f.write('  HIP_API_ID_' + name + ' = ' + str(last_cb_id) + ',\n')
+      m = re.match(r'(.*)R[0-9][0-9][0-9][0-9]$', name)
+      if m: versioned_functions.add(m.group(1))
 
   f.write('  HIP_API_ID_LAST = ' + str(last_cb_id) + ',\n')
   f.write('\n')
+
+  for name in sorted(versioned_functions):
+    f.write('  HIP_API_ID_' + name + ' = ' + 'HIP_API_ID_CONCAT(HIP_API_ID_,' + name + '),\n')
+  f.write('\n')
+
   for name in sorted(priv_lst):
     f.write('  HIP_API_ID_' + name + ' = HIP_API_ID_NONE,\n')
   f.write('};\n')
+
+  f.write('\n#undef HIP_API_ID_CONCAT_HELPER\n');
+  f.write('#undef HIP_API_ID_CONCAT\n');
 
   # Generating the method to return API name by ID
   f.write('\n// Return the HIP API string for a given callback ID\n')
@@ -663,7 +683,6 @@ api_map = {
   'hipGetErrorString': '',
   'hipMallocHost': '',
   'hipModuleLoadDataEx': '',
-  'hipGetDeviceProperties': '',
   'hipConfigureCall': '',
   'hipHccModuleLaunchKernel': '',
   'hipExtModuleLaunchKernel': '',
@@ -693,6 +712,8 @@ for enum in cppHeader.enums:
         continue
       if value['name'] == 'HIP_API_ID_LAST':
         break
+      if type(value['value']) == str:
+        continue
       m = re.match(r'HIP_API_ID_(\S*)', value['name'])
       if m:
         api_callback_ids.append((m.group(1), value['value']))
