@@ -2335,8 +2335,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     setArgument(kernels_[kBlitType], 5, sizeof(remainder), &remainder);
     setArgument(kernels_[kBlitType], 6, sizeof(aligned_size), &aligned_size);
 
-    // End pointer is the aligned copy size
-    uint64_t end_ptr = dstMemory.virtualAddress() + sizeIn[0] - remainder;
+    // End pointer is the aligned copy size and destination offset
+    uint64_t end_ptr = dstMemory.virtualAddress() + dstOffset + sizeIn[0] - remainder;
+
     setArgument(kernels_[kBlitType], 7, sizeof(end_ptr), &end_ptr);
 
     uint32_t next_chunk = globalWorkSize;
