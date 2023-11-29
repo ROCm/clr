@@ -38,7 +38,7 @@ extern "C" __device__ int printf(const char *fmt, ...);
 #else
 template <typename... All>
 static inline __device__ void printf(const char* format, All... all) {}
-#endif // __HIP_CLANG_ONLY__
+#endif
 
 extern "C" __device__ unsigned long long __ockl_steadyctr_u64();
 
