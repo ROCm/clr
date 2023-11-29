@@ -214,7 +214,14 @@ bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) 
   // This allocation is necessary to use coherency mechanism
   // for the initialization
   if (getMemFlags() & (CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-    allocHostMem = true;
+    // Extra system memory allocation and copy can be very expensive.
+    // Thus, avoid it if runtime doesn't perform deferred allocations
+    if ((devices.size() == 1) || DISABLE_DEFERRED_ALLOC) {
+      allocHostMem = false;
+      setHostMem(initFrom);
+    } else {
+      allocHostMem = true;
+    }
   }
 
   // Did application request to use host memory?
