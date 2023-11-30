@@ -690,7 +690,7 @@ bool Program::compileImplLC(const std::string& sourceCode,
     driverOptions.push_back("-mwavefrontsize64");
   }
   driverOptions.push_back("-mcode-object-version=" + std::to_string(options->oVariables->LCCodeObjectVersion));
- 
+
   // Iterate through each source code and dump it into tmp
   std::fstream f;
   std::vector<std::string> headerFileNames(headers.size());
@@ -1456,13 +1456,6 @@ bool Program::initBuild(amd::option::Options* options) {
     DevLogError("Init CL Binary failed \n");
     return false;
   }
-
-  std::string targetID = device().isa().targetId();
-#if defined(_WIN32)
-  // Replace special charaters that are not supported by Windows FS.
-  std::replace(targetID.begin(), targetID.end(), ':', '@');
-#endif
-  options->setPerBuildInfo(targetID.c_str(), clBinary()->getEncryptCode(), true);
 
   // Elf Binary setup
   std::string outFileName;
