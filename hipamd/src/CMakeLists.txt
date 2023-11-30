@@ -280,6 +280,29 @@ endif()
 
 target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
 
+if(WIN32)
+    # rocprofiler-register is not support on Windows
+    set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
+else()
+    option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
+endif()
+
+if(HIP_ENABLE_ROCPROFILER_REGISTER)
+    find_package(rocprofiler-register
+        HINTS $ENV{rocprofiler_register_ROOT} $ENV{ROCPROFILER_REGISTER_ROOT} ${CMAKE_INSTALL_PREFIX}
+        PATHS /opt/rocm)
+
+    if(rocprofiler-register_FOUND)
+        # don't use HIP_VERSION_PATCH because it is too large (> 100) for rocprofiler register
+        target_compile_definitions(amdhip64 PRIVATE HIP_ROCPROFILER_REGISTER=1
+            HIP_ROCP_REG_VERSION_MAJOR=${HIP_VERSION_MAJOR}
+            HIP_ROCP_REG_VERSION_MINOR=${HIP_VERSION_MINOR}
+            HIP_ROCP_REG_VERSION_PATCH=0)
+        target_link_libraries(amdhip64 PRIVATE rocprofiler-register::rocprofiler-register)
+        set_target_properties(amdhip64 PROPERTIES INSTALL_RPATH "\$ORIGIN")
+    endif()
+endif()
+
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
   ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/share/hip/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
@@ -335,4 +358,3 @@ install(
     DESTINATION
     ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
     )
-
