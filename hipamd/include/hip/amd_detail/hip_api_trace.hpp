@@ -23,6 +23,46 @@
 
 #include <hip/hip_runtime.h>
 
+// Define some version macros for the API table. Use similar naming conventions to HSA-runtime
+// (MAJOR and STEP versions). Three groups at this time:
+//
+// (A) HIP_API_TABLE_* defines for versioning for API table structure
+// (B) HIP_RUNTIME_API_TABLE_* defines for versioning the HipDispatchTable struct
+// (C) HIP_COMPILER_API_TABLE_* defines for versioning the HipCompilerDispatchTable struct
+//
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!     IMPORTANT    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+//    1. When new functions are added to the API table, always add the new function pointer to the
+//       end of the table and increment the dispatch table's step version number. NEVER re-arrange
+//       the order of the member variables in a dispatch table. This will break the ABI.
+//    2. In dire circumstances, if the type of an existing member variable in a dispatch
+//       table has be changed because a data type has been changed/removed, increment the dispatch
+//       table's major version number. If the function pointer type can no longer be declared, DO
+//       NOT REMOVE IT! Make the function pointer type void* and have it always be set to a nullptr.
+//
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//
+// The major version number should (ideally) never need to be incremented.
+// - Increment the HIP_API_TABLE_MAJOR_VERSION for fundamental changes to the API table structs.
+// - Increment the HIP_RUNTIME_API_TABLE_MAJOR_VERSION for fundamental changes to the
+//   HipDispatchTable struct, such as a *change* to type/name an existing member variable. DO NOT
+//   REMOVE IT.
+// - Increment the HIP_COMPILER_API_TABLE_MAJOR_VERSION for fundamental changes to the
+//   HipCompilerDispatchTable struct, such as a *change* to type/name an existing member variable.
+//   DO NOT REMOVE IT.
+#define HIP_API_TABLE_MAJOR_VERSION 0
+#define HIP_RUNTIME_API_TABLE_MAJOR_VERSION 0
+#define HIP_COMPILER_API_TABLE_MAJOR_VERSION 0
+
+// The step version number should be changed whenever the size of the API table struct(s) change.
+// - Increment the HIP_API_TABLE_STEP_VERSION when/if new API table structs are added
+// - Increment the HIP_RUNTIME_API_TABLE_STEP_VERSION when new runtime API functions are added
+// - Increment the HIP_COMPILER_API_TABLE_STEP_VERSION when new compiler API functions are added
+// - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
+#define HIP_API_TABLE_STEP_VERSION 0
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 0
+#define HIP_COMPILER_API_TABLE_STEP_VERSION 0
+
 // HIP API interface
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
                                                   hipStream_t* stream);
