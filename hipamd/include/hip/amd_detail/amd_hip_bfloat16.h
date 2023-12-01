@@ -81,9 +81,9 @@ struct hip_bfloat16
     {
         union
         {
-            __hip_uint32_t int32;
+            uint32_t int32;
             float    fp32;
-        } u = {__hip_uint32_t(data) << 16};
+        } u = {uint32_t(data) << 16};
         return u.fp32;
     }
 
@@ -113,7 +113,7 @@ private:
         union
         {
             float    fp32;
-            __hip_uint32_t int32;
+            uint32_t int32;
         } u = {f};
         if(~u.int32 & 0x7f800000)
         {
@@ -156,7 +156,7 @@ private:
         union
         {
             float    fp32;
-            __hip_uint32_t int32;
+            uint32_t int32;
         } u = {f};
         return __hip_uint16_t(u.int32 >> 16) | (!(~u.int32 & 0x7f800000) && (u.int32 & 0xffff));
     }
