@@ -48,7 +48,7 @@ const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream)
 
 void hipRegisterTracerCallback(const void* function) {
   typedef int (*fptr)(activity_domain_t domain, uint32_t operation_id, void* data);
-  fptr my_fptr = reinterpret_cast<fptr>(function);
+  fptr my_fptr = reinterpret_cast<fptr>(const_cast<void*>(function));
   activity_prof::report_activity.store(my_fptr, std::memory_order_relaxed);
 }
 
