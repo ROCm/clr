@@ -54,7 +54,7 @@ extern "C" __device__ __attribute__((const)) uint __ockl_sadd_u32(uint, uint, ui
 extern "C" __device__ __attribute__((const)) uchar __ockl_clz_u8(uchar);
 extern "C" __device__ __attribute__((const)) ushort __ockl_clz_u16(ushort);
 extern "C" __device__ __attribute__((const)) uint __ockl_clz_u32(uint);
-extern "C" __device__ __attribute__((const)) __hip_uint64_t __ockl_clz_u64(__hip_uint64_t);
+extern "C" __device__ __attribute__((const)) uint64_t __ockl_clz_u64(uint64_t);
 
 extern "C" __device__ __attribute__((const)) float __ocml_floor_f32(float);
 extern "C" __device__ __attribute__((const)) float __ocml_rint_f32(float);
@@ -75,26 +75,26 @@ extern "C" __device__ __attribute__((const)) _Float16 __ocml_cvtrtz_f16_f32(floa
 extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_s32(int);
 extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_s32(int);
 extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_s32(int);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u32(__hip_uint32_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u32(__hip_uint32_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u32(__hip_uint32_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u64(__hip_uint64_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u64(__hip_uint64_t);
-extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u64(__hip_uint64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_s64(__hip_int64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_u64(__hip_uint64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_u64(__hip_uint64_t);
-extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_u64(__hip_uint64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u32(uint32_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_s64(int64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtn_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtp_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) float __ocml_cvtrtz_f32_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_s64(int64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtn_f64_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtp_f64_u64(uint64_t);
+extern "C" __device__ __attribute__((const)) double __ocml_cvtrtz_f64_u64(uint64_t);
 
 extern "C" __device__ __attribute__((convergent)) void __ockl_gws_init(uint nwm1, uint rid);
 extern "C" __device__ __attribute__((convergent)) void __ockl_gws_barrier(uint nwm1, uint rid);
 
-extern "C" __device__ __attribute__((const)) __hip_uint32_t __ockl_lane_u32();
+extern "C" __device__ __attribute__((const)) uint32_t __ockl_lane_u32();
 extern "C" __device__ __attribute__((const)) int __ockl_grid_is_valid(void);
 extern "C" __device__ __attribute__((convergent)) void __ockl_grid_sync(void);
 extern "C" __device__ __attribute__((const)) uint __ockl_multi_grid_num_grids(void);
@@ -110,14 +110,14 @@ extern "C" __device__ __attribute__((convergent)) int __ockl_wgred_add_i32(int a
 extern "C" __device__ __attribute__((convergent)) int __ockl_wgred_and_i32(int a);
 extern "C" __device__ __attribute__((convergent)) int __ockl_wgred_or_i32(int a);
 
-extern "C" __device__ __hip_uint64_t __ockl_fprintf_stderr_begin();
-extern "C" __device__ __hip_uint64_t __ockl_fprintf_append_args(__hip_uint64_t msg_desc, __hip_uint32_t num_args,
-                                                          __hip_uint64_t value0, __hip_uint64_t value1,
-                                                          __hip_uint64_t value2, __hip_uint64_t value3,
-                                                          __hip_uint64_t value4, __hip_uint64_t value5,
-                                                          __hip_uint64_t value6, __hip_uint32_t is_last);
-extern "C" __device__ __hip_uint64_t __ockl_fprintf_append_string_n(__hip_uint64_t msg_desc, const char* data,
-                                                              __hip_uint64_t length, __hip_uint32_t is_last);
+extern "C" __device__ uint64_t __ockl_fprintf_stderr_begin();
+extern "C" __device__ uint64_t __ockl_fprintf_append_args(uint64_t msg_desc, uint32_t num_args,
+                                                          uint64_t value0, uint64_t value1,
+                                                          uint64_t value2, uint64_t value3,
+                                                          uint64_t value4, uint64_t value5,
+                                                          uint64_t value6, uint32_t is_last);
+extern "C" __device__ uint64_t __ockl_fprintf_append_string_n(uint64_t msg_desc, const char* data,
+                                                              uint64_t length, uint32_t is_last);
 
 // Introduce local address space
 #define __local __attribute__((address_space(3)))
