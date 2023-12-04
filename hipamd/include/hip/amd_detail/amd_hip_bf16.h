@@ -94,12 +94,12 @@
 #include "math_fwd.h"              // ocml device functions
 
 #if defined(__HIPCC_RTC__)
-#define __HOST_DEVICE__ __device__
+#define __HOST_DEVICE__ __device__ static
 #else
 #include <algorithm>
 #include <climits>
 #include <cmath>
-#define __HOST_DEVICE__ __host__ __device__ inline
+#define __HOST_DEVICE__ __host__ __device__ static inline
 #endif
 
 #define HIPRT_ONE_BF16 __float2bfloat16(1.0f)
