@@ -1280,9 +1280,6 @@ hipError_t hipPointerSetAttribute(const void* value, hipPointer_attribute attrib
 }
 hipError_t hipProfilerStart() { return hip::GetHipDispatchTable()->hipProfilerStart_fn(); }
 hipError_t hipProfilerStop() { return hip::GetHipDispatchTable()->hipProfilerStop_fn(); }
-extern "C" void hipRegisterTracerCallback(const void* function) {
-  return hip::GetHipDispatchTable()->hipRegisterTracerCallback_fn(function);
-}
 hipError_t hipRuntimeGetVersion(int* runtimeVersion) {
   return hip::GetHipDispatchTable()->hipRuntimeGetVersion_fn(runtimeVersion);
 }

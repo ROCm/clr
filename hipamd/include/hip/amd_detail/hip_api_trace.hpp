@@ -634,8 +634,6 @@ typedef hipError_t (*t_hipPointerSetAttribute)(const void* value, hipPointer_att
                                                hipDeviceptr_t ptr);
 typedef hipError_t (*t_hipProfilerStart)();
 typedef hipError_t (*t_hipProfilerStop)();
-typedef void (*t_hipRegisterTracerCallback)(const void* function);
-typedef void (*t_hipRegisterTracerId)(uint64_t id);
 typedef hipError_t (*t_hipRuntimeGetVersion)(int* runtimeVersion);
 typedef hipError_t (*t_hipSetDevice)(int deviceId);
 typedef hipError_t (*t_hipSetDeviceFlags)(unsigned flags);
@@ -1212,7 +1210,6 @@ struct HipDispatchTable {
   t_hipPointerSetAttribute hipPointerSetAttribute_fn;
   t_hipProfilerStart hipProfilerStart_fn;
   t_hipProfilerStop hipProfilerStop_fn;
-  t_hipRegisterTracerCallback hipRegisterTracerCallback_fn;
   t_hipRuntimeGetVersion hipRuntimeGetVersion_fn;
   t_hipSetDevice hipSetDevice_fn;
   t_hipSetDeviceFlags hipSetDeviceFlags_fn;

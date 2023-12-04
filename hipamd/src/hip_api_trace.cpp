@@ -534,7 +534,6 @@ hipError_t hipPointerSetAttribute(const void* value, hipPointer_attribute attrib
                                   hipDeviceptr_t ptr);
 hipError_t hipProfilerStart();
 hipError_t hipProfilerStop();
-void hipRegisterTracerCallback(const void* function);
 hipError_t hipRuntimeGetVersion(int* runtimeVersion);
 hipError_t hipSetDevice(int deviceId);
 hipError_t hipSetDeviceFlags(unsigned flags);
@@ -1091,7 +1090,6 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipPointerSetAttribute_fn = hip::hipPointerSetAttribute;
   ptrDispatchTable->hipProfilerStart_fn = hip::hipProfilerStart;
   ptrDispatchTable->hipProfilerStop_fn = hip::hipProfilerStop;
-  ptrDispatchTable->hipRegisterTracerCallback_fn = hip::hipRegisterTracerCallback;
   ptrDispatchTable->hipRuntimeGetVersion_fn = hip::hipRuntimeGetVersion;
   ptrDispatchTable->hipSetDevice_fn = hip::hipSetDevice;
   ptrDispatchTable->hipSetDeviceFlags_fn = hip::hipSetDeviceFlags;
