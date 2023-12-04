@@ -691,11 +691,16 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   // Determine engine and assign a copy mask for the new versatile ROCr API
   // If engine preferred is SDMA, assign the SdmaWrite path
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
-      (dstAgent.handle != dev().getCpuAgent().handle) || forceSDMA) {
+      (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
+    engine = HwQueueEngine::SdmaRead;
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+  }
+
+  if (engine == HwQueueEngine::Unknown && forceSDMA) {
     engine = HwQueueEngine::SdmaRead;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
