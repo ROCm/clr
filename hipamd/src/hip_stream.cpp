@@ -249,6 +249,7 @@ void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) 
     }
 
     //Reset the dirty flag for all streams now that the marker is submitted
+    amd::ScopedLock lock(streamSetLock);
     for (const auto& stream : streamSet) {
       amd::HostQueue* active_queue = stream->asHostQueue();
       if (active_queue->vdev()->isFenceDirty()) {
