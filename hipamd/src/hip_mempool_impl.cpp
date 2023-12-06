@@ -50,7 +50,7 @@ amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunist
     }
     // Check if size can match and it's safe to use this resource.
     // Runtime can accept an allocation with 12.5% on the size threshold
-    if ((it->first->getSize() >= size) && (it->first->getSize() <= (size / 8) * 9) &&
+    if ((it->first->getSize() >= size) && (it->first->getSize() <= (size / 8.0) * 9) &&
         check_address && (it->second.IsSafeFind(stream, opportunistic))) {
       memory = it->first;
       total_size_ -= memory->getSize();
