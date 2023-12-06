@@ -169,6 +169,11 @@ void Stream::destroyAllStreams(int deviceId) {
 
 bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
+  // Allow capture to be less restrictive one one changes the stream capture interaction
+  // mode for the thread
+  if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeRelaxed) {
+    return false;
+  }
   // If any local thread has an ongoing or concurrent capture sequence initiated
   // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
   if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
