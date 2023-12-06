@@ -2,6 +2,11 @@
 
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
+## HIP 6.1 (For ROCm 6.1)
+
+### Changed
+- HIPRTC now assumes WGP mode for gfx10+. CU mode can be enabled by passing `-mcumode` to the compile options from `hiprtcCompileProgram`.
+
 ## (Unreleased) HIP 6.0 (For ROCm 6.0)
 ### Optimizations
 

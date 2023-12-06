@@ -149,7 +149,9 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.reserve(20);  // count of options below
   compile_options_.push_back("-O3");
 
-  if (GPU_ENABLE_WGP_MODE) compile_options_.push_back("-mcumode");
+  if (!(GPU_ENABLE_WGP_MODE)) {
+    compile_options_.push_back("-mcumode");
+  }
 
   compile_options_.push_back(hipVerOpt);
   compile_options_.push_back(hipVerMajor);
