@@ -503,7 +503,7 @@ inline hipError_t ihipGetTextureAlignmentOffset(size_t* offset,
   // If the device memory pointer was returned from hipMalloc(),
   // the offset is guaranteed to be 0 and NULL may be passed as the offset parameter.
   if ((alignedOffset != 0) && (offset == nullptr)) {
-    LogPrintfError("Texture object not aligned with offset %u \n", alignedOffset);
+    LogPrintfError("Texture object not aligned with offset %u", alignedOffset);
     return hipErrorInvalidValue;
   }
 
@@ -896,7 +896,7 @@ hipError_t hipTexRefGetAddressMode(hipTextureAddressMode* pam,
   if ((dim != 0) && (dim != 1)) {
     LogPrintfError(
         "Currently only 2 dimensions (0,1) are valid,"
-        "dim : %d \n",
+        "dim : %d",
         dim);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -918,7 +918,7 @@ hipError_t hipTexRefSetAddressMode(textureReference* texRef,
   if ((dim < 0) || (dim > 2)) {
     LogPrintfError(
         "Currently only 3 dimensions (0,1,2) are valid,"
-        "dim : %d \n",
+        "dim : %d",
         dim);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1022,7 +1022,7 @@ hipError_t hipTexRefGetAddress(hipDeviceptr_t* dptr,
   // TODO use ihipGetTextureObjectResourceDesc() to not pollute the API trace.
   hipError_t error = ihipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
   if (error != hipSuccess) {
-    LogPrintfError("hipGetTextureObjectResourceDesc failed with error code: %s \n",
+    LogPrintfError("hipGetTextureObjectResourceDesc failed with error code: %s",
                    ihipGetErrorName(error));
     HIP_RETURN(error);
   }

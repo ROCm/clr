@@ -104,7 +104,7 @@ public:
   // Device ID Check to check if module is launched in the same device it was loaded.
   inline void CheckDeviceIdMatch() const {
     guarantee(device_id_ == ihipGetDevice(), "Device mismatch from where this module is loaded,"
-              "device_id: %d ihipGetDevice:%d \n", device_id_, ihipGetDevice());
+              "device_id: %d ihipGetDevice:%d", device_id_, ihipGetDevice());
   }
 
 private:

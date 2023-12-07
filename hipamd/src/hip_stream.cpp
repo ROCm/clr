@@ -332,7 +332,7 @@ hipStream_t stream_per_thread::get() {
     hipError_t status = ihipStreamCreate(&m_streams[currDev], hipStreamDefault,
                                          hip::Stream::Priority::Normal);
     if (status != hipSuccess) {
-      DevLogError("Stream creation failed\n");
+      DevLogError("Stream creation failed");
     }
   }
   return m_streams[currDev];

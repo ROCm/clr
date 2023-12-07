@@ -106,13 +106,13 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
   void* ptr = amd::SvmBuffer::malloc(*amdContext, ROCCLR_MEM_PHYMEM, size,
                                      dev_info.memBaseAddrAlign_, nullptr);
 
-  // Handle out of memory cases, 
+  // Handle out of memory cases,
   if (ptr == nullptr) {
     size_t free = 0, total =0;
     hipError_t hip_error = hipMemGetInfo(&free, &total);
     if (hip_error == hipSuccess) {
       LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu"
-                                                "| total :%zu \n", size, free, total);
+                                                "| total :%zu", size, free, total);
     }
     HIP_RETURN(hipErrorOutOfMemory);
   }

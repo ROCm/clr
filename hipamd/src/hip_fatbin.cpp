@@ -191,7 +191,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 #if !defined(_WIN32)
     // Using the file descriptor and file size, map the data object.
     if (amd::Os::isValidFileDesc(fdesc_)) {
-      guarantee(fsize_ > 0, "Cannot have a file size of 0, fdesc: %d fname: %s \n",
+      guarantee(fsize_ > 0, "Cannot have a file size of 0, fdesc: %d fname: %s",
                              fdesc_, fname_.c_str());
       if ((comgr_status = amd_comgr_set_data_from_file_slice(data_object, fdesc_, foffset_,
                           fsize_)) != AMD_COMGR_STATUS_SUCCESS) {
@@ -219,7 +219,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       std::string device_name = devices[dev_idx]->devices()[0]->isa().isaName();
       if (unique_isa_names.cend() == unique_isa_names.find(device_name)) {
         unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0,0)});
-      } 
+      }
     }
 
     // Create a query list using COMGR info for unique ISAs.
@@ -253,7 +253,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       auto dev_it = unique_isa_names.find(device_name);
       // If the size is 0, then COMGR API could not find the CO for this GPU device/ISA
       if (dev_it->second.first == 0) {
-        LogPrintfError("Cannot find CO in the bundle %s for ISA: %s \n",
+        LogPrintfError("Cannot find CO in the bundle %s for ISA: %s",
                         fname_.c_str(), device_name.c_str());
         hip_status = hipErrorNoBinaryForGpu;
         ListAllDeviceWithNoCOFromBundle(unique_isa_names);
@@ -302,7 +302,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
       return hipErrorInvalidValue;
-    } 
+    }
   }
 
   return hip_status;
