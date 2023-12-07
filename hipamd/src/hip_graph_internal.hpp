@@ -1851,7 +1851,7 @@ class GraphEventRecordNode : public GraphNode {
       hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] Enqueue event record command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue event record command failed for node %p - status %d", this,
                 status);
       }
     }
@@ -1903,7 +1903,7 @@ class GraphEventWaitNode : public GraphNode {
       hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] Enqueue stream wait command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue stream wait command failed for node %p - status %d", this,
                 status);
       }
       commands_[0]->release();

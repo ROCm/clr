@@ -241,7 +241,7 @@ hipError_t hipCtxPopCurrent(hipCtx_t* ctx) {
     }
     tls.ctxt_stack_.pop();
   } else {
-    DevLogError("Context Stack empty \n");
+    DevLogError("Context Stack empty");
     HIP_RETURN(hipErrorInvalidContext);
   }
 

@@ -672,7 +672,7 @@ hipError_t DynCO::populateDynGlobalVars() {
                                      ->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
 
   if (!dev_program->getGlobalVarFromCodeObj(&var_names)) {
-    LogPrintfError("Could not get Global vars from Code Obj for Module: 0x%x \n", module());
+    LogPrintfError("Could not get Global vars from Code Obj for Module: 0x%x", module());
     return hipErrorSharedObjectSymbolNotFound;
   }
 
@@ -700,7 +700,7 @@ hipError_t DynCO::populateDynGlobalFuncs() {
 
   // Get all the global func names from COMGR
   if (!dev_program->getGlobalFuncFromCodeObj(&func_names)) {
-    LogPrintfError("Could not get Global Funcs from Code Obj for Module: 0x%x \n", module());
+    LogPrintfError("Could not get Global Funcs from Code Obj for Module: 0x%x", module());
     return hipErrorSharedObjectSymbolNotFound;
   }
 

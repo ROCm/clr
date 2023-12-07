@@ -174,7 +174,7 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
       size_t free = 0, total =0;
       hipError_t err = hipMemGetInfo(&free, &total);
       if (err == hipSuccess) {
-        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n",
+        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu",
           size, free, total);
       }
       return nullptr;

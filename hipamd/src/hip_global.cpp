@@ -72,10 +72,10 @@ DeviceVar::DeviceVar(std::string name,
   device::Program* dev_program =
                    program->getDeviceProgram(*g_devices.at(deviceId)->devices()[0]);
 
-  guarantee (dev_program != nullptr, "Cannot get Device Program for module: 0x%x \n", hmod);
+  guarantee (dev_program != nullptr, "Cannot get Device Program for module: 0x%x", hmod);
 
   if(!dev_program->createGlobalVarObj(&amd_mem_obj_, &device_ptr_, &size_, name.c_str())) {
-    guarantee(false, "Cannot create GlobalVar Obj for symbol: %s \n", name.c_str());
+    guarantee(false, "Cannot create GlobalVar Obj for symbol: %s", name.c_str());
   }
 
   // Handle size 0 symbols
@@ -111,10 +111,10 @@ DeviceFunc::DeviceFunc(std::string name, hipModule_t hmod) : dflock_("function l
   amd::Program* program = as_amd(reinterpret_cast<cl_program>(hmod));
 
   const amd::Symbol *symbol = program->findSymbol(name.c_str());
-  guarantee(symbol != nullptr, "Cannot find Symbol with name: %s \n", name.c_str());
+  guarantee(symbol != nullptr, "Cannot find Symbol with name: %s", name.c_str());
 
   kernel_ = new amd::Kernel(*program, *symbol, name);
-  guarantee(kernel_ != nullptr, "Cannot Create kernel with name: %s \n", name.c_str());
+  guarantee(kernel_ != nullptr, "Cannot Create kernel with name: %s", name.c_str());
 }
 
 DeviceFunc::~DeviceFunc() {

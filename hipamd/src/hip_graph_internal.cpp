@@ -126,7 +126,7 @@ bool Graph::isGraphValid(Graph* pGraph) {
 
 void Graph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)\n",
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)",
           GetGraphNodeTypeString(node->GetType()), node);
   node->SetParentGraph(this);
 }
@@ -142,11 +142,10 @@ std::vector<Node> Graph::GetRootNodes() const {
   for (auto entry : vertices_) {
     if (entry->GetInDegree() == 0) {
       roots.push_back(entry);
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Root node: %s(%p)\n",
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Root node: %s(%p)",
               GetGraphNodeTypeString(entry->GetType()), entry);
     }
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "\n");
   return roots;
 }
 
@@ -194,7 +193,7 @@ void Graph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
       // For the parallel list nodes add parent as the dependency
       if (singleList.empty()) {
         ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-                "[hipGraph] For %s(%p)- add parent as dependency %s(%p)\n",
+                "[hipGraph] For %s(%p) - add parent as dependency %s(%p)",
                 GetGraphNodeTypeString(adjNode->GetType()), adjNode,
                 GetGraphNodeTypeString(v->GetType()), v);
         dependencies[adjNode].push_back(v);
@@ -213,7 +212,7 @@ void Graph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
       }
       // If the list cannot be merged with the existing list add as dependancy
       if (!singleList.empty()) {
-        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] For %s(%p)- add dependency %s(%p)\n",
+        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] For %s(%p) - add dependency %s(%p)",
                 GetGraphNodeTypeString(adjNode->GetType()), adjNode,
                 GetGraphNodeTypeString(v->GetType()), v);
         dependencies[adjNode].push_back(v);
@@ -245,7 +244,7 @@ void Graph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
   for (size_t i = 0; i < parallelLists.size(); i++) {
     for (size_t j = 0; j < parallelLists[i].size(); j++) {
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] List %d - %s(%p)\n", i + 1,
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] List %d - %s(%p)", i + 1,
               GetGraphNodeTypeString(parallelLists[i][j]->GetType()), parallelLists[i][j]);
     }
   }
@@ -328,7 +327,7 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
       if (stream != nullptr) {
         hip::Stream::Destroy(stream);
       }
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!\n");
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!");
       return hipErrorOutOfMemory;
     }
     parallel_streams_.push_back(stream);
@@ -447,7 +446,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
 
   std::vector<Node> rootNodes = clonedGraph->GetRootNodes();
   ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-          "[hipGraph] RootCommand get launched on stream (stream:%p)\n", stream);
+          "[hipGraph] RootCommand get launched on stream %p", stream);
 
   for (auto& root : rootNodes) {
     //If rootnode is launched on to the same stream dont add dependency
@@ -485,7 +484,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
   if (!graphLastCmdWaitList.empty()) {
     graphEnd = new amd::Marker(*stream, false, graphLastCmdWaitList);
     ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-            "[hipGraph] EndCommand will get launched on stream (stream:%p)\n", stream);
+            "[hipGraph] EndCommand will get launched on stream %p", stream);
     if (graphEnd == nullptr) {
       graphStart->release();
       return hipErrorOutOfMemory;

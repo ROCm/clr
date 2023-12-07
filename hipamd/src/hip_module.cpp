@@ -81,7 +81,7 @@ hipError_t hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const ch
   }
 
   if (hipSuccess != PlatformState::instance().getDynFunc(hfunc, hmod, name)) {
-    LogPrintfError("Cannot find the function: %s for module: 0x%x \n", name, hmod);
+    LogPrintfError("Cannot find the function: %s for module: 0x%x", name, hmod);
     HIP_RETURN(hipErrorNotFound);
   }
 
@@ -104,7 +104,7 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
   }
   /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynGlobalVar(name, hmod, dptr, bytes)) {
-    LogPrintfError("Cannot find global Var: %s for module: 0x%x at device: %d \n", name, hmod,
+    LogPrintfError("Cannot find global Var: %s for module: 0x%x at device: %d", name, hmod,
                    ihipGetDevice());
     HIP_RETURN(hipErrorNotFound);
   }
@@ -825,7 +825,7 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
 
   /* Get address and size for the global symbol */
   if (hipSuccess != PlatformState::instance().getDynTexRef(name, hmod, texRef)) {
-    LogPrintfError("Cannot get texRef for name: %s at module:0x%x \n", name, hmod);
+    LogPrintfError("Cannot get texRef for name: %s at module:0x%x", name, hmod);
     HIP_RETURN(hipErrorNotFound);
   }
 
