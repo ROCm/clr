@@ -6,7 +6,7 @@ AMD Common Language Runtime contains source code for AMD's compute languages run
 
 - `hipamd` - contains implementation of `HIP` language on AMD platform. Previously this was hosted at [ROCm-Developer-Tools/hipamd](https://github.com/ROCm-Developer-Tools/hipamd)
 - `opencl` - contains implementation of [OpenCL™](https://www.khronos.org/opencl/) on AMD platform. Previously this was hosted at [RadeonOpenCompute/ROCm-OpenCL-Runtime](https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime)
-- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. Previously this was hosted at [ROCm-Developer-Tools/ROCclr](https://github.com/ROCm-Developer-Tools/hipamd)
+- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. Previously this was hosted at [ROCm-Developer-Tools/ROCclr](https://github.com/ROCm-Developer-Tools/ROCclr)
 
 ## How to build/install
 
@@ -21,8 +21,8 @@ Building clr requires `rocm-hip-libraries` meta package, which provides the pre-
 - Clone this repo
 - `cd clr && mkdir build && cd build`
 - For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
-  - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm-Developer-Tools/HIP)
-  - `HIPCC_BIN_DIR` points to [HIPCC](https://github.com/ROCm-Developer-Tools/HIPCC)'s bin folder. If not provided, it defaults to `/opt/rocm/bin`.
+  - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
+  - `HIPCC_BIN_DIR` points to [HIPCC](https://github.com/ROCm/HIPCC)'s bin folder. If not provided, it defaults to `/opt/rocm/bin`.
 - For OpenCL™ : `cmake .. -DCLR_BUILD_OCL=ON`
 - `make` : to build
 - `make install` : to install
@@ -31,11 +31,11 @@ Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HI
 
 ## Tests
 
-`hip-tests` is a separate repo hosted at [ROCm-Developer-Tools/hip-tests](https://github.com/ROCm-Developer-Tools/hip-tests).
+`hip-tests` is a separate repo hosted at [hip-tests](https://github.com/ROCm/hip-tests).
 
 To run `hip-tests` please go to the repo and follow the steps.
 
-There used to be directed tests in [ROCm/HIP](https://github.com/ROCm-Developer-Tools/HIP) which are now removed in favor of `hip-tests` repo.
+There used to be directed tests in [ROCm/HIP](https://github.com/ROCm/HIP) which are now removed in favor of `hip-tests` repo.
 
 ## Disclaimer
 

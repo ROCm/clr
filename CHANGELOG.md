@@ -98,8 +98,8 @@ Any application uses complex multiplication and division operations, need to rep
       NVIDIA platform,
       __HIP_PLATFORM_NVCC__
 - File directories in the clr repository are removed,
-  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/hcc_detail
-  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/nvcc_detail
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/hcc_detail
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/nvcc_detail
 - Deprecated gcnArch is removed from hip device struct hipDeviceProp_t.
 - Deprecated "enum hipMemoryType memoryType;" is removed from HIP struct hipPointerAttribute_t union.
 
