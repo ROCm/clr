@@ -50,6 +50,11 @@ endif()
 set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "rocm-opencl")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "rocm-opencl")
 
+set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/opencl/postinst;${CMAKE_BINARY_DIR}/opencl/packages/opencl/prerm")
+# RPM CPACK variables
+set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/opencl/rpm_post")
+set(CPACK_RPM_BINARY_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/opencl/rpm_postun")
+
 ## Set ASAN package name
 set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "rocm-opencl-asan")
 set(CPACK_RPM_ASAN_PACKAGE_NAME "rocm-opencl-asan")

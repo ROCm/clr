@@ -1,0 +1,4 @@
+# Remove icd file for uninstall and upgrade operation
+rm -f /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@
+
+
