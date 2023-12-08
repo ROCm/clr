@@ -636,8 +636,7 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     Pal::ImageTiling tiling = forceLinear ? Pal::ImageTiling::Linear : Pal::ImageTiling::Optimal;
     uint32_t rowPitch = 0;
 
-    if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
-        (memoryType() == ImageBuffer)) {
+    if (memoryType() == ImageBuffer) {
       tiling = Pal::ImageTiling::Linear;
     } else if (memoryType() == ImageExternalBuffer) {
       // We cannot get tiling info from vulkan/d3d driver now. So assume it to be optimal.
@@ -1935,13 +1934,11 @@ bool Resource::isPersistentDirectMap(bool writeMap) const {
 
   // If direct map is possible, then validate it with the current tiling
   if (directMap && desc().tiled_) {
-    //!@note IOL for Linux doesn't support tiling aperture
-    // and runtime doesn't force linear images in persistent
-    directMap = IS_WINDOWS && !dev().settings().linearPersistentImage_;
-  }
-
+    // Latest HW does have tiling apertures
+    directMap = false;
+  } 
   if (memoryType() == View) {
-    directMap = viewOwner_->isPersistentDirectMap();
+    directMap = viewOwner_->isPersistentDirectMap(writeMap);
   }
 
   return directMap;

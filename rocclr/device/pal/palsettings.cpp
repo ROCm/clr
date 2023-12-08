@@ -101,10 +101,6 @@ Settings::Settings() {
   // Number of compute rings.
   numComputeRings_ = 0;
 
-  // Controls tiled images in persistent
-  //!@note IOL for Linux doesn't setup tiling aperture in CMM/QS
-  linearPersistentImage_ = false;
-
   // Device enqueuing settings
   numDeviceEvents_ = 1024;
   numWaitEvents_ = 8;
@@ -250,8 +246,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Polaris11:
     case Pal::AsicRevision::Polaris12:
     case Pal::AsicRevision::Polaris22:
-      // Disable tiling aperture on VI+
-      linearPersistentImage_ = true;
       // Keep this false even though we have support
       // singleFpDenorm_ = true;
       viPlus_ = true;
