@@ -2183,7 +2183,7 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
           ? HostBlitManager::FillBufferInfo::kExtendedSize
           : patternSize;
       size_t kfill_size = packed_obj.fill_size_ / kpattern_size;
-      size_t koffset = overall_offset;
+      uint64_t koffset = overall_offset;
       overall_offset += packed_obj.fill_size_;
 
       size_t globalWorkOffset[3] = {0, 0, 0};
@@ -2249,8 +2249,9 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
       koffset /= alignment;
       setArgument(kernels_[kFillType], 7, sizeof(koffset), &koffset);
       // Calculate max id
-      kfill_size = memory.virtualAddress() + (koffset + kfill_size * kpattern_size) * alignment;
-      setArgument(kernels_[kFillType], 8, sizeof(kfill_size), &kfill_size);
+      uint64_t end_ptr = memory.virtualAddress() +
+        (koffset + kfill_size * kpattern_size) * alignment;
+      setArgument(kernels_[kFillType], 8, sizeof(end_ptr), &end_ptr);
       uint32_t next_chunk = globalWorkSize * kpattern_size;
       setArgument(kernels_[kFillType], 9, sizeof(uint32_t), &next_chunk);
 
