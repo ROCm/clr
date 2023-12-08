@@ -103,6 +103,12 @@ message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
 
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
+set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/opencl)
+configure_file(packaging/rocm-opencl.postinst ${BUILD_DIR}/postinst @ONLY)
+configure_file(packaging/rocm-opencl.prerm ${BUILD_DIR}/prerm @ONLY)
+configure_file(packaging/rocm-opencl.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
+configure_file(packaging/rocm-opencl.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
+
 if(BUILD_ICD)
   set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-ocl-icd)
   configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
