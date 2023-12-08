@@ -245,6 +245,8 @@ release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \
         "Set link options needed for hiprtc compilation")                     \
 release(bool, HIP_VMEM_MANAGE_SUPPORT, true,                                  \
         "Virtual Memory Management Support")                                  \
+release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
+         "Enable/Disable graph debug dot print dump")                         \
 
 namespace amd {
 

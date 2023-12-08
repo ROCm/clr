@@ -32,6 +32,7 @@ std::vector<hip::Stream*> g_captureStreams;
 amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
 amd::Monitor g_streamSetLock{"StreamCaptureset"};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
+hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags);
 
 inline hipError_t ihipGraphAddNode(hip::GraphNode* graphNode, hip::Graph* graph,
                                    hip::GraphNode* const* pDependencies, size_t numDependencies,
@@ -1223,6 +1224,16 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
                          flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
+    if (DEBUG_HIP_GRAPH_DOT_PRINT) {
+      static int i = 1;
+      std::string filename =
+          "graph_" + std::to_string(amd::Os::getProcessId()) + "_dot_print_" + std::to_string(i++);
+      hipError_t status =
+          ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(graph), filename.c_str(), 0);
+      if (status == hipSuccess) {
+        LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
+      }
+    }
     return (*pGraphExec)->Init();
   } else {
     return hipErrorOutOfMemory;
@@ -2550,13 +2561,10 @@ hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t 
 }
 
 hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
-  if (graph == nullptr || path == nullptr) {
-    return hipErrorInvalidValue;
-  }
   std::ofstream fout;
   fout.open(path, std::ios::out);
   if (fout.fail()) {
-    ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Error during opening of file : %s", path);
+    LogPrintfError("[hipGraph] Error during opening of file : %s", path);
     return hipErrorOperatingSystem;
   }
   fout << "digraph dot {" << std::endl;
@@ -2568,6 +2576,9 @@ hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned i
 
 hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
   HIP_INIT_API(hipGraphDebugDotPrint, graph, path, flags);
+  if (graph == nullptr || path == nullptr) {
+    return hipErrorInvalidValue;
+  }
   HIP_RETURN(ihipGraphDebugDotPrint(graph, path, flags));
 }
 
