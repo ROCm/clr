@@ -65,6 +65,10 @@ class ManagedBuffer : public amd::EmbeddedObject {
   //! Returns VirtualGPU object this managed resource associated
   VirtualGPU& gpu() const { return gpu_; }
 
+  void CpuReadBack() const {
+    volatile auto tmp = *reinterpret_cast<uint64_t*>(pool_[activeBuffer_].buf->data());
+  }
+
  private:
   struct TimeStampedBuffer {
     Memory* buf;

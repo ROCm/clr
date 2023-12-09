@@ -143,7 +143,7 @@ Settings::Settings() {
   alwaysResident_ = amd::IS_HIP ? true : false;
   prepinnedMinSize_ = 0;
   cpDmaCopySizeMax_ = GPU_CP_DMA_COPY_SIZE * Ki;
-  useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? false : HIP_FORCE_DEV_KERNARG;
+  useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? true : HIP_FORCE_DEV_KERNARG;
 
   limit_blit_wg_ = 16;
 }
