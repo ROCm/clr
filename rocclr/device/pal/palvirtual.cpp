@@ -370,8 +370,9 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
 // ================================================================================================
 bool VirtualGPU::Queue::flush() {
   amd::ScopedLock l(lock_);
+  const Settings& settings = gpu_.dev().settings();
 
-  if (!gpu_.dev().settings().alwaysResident_ && palMemRefs_.size() != 0) {
+  if (!settings.alwaysResident_ && palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
                                       Pal::GpuMemoryRefCantTrim)) {
@@ -410,10 +411,15 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.fenceCount           = 1;
   submitInfo.ppFences             = &iCmdFences_[cmdBufIdSlot_];
 
-  if (amd::IS_HIP) {
-    // HIP disables per resource tracking, because the app may embed SVM ptr into other buffers.
-    // Force CPU sync if there are pending operations on SDMA, until OS fences will be added
-    if (iQueue_->Type() == Pal::QueueTypeCompute) {
+  if (iQueue_->Type() == Pal::QueueTypeCompute) {
+    if (settings.useDeviceKernelArg_) {
+      // If runtime uses device memory for kernel arguments, then perform a CPU read back on
+      // submission. That will make sure NBIO puches all previous CPU write requests through PCIE
+      gpu_.managedBuffer().CpuReadBack();
+    }
+    if (amd::IS_HIP) {
+      // HIP disables per resource tracking, because the app may embed SVM ptr into other buffers.
+      // Force CPU sync if there are pending operations on SDMA, until OS fences will be added
       gpu_.WaitForIdleSdma();
     }
   }
@@ -487,7 +493,7 @@ bool VirtualGPU::Queue::flush() {
       }
     }
   }
-  if (!gpu_.dev().settings().alwaysResident_ && palMems_.size() != 0) {
+  if (!settings.alwaysResident_ && palMems_.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
     palMems_.clear();
   }
