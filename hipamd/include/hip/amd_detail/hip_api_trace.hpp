@@ -67,6 +67,7 @@ typedef hipError_t (*t_hipBindTextureToMipmappedArray)(const textureReference* t
                                                        hipMipmappedArray_const_t mipmappedArray,
                                                        const hipChannelFormatDesc* desc);
 typedef hipError_t (*t_hipChooseDevice)(int* device, const hipDeviceProp_t* prop);
+typedef hipError_t (*t_hipChooseDeviceR0000)(int* device, const hipDeviceProp_tR0000* properties);
 typedef hipError_t (*t_hipConfigureCall)(dim3 gridDim, dim3 blockDim, size_t sharedMem,
                                          hipStream_t stream);
 typedef hipError_t (*t_hipCreateSurfaceObject)(hipSurfaceObject_t* pSurfObject,
@@ -183,7 +184,8 @@ typedef hipError_t (*t_hipGetChannelDesc)(hipChannelFormatDesc* desc, hipArray_c
 typedef hipError_t (*t_hipGetDevice)(int* deviceId);
 typedef hipError_t (*t_hipGetDeviceCount)(int* count);
 typedef hipError_t (*t_hipGetDeviceFlags)(unsigned int* flags);
-typedef hipError_t (*t_hipGetDeviceProperties)(hipDeviceProp_t* prop, int deviceId);
+typedef hipError_t (*t_hipGetDevicePropertiesR0600)(hipDeviceProp_tR0600* prop, int device);
+typedef hipError_t (*t_hipGetDevicePropertiesR0000)(hipDeviceProp_tR0000* prop, int device);
 typedef const char* (*t_hipGetErrorName)(hipError_t hip_error);
 typedef const char* (*t_hipGetErrorString)(hipError_t hipError);
 typedef hipError_t (*t_hipGetLastError)(void);
@@ -898,6 +900,7 @@ struct HipDispatchTable {
   t_hipBindTextureToArray hipBindTextureToArray_fn;
   t_hipBindTextureToMipmappedArray hipBindTextureToMipmappedArray_fn;
   t_hipChooseDevice hipChooseDevice_fn;
+  t_hipChooseDeviceR0000 hipChooseDeviceR0000_fn;
   t_hipConfigureCall hipConfigureCall_fn;
   t_hipCreateSurfaceObject hipCreateSurfaceObject_fn;
   t_hipCreateTextureObject hipCreateTextureObject_fn;
@@ -990,7 +993,8 @@ struct HipDispatchTable {
   t_hipGetDevice hipGetDevice_fn;
   t_hipGetDeviceCount hipGetDeviceCount_fn;
   t_hipGetDeviceFlags hipGetDeviceFlags_fn;
-  t_hipGetDeviceProperties hipGetDeviceProperties_fn;
+  t_hipGetDevicePropertiesR0600 hipGetDevicePropertiesR0600_fn;
+  t_hipGetDevicePropertiesR0000 hipGetDevicePropertiesR0000_fn;
   t_hipGetErrorName hipGetErrorName_fn;
   t_hipGetErrorString hipGetErrorString_fn;
   t_hipGetLastError hipGetLastError_fn;

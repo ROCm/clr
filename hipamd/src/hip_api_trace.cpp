@@ -62,6 +62,7 @@ hipError_t hipBindTextureToMipmappedArray(const textureReference* tex,
                                           hipMipmappedArray_const_t mipmappedArray,
                                           const hipChannelFormatDesc* desc);
 hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* prop);
+hipError_t hipChooseDeviceR0000(int* device, const hipDeviceProp_tR0000* properties);
 hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem, hipStream_t stream);
 hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject, const hipResourceDesc* pResDesc,
                                   const hipTextureDesc* pTexDesc,
@@ -163,7 +164,8 @@ hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc, hipArray_const_t array)
 hipError_t hipGetDevice(int* deviceId);
 hipError_t hipGetDeviceCount(int* count);
 hipError_t hipGetDeviceFlags(unsigned int* flags);
-hipError_t hipGetDeviceProperties(hipDeviceProp_t* prop, int deviceId);
+hipError_t hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* prop, int deviceId);
+hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device);
 const char* hipGetErrorName(hipError_t hip_error);
 const char* hipGetErrorString(hipError_t hipError);
 hipError_t hipGetLastError(void);
@@ -764,6 +766,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipBindTextureToArray_fn = hip::hipBindTextureToArray;
   ptrDispatchTable->hipBindTextureToMipmappedArray_fn = hip::hipBindTextureToMipmappedArray;
   ptrDispatchTable->hipChooseDevice_fn = hip::hipChooseDevice;
+  ptrDispatchTable->hipChooseDeviceR0000_fn = hip::hipChooseDeviceR0000;
   ptrDispatchTable->hipConfigureCall_fn = hip::hipConfigureCall;
   ptrDispatchTable->hipCreateSurfaceObject_fn = hip::hipCreateSurfaceObject;
   ptrDispatchTable->hipCreateTextureObject_fn = hip::hipCreateTextureObject;
@@ -854,7 +857,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetDevice_fn = hip::hipGetDevice;
   ptrDispatchTable->hipGetDeviceCount_fn = hip::hipGetDeviceCount;
   ptrDispatchTable->hipGetDeviceFlags_fn = hip::hipGetDeviceFlags;
-  ptrDispatchTable->hipGetDeviceProperties_fn = hip::hipGetDeviceProperties;
+  ptrDispatchTable->hipGetDevicePropertiesR0600_fn = hip::hipGetDevicePropertiesR0600;
   ptrDispatchTable->hipGetErrorName_fn = hip::hipGetErrorName;
   ptrDispatchTable->hipGetErrorString_fn = hip::hipGetErrorString;
   ptrDispatchTable->hipGetLastError_fn = hip::hipGetLastError;
@@ -1197,7 +1200,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipLaunchHostFunc_spt_fn = hip::hipLaunchHostFunc_spt;
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
-
+  ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
 }
 
 namespace hip {
