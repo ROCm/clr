@@ -578,9 +578,8 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device);
-hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device) {
-  return hipGetDevicePropertiesR0000(props, device);
-}
 }  // namespace hip
 
+extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device) {
+  return hip::hipGetDevicePropertiesR0000(props, device);
+}

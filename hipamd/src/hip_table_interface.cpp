@@ -111,8 +111,11 @@ hipError_t hipBindTextureToMipmappedArray(const textureReference* tex,
                                           const hipChannelFormatDesc* desc) {
   return hip::GetHipDispatchTable()->hipBindTextureToMipmappedArray_fn(tex, mipmappedArray, desc);
 }
-hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* prop) {
+extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_t* prop) {
   return hip::GetHipDispatchTable()->hipChooseDevice_fn(device, prop);
+}
+extern "C" hipError_t hipChooseDeviceR0000(int* device, const hipDeviceProp_tR0000* properties) {
+  return hip::GetHipDispatchTable()->hipChooseDeviceR0000_fn(device, properties);
 }
 extern "C" hipError_t hipConfigureCall(dim3 gridDim, dim3 blockDim, size_t sharedMem,
                                        hipStream_t stream) {
@@ -407,8 +410,11 @@ hipError_t hipGetDeviceCount(int* count) {
 hipError_t hipGetDeviceFlags(unsigned int* flags) {
   return hip::GetHipDispatchTable()->hipGetDeviceFlags_fn(flags);
 }
-hipError_t hipGetDeviceProperties(hipDeviceProp_t* prop, int deviceId) {
-  return hip::GetHipDispatchTable()->hipGetDeviceProperties_fn(prop, deviceId);
+extern "C" hipError_t hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* prop, int deviceId) {
+  return hip::GetHipDispatchTable()->hipGetDevicePropertiesR0600_fn(prop, deviceId);
+}
+extern "C" hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
+  return hip::GetHipDispatchTable()->hipGetDevicePropertiesR0000_fn(prop, device);
 }
 const char* hipGetErrorName(hipError_t hip_error) {
   return hip::GetHipDispatchTable()->hipGetErrorName_fn(hip_error);

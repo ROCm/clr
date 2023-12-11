@@ -27,6 +27,8 @@
 
 namespace hip {
 
+hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device);
+
 template <typename DeviceProp>
 hipError_t ihipChooseDevice(int* device, const DeviceProp* properties) {
   if (device == nullptr || properties == nullptr) {
@@ -48,9 +50,9 @@ hipError_t ihipChooseDevice(int* device, const DeviceProp* properties) {
       err = ihipGetDeviceProperties(&currentProp, i);
     }
     else {
-      err = hipGetDevicePropertiesR0000(&currentProp, i);
+      err = hip::hipGetDevicePropertiesR0000(&currentProp, i);
     }
-    
+
     if (properties->major != 0) {
       validPropCount++;
       if (currentProp.major >= properties->major) {
@@ -153,12 +155,10 @@ hipError_t hipChooseDeviceR0600(int* device, const hipDeviceProp_tR0600* propert
 hipError_t hipChooseDeviceR0000(int* device, const hipDeviceProp_tR0000* properties) {
   HIP_INIT_API(hipChooseDeviceR0000, device, properties);
   HIP_RETURN(ihipChooseDevice(device, properties));
-  HIP_RETURN(hipSuccess);
 }
 
-extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties);
 hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties) {
-  return hipChooseDeviceR0000(device, properties);
+  return hip::hipChooseDeviceR0000(device, properties);
 }
 
 hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device) {
