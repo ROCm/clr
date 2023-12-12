@@ -1789,9 +1789,11 @@ pal::Memory* Device::createImage(amd::Memory& owner, bool directAccess) const {
         owner.setHostMem(nullptr);
       } else {
         amd::Coord3D origin(0, 0, 0);
-        static const bool Entire = true;
-        if (xferMgr().writeImage(owner.getHostMem(), *gpuImage, origin, image.getRegion(), 0, 0,
-                                 Entire)) {
+        // Copy data with the original pitch values, since runtime doesn't perform
+        // extra sysmem allocation for one device
+        constexpr bool kEntire = true;
+        if (xferMgr().writeImage(owner.getHostMem(), *gpuImage, origin, image.getRegion(),
+            image.getRowPitch(), image.getSlicePitch(), kEntire)) {
           // Clear CHP memory
           owner.setHostMem(nullptr);
         }

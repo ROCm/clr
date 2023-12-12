@@ -2086,8 +2086,11 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 
     imageView->replaceDeviceMemory(this, devImageView);
 
+    // Copy data with the original pitch values, since runtime doesn't perform
+    // extra sysmem allocation for one device
+    const auto image = owner.asImage();
     result = xferMgr().writeImage(owner.getHostMem(), *devImageView, amd::Coord3D(0, 0, 0),
-                                  imageView->getRegion(), 0, 0, true);
+        imageView->getRegion(), image->getRowPitch(), image->getSlicePitch(), true);
 
     // Release host memory, since runtime copied data
     owner.setHostMem(nullptr);
