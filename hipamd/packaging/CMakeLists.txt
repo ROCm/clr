@@ -239,13 +239,13 @@ set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_NAME "hip-runtime-nvidia")
 set(CPACK_COMPONENT_RUNTIME-NVIDIA_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [RUNTIME-NVIDIA]")
 
-set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS "cuda (>= 7.5), rocm-core, hipcc")
+set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_DEPENDS "cuda (>= 7.5), rocm-core, hipcc-nvidia")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_DEBIAN_RUNTIME-NVIDIA_PACKAGE_REPLACES "hip-nvcc")
 
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_PROVIDES "hip-nvcc")
 set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_OBSOLETES "hip-nvcc")
-set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core, hipcc")
+set(CPACK_RPM_RUNTIME-NVIDIA_PACKAGE_REQUIRES "cuda >= 7.5, rocm-core, hipcc-nvidia")
 
 # Begin asan Packaging setting
 set(CPACK_ASAN_DEB "ON")
