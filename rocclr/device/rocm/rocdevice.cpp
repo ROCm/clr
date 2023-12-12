@@ -1812,8 +1812,8 @@ bool Device::populateOCLDeviceConstants() {
       }
       break;
     case (9):
-      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
-          (isa().versionMinor() == 4 && isa().versionStepping() == 0)) {
+      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) || // For gfx90a (MI200)
+          (isa().versionMinor() == 4)) {  // For gfx94x (MI300)
         info_.vgprAllocGranularity_ = 8;
         info_.vgprsPerSimd_ = 512;
       } else {

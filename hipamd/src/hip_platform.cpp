@@ -372,6 +372,12 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     VgprWaves = maxVGPRs / amd::alignUp(wrkGrpInfo->usedVGPRs_, VgprGranularity);
   }
 
+  if (VgprWaves == 0) {
+    // This should not happen ideally, but in case the usedVGPRs_/availableVGPRs_ values are
+    // incorrect, it can lead to a crash. By returning error, API can exit gracefully.
+    return hipErrorUnknown;
+  }
+
   size_t GprWaves = VgprWaves;
   if (wrkGrpInfo->usedSGPRs_ > 0) {
     size_t maxSGPRs = device.info().sgprsPerSimd_;
