@@ -132,6 +132,8 @@ set(HIPRTC_GEN_OBJ "${HIPRTC_GEN_DIR}/hipRTC_header${CMAKE_CXX_OUTPUT_EXTENSION}
 # list of headers which needs to be appended to the hiprtc preprocessed file
 set(HIPRTC_HEADERS
 ${HIP_COMMON_INCLUDE_DIR}/hip/hip_common.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/device_library_decls.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_assert.h
 ${HIP_COMMON_INCLUDE_DIR}/hip/library_types.h
 ${HIP_COMMON_INCLUDE_DIR}/hip/driver_types.h
 ${HIP_COMMON_INCLUDE_DIR}/hip/surface_types.h
@@ -144,7 +146,6 @@ ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_surface_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_complex.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_math_constants.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/math_fwd.h
-${PROJECT_SOURCE_DIR}/include/hip/amd_detail/device_library_decls.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_cooperative_groups_helper.h
