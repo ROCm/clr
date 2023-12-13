@@ -1211,13 +1211,13 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   if (clonedGraph == nullptr) {
     return hipErrorInvalidValue;
   }
-  std::vector<std::vector<hip::GraphNode*>> parallelLists;
-  std::unordered_map<hip::GraphNode*, std::vector<hip::GraphNode*>> nodeWaitLists;
-  clonedGraph->GetRunList(parallelLists, nodeWaitLists);
   std::vector<hip::GraphNode*> graphNodes;
   if (false == clonedGraph->TopologicalOrder(graphNodes)) {
     return hipErrorInvalidValue;
   }
+  std::vector<std::vector<hip::GraphNode*>> parallelLists;
+  std::unordered_map<hip::GraphNode*, std::vector<hip::GraphNode*>> nodeWaitLists;
+  clonedGraph->GetRunList(parallelLists, nodeWaitLists);
   *pGraphExec =
       new hip::GraphExec(graphNodes, parallelLists, nodeWaitLists, clonedGraph, clonedNodes,
                          flags);
@@ -1237,10 +1237,12 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
   }
   hip::GraphExec* ge;
   hipError_t status = ihipGraphInstantiate(&ge, reinterpret_cast<hip::Graph*>(graph));
-  *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
-  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-    // For graph nodes capture AQL packets to dispatch them directly during graph launch.
-    status = ge->CaptureAQLPackets();
+  if (status == hipSuccess) {
+    *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      // For graph nodes capture AQL packets to dispatch them directly during graph launch.
+      status = ge->CaptureAQLPackets();
+    }
   }
   HIP_RETURN(status);
 }

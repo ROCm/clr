@@ -549,8 +549,10 @@ hipError_t GraphExec::Run(hipStream_t stream) {
 
     for (int i = 0; i < topoOrder_.size() - 1; i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
-        hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
-        accumulate->addKernelName(topoOrder_[i]->GetKernelName());
+        if (topoOrder_[i]->GetEnabled()) {
+          hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
+          accumulate->addKernelName(topoOrder_[i]->GetKernelName());
+        }
       } else {
         topoOrder_[i]->SetStream(hip_stream, this);
         status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
