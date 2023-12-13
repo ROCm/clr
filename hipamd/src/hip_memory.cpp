@@ -113,7 +113,8 @@ hipError_t hipImportExternalMemory(
 #ifdef _WIN32
   auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
       memHandleDesc->handle.win32.handle,
-      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type),
+      memHandleDesc->handle.win32.name);
 #else
   auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
       memHandleDesc->handle.fd,

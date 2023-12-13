@@ -38,17 +38,20 @@ namespace amd
       D3D11ResourceKmt = 7
     };
 
-    ExternalMemory(amd::Os::FileDesc handle, ExternalMemory::HandleType handle_type)
-        : handle_(handle), handle_type_(handle_type) {}
+    ExternalMemory(amd::Os::FileDesc handle, const void* name,
+                   ExternalMemory::HandleType handle_type)
+        : handle_(handle), name_(name), handle_type_(handle_type) {}
 
     virtual ~ExternalMemory() override {}
     ExternalMemory* asExternalMemory() final { return this; }
 
     amd::Os::FileDesc Handle() const { return handle_; }
+    const void* Name() const { return name_; }
     HandleType Type() const { return handle_type_; }
 
   protected:
     amd::Os::FileDesc handle_;
+    const void* name_;
     ExternalMemory::HandleType handle_type_;
   };
 
@@ -64,8 +67,8 @@ namespace amd
 
   public:
     ExternalBuffer(Context& amdContext, size_t size_in_bytes, amd::Os::FileDesc handle,
-        ExternalMemory::HandleType handle_type)
-        : Buffer(amdContext, 0, size_in_bytes), ExternalMemory(handle, handle_type) {
+        ExternalMemory::HandleType handle_type, const void* name = nullptr)
+        : Buffer(amdContext, 0, size_in_bytes), ExternalMemory(handle, name, handle_type) {
       setInteropObj(this);
     }
 

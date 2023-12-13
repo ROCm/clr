@@ -802,7 +802,21 @@ bool Resource::CreateInterop(CreateParams* params) {
   }
   else if (memoryType() == VkInterop) {
     VkInteropParams* vparams = reinterpret_cast<VkInteropParams*>(params);
-    openInfo.hExternalResource = vparams->handle_;
+    if (vparams->handle_) {
+      openInfo.hExternalResource = vparams->handle_;
+    } else if (vparams->name_) {
+      Pal::ExternalHandleInfo eHandleInfo = {};
+      eHandleInfo.objectType = Pal::ExternalObjectType::Allocation;
+      eHandleInfo.pNtObjectName = reinterpret_cast<const wchar_t*>(vparams->name_);
+      SECURITY_ATTRIBUTES securityAttributes = {};
+      securityAttributes.bInheritHandle = TRUE;
+      eHandleInfo.pSecurityAttributes = &securityAttributes;
+      eHandleInfo.accessFlags = GENERIC_READ | GENERIC_WRITE;
+      if (Pal::Result::Success !=
+          dev().iDev()->OpenExternalHandleFromName(eHandleInfo, &openInfo.hExternalResource)) {
+        return false;
+      }
+    }
     openInfo.flags.ntHandle = vparams->nt_handle_;
   }
 #ifdef ATI_OS_WIN
