@@ -598,7 +598,7 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
   int deviceId = hip::Stream::DeviceId(stream);
   hipError_t hip_error = PlatformState::instance().getStatFunc(&func, hostFunction, deviceId);
   if ((hip_error != hipSuccess) || (func == nullptr)) {
-    if (hip_error == hipErrorSharedObjectInitFailed) {
+    if (hip_error == hipErrorNoBinaryForGpu) {
       return hip_error;
     } else {
       return hipErrorInvalidDeviceFunction;

@@ -419,13 +419,13 @@ hipError_t FatBinaryInfo::BuildProgram(const int device_id) {
     if(CL_SUCCESS != fbd_info->program_->build(g_devices[device_id]->devices(),
                                                nullptr, nullptr, nullptr,
                                                kOptionChangeable, kNewDevProg)) {
-      return hipErrorSharedObjectInitFailed;
+      return hipErrorNoBinaryForGpu;
     }
     fbd_info->prog_built_ = true;
   }
 
   if (!fbd_info->program_->load()) {
-    return hipErrorSharedObjectInitFailed;
+    return hipErrorNoBinaryForGpu;
   }
   return hipSuccess;
 }
