@@ -151,7 +151,7 @@ hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
   guarantee(modules_ != nullptr, "Module not initialized");
 
   if (dFunc_.size() != g_devices.size()) {
-    return hipErrorSharedObjectInitFailed;
+    return hipErrorNoBinaryForGpu;
   }
 
   hipModule_t hmod = nullptr;
