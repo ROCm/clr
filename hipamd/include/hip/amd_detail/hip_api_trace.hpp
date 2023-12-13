@@ -209,9 +209,6 @@ typedef hipError_t (*t_hipGraphAddDependencies)(hipGraph_t graph, const hipGraph
 typedef hipError_t (*t_hipGraphAddEmptyNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                              const hipGraphNode_t* pDependencies,
                                              size_t numDependencies);
-typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
-                                 const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
 typedef hipError_t (*t_hipGraphAddEventRecordNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                                    const hipGraphNode_t* pDependencies,
                                                    size_t numDependencies, hipEvent_t event);
@@ -868,6 +865,10 @@ typedef hipError_t (*t_hipHccModuleLaunchKernel)(hipFunction_t f, uint32_t globa
                                                  hipEvent_t stopEvent);
 typedef int (*t_hipGetStreamDeviceId)(hipStream_t stream);
 
+typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                 const hipGraphNode_t* dependencies, size_t numDependencies,
+                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1004,7 +1005,6 @@ struct HipDispatchTable {
   t_hipGraphAddChildGraphNode hipGraphAddChildGraphNode_fn;
   t_hipGraphAddDependencies hipGraphAddDependencies_fn;
   t_hipGraphAddEmptyNode hipGraphAddEmptyNode_fn;
-  t_hipDrvGraphAddMemsetNode hipDrvGraphAddMemsetNode_fn;
   t_hipGraphAddEventRecordNode hipGraphAddEventRecordNode_fn;
   t_hipGraphAddEventWaitNode hipGraphAddEventWaitNode_fn;
   t_hipGraphAddHostNode hipGraphAddHostNode_fn;
@@ -1316,4 +1316,5 @@ struct HipDispatchTable {
   t_hipStreamGetCaptureInfo_v2_spt hipStreamGetCaptureInfo_v2_spt_fn;
   t_hipLaunchHostFunc_spt hipLaunchHostFunc_spt_fn;
   t_hipGetStreamDeviceId hipGetStreamDeviceId_fn;
+  t_hipDrvGraphAddMemsetNode hipDrvGraphAddMemsetNode_fn;
 };
