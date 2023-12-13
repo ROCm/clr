@@ -357,6 +357,7 @@ bool Memory::createInterop() {
     vkRes.owner_ = owner();
     memType = Resource::VkInterop;
     vkRes.handle_ = ext_memory->Handle();
+    vkRes.name_ = ext_memory->Name();
     vkRes.type_ = Resource::InteropTypeless;
     vkRes.nt_handle_ =
       ((ext_memory->Type() != amd::ExternalMemory::HandleType::OpaqueFd) &&
