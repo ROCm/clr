@@ -1315,7 +1315,7 @@ hipError_t hipTexRefGetMipmapLevelClamp(float* pminMipmapLevelClamp,
 hipError_t hipTexRefGetMipMappedArray(hipMipmappedArray_t* pArray,
                                       const textureReference* texRef) {
   // TODO overload operator<<(ostream&, textureReference&).
-  HIP_INIT_API(hipTexRefGetMipmappedArray, pArray, &texRef);
+  HIP_INIT_API(hipTexRefGetMipMappedArray, pArray, &texRef);
 
   if ((pArray == nullptr) || (texRef == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
