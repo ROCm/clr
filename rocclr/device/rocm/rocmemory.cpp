@@ -702,6 +702,9 @@ void Buffer::destroy() {
         if (dev().settings().apuSystem_) {
           const_cast<Device&>(dev()).updateFreeMemory(size(), true);
         }
+      } else if ((memFlags & CL_MEM_ALLOC_HOST_PTR) &&
+                 (owner()->getContext().devices().size() == 1)) {
+        dev().hostFree(deviceMemory_, size());
       }
     }
   }
