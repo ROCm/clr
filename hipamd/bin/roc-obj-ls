@@ -81,7 +81,7 @@ foreach my $executable_file(@ARGV) {
 
   # kernel section information
   my $escaped_name=quotemeta($executable_file);
-  my $bundle_section_name = ".hip_fatbin";
+  my $bundle_section_name = ".hip_fat";
   my $bundle_section_size = hex(`$objdump -h $escaped_name | grep $bundle_section_name | awk '{print \$3}'`);
   my $bundle_section_offset =  hex(`$objdump -h $escaped_name | grep $bundle_section_name | awk '{print \$6}'`);
 
