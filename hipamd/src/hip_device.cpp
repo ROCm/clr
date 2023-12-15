@@ -463,6 +463,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.timelineSemaphoreInteropSupported = 0;
   deviceProps.unifiedFunctionPointers = 0;
 
+  deviceProps.integrated = info.accelerator_;
+
   *props = deviceProps;
   return hipSuccess;
 }

@@ -1836,6 +1836,19 @@ bool Device::populateOCLDeviceConstants() {
         std::numeric_limits<uint32_t>::max();  // gfx10+ does not share SGPRs between waves
   }
 
+  uint8_t memory_properties[8];
+  // Get the memory property from ROCr.
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_,
+                              (hsa_agent_info_t) HSA_AMD_AGENT_INFO_MEMORY_PROPERTIES,
+                              memory_properties)) {
+    LogError("HSA_AGENT_INFO_AMD_MEMORY_PROPERTIES query failed");
+  }
+
+  // Check if the device is APU
+  if (hsa_flag_isset64(memory_properties, HSA_AMD_MEMORY_PROPERTY_AGENT_IS_APU)) {
+    info_.accelerator_ = 1;
+  }
+
   return true;
 }
 
