@@ -761,6 +761,8 @@ hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* 
 hipError_t hipExtGetLastError();
 hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef);
 hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef);
+hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
+                             hipDriverProcAddressQueryResult* symbolStatus = NULL);
 }  // namespace hip
 
 namespace hip {
@@ -1234,6 +1236,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
   ptrDispatchTable->hipTexRefGetBorderColor_fn =  hip::hipTexRefGetBorderColor;
   ptrDispatchTable->hipTexRefGetArray_fn = hip::hipTexRefGetArray;
+  ptrDispatchTable->hipGetProcAddress_fn = hip::hipGetProcAddress;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1251,7 +1254,7 @@ constexpr auto ComputeTableSize(size_t num_funcs) {
   return (num_funcs * sizeof(void*)) + sizeof(uint64_t);
 }
 
-HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip, 429)
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip, 440)
 HIP_DEFINE_DISPATCH_TABLE_INFO(HipCompilerDispatchTable, hip_compiler, 9)
 #endif
 
@@ -1775,8 +1778,9 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetPar
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 0,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 1,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif

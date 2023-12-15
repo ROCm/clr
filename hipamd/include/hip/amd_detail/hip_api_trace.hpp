@@ -60,7 +60,7 @@
 // - Increment the HIP_COMPILER_API_TABLE_STEP_VERSION when new compiler API functions are added
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 0
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 1
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 
 // HIP API interface
@@ -938,10 +938,15 @@ typedef hipError_t (*t_hipGraphAddNode)(hipGraphNode_t *pGraphNode, hipGraph_t g
 typedef hipError_t (*t_hipGraphInstantiateWithParams)(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                                      hipGraphInstantiateParams* instantiateParams);
 typedef hipError_t (*t_hipExtGetLastError)();
+typedef hipError_t (*t_hipTexRefGetBorderColor)(float* pBorderColor,
+                                                const textureReference* texRef);
+typedef hipError_t (*t_hipTexRefGetArray)(hipArray_t* pArray, const textureReference* texRef);
 
 typedef hipError_t (*t_hipTexRefGetBorderColor)(float* pBorderColor,
                                                 const textureReference* texRef);
 typedef hipError_t (*t_hipTexRefGetArray)(hipArray_t* pArray, const textureReference* texRef);
+typedef hipError_t (*t_hipGetProcAddress)(const char* symbol, void** pfn, int  hipVersion, uint64_t flags,
+                                          hipDriverProcAddressQueryResult* symbolStatus);
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1406,4 +1411,5 @@ struct HipDispatchTable {
   t_hipExtGetLastError hipExtGetLastError_fn;
   t_hipTexRefGetBorderColor hipTexRefGetBorderColor_fn;
   t_hipTexRefGetArray hipTexRefGetArray_fn;
+  t_hipGetProcAddress hipGetProcAddress_fn;
 };

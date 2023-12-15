@@ -1727,3 +1727,9 @@ hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* 
 hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef) {
   return hip::GetHipDispatchTable()->hipTexRefGetArray_fn(pArray, texRef);
 }
+extern "C" hipError_t hipGetProcAddress(const char* symbol, void** pfn, int  hipVersion,
+                                        uint64_t flags,
+                                        hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+  return hip::GetHipDispatchTable()->hipGetProcAddress_fn(symbol, pfn, hipVersion, flags,
+                                                          symbolStatus);
+}

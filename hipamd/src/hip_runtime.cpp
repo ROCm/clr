@@ -18,10 +18,13 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#include "thread/thread.hpp"
-
 #include <windows.h>
 #include <iostream>
+#include <hip/hip_runtime.h>
+
+#include "thread/thread.hpp"
+#include "hip_platform.hpp"
+
 namespace hip {
 void ihipDestroyDevice();
 }
@@ -46,6 +49,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
         _set_error_mode(_OUT_TO_STDERR);
       }
 #endif  // DEBUG
+      hip::PlatformState::instance().setDynamicLibraryHandle(static_cast<void*>(hinst));
       break;
     case DLL_PROCESS_DETACH: {
       amd::Thread* thread = amd::Thread::current();

@@ -551,6 +551,7 @@ local:
 hip_6.1 {
 global:
     hipGraphInstantiateWithParams;
+    hipGetProcAddress;
 local:
     *;
 } hip_6.0;
