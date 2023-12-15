@@ -96,6 +96,11 @@ The change won't affect usage of applications, and makes them behave the same on
 - Catch tests are available [hip-tests] (https://github.com/ROCm/hip-tests) project
 
 ### Known Issues
+- Dynamically loaded HIP runtime library references incorrect version of hipDeviceGetProperties API
+
+When an application loads the HIP runtime library dynamically from ROCm 6.0 and attempts to use hipDeviceGetProperties, the application incorrectly uses the hipDeviceGetProperties API from a previous ROCm release instead of the newer ROCm 6.0 implementation
+The issue will be fixed in a future ROCm release.. 
+
 
 ## HIP 5.7.1 (For ROCm 5.7.1)
 
