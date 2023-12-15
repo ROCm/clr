@@ -624,6 +624,8 @@ struct Info : public amd::EmbeddedObject {
   //! global CU mask which will be applied to all queues created on this device
   std::vector<uint32_t> globalCUMask_;
 
+  bool accelerator_; //!< Accelerator or discrete graphics card.
+
   //! AQL Barrier Value Packet support
   bool aqlBarrierValue_;
 
