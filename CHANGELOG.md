@@ -45,7 +45,8 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
      - char luid[8];
        -- this is 8-byte unique identifier. Only valid on windows
        -- LUID (Locally Unique Identifier) is supported for interoperability between devices.
-     - unsigned int luidDeviceNodeMask;
+     - unsigned int luidDeviceNodeMask; \
+
      Note: HIP supports LUID only on Windows OS.
 
 ### Changed
@@ -54,7 +55,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
     - hipGraphicsGLRegisterBuffer
     - hipGraphicsGLRegisterImage
 
-### Changes Impacting Backward Incompatibility
+### Changes Impacting Backward Compatibility
 - Data types for members in HIP_MEMCPY3D structure are changed from "unsigned int" to "size_t".
 - The value of the flag hipIpcMemLazyEnablePeerAccess is changed to “0x01”, which was previously defined as “0”.
 - Some device property attributes are not currently support in HIP runtime, in order to maintain consistency, the following related enumeration names are changed in hipDeviceAttribute_t
@@ -63,7 +64,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
     - hipDeviceAttributeArch is changed to hipDeviceAttributeUnused3
     - hipDeviceAttributeGcnArch is changed to hipDeviceAttributeUnused4
     - hipDeviceAttributeGcnArchName is changed to hipDeviceAttributeUnused5
-- HIP struct hipArray is removed from driver type header to be comlpying with cuda
+- HIP struct hipArray is removed from driver type header to be complying with cuda
 - hipArray_t replaces hipArray*, as the pointer to array.
     - This allows hipMemcpyAtoH and hipMemcpyHtoA to have the correct array type which is equivalent to coresponding CUDA driver APIs.
 
@@ -87,12 +88,12 @@ The change won't affect usage of applications, and makes them behave the same on
       NVIDIA platform,
       __HIP_PLATFORM_NVCC__
 - File directories in the clr repository are removed,
-  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/hcc_detail
-  https://github.com/ROCm-Developer-Tools/clr/blob/develop/hipamd/include/hip/nvcc_detail
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/hcc_detail \
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/nvcc_detail
 - Deprecated gcnArch is removed from hip device struct hipDeviceProp_t.
 - Deprecated "enum hipMemoryType memoryType;" is removed from HIP struct hipPointerAttribute_t union.
 - Deprecated HIT based tests are removed from HIP project
-  - Catch tests are available [hip-tests] (https://github.com/ROCm-Developer-Tools/hip-tests) project
+- Catch tests are available [hip-tests] (https://github.com/ROCm/hip-tests) project
 
 ### Known Issues
 
