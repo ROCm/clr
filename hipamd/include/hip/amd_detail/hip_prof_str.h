@@ -403,7 +403,12 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphExecNodeSetParams = 383,
   HIP_API_ID_hipGraphInstantiateWithParams = 384,
   HIP_API_ID_hipGraphNodeSetParams = 385,
-  HIP_API_ID_LAST = 385,
+  HIP_API_ID_hipDrvGraphAddMemFreeNode = 386,
+  HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams = 387,
+  HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams = 388,
+  HIP_API_ID_hipTexRefGetArray = 389,
+  HIP_API_ID_hipTexRefGetBorderColor = 390,
+  HIP_API_ID_LAST = 390,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -433,8 +438,6 @@ enum hip_api_id_t {
   HIP_API_ID_hipTexObjectGetResourceViewDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectGetTextureDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefGetAddressMode = HIP_API_ID_NONE,
-  HIP_API_ID_hipTexRefGetArray = HIP_API_ID_NONE,
-  HIP_API_ID_hipTexRefGetBorderColor = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefGetFilterMode = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefGetMipmapFilterMode = HIP_API_ID_NONE,
   HIP_API_ID_hipTexRefSetAddressMode = HIP_API_ID_NONE,
@@ -513,8 +516,11 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipDeviceSynchronize: return "hipDeviceSynchronize";
     case HIP_API_ID_hipDeviceTotalMem: return "hipDeviceTotalMem";
     case HIP_API_ID_hipDriverGetVersion: return "hipDriverGetVersion";
+    case HIP_API_ID_hipDrvGraphAddMemFreeNode: return "hipDrvGraphAddMemFreeNode";
     case HIP_API_ID_hipDrvGraphAddMemcpyNode: return "hipDrvGraphAddMemcpyNode";
     case HIP_API_ID_hipDrvGraphAddMemsetNode: return "hipDrvGraphAddMemsetNode";
+    case HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams: return "hipDrvGraphExecMemcpyNodeSetParams";
+    case HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams: return "hipDrvGraphExecMemsetNodeSetParams";
     case HIP_API_ID_hipDrvGraphMemcpyNodeGetParams: return "hipDrvGraphMemcpyNodeGetParams";
     case HIP_API_ID_hipDrvGraphMemcpyNodeSetParams: return "hipDrvGraphMemcpyNodeSetParams";
     case HIP_API_ID_hipDrvMemcpy2DUnaligned: return "hipDrvMemcpy2DUnaligned";
@@ -809,6 +815,8 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamWriteValue32: return "hipStreamWriteValue32";
     case HIP_API_ID_hipStreamWriteValue64: return "hipStreamWriteValue64";
     case HIP_API_ID_hipTexRefGetAddress: return "hipTexRefGetAddress";
+    case HIP_API_ID_hipTexRefGetArray: return "hipTexRefGetArray";
+    case HIP_API_ID_hipTexRefGetBorderColor: return "hipTexRefGetBorderColor";
     case HIP_API_ID_hipTexRefGetFlags: return "hipTexRefGetFlags";
     case HIP_API_ID_hipTexRefGetFormat: return "hipTexRefGetFormat";
     case HIP_API_ID_hipTexRefGetMaxAnisotropy: return "hipTexRefGetMaxAnisotropy";
@@ -901,8 +909,11 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipDeviceSynchronize", name) == 0) return HIP_API_ID_hipDeviceSynchronize;
   if (strcmp("hipDeviceTotalMem", name) == 0) return HIP_API_ID_hipDeviceTotalMem;
   if (strcmp("hipDriverGetVersion", name) == 0) return HIP_API_ID_hipDriverGetVersion;
+  if (strcmp("hipDrvGraphAddMemFreeNode", name) == 0) return HIP_API_ID_hipDrvGraphAddMemFreeNode;
   if (strcmp("hipDrvGraphAddMemcpyNode", name) == 0) return HIP_API_ID_hipDrvGraphAddMemcpyNode;
   if (strcmp("hipDrvGraphAddMemsetNode", name) == 0) return HIP_API_ID_hipDrvGraphAddMemsetNode;
+  if (strcmp("hipDrvGraphExecMemcpyNodeSetParams", name) == 0) return HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams;
+  if (strcmp("hipDrvGraphExecMemsetNodeSetParams", name) == 0) return HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams;
   if (strcmp("hipDrvGraphMemcpyNodeGetParams", name) == 0) return HIP_API_ID_hipDrvGraphMemcpyNodeGetParams;
   if (strcmp("hipDrvGraphMemcpyNodeSetParams", name) == 0) return HIP_API_ID_hipDrvGraphMemcpyNodeSetParams;
   if (strcmp("hipDrvMemcpy2DUnaligned", name) == 0) return HIP_API_ID_hipDrvMemcpy2DUnaligned;
@@ -1197,6 +1208,8 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamWriteValue32", name) == 0) return HIP_API_ID_hipStreamWriteValue32;
   if (strcmp("hipStreamWriteValue64", name) == 0) return HIP_API_ID_hipStreamWriteValue64;
   if (strcmp("hipTexRefGetAddress", name) == 0) return HIP_API_ID_hipTexRefGetAddress;
+  if (strcmp("hipTexRefGetArray", name) == 0) return HIP_API_ID_hipTexRefGetArray;
+  if (strcmp("hipTexRefGetBorderColor", name) == 0) return HIP_API_ID_hipTexRefGetBorderColor;
   if (strcmp("hipTexRefGetFlags", name) == 0) return HIP_API_ID_hipTexRefGetFlags;
   if (strcmp("hipTexRefGetFormat", name) == 0) return HIP_API_ID_hipTexRefGetFormat;
   if (strcmp("hipTexRefGetMaxAnisotropy", name) == 0) return HIP_API_ID_hipTexRefGetMaxAnisotropy;
@@ -1521,6 +1534,15 @@ typedef struct hip_api_data_s {
       const hipGraphNode_t* dependencies;
       hipGraphNode_t dependencies__val;
       size_t numDependencies;
+      hipDeviceptr_t dptr;
+    } hipDrvGraphAddMemFreeNode;
+    struct {
+      hipGraphNode_t* phGraphNode;
+      hipGraphNode_t phGraphNode__val;
+      hipGraph_t hGraph;
+      const hipGraphNode_t* dependencies;
+      hipGraphNode_t dependencies__val;
+      size_t numDependencies;
       const HIP_MEMCPY3D* copyParams;
       HIP_MEMCPY3D copyParams__val;
       hipCtx_t ctx;
@@ -1536,6 +1558,20 @@ typedef struct hip_api_data_s {
       HIP_MEMSET_NODE_PARAMS memsetParams__val;
       hipCtx_t ctx;
     } hipDrvGraphAddMemsetNode;
+    struct {
+      hipGraphExec_t hGraphExec;
+      hipGraphNode_t hNode;
+      const HIP_MEMCPY3D* copyParams;
+      HIP_MEMCPY3D copyParams__val;
+      hipCtx_t ctx;
+    } hipDrvGraphExecMemcpyNodeSetParams;
+    struct {
+      hipGraphExec_t hGraphExec;
+      hipGraphNode_t hNode;
+      const HIP_MEMSET_NODE_PARAMS* memsetParams;
+      HIP_MEMSET_NODE_PARAMS memsetParams__val;
+      hipCtx_t ctx;
+    } hipDrvGraphExecMemsetNodeSetParams;
     struct {
       hipGraphNode_t hNode;
       HIP_MEMCPY3D* nodeParams;
@@ -3345,6 +3381,18 @@ typedef struct hip_api_data_s {
       textureReference texRef__val;
     } hipTexRefGetAddress;
     struct {
+      hipArray_t* pArray;
+      hipArray_t pArray__val;
+      const textureReference* texRef;
+      textureReference texRef__val;
+    } hipTexRefGetArray;
+    struct {
+      float* pBorderColor;
+      float pBorderColor__val;
+      const textureReference* texRef;
+      textureReference texRef__val;
+    } hipTexRefGetBorderColor;
+    struct {
       unsigned int* pFlags;
       unsigned int pFlags__val;
       const textureReference* texRef;
@@ -3787,6 +3835,9 @@ typedef struct hip_api_data_s {
 #define INIT_hipDriverGetVersion_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDriverGetVersion.driverVersion = (int*)driverVersion; \
 };
+// hipDrvGraphAddMemFreeNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('hipDeviceptr_t', 'dptr')]
+#define INIT_hipDrvGraphAddMemFreeNode_CB_ARGS_DATA(cb_data) { \
+};
 // hipDrvGraphAddMemcpyNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const HIP_MEMCPY3D*', 'copyParams'), ('hipCtx_t', 'ctx')]
 #define INIT_hipDrvGraphAddMemcpyNode_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDrvGraphAddMemcpyNode.phGraphNode = (hipGraphNode_t*)phGraphNode; \
@@ -3804,6 +3855,12 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDrvGraphAddMemsetNode.numDependencies = (size_t)numDependencies; \
   cb_data.args.hipDrvGraphAddMemsetNode.memsetParams = (const HIP_MEMSET_NODE_PARAMS*)memsetParams; \
   cb_data.args.hipDrvGraphAddMemsetNode.ctx = (hipCtx_t)ctx; \
+};
+// hipDrvGraphExecMemcpyNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMCPY3D*', 'copyParams'), ('hipCtx_t', 'ctx')]
+#define INIT_hipDrvGraphExecMemcpyNodeSetParams_CB_ARGS_DATA(cb_data) { \
+};
+// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+#define INIT_hipDrvGraphExecMemsetNodeSetParams_CB_ARGS_DATA(cb_data) { \
 };
 // hipDrvGraphMemcpyNodeGetParams[('hipGraphNode_t', 'hNode'), ('HIP_MEMCPY3D*', 'nodeParams')]
 #define INIT_hipDrvGraphMemcpyNodeGetParams_CB_ARGS_DATA(cb_data) { \
@@ -4034,6 +4091,11 @@ typedef struct hip_api_data_s {
 };
 // hipGetProcAddress[('const char*', 'symbol'), ('void**', 'pfn'), ('int', 'hipVersion'), ('uint64_t', 'flags'), ('hipDriverProcAddressQueryResult*', 'symbolStatus')]
 #define INIT_hipGetProcAddress_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetProcAddress.symbol = (symbol) ? strdup(symbol) : NULL; \
+  cb_data.args.hipGetProcAddress.pfn = (void**)pfn; \
+  cb_data.args.hipGetProcAddress.hipVersion = (int)hipVersion; \
+  cb_data.args.hipGetProcAddress.flags = (uint64_t)flags; \
+  cb_data.args.hipGetProcAddress.symbolStatus = (hipDriverProcAddressQueryResult*)symbolStatus; \
 };
 // hipGetSymbolAddress[('void**', 'devPtr'), ('const void*', 'symbol')]
 #define INIT_hipGetSymbolAddress_CB_ARGS_DATA(cb_data) { \
@@ -4415,9 +4477,6 @@ typedef struct hip_api_data_s {
 };
 // hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('hipLaunchAttributeValue*', 'value')]
 #define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipGraphKernelNodeGetAttribute.hNode = (hipGraphNode_t)hNode; \
-  cb_data.args.hipGraphKernelNodeGetAttribute.attr = (hipLaunchAttributeID)attr; \
-  cb_data.args.hipGraphKernelNodeGetAttribute.value = (hipLaunchAttributeValue*)value; \
 };
 // hipGraphKernelNodeGetParams[('hipGraphNode_t', 'node'), ('hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeGetParams_CB_ARGS_DATA(cb_data) { \
@@ -4426,9 +4485,6 @@ typedef struct hip_api_data_s {
 };
 // hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value')]
 #define INIT_hipGraphKernelNodeSetAttribute_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipGraphKernelNodeSetAttribute.hNode = (hipGraphNode_t)hNode; \
-  cb_data.args.hipGraphKernelNodeSetAttribute.attr = (hipLaunchAttributeID)attr; \
-  cb_data.args.hipGraphKernelNodeSetAttribute.value = (const hipLaunchAttributeValue*)value; \
 };
 // hipGraphKernelNodeSetParams[('hipGraphNode_t', 'node'), ('const hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeSetParams_CB_ARGS_DATA(cb_data) { \
@@ -5635,6 +5691,16 @@ typedef struct hip_api_data_s {
   cb_data.args.hipTexRefGetAddress.dev_ptr = (hipDeviceptr_t*)dptr; \
   cb_data.args.hipTexRefGetAddress.texRef = (const textureReference*)texRef; \
 };
+// hipTexRefGetArray[('hipArray_t*', 'pArray'), ('const textureReference*', 'texRef')]
+#define INIT_hipTexRefGetArray_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipTexRefGetArray.pArray = (hipArray_t*)pArray; \
+  cb_data.args.hipTexRefGetArray.texRef = (const textureReference*)texRef; \
+};
+// hipTexRefGetBorderColor[('float*', 'pBorderColor'), ('const textureReference*', 'texRef')]
+#define INIT_hipTexRefGetBorderColor_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipTexRefGetBorderColor.pBorderColor = (float*)pBorderColor; \
+  cb_data.args.hipTexRefGetBorderColor.texRef = (const textureReference*)texRef; \
+};
 // hipTexRefGetFlags[('unsigned int*', 'pFlags'), ('const textureReference*', 'texRef')]
 #define INIT_hipTexRefGetFlags_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipTexRefGetFlags.pFlags = (unsigned int*)pFlags; \
@@ -5807,10 +5873,6 @@ typedef struct hip_api_data_s {
 #define INIT_hipTexObjectGetTextureDesc_CB_ARGS_DATA(cb_data) {};
 // hipTexRefGetAddressMode()
 #define INIT_hipTexRefGetAddressMode_CB_ARGS_DATA(cb_data) {};
-// hipTexRefGetArray()
-#define INIT_hipTexRefGetArray_CB_ARGS_DATA(cb_data) {};
-// hipTexRefGetBorderColor()
-#define INIT_hipTexRefGetBorderColor_CB_ARGS_DATA(cb_data) {};
 // hipTexRefGetFilterMode()
 #define INIT_hipTexRefGetFilterMode_CB_ARGS_DATA(cb_data) {};
 // hipTexRefGetMipmapFilterMode()
@@ -6072,6 +6134,11 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDriverGetVersion:
       if (data->args.hipDriverGetVersion.driverVersion) data->args.hipDriverGetVersion.driverVersion__val = *(data->args.hipDriverGetVersion.driverVersion);
       break;
+// hipDrvGraphAddMemFreeNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('hipDeviceptr_t', 'dptr')]
+    case HIP_API_ID_hipDrvGraphAddMemFreeNode:
+      if (data->args.hipDrvGraphAddMemFreeNode.phGraphNode) data->args.hipDrvGraphAddMemFreeNode.phGraphNode__val = *(data->args.hipDrvGraphAddMemFreeNode.phGraphNode);
+      if (data->args.hipDrvGraphAddMemFreeNode.dependencies) data->args.hipDrvGraphAddMemFreeNode.dependencies__val = *(data->args.hipDrvGraphAddMemFreeNode.dependencies);
+      break;
 // hipDrvGraphAddMemcpyNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const HIP_MEMCPY3D*', 'copyParams'), ('hipCtx_t', 'ctx')]
     case HIP_API_ID_hipDrvGraphAddMemcpyNode:
       if (data->args.hipDrvGraphAddMemcpyNode.phGraphNode) data->args.hipDrvGraphAddMemcpyNode.phGraphNode__val = *(data->args.hipDrvGraphAddMemcpyNode.phGraphNode);
@@ -6083,6 +6150,14 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipDrvGraphAddMemsetNode.phGraphNode) data->args.hipDrvGraphAddMemsetNode.phGraphNode__val = *(data->args.hipDrvGraphAddMemsetNode.phGraphNode);
       if (data->args.hipDrvGraphAddMemsetNode.dependencies) data->args.hipDrvGraphAddMemsetNode.dependencies__val = *(data->args.hipDrvGraphAddMemsetNode.dependencies);
       if (data->args.hipDrvGraphAddMemsetNode.memsetParams) data->args.hipDrvGraphAddMemsetNode.memsetParams__val = *(data->args.hipDrvGraphAddMemsetNode.memsetParams);
+      break;
+// hipDrvGraphExecMemcpyNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMCPY3D*', 'copyParams'), ('hipCtx_t', 'ctx')]
+    case HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams:
+      if (data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams) data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams__val = *(data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams);
+      break;
+// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+    case HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams:
+      if (data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams) data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams__val = *(data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams);
       break;
 // hipDrvGraphMemcpyNodeGetParams[('hipGraphNode_t', 'hNode'), ('HIP_MEMCPY3D*', 'nodeParams')]
     case HIP_API_ID_hipDrvGraphMemcpyNodeGetParams:
@@ -7228,6 +7303,16 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipTexRefGetAddress.dev_ptr) data->args.hipTexRefGetAddress.dev_ptr__val = *(data->args.hipTexRefGetAddress.dev_ptr);
       if (data->args.hipTexRefGetAddress.texRef) data->args.hipTexRefGetAddress.texRef__val = *(data->args.hipTexRefGetAddress.texRef);
       break;
+// hipTexRefGetArray[('hipArray_t*', 'pArray'), ('const textureReference*', 'texRef')]
+    case HIP_API_ID_hipTexRefGetArray:
+      if (data->args.hipTexRefGetArray.pArray) data->args.hipTexRefGetArray.pArray__val = *(data->args.hipTexRefGetArray.pArray);
+      if (data->args.hipTexRefGetArray.texRef) data->args.hipTexRefGetArray.texRef__val = *(data->args.hipTexRefGetArray.texRef);
+      break;
+// hipTexRefGetBorderColor[('float*', 'pBorderColor'), ('const textureReference*', 'texRef')]
+    case HIP_API_ID_hipTexRefGetBorderColor:
+      if (data->args.hipTexRefGetBorderColor.pBorderColor) data->args.hipTexRefGetBorderColor.pBorderColor__val = *(data->args.hipTexRefGetBorderColor.pBorderColor);
+      if (data->args.hipTexRefGetBorderColor.texRef) data->args.hipTexRefGetBorderColor.texRef__val = *(data->args.hipTexRefGetBorderColor.texRef);
+      break;
 // hipTexRefGetFlags[('unsigned int*', 'pFlags'), ('const textureReference*', 'texRef')]
     case HIP_API_ID_hipTexRefGetFlags:
       if (data->args.hipTexRefGetFlags.pFlags) data->args.hipTexRefGetFlags.pFlags__val = *(data->args.hipTexRefGetFlags.pFlags);
@@ -7755,6 +7840,17 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << "driverVersion="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDriverGetVersion.driverVersion__val); }
       oss << ")";
     break;
+    case HIP_API_ID_hipDrvGraphAddMemFreeNode:
+      oss << "hipDrvGraphAddMemFreeNode(";
+      if (data->args.hipDrvGraphAddMemFreeNode.phGraphNode == NULL) oss << "phGraphNode=NULL";
+      else { oss << "phGraphNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemFreeNode.phGraphNode__val); }
+      oss << ", hGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemFreeNode.hGraph);
+      if (data->args.hipDrvGraphAddMemFreeNode.dependencies == NULL) oss << ", dependencies=NULL";
+      else { oss << ", dependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemFreeNode.dependencies__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemFreeNode.numDependencies);
+      oss << ", dptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemFreeNode.dptr);
+      oss << ")";
+    break;
     case HIP_API_ID_hipDrvGraphAddMemcpyNode:
       oss << "hipDrvGraphAddMemcpyNode(";
       if (data->args.hipDrvGraphAddMemcpyNode.phGraphNode == NULL) oss << "phGraphNode=NULL";
@@ -7779,6 +7875,24 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipDrvGraphAddMemsetNode.memsetParams == NULL) oss << ", memsetParams=NULL";
       else { oss << ", memsetParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemsetNode.memsetParams__val); }
       oss << ", ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphAddMemsetNode.ctx);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams:
+      oss << "hipDrvGraphExecMemcpyNodeSetParams(";
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemcpyNodeSetParams.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemcpyNodeSetParams.hNode);
+      if (data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams == NULL) oss << ", copyParams=NULL";
+      else { oss << ", copyParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams__val); }
+      oss << ", ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemcpyNodeSetParams.ctx);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams:
+      oss << "hipDrvGraphExecMemsetNodeSetParams(";
+      oss << "hGraphExec="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemsetNodeSetParams.hGraphExec);
+      oss << ", hNode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemsetNodeSetParams.hNode);
+      if (data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams == NULL) oss << ", memsetParams=NULL";
+      else { oss << ", memsetParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams__val); }
+      oss << ", ctx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipDrvGraphExecMemsetNodeSetParams.ctx);
       oss << ")";
     break;
     case HIP_API_ID_hipDrvGraphMemcpyNodeGetParams:
@@ -10187,6 +10301,22 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetAddress.dev_ptr__val); }
       if (data->args.hipTexRefGetAddress.texRef == NULL) oss << ", texRef=NULL";
       else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetAddress.texRef__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipTexRefGetArray:
+      oss << "hipTexRefGetArray(";
+      if (data->args.hipTexRefGetArray.pArray == NULL) oss << "pArray=NULL";
+      else { oss << "pArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetArray.pArray__val); }
+      if (data->args.hipTexRefGetArray.texRef == NULL) oss << ", texRef=NULL";
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetArray.texRef__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipTexRefGetBorderColor:
+      oss << "hipTexRefGetBorderColor(";
+      if (data->args.hipTexRefGetBorderColor.pBorderColor == NULL) oss << "pBorderColor=NULL";
+      else { oss << "pBorderColor="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetBorderColor.pBorderColor__val); }
+      if (data->args.hipTexRefGetBorderColor.texRef == NULL) oss << ", texRef=NULL";
+      else { oss << ", texRef="; roctracer::hip_support::detail::operator<<(oss, data->args.hipTexRefGetBorderColor.texRef__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetFlags:

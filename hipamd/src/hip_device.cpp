@@ -23,6 +23,7 @@
 
 #include "hip_internal.hpp"
 #include "hip_mempool_impl.hpp"
+#include "hip_platform.hpp"
 
 #undef hipGetDeviceProperties
 #undef hipDeviceProp_t
@@ -581,6 +582,44 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
 
   *prop = deviceProps;
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
+                             hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+  HIP_INIT_API(hipGetProcAddress, symbol, pfn, hipVersion, flags, symbolStatus);
+
+  std::string symbolString = symbol;
+  if(symbol == nullptr || symbolString == "" || *pfn == nullptr){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (symbolString == "hipGetDeviceProperties"){
+    if (hipVersion >= 600){
+      symbolString = "hipGetDevicePropertiesR0600";
+    }
+  } else if (symbolString == "hipChooseDevice") {
+    if (hipVersion >= 600){
+      symbolString = "hipChooseDeviceR0600";
+    }
+  }
+
+  void* handle = hip::PlatformState::instance().getDynamicLibraryHandle();
+  if (handle == nullptr){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  *pfn = amd::Os::getSymbol(handle, symbolString.c_str());
+  if (!(*pfn)) {
+    if (symbolStatus != nullptr) {
+      *symbolStatus = HIP_GET_PROC_ADDRESS_SYMBOL_NOT_FOUND;
+    }
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (symbolStatus != nullptr) {
+    *symbolStatus = HIP_GET_PROC_ADDRESS_SUCCESS;
+  }
   HIP_RETURN(hipSuccess);
 }
 
