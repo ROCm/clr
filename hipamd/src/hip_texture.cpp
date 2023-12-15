@@ -241,8 +241,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       if (image == nullptr) {
         return hipErrorInvalidValue;
       }
-    } else if (image->parent()) {
-      image->retain();  // Because it will be released as a view in ihipDestroyTextureObject()
+    } else {
+      image->retain();  // will be released in ihipDestroyTextureObject()
     }
     break;
   }
@@ -282,6 +282,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       if (image == nullptr) {
         return hipErrorInvalidValue;
       }
+    } else {
+      image->retain();  // will be released in ihipDestroyTextureObject()
     }
     break;
   }
@@ -374,15 +376,7 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
     return hipErrorNotSupported;
   }
 
-  const hipResourceType type = texObject->resDesc.resType;
-  const bool isImageFromBuffer = (type == hipResourceTypeLinear) || (type == hipResourceTypePitch2D);
-  const bool isImageView = ((type == hipResourceTypeArray) || (type == hipResourceTypeMipmappedArray)) &&
-                           texObject->image->parent() != nullptr;
-  // If the texture object was created from an array, then the array owns the image SRD.
-  // Otherwise, if the texture object is a view, or was created from a buffer, then it owns the image SRD.
-  if (isImageFromBuffer || isImageView) {
-    texObject->image->release();
-  }
+  texObject->image->release();
 
   // The texture object always owns the sampler SRD.
   texObject->sampler->release();
