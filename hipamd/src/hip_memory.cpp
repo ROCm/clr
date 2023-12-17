@@ -2149,13 +2149,13 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
             memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
     } else {
       srcMemoryType = hipMemoryTypeHost;
+      const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
     }
 
     if (srcMemoryType == hipMemoryTypeHost) {
       // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we
       //  detect system memory.
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcHost = pCopy->srcDevice;
-      const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
       // We don't need detect memory type again for hipMemoryTypeUnified
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcMemoryType = srcMemoryType;
     }
@@ -2169,11 +2169,11 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
             memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
     } else {
       dstMemoryType = hipMemoryTypeHost;
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
     }
 
     if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
       // We don't need detect memory type again for hipMemoryTypeUnified
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstMemoryType = dstMemoryType;
     }
