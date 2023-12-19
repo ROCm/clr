@@ -859,6 +859,10 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
 
+  if (expected_fence_state != amd::Device::kCacheStateSystem) {
+    fence_dirty_ = true;
+  }
+
   if (timestamp_ != nullptr) {
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
