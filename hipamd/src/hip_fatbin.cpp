@@ -226,10 +226,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     query_list_array = new amd_comgr_code_object_info_t[unique_isa_names.size()];
     auto isa_it = unique_isa_names.begin();
     for (size_t isa_idx = 0; isa_idx < unique_isa_names.size(); ++isa_idx) {
-      std::advance(isa_it, isa_idx);
       query_list_array[isa_idx].isa = isa_it->first.c_str();
       query_list_array[isa_idx].size = 0;
       query_list_array[isa_idx].offset = 0;
+      isa_it ++;
     }
 
     // Look up the code object info passing the query list.
