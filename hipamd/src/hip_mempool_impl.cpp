@@ -115,7 +115,7 @@ bool Heap::ReleaseAllMemory(size_t min_bytes_to_hold, bool safe_release) {
 }
 
 // ================================================================================================
-bool Heap::ReleaseAllMemory(hip::Stream* stream) {
+bool Heap::ReleaseAllMemory() {
   for (auto it = allocations_.begin(); it != allocations_.end();) {
     // Make sure the heap holds the minimum number of bytes
     if (total_size_ <= release_threshold_) {
@@ -270,10 +270,10 @@ void MemoryPool::ReleaseAllMemory() {
 }
 
 // ================================================================================================
-void MemoryPool::ReleaseFreedMemory(hip::Stream* stream) {
+void MemoryPool::ReleaseFreedMemory() {
   amd::ScopedLock lock(lock_pool_ops_);
 
-  free_heap_.ReleaseAllMemory(stream);
+  free_heap_.ReleaseAllMemory();
 }
 
 // ================================================================================================
