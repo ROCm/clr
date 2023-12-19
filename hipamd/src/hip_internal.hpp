@@ -529,7 +529,7 @@ public:
     bool FreeMemory(amd::Memory* memory, Stream* stream);
 
     /// Release freed memory from all pools on the current device
-    void ReleaseFreedMemory(Stream* stream);
+    void ReleaseFreedMemory();
 
     /// Removes a destroyed stream from the safe list of memory pools
     void RemoveStreamFromPools(Stream* stream);

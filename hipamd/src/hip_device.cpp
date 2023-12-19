@@ -98,11 +98,11 @@ bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
 }
 
 // ================================================================================================
-void Device::ReleaseFreedMemory(Stream* stream) {
+void Device::ReleaseFreedMemory() {
   amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
   for (auto it : mem_pools_) {
-    it->ReleaseFreedMemory(stream);
+    it->ReleaseFreedMemory();
   }
 }
 

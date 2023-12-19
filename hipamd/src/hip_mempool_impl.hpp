@@ -110,10 +110,10 @@ public:
   bool RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts = nullptr);
 
   /// Releases all memory, until the threshold value is met
-  bool ReleaseAllMemory(size_t min_bytes_to_hold = std::numeric_limits<size_t>::max(), bool safe_release = false);
+  bool ReleaseAllMemory(size_t min_bytes_to_hold, bool safe_release = false);
 
   /// Releases all memory, safe to the provided stream, until the threshold value is met
-  bool ReleaseAllMemory(hip::Stream* stream);
+  bool ReleaseAllMemory();
 
   /// Remove the provided stream from the safe list
   void RemoveStream(hip::Stream* stream);
@@ -218,7 +218,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
 
   /// Releases all allocations from free_heap_. It can be called on Stream or Device synchronization
   /// @note The caller must make sure it's safe to release memory
-  void ReleaseFreedMemory(hip::Stream* stream = nullptr);
+  void ReleaseFreedMemory();
 
   /// Removes a stream from tracking
   void RemoveStream(hip::Stream* stream);
