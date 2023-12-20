@@ -519,8 +519,15 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   }
   hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
+  auto eventStreamHandle = reinterpret_cast<hipStream_t>(e->GetCaptureStream());
+  // the stream associated with the device might have been destroyed
+  if (!hip::isValid(eventStreamHandle)) {
+    // Stream associated with the event has been released
+    // meaning the event has been completed and we can resume the current stream
+    return hipSuccess;
+  }
 
+  hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(eventStreamHandle);
   if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
     ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node StreamWaitEvent on stream : %p, Event %p", stream,
