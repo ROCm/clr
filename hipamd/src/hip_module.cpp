@@ -461,7 +461,7 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
       hStream, kernelParams, extra, nullptr, nullptr));
 }
 
-hipError_t __hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                     uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -485,7 +485,7 @@ hipError_t __hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 }
 
 
-hipError_t __hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                     uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
                                     size_t sharedMemBytes, hipStream_t hStream, void** kernelParams,
