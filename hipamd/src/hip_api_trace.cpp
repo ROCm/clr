@@ -629,13 +629,13 @@ hipError_t hipWaitExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemAr
                                           unsigned int numExtSems, hipStream_t stream);
 hipChannelFormatDesc hipCreateChannelDesc(int x, int y, int z, int w, hipChannelFormatKind f);
 hipError_t hipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject, const hipResourceDesc* pResDesc);
-hipError_t __hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                       uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                       uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                       uint32_t localWorkSizeZ, size_t sharedMemBytes,
                                       hipStream_t hStream, void** kernelParams, void** extra,
                                       hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flag);
-hipError_t __hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
+hipError_t hipHccModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                                       uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
                                       uint32_t localWorkSizeX, uint32_t localWorkSizeY,
                                       uint32_t localWorkSizeZ, size_t sharedMemBytes,
@@ -1159,8 +1159,8 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipWaitExternalSemaphoresAsync_fn = hip::hipWaitExternalSemaphoresAsync;
   ptrDispatchTable->hipCreateChannelDesc_fn = hip::hipCreateChannelDesc;
   ptrDispatchTable->hipCreateSurfaceObject_fn = hip::hipCreateSurfaceObject;
-  ptrDispatchTable->hipExtModuleLaunchKernel_fn = hip::__hipExtModuleLaunchKernel;
-  ptrDispatchTable->hipHccModuleLaunchKernel_fn = hip::__hipHccModuleLaunchKernel;
+  ptrDispatchTable->hipExtModuleLaunchKernel_fn = hip::hipExtModuleLaunchKernel;
+  ptrDispatchTable->hipHccModuleLaunchKernel_fn = hip::hipHccModuleLaunchKernel;
   ptrDispatchTable->hipMemcpy_spt_fn = hip::hipMemcpy_spt;
   ptrDispatchTable->hipMemcpyToSymbol_spt_fn = hip::hipMemcpyToSymbol_spt;
   ptrDispatchTable->hipMemcpyFromSymbol_spt_fn = hip::hipMemcpyFromSymbol_spt;
