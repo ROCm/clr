@@ -69,7 +69,6 @@ class Settings : public device::Settings {
       uint aiPlus_ : 1;                 //!< AI and post AI features
       uint gfx10Plus_ : 1;              //!< gfx10 and post gfx10 features
       uint threadTraceEnable_ : 1;      //!< Thread trace enable
-      uint linearPersistentImage_ : 1;  //!< Allocates linear images in persistent
       uint svmAtomics_ : 1;             //!< SVM device atomics
       uint svmFineGrainSystem_ : 1;     //!< SVM fine grain system support
       uint useDeviceQueue_ : 1;         //!< Submit to separate device queue
@@ -80,6 +79,7 @@ class Settings : public device::Settings {
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint disableSdma_ : 1;            //!< Disable SDMA support
       uint alwaysResident_ : 1;         //!< Make resources resident at allocation time
+      uint useDeviceKernelArg_ : 1;     //!< Use persistent memory for kernel arguments
       uint reserved_ : 9;
     };
     uint value_;
@@ -117,6 +117,7 @@ class Settings : public device::Settings {
   amd::LibrarySelector libSelector_;  //!< Select linking libraries for compiler
 
   size_t prepinnedMinSize_;           //!< minimal memory size for prepinned transfer
+  uint32_t limit_blit_wg_;        //!< The number of workgroups for blit execution
 
   //! Default constructor
   Settings();

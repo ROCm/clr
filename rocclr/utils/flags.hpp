@@ -40,7 +40,7 @@ debug(size_t, CPU_MEMORY_GUARD_PAGE_SIZE, 64,                                 \
         "Size in KB of CPU memory guard page")                                \
 debug(size_t, CPU_MEMORY_ALIGNMENT_SIZE, 256,                                 \
         "Size in bytes for the default alignment for guarded memory on CPU")  \
-debug(size_t, PARAMETERS_MIN_ALIGNMENT, 16,                                   \
+debug(size_t, PARAMETERS_MIN_ALIGNMENT, NATIVE_ALIGNMENT_SIZE,                \
         "Minimum alignment required for the abstract parameters stack")       \
 debug(size_t, MEMOBJ_BASE_ADDR_ALIGN, 4*Ki,                                   \
         "Alignment of the base address of any allocate memory object")        \
@@ -166,6 +166,9 @@ release(uint, AMD_SERIALIZE_KERNEL, 0,                                        \
 release(uint, AMD_SERIALIZE_COPY, 0,                                          \
         "Serialize copies, 0x1 = Wait for completion before enqueue"          \
         "0x2 = Wait for completion after enqueue 0x3 = both")                 \
+release(uint, HIP_LAUNCH_BLOCKING, 0,                                         \
+        "Serialize kernel enqueue 0x1 = Wait for completion after enqueue,"   \
+        "same as AMD_SERIALIZE_KERNEL=2")                                     \
 release(bool, PAL_ALWAYS_RESIDENT, false,                                     \
         "Force memory resources to become resident at allocation time")       \
 release(uint, HIP_HOST_COHERENT, 0,                                           \
@@ -218,6 +221,8 @@ release(uint, ROC_AQL_QUEUE_SIZE, 16384,                                      \
         "AQL queue size in AQL packets")                                      \
 release(uint, ROC_SIGNAL_POOL_SIZE, 32,                                       \
         "Initial size of HSA signal pool")                                    \
+release(uint, DEBUG_CLR_LIMIT_BLIT_WG, 16,                                    \
+        "Limit the number of workgroups in blit operations")                  \
 release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \
         "If true, then runtime can skip kernel arg copy")                     \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
@@ -236,6 +241,8 @@ release(cstring, HIPRTC_COMPILE_OPTIONS_APPEND, "",                           \
         "Set compile options needed for hiprtc compilation")                  \
 release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \
         "Set link options needed for hiprtc compilation")                     \
+release(bool, HIP_VMEM_MANAGE_SUPPORT, false,                                 \
+        "Virtual Memory Management Support")                                  \
 
 namespace amd {
 

@@ -535,8 +535,9 @@ bool extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
 
   amd::Comgr::release_data(binaryData);
 
-  bin.reserve(binarySize);
-  bin.assign(binary, binary + binarySize);
+  std::vector<char> temp_bin;
+  temp_bin.assign(binary, binary + binarySize);
+  bin = temp_bin;
   delete[] binary;
 
   return true;

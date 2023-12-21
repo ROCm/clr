@@ -702,6 +702,9 @@ void Buffer::destroy() {
         if (dev().settings().apuSystem_) {
           const_cast<Device&>(dev()).updateFreeMemory(size(), true);
         }
+      } else if ((memFlags & CL_MEM_ALLOC_HOST_PTR) &&
+                 (owner()->getContext().devices().size() == 1)) {
+        dev().hostFree(deviceMemory_, size());
       }
     }
   }
@@ -748,8 +751,18 @@ bool Buffer::create(bool alloc_local) {
     owner()->setSvmPtr(orig_dev_ptr);
   }
 
+
+
   // Allocate backing storage in device local memory unless UHP or AHP are set
   cl_mem_flags memFlags = owner()->getMemFlags();
+
+  if (memFlags & ROCCLR_MEM_PHYMEM) {
+    // If this is physical memory request, then get an handle and store it in user data
+    owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    if (owner()->getUserData().hsa_handle == 0) {
+      LogError("HSA Opaque Handle returned was null");
+    }
+  }
 
   if ((owner()->parent() == nullptr) &&
       (owner()->getSvmPtr() != nullptr)) {
@@ -941,7 +954,7 @@ bool Buffer::create(bool alloc_local) {
 
     return deviceMemory_ != nullptr;
   }
-  assert(owner()->getHostMem() != nullptr);
+  assert(owner()->getHostMem() != nullptr || (owner()->getContext().devices().size() == 1));
 
   flags_ |= HostMemoryDirectAccess;
 
@@ -955,7 +968,15 @@ bool Buffer::create(bool alloc_local) {
     return deviceMemory_ != nullptr;
   }
 
-  if (owner()->getSvmPtr() != owner()->getHostMem()) {
+  // Just one device and allocation must be done in the backend
+  if ((memFlags & CL_MEM_ALLOC_HOST_PTR) && (owner()->getContext().devices().size() == 1)) {
+    deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
+    // Copy original data to the allocated host memory
+    if (memFlags & CL_MEM_COPY_HOST_PTR) {
+      memcpy(deviceMemory_, owner()->getHostMem(), owner()->getSize());
+    }
+    owner()->setHostMem(deviceMemory_);
+  } else if (owner()->getSvmPtr() != owner()->getHostMem()) {
     if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
       hsa_amd_memory_pool_t pool = (memFlags & CL_MEM_SVM_ATOMICS) ?
                                     dev().SystemSegment() :

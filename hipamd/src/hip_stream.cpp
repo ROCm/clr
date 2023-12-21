@@ -24,9 +24,9 @@
 #include "thread/monitor.hpp"
 #include "hip_prof_api.h"
 
+namespace hip {
 static amd::Monitor streamSetLock{"Guards global stream set"};
 static std::unordered_set<hip::Stream*> streamSet;
-namespace hip {
 
 // ================================================================================================
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
@@ -169,6 +169,11 @@ void Stream::destroyAllStreams(int deviceId) {
 
 bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
+  // Allow capture to be less restrictive one one changes the stream capture interaction
+  // mode for the thread
+  if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeRelaxed) {
+    return false;
+  }
   // If any local thread has an ongoing or concurrent capture sequence initiated
   // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
   if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
@@ -194,47 +199,48 @@ bool Stream::existsActiveStreamForDevice(hip::Device* device) {
   return false;
 }
 
-};// hip namespace
-
 // ================================================================================================
 void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) {
   amd::Command::EventWaitList eventWaitList(0);
   bool submitMarker = 0;
-  {
+
+  auto waitForStream = [&submitMarker,
+                         &eventWaitList](hip::Stream* stream) {
+    if (amd::Command *command = stream->getLastQueuedCommand(true)) {
+      amd::Event &event = command->event();
+      // Check HW status of the ROCcrl event.
+      // Note: not all ROCclr modes support HW status
+      bool ready = stream->device().IsHwEventReady(event);
+      if (!ready) {
+        ready = (command->status() == CL_COMPLETE);
+      }
+      submitMarker |= stream->vdev()->isFenceDirty();
+      // Check the current active status
+      if (!ready) {
+        command->notifyCmdQueue();
+        eventWaitList.push_back(command);
+      } else {
+        command->release();
+      }
+    }
+  };
+
+  if (wait_null_stream) {
+    if (hip::Stream* null_stream = blocking_stream->GetDevice()->GetNullStream()) {
+      waitForStream(null_stream);
+    }
+  } else {
     amd::ScopedLock lock(streamSetLock);
 
     for (const auto& active_stream : streamSet) {
       // If it's the current device
       if ((&active_stream->device() == &blocking_stream->device()) &&
-          // Make sure it's a default stream
-          ((active_stream->Flags() & hipStreamNonBlocking) == 0) &&
-          // and it's not the current stream
-          (active_stream != blocking_stream) &&
-          // check for a wait on the null stream
-          (active_stream->Null() == wait_null_stream)) {
+        // Make sure it's a default stream
+        ((active_stream->Flags() & hipStreamNonBlocking) == 0) &&
+        // and it's not the current stream
+        (active_stream != blocking_stream)) {
         // Get the last valid command
-        amd::Command* command = active_stream->getLastQueuedCommand(true);
-        if (command != nullptr) {
-          amd::Event& event = command->event();
-          // Check HW status of the ROCcrl event.
-          // Note: not all ROCclr modes support HW status
-          bool ready = active_stream->device().IsHwEventReady(event);
-          if (!ready) {
-            ready = (command->status() == CL_COMPLETE);
-          }
-          submitMarker |= active_stream->vdev()->isFenceDirty();
-          // Check the current active status
-          if (!ready) {
-            command->notifyCmdQueue();
-            eventWaitList.push_back(command);
-          } else {
-            command->release();
-          }
-        }
-        // Nullstream, hence there is nothing else to wait
-        if (wait_null_stream) {
-          break;
-        }
+        waitForStream(active_stream);
       }
     }
   }
@@ -248,6 +254,7 @@ void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) 
     }
 
     //Reset the dirty flag for all streams now that the marker is submitted
+    amd::ScopedLock lock(streamSetLock);
     for (const auto& stream : streamSet) {
       amd::HostQueue* active_queue = stream->asHostQueue();
       if (active_queue->vdev()->isFenceDirty()) {
@@ -325,7 +332,7 @@ hipStream_t stream_per_thread::get() {
     hipError_t status = ihipStreamCreate(&m_streams[currDev], hipStreamDefault,
                                          hip::Stream::Priority::Normal);
     if (status != hipSuccess) {
-      DevLogError("Stream creation failed\n");
+      DevLogError("Stream creation failed");
     }
   }
   return m_streams[currDev];
@@ -864,3 +871,4 @@ hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
 
   HIP_RETURN(hipSuccess);
 }
+} // hip namespace

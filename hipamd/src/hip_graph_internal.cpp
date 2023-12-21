@@ -102,159 +102,16 @@ hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t 
 }
 
 hipError_t GraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) {
-  hipError_t status = ihipMemcpy3D_validate(pNodeParams);
+  hipError_t status;
+  status = ihipMemcpy3D_validate(pNodeParams);
   if (status != hipSuccess) {
     return status;
   }
-  size_t offset = 0;
+
   const HIP_MEMCPY3D pCopy = hip::getDrvMemcpy3DDesc(*pNodeParams);
-  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
-  // (unified virtual address space) base address of the source data and the bytes per row to apply.
-  // {src/dst}Array is ignored.
-  hipMemoryType srcMemoryType = pCopy.srcMemoryType;
-  if (srcMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy.srcDevice, offset);
-    srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    if (srcMemoryType == hipMemoryTypeHost) {
-      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
-      // memory.
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcHost = pCopy.srcDevice;
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcXInBytes += offset;
-    }
-  }
-  offset = 0;
-  hipMemoryType dstMemoryType = pCopy.dstMemoryType;
-  if (dstMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy.dstDevice, offset);
-    dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    if (dstMemoryType == hipMemoryTypeHost) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstHost = pCopy.dstDevice;
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstXInBytes += offset;
-    }
-  }
-  offset = 0;
-  // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
-  // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
-  if (srcMemoryType == hipMemoryTypeHost) {
-    srcMemoryType = getMemoryObject(pCopy.srcHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-
-    if (srcMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->srcDevice = const_cast<void*>(pCopy.srcHost);
-    }
-  }
-  offset = 0;
-  if (dstMemoryType == hipMemoryTypeHost) {
-    dstMemoryType = getMemoryObject(pCopy.dstHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-
-    if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(&pCopy)->dstDevice = const_cast<void*>(pCopy.dstDevice);
-    }
-  }
-
-  amd::Coord3D srcOrigin = {pCopy.srcXInBytes, pCopy.srcY, pCopy.srcZ};
-  amd::Coord3D dstOrigin = {pCopy.dstXInBytes, pCopy.dstY, pCopy.dstZ};
-  amd::Coord3D copyRegion = {pCopy.WidthInBytes, pCopy.Height, pCopy.Depth};
-
-  if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Host to Device.
-
-    amd::Memory* dstMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-
-    status =
-        ihipMemcpyHtoDValidate(pCopy.srcHost, pCopy.dstDevice, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
-                               pCopy.dstPitch * pCopy.dstHeight, dstMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeHost)) {
-    // Device to Host.
-    amd::Memory* srcMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-    status =
-        ihipMemcpyDtoHValidate(pCopy.srcDevice, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, pCopy.dstPitch,
-                               pCopy.dstPitch * pCopy.dstHeight, srcMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Device to Device.
-    amd::Memory* srcMemory;
-    amd::Memory* dstMemory;
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-
-    status = ihipMemcpyDtoDValidate(pCopy.srcDevice, pCopy.dstDevice, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
-                                    pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcMemory,
-                                    dstMemory, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
-    amd::Image* dstImage;
-    amd::BufferRect srcRect;
-
-    status =
-        ihipMemcpyHtoAValidate(pCopy.srcHost, pCopy.dstArray, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight, dstImage, srcRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
-    // Image to Host.
-    amd::Image* srcImage;
-    amd::BufferRect dstRect;
-
-    status =
-        ihipMemcpyAtoHValidate(pCopy.srcArray, pCopy.dstHost, srcOrigin, dstOrigin, copyRegion,
-                               pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight, srcImage, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeArray)) {
-    // Device to Image.
-    amd::Image* dstImage;
-    amd::Memory* srcMemory;
-    amd::BufferRect dstRect;
-    amd::BufferRect srcRect;
-    status = ihipMemcpyDtoAValidate(pCopy.srcDevice, pCopy.dstArray, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.srcPitch, pCopy.srcPitch * pCopy.srcHeight,
-                                    dstImage, srcMemory, dstRect, srcRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeDevice)) {
-    // Image to Device.
-    amd::BufferRect srcRect;
-    amd::BufferRect dstRect;
-    amd::Memory* dstMemory;
-    amd::Image* srcImage;
-    status = ihipMemcpyAtoDValidate(pCopy.srcArray, pCopy.dstDevice, srcOrigin, dstOrigin,
-                                    copyRegion, pCopy.dstPitch, pCopy.dstPitch * pCopy.dstHeight,
-                                    dstMemory, srcImage, srcRect, dstRect);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeArray)) {
-    amd::Image* srcImage;
-    amd::Image* dstImage;
-
-    status = ihipMemcpyAtoAValidate(pCopy.srcArray, pCopy.dstArray, srcOrigin, dstOrigin,
-                                    copyRegion, srcImage, dstImage);
-    if (status != hipSuccess) {
-      return status;
-    }
-  } else {
-    return hipErrorInvalidValue;
+  status = ihipDrvMemcpy3D_validate(&pCopy);
+  if (status != hipSuccess) {
+    return status;
   }
   return hipSuccess;
 }
@@ -269,7 +126,7 @@ bool Graph::isGraphValid(Graph* pGraph) {
 
 void Graph::AddNode(const Node& node) {
   vertices_.emplace_back(node);
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)\n",
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Add %s(%p)",
           GetGraphNodeTypeString(node->GetType()), node);
   node->SetParentGraph(this);
 }
@@ -285,11 +142,10 @@ std::vector<Node> Graph::GetRootNodes() const {
   for (auto entry : vertices_) {
     if (entry->GetInDegree() == 0) {
       roots.push_back(entry);
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Root node: %s(%p)\n",
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] Root node: %s(%p)",
               GetGraphNodeTypeString(entry->GetType()), entry);
     }
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "\n");
   return roots;
 }
 
@@ -337,7 +193,7 @@ void Graph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
       // For the parallel list nodes add parent as the dependency
       if (singleList.empty()) {
         ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-                "[hipGraph] For %s(%p)- add parent as dependency %s(%p)\n",
+                "[hipGraph] For %s(%p) - add parent as dependency %s(%p)",
                 GetGraphNodeTypeString(adjNode->GetType()), adjNode,
                 GetGraphNodeTypeString(v->GetType()), v);
         dependencies[adjNode].push_back(v);
@@ -356,7 +212,7 @@ void Graph::GetRunListUtil(Node v, std::unordered_map<Node, bool>& visited,
       }
       // If the list cannot be merged with the existing list add as dependancy
       if (!singleList.empty()) {
-        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] For %s(%p)- add dependency %s(%p)\n",
+        ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] For %s(%p) - add dependency %s(%p)",
                 GetGraphNodeTypeString(adjNode->GetType()), adjNode,
                 GetGraphNodeTypeString(v->GetType()), v);
         dependencies[adjNode].push_back(v);
@@ -388,7 +244,7 @@ void Graph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
   for (size_t i = 0; i < parallelLists.size(); i++) {
     for (size_t j = 0; j < parallelLists[i].size(); j++) {
-      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] List %d - %s(%p)\n", i + 1,
+      ClPrint(amd::LOG_INFO, amd::LOG_CODE, "[hipGraph] List %d - %s(%p)", i + 1,
               GetGraphNodeTypeString(parallelLists[i][j]->GetType()), parallelLists[i][j]);
     }
   }
@@ -471,7 +327,7 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
       if (stream != nullptr) {
         hip::Stream::Destroy(stream);
       }
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!\n");
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to create parallel stream!");
       return hipErrorOutOfMemory;
     }
     parallel_streams_.push_back(stream);
@@ -495,52 +351,77 @@ hipError_t GraphExec::Init() {
 
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
-  size_t KernArgSizeForGraph = 0;
-  bool GraphHasOnlyKerns = true;
-  // GPU packet capture is enabled for kernel nodes. Calculate the kernel arg size required for all
-  // graph kernel nodes to allocate
-  for (const auto& list : parallelLists_) {
-    hip::Stream* stream = GetAvailableStreams();
-    for (auto& node : list) {
-      node->SetStream(stream, this);
+  if (parallelLists_.size() == 1) {
+    size_t kernArgSizeForGraph = 0;
+    hip::Stream* stream = nullptr;
+    // GPU packet capture is enabled for kernel nodes. Calculate the kernel
+    // arg size required for all graph kernel nodes to allocate
+    for (const auto& list : parallelLists_) {
+      stream = GetAvailableStreams();
+      for (auto& node : list) {
+        node->SetStream(stream, this);
+        if (node->GetType() == hipGraphNodeTypeKernel) {
+          kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
+        }
+      }
+    }
+
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    if (device->info().largeBar_) {
+      // Pad kernel argument buffer with sentinal size bytes to do a readback later
+      kernArgSizeForGraph += sizeof(int);
+      kernarg_pool_graph_ =
+          reinterpret_cast<address>(device->deviceLocalAlloc(kernArgSizeForGraph));
+      device_kernarg_pool_ = true;
+    } else {
+      kernarg_pool_graph_ = reinterpret_cast<address>(
+          device->hostAlloc(kernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
+    }
+
+    if (kernarg_pool_graph_ == nullptr) {
+      return hipErrorMemoryAllocation;
+    }
+    kernarg_pool_size_graph_ = kernArgSizeForGraph;
+
+    for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeKernel) {
-        KernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
-      } else {
-        GraphHasOnlyKerns = false;
+        auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
+        status = node->CreateCommand(node->GetQueue());
+        // From the kernel pool allocate the kern arg size required for the current kernel node.
+        address kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
+                                             kernelNode->GetKernargSegmentAlignment());
+        if (kernArgOffset == nullptr) {
+          return hipErrorMemoryAllocation;
+        }
+        // Form GPU packet capture for the kernel node.
+        kernelNode->CaptureAndFormPacket(kernArgOffset);
       }
     }
-  }
 
-  auto device = g_devices[ihipGetDevice()]->devices()[0];
-  const auto& info = device->info();
-  // Enable allocating kerns on device memory if graph as only kernels. memcpy nodes require hdp
-  // flush. ToDo: Work on enabling device kern args later for all type of nodes for large bar
-  if (GraphHasOnlyKerns == true && info.largeBar_) {
-    kernarg_pool_graph_ = reinterpret_cast<address>(device->deviceLocalAlloc(KernArgSizeForGraph));
-    device_kernarg_pool_ = true;
-  } else {
-    kernarg_pool_graph_ = reinterpret_cast<address>(
-        device->hostAlloc(KernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
-  }
-
-  if (kernarg_pool_graph_ == nullptr) {
-    return hipErrorMemoryAllocation;
-  }
-  kernarg_pool_size_graph_ = KernArgSizeForGraph;
-
-  for (auto& node : topoOrder_) {
-    if (node->GetType() == hipGraphNodeTypeKernel) {
-      auto kernelnode = reinterpret_cast<hip::GraphKernelNode*>(node);
-      status = node->CreateCommand(node->GetQueue());
-      // From the kernel pool allocate the kern arg size required for the current kernel node.
-      address kernArgOffset = allocKernArg(kernelnode->GetKernargSegmentByteSize(),
-                                           kernelnode->GetKernargSegmentAlignment());
-      if (kernArgOffset == nullptr) {
-        return hipErrorMemoryAllocation;
+    if (device_kernarg_pool_) {
+      // Write HDP_MEM_COHERENCY_FLUSH_CNTL reg to initiate flush read to HDP mem. Verify mem
+      // by readback of sentinal value at the tail end of the kernarg surface (allocated above)
+      // This needs to be done for PCIE connected devices only. HDP path is disabled for XGMI
+      // between CPU<->GPU
+      if (!device->isXgmi()) {
+        static int host_val = 1;
+        address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
+        *dev_ptr = host_val;
+        if (device->info().hdpMemFlushCntl == nullptr) {
+          amd::Command* command = new amd::Marker(*stream, true);
+          if (command != nullptr) {
+            command->enqueue();
+            command->release();
+          }
+        } else {
+          *device->info().hdpMemFlushCntl = 1;
+        }
+        while (*dev_ptr != host_val);
+        host_val++;
       }
-      // Enable GPU packet capture for the kernel node.
-      kernelnode->EnableCapturing(kernArgOffset);
     }
+
+    ResetQueueIndex();
   }
   return status;
 }
@@ -562,9 +443,11 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
     }
     node->UpdateEventWaitLists(waitList);
   }
+
   std::vector<Node> rootNodes = clonedGraph->GetRootNodes();
   ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-          "[hipGraph] RootCommand get launched on stream (stream:%p)\n", stream);
+          "[hipGraph] RootCommand get launched on stream %p", stream);
+
   for (auto& root : rootNodes) {
     //If rootnode is launched on to the same stream dont add dependency
     if (root->GetQueue() != stream) {
@@ -601,7 +484,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
   if (!graphLastCmdWaitList.empty()) {
     graphEnd = new amd::Marker(*stream, false, graphLastCmdWaitList);
     ClPrint(amd::LOG_INFO, amd::LOG_CODE,
-            "[hipGraph] EndCommand will get launched on stream (stream:%p)\n", stream);
+            "[hipGraph] EndCommand will get launched on stream %p", stream);
     if (graphEnd == nullptr) {
       graphStart->release();
       return hipErrorOutOfMemory;
@@ -654,31 +537,47 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   } else {
     repeatLaunch_ = true;
   }
+
   if (parallelLists_.size() == 1) {
-    if (device_kernarg_pool_) {
-      // If kernelArgs are in device memory flush the HDP.
-      amd::Command* startCommand = nullptr;
-      startCommand = new amd::Marker(*hip_stream, false);
-      startCommand->enqueue();
-      startCommand->release();
+    amd::AccumulateCommand* accumulate = nullptr;
+    bool isLastPacketKernel = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      uint8_t* lastCapturedPacket = (topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) ?
+                                  topoOrder_.back()->GetAqlPacket() : nullptr;
+      accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
     }
-    for (int i = 0; i < topoOrder_.size(); i++) {
+
+    for (int i = 0; i < topoOrder_.size() - 1; i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
-        hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket());
+        if (topoOrder_[i]->GetEnabled()) {
+          hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
+          accumulate->addKernelName(topoOrder_[i]->GetKernelName());
+        }
       } else {
         topoOrder_[i]->SetStream(hip_stream, this);
         status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
         topoOrder_[i]->EnqueueCommands(stream);
       }
     }
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      amd::Command* endCommand = nullptr;
-      endCommand = new amd::Marker(*hip_stream, false);
-      // Since the end command is for graph completion tracking,
-      // it may not need release scopes
-      endCommand->setEventScope(amd::Device::kCacheStateIgnore);
-      endCommand->enqueue();
-      endCommand->release();
+
+    // If last captured packet is kernel, optimize to detect completion of last kernel
+    // This saves on extra packet submitted to determine end of graph
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) {
+      // Add the last kernel node name to the accumulate command
+      accumulate->addKernelName(topoOrder_.back()->GetKernelName());
+      accumulate->enqueue();
+      accumulate->release();
+      isLastPacketKernel = true;
+    } else {
+      topoOrder_.back()->SetStream(hip_stream, this);
+      status = topoOrder_.back()->CreateCommand(topoOrder_.back()->GetQueue());
+      topoOrder_.back()->EnqueueCommands(stream);
+    }
+
+    // If last packet is not kernel, submit a marker to detect end of graph
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && !isLastPacketKernel) {
+      accumulate->enqueue();
+      accumulate->release();
     }
   } else {
     UpdateStream(parallelLists_, hip_stream, this);

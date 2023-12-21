@@ -199,6 +199,7 @@ inline std::string ToString(hipMemcpyKind v) {
         CASE_STR(hipMemcpyDeviceToHost);
         CASE_STR(hipMemcpyDeviceToDevice);
         CASE_STR(hipMemcpyDefault);
+        CASE_STR(hipMemcpyDeviceToDeviceNoCU);
         default:
             return ToHexString(v);
     };

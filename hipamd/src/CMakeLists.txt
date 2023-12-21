@@ -122,7 +122,10 @@ target_sources(amdhip64 PRIVATE
   hip_surface.cpp
   hip_texture.cpp
   hip_gl.cpp
-  hip_vm.cpp)
+  hip_vm.cpp
+  hip_api_trace.cpp
+  hip_table_interface.cpp
+  hip_table_interface_c.cpp)
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
@@ -212,10 +215,12 @@ if(USE_PROF_API)
   set(PROF_API_STR "${PROJECT_BINARY_DIR}/include/hip/amd_detail/hip_prof_str.h")
   set(PROF_API_STR_IN "${CMAKE_SOURCE_DIR}/hipamd/include/hip/amd_detail/hip_prof_str.h")
   set(PROF_API_HDR "${HIP_COMMON_INCLUDE_DIR}/hip/hip_runtime_api.h")
+  set(PROF_GL_HDR "${CMAKE_SOURCE_DIR}/hipamd/include/hip/amd_detail/amd_hip_gl_interop.h")
+  set(PROF_API_DEPRECATED "${HIP_COMMON_INCLUDE_DIR}/hip/hip_deprecated.h")
   set(PROF_API_SRC "${CMAKE_CURRENT_SOURCE_DIR}")
   set(PROF_API_GEN "${CMAKE_CURRENT_SOURCE_DIR}/hip_prof_gen.py")
   set(PROF_API_LOG "${PROJECT_BINARY_DIR}/hip_prof_gen.log.txt")
-
+  set(PROF_API_NEWHDR "${PROJECT_BINARY_DIR}/new_header.h")
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
   execute_process(COMMAND ${Python3_EXECUTABLE} -c "import CppHeaderParser"
@@ -229,14 +234,29 @@ if(USE_PROF_API)
   ")
   endif()
 
+  add_custom_command(OUTPUT ${PROF_API_NEWHDR}.i
+    COMMAND ${CMAKE_COMMAND} -E cat ${PROF_API_HDR} ${PROF_GL_HDR} > ${PROF_API_NEWHDR}
+    COMMAND ${CMAKE_C_COMPILER}
+        "-D$<JOIN:$<TARGET_PROPERTY:amdhip64,COMPILE_DEFINITIONS>,;-D>"
+        "-I$<JOIN:$<TARGET_PROPERTY:amdhip64,INCLUDE_DIRECTORIES>,;-I>"
+        "-DHIP_INCLUDE_HIP_HIP_RUNTIME_PT_API_H=1"
+        ${c_flags}
+        $<TARGET_PROPERTY:amdhip64,COMPILE_OPTIONS>
+        ${CPP_EXTRA_C_FLAGS}
+        -E ${PROF_API_NEWHDR} -o ${PROF_API_NEWHDR}.i
+    COMMAND_EXPAND_LISTS VERBATIM
+    IMPLICIT_DEPENDS C ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED}
+    DEPENDS ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED} 
+    COMMENT "Generating new header from hip_runtime_api.h")
+
   add_custom_command(OUTPUT ${PROF_API_STR}
-    COMMAND ${Python3_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_HDR} ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
-    DEPENDS ${PROF_API_STR_IN} ${PROF_API_HDR} ${PROF_API_GEN}
+    COMMAND ${Python3_EXECUTABLE} ${PROF_API_GEN} -v -t --priv ${PROF_API_NEWHDR}.i ${PROF_API_SRC} ${PROF_API_STR_IN} ${PROF_API_STR}
+    DEPENDS ${PROF_API_STR_IN} ${PROF_API_NEWHDR}.i ${PROF_API_GEN}
     COMMENT "Generating profiling primitives: ${PROF_API_STR}")
 
   add_custom_target(gen-prof-api-str-header ALL
     DEPENDS ${PROF_API_STR}
-    SOURCES ${PROF_API_HDR})
+    SOURCES ${PROF_API_NEWHDR}.i)
 
   set_target_properties(amdhip64 PROPERTIES PUBLIC_HEADER ${PROF_API_STR})
 

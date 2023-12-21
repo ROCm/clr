@@ -76,7 +76,12 @@ bool RTCProgram::findIsa() {
   }
 
   void* sym_hipGetDevice = amd::Os::getSymbol(handle, "hipGetDevice");
-  void* sym_hipGetDeviceProperties = amd::Os::getSymbol(handle, "hipGetDeviceProperties");
+  void* sym_hipGetDeviceProperties =
+      amd::Os::getSymbol(handle, "hipGetDevicePropertiesR0600");  // Try to find the new symbol
+  if (sym_hipGetDeviceProperties == nullptr) {
+    sym_hipGetDeviceProperties =
+        amd::Os::getSymbol(handle, "hipGetDeviceProperties");  // Fall back to old one
+  }
 
   if (sym_hipGetDevice == nullptr || sym_hipGetDeviceProperties == nullptr) {
     LogInfo("ISA cannot be found to dlsym failure");
@@ -701,9 +706,7 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
   }
 
   *size_out = executable_.size();
-  char* bin_out_c = new char[*size_out];
-  std::copy(executable_.begin(), executable_.end(), bin_out_c);
-  *bin_out = reinterpret_cast<void*>(bin_out_c);
+  *bin_out = executable_.data();
 
   return true;
 }

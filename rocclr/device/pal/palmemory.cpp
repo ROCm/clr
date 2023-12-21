@@ -109,7 +109,8 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     // Assume that allocations will be placed into visible heap when ReBar is enabled
     // Only enable this assumption for small size local buffers
     constexpr size_t kLargeAlloc = (1ull << 27);
-    if (!amd::IS_HIP && (memType == Local) && desc().buffer_ && (size() < kLargeAlloc) && dev().info().largeBar_) {
+    if (!amd::IS_HIP && (memType == Local) && desc().buffer_ && (size() < kLargeAlloc) &&
+        dev().info().largeBar_) {
       memType = Persistent;
     }
     // Create a resource in PAL
@@ -357,6 +358,7 @@ bool Memory::createInterop() {
     vkRes.owner_ = owner();
     memType = Resource::VkInterop;
     vkRes.handle_ = ext_memory->Handle();
+    vkRes.name_ = ext_memory->Name();
     vkRes.type_ = Resource::InteropTypeless;
     vkRes.nt_handle_ =
       ((ext_memory->Type() != amd::ExternalMemory::HandleType::OpaqueFd) &&
@@ -1070,7 +1072,7 @@ void* Image::allocMapTarget(const amd::Coord3D& origin, const amd::Coord3D& regi
   //! runtime can't use it directly,
   //! because CAL volume map doesn't work properly.
   //! @todo arrays can be added for persistent lock with some CAL changes
-  else if((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
+  else if ((isPersistentDirectMap(mapFlags & CL_MAP_WRITE) && (getMapCount() == 0)) ||
           isPersistentMapped()) {
     if (nullptr == map(nullptr)) {
       useRemoteResource = true;

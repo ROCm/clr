@@ -20,6 +20,7 @@
 
 #include "top.hpp"
 #include "hip/hip_runtime.h"
+#include "hip/hip_gl_interop.h"
 #include "hip_internal.hpp"
 #include "platform/interop_gl.hpp"
 #include "cl_common.hpp"
@@ -30,6 +31,8 @@
 namespace amd {
 static std::once_flag interopOnce;
 }
+
+namespace hip {
 // Sets up GL context association with amd context.
 // NOTE: Refer to Context setup code in OCLTestImp.cpp
 void setupGLInteropOnce() {
@@ -51,13 +54,13 @@ void setupGLInteropOnce() {
 
   amd::Context::Info info;
   if (CL_SUCCESS != amd::Context::checkProperties(properties, &info)) {
-    LogError("Context setup failed \n");
+    LogError("Context setup failed");
     return;
   }
 
   amdContext->setInfo(info);
   if (CL_SUCCESS != amdContext->create(properties)) {
-    LogError("Context setup failed \n");
+    LogError("Context setup failed");
   }
 }
 
@@ -93,11 +96,11 @@ hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices,
 
   static const bool VALIDATE_ONLY = true;
   if (deviceList == hipGLDeviceListNextFrame) {
-    LogError(" hipGLDeviceListNextFrame not supported yet.\n");
+    LogError(" hipGLDeviceListNextFrame not supported yet");
     HIP_RETURN(hipErrorNotSupported);
   }
   if (pHipDeviceCount == nullptr || pHipDevices == nullptr || hipDeviceCount == 0) {
-    LogError(" Invalid Argument \n");
+    LogError(" Invalid Argument");
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -105,7 +108,7 @@ hipError_t hipGLGetDevices(unsigned int* pHipDeviceCount, int* pHipDevices,
 
   amd::Context::Info info = hip::getCurrentDevice()->asContext()->info();
   if (!(info.flags_ & amd::Context::GLDeviceKhr)) {
-    LogError("Failed : Invalid Shared Group Reference \n");
+    LogError("Failed : Invalid Shared Group Reference");
     HIP_RETURN(hipErrorInvalidValue);
   }
   amd::GLFunctions* glenv = hip::getCurrentDevice()->asContext()->glenv();
@@ -245,7 +248,7 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
 
   amd::GLFunctions::SetIntEnv ie(amdContext.glenv());
   if (!ie.isValid()) {
-    LogWarning("\"amdContext\" is not created from GL context or share list \n");
+    LogWarning("\"amdContext\" is not created from GL context or share list");
     HIP_RETURN(hipErrorUnknown);
   }
 
@@ -513,7 +516,7 @@ hipError_t hipGraphicsGLRegisterImage(hipGraphicsResource** resource, GLuint ima
   assert(amdContext.devices().size() == 1);
 
   const amd::Device& dev = *(amdContext.devices()[0]);
- 
+
   device::Memory* mem = pImageGL->getDeviceMemory(dev);
   if (nullptr == mem) {
     LogPrintfError("Can't allocate memory size - 0x%08X bytes!", pImageGL->getSize());
@@ -559,7 +562,7 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
   {
     amd::GLFunctions::SetIntEnv ie(amdContext.glenv());
     if (!ie.isValid()) {
-      LogWarning("\"amdContext\" is not created from GL context or share list \n");
+      LogWarning("\"amdContext\" is not created from GL context or share list");
       HIP_RETURN(hipErrorUnknown);
     }
 
@@ -567,7 +570,7 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
     clearGLErrors(amdContext);
     if ((GL_FALSE == amdContext.glenv()->glIsBuffer_(buffer)) ||
         (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_()))) {
-      LogWarning("\"buffer\" is not a GL buffer object \n");
+      LogWarning("\"buffer\" is not a GL buffer object");
       HIP_RETURN(hipErrorInvalidResourceHandle);
     }
 
@@ -576,11 +579,11 @@ hipError_t hipGraphicsGLRegisterBuffer(hipGraphicsResource** resource, GLuint bu
     clearGLErrors(amdContext);
     amdContext.glenv()->glGetBufferParameteriv_(glTarget, GL_BUFFER_SIZE, &gliSize);
     if (GL_NO_ERROR != (glErr = amdContext.glenv()->glGetError_())) {
-      LogWarning("cannot get the GL buffer size \n");
+      LogWarning("cannot get the GL buffer size");
       HIP_RETURN(hipErrorInvalidResourceHandle);
     }
     if (gliSize == 0) {
-      LogWarning("the GL buffer's data store is not created \n");
+      LogWarning("the GL buffer's data store is not created");
       HIP_RETURN(hipErrorInvalidResourceHandle);
     }
 
@@ -767,3 +770,4 @@ hipError_t hipGraphicsUnregisterResource(hipGraphicsResource_t resource) {
 
   HIP_RETURN(hipSuccess);
 }
+} // namespace hip

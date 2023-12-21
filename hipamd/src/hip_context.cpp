@@ -25,13 +25,14 @@
 #include "utils/flags.hpp"
 #include "utils/versions.hpp"
 
-std::vector<hip::Device*> g_devices;
 std::once_flag g_ihipInitialized;
+
 namespace hip {
+std::vector<hip::Device*> g_devices;
 thread_local TlsAggregator tls;
 amd::Context* host_context = nullptr;
 
-//init() is only to be called from the HIP_INIT macro only once
+// init() is only to be called from the HIP_INIT macro only once
 void init(bool* status) {
   amd::IS_HIP = true;
   GPU_NUM_MEM_DEPENDENCY = 0;
@@ -78,12 +79,10 @@ void init(bool* status) {
   return;
 }
 
-Device* getCurrentDevice() {
-  return tls.device_;
-}
+Device* getCurrentDevice() { return tls.device_; }
 
 void setCurrentDevice(unsigned int index) {
-  assert(index<g_devices.size());
+  assert(index < g_devices.size());
   tls.device_ = g_devices[index];
   uint32_t preferredNumaNode = (tls.device_)->devices()[0]->getPreferredNumaNode();
   amd::Os::setPreferredNumaNode(preferredNumaNode);
@@ -134,10 +133,6 @@ hip::Stream* getNullStream() {
   return device ? device->NullStream() : nullptr;
 }
 
-};
-
-using namespace hip;
-
 hipError_t hipInit(unsigned int flags) {
   HIP_INIT_API(hipInit, flags);
 
@@ -148,7 +143,7 @@ hipError_t hipInit(unsigned int flags) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipCtxCreate(hipCtx_t *ctx, unsigned int flags,  hipDevice_t device) {
+hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
   HIP_INIT_API(hipCtxCreate, ctx, flags, device);
 
   if (static_cast<size_t>(device) >= g_devices.size()) {
@@ -159,6 +154,7 @@ hipError_t hipCtxCreate(hipCtx_t *ctx, unsigned int flags,  hipDevice_t device) 
 
   // Increment ref count for device primary context
   g_devices[device]->retain();
+  g_devices[device]->setFlags(flags);
   tls.ctxt_stack_.push(g_devices[device]);
 
   HIP_RETURN(hipSuccess);
@@ -168,12 +164,12 @@ hipError_t hipCtxSetCurrent(hipCtx_t ctx) {
   HIP_INIT_API(hipCtxSetCurrent, ctx);
 
   if (ctx == nullptr) {
-    if(!tls.ctxt_stack_.empty()) {
+    if (!tls.ctxt_stack_.empty()) {
       tls.ctxt_stack_.pop();
     }
   } else {
     hip::tls.device_ = reinterpret_cast<hip::Device*>(ctx);
-    if(!tls.ctxt_stack_.empty()) {
+    if (!tls.ctxt_stack_.empty()) {
       tls.ctxt_stack_.pop();
     }
     tls.ctxt_stack_.push(hip::getCurrentDevice());
@@ -198,7 +194,7 @@ hipError_t hipCtxGetSharedMemConfig(hipSharedMemConfig* pConfig) {
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipRuntimeGetVersion(int *runtimeVersion) {
+hipError_t hipRuntimeGetVersion(int* runtimeVersion) {
   HIP_INIT_API_NO_RETURN(hipRuntimeGetVersion, runtimeVersion);
 
   if (!runtimeVersion) {
@@ -245,7 +241,7 @@ hipError_t hipCtxPopCurrent(hipCtx_t* ctx) {
     }
     tls.ctxt_stack_.pop();
   } else {
-    DevLogError("Context Stack empty \n");
+    DevLogError("Context Stack empty");
     HIP_RETURN(hipErrorInvalidContext);
   }
 
@@ -398,3 +394,4 @@ hipError_t hipDevicePrimaryCtxSetFlags(hipDevice_t dev, unsigned int flags) {
     HIP_RETURN(hipErrorContextAlreadyInUse);
   }
 }
+}  // namespace hip

@@ -22,12 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundef"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include "host_defines.h"
 #include "amd_hip_vector_types.h"  // For Native_vec_
@@ -701,8 +695,4 @@ double __ocml_fma_rtz_f64(double, double, double);
 
 #if defined(__cplusplus)
     } // extern "C"
-#endif
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
 #endif

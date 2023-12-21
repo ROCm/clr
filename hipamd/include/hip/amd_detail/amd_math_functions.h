@@ -22,12 +22,6 @@ THE SOFTWARE.
 
 #pragma once
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wundef"
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include "hip_fp16_math_fwd.h"
 #include "amd_hip_vector_types.h"
@@ -67,7 +61,7 @@ struct __numeric_type<_Float16>
 #define __RETURN_TYPE bool
 
 // DOT FUNCTIONS
-#if __HIP_CLANG_ONLY__
+#if defined(__clang__) && defined(__HIP__)
 __DEVICE__
 inline
 int amd_mixed_dot(short2 a, short2 b, int c, bool saturate) {
@@ -107,8 +101,4 @@ uint amd_mixed_dot(uint a, uint b, uint c, bool saturate) {
 // defined after including math_functions.h.
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_runtime.h>
-#endif
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
 #endif

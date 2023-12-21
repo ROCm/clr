@@ -40,8 +40,7 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
       tail_(nullptr),
-      isActive_(false),
-      markerTsCount_(0) {
+      isActive_(false) {
   if (GPU_FORCE_QUEUE_PROFILING) {
     properties().set(CL_QUEUE_PROFILING_ENABLE);
   }

@@ -636,8 +636,7 @@ bool Resource::CreateImage(CreateParams* params, bool forceLinear) {
     Pal::ImageTiling tiling = forceLinear ? Pal::ImageTiling::Linear : Pal::ImageTiling::Optimal;
     uint32_t rowPitch = 0;
 
-    if (((memoryType() == Persistent) && dev().settings().linearPersistentImage_) ||
-        (memoryType() == ImageBuffer)) {
+    if (memoryType() == ImageBuffer) {
       tiling = Pal::ImageTiling::Linear;
     } else if (memoryType() == ImageExternalBuffer) {
       // We cannot get tiling info from vulkan/d3d driver now. So assume it to be optimal.
@@ -802,7 +801,21 @@ bool Resource::CreateInterop(CreateParams* params) {
   }
   else if (memoryType() == VkInterop) {
     VkInteropParams* vparams = reinterpret_cast<VkInteropParams*>(params);
-    openInfo.hExternalResource = vparams->handle_;
+    if (vparams->handle_) {
+      openInfo.hExternalResource = vparams->handle_;
+    } else if (vparams->name_) {
+      Pal::ExternalHandleInfo eHandleInfo = {};
+      eHandleInfo.objectType = Pal::ExternalObjectType::Allocation;
+      eHandleInfo.pNtObjectName = reinterpret_cast<const wchar_t*>(vparams->name_);
+      SECURITY_ATTRIBUTES securityAttributes = {};
+      securityAttributes.bInheritHandle = TRUE;
+      eHandleInfo.pSecurityAttributes = &securityAttributes;
+      eHandleInfo.accessFlags = GENERIC_READ | GENERIC_WRITE;
+      if (Pal::Result::Success !=
+          dev().iDev()->OpenExternalHandleFromName(eHandleInfo, &openInfo.hExternalResource)) {
+        return false;
+      }
+    }
     openInfo.flags.ntHandle = vparams->nt_handle_;
   }
 #ifdef ATI_OS_WIN
@@ -1544,7 +1557,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     gpu.iCmd()->CmdCopyMemoryToImage(*iMem(), *dstResource.image_, imgLayout, 1, &copyRegion);
   } else if (!desc().buffer_ && dstResource.desc().buffer_) {
     Pal::MemoryImageCopyRegion copyRegion = {};
-    uint32_t arraySliceIdx = img2Darray ? dstOrigin[2] : img1Darray ? dstOrigin[1] : 0;
+    uint32_t arraySliceIdx = img2Darray ? srcOrigin[2] : img1Darray ? srcOrigin[1] : 0;
     Pal::SubresId ImgSubresId = {0, desc().baseLevel_, arraySliceIdx};
     copyRegion.imageSubres = ImgSubresId;
     copyRegion.imageOffset.x = srcOrigin[0];
@@ -1828,9 +1841,7 @@ void* Resource::gpuMemoryMap(size_t* pitch, uint flags, Pal::IGpuMemory* resourc
 // ================================================================================================
 void Resource::gpuMemoryUnmap(Pal::IGpuMemory* resource) const {
   if (desc_.cardMemory_ && !isPersistentDirectMap()) {
-    // @todo remove const cast
     Unimplemented();
-    //        const_cast<Device&>(dev()).resUnmapLocal(resource);
   } else {
     Pal::Result result = resource->Unmap();
     if (Pal::Result::Success != result) {
@@ -1923,9 +1934,11 @@ bool Resource::isPersistentDirectMap(bool writeMap) const {
 
   // If direct map is possible, then validate it with the current tiling
   if (directMap && desc().tiled_) {
-    //!@note IOL for Linux doesn't support tiling aperture
-    // and runtime doesn't force linear images in persistent
-    directMap = IS_WINDOWS && !dev().settings().linearPersistentImage_;
+    // Latest HW does have tiling apertures
+    directMap = false;
+  } 
+  if (memoryType() == View) {
+    directMap = viewOwner_->isPersistentDirectMap(writeMap);
   }
 
   return directMap;

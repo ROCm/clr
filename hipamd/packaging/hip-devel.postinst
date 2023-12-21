@@ -21,18 +21,6 @@
 ROCMDIR=@ROCM_PATH@
 HIPINCDIR=$ROCMDIR/@CMAKE_INSTALL_INCLUDEDIR@/hip
 CURRENTDIR=`pwd`
-# The following will be removed after upstream updation
-cd $HIPINCDIR
-ln -r -s -f amd_detail hcc_detail
-ln -r -s -f nvidia_detail nvcc_detail
-cd $CURRENTDIR
 
 #FILE_REORG_BACKWARD_COMPATIBILITY
 HIPINCDIR=$ROCMDIR/hip/include/hip
-if [ -d $HIPINCDIR ]; then
-  # The following will be removed after upstream updation
-  cd $HIPINCDIR
-  ln -r -s -f amd_detail hcc_detail
-  ln -r -s -f nvidia_detail nvcc_detail
-  cd $CURRENTDIR
-fi

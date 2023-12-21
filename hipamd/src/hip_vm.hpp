@@ -24,9 +24,11 @@
 #include <hip/hip_runtime.h>
 #include "hip_internal.hpp"
 
-hipError_t ihipFree(void* ptr);
+#include "platform/object.hpp"
 
 namespace hip {
+
+hipError_t ihipFree(void* ptr);
 
 struct MemMapAllocUserData {
   void* ptr_;       // Original pointer of the allocation
@@ -36,22 +38,29 @@ struct MemMapAllocUserData {
   MemMapAllocUserData(void* ptr, size_t size, amd::Memory* va) : ptr_(ptr), size_(size), va_(va) {}
 };
 
-class GenericAllocation {
-  void* ptr_;
-  size_t size_;
-  hipMemAllocationProp properties_;
+class GenericAllocation : public amd::RuntimeObject {
+  void* ptr_;                          //<! Device ptr
+  size_t size_;                        //<! Allocated size
+  hipMemAllocationProp properties_;    //<! Allocation Properties
 
 public:
-  GenericAllocation(void* ptr, size_t size, const hipMemAllocationProp& prop): ptr_(ptr), size_(size), properties_(prop) {}
-  ~GenericAllocation() { hipError_t err = ihipFree(ptr_); }
+  GenericAllocation(void* ptr, size_t size, const hipMemAllocationProp& prop)
+                     : ptr_(ptr), size_(size), properties_(prop) {}
+  ~GenericAllocation() {
+    hipError_t err = ihipFree(ptr_);
+  }
 
   const hipMemAllocationProp& GetProperties() const { return properties_; }
-  hipMemGenericAllocationHandle_t asMemGenericAllocationHandle() { return reinterpret_cast<hipMemGenericAllocationHandle_t>(this); }
+  hipMemGenericAllocationHandle_t asMemGenericAllocationHandle() {
+    return reinterpret_cast<hipMemGenericAllocationHandle_t>(this);
+  }
   amd::Memory& asAmdMemory() {
     size_t discardOffset;
     return *getMemoryObject(genericAddress(), discardOffset);
   }
   void* genericAddress() const { return ptr_; }
+
+  virtual ObjectType objectType() const { return ObjectTypeVMMAlloc; }
 };
 };
 

@@ -26,9 +26,10 @@
 #include "platform/command.hpp"
 #include "platform/memory.hpp"
 #include "platform/external_memory.hpp"
+namespace hip {
 
-amd::Monitor hip::hipArraySetLock{"Guards global hipArray set"};
-std::unordered_set<hipArray*> hip::hipArraySet;
+amd::Monitor hipArraySetLock{"Guards global hipArray set"};
+std::unordered_set<hipArray*> hipArraySet;
 
 // ================================================================================================
 amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
@@ -112,7 +113,8 @@ hipError_t hipImportExternalMemory(
 #ifdef _WIN32
   auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
       memHandleDesc->handle.win32.handle,
-      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type));
+      static_cast<amd::ExternalMemory::HandleType>(memHandleDesc->type),
+      memHandleDesc->handle.win32.name);
 #else
   auto ext_buffer = new (amdContext) amd::ExternalBuffer(amdContext, memHandleDesc->size,
       memHandleDesc->handle.fd,
@@ -324,10 +326,10 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
       size_t free = 0, total =0;
       hipError_t err = hipMemGetInfo(&free, &total);
       if (err == hipSuccess) {
-        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n", sizeBytes, free, total);
+        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu", sizeBytes, free, total);
       }
     } else {
-      LogPrintfError("Allocation failed : Pinned Memory, size :%zu \n", sizeBytes);
+      LogPrintfError("Allocation failed : Pinned Memory, size :%zu", sizeBytes);
     }
     return hipErrorOutOfMemory;
   }
@@ -337,6 +339,8 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   memObj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   return hipSuccess;
 }
+
+// ================================================================================================
 bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
@@ -349,12 +353,16 @@ bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   }
   return true;
 }
+
+// ================================================================================================
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
                                       hipMemcpyKind kind) {
   if (dst == nullptr || src == nullptr) {
     return hipErrorInvalidValue;
   }
-
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
@@ -371,6 +379,7 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
                              hipMemcpyKind kind, hip::Stream& stream, bool isAsync) {
   amd::Command::EventWaitList waitList;
@@ -379,7 +388,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   amd::Device* queueDevice = &stream.device();
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
     hip::Stream* pStream = &stream;
     if (queueDevice != dstMemory->getContext().devices()[0]) {
@@ -424,7 +433,6 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
       hip::Stream* pStream = &stream;
       if ((srcMemory->getContext().devices()[0] == dstMemory->getContext().devices()[0]) &&
           (queueDevice != srcMemory->getContext().devices()[0])) {
-        copyMetadata.copyEnginePreference_ = amd::CopyMetadata::CopyEnginePreference::NONE;
         pStream = hip::getNullStream(srcMemory->getContext());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -449,6 +457,10 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
           }
         }
       }
+
+      copyMetadata.copyEnginePreference_ = (kind == hipMemcpyDeviceToDeviceNoCU) ?
+                                            amd::CopyMetadata::CopyEnginePreference::SDMA :
+                                            amd::CopyMetadata::CopyEnginePreference::NONE;
       command = new amd::CopyMemoryCommand(*pStream, CL_COMMAND_COPY_BUFFER, waitList,
           *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, sizeBytes,
           copyMetadata);
@@ -462,22 +474,23 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   }
   return hipSuccess;
 }
-bool IsHtoHMemcpy(void* dst, const void* src, hipMemcpyKind kind) {
+bool IsHtoHMemcpy(void* dst, const void* src) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   if (srcMemory == nullptr && dstMemory == nullptr) {
-    if (kind == hipMemcpyHostToHost || kind == hipMemcpyDefault) {
-      return true;
-    }
+    return true;
   }
   return false;
 }
+
+// ================================================================================================
 void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, hip::Stream& stream) {
   stream.finish();
   memcpy(dst, src, sizeBytes);
 }
+
 // ================================================================================================
 hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
                       hip::Stream& stream, bool isHostAsync, bool isGPUAsync) {
@@ -602,7 +615,7 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   if ((flags & coherentFlags) == coherentFlags) {
     LogPrintfError(
         "Cannot have both coherent and non-coherent flags "
-        "at the same time, flags: %u coherent flags: %u \n",
+        "at the same time, flags: %u coherent flags: %u",
         flags, coherentFlags);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -711,12 +724,12 @@ hipError_t hipHostFree(void* ptr) {
   HIP_RETURN(ihipFree(ptr));
 }
 
-hipError_t ihipArrayDestroy(hipArray* array) {
+hipError_t ihipArrayDestroy(hipArray_t array) {
   if (array == nullptr) {
     return hipErrorInvalidValue;
   }
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
       return hipErrorContextIsDestroyed;
     } else {
@@ -737,7 +750,7 @@ hipError_t ihipArrayDestroy(hipArray* array) {
   return hipSuccess;
 }
 
-hipError_t hipFreeArray(hipArray* array) {
+hipError_t hipFreeArray(hipArray_t array) {
   HIP_INIT_API(hipFreeArray, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
@@ -802,7 +815,7 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
   }
 
   if (device && !device->info().imageSupport_) {
-    LogPrintfError("Image is not supported on device %p \n", device);
+    LogPrintfError("Image is not supported on device %p", device);
     return hipErrorInvalidValue;
   }
 
@@ -881,7 +894,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   status = hipSuccess;
   const amd::Image::Format imageFormat({channelOrder, channelType});
   if (!imageFormat.isValid()) {
-    LogPrintfError("Invalid Image format for channel Order:%u Type:%u \n", channelOrder,
+    LogPrintfError("Invalid Image format for channel Order:%u Type:%u", channelOrder,
                    channelType);
     status = hipErrorInvalidValue;
     return nullptr;
@@ -889,14 +902,14 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
 
   amd::Context& context = *hip::getCurrentDevice()->asContext();
   if (!imageFormat.isSupported(context, imageType)) {
-    LogPrintfError("Image type: %u not supported \n", imageType);
+    LogPrintfError("Image type: %u not supported", imageType);
     status = hipErrorInvalidValue;
     return nullptr;
   }
 
   const std::vector<amd::Device*>& devices = context.devices();
   if (!devices[0]->info().imageSupport_) {
-    LogPrintfError("Device: 0x%x does not support image \n", devices[0]);
+    LogPrintfError("Device: 0x%x does not support image", devices[0]);
     status = hipErrorInvalidValue;
     return nullptr;
   }
@@ -907,7 +920,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                       imageHeight,
                                       imageDepth,
                                       imageArraySize)) {
-    DevLogError("Image does not have valid dimensions \n");
+    DevLogError("Image does not have valid dimensions");
     status = hipErrorInvalidValue;
     return nullptr;
   }
@@ -951,7 +964,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                           offset);
        break;
        default:
-        LogPrintfError("Cannot create image of imageType: 0x%x for external buffer\n", imageType);
+        LogPrintfError("Cannot create image of imageType: 0x%x for external buffer", imageType);
      }
   } else if (buffer != nullptr) {
     switch (imageType) {
@@ -970,7 +983,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                        offset);
       break;
     default:
-      LogPrintfError("Cannot create image of imageType: 0x%x \n", imageType);
+      LogPrintfError("Cannot create image of imageType: 0x%x", imageType);
     }
   } else {
     switch (imageType) {
@@ -1013,7 +1026,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                                        numMipLevels);
       break;
     default:
-      LogPrintfError("Cannot create image of imageType: 0x%x \n", imageType);
+      LogPrintfError("Cannot create image of imageType: 0x%x", imageType);
     }
   }
 
@@ -1023,7 +1036,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   }
 
   if (!image->create(nullptr)) {
-    LogPrintfError("Cannot create image: 0x%x \n", image);
+    LogPrintfError("Cannot create image: 0x%x", image);
     status = hipErrorOutOfMemory;
     delete image;
     return nullptr;
@@ -1033,7 +1046,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   return image;
 }
 
-hipError_t ihipArrayCreate(hipArray** array,
+hipError_t ihipArrayCreate(hipArray_t* array,
                            const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray,
                            unsigned int numMipmapLevels) {
   if (array == nullptr) {
@@ -1090,13 +1103,13 @@ hipError_t ihipArrayCreate(hipArray** array,
   (*array)->NumChannels = pAllocateArray->NumChannels;
   (*array)->flags = pAllocateArray->Flags;
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     hip::hipArraySet.insert(*array);
   }
   return hipSuccess;
 }
 
-hipError_t hipArrayCreate(hipArray** array,
+hipError_t hipArrayCreate(hipArray_t* array,
                           const HIP_ARRAY_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArrayCreate, array, pAllocateArray);
   if (pAllocateArray == nullptr) {
@@ -1114,7 +1127,7 @@ hipError_t hipArrayCreate(hipArray** array,
 }
 
 
-hipError_t hipMallocArray(hipArray** array,
+hipError_t hipMallocArray(hipArray_t* array,
                           const hipChannelFormatDesc* desc,
                           size_t width,
                           size_t height,
@@ -1136,7 +1149,7 @@ hipError_t hipMallocArray(hipArray** array,
   HIP_RETURN(ihipArrayCreate(array, &allocateArray, 0 /* numMipLevels */));
 }
 
-hipError_t hipArray3DCreate(hipArray** array,
+hipError_t hipArray3DCreate(hipArray_t* array,
                             const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray) {
   HIP_INIT_API(hipArray3DCreate, array, pAllocateArray);
   CHECK_STREAM_CAPTURE_SUPPORTED();
@@ -1205,7 +1218,7 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
     constexpr bool forceAlloc = true;
     if (!mem->create(hostPtr, sysMemAlloc, skipAlloc, forceAlloc)) {
       mem->release();
-      LogPrintfError("Cannot create memory for size: %u with flags: %d \n", sizeBytes, flags);
+      LogPrintfError("Cannot create memory for size: %u with flags: %d", sizeBytes, flags);
       return hipErrorInvalidValue;
     }
 
@@ -1260,7 +1273,7 @@ hipError_t ihipHostUnregister(void* hostPtr) {
     return hipSuccess;
   }
 
-  LogPrintfError("Cannot unregister host_ptr: 0x%x \n", hostPtr);
+  LogPrintfError("Cannot unregister host_ptr: 0x%x", hostPtr);
   return hipErrorHostMemoryNotRegistered;
 }
 
@@ -1278,12 +1291,14 @@ hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_RETURN(ihipMalloc(ptr, sizeBytes, flags), (ptr != nullptr)? *ptr : nullptr);
 };
 
-inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes, size_t offset, size_t &sym_size, hipDeviceptr_t &device_ptr) {
-  HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(), &device_ptr, &sym_size));
+inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes,
+  size_t offset, size_t &sym_size, hipDeviceptr_t &device_ptr) {
+  HIP_RETURN_ONFAIL(PlatformState::instance().getStatGlobalVar(symbol, ihipGetDevice(),
+                                                               &device_ptr, &sym_size));
 
   /* Size Check to make sure offset is correct */
   if ((offset + sizeBytes) > sym_size) {
-    LogPrintfError("Trying to access out of bounds, offset: %u sizeBytes: %u sym_size: %u \n",
+    LogPrintfError("Trying to access out of bounds, offset: %u sizeBytes: %u sym_size: %u",
                    offset, sizeBytes, sym_size);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1296,7 +1311,8 @@ hipError_t hipMemcpyToSymbol_common(const void* symbol, const void* src, size_t 
                              size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1329,7 +1345,8 @@ hipError_t hipMemcpyFromSymbol_common(void* dst, const void* symbol, size_t size
                                size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1362,7 +1379,8 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
                                   size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1394,7 +1412,8 @@ hipError_t hipMemcpyFromSymbolAsync_common(void* dst, const void* symbol, size_t
                                     size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice) {
+  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
+                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1463,6 +1482,9 @@ hipError_t hipMemcpyAsync_common(void* dst, const void* src, size_t sizeBytes,
                           hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
 
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     return hipErrorInvalidValue;
@@ -1488,6 +1510,9 @@ hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice, void* srcHost, size_t By
   HIP_INIT_API(hipMemcpyHtoDAsync, dstDevice, srcHost, ByteCount, stream);
   hipMemcpyKind kind = hipMemcpyHostToDevice;
   STREAM_CAPTURE(hipMemcpyHtoDAsync, stream, dstDevice, srcHost, ByteCount, kind);
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1501,6 +1526,9 @@ hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dstDevice, hipDeviceptr_t srcDevice
   HIP_INIT_API(hipMemcpyDtoDAsync, dstDevice, srcDevice, ByteCount, stream);
   hipMemcpyKind kind = hipMemcpyDeviceToDevice;
   STREAM_CAPTURE(hipMemcpyDtoDAsync, stream, dstDevice, srcDevice, ByteCount, kind);
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1514,6 +1542,9 @@ hipError_t hipMemcpyDtoHAsync(void* dstHost, hipDeviceptr_t srcDevice, size_t By
   HIP_INIT_API(hipMemcpyDtoHAsync, dstHost, srcDevice, ByteCount, stream);
   hipMemcpyKind kind = hipMemcpyDeviceToHost;
   STREAM_CAPTURE(hipMemcpyDtoHAsync, stream, dstHost, srcDevice, ByteCount, kind);
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1522,7 +1553,7 @@ hipError_t hipMemcpyDtoHAsync(void* dstHost, hipDeviceptr_t srcDevice, size_t By
       ihipMemcpy(dstHost, srcDevice, ByteCount, kind, *hip_stream, true));
 }
 
-hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoDValidate(hipArray_t srcArray, void* dstDevice, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch,
                                   amd::Memory*& dstMemory, amd::Image*& srcImage,
@@ -1543,13 +1574,15 @@ hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coor
   static_cast<size_t*>(srcOrigin)[0] /= elementSize;
   static_cast<size_t*>(copyRegion)[0] /= elementSize;
 
+  amd::Coord3D copyRegionReal = copyRegion;
+  if (hip::isLayered1D(srcArray)) copyRegionReal.c[1] = 1;
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegionReal),
                       srcImage->getRowPitch(), srcImage->getSlicePitch())) {
     return hipErrorInvalidValue;
   }
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegionReal),
                       dstRowPitch, dstSlicePitch)) {
     return hipErrorInvalidValue;
   }
@@ -1561,10 +1594,13 @@ hipError_t ihipMemcpyAtoDValidate(hipArray* srcArray, void* dstDevice, amd::Coor
       !dstMemory->validateRegion(dstOrigin, {copySizeInBytes, 0, 0})) {
     return hipErrorInvalidValue;
   }
+
+  dstOrigin.c[0] = dstRect.offset(0, 0, 0);  // Get the physical offset of the logic origin
+  dstOrigin.c[1] = dstOrigin.c[2] = 0;
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray* srcArray, void* dstDevice,
+hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray_t srcArray, void* dstDevice,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t dstRowPitch, size_t dstSlicePitch,
                                  hip::Stream* stream) {
@@ -1595,7 +1631,7 @@ hipError_t ihipMemcpyAtoDCommand(amd::Command*& command, hipArray* srcArray, voi
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray_t dstArray, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t srcRowPitch, size_t srcSlicePitch, amd::Image*& dstImage,
                                   amd::Memory*& srcMemory, amd::BufferRect& dstRect,
@@ -1616,14 +1652,16 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coor
   static_cast<size_t*>(dstOrigin)[0] /= elementSize;
   static_cast<size_t*>(copyRegion)[0] /= elementSize;
 
+  amd::Coord3D copyRegionReal = copyRegion;
+  if (hip::isLayered1D(dstArray)) copyRegionReal.c[1] = 1;
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegionReal),
                       srcRowPitch, srcSlicePitch)) {
     return hipErrorInvalidValue;
   }
   srcRect.start_ += srcOffset;
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegionReal),
                       dstImage->getRowPitch(), dstImage->getSlicePitch())) {
     return hipErrorInvalidValue;
   }
@@ -1634,10 +1672,12 @@ hipError_t ihipMemcpyDtoAValidate(void* srcDevice, hipArray* dstArray, amd::Coor
       !dstImage->validateRegion(dstOrigin, copyRegion)) {
     return hipErrorInvalidValue;
   }
+  srcOrigin.c[0] = srcRect.offset(0, 0, 0); // Get the physical offset of the logic origin
+  srcOrigin.c[1] = srcOrigin.c[2] = 0;
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyDtoACommand(amd::Command*& command, void* srcDevice, hipArray* dstArray,
+hipError_t ihipMemcpyDtoACommand(amd::Command*& command, void* srcDevice, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t srcRowPitch, size_t srcSlicePitch,
                                  hip::Stream* stream) {
@@ -1906,7 +1946,7 @@ hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOr
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoAValidate(hipArray* srcArray, hipArray* dstArray, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoAValidate(hipArray_t srcArray, hipArray_t dstArray, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   amd::Image*& srcImage, amd::Image*& dstImage) {
   if (dstArray == nullptr || srcArray == nullptr) {
@@ -1937,7 +1977,7 @@ hipError_t ihipMemcpyAtoAValidate(hipArray* srcArray, hipArray* dstArray, amd::C
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hipArray* dstArray,
+hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray_t srcArray, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, hip::Stream* stream) {
   amd::Image* srcImage;
@@ -1965,11 +2005,22 @@ hipError_t ihipMemcpyAtoACommand(amd::Command*& command, hipArray* srcArray, hip
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
+size_t ihipGetbufferStart(const size_t* bufferOrigin, const size_t* region, size_t bufferRowPitch,
+                          size_t bufferSlicePitch) {
+  size_t rowPitch_ = (bufferRowPitch != 0) ? bufferRowPitch : region[0];
+  // Find the buffer's slice pitch
+  size_t slicePitch_ = (bufferSlicePitch != 0) ? bufferSlicePitch : rowPitch_ * region[1];
+  // Find the region start offset
+  // For the layered 1D image, bufferOrigin[2] is always 0; for 1D image, bufferOrigin[1] is
+  // always 0. So the logic still holds true for all cases.
+  return bufferOrigin[2] * slicePitch_ + bufferOrigin[1] * rowPitch_ + bufferOrigin[0];
+}
+
+hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray_t dstArray,
                                   amd::Coord3D& srcOrigin, amd::Coord3D& dstOrigin,
                                   amd::Coord3D& copyRegion, size_t srcRowPitch,
                                   size_t srcSlicePitch, amd::Image*& dstImage,
-                                  amd::BufferRect& srcRect) {
+                                  size_t &start) {
   if ((srcHost == nullptr) || dstArray == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -1978,10 +2029,8 @@ hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
     return hipErrorInvalidValue;
   }
 
-  if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
-                      srcRowPitch, srcSlicePitch)) {
-    return hipErrorInvalidValue;
-  }
+  start = ihipGetbufferStart(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
+                             srcRowPitch, srcSlicePitch);
 
   dstImage = as_amd(dstMemObj)->asImage();
   // HIP assumes the width is in bytes, but OCL assumes it's in pixels.
@@ -1995,15 +2044,15 @@ hipError_t ihipMemcpyHtoAValidate(const void* srcHost, hipArray* dstArray,
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hipArray* dstArray,
+hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hipArray_t dstArray,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t srcRowPitch, size_t srcSlicePitch,
                                  hip::Stream* stream, bool isAsync = false) {
   amd::Image* dstImage;
-  amd::BufferRect srcRect;
+  size_t start = 0;  //!< Start offset for the copy region
 
   hipError_t status = ihipMemcpyHtoAValidate(srcHost, dstArray, srcOrigin, dstOrigin, copyRegion,
-                                             srcRowPitch, srcSlicePitch, dstImage, srcRect);
+                                             srcRowPitch, srcSlicePitch, dstImage, start);
   if (status != hipSuccess) {
     return status;
   }
@@ -2011,7 +2060,7 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
   amd::WriteMemoryCommand* writeMemCmd = new amd::WriteMemoryCommand(
       *stream, CL_COMMAND_WRITE_IMAGE, amd::Command::EventWaitList{}, *dstImage, dstOrigin,
-      copyRegion, static_cast<const char*>(srcHost) + srcRect.start_, srcRowPitch, srcSlicePitch,
+      copyRegion, static_cast<const char*>(srcHost) + start, srcRowPitch, srcSlicePitch,
       copyMetadata);
 
   if (writeMemCmd == nullptr) {
@@ -2026,10 +2075,10 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3D& srcOrigin,
+hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord3D& srcOrigin,
                                   amd::Coord3D& dstOrigin, amd::Coord3D& copyRegion,
                                   size_t dstRowPitch, size_t dstSlicePitch, amd::Image*& srcImage,
-                                  amd::BufferRect& dstRect) {
+                                  size_t &start) {
   if (srcArray == nullptr || (dstHost == nullptr)) {
     return hipErrorInvalidValue;
   }
@@ -2038,10 +2087,8 @@ hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3
     return hipErrorInvalidValue;
   }
 
-  if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
-                      dstRowPitch, dstSlicePitch)) {
-    return hipErrorInvalidValue;
-  }
+  start = ihipGetbufferStart(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
+                             dstRowPitch, dstSlicePitch);
 
   srcImage = as_amd(srcMemObj)->asImage();
   // HIP assumes the width is in bytes, but OCL assumes it's in pixels.
@@ -2056,23 +2103,24 @@ hipError_t ihipMemcpyAtoHValidate(hipArray* srcArray, void* dstHost, amd::Coord3
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray* srcArray, void* dstHost,
+hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray_t srcArray, void* dstHost,
                                  amd::Coord3D srcOrigin, amd::Coord3D dstOrigin,
                                  amd::Coord3D copyRegion, size_t dstRowPitch, size_t dstSlicePitch,
                                  hip::Stream* stream, bool isAsync = false) {
   amd::Image* srcImage;
   amd::BufferRect dstRect;
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  size_t start = 0;  //!< Start offset for the copy region
 
   hipError_t status = ihipMemcpyAtoHValidate(srcArray, dstHost, srcOrigin, dstOrigin, copyRegion,
-                                             dstRowPitch, dstSlicePitch, srcImage, dstRect);
+                                             dstRowPitch, dstSlicePitch, srcImage, start);
   if (status != hipSuccess) {
     return status;
   }
 
   amd::ReadMemoryCommand* readMemCmd = new amd::ReadMemoryCommand(
       *stream, CL_COMMAND_READ_IMAGE, amd::Command::EventWaitList{}, *srcImage, srcOrigin,
-      copyRegion, static_cast<char*>(dstHost) + dstRect.start_, dstRowPitch, dstSlicePitch,
+      copyRegion, static_cast<char*>(dstHost) + start, dstRowPitch, dstSlicePitch,
       copyMetadata);
 
   if (readMemCmd == nullptr) {
@@ -2087,12 +2135,12 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray* srcArray, voi
   return hipSuccess;
 }
 
-hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3D* pCopy,
-                                       hip::Stream* stream) {
+void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
+                         hipMemoryType& dstMemType)  {
   size_t offset = 0;
-  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the
-  // (unified virtual address space) base address of the source data and the bytes per row to
-  // apply. {src/dst}Array is ignored.
+  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch
+  // specify the (unified virtual address space)
+  // base address of the source data and the bytes per row to apply. {src/dst}Array is ignored.
   hipMemoryType srcMemoryType = pCopy->srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
     amd::Memory* memObj = getMemoryObject(pCopy->srcDevice, offset);
@@ -2102,11 +2150,14 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
     } else {
       srcMemoryType = hipMemoryTypeHost;
     }
+
     if (srcMemoryType == hipMemoryTypeHost) {
-      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system
-      // memory.
+      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we
+      //  detect system memory.
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcHost = pCopy->srcDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
+      // We don't need detect memory type again for hipMemoryTypeUnified
+      const_cast<HIP_MEMCPY3D*>(pCopy)->srcMemoryType = srcMemoryType;
     }
   }
   offset = 0;
@@ -2123,12 +2174,13 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
     if (dstMemoryType == hipMemoryTypeHost) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
+      // We don't need detect memory type again for hipMemoryTypeUnified
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstMemoryType = dstMemoryType;
     }
   }
-
+  offset = 0;
   // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
   // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
-  offset = 0;
   if (srcMemoryType == hipMemoryTypeHost) {
     srcMemoryType = getMemoryObject(pCopy->srcHost, offset) ? hipMemoryTypeDevice :
                     hipMemoryTypeHost;
@@ -2143,9 +2195,18 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
                     hipMemoryTypeHost;
 
     if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstDevice);
     }
   }
+  srcMemType = srcMemoryType;
+  dstMemType = dstMemoryType;
+}
+
+hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3D* pCopy,
+                                       hip::Stream* stream) {
+  hipMemoryType srcMemoryType;
+  hipMemoryType dstMemoryType;
+  ihipCopyMemParamSet(pCopy, srcMemoryType, dstMemoryType);
 
   amd::Coord3D srcOrigin = {pCopy->srcXInBytes, pCopy->srcY, pCopy->srcZ};
   amd::Coord3D dstOrigin = {pCopy->dstXInBytes, pCopy->dstY, pCopy->dstZ};
@@ -2214,7 +2275,6 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
 
 hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool isAsync = false) {
   hipError_t status;
-  size_t offset = 0;
   if (pCopy == nullptr) {
     return hipErrorInvalidValue;
   }
@@ -2226,55 +2286,9 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
                   pCopy->Height, pCopy->Depth);
     return hipSuccess;
   }
-  // If {src/dst}MemoryType is hipMemoryTypeUnified, {src/dst}Device and {src/dst}Pitch specify the (unified virtual address space)
-  // base address of the source data and the bytes per row to apply. {src/dst}Array is ignored.
-  hipMemoryType srcMemoryType = pCopy->srcMemoryType;
-  if (srcMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy->srcDevice, offset);
-    if (memObj != nullptr) {
-      srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    } else {
-      srcMemoryType = hipMemoryTypeHost;
-    }
-
-    if (srcMemoryType == hipMemoryTypeHost) {
-      // {src/dst}Host may be unitialized. Copy over {src/dst}Device into it if we detect system memory.
-      const_cast<HIP_MEMCPY3D*>(pCopy)->srcHost = pCopy->srcDevice;
-      const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
-      // We don't need detect memory type again for hipMemoryTypeUnified
-      const_cast<HIP_MEMCPY3D*>(pCopy)->srcMemoryType = srcMemoryType;
-    }
-  }
-  offset = 0;
-  hipMemoryType dstMemoryType = pCopy->dstMemoryType;
-  if (dstMemoryType == hipMemoryTypeUnified) {
-    amd::Memory* memObj = getMemoryObject(pCopy->dstDevice, offset);
-    if (memObj != nullptr) {
-      dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    } else {
-      dstMemoryType = hipMemoryTypeHost;
-    }
-
-    if (dstMemoryType == hipMemoryTypeHost) {
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstHost = pCopy->dstDevice;
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
-      // We don't need detect memory type again for hipMemoryTypeUnified
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstMemoryType = dstMemoryType;
-    }
-  }
-  // If {src/dst}MemoryType is hipMemoryTypeHost, check if the memory was prepinned.
-  // In that case upgrade the copy type to hipMemoryTypeDevice to avoid extra pinning.
-  offset = 0;
-  if (srcMemoryType == hipMemoryTypeHost) {
-    srcMemoryType = getMemoryObject(pCopy->srcHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-  }
-  if (dstMemoryType == hipMemoryTypeHost) {
-    dstMemoryType = getMemoryObject(pCopy->dstHost, offset) ? hipMemoryTypeDevice :
-                    hipMemoryTypeHost;
-  }
+  hipMemoryType srcMemoryType;
+  hipMemoryType dstMemoryType;
+  ihipCopyMemParamSet(pCopy, srcMemoryType, dstMemoryType);
 
   if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeHost)) {
     amd::Coord3D srcOrigin = {pCopy->srcXInBytes, pCopy->srcY, pCopy->srcZ};
@@ -2359,7 +2373,7 @@ hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy) {
 
 hipError_t hipMemcpy2DValidateParams(hipMemcpyKind kind, hipStream_t stream = nullptr) {
 
-  if (kind < hipMemcpyHostToHost || kind > hipMemcpyDefault) {
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -2412,12 +2426,6 @@ hipError_t hipMemcpy2D_common(void* dst, size_t dpitch, const void* src, size_t 
   hipError_t validateParams = hipSuccess, validateSrc = hipSuccess, validateDst = hipSuccess;
   if ((validateParams = hipMemcpy2DValidateParams(kind,stream)) != hipSuccess) {
     return validateParams;
-  }
-  if ((validateSrc = hipMemcpy2DValidateBuffer(src,spitch,width)) != hipSuccess) {
-    return validateSrc;
-  }
-  if ((validateDst = hipMemcpy2DValidateBuffer(dst,dpitch, width)) != hipSuccess) {
-    return validateDst;
   }
   return ihipMemcpy2D(dst, dpitch, src, spitch, width, height, kind, stream, isAsync);
 }
@@ -2481,7 +2489,7 @@ hipError_t ihipMemcpy2DToArray(hipArray_t dst, size_t wOffset, size_t hOffset, c
   return ihipMemcpyParam2D(&desc, stream, isAsync);
 }
 
-hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffset,
+hipError_t hipMemcpy2DToArray_common(hipArray_t dst, size_t wOffset, size_t hOffset,
                                      const void* src, size_t spitch, size_t width,
                                      size_t height, hipMemcpyKind kind, hipStream_t stream=nullptr,
                                      bool isAsync = false) {
@@ -2499,20 +2507,20 @@ hipError_t hipMemcpy2DToArray_common(hipArray* dst, size_t wOffset, size_t hOffs
   return ihipMemcpy2DToArray(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, isAsync);
 }
 
-hipError_t hipMemcpy2DToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
+hipError_t hipMemcpy2DToArray(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DToArray, dst, wOffset, hOffset, src, spitch, width, height, kind);
   CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind));
 }
 
-hipError_t hipMemcpy2DToArray_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
+hipError_t hipMemcpy2DToArray_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpy2DToArray, dst, wOffset, hOffset, src, spitch, width, height, kind);
   CHECK_STREAM_CAPTURING();
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch,
                       width, height, kind, getPerThreadDefaultStream()));
 }
 
-hipError_t hipMemcpyToArray(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind) {
+hipError_t hipMemcpyToArray(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t count, hipMemcpyKind kind) {
   HIP_INIT_API(hipMemcpyToArray, dst, wOffset, hOffset, src, count, kind);
   CHECK_STREAM_CAPTURING();
   if (dst == nullptr) {
@@ -2582,7 +2590,7 @@ hipError_t hipMemcpyFromArray_spt(void* dst, hipArray_const_t src, size_t wOffse
                       getPerThreadDefaultStream()));
 }
 
-hipError_t ihipMemcpyAtoD(hipArray* srcArray, void* dstDevice, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoD(hipArray_t srcArray, void* dstDevice, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t dstRowPitch,
                           size_t dstSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2596,7 +2604,7 @@ hipError_t ihipMemcpyAtoD(hipArray* srcArray, void* dstDevice, amd::Coord3D srcO
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyDtoA(void* srcDevice, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyDtoA(void* srcDevice, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
                           size_t srcSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2655,7 +2663,7 @@ hipError_t ihipMemcpyHtoD(const void* srcHost, void* dstDevice, amd::Coord3D src
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyAtoA(hipArray* srcArray, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoA(hipArray_t srcArray, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, hipStream_t stream,
                           bool isAsync = false) {
   amd::Command* command;
@@ -2668,7 +2676,7 @@ hipError_t ihipMemcpyAtoA(hipArray* srcArray, hipArray* dstArray, amd::Coord3D s
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray* dstArray, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray_t dstArray, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
                           size_t srcSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2682,7 +2690,7 @@ hipError_t ihipMemcpyHtoA(const void* srcHost, hipArray* dstArray, amd::Coord3D 
   if (status != hipSuccess) return status;
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
-hipError_t ihipMemcpyAtoH(hipArray* srcArray, void* dstHost, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyAtoH(hipArray_t srcArray, void* dstHost, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t dstRowPitch,
                           size_t dstSlicePitch, hipStream_t stream, bool isAsync = false) {
   amd::Command* command;
@@ -2697,7 +2705,7 @@ hipError_t ihipMemcpyAtoH(hipArray* srcArray, void* dstHost, amd::Coord3D srcOri
   return ihipMemcpyCmdEnqueue(command, isAsync);
 }
 
-hipError_t hipMemcpyHtoA(hipArray* dstArray,
+hipError_t hipMemcpyHtoA(hipArray_t dstArray,
                          size_t dstOffset,
                          const void* srcHost,
                          size_t ByteCount) {
@@ -2707,7 +2715,7 @@ hipError_t hipMemcpyHtoA(hipArray* dstArray,
 }
 
 hipError_t hipMemcpyAtoH(void* dstHost,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoH, dstHost, srcArray, srcOffset, ByteCount);
@@ -2732,7 +2740,7 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   // If the source and destination are both arrays, hipMemcpy3D() will return an error if they do
   // not have the same element size.
   if (((p->srcArray != nullptr) && (p->dstArray != nullptr)) &&
-      (hip::getElementSize(p->dstArray) != hip::getElementSize(p->dstArray))) {
+      (hip::getElementSize(p->srcArray) != hip::getElementSize(p->dstArray))) {
     return hipErrorInvalidValue;
   }
 
@@ -2795,12 +2803,176 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
       }
     }
   }
-  
-  if (p->kind < hipMemcpyHostToHost || p->kind > hipMemcpyDefault) {
+
+  if (static_cast<uint32_t>(p->kind) > hipMemcpyDefault && p->kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
   //If src and dst ptr are null then kind must be either h2h or def.
   if (!IsHtoHMemcpyValid(p->dstPtr.ptr, p->srcPtr.ptr, p->kind)) {
+    return hipErrorInvalidValue;
+  }
+  return hipSuccess;
+}
+
+hipError_t ihipDrvMemcpy3DParamValidate(const HIP_MEMCPY3D* p) {
+  // Passing more than one non-zero source or destination will cause hipMemcpy3D() to
+  // return an error.
+  if (p == nullptr || ((p->srcArray != nullptr) && (p->srcHost != nullptr)) ||
+      ((p->dstArray != nullptr) && (p->dstHost != nullptr))) {
+    return hipErrorInvalidValue;
+  }
+  // The struct passed to hipMemcpy3D() must specify one of srcArray or srcPtr and one of dstArray
+  // or dstPtr.
+  if (((p->srcArray == nullptr) && (p->srcHost == nullptr)) ||
+      ((p->dstArray == nullptr) && (p->dstHost == nullptr))) {
+    return hipErrorInvalidValue;
+  }
+
+  // If the source and destination are both arrays, hipMemcpy3D() will return an error if they do
+  // not have the same element size.
+  if (((p->srcArray != nullptr) && (p->dstArray != nullptr)) &&
+      (hip::getElementSize(p->srcArray) != hip::getElementSize(p->dstArray))) {
+    return hipErrorInvalidValue;
+  }
+
+  // dst/src pitch must be less than max pitch
+  auto* deviceHandle = g_devices[hip::getCurrentDevice()->deviceId()]->devices()[0];
+  const auto& info = deviceHandle->info();
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  auto maxPitch = std::min(info.maxMemAllocSize_, int32_max);
+
+  // negative pitch cases
+  if (p->srcPitch >= maxPitch || p->dstPitch >= maxPitch) {
+    return hipErrorInvalidValue;
+  }
+
+  if (p->dstArray == nullptr && p->srcArray == nullptr) {
+    if ((p->WidthInBytes + p->srcXInBytes > p->srcPitch) ||
+        (p->WidthInBytes + p->dstXInBytes > p->dstPitch)) {
+      return hipErrorInvalidValue;
+    }
+  }
+  if (p->srcMemoryType < hipMemoryTypeHost || p->srcMemoryType > hipMemoryTypeManaged) {
+    return hipErrorInvalidMemcpyDirection;
+  }
+  if (p->dstMemoryType < hipMemoryTypeHost || p->dstMemoryType > hipMemoryTypeManaged) {
+    return hipErrorInvalidMemcpyDirection;
+  }
+  return hipSuccess;
+}
+
+hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy) {
+  hipError_t status;
+  if (pCopy->WidthInBytes == 0 || pCopy->Height == 0 || pCopy->Depth == 0) {
+    LogPrintfInfo("Either Width :%d or Height: %d and Depth: %d is zero", pCopy->WidthInBytes,
+                  pCopy->Height, pCopy->Depth);
+    return hipSuccess;
+  }
+  hipMemoryType srcMemoryType;
+  hipMemoryType dstMemoryType;
+  ihipCopyMemParamSet(pCopy, srcMemoryType, dstMemoryType);
+
+  amd::Coord3D srcOrigin = {pCopy->srcXInBytes, pCopy->srcY, pCopy->srcZ};
+  amd::Coord3D dstOrigin = {pCopy->dstXInBytes, pCopy->dstY, pCopy->dstZ};
+  amd::Coord3D copyRegion = {pCopy->WidthInBytes, pCopy->Height, pCopy->Depth};
+
+  if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Host to Device.
+
+    amd::Memory* dstMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+
+    status =
+        ihipMemcpyHtoDValidate(pCopy->srcHost, pCopy->dstDevice, srcOrigin, dstOrigin, copyRegion,
+                               pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight, pCopy->dstPitch,
+                               pCopy->dstPitch * pCopy->dstHeight, dstMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeHost)) {
+    // Device to Host.
+    amd::Memory* srcMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+    status =
+        ihipMemcpyDtoHValidate(pCopy->srcDevice, pCopy->dstHost, srcOrigin, dstOrigin, copyRegion,
+                               pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight, pCopy->dstPitch,
+                               pCopy->dstPitch * pCopy->dstHeight, srcMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Device to Device.
+    amd::Memory* srcMemory;
+    amd::Memory* dstMemory;
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+
+    status = ihipMemcpyDtoDValidate(pCopy->srcDevice, pCopy->dstDevice, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight,
+                                    pCopy->dstPitch, pCopy->dstPitch * pCopy->dstHeight, srcMemory,
+                                    dstMemory, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeArray)) {
+    amd::Image* dstImage;
+    size_t start = 0;
+
+    status =
+        ihipMemcpyHtoAValidate(pCopy->srcHost, pCopy->dstArray, srcOrigin, dstOrigin, copyRegion,
+                               pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight, dstImage,
+                               start);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeHost)) {
+    // Image to Host.
+    amd::Image* srcImage;
+    size_t start = 0;
+
+    status =
+        ihipMemcpyAtoHValidate(pCopy->srcArray, pCopy->dstHost, srcOrigin, dstOrigin, copyRegion,
+                               pCopy->dstPitch, pCopy->dstPitch * pCopy->dstHeight, srcImage,
+                               start);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeArray)) {
+    // Device to Image.
+    amd::Image* dstImage;
+    amd::Memory* srcMemory;
+    amd::BufferRect dstRect;
+    amd::BufferRect srcRect;
+    status = ihipMemcpyDtoAValidate(pCopy->srcDevice, pCopy->dstArray, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight,
+                                    dstImage, srcMemory, dstRect, srcRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeDevice)) {
+    // Image to Device.
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+    amd::Memory* dstMemory;
+    amd::Image* srcImage;
+    status = ihipMemcpyAtoDValidate(pCopy->srcArray, pCopy->dstDevice, srcOrigin, dstOrigin,
+                                    copyRegion, pCopy->dstPitch, pCopy->dstPitch * pCopy->dstHeight,
+                                    dstMemory, srcImage, srcRect, dstRect);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeArray) && (dstMemoryType == hipMemoryTypeArray)) {
+    amd::Image* srcImage;
+    amd::Image* dstImage;
+
+    status = ihipMemcpyAtoAValidate(pCopy->srcArray, pCopy->dstArray, srcOrigin, dstOrigin,
+                                    copyRegion, srcImage, dstImage);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else {
     return hipErrorInvalidValue;
   }
   return hipSuccess;
@@ -3349,7 +3521,7 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
 hipError_t hipHostGetDevicePointer(void** devicePointer, void* hostPointer, unsigned flags) {
   HIP_INIT_API(hipHostGetDevicePointer, devicePointer, hostPointer, flags);
 
-  if (devicePointer == nullptr) {
+  if (devicePointer == nullptr || flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -3397,7 +3569,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     }
     //getDeviceMemory can fail, hence validate the sanity of the mem obtained
     if (nullptr == devMem) {
-      DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
+      DevLogPrintfError("getDeviceMemory for ptr failed : %p", ptr);
       HIP_RETURN(hipErrorMemoryAllocation);
     }
 
@@ -3411,10 +3583,16 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
       attributes->type = hipMemoryTypeManaged;
     }
     HIP_RETURN(hipSuccess);
+  } else {
+    attributes->type = hipMemoryTypeUnregistered;
+    attributes->devicePointer = nullptr;
+    attributes->hostPointer = nullptr;
+    attributes->isManaged = false;
+    attributes->allocationFlags = 0;
+    attributes->device = hipInvalidDeviceId;
+    LogPrintfError("Cannot get amd_mem_obj for ptr: 0x%x", ptr);
   }
-
-  LogPrintfError("Cannot get amd_mem_obj for ptr: %p \n", ptr);
-  HIP_RETURN(hipErrorInvalidValue);
+  HIP_RETURN(hipSuccess);
 }
 
 // ================================================================================================
@@ -3478,7 +3656,7 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
 
           //getDeviceMemory can fail, hence validate the sanity of the mem obtained
           if (nullptr == devMem) {
-            DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
+            DevLogPrintfError("getDeviceMemory for ptr failed : %p", ptr);
             return hipErrorMemoryAllocation;
           }
           *reinterpret_cast<hipDeviceptr_t*>(data) =
@@ -3566,7 +3744,7 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
 
             //getDeviceMemory can fail, hence validate the sanity of the mem obtained
             if (nullptr == devMem) {
-              DevLogPrintfError("getDeviceMemory for ptr failed : %p \n", ptr);
+              DevLogPrintfError("getDeviceMemory for ptr failed : %p", ptr);
               return hipErrorMemoryAllocation;
             }
             *reinterpret_cast<hipDeviceptr_t*>(data) =
@@ -3674,16 +3852,16 @@ hipError_t hipDrvPointerGetAttributes(unsigned int numAttributes, hipPointer_att
 }
 
 // ================================================================================================
-hipError_t hipArrayDestroy(hipArray* array) {
+hipError_t hipArrayDestroy(hipArray_t array) {
   HIP_INIT_API(hipArrayDestroy, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(ihipArrayDestroy(array));
 }
 
 hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
-                                    hipArray* array) {
+                                    hipArray_t array) {
   {
-    amd::ScopedLock lock(hip::hipArraySetLock);
+    amd::ScopedLock lock(hipArraySetLock);
     if (hip::hipArraySet.find(array) == hip::hipArraySet.end()) {
       return hipErrorInvalidHandle;
     }
@@ -3702,7 +3880,7 @@ hipError_t ihipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* desc,
 hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc,
                            hipExtent* extent,
                            unsigned int* flags,
-                           hipArray* array) {
+                           hipArray_t array) {
   HIP_INIT_API(hipArrayGetInfo, desc, extent, flags, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3739,7 +3917,7 @@ hipError_t hipArrayGetInfo(hipChannelFormatDesc* desc,
 }
 
 hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
-                                 hipArray* array) {
+                                 hipArray_t array) {
   HIP_INIT_API(hipArrayGetDescriptor, pArrayDescriptor, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3766,7 +3944,7 @@ hipError_t hipArrayGetDescriptor(HIP_ARRAY_DESCRIPTOR* pArrayDescriptor,
 }
 
 hipError_t hipArray3DGetDescriptor(HIP_ARRAY3D_DESCRIPTOR* pArrayDescriptor,
-                                   hipArray* array) {
+                                   hipArray_t array) {
   HIP_INIT_API(hipArray3DGetDescriptor, pArrayDescriptor, array);
   CHECK_STREAM_CAPTURE_SUPPORTED();
 
@@ -3875,14 +4053,14 @@ hipError_t hipMemcpy2DFromArrayAsync_spt(void* dst, size_t dpitch, hipArray_cons
   HIP_RETURN_DURATION(hipMemcpy2DFromArray_common(dst, dpitch, src, wOffsetSrc, hOffsetSrc, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpy2DToArrayAsync(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
+hipError_t hipMemcpy2DToArrayAsync(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
                  kind);
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
+hipError_t hipMemcpy2DToArrayAsync_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src, size_t spitch, size_t width, size_t height, hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpy2DToArrayAsync, dst, wOffset, hOffset, src, spitch, width, height, kind, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   STREAM_CAPTURE(hipMemcpy2DToArrayAsync, stream, dst, wOffset, hOffset, src, spitch, width, height,
@@ -3890,9 +4068,9 @@ hipError_t hipMemcpy2DToArrayAsync_spt(hipArray* dst, size_t wOffset, size_t hOf
   HIP_RETURN_DURATION(hipMemcpy2DToArray_common(dst, wOffset, hOffset, src, spitch, width, height, kind, stream, true));
 }
 
-hipError_t hipMemcpyAtoA(hipArray* dstArray,
+hipError_t hipMemcpyAtoA(hipArray_t dstArray,
                          size_t dstOffset,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoA, dstArray, dstOffset, srcArray, srcOffset, ByteCount);
@@ -3901,7 +4079,7 @@ hipError_t hipMemcpyAtoA(hipArray* dstArray,
 }
 
 hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice,
-                         hipArray* srcArray,
+                         hipArray_t srcArray,
                          size_t srcOffset,
                          size_t ByteCount) {
   HIP_INIT_API(hipMemcpyAtoD, dstDevice, srcArray, srcOffset, ByteCount);
@@ -3910,7 +4088,7 @@ hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice,
 }
 
 hipError_t hipMemcpyAtoHAsync(void* dstHost,
-                              hipArray* srcArray,
+                              hipArray_t srcArray,
                               size_t srcOffset,
                               size_t ByteCount,
                               hipStream_t stream) {
@@ -3919,7 +4097,7 @@ hipError_t hipMemcpyAtoHAsync(void* dstHost,
   HIP_RETURN_DURATION(ihipMemcpyAtoH(srcArray, dstHost, {srcOffset, 0, 0}, {0, 0, 0}, {ByteCount, 1, 1}, 0, 0, stream, true));
 }
 
-hipError_t hipMemcpyDtoA(hipArray* dstArray,
+hipError_t hipMemcpyDtoA(hipArray_t dstArray,
                         size_t dstOffset,
                         hipDeviceptr_t srcDevice,
                         size_t ByteCount) {
@@ -3928,7 +4106,7 @@ hipError_t hipMemcpyDtoA(hipArray* dstArray,
   HIP_RETURN_DURATION(ihipMemcpyDtoA(srcDevice, dstArray, {0, 0, 0}, {dstOffset, 0, 0}, {ByteCount, 1, 1}, 0, 0, nullptr));
 }
 
-hipError_t hipMemcpyHtoAAsync(hipArray* dstArray,
+hipError_t hipMemcpyHtoAAsync(hipArray_t dstArray,
                               size_t dstOffset,
                               const void* srcHost,
                               size_t ByteCount,
@@ -4089,8 +4267,9 @@ hipError_t ihipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
   (*level_array_pptr)->NumChannels = hip::getNumChannels((*level_array_pptr)->desc);
   (*level_array_pptr)->isDrv = 0;
   (*level_array_pptr)->textureType = 0;
+  (*level_array_pptr)->flags = mipmapped_array_ptr->flags;
 
-  amd::ScopedLock lock(hip::hipArraySetLock);
+  amd::ScopedLock lock(hipArraySetLock);
   hip::hipArraySet.insert(*level_array_pptr);
 
   return hipSuccess;
@@ -4162,8 +4341,7 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
     hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
     const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
   HIP_INIT_API(hipExternalMemoryGetMappedMipmappedArray, mipmap, extMem, mipmapDesc);
-  if (mipmap == nullptr || extMem == nullptr || mipmapDesc == nullptr ||
-      mipmapDesc->flags != hipArrayDefault) {
+  if (mipmap == nullptr || extMem == nullptr || mipmapDesc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   CHECK_STREAM_CAPTURE_SUPPORTED();
@@ -4184,4 +4362,4 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
   HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,
                                    (size_t)mipmapDesc->offset, buf));
 }
-
+}  // namespace hip

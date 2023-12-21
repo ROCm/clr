@@ -158,9 +158,9 @@ class Memory : public device::Memory, public Resource {
   //! forced USWC memory on APU and will cause a switch to
   //! indirect map for allocations with a possibility of host read
   bool isDirectMap() {
-    return (isCacheable() || !isHostMemDirectAccess() ||
-            (owner()->getMemFlags() &
-             (CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_ONLY)));
+    return (isCacheable() || (!isHostMemDirectAccess() && !IsPersistent()) ||
+             (owner()->getMemFlags() &
+              (CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_ONLY)));
   }
 
   //! Quick view update for managed buffers. It should avoid expensive object allocations

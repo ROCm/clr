@@ -142,6 +142,7 @@ class Resource : public amd::HeapObject {
   struct VkInteropParams : public CreateParams {
     InteropType type_;  //!< Vulkan resource type
     amd::Os::FileDesc handle_;
+    const void* name_;
     bool nt_handle_;
   };
 
@@ -370,8 +371,12 @@ class Resource : public amd::HeapObject {
   //! Retunrs true if memory type matches specified
   bool isMemoryType(MemoryType memType) const;
 
-  //! Returns TRUE if resource was allocated as cacheable
-  bool isCacheable() const { return (isMemoryType(Remote) || isMemoryType(Pinned)) ? true : false; }
+  //! Returns TRUE if resource was allocated as CPU accessible and cacheable
+  bool isCacheable() const { return (isMemoryType(Remote) ||
+                                     isMemoryType(Pinned)) ? true : false; }
+
+  //! Returns TRUE if resource was allocated as CPU visible device memory
+  bool IsPersistent() const { return isMemoryType(Persistent) ? true : false; }
 
   bool glAcquire();
   bool glRelease();

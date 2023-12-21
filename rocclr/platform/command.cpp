@@ -335,7 +335,6 @@ void Command::releaseResources() {
   }
 }
 
-static constexpr uint32_t kMarkerTsCount = 1;
 // ================================================================================================
 void Command::enqueue() {
   assert(queue_ != NULL && "Cannot be enqueued");
@@ -344,7 +343,8 @@ void Command::enqueue() {
     Agent::postEventCreate(as_cl(static_cast<Event*>(this)), type_);
   }
 
-  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p", getOclCommandKindString(this->type()), this);
+  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p",
+          getOclCommandKindString(this->type()), this);
 
   // Direct dispatch logic below will submit the command immediately, but the command status
   // update will occur later after flush() with a wait
@@ -362,21 +362,9 @@ void Command::enqueue() {
     ScopedLock sl(queue_->vdev()->execution());
     queue_->FormSubmissionBatch(this);
 
-    bool isMarker = (type() == CL_COMMAND_MARKER || type() == 0);
-    if (isMarker) {
+    if (type() == CL_COMMAND_MARKER || type() == 0 || type() == CL_COMMAND_TASK) {
       // The current HSA signal tracking logic requires profiling enabled for the markers
       EnableProfiling();
-    }
-
-    bool submitBatch = !profilingInfo().marker_ts_;
-    // Flush the batch if ther marker_ts have been continuously submitted until a threashold
-    // is reached. This helps recycling the commands and frees memory.
-    if (queue_->GetMarkerTsCount() >= kMarkerTsCount) {
-      submitBatch = true;
-      queue_->ResetMarkerTsCount();
-    }
-
-    if (isMarker && submitBatch) {
       // Update batch head for the current marker. Hence the status of all commands can be
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
@@ -394,6 +382,7 @@ void Command::enqueue() {
     queue_->append(*this);
     queue_->flush();
   }
+
   if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||
       ((commandWaitBits_ & 0x2) != 0)) {
     awaitCompletion();
@@ -412,7 +401,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
                                            uint32_t gridId, uint32_t numGrids,
                                            uint64_t prevGridSum, uint64_t allGridSum,
                                            uint32_t firstDevice, bool forceProfiling) :
-    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL),
+    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL |
+                                                            (HIP_LAUNCH_BLOCKING << 1)),
     kernel_(kernel),
     sizes_(sizes),
     sharedMemBytes_(sharedMemBytes),
@@ -427,6 +417,8 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   if (cooperativeGroups()) {
     setNumWorkgroups();
   }
+
+  // This optimization will set marker_ts_ but may not submit a batch.
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();

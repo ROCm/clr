@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.16.8)
+cmake_minimum_required(VERSION 3.16.3)
 project(clr)
 
 ##########
@@ -67,7 +67,9 @@ if(CLR_BUILD_HIP)
         endif()
     endif()
 endif()
-
+if(CLR_BUILD_HIP)
+    option(BUILD_SHARED_LIBS "Build the shared library" ON)
+endif()
 if((CLR_BUILD_HIP AND HIP_PLATFORM STREQUAL "amd") OR CLR_BUILD_OCL)
     add_subdirectory(rocclr)
 elseif(HIP_PLATFORM STREQUAL "amd")

@@ -398,7 +398,7 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size, false,
                                        copyMetadata);
   } else {
-    return hsaCopy(gpuMem(srcMemory), gpuMem(dstMemory), srcOrigin, dstOrigin, size);
+    return hsaCopy(gpuMem(srcMemory), gpuMem(dstMemory), srcOrigin, dstOrigin, size, copyMetadata);
   }
 
   return true;
@@ -638,7 +638,7 @@ bool DmaBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMem
 // ================================================================================================
 bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                              const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
-                             const amd::Coord3D& size) const {
+                             const amd::Coord3D& size, amd::CopyMetadata copyMetadata) const {
   address src = reinterpret_cast<address>(srcMemory.getDeviceMemory());
   address dst = reinterpret_cast<address>(dstMemory.getDeviceMemory());
 
@@ -684,14 +684,23 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
   bool kUseRegularCopyApi = 0;
-
+  bool forceSDMA = (copyMetadata.copyEnginePreference_ ==
+                      amd::CopyMetadata::CopyEnginePreference::SDMA);
   HwQueueEngine engine = HwQueueEngine::Unknown;
+
+  // Determine engine and assign a copy mask for the new versatile ROCr API
+  // If engine preferred is SDMA, assign the SdmaWrite path
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
+    engine = HwQueueEngine::SdmaRead;
+    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+  }
+
+  if (engine == HwQueueEngine::Unknown && forceSDMA) {
     engine = HwQueueEngine::SdmaRead;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
@@ -705,12 +714,18 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
-      // Check SDMA engine status
-      status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, free_engine mask 0x%x",
-              status, freeEngineMask);
-      // Return a mask with the rightmost bit set
-      copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+      // Check if there a recently used SDMA engine for the stream
+      copyMask = gpu().getLastUsedSdmaEngine();
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      if (copyMask == 0) {
+        // Check SDMA engine status
+        status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
+        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, "
+                "free_engine mask 0x%x", status, freeEngineMask);
+        // Return a mask with the rightmost bit set
+        copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+        gpu().setLastUsedSdmaEngine(copyMask);
+      }
     }
 
     if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
@@ -718,14 +733,15 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-              "HSA Async Copy on copy_engine=%x, dst=0x%zx, src=0x%zx, "
-              "size=%ld, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
-              dst, src, size[0], (wait_events.size() != 0) ? wait_events[0].handle : 0,
+              "HSA Async Copy on copy_engine=0x%x, dst=0x%zx, src=0x%zx, "
+              "size=%ld, forceSDMA=%d, wait_event=0x%zx, completion_signal=0x%zx", copyEngine,
+              dst, src, size[0], forceSDMA, (wait_events.size() != 0) ? wait_events[0].handle : 0,
               active.handle);
 
       status = hsa_amd_memory_async_copy_on_engine(dst, dstAgent, src, srcAgent,
                                                   size[0], wait_events.size(),
-                                                  wait_events.data(), active, copyEngine, false);
+                                                  wait_events.data(), active, copyEngine,
+                                                  forceSDMA);
     } else {
       kUseRegularCopyApi = true;
     }
@@ -791,11 +807,13 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         engine = HwQueueEngine::SdmaWrite;
       }
       gpu().Barriers().SetActiveEngine(engine);
+      auto wait_events = gpu().Barriers().WaitingSignal(engine);
       hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
       memcpy(hsaBuffer, hostSrc + offset, size);
-      status = hsa_amd_memory_async_copy(hostDst + offset, dev().getBackendDevice(), hsaBuffer,
-                                         srcAgent, size, 0, nullptr, active);
+      status = hsa_amd_memory_async_copy(
+          hostDst + offset, dev().getBackendDevice(), hsaBuffer, srcAgent, size,
+          wait_events.size(), wait_events.data(), active);
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
           "HSA Async Copy staged H2D dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
           hostDst + offset, hsaBuffer, size, active.handle);
@@ -823,11 +841,13 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       engine = HwQueueEngine::SdmaRead;
     }
     gpu().Barriers().SetActiveEngine(engine);
+    auto wait_events = gpu().Barriers().WaitingSignal(engine);
     hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
     // Copy data from Device to Host
-    status = hsa_amd_memory_async_copy(hsaBuffer, dstAgent, hostSrc + offset,
-        dev().getBackendDevice(), size, 0, nullptr, active);
+    status = hsa_amd_memory_async_copy(
+        hsaBuffer, dstAgent, hostSrc + offset, dev().getBackendDevice(), size,
+        wait_events.size(), wait_events.data(), active);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
             "HSA Async Copy staged D2H dst=0x%zx, src=0x%zx, size=%ld, completion_signal=0x%zx",
             hsaBuffer, hostSrc + offset, size, active.handle);
@@ -2033,9 +2053,10 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
 }
 
 // ================================================================================================
-bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern, size_t patternSize,
-                                     const amd::Coord3D& surface, const amd::Coord3D& origin,
-                                     const amd::Coord3D& size, bool entire, bool forceBlit) const {
+bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern,
+                                     size_t patternSize, const amd::Coord3D& surface,
+                                     const amd::Coord3D& origin, const amd::Coord3D& size,
+                                     bool entire, bool forceBlit) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
 
@@ -2048,79 +2069,90 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
     synchronize();
     return result;
   } else {
-
     // Pack the fill buffer info, that handles unaligned memories.
     std::vector<FillBufferInfo> packed_vector{};
     FillBufferInfo::PackInfo(memory, size[0], origin[0], pattern, patternSize, packed_vector);
 
     size_t overall_offset = origin[0];
     for (auto& packed_obj: packed_vector) {
-      uint fillType = FillBufferAligned;
-
-      uint32_t kpattern_size32 = (packed_obj.pattern_expanded_) ? sizeof(size_t) : patternSize;
-      size_t kfill_size = packed_obj.fill_size_/kpattern_size32;
+      constexpr uint32_t kFillType = FillBufferAligned;
+      uint32_t kpattern_size = (packed_obj.pattern_expanded_) ?
+                                HostBlitManager::FillBufferInfo::kExtendedSize : patternSize;
+      size_t kfill_size = packed_obj.fill_size_ / kpattern_size;
       size_t koffset = overall_offset;
       overall_offset += packed_obj.fill_size_;
 
       size_t globalWorkOffset[3] = {0, 0, 0};
-      size_t globalWorkSize = amd::alignUp(kfill_size, 256);
-      size_t localWorkSize = 256;
-
-      uint32_t alignment = (kpattern_size32 & 0x7) == 0 ?
-                            sizeof(uint64_t) :
-                            (kpattern_size32 & 0x3) == 0 ?
-                            sizeof(uint32_t) :
-                            (kpattern_size32 & 0x1) == 0 ?
-                            sizeof(uint16_t) : sizeof(uint8_t);
-
+      uint32_t alignment = (kpattern_size & 0xf) == 0 ? 2 * sizeof(uint64_t) :
+                           (kpattern_size & 0x7) == 0 ? sizeof(uint64_t) :
+                           (kpattern_size & 0x3) == 0 ? sizeof(uint32_t) :
+                           (kpattern_size & 0x1) == 0 ? sizeof(uint16_t) : sizeof(uint8_t);
       // Program kernels arguments for the fill operation
       cl_mem mem = as_cl<amd::Memory>(memory.owner());
-      if (alignment == sizeof(uint64_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), &mem);
+      if (alignment == 2 * sizeof(uint64_t)) {
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), &mem);
+      } else if (alignment == sizeof(uint64_t)) {
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else if (alignment == sizeof(uint32_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else if (alignment == sizeof(uint16_t)) {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       } else {
-        setArgument(kernels_[fillType], 0, sizeof(cl_mem), &mem);
-        setArgument(kernels_[fillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[fillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem);
+        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
+        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
       }
+      const size_t localWorkSize = 256;
+      size_t globalWorkSize =
+          std::min(dev().settings().limit_blit_wg_ * localWorkSize, kfill_size);
+      globalWorkSize = amd::alignUp(globalWorkSize, localWorkSize);
 
       auto constBuf = gpu().allocKernArg(kCBSize, kCBAlignment);
 
       // If pattern has been expanded, use the expanded pattern, otherwise use the default pattern.
       if (packed_obj.pattern_expanded_) {
-        memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size32);
+        memcpy(constBuf, &packed_obj.expanded_pattern_, kpattern_size);
       } else {
-        memcpy(constBuf, pattern, kpattern_size32);
+        memcpy(constBuf, pattern, kpattern_size);
       }
       constexpr bool kDirectVa = true;
-      setArgument(kernels_[fillType], 4, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
+      setArgument(kernels_[kFillType], 5, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
 
+      // Adjust the pattern size in the copy type size
+      kpattern_size /= alignment;
+      setArgument(kernels_[kFillType], 6, sizeof(uint32_t), &kpattern_size);
       koffset /= alignment;
-      kpattern_size32 /= alignment;
-
-      setArgument(kernels_[fillType], 5, sizeof(uint32_t), &kpattern_size32);
-      setArgument(kernels_[fillType], 6, sizeof(koffset), &koffset);
-      setArgument(kernels_[fillType], 7, sizeof(kfill_size), &kfill_size);
+      setArgument(kernels_[kFillType], 7, sizeof(koffset), &koffset);
+      // Calculate max id
+      kfill_size = memory.virtualAddress() + (koffset + kfill_size * kpattern_size) * alignment;
+      setArgument(kernels_[kFillType], 8, sizeof(kfill_size), &kfill_size);
+      uint32_t next_chunk = globalWorkSize * kpattern_size;
+      setArgument(kernels_[kFillType], 9, sizeof(uint32_t), &next_chunk);
 
       // Create ND range object for the kernel's execution
       amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
 
       // Execute the blit
-      address parameters = captureArguments(kernels_[fillType]);
-      result = gpu().submitKernelInternal(ndrange, *kernels_[fillType], parameters, nullptr);
+      address parameters = captureArguments(kernels_[kFillType]);
+      result = gpu().submitKernelInternal(ndrange, *kernels_[kFillType], parameters, nullptr);
       releaseArguments(parameters);
     }
   }
@@ -2209,7 +2241,6 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
     setArgument(kernels_[fillType], 8, sizeof(height), &height);
     setArgument(kernels_[fillType], 9, sizeof(pitch), &pitch);
 
-
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(2, globalWorkOffset, globalWorkSize, localWorkSize);
 
@@ -2252,7 +2283,9 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
                            (!srcMemory.isHostMemDirectAccess() &&
                             !dstMemory.isHostMemDirectAccess() &&
-                            !(p2p || asan) && !ipcShared);
+                            !(p2p || asan) && !ipcShared &&
+                            !(copyMetadata.copyEnginePreference_ ==
+                              amd::CopyMetadata::CopyEnginePreference::SDMA));
 
   if (!useShaderCopyPath) {
     if (amd::IS_HIP) {
@@ -2269,76 +2302,58 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   }
 
   if (!result) {
-    uint blitType = BlitCopyBuffer;
-    size_t dim = 1;
-    size_t globalWorkOffset[3] = {0, 0, 0};
-    size_t globalWorkSize = 0;
-    size_t localWorkSize = 0;
+    constexpr uint32_t kBlitType = BlitCopyBuffer;
+    constexpr uint32_t kMaxAlignment = 2 * sizeof(uint64_t);
+    amd::Coord3D size(sizeIn[0]);
 
-    // todo LC shows much better performance with the unaligned version
-    const static uint CopyBuffAlignment[3] = {1 /*16*/, 1 /*4*/, 1};
-    amd::Coord3D size(sizeIn[0], sizeIn[1], sizeIn[2]);
+    // Check alignments for source and destination
+    bool aligned = ((srcOrigin[0] % kMaxAlignment) == 0) && ((dstOrigin[0] % kMaxAlignment) == 0);
+    uint32_t aligned_size = (aligned) ? kMaxAlignment : sizeof(uint32_t);
 
-    uint i;
-    for (i = 0; i < sizeof(CopyBuffAlignment) / sizeof(uint); i++) {
-      bool aligned = false;
-      // Check source alignments
-      aligned = ((srcOrigin[0] % CopyBuffAlignment[i]) == 0);
-      // Check destination alignments
-      aligned &= ((dstOrigin[0] % CopyBuffAlignment[i]) == 0);
-      // Check copy size alignment in the first dimension
-      aligned &= ((sizeIn[0] % CopyBuffAlignment[i]) == 0);
-
-      if (aligned) {
-        if (CopyBuffAlignment[i] != 1) {
-          blitType = BlitCopyBufferAligned;
-        }
-        break;
-      }
-    }
-
-    uint32_t remain;
-    if (blitType == BlitCopyBufferAligned) {
-      size.c[0] /= CopyBuffAlignment[i];
-    } else {
-      remain = size[0] % 4;
-      size.c[0] /= 4;
-      size.c[0] += 1;
-    }
+    // Setup copy size accordingly to the alignment
+    uint32_t remainder = size[0] % aligned_size;
+    size.c[0] /= aligned_size;
+    size.c[0] += (remainder != 0) ? 1 : 0;
 
     // Program the dispatch dimensions
-    localWorkSize = 256;
-    globalWorkSize = amd::alignUp(size[0], 256);
+    const size_t localWorkSize = (aligned) ? 512 : 1024;
+    size_t globalWorkSize = std::min(dev().settings().limit_blit_wg_ * localWorkSize, size[0]);
+    globalWorkSize = amd::alignUp(globalWorkSize, localWorkSize);
 
     // Program kernels arguments for the blit operation
     cl_mem mem = as_cl<amd::Memory>(srcMemory.owner());
-    setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
+    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
     mem = as_cl<amd::Memory>(dstMemory.owner());
-    setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
+    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
+
     // Program source origin
-    uint64_t srcOffset = srcOrigin[0] / CopyBuffAlignment[i];
-    setArgument(kernels_[blitType], 2, sizeof(srcOffset), &srcOffset);
+    uint64_t srcOffset = srcOrigin[0];
+    setArgument(kernels_[kBlitType], 2, sizeof(srcOffset), &srcOffset);
 
     // Program destinaiton origin
-    uint64_t dstOffset = dstOrigin[0] / CopyBuffAlignment[i];
-    setArgument(kernels_[blitType], 3, sizeof(dstOffset), &dstOffset);
+    uint64_t dstOffset = dstOrigin[0];
+    setArgument(kernels_[kBlitType], 3, sizeof(dstOffset), &dstOffset);
 
-    uint64_t copySize = size[0];
-    setArgument(kernels_[blitType], 4, sizeof(copySize), &copySize);
+    uint64_t copySize = sizeIn[0];
+    setArgument(kernels_[kBlitType], 4, sizeof(copySize), &copySize);
 
-    if (blitType == BlitCopyBufferAligned) {
-      int32_t alignment = CopyBuffAlignment[i];
-      setArgument(kernels_[blitType], 5, sizeof(alignment), &alignment);
-    } else {
-      setArgument(kernels_[blitType], 5, sizeof(remain), &remain);
-    }
+    setArgument(kernels_[kBlitType], 5, sizeof(remainder), &remainder);
+    setArgument(kernels_[kBlitType], 6, sizeof(aligned_size), &aligned_size);
+
+    // End pointer is the aligned copy size and destination offset
+    uint64_t end_ptr = dstMemory.virtualAddress() + dstOffset + sizeIn[0] - remainder;
+
+    setArgument(kernels_[kBlitType], 7, sizeof(end_ptr), &end_ptr);
+
+    uint32_t next_chunk = globalWorkSize;
+    setArgument(kernels_[kBlitType], 8, sizeof(next_chunk), &next_chunk);
 
     // Create ND range object for the kernel's execution
-    amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
+    amd::NDRangeContainer ndrange(1, nullptr, &globalWorkSize, &localWorkSize);
 
     // Execute the blit
-    address parameters = captureArguments(kernels_[blitType]);
-    result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
+    address parameters = captureArguments(kernels_[kBlitType]);
+    result = gpu().submitKernelInternal(ndrange, *kernels_[kBlitType], parameters, nullptr);
     releaseArguments(parameters);
   }
 
@@ -2357,10 +2372,10 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   constexpr size_t kFillImageThreshold = 256 * 256;
-  
+
   // Use host fill if memory has direct access and image is small
   if (setup_.disableFillImage_ ||
-      (gpuMem(memory).isHostMemDirectAccess() && 
+      (gpuMem(memory).isHostMemDirectAccess() &&
       (size.c[0] * size.c[1] * size.c[2]) <= kFillImageThreshold)) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();

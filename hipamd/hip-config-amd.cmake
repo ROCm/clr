@@ -57,6 +57,7 @@ if(WIN32)
 else()
   set(HIP_CLANG_ROOT "${ROCM_PATH}/llvm")
 endif()
+
 if(NOT HIP_CXX_COMPILER)
   set(HIP_CXX_COMPILER ${CMAKE_CXX_COMPILER})
 endif()
@@ -64,7 +65,34 @@ endif()
 if(NOT WIN32)
   find_dependency(AMDDeviceLibs)
 endif()
-set(AMDGPU_TARGETS "" CACHE STRING "AMD GPU targets to compile for")
+
+# If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
+# of all the devices present in the machine
+if(NOT AMDGPU_TARGETS)
+  if (WIN32)
+    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
+  else()
+    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch")
+  endif()
+  execute_process(
+    COMMAND ${AMDGPU_ARCH}
+    RESULT_VARIABLE AMDGPU_ARCH_RESULT
+    OUTPUT_VARIABLE AMDGPU_ARCH_OUTPUT
+    ERROR_VARIABLE  AMDGPU_ARCH_ERROR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_STRIP_TRAILING_WHITESPACE)
+
+  if(AMDGPU_ARCH_ERROR)
+    message(AUTHOR_WARNING "amdgpu-arch failed with error ${AMDGPU_ARCH_ERROR}")
+    message("and the output is ${AMDGPU_ARCH_OUTPUT}")
+  else()
+    if (NOT AMDGPU_ARCH_OUTPUT STREQUAL "")
+      string(REPLACE "\n" ";" AMDGPU_ARCH_OUTPUT ${AMDGPU_ARCH_OUTPUT})
+      set(AMDGPU_TARGETS ${AMDGPU_ARCH_OUTPUT} CACHE STRING "AMD GPU targets to compile for")
+    endif()
+  endif()
+endif()
+
 set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU targets to compile for")
 
 if(NOT WIN32)
@@ -84,7 +112,7 @@ endif()
 set(_IMPORT_PREFIX ${HIP_PACKAGE_PREFIX_DIR})
 # Right now this is only supported for amd platforms
 set_target_properties(hip::host PROPERTIES
-  INTERFACE_COMPILE_DEFINITIONS "__HIP_PLATFORM_HCC__=1;__HIP_PLATFORM_AMD__=1"
+  INTERFACE_COMPILE_DEFINITIONS "__HIP_PLATFORM_AMD__=1"
 )
 
 set_target_properties(hip::amdhip64 PROPERTIES
@@ -102,7 +130,7 @@ endif()
 get_property(compilePropIsSet TARGET hip::device PROPERTY INTERFACE_COMPILE_OPTIONS SET)
 
 if (NOT compilePropIsSet AND HIP_CXX_COMPILER MATCHES ".*clang\\+\\+")
-  hip_add_interface_compile_flags(hip::device -mllvm -amdgpu-early-inline-all=true -mllvm -amdgpu-function-calls=false)
+  hip_add_interface_compile_flags(hip::device -mllvm=-amdgpu-early-inline-all=true -mllvm=-amdgpu-function-calls=false)
 endif()
 
 if (NOT compilePropIsSet)
@@ -135,7 +163,8 @@ endif()
 # Use HIP_CXX option -print-libgcc-file-name --rtlib=compiler-rt
 # To fetch the compiler rt library file name.
 execute_process(
-  COMMAND ${HIP_CXX_COMPILER} -print-libgcc-file-name --rtlib=compiler-rt
+  COMMAND ${CMAKE_COMMAND} -E env HIPCC_VERBOSE=0
+  ${HIP_CXX_COMPILER} -print-libgcc-file-name --rtlib=compiler-rt
   OUTPUT_VARIABLE CLANGRT_BUILTINS
   ERROR_VARIABLE  CLANGRT_Error
   OUTPUT_STRIP_TRAILING_WHITESPACE

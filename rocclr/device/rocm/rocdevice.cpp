@@ -64,6 +64,20 @@
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
 
+
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kNone)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_NONE),
+              "Vmm Access Flag None mismatch with ROC-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadOnly)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RO),
+              "Vmm Access Flag Read mismatch with ROCr-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kWriteOnly)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_WO),
+              "Vmm Access Flag Write mismatch with ROC-runtime!");
+static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadWrite)
+              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RW),
+              "Vmm Access Flag Read Write mismatch with ROC-runtime!");
+
 #ifndef WITHOUT_HSA_BACKEND
 
 namespace {
@@ -72,6 +86,10 @@ inline bool getIsaMeta(std::string isaName, amd_comgr_metadata_node_t& isaMeta) 
   amd_comgr_status_t status;
   status = amd::Comgr::get_isa_metadata(isaName.c_str(), &isaMeta);
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
+}
+
+inline bool releaseIsaMeta(amd_comgr_metadata_node_t& isaMeta) {
+  return AMD_COMGR_STATUS_SUCCESS == amd::Comgr::destroy_metadata(isaMeta);
 }
 
 bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
@@ -87,6 +105,9 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
   if (status == AMD_COMGR_STATUS_SUCCESS) {
     retValue.resize(size - 1);
     status = amd::Comgr::get_metadata_string(valMeta, &size, &(retValue[0]));
+  }
+  if (status == AMD_COMGR_STATUS_SUCCESS) {
+    status = amd::Comgr::destroy_metadata(valMeta);
   }
 
   return (status == AMD_COMGR_STATUS_SUCCESS) ? true : false;
@@ -346,6 +367,7 @@ hsa_status_t Device::iterateAgentCallback(hsa_agent_t agent, void* data) {
   hsa_status_t stat = hsa_agent_get_info(agent, HSA_AGENT_INFO_DEVICE, &dev_type);
 
   if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("HSA_AGENT_INFO_DEVICE failed with %x", stat);
     return stat;
   }
 
@@ -441,23 +463,28 @@ void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
   --acquiredCnt_;
 }
 
+// ================================================================================================
 bool Device::init() {
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
-
+  hsa_status_t status = HSA_STATUS_SUCCESS;
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {
+    LogError("initCompiler failed.");
     return false;
   }
 
-  if (HSA_STATUS_SUCCESS != hsa_init()) {
-    LogError("hsa_init failed.");
+  status = hsa_init();
+  if (status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("hsa_init failed with %x", status);
     return false;
   }
 
   hsa_system_get_major_extension_table(HSA_EXTENSION_AMD_LOADER, 1, sizeof(amd_loader_ext_table),
                                        &amd_loader_ext_table);
 
-  if (HSA_STATUS_SUCCESS != hsa_iterate_agents(iterateAgentCallback, nullptr)) {
+  status = hsa_iterate_agents(iterateAgentCallback, nullptr);
+  if (status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("hsa_iterate_agents failed with %x", status);
     return false;
   }
 
@@ -498,6 +525,8 @@ bool Device::init() {
     gpu_agents_ = valid_agents;
   }
 
+  LogPrintfInfo("Enumerated GPU agents = %lu", gpu_agents_.size());
+
   for (auto agent : gpu_agents_) {
     std::unique_ptr<Device> roc_device(new Device(agent));
     if (!roc_device) {
@@ -529,19 +558,55 @@ bool Device::init() {
     roc_device.release()->registerDevice();
   }
 
-  if (0 != Device::numDevices(CL_DEVICE_TYPE_GPU, false)) {
+  // Query active devices only
+  constexpr bool kNoOfflineDevices = false;
+  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  if (devices.size() > 0) {
+    bool p2p_available = false;
     // Loop through all available devices
-    for (auto device1: Device::devices()) {
+    for (auto device1: devices) {
       // Find all agents that can have access to the current device
       for (auto agent: static_cast<Device*>(device1)->p2pAgents()) {
         // Find cl_device_id associated with the current agent
-        for (auto device2: Device::devices()) {
+        for (auto device2: devices) {
           if (agent.handle == static_cast<Device*>(device2)->getBackendDevice().handle) {
             // Device2 can have access to device1
             device2->p2pDevices_.push_back(as_cl(device1));
             device1->p2p_access_devices_.push_back(device2);
+            p2p_available = true;
           }
         }
+      }
+    }
+
+    // Create a dummy context for internal memory allocations on all reported devices
+    glb_ctx_ = new amd::Context(devices, amd::Context::Info());
+    if (glb_ctx_ == nullptr) {
+      LogError("glb_ctx failed");
+      return false;
+    }
+
+    // Allocate a staging buffer for P2P emulation path
+    if ((devices.size() >= 1) && !p2p_available) {
+      amd::Buffer* buf =
+          new (*glb_ctx_) amd::Buffer(*glb_ctx_, CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
+      if ((buf != nullptr) && buf->create()) {
+        p2p_stage_ = buf;
+      } else {
+        delete buf;
+        LogError("p2p stg buffer alloc failed");
+        return false;
+      }
+    }
+
+    // Allocate mgpu sync buffer for cooperative launches
+    if (amd::IS_HIP) {
+      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
+          *glb_ctx_, (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
+          kMGInfoSizePerDevice * devices.size(), kMGInfoSizePerDevice));
+      if (mg_sync_ == nullptr) {
+        LogError("mgpu sync buffer alloc failed");
+        return false;
       }
     }
   }
@@ -704,7 +769,10 @@ bool Device::create() {
                    pciDeviceId_);
     return false;
   }
-
+  hsaSettings->limit_blit_wg_ = info().maxComputeUnits_;
+  if (!flagIsDefault(DEBUG_CLR_LIMIT_BLIT_WG)) {
+    hsaSettings->limit_blit_wg_ = std::max(DEBUG_CLR_LIMIT_BLIT_WG, 0x1U);
+  }
   amd::Context::Info info = {0};
   std::vector<amd::Device*> devices;
   devices.push_back(this);
@@ -726,44 +794,6 @@ bool Device::create() {
   }
   // Use just 1 entry by default for the map cache
   mapCache_->push_back(nullptr);
-
-  if ((glb_ctx_ == nullptr) && (gpu_agents_.size() >= 1) &&
-      // Allow creation for the last device in the list.
-      (gpu_agents_[gpu_agents_.size() - 1].handle == bkendDevice_.handle)) {
-    std::vector<amd::Device*> devices;
-    uint32_t numDevices = amd::Device::numDevices(CL_DEVICE_TYPE_GPU, false);
-    // Add all PAL devices
-    for (uint32_t i = 0; i < numDevices; ++i) {
-      devices.push_back(amd::Device::devices()[i]);
-    }
-    // Add current
-    devices.push_back(this);
-    // Create a dummy context
-    glb_ctx_ = new amd::Context(devices, info);
-    if (glb_ctx_ == nullptr) {
-      return false;
-    }
-
-    if ((p2p_agents_.size() < (devices.size()-1)) && (devices.size() > 1)) {
-      amd::Buffer* buf = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_ALLOC_HOST_PTR, kP2PStagingSize);
-      if ((buf != nullptr) && buf->create()) {
-        p2p_stage_ = buf;
-      }
-      else {
-        delete buf;
-        return false;
-      }
-    }
-    // Check if sync buffer wasn't allocated yet
-    if (amd::IS_HIP && mg_sync_ == nullptr) {
-      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
-          GlbCtx(), (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
-          kMGInfoSizePerDevice * GlbCtx().devices().size(), kMGInfoSizePerDevice));
-      if (mg_sync_ == nullptr) {
-        return false;
-      }
-    }
-  }
 
   if (settings().stagedXferSize_ != 0) {
     // Initialize staged write buffers
@@ -935,6 +965,14 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           } else {
             dev->info_.largeBar_ = ROC_ENABLE_LARGE_BAR;
           }
+
+          // Query the recommended granularity for this pool.
+          stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE,
+                                              &(dev->info_.virtualMemAllocGranularity_));
+          if (stat != HSA_STATUS_SUCCESS) {
+            LogPrintfError("Cannot query HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE info"
+                           "failed with hsa_status: %d \n", stat);
+          }
         }
 
         if (dev->gpuvm_segment_.handle == 0) {
@@ -955,6 +993,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
 
 hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, void* data) {
   if (data == nullptr) {
+    LogError("CpuMemoryPoolCallback invalid args");
     return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
 
@@ -962,6 +1001,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
   hsa_status_t stat =
       hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_SEGMENT, &segment_type);
   if (stat != HSA_STATUS_SUCCESS) {
+    LogPrintfError("HSA_AMD_MEMORY_POOL_INFO_SEGMENT query failed with %x", stat);
     return stat;
   }
   AgentInfo* agentInfo = reinterpret_cast<AgentInfo*>(data);
@@ -972,6 +1012,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
       stat = hsa_amd_memory_pool_get_info(pool, HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS,
                                           &global_flag);
       if (stat != HSA_STATUS_SUCCESS) {
+        LogPrintfError("HSA_AMD_MEMORY_POOL_INFO_GLOBAL_FLAGS query failed with %x", stat);
         break;
       }
 
@@ -1290,7 +1331,8 @@ bool Device::populateOCLDeviceConstants() {
     }
 
     assert(global_segment_size > 0);
-    info_.globalMemSize_ = static_cast<uint64_t>(global_segment_size);
+    info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                            static_cast<uint64_t>(global_segment_size)) / 100u;
 
     // For APU with vram size <= 512MiB, use a smaller single alloc percentage
     if (info_.globalMemSize_ <= 536870912) {
@@ -1307,7 +1349,7 @@ bool Device::populateOCLDeviceConstants() {
         }
       }
     }
-     
+
     gpuvm_segment_max_alloc_ =
         uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
     assert(gpuvm_segment_max_alloc_ > 0);
@@ -1326,6 +1368,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.globalMemSize_ =
         uint64_t(sysconf(_SC_PAGESIZE)) * uint64_t(sysconf(_SC_PHYS_PAGES)) / 2;
     info_.globalMemSize_ = std::max(info_.globalMemSize_, uint64_t(1 * Gi));
+    info_.globalMemSize_ = (static_cast<uint64_t>(std::min(GPU_MAX_HEAP_SIZE, 100u)) *
+                            static_cast<uint64_t>(info_.globalMemSize_)) / 100u;
+
     info_.maxMemAllocSize_ =
         uint64_t(info_.globalMemSize_ * std::min(GPU_SINGLE_ALLOC_PERCENT, 100u) / 100u);
 
@@ -1521,6 +1566,27 @@ bool Device::populateOCLDeviceConstants() {
 
     info_.imageMaxArraySize_ = max_array_size;
 
+    uint32_t max_image1da_width = 0;
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(bkendDevice_,
+                           static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_1DA_MAX_ELEMENTS),
+                           &max_image1da_width)) {
+      return false;
+    }
+
+    info_.image1DAMaxWidth_ = max_image1da_width;
+
+    uint32_t max_image2da_width[2] = {0, 0};
+    if (HSA_STATUS_SUCCESS !=
+        hsa_agent_get_info(bkendDevice_,
+                           static_cast<hsa_agent_info_t>(HSA_EXT_AGENT_INFO_IMAGE_2DA_MAX_ELEMENTS),
+                           &max_image2da_width)) {
+      return false;
+    }
+
+    info_.image2DAMaxWidth_[0] = max_image2da_width[0];
+    info_.image2DAMaxWidth_[1] = max_image2da_width[1];
+
     uint32_t max_image1d_width = 0;
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(bkendDevice_,
@@ -1670,6 +1736,9 @@ bool Device::populateOCLDeviceConstants() {
     info_.availableSGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumSGPRs", sgprValue))
         ? (atoi(sgprValue.c_str()))
         : 0;
+    if (!releaseIsaMeta(isaMeta)) {
+      LogInfo("Can not release the isa meta node");
+    }
   }
 
   // Generic support for HMM interfaces
@@ -1699,7 +1768,17 @@ bool Device::populateOCLDeviceConstants() {
           maxSdmaReadMask_, maxSdmaWriteMask_);
 
   info_.globalCUMask_ = {};
+
+  // Virtual memory Management Support, if set to true then the HW and SW Stack supports VMM.
   info_.virtualMemoryManagement_ = false;
+  if (HIP_VMEM_MANAGE_SUPPORT) {
+    if (HSA_STATUS_SUCCESS != hsa_system_get_info(
+          static_cast<hsa_system_info_t>(HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED),
+          &info_.virtualMemoryManagement_)) {
+      LogError("HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED query failed ");
+    }
+  }
+
   switch (isa().versionMajor()) {
     case (11):
       if (isa().versionMinor() == 0) {
@@ -1733,8 +1812,8 @@ bool Device::populateOCLDeviceConstants() {
       }
       break;
     case (9):
-      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
-          (isa().versionMinor() == 4 && isa().versionStepping() == 0)) {
+      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) || // For gfx90a (MI200)
+          (isa().versionMinor() == 4)) {  // For gfx94x (MI300)
         info_.vgprAllocGranularity_ = 8;
         info_.vgprsPerSimd_ = 512;
       } else {
@@ -2007,8 +2086,11 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 
     imageView->replaceDeviceMemory(this, devImageView);
 
+    // Copy data with the original pitch values, since runtime doesn't perform
+    // extra sysmem allocation for one device
+    const auto image = owner.asImage();
     result = xferMgr().writeImage(owner.getHostMem(), *devImageView, amd::Coord3D(0, 0, 0),
-                                  imageView->getRegion(), 0, 0, true);
+        imageView->getRegion(), image->getRowPitch(), image->getSlicePitch(), true);
 
     // Release host memory, since runtime copied data
     owner.setHostMem(nullptr);
@@ -2075,7 +2157,8 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
 
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
-  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx,"
+          " numa_node = %d", ptr, size, preferred_numa_node_);
   if (stat != HSA_STATUS_SUCCESS) {
     LogPrintfError("Fail allocation host memory with err %d", stat);
     return nullptr;
@@ -2191,6 +2274,19 @@ bool Device::allowPeerAccess(device::Memory* memory) const {
   return true;
 }
 
+uint64_t Device::deviceVmemAlloc(size_t size, uint64_t flags) const {
+  hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+
+  // We only allow pinned memory at this time.
+  hsa_status_t hsa_status = hsa_amd_vmem_handle_create(gpuvm_segment_, size, MEMORY_TYPE_PINNED,
+                                                       flags, &hsa_vmem_handle);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_handle_create! Failed with hsa status: %d \n", hsa_status);
+  }
+
+  return hsa_vmem_handle.handle;
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain) ? gpu_ext_fine_grained_segment_
                                       : (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
@@ -2290,13 +2386,83 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
   return svmPtr;
 }
 
-void* Device::virtualAlloc(void* addr, size_t size, size_t alignment)
-{
-  return nullptr;
+void* Device::virtualAlloc(void* req_addr, size_t size, size_t alignment) {
+  void* vptr = nullptr;
+  // Reserves the address using HSA APIs, with requested address.
+  // There is no guarantee that we will get the requested address.
+  hsa_status_t hsa_status = hsa_amd_vmem_address_reserve(&vptr, size,
+                              reinterpret_cast<uint64_t>(req_addr), 0);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_address_reserve. Failed with status: %d \n", hsa_status);
+    return nullptr;
+  }
+
+  // This mem->create() does not create an actual memory but stores the memory info with given vptr.
+  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, vptr);
+  if (mem == nullptr) {
+    LogError("failed to new a va range mem object!");
+    return nullptr;
+  }
+
+  if (!mem->create(nullptr, false)) {
+    LogError("failed to create a va range mem object");
+    mem->release();
+    return nullptr;
+  }
+
+  // Assert to make sure that amd::Memory object has set the right ptr.
+  guarantee(vptr == mem->getSvmPtr(), "amd::Memory object does not have the right ptr");
+
+  return mem->getSvmPtr();
 }
 
-void Device::virtualFree(void* addr)
-{
+void Device::virtualFree(void* addr) {
+  amd::Memory* memObj = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (memObj == nullptr) {
+    LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", addr);
+  }
+
+  hsa_status_t hsa_status = hsa_amd_vmem_address_free(memObj->getSvmPtr(), memObj->getSize());
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_address_free. Failed with status:%d \n", hsa_status);
+  }
+}
+
+bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_amd_memory_access_desc_t desc;
+  desc.permissions = static_cast<hsa_access_permission_t>(access_flags);
+  desc.agent_handle = getBackendDevice();
+
+  if ((hsa_status = hsa_amd_vmem_set_access(va_addr, va_size, &desc, count))
+                                                      != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_set_access. Failed with status:%d \n", hsa_status);
+    return false;
+  }
+
+  return true;
+}
+
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_access_permission_t perms;
+
+  size_t discard_offset = 0;
+  amd::Memory* va_mem_obj = amd::MemObjMap::FindMemObj(va_addr, &discard_offset);
+  if (va_mem_obj == nullptr) {
+    LogPrintfError("Failed to get Memory Object for va_addr: 0x%x", va_addr);
+    return false;
+  }
+
+  if ((hsa_status = hsa_amd_vmem_get_access(va_mem_obj->getSvmPtr(), &perms, getBackendDevice()))
+                    != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_get_access. Failed with status:%d \n", hsa_status);
+    return false;
+  }
+
+  *access_flags_ptr = static_cast<VmmAccess>(perms);
+
+  return true;
 }
 
 // ================================================================================================

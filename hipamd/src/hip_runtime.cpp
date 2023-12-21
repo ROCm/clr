@@ -22,8 +22,9 @@
 
 #include <windows.h>
 #include <iostream>
-
+namespace hip {
 void ihipDestroyDevice();
+}
 
 #ifdef DEBUG
 static int reportHook(int reportType, char* message, int* returnValue) {
@@ -52,7 +53,7 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
             ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
         return true;
       }
-      ihipDestroyDevice();
+      hip::ihipDestroyDevice();
     } break;
     case DLL_THREAD_DETACH: {
       amd::Thread* thread = amd::Thread::current();

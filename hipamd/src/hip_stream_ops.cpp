@@ -22,6 +22,7 @@
 #include "hip_internal.hpp"
 #include "platform/command_utils.hpp"
 
+namespace hip {
 hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void* ptr,
                                uint64_t value, uint64_t mask, unsigned int flags, size_t sizeBytes) {
   size_t offset = 0;
@@ -135,3 +136,4 @@ hipError_t hipStreamWriteValue64(hipStream_t stream, void* ptr, uint64_t value, 
       0,  // flags un-used for now set it to 0
       sizeof(uint64_t)));
 }
+}  // namespace hip

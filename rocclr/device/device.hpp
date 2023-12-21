@@ -79,6 +79,7 @@ class PerfCounterCommand;
 class ReleaseObjectCommand;
 class StallQueueCommand;
 class Marker;
+class AccumulateCommand;
 class ThreadTraceCommand;
 class ThreadTraceMemObjectsCommand;
 class SignalCommand;
@@ -344,6 +345,9 @@ struct Info : public amd::EmbeddedObject {
   //! Max width of 2D image in pixels.
   size_t image2DMaxWidth_;
 
+  //! Max width of 2DA image in pixels.
+  size_t image2DAMaxWidth_[2];
+
   //! Max height of 2D image in pixels.
   size_t image2DMaxHeight_;
 
@@ -479,6 +483,9 @@ struct Info : public amd::EmbeddedObject {
 
   //! Returns max number of pixels for a 1D image
   size_t image1DMaxWidth_;
+
+  //! Returns max number of pixels for a 1DA image
+  size_t image1DAMaxWidth_;
 
   //! Returns max number of pixels for a 1D image created from a buffer object
   size_t imageMaxBufferSize_;
@@ -632,6 +639,10 @@ struct Info : public amd::EmbeddedObject {
   uint32_t vgprsPerSimd_;
   uint32_t vgprAllocGranularity_;
   uint32_t numSDMAengines_; //!< Number of available SDMA engines
+
+  uint32_t luidLowPart_;        //!< Luid low 4 bytes, available in Windows only
+  uint32_t luidHighPart_;       //!< Luid high 4 bytes, available in Windows only
+  uint32_t luidDeviceNodeMask_; //!< Luid node mask
 };
 
 //! Device settings
@@ -1238,6 +1249,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitKernel(amd::NDRangeKernelCommand& command) = 0;
   virtual void submitNativeFn(amd::NativeFnCommand& cmd) = 0;
   virtual void submitMarker(amd::Marker& cmd) = 0;
+  virtual void submitAccumulate(amd::AccumulateCommand& cmd) = 0;
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) = 0;
   virtual void submitFillMemory(amd::FillMemoryCommand& cmd) = 0;
   virtual void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd) = 0;
@@ -1280,7 +1292,9 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
-  virtual bool dispatchAqlPacket(uint8_t* aqlpacket) = 0;
+
+  //! Dispatch captured AQL packet
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
 
   //! Resets fence state of the VirtualGPU
   virtual void resetFenceDirty() = 0;
@@ -1526,7 +1540,6 @@ class Isa {
   uint32_t memChannelBankWidth_;   //!< Memory channel bank width.
   uint32_t localMemSizePerCU_;     //!< Local memory size per CU.
   uint32_t localMemBanks_;         //!< Number of banks of local memory.
-
 }; // class Isa
 
 /*! \addtogroup Runtime
@@ -1578,6 +1591,14 @@ class Device : public RuntimeObject {
     kCacheStateAgent = 1,
     kCacheStateSystem = 2
   } CacheState;
+
+  //<! Enum describing the access permissions of Virtual memory
+  enum class VmmAccess {
+    kNone           = 0x0,
+    kReadOnly       = 0x1,
+    kWriteOnly      = 0x2,
+    kReadWrite      = 0x3
+  };
 
   typedef std::pair<LinkAttribute, int32_t /* value */> LinkAttrType;
 
@@ -1741,6 +1762,11 @@ class Device : public RuntimeObject {
     return NULL;
   }
 
+  virtual bool isXgmi() const {
+    ShouldNotCallThis();
+    return false;
+  }
+
   virtual bool deviceAllowAccess(void* dst) const {
     ShouldNotCallThis();
     return true;
@@ -1778,6 +1804,25 @@ class Device : public RuntimeObject {
    * @param alignment Alignment in bytes
    */
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) = 0;
+
+  /**
+   * Set Access permisions for a virtual memory object.
+   *
+   * @param va_addr Virtual Address ptr
+   * @param va_size Virtual Address Size
+   * @param access_flags Access permissions
+   * @param count Number of access permissions
+   */
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags,
+                            size_t count) = 0;
+
+  /**
+   * Get Access permisions for a virtual memory object.
+   *
+   * @param va_addr Virtual Address ptr
+   * @param access_flags_ptr Access permissions to be filled
+   */
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) = 0;
 
   /**
    * Free a VA range
@@ -1961,6 +2006,7 @@ class Device : public RuntimeObject {
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0) {
     return nullptr;
   }
+
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
   virtual device::UriLocator* createUriLocator() const = 0;

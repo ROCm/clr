@@ -27,12 +27,7 @@
 
 function(get_hiprtc_macros HIPRTC_DEFINES)
   set(${HIPRTC_DEFINES}
-"#pragma clang diagnostic push\n\
-#pragma clang diagnostic ignored \"-Wreserved-id-macro\"\n\
-#pragma clang diagnostic ignored \"-Wc++98-compat-pedantic\"\n\
-#pragma clang diagnostic ignored \"-Wreserved-macro-identifier\"\n\
-#pragma clang diagnostic ignored \"-Wundef\"\n\
-#define __device__ __attribute__((device))\n\
+"#define __device__ __attribute__((device))\n\
 #define __host__ __attribute__((host))\n\
 #define __global__ __attribute__((global))\n\
 #define __constant__ __attribute__((constant))\n\
@@ -59,25 +54,46 @@ function(get_hiprtc_macros HIPRTC_DEFINES)
 #define _HIP_BFLOAT16_H_\n\
 #define HIP_INCLUDE_HIP_MATH_FUNCTIONS_H\n\
 #define HIP_INCLUDE_HIP_HIP_VECTOR_TYPES_H\n\
-#pragma clang diagnostic pop"
+#if !__HIP_NO_STD_DEFS__\n\
+#if defined(__HIPRTC_PTRDIFF_T_IS_LONG_LONG__) && __HIPRTC_PTRDIFF_T_IS_LONG_LONG__==1\n\
+typedef long long ptrdiff_t;\n\
+#else\n\
+typedef __PTRDIFF_TYPE__ ptrdiff_t;\n\
+#endif\n\
+typedef long clock_t;\n\
+namespace std {\n\
+using ::ptrdiff_t;\n\
+using ::clock_t;\n\
+}\n\
+#endif // __HIP_NO_STD_DEFS__\n"
   PARENT_SCOPE)
 endfunction(get_hiprtc_macros)
 
 # To allow concatenating above macros during build time, call this file in script mode.
 if(HIPRTC_ADD_MACROS)
+# Read the existing content of the preprocessed file into a temporary variable
+  FILE(READ "${HIPRTC_PREPROCESSED_FILE}" ORIGINAL_PREPROCESSED_FILE)
+# Prepend the push and ignore pragmas to the original preprocessed file
+  set(PRAGMA_PUSH "#pragma clang diagnostic push")
+  set(PRAGMA_EVERYTHING "#pragma clang diagnostic ignored \"-Weverything\"")
+  set(MODIFIED_PREPROCESSED_FILE "${PRAGMA_PUSH}\n${PRAGMA_EVERYTHING}
+      \n${ORIGINAL_PREPROCESSED_FILE}")
+# Write the modified preprocessed content back to the original file
+  FILE(WRITE ${HIPRTC_PREPROCESSED_FILE} "${MODIFIED_PREPROCESSED_FILE}")
+
   message(STATUS "Appending hiprtc macros to ${HIPRTC_PREPROCESSED_FILE}.")
   get_hiprtc_macros(HIPRTC_DEFINES)
   FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HIPRTC_DEFINES}")
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
   set(HIPRTC_HEADER_LIST ${HIPRTC_HEADERS})
   separate_arguments(HIPRTC_HEADER_LIST)
-# appends all the headers from the list to the hiprtc preprocessed file
+# Appends all the headers from the list to the hiprtc preprocessed file
   foreach(header ${HIPRTC_HEADER_LIST})
     FILE(READ "${header}" HEADER_FILE)
     FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${HEADER_FILE}")
   endforeach()
-#pragma clang diagnostic pop
+# Append the pop pragma to the preprocessed file
+  set(PRAGMA_POP "#pragma clang diagnostic pop\n")
+  FILE(APPEND ${HIPRTC_PREPROCESSED_FILE} "${PRAGMA_POP}")
 endif()
 
 macro(generate_hiprtc_header HiprtcHeader)
@@ -97,6 +113,7 @@ macro(generate_hiprtc_mcin HiprtcMcin HiprtcPreprocessedInput)
     set(HIPRTC_TYPE_LINUX_ONLY "")
   else()
     set(HIPRTC_TYPE_LINUX_ONLY
+      "  .section .note.GNU-stack,\"\",@progbits\n"
       "  .type __hipRTC_header,@object\n"
       "  .type __hipRTC_header_size,@object")
   endif()

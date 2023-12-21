@@ -25,8 +25,6 @@
 #include "hip_conversions.hpp"
 #include "platform/sampler.hpp"
 
-hipError_t ihipFree(void* ptr);
-
 struct __hip_texture {
   uint32_t imageSRD[HIP_IMAGE_OBJECT_SIZE_DWORD];
   uint32_t samplerSRD[HIP_SAMPLER_OBJECT_SIZE_DWORD];
@@ -57,6 +55,9 @@ struct __hip_texture {
   }
 };
 
+namespace hip {
+
+hipError_t ihipFree(void* ptr);
 amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
                             const cl_channel_type channelType,
                             const cl_mem_object_type imageType,
@@ -240,8 +241,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       if (image == nullptr) {
         return hipErrorInvalidValue;
       }
-    } else if (image->parent()) {
-      image->retain();  // Because it will be released as a view in ihipDestroyTextureObject()
+    } else {
+      image->retain();  // will be released in ihipDestroyTextureObject()
     }
     break;
   }
@@ -281,6 +282,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       if (image == nullptr) {
         return hipErrorInvalidValue;
       }
+    } else {
+      image->retain();  // will be released in ihipDestroyTextureObject()
     }
     break;
   }
@@ -373,15 +376,7 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
     return hipErrorNotSupported;
   }
 
-  const hipResourceType type = texObject->resDesc.resType;
-  const bool isImageFromBuffer = (type == hipResourceTypeLinear) || (type == hipResourceTypePitch2D);
-  const bool isImageView = ((type == hipResourceTypeArray) || (type == hipResourceTypeMipmappedArray)) &&
-                           texObject->image->parent() != nullptr;
-  // If the texture object was created from an array, then the array owns the image SRD.
-  // Otherwise, if the texture object is a view, or was created from a buffer, then it owns the image SRD.
-  if (isImageFromBuffer || isImageView) {
-    texObject->image->release();
-  }
+  texObject->image->release();
 
   // The texture object always owns the sampler SRD.
   texObject->sampler->release();
@@ -502,7 +497,7 @@ inline hipError_t ihipGetTextureAlignmentOffset(size_t* offset,
   // If the device memory pointer was returned from hipMalloc(),
   // the offset is guaranteed to be 0 and NULL may be passed as the offset parameter.
   if ((alignedOffset != 0) && (offset == nullptr)) {
-    LogPrintfError("Texture object not aligned with offset %u \n", alignedOffset);
+    LogPrintfError("Texture object not aligned with offset %u", alignedOffset);
     return hipErrorInvalidValue;
   }
 
@@ -744,8 +739,11 @@ hipError_t hipGetChannelDesc(hipChannelFormatDesc* desc,
                              hipArray_const_t array) {
   HIP_INIT_API(hipGetChannelDesc, desc, array);
 
-  if ((desc == nullptr) || (array == nullptr)) {
+  if (desc == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (array == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
   const device::Info& info = device->info();
@@ -892,7 +890,7 @@ hipError_t hipTexRefGetAddressMode(hipTextureAddressMode* pam,
   if ((dim != 0) && (dim != 1)) {
     LogPrintfError(
         "Currently only 2 dimensions (0,1) are valid,"
-        "dim : %d \n",
+        "dim : %d",
         dim);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -914,7 +912,7 @@ hipError_t hipTexRefSetAddressMode(textureReference* texRef,
   if ((dim < 0) || (dim > 2)) {
     LogPrintfError(
         "Currently only 3 dimensions (0,1,2) are valid,"
-        "dim : %d \n",
+        "dim : %d",
         dim);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1018,7 +1016,7 @@ hipError_t hipTexRefGetAddress(hipDeviceptr_t* dptr,
   // TODO use ihipGetTextureObjectResourceDesc() to not pollute the API trace.
   hipError_t error = ihipGetTextureObjectResourceDesc(&resDesc, texRef->textureObject);
   if (error != hipSuccess) {
-    LogPrintfError("hipGetTextureObjectResourceDesc failed with error code: %s \n",
+    LogPrintfError("hipGetTextureObjectResourceDesc failed with error code: %s",
                    ihipGetErrorName(error));
     HIP_RETURN(error);
   }
@@ -1314,7 +1312,7 @@ hipError_t hipTexRefGetMipmapLevelClamp(float* pminMipmapLevelClamp,
   HIP_RETURN(hipErrorInvalidValue);
 }
 
-hipError_t hipTexRefGetMipmappedArray(hipMipmappedArray_t* pArray,
+hipError_t hipTexRefGetMipMappedArray(hipMipmappedArray_t* pArray,
                                       const textureReference* texRef) {
   // TODO overload operator<<(ostream&, textureReference&).
   HIP_INIT_API(hipTexRefGetMipmappedArray, pArray, &texRef);
@@ -1576,3 +1574,4 @@ hipError_t hipTexObjectGetTextureDesc(HIP_TEXTURE_DESC* pTexDesc,
 
   HIP_RETURN(hipSuccess);
 }
+}  // namespace hip

@@ -147,6 +147,14 @@ class NullDevice : public amd::Device {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) { return nullptr; };
   virtual void virtualFree(void* addr) { };
 
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+    return true;
+  }
+
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+    return true;
+  }
+
   virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle,
                                   amd::ExternalSemaphoreHandleType sem_handle_type) override {
     return false;
@@ -178,7 +186,8 @@ class NullDevice : public amd::Device {
                       const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
                       size_t maxTextureSize,         //!< Maximum texture size supported in HW
                       uint numComputeRings,          //!< Number of compute rings
-                      uint numExclusiveComputeRings  //!< Number of exclusive compute rings
+                      uint numExclusiveComputeRings, //!< Number of exclusive compute rings
+                      Pal::IDevice* pal_device       //!< PAL device for which info is filled
   );
 };
 
@@ -534,6 +543,14 @@ class Device : public NullDevice {
 
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
+
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+    return true;
+  }
+
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+    return true;
+  }
 
   //! Returns SRD manger object
   SrdManager& srds() const { return *srdManager_; }

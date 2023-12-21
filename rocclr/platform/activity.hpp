@@ -50,6 +50,7 @@ extern __declspec(thread) activity_correlation_id_t correlation_id;
 constexpr OpId OperationId(cl_command_type commandType) {
   switch (commandType) {
     case CL_COMMAND_NDRANGE_KERNEL:
+    case CL_COMMAND_TASK:
       return OP_ID_DISPATCH;
     case CL_COMMAND_READ_BUFFER:
     case CL_COMMAND_READ_BUFFER_RECT:

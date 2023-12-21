@@ -344,7 +344,7 @@ bool HostBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& 
 bool HostBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memory& dstMemory,
                                         const amd::Coord3D& srcOrigin,
                                         const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
-                                        bool entire, size_t rowPitch, size_t slicePitch, 
+                                        bool entire, size_t rowPitch, size_t slicePitch,
                                         amd::CopyMetadata copyMetadata) const {
   size_t startLayer = srcOrigin[2];
   size_t numLayers = size[2];
@@ -475,7 +475,7 @@ bool HostBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memor
 
 bool HostBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMemory,
                                 const amd::Coord3D& srcOrigin, const amd::Coord3D& dstOrigin,
-                                const amd::Coord3D& size, bool entire, 
+                                const amd::Coord3D& size, bool entire,
                                 amd::CopyMetadata copyMetadata) const {
   size_t startLayer = srcOrigin[2];
   size_t numLayers = size[2];
@@ -685,49 +685,41 @@ uint32_t HostBlitManager::sRGBmap(float fc) const {
   return (uint32_t)(c * 255.0 + 0.5);
 }
 
-bool HostBlitManager::FillBufferInfo::ExpandPattern64(uint64_t pattern, size_t pattern_size,
-                                                      uint64_t& pattern64) {
+// ================================================================================================
+void HostBlitManager::FillBufferInfo::ExpandPattern(uint32_t pattern_size, const void* pattern) {
+  // If pattern size exceeds extended, then runtime will select the normal path
+  if (pattern_size >= kExtendedSize) {
+    return;
+  }
 
-  bool retval = true;
-
-  do {
-
-    // If the pattern is 0 or if the pattern_size is same as max size.
-    if (pattern == 0 ||  pattern_size == sizeof(uint64_t)) {
-      pattern64 = pattern;
-      break;
+  pattern_expanded_ = true;
+  if (pattern_size == sizeof(uint8_t)) {
+    uint8_t pattern_byte = *reinterpret_cast<const uint8_t*>(pattern);
+    for (uint32_t i = 0; i < kExtendedSize; ++i) {
+      reinterpret_cast<uint8_t*>(expanded_pattern_)[i] = pattern_byte;
     }
-
-    // Clean Curr_pattern, since it was casted off from const void* with a lesser size than size_t.
-    ClearBits64(pattern, (pattern_size * 8));
-    pattern64 = 0;
-
-    if (pattern_size == sizeof(uint8_t)) {
-      pattern = pattern & 0xff;
-      pattern64 = ((pattern << 56) | (pattern << 48) | (pattern << 40) | (pattern << 32)
-                    | (pattern << 24) | (pattern << 16) | (pattern << 8) | (pattern));
-    } else if (pattern_size == sizeof(uint16_t)) {
-      pattern = pattern & 0xffff;
-      pattern64 = ((pattern << 48) | (pattern << 32) | (pattern << 16) | (pattern));
-    } else if (pattern_size == sizeof(uint32_t)) {
-      pattern = pattern & 0xffffffff;
-      pattern64 = ((pattern << 32) | (pattern));
-    } else {
-      LogPrintfError("Unsupported Pattern size: %u \n", pattern_size);
-      retval = false;
-      break;
+  } else if (pattern_size == sizeof(uint16_t)) {
+    uint16_t pattern_word = *reinterpret_cast<const uint16_t*>(pattern);
+    for (uint32_t i = 0; i < kExtendedSize / sizeof(uint16_t); ++i) {
+      reinterpret_cast<uint16_t*>(expanded_pattern_)[i] = pattern_word;
     }
-
-  } while (0);
-
-  return retval;
+  } else if (pattern_size == sizeof(uint32_t)) {
+    uint32_t pattern_dword = *reinterpret_cast<const uint32_t*>(pattern);
+    for (uint32_t i = 0; i < kExtendedSize / sizeof(uint32_t); ++i) {
+      reinterpret_cast<uint32_t*>(expanded_pattern_)[i] = pattern_dword;
+    }
+  } else {
+    uint64_t pattern_qword = *reinterpret_cast<const uint64_t*>(pattern);
+    reinterpret_cast<uint64_t*>(expanded_pattern_)[0] = pattern_qword;
+    reinterpret_cast<uint64_t*>(expanded_pattern_)[1] = pattern_qword;
+  }
 }
 
-bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, size_t fill_size,
-                                           size_t fill_origin, const void* pattern_ptr,
-                                           size_t pattern_size,
-                                           std::vector<FillBufferInfo>& packed_info) {
-
+// ================================================================================================
+void HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, size_t fill_size,
+                                               size_t fill_origin, const void* pattern_ptr,
+                                               size_t pattern_size,
+                                               std::vector<FillBufferInfo>& packed_info) {
   // 1. Validate input arguments
   guarantee(fill_size >= pattern_size, "Pattern Size: %u cannot be greater than fill size: %u \n",
                                         pattern_size, fill_size);
@@ -736,60 +728,42 @@ bool HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
 
   // 2. Calculate the next closest dword aligned address for faster processing
   size_t dst_addr = memory.virtualAddress() + fill_origin;
-  size_t aligned_dst_addr = amd::alignUp(dst_addr, sizeof(size_t));
+  size_t aligned_dst_addr = amd::alignUp(dst_addr, kExtendedSize);
   guarantee(aligned_dst_addr >= dst_addr, "Aligned address: %u cannot be greater than destination"
                                           "address :%u \n", aligned_dst_addr, dst_addr);
 
   // 3. If given address is not aligned calculate head and tail size.
   size_t head_size = std::min(aligned_dst_addr - dst_addr, fill_size);
-  size_t aligned_size = ((fill_size - head_size) / sizeof(size_t)) * sizeof(size_t);
-  size_t tail_size = (fill_size - head_size) % sizeof(size_t);
+  size_t aligned_size = ((fill_size - head_size) / kExtendedSize) * kExtendedSize;
+  size_t tail_size = (fill_size - head_size) % kExtendedSize;
   guarantee((head_size + aligned_size + tail_size) <= fill_size, "Head size, aligned size & tail"
                                                           "size together cannot cross fill size");
 
-  // 4. Clear unwanted bytes from the pattern if the pattern size is < sizeof(size_t).
-  uint64_t pattern = *(reinterpret_cast<uint64_t*>(const_cast<void*>(pattern_ptr)));
-  if (pattern_size < sizeof(uint64_t)) {
-    ClearBits64(pattern, (pattern_size * 8));
-  }
-
-  // 5. Fill the head, aligned, tail info if they exist.
-  FillBufferInfo fill_info;
+  // 4. Fill the head, aligned, tail info if they exist.
   if (head_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
     guarantee((head_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
-    fill_info.fill_size_ = head_size;
+    FillBufferInfo fill_info(head_size);
     packed_info.push_back(fill_info);
   }
 
-  fill_info.clearInfo();
   if (aligned_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
     guarantee((aligned_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
-    if (pattern_size < sizeof(uint64_t)) {
-      if (!ExpandPattern64(pattern, pattern_size, fill_info.expanded_pattern_)) {
-        DevLogPrintfError("Failed Expanding the pattern for pattern:%u, pattern_size: %u",
-                          pattern, pattern_size);
-        return false;
-      }
-      fill_info.pattern_expanded_ = true;
-    }
-    fill_info.fill_size_ = aligned_size;
+    FillBufferInfo fill_info(aligned_size);
+    fill_info.ExpandPattern(pattern_size, pattern_ptr);
     packed_info.push_back(fill_info);
   }
-  fill_info.clearInfo();
 
   if (tail_size > 0) {
     // Offsetted ptrs should align with pattern size. Runtime not responsible for rotating pattern.
     guarantee((tail_size % pattern_size) == 0, "Offseted ptr should align with pattern_size");
 
-    fill_info.fill_size_ = tail_size;
+    FillBufferInfo fill_info(tail_size);
     packed_info.push_back(fill_info);
   }
-  fill_info.clearInfo();
-
-  return true;
 }
+
 }  // namespace gpu

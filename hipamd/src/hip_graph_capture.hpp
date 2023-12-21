@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #pragma once
+namespace hip {
 // forward declaration of capture methods
 hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction, dim3& gridDim,
                                   dim3& blockDim, void**& args, size_t& sharedMemBytes);
@@ -52,14 +53,14 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
                                             size_t& hOffsetSrc, size_t& width, size_t& height,
                                             hipMemcpyKind& kind);
 
-hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray*& dst, size_t& wOffset,
+hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray_t& dst, size_t& wOffset,
                                           size_t& hOffset, const void*& src, size_t& spitch,
                                           size_t& width, size_t& height, hipMemcpyKind& kind);
 
-hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray*& srcArray,
+hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArray_t& srcArray,
                                      size_t& srcOffset, size_t& ByteCount);
 
-hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray*& dstArray, size_t& dstOffset,
+hipError_t capturehipMemcpyHtoAAsync(hipStream_t& stream, hipArray_t& dstArray, size_t& dstOffset,
                                      const void*& srcHost, size_t& ByteCount);
 
 hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*& p);
@@ -97,3 +98,4 @@ hipError_t capturehipLaunchHostFunc(hipStream_t& stream, hipHostFn_t& fn, void*&
 hipError_t capturehipMallocAsync(hipStream_t stream, hipMemPool_t mem_pool, size_t size, void** dev_ptr);
 
 hipError_t capturehipFreeAsync(hipStream_t stream, void* dev_ptr);
+}

@@ -221,7 +221,7 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return;
   }
-  void* virtualAlloc(void* addr, size_t size, size_t alignment) override {
+  void* virtualAlloc(void* req_addr, size_t size, size_t alignment) override {
     ShouldNotReachHere();
     return nullptr;
   }
@@ -229,6 +229,17 @@ class NullDevice : public amd::Device {
   void virtualFree(void* addr) override {
     ShouldNotReachHere();
     return;
+  }
+
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count)
+                            override {
+    ShouldNotReachHere();
+    return false;
+  }
+
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) override {
+    ShouldNotReachHere();
+    return false;
   }
 
   //! Determine if we can use device memory for SVM
@@ -439,7 +450,7 @@ class Device : public NullDevice {
   bool deviceAllowAccess(void* dst) const;
 
   bool allowPeerAccess(device::Memory* memory) const;
-
+  uint64_t deviceVmemAlloc(size_t size, uint64_t flags) const;
   void* deviceLocalAlloc(size_t size, bool atomics = false, bool pseudo_fine_grain=false) const;
 
   void memFree(void* ptr, size_t size) const;
@@ -454,8 +465,11 @@ class Device : public NullDevice {
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
 
-  virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
+  virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
+
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count);
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);

@@ -52,13 +52,27 @@
 #define IHIP_IPC_MEM_HANDLE_SIZE   32
 #define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
 
+extern std::once_flag g_ihipInitialized;
+
+typedef struct hipArray {
+    void* data;  // FIXME: generalize this
+    struct hipChannelFormatDesc desc;
+    unsigned int type;
+    unsigned int width;
+    unsigned int height;
+    unsigned int depth;
+    enum hipArray_Format Format;
+    unsigned int NumChannels;
+    bool isDrv;
+    unsigned int textureType;
+    unsigned int flags;
+}hipArray;
+
 namespace hip {
 struct Graph;
 struct GraphNode;
 struct GraphExec;
 struct UserObject;
-}
-
 typedef struct ihipIpcMemHandle_st {
   char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
   size_t psize;
@@ -77,18 +91,18 @@ typedef struct ihipIpcEventHandle_st {
 }ihipIpcEventHandle_t;
 
 const char* ihipGetErrorName(hipError_t hip_error);
+}
 
-extern std::once_flag g_ihipInitialized;
 #define HIP_INIT(noReturn)                                                                         \
   {                                                                                                \
     bool status = true;                                                                            \
     std::call_once(g_ihipInitialized, hip::init, &status);                                         \
-    if (!status  && !noReturn) {                                                                   \
+    if (!status && !noReturn) {                                                                    \
       HIP_RETURN(hipErrorInvalidDevice);                                                           \
     }                                                                                              \
-    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {                                     \
-      hip::tls.device_ = g_devices[0];                                                             \
-      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());           \
+    if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                                \
+      hip::tls.device_ = hip::g_devices[0];                                                        \
+      amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode());      \
     }                                                                                              \
   }
 
@@ -96,9 +110,9 @@ extern std::once_flag g_ihipInitialized;
   {                                                                                                \
     bool status = true;                                                                            \
     std::call_once(g_ihipInitialized, hip::init, &status);                                         \
-    if (hip::tls.device_ == nullptr && g_devices.size() > 0) {                                     \
-      hip::tls.device_ = g_devices[0];                                                             \
-      amd::Os::setPreferredNumaNode(g_devices[0]->devices()[0]->getPreferredNumaNode());           \
+    if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                           \
+      hip::tls.device_ = hip::g_devices[0];                                                   \
+      amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode()); \
     }                                                                                              \
   }
 
@@ -111,37 +125,36 @@ extern std::once_flag g_ihipInitialized;
 
 #define HIP_ERROR_PRINT(err, ...)                                                  \
   ClPrint(amd::LOG_INFO, amd::LOG_API, "%s: Returned %s : %s",                     \
-          __func__, ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
+          __func__, hip::ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
-#define HIP_INIT_API_INTERNAL(noReturn, cid, ...)            \
-  amd::Thread* thread = amd::Thread::current();              \
-  if (!VDI_CHECK_THREAD(thread)) {                           \
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "An internal error has occurred."   \
-      " This may be due to insufficient memory.");                              \
-    if (!noReturn) {                                         \
-      return hipErrorOutOfMemory;                            \
-    }                                                        \
-  }                                                          \
-  HIP_INIT(noReturn)                                         \
-  HIP_API_PRINT(__VA_ARGS__)                                 \
+#define HIP_INIT_API_INTERNAL(noReturn, cid, ...)                                                  \
+  amd::Thread* thread = amd::Thread::current();                                                    \
+  if (!VDI_CHECK_THREAD(thread)) {                                                                 \
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,                                                        \
+            "An internal error has occurred."                                                      \
+            " This may be due to insufficient memory.");                                           \
+    if (!noReturn) {                                                                               \
+      return hipErrorOutOfMemory;                                                                  \
+    }                                                                                              \
+  }                                                                                                \
+  HIP_INIT(noReturn)                                                                               \
+  HIP_API_PRINT(__VA_ARGS__)                                                                       \
   HIP_CB_SPAWNER_OBJECT(cid);
 
 // This macro should be called at the beginning of every HIP API.
 #define HIP_INIT_API(cid, ...)                                                                     \
   HIP_INIT_API_INTERNAL(0, cid, __VA_ARGS__)                                                       \
-  if (g_devices.size() == 0) {                                                                     \
+  if (hip::g_devices.size() == 0) {                                                                \
     HIP_RETURN(hipErrorNoDevice);                                                                  \
   }
 
 #define HIP_INIT_API_NO_RETURN(cid, ...)                     \
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
 
-#define HIP_RETURN_DURATION(ret, ...)                        \
-  hip::tls.last_error_ = ret;                                \
-  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,                      \
-                   "%s: Returned %s : %s",                                         \
-                   __func__, ihipGetErrorName(hip::tls.last_error_),               \
-                   ToString( __VA_ARGS__ ).c_str());                               \
+#define HIP_RETURN_DURATION(ret, ...)                                                              \
+  hip::tls.last_error_ = ret;                                                                      \
+  HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s", __func__,    \
+                   hip::ihipGetErrorName(hip::tls.last_error_), ToString(__VA_ARGS__).c_str());    \
   return hip::tls.last_error_;
 
 #define HIP_RETURN(ret, ...)                      \
@@ -188,11 +201,11 @@ extern std::once_flag g_ihipInitialized;
   }
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
-  getStreamPerThread(stream);                                                                      \
+  hip::getStreamPerThread(stream);                                                                 \
   if (stream != nullptr &&                                                                         \
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
-    hipError_t status = capture##name(stream, ##__VA_ARGS__);                                      \
+    hipError_t status = hip::capture##name(stream, ##__VA_ARGS__);                                 \
     return status;                                                                                 \
   }
 
@@ -214,6 +227,7 @@ struct ihipExec_t {
   std::vector<char> arguments_;
 };
 
+namespace hip {
 class stream_per_thread {
 private:
   std::vector<hipStream_t> m_streams;
@@ -225,7 +239,6 @@ public:
   hipStream_t get();
 };
 
-namespace hip {
   class Device;
   class MemoryPool;
   class Stream : public amd::HostQueue {
@@ -336,7 +349,10 @@ namespace hip {
         lastCapturedNodes_.clear();
       }
       for (auto node : graphNodes) {
-        lastCapturedNodes_.push_back(node);
+        if (std::find(lastCapturedNodes_.begin(), lastCapturedNodes_.end(), node) ==
+            lastCapturedNodes_.end()) {
+          lastCapturedNodes_.push_back(node);
+        }
       }
     }
     /// Set graph that is being captured
@@ -472,7 +488,7 @@ namespace hip {
     void Reset();
 
     hip::Stream* NullStream();
-    Stream* GetNullStream();
+    Stream* GetNullStream() const {return null_stream_;};
 
     void SetActiveStatus() {
       isActive_ = true;
@@ -564,40 +580,41 @@ namespace hip {
   extern bool isValid(hipEvent_t event);
   extern amd::Monitor hipArraySetLock;
   extern std::unordered_set<hipArray*> hipArraySet;
-}; // namespace hip
 
-extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
+  extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
 
-/// Wait all active streams on the blocking queue. The method enqueues a wait command and
-/// doesn't stall the current thread
-extern void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream = false);
+  /// Wait all active streams on the blocking queue. The method enqueues a wait command and
+  /// doesn't stall the current thread
+  extern void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream = false);
 
-extern std::vector<hip::Device*> g_devices;
-extern hipError_t ihipDeviceGetCount(int* count);
-extern int ihipGetDevice();
+  extern std::vector<hip::Device*> g_devices;
+  extern hipError_t ihipDeviceGetCount(int* count);
+  extern int ihipGetDevice();
 
-extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
-extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size = 0);
-extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size = 0);
-extern void getStreamPerThread(hipStream_t& stream);
-extern hipStream_t getPerThreadDefaultStream();
-extern hipError_t ihipUnbindTexture(textureReference* texRef);
-extern hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags);
-extern hipError_t ihipHostUnregister(void* hostPtr);
-extern hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device);
+  extern hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags);
+  extern amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size = 0);
+  extern amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size = 0);
+  extern void getStreamPerThread(hipStream_t& stream);
+  extern hipStream_t getPerThreadDefaultStream();
+  extern hipError_t ihipUnbindTexture(textureReference* texRef);
+  extern hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags);
+  extern hipError_t ihipHostUnregister(void* hostPtr);
+  extern hipError_t ihipGetDeviceProperties(hipDeviceProp_t* props, hipDevice_t device);
 
-extern hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId);
-extern hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void* ptr,
-                                      uint64_t value, uint64_t mask, unsigned int flags, size_t sizeBytes);
-hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                      hip::Stream& stream, bool isHostAsync = false, bool isGPUAsync = true);
-constexpr bool kOptionChangeable = true;
-constexpr bool kNewDevProg = false;
+  extern hipError_t ihipDeviceGet(hipDevice_t* device, int deviceId);
+  extern hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void* ptr,
+                                        uint64_t value, uint64_t mask, unsigned int flags,
+                                        size_t sizeBytes);
+  hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
+                        hip::Stream& stream, bool isHostAsync = false, bool isGPUAsync = true);
+  constexpr bool kOptionChangeable = true;
+  constexpr bool kNewDevProg = false;
 
-constexpr bool kMarkerDisableFlush = true;   //!< Avoids command batch flush in ROCclr
+  constexpr bool kMarkerDisableFlush = true;  //!< Avoids command batch flush in ROCclr
 
-extern std::vector<hip::Stream*> g_captureStreams;
-extern amd::Monitor g_captureStreamsLock;
-extern amd::Monitor g_streamSetLock;
-extern std::unordered_set<hip::Stream*> g_allCapturingStreams;
-#endif // HIP_SRC_HIP_INTERNAL_H
+  extern std::vector<hip::Stream*> g_captureStreams;
+  extern amd::Monitor g_captureStreamsLock;
+  extern amd::Monitor g_streamSetLock;
+  extern std::unordered_set<hip::Stream*> g_allCapturingStreams;
+} // namespace hip
+#endif  // HIP_SRC_HIP_INTERNAL_H

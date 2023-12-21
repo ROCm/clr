@@ -21,6 +21,17 @@
 #include <hip/hip_runtime.h>
 #include "hip_internal.hpp"
 #include "hip_vm.hpp"
+namespace hip {
+
+static_assert(static_cast<uint32_t>(hipMemAccessFlagsProtNone)
+              == static_cast<uint32_t>(amd::Device::VmmAccess::kNone),
+              "Mem Access Flag None mismatch with ROCclr!");
+static_assert(static_cast<uint32_t>(hipMemAccessFlagsProtRead)
+              == static_cast<uint32_t>(amd::Device::VmmAccess::kReadOnly),
+              "Mem Access Flag Read mismatch with ROCclr!");
+static_assert(static_cast<uint32_t>(hipMemAccessFlagsProtReadWrite)
+              == static_cast<uint32_t>(amd::Device::VmmAccess::kReadWrite),
+              "Mem Access Flag Read Write mismatch with ROCclr!");
 
 hipError_t hipMemAddressFree(void* devPtr, size_t size) {
   HIP_INIT_API(hipMemAddressFree, devPtr, size);
@@ -29,52 +40,48 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  for (auto& dev: g_devices) {
-    dev->devices()[0]->virtualFree(devPtr);
-  }
+  // Single call frees address range for all devices.
+  g_devices[0]->devices()[0]->virtualFree(devPtr);
 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void* addr, unsigned long long flags) {
+hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void* addr,
+                                unsigned long long flags) {
   HIP_INIT_API(hipMemAddressReserve, ptr, size, alignment, addr, flags);
 
-  if (ptr == nullptr ||
-      flags !=0) {
+  if (ptr == nullptr || flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  const auto& dev_info = g_devices[0]->devices()[0]->info();
+  if (size == 0 || ((size % dev_info.virtualMemAllocGranularity_) != 0)
+      || ((alignment % dev_info.virtualMemAllocGranularity_) != 0)) {
+    HIP_RETURN(hipErrorMemoryAllocation);
+  }
+
+  // Initialize the ptr, single virtual alloc call would reserve va range for all devices.
   *ptr = nullptr;
+  *ptr = g_devices[0]->devices()[0]->virtualAlloc(addr, size, alignment);
+  if (*ptr == nullptr) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
 
-  void* startAddress = addr;
-
-  for (auto& dev : g_devices) {
-    *ptr = dev->devices()[0]->virtualAlloc(startAddress, size, alignment);
-
-    // if addr==0 we generate the va and use it for other devices
-    if (startAddress == nullptr) {
-      startAddress = *ptr;
-    } else if (*ptr != startAddress) {
-      // if we cannot reserve the same VA on other devices, just fail
-      for (auto& d : g_devices) {
-        if (d == dev) HIP_RETURN(hipErrorOutOfMemory);
-        d->devices()[0]->virtualFree(startAddress);
-      }
-    }
+  // If requested address was not allocated, printf error message.
+  if (addr != nullptr && addr == *ptr) {
+    LogPrintfError("Requested address : 0x%x was not allocated. Allocated address : 0x%x ", *ptr);
   }
 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size, const hipMemAllocationProp* prop, unsigned long long flags) {
+hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
+                        const hipMemAllocationProp* prop, unsigned long long flags) {
   HIP_INIT_API(hipMemCreate, handle, size, prop, flags);
 
-  if (handle == nullptr ||
-      size == 0 ||
-      flags != 0 ||
-      prop == nullptr ||
-      prop->type != hipMemAllocationTypePinned ||
-      prop->location.type != hipMemLocationTypeDevice ||
+  //  Currently we do not support Pinned memory
+  if (handle == nullptr || size == 0 || flags != 0 || prop == nullptr ||
+      prop->type != hipMemAllocationTypePinned || prop->location.type != hipMemLocationTypeDevice ||
       prop->location.id >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -84,6 +91,7 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size, co
     HIP_RETURN(hipErrorNotSupported);
   }
 
+  // Device info validation
   const auto& dev_info = g_devices[prop->location.id]->devices()[0]->info();
 
   if (dev_info.maxPhysicalMemAllocSize_ < size) {
@@ -95,34 +103,39 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size, co
 
   amd::Context* amdContext = g_devices[prop->location.id]->asContext();
 
-  void* ptr = amd::SvmBuffer::malloc(*amdContext, 0, size, dev_info.memBaseAddrAlign_,
-                nullptr);
+  // When ROCCLR_MEM_PHYMEM is set, ROCr impl gets and stores unique hsa handle. Flag no-op on PAL.
+  void* ptr = amd::SvmBuffer::malloc(*amdContext, ROCCLR_MEM_PHYMEM, size,
+                                     dev_info.memBaseAddrAlign_, nullptr);
 
+  // Handle out of memory cases,
   if (ptr == nullptr) {
     size_t free = 0, total =0;
-    hipError_t err = hipMemGetInfo(&free, &total);
-    if (err == hipSuccess) {
-      LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu \n", size, free, total);
+    hipError_t hip_error = hipMemGetInfo(&free, &total);
+    if (hip_error == hipSuccess) {
+      LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu"
+                                                "| total :%zu", size, free, total);
     }
     HIP_RETURN(hipErrorOutOfMemory);
   }
+
+  // Add this to amd::Memory object, so this ptr is accesible for other hipmemory operations.
   size_t offset = 0; //this is ignored
   amd::Memory* memObj = getMemoryObject(ptr, offset);
   //saves the current device id so that it can be accessed later
   memObj->getUserData().deviceId = prop->location.id;
   memObj->getUserData().data = new hip::GenericAllocation(ptr, size, *prop);
-
   *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(memObj->getUserData().data);
 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipMemExportToShareableHandle(void* shareableHandle, hipMemGenericAllocationHandle_t handle, hipMemAllocationHandleType handleType, unsigned long long flags) {
+hipError_t hipMemExportToShareableHandle(void* shareableHandle,
+                                         hipMemGenericAllocationHandle_t handle,
+                                         hipMemAllocationHandleType handleType,
+                                         unsigned long long flags) {
   HIP_INIT_API(hipMemExportToShareableHandle, shareableHandle, handle, handleType, flags);
 
-  if (flags != 0 ||
-      handle == nullptr ||
-      shareableHandle == nullptr) {
+  if (flags != 0 || handle == nullptr || shareableHandle == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -132,23 +145,30 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle, hipMemGenericAll
 hipError_t hipMemGetAccess(unsigned long long* flags, const hipMemLocation* location, void* ptr) {
   HIP_INIT_API(hipMemGetAccess, flags, location, ptr);
 
-  if (flags == nullptr ||
-      location == nullptr ||
-      ptr == nullptr) {
+  if (flags == nullptr || location == nullptr || ptr == nullptr
+      || location->type != hipMemLocationTypeDevice || location->id >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidValue)
+  }
+
+  // Convert the access flags to amd::Device access flag
+  auto& dev = g_devices[location->id];
+  amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(0);
+
+  if (!dev->devices()[0]->GetMemAccess(ptr, &access_flags)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  *flags = static_cast<unsigned long long>(access_flags);
 
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipMemGetAllocationGranularity(size_t* granularity, const hipMemAllocationProp* prop, hipMemAllocationGranularity_flags option) {
+hipError_t hipMemGetAllocationGranularity(size_t* granularity, const hipMemAllocationProp* prop,
+                                          hipMemAllocationGranularity_flags option) {
   HIP_INIT_API(hipMemGetAllocationGranularity, granularity, prop, option);
 
-  if (granularity == nullptr ||
-      prop == nullptr ||
-      prop->type != hipMemAllocationTypePinned ||
-      prop->location.type != hipMemLocationTypeDevice ||
-      prop->location.id >= g_devices.size()) {
+  if (granularity == nullptr || prop == nullptr || prop->type != hipMemAllocationTypePinned ||
+      prop->location.type != hipMemLocationTypeDevice || prop->location.id >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -171,7 +191,8 @@ hipError_t hipMemGetAllocationPropertiesFromHandle(hipMemAllocationProp* prop, h
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* handle, void* osHandle, hipMemAllocationHandleType shHandleType) {
+hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* handle, void* osHandle,
+                                           hipMemAllocationHandleType shHandleType) {
   HIP_INIT_API(hipMemImportFromShareableHandle, handle, osHandle, shHandleType);
 
   if (handle == nullptr || osHandle == nullptr) {
@@ -181,22 +202,23 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   HIP_RETURN(hipErrorNotSupported);
 }
 
-hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocationHandle_t handle, unsigned long long flags) {
+hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocationHandle_t handle,
+                     unsigned long long flags) {
   HIP_INIT_API(hipMemMap, ptr, size, offset, handle, flags);
 
-  if (ptr == nullptr ||
-      handle == nullptr ||
-      size == 0 ||
-      offset != 0 ||
-      flags != 0) {
+  if (ptr == nullptr || handle == nullptr || size == 0 || offset != 0 || flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  // Re-interpret the ga handle and set the mapped flag
   hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(handle);
+  ga->retain();
 
   auto& queue = *g_devices[ga->GetProperties().location.id]->NullStream();
 
-  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size, &ga->asAmdMemory());
+  // Map the physical address to virtual address
+  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
+                                                 &ga->asAmdMemory());
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
@@ -220,11 +242,13 @@ hipError_t hipMemMapArrayAsync(hipArrayMapInfo* mapInfoList, unsigned int  count
 hipError_t hipMemRelease(hipMemGenericAllocationHandle_t handle) {
   HIP_INIT_API(hipMemRelease, handle);
 
-  if (handle == nullptr) HIP_RETURN(hipErrorInvalidValue);
+  if (handle == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
+  // Re-interpret the ga handle and make sure it is not already released.
   hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(handle);
-
-  delete ga;
+  ga->release();
 
   HIP_RETURN(hipSuccess);
 }
@@ -232,7 +256,9 @@ hipError_t hipMemRelease(hipMemGenericAllocationHandle_t handle) {
 hipError_t hipMemRetainAllocationHandle(hipMemGenericAllocationHandle_t* handle, void* addr) {
   HIP_INIT_API(hipMemRetainAllocationHandle, handle, addr);
 
-  if (handle == nullptr || addr == nullptr) HIP_RETURN(hipErrorInvalidValue);
+  if (handle == nullptr || addr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   amd::Memory* mem = amd::MemObjMap::FindMemObj(addr);
 
@@ -252,11 +278,22 @@ hipError_t hipMemRetainAllocationHandle(hipMemGenericAllocationHandle_t* handle,
 hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc, size_t count) {
   HIP_INIT_API(hipMemSetAccess, ptr, size, desc, count);
 
-  if (ptr == nullptr ||
-      size == 0 ||
-      desc == nullptr ||
-      count == 0) {
+  if (ptr == nullptr || size == 0 || desc == nullptr || count == 0) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  for (size_t desc_idx = 0; desc_idx < count; ++desc_idx) {
+
+    if (desc[desc_idx].location.id >= g_devices.size()) {
+      HIP_RETURN(hipErrorInvalidValue)
+    }
+
+    auto& dev = g_devices[desc[desc_idx].location.id];
+    amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(desc[desc_idx].flags);
+
+    if (!dev->devices()[0]->SetMemAccess(ptr, size, access_flags, count)) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
   }
 
   HIP_RETURN(hipSuccess);
@@ -265,13 +302,18 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
 hipError_t hipMemUnmap(void* ptr, size_t size) {
   HIP_INIT_API(hipMemUnmap, ptr, size);
 
-  if (ptr == nullptr) HIP_RETURN(hipErrorInvalidValue);
+  if (ptr == nullptr || size == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
-
+  if (va && va->getSize() != size) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   auto& queue = *g_devices[va->getUserData().deviceId]->NullStream();
 
-  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size, nullptr);
+  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
+                                                 nullptr);
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
@@ -280,6 +322,9 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(va->getUserData().data);
   va->setSvmPtr(ga->genericAddress());
 
+  ga->release();
+
   HIP_RETURN(hipSuccess);
 }
+} //namespace hip
 

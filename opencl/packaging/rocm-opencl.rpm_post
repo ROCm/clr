@@ -1,0 +1,1 @@
+mkdir -p /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors && (echo libamdocl64.so > /@CMAKE_INSTALL_SYSCONFDIR@/OpenCL/vendors/@OPENCL_AMD_ICD_FILE@)

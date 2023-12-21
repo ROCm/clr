@@ -24,10 +24,9 @@
 #include "hip_prof_api.h"
 
 // HIP API callback/activity
+namespace hip {
 
 extern const std::string& FunctionName(const hipFunction_t f);
-
-extern "C" {
 
 int hipGetStreamDeviceId(hipStream_t stream) {
   if (!hip::isValid(stream)) {
@@ -46,12 +45,11 @@ const char* hipKernelNameRefByPtr(const void* host_function, hipStream_t stream)
   return (host_function != nullptr) ? PlatformState::instance().getStatFuncName(host_function)
                                     : nullptr;
 }
-
-void hipRegisterTracerCallback(int (*function)(activity_domain_t domain, uint32_t operation_id,
-                                               void* data)) {
-  activity_prof::report_activity.store(function, std::memory_order_relaxed);
-}
-
 const char* hipApiName(uint32_t id) { return hip_api_name(id); }
 
-}  // extern "C"
+}  // namespace hip
+
+extern "C" void hipRegisterTracerCallback(int (*function)(activity_domain_t domain,
+                                                          uint32_t operation_id, void* data)) {
+  activity_prof::report_activity.store(function, std::memory_order_relaxed);
+}

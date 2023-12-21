@@ -43,7 +43,6 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 #############################
 # Options
 #############################
-option(BUILD_HIPIFY_CLANG "Enable building the CUDA->HIP converter" OFF)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" ON)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
@@ -63,6 +62,7 @@ endif()
 
 message(STATUS "HIPCC_BIN_DIR found at ${HIPCC_BIN_DIR}")
 message(STATUS "HIP_COMMON_DIR found at ${HIP_COMMON_DIR}")
+message(STATUS "HIPNV_DIR found at ${HIPNV_DIR}")
 set(HIP_COMMON_INCLUDE_DIR ${HIP_COMMON_DIR}/include)
 set(HIP_COMMON_BIN_DIR ${HIP_COMMON_DIR}/bin)
 set(__HIPCONFIG_EXECUTABLE__ ${HIP_COMMON_DIR}/bin/hipconfig)
@@ -215,6 +215,9 @@ message(STATUS "HIP Platform: " ${HIP_PLATFORM})
 if(HIP_PLATFORM STREQUAL "nvidia")
     set(HIP_RUNTIME "cuda"  CACHE STRING "HIP Runtime")
     set(HIP_COMPILER "nvcc" CACHE STRING "HIP Compiler")
+    if (NOT EXISTS ${HIPNV_DIR})
+      message(FATAL_ERROR "Invalid path HIPNV_DIR=${HIPNV_DIR}, please pass valid path -DHIPNV_DIR=<path>" )
+    endif()
 elseif(HIP_PLATFORM STREQUAL "amd")
     set(HIP_RUNTIME "rocclr" CACHE STRING "HIP Runtime")
     set(HIP_COMPILER "clang" CACHE STRING "HIP Compiler")
@@ -269,11 +272,6 @@ set(INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR})
 set(CONFIG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip)
 set(CONFIG_LANG_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hip-lang)
 set(CONFIG_RTC_PACKAGE_INSTALL_DIR ${LIB_INSTALL_DIR}/cmake/hiprtc)
-
-# Build clang hipify if enabled
-if (BUILD_HIPIFY_CLANG)
-    add_subdirectory(hipify-clang)
-endif()
 
 # Generate hip_version.h
 set(_versionInfoHeader
@@ -363,6 +361,9 @@ if(NOT ${INSTALL_SOURCE} EQUAL 0)
     endif()
 
     install(DIRECTORY include DESTINATION .)
+    if(DEFINED HIPNV_DIR)
+        install(DIRECTORY ${HIPNV_DIR}/include/hip/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/)
+    endif()
     install(DIRECTORY ${HIP_COMMON_INCLUDE_DIR}/hip/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip/)
     if(WIN32)
       install(DIRECTORY ${HIP_COMMON_DIR}/cmake DESTINATION .)
@@ -400,8 +401,10 @@ if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION bin)
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION bin)
   install(PROGRAMS ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION bin)
-  install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
-  install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
+  if(WIN32)
+    install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
+    install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.bat DESTINATION bin)
+  endif()
 endif()
 
 #############################
@@ -459,29 +462,6 @@ if(CLANGFORMAT_EXE)
     file(GLOB_RECURSE FORMAT_SOURCE_FILE_LIST *.cpp *.hpp *.h)
     add_custom_target(clangformat COMMAND ${CLANGFORMAT_EXE} -style=file -i ${FORMAT_SOURCE_FILE_LIST}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endif()
-
-#############################
-# Testing steps
-#############################
-# HIT is not compatible with Windows
-if(NOT WIN32)
-    set(HIP_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-    set(HIP_SRC_PATH ${CMAKE_CURRENT_SOURCE_DIR})
-    if(HIP_PLATFORM STREQUAL "nvidia")
-        execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_SRC_PATH}/include" "${HIP_ROOT_DIR}/include" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
-    endif()
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_INCLUDE_DIR}/hip/" "${HIP_ROOT_DIR}/include/hip/" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
-    execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_DIR}/cmake" "${HIP_ROOT_DIR}/cmake" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
-    if(${COPY_COMMAND_OP} EQUAL 0)
-        execute_process(COMMAND "${CMAKE_COMMAND}" -E copy_directory "${HIP_COMMON_BIN_DIR}" "${HIP_ROOT_DIR}/bin" RESULT_VARIABLE COPY_COMMAND_OP ERROR_QUIET)
-    endif()
-
-    file(COPY ${HIPCC_BIN_DIR}/hipcc DESTINATION ${HIP_ROOT_DIR}/bin/)
-    file(COPY ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
-    file(COPY ${HIPCC_BIN_DIR}/hipconfig DESTINATION ${HIP_ROOT_DIR}/bin/)
-    file(COPY ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION ${HIP_ROOT_DIR}/bin/)
-    file(COPY ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION ${HIP_ROOT_DIR}/bin/)
 endif()
 
 #############################

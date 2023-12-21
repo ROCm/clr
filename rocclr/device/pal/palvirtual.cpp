@@ -370,8 +370,9 @@ void VirtualGPU::Queue::addCmdDoppRef(Pal::IGpuMemory* iMem, bool lastDoppCmd, b
 // ================================================================================================
 bool VirtualGPU::Queue::flush() {
   amd::ScopedLock l(lock_);
+  const Settings& settings = gpu_.dev().settings();
 
-  if (!gpu_.dev().settings().alwaysResident_ && palMemRefs_.size() != 0) {
+  if (!settings.alwaysResident_ && palMemRefs_.size() != 0) {
     if (Pal::Result::Success !=
         iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
                                       Pal::GpuMemoryRefCantTrim)) {
@@ -410,10 +411,15 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.fenceCount           = 1;
   submitInfo.ppFences             = &iCmdFences_[cmdBufIdSlot_];
 
-  if (amd::IS_HIP) {
-    // HIP disables per resource tracking, because the app may embed SVM ptr into other buffers.
-    // Force CPU sync if there are pending operations on SDMA, until OS fences will be added
-    if (iQueue_->Type() == Pal::QueueTypeCompute) {
+  if (iQueue_->Type() == Pal::QueueTypeCompute) {
+    if (settings.useDeviceKernelArg_) {
+      // If runtime uses device memory for kernel arguments, then perform a CPU read back on
+      // submission. That will make sure NBIO puches all previous CPU write requests through PCIE
+      gpu_.managedBuffer().CpuReadBack();
+    }
+    if (amd::IS_HIP) {
+      // HIP disables per resource tracking, because the app may embed SVM ptr into other buffers.
+      // Force CPU sync if there are pending operations on SDMA, until OS fences will be added
       gpu_.WaitForIdleSdma();
     }
   }
@@ -487,7 +493,7 @@ bool VirtualGPU::Queue::flush() {
       }
     }
   }
-  if (!gpu_.dev().settings().alwaysResident_ && palMems_.size() != 0) {
+  if (!settings.alwaysResident_ && palMems_.size() != 0) {
     iDev_->RemoveGpuMemoryReferences(palMems_.size(), &palMems_[0], iQueue_);
     palMems_.clear();
   }
@@ -778,6 +784,9 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize) {
   // Add mask array for AmdAqlWrap slots
   allocSize += amd::alignUp(numSlots, DeviceQueueMaskSize) / 8;
 
+  // Align size to 64 bytes for more efficient fill operation
+  allocSize = amd::alignUp(allocSize, 8 * sizeof(uint64_t));
+
   virtualQueue_ = new Memory(dev(), allocSize);
   Resource::MemoryType type = (GPU_PRINT_CHILD_KERNEL == 0) ? Resource::Local : Resource::Remote;
   if ((virtualQueue_ == nullptr) || !virtualQueue_->create(type)) {
@@ -949,8 +958,17 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
     return false;
   }
 
-  if (!managedBuffer_.create(Resource::RemoteUSWC)) {
-    return false;
+  // Create buffers for kernel arg management
+  if (!managedBuffer_.create(
+      dev().settings().useDeviceKernelArg_ ? Resource::Persistent : Resource::RemoteUSWC)) {
+    // Try just USWC if persistent memory failed
+    if (dev().settings().useDeviceKernelArg_) {
+      if (!managedBuffer_.create(Resource::RemoteUSWC)) {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 
   // Diable double copy optimization,
@@ -2709,6 +2727,7 @@ void VirtualGPU::submitNativeFn(amd::NativeFnCommand& vcmd) {
   Unimplemented();  //!< @todo: Unimplemented
 }
 
+// ================================================================================================
 void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   //!@note runtime doesn't need to lock this command on execution
 
@@ -2735,6 +2754,11 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
   }
 }
 
+// ================================================================================================
+void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
+}
+
+// ================================================================================================
 void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
 
   const Pal::IQueueSemaphore* sem = reinterpret_cast<const Pal::IQueueSemaphore*>(cmd.sem_ptr());
@@ -2748,9 +2772,7 @@ void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
     queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
                                                        cmd.fence());
   }
-
 }
-
 
 void VirtualGPU::releaseMemory(GpuMemoryReference* mem) {
   queues_[MainEngine]->removeCmdMemRef(mem);

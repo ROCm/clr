@@ -6,10 +6,102 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 ### Optimizations
 
 ### Added
+- New fields for external resource interoperability,
+  Structs,
+    - hipExternalMemoryHandleDesc_st
+    - hipExternalMemoryBufferDesc_st
+    - hipExternalSemaphoreHandleDesc_st
+    - hipExternalSemaphoreSignalParams_st
+    - hipExternalSemaphoreWaitParams_st
+  Enumerations,
+    - hipExternalMemoryHandleType_enum
+    - hipExternalSemaphoreHandleType_enum
+    - hipExternalMemoryHandleType_enum
+- New environment variable HIP_LAUNCH_BLOCKING
+It is used for serialization on kernel execution.
+The default value is 0 (disable), kernel will execute normally as defined in the queue. When this environment variable is set as 1 (enable), HIP runtime will serialize kernel enqueue, behaves the same as AMD_SERIALIZE_KERNEL.
+- More members are added in HIP struct hipDeviceProp_t, for new feature capabilities including,
+    - Texture
+        - int maxTexture1DMipmap;
+        - int maxTexture2DMipmap[2];
+        - int maxTexture2DLinear[3];
+        - int maxTexture2DGather[2];
+        - int maxTexture3DAlt[3];
+        - int maxTextureCubemap;
+        - int maxTexture1DLayered[2];
+        - int maxTexture2DLayered[3];
+        - int maxTextureCubemapLayered[2];
+    - Surface
+        - int maxSurface1D;
+        - int maxSurface2D[2];
+        - int maxSurface3D[3];
+        - int maxSurface1DLayered[2];
+        - int maxSurface2DLayered[3];
+        - int maxSurfaceCubemap;
+        - int maxSurfaceCubemapLayered[2];
+    - Device
+        - hipUUID uuid;
+        - char luid[8]; this is 8-byte unique identifier. Only valid on windows
+        - unsigned int luidDeviceNodeMask;
+- LUID (Locally Unique Identifier) is supported for interoperability between devices.
+In HIP, more members are added in the struct hipDeviceProp_t, as properties to identify each device,
+    - char luid[8];
+    - unsigned int luidDeviceNodeMask;
+
+    Note: HIP supports LUID only on Windows OS.
 
 ### Changed
+- Some OpenGL Interop HIP APIs are moved from the hip_runtime_api header to a new header file hip_gl_interop.h for the AMD platform, as following,
+    - hipGLGetDevices
+    - hipGraphicsGLRegisterBuffer
+    - hipGraphicsGLRegisterImage
 
+### Changes Impacting Backward Incompatibility
+- Data types for members in HIP_MEMCPY3D structure are changed from "unsigned int" to "size_t".
+- The value of the flag hipIpcMemLazyEnablePeerAccess is changed to “0x01”, which was previously defined as “0”.
+- Some device property attributes are not currently support in HIP runtime, in order to maintain consistency, the following related enumeration names are changed in hipDeviceAttribute_t
+    - hipDeviceAttributeName is changed to hipDeviceAttributeUnused1
+    - hipDeviceAttributeUuid is changed to hipDeviceAttributeUnused2
+    - hipDeviceAttributeArch is changed to hipDeviceAttributeUnused3
+    - hipDeviceAttributeGcnArch is changed to hipDeviceAttributeUnused4
+    - hipDeviceAttributeGcnArchName is changed to hipDeviceAttributeUnused5
+- HIP struct hipArray is removed from driver type header to be comlpying with cuda
+- hipArray_t replaces hipArray*, as the pointer to array.
+    - This allows hipMemcpyAtoH and hipMemcpyHtoA to have the correct array type which is equivalent to coresponding CUDA driver APIs.
 ### Fixed
+- Kernel launch maximum dimension validation is added specifically on gridY and gridZ in the HIP API hipModule-LaunchKernel. As a result,when hipGetDeviceAttribute is called for the value of hipDeviceAttributeMaxGrid-Dim, the behavior on the AMD platform is equivalent to NVIDIA.
+- The HIP stream synchronisation behaviour is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
+The change won't affect usage of applications, and makes them behave the same on the AMD platform as NVIDIA.
+- Error handling behavior on unsupported GPU is fixed, HIP runtime will log out error message, instead of creating signal abortion error which is invisible to developers but continued kernel execution process. This is for the case when developers compile any application via hipcc, setting the option --offload-arch with GPU ID which is different from the one on the system.
+- HIP complex vector type multiplication and division operations.
+On AMD platform, some duplicated complex operators are removed to avoid compilation failures.
+In HIP, hipFloatComplex and hipDoubleComplex are defined as complex data types,
+typedef float2 hipFloatComplex;
+typedef double2 hipDoubleComplex;
+Any application uses complex multiplication and division operations, need to replace '*' and '/' operators with the following,
+    - hipCmulf() and hipCdivf() for hipFloatComplex
+    - hipCmul() and hipCdiv() for hipDoubleComplex
+
+    Note: These complex operations are equivalent to corresponding types/functions on NVIDIA platform.
+
+### Deprecated And Removed
+- Deprecated Heterogeneous Compute (HCC) symbols and flags are removed from the HIP source code, including,
+    - Build options on obsolete HCC_OPTIONS was removed from cmake.
+    - Micro definitions are removed.
+      HIP_INCLUDE_HIP_HCC_DETAIL_DRIVER_TYPES_H
+      HIP_INCLUDE_HIP_HCC_DETAIL_HOST_DEFINES_H
+    - Compilation flags for the platform definitions,
+      AMD platform,
+      __HIP_PLATFORM_HCC__
+      __HCC__
+      __HIP_ROCclr__
+      NVIDIA platform,
+      __HIP_PLATFORM_NVCC__
+- File directories in the clr repository are removed,
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/hcc_detail
+  https://github.com/ROCm/clr/blob/develop/hipamd/include/hip/nvcc_detail
+- Deprecated gcnArch is removed from hip device struct hipDeviceProp_t.
+- Deprecated "enum hipMemoryType memoryType;" is removed from HIP struct hipPointerAttribute_t union.
 
 ### Known Issues
 

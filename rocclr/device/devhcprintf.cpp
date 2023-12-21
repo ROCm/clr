@@ -260,7 +260,9 @@ bool populateFormatStringHashMap(
   for (auto it : printfInfo) {
     auto Delim = it.fmtString_.find_first_of(',');
     auto HashStr = it.fmtString_.substr(0, Delim);
-    auto HashVal = strtoul(HashStr.c_str(), NULL, 16);
+
+    static_assert(sizeof(long long) == sizeof(uint64_t), "unexpected long long type width");
+    auto HashVal = std::strtoull(HashStr.c_str(), NULL, 16);
     if (strMap.find(HashVal) != strMap.end()) {
       LogError("Hash value collision detected, printf buffer ill formed");
       return false;

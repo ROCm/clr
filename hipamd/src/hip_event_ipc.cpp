@@ -28,10 +28,9 @@
 #endif
 
 // ================================================================================================
+namespace hip {
 
 hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags);
-
-namespace hip {
 
 bool IPCEvent::createIpcEventShmemIfNeeded() {
   if (ipc_evt_.ipc_shmem_) {
@@ -219,8 +218,6 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
   return status;
 }
 
-}  // namespace hip
-
 // ================================================================================================
 
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
@@ -248,3 +245,4 @@ hipError_t hipIpcOpenEventHandle(hipEvent_t* event, hipIpcEventHandle_t handle) 
   ihipIpcEventHandle_t* iHandle = reinterpret_cast<ihipIpcEventHandle_t*>(&handle);
   HIP_RETURN(e->OpenHandle(iHandle));
 }
+}  // namespace hip

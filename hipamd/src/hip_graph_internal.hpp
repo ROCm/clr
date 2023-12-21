@@ -183,6 +183,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   static amd::Monitor nodeSetLock_;
   unsigned int isEnabled_;
   uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
+  std::string capturedKernelName_;
 
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -232,7 +233,10 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   // Return gpu packet address to update with actual packet under capture.
   uint8_t* GetAqlPacket() { return gpuPacket_; }
-  hip::Stream* GetQueue() { return stream_; }
+  void SetKernelName(std::string kernelName) { capturedKernelName_ = kernelName; }
+  const std::string& GetKernelName() const { return capturedKernelName_; }
+
+  hip::Stream* GetQueue() const { return stream_; }
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
     stream_ = stream;
@@ -463,6 +467,7 @@ struct Graph {
       graphExeUserObjs.insert(userObj);
     }
   }
+
   Graph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
   Graph* clone() const;
   void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
@@ -489,32 +494,21 @@ struct Graph {
   void* ReserveAddress(size_t size) const {
     void* startAddress = nullptr;
     void* ptr;
-    for (auto& dev : g_devices) {
-      const auto& dev_info = dev->devices()[0]->info();
-      ptr = dev->devices()[0]->virtualAlloc(startAddress, size,
-          dev_info.virtualMemAllocGranularity_);
+    const auto& dev_info = g_devices[0]->devices()[0]->info();
 
-      // if addr==0 then runtime will use the first VA on other devices
-      if (startAddress == nullptr) {
-        startAddress = ptr;
-      } else if (ptr != startAddress) {
-        // if runtime cannot reserve the same VA on other devices, just fail
-        for (auto& d : g_devices) {
-          if (d == dev) {
-            d->devices()[0]->virtualFree(ptr);
-            return nullptr;
-          }
-          d->devices()[0]->virtualFree(startAddress);
-        }
-      }
+    // Single virtual alloc would reserve for all devices.
+    ptr = g_devices[0]->devices()[0]->virtualAlloc(startAddress, size,
+            dev_info.virtualMemAllocGranularity_);
+    if (ptr == nullptr) {
+      LogError("Failed to reserve Virtual Address");
     }
+
     return ptr;
   }
 
   void FreeAddress(void* ptr) const {
-    for (auto& dev : g_devices) {
-      dev->devices()[0]->virtualFree(ptr);
-    }
+    // Single Free would free for all devices.
+    g_devices[0]->devices()[0]->virtualFree(ptr);
   }
 
   void FreeMemory(void* dev_ptr, hip::Stream* stream) const {
@@ -612,6 +606,7 @@ struct GraphExec {
     }
     return clonedNode;
   }
+
   address allocKernArg(size_t size, size_t alignment) {
     assert(alignment != 0);
     address result = nullptr;
@@ -622,12 +617,19 @@ struct GraphExec {
     }
     return result;
   }
+
   // check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
 
   std::vector<Node>& GetNodes() { return topoOrder_; }
 
-  hip::Stream* GetAvailableStreams() { return parallel_streams_[currentQueueIndex_++]; }
+  hip::Stream* GetAvailableStreams() {
+    if (currentQueueIndex_ < parallel_streams_.size()) {
+      return parallel_streams_[currentQueueIndex_++];
+    }
+    return nullptr;
+  }
+
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
@@ -791,13 +793,16 @@ class GraphKernelNode : public GraphNode {
     out << "];";
     }
 
-    void EnableCapturing(address kernArgOffset) {
+    void CaptureAndFormPacket(address kernArgOffset) {
       for (auto& command : commands_) {
         reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
             true, GetAqlPacket(), kernArgOffset);
-        // Enqueue command to capture GPU Packet. Packet is not sent to hardware queue.
 
+        // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
+        // The packet is stored in gpuPacket_ and submitted during graph launch.
         command->submit(*(command->queue())->vdev());
+        // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
+        SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
         command->release();
       }
     }
@@ -1164,7 +1169,8 @@ class GraphMemcpyNode : public GraphNode {
   }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) {
-    if (IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr, copyParams_.kind)) {
+    if ((copyParams_.kind == hipMemcpyHostToHost || copyParams_.kind == hipMemcpyDefault)
+      && IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr)) {
       return hipSuccess;
     }
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -1179,7 +1185,8 @@ class GraphMemcpyNode : public GraphNode {
   }
 
   virtual void EnqueueCommands(hipStream_t stream) override {
-    if (isEnabled_ && IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr, copyParams_.kind)) {
+    if ( (copyParams_.kind == hipMemcpyHostToHost || copyParams_.kind == hipMemcpyDefault) &&
+          isEnabled_ && IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr)) {
       ihipHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr,
                      copyParams_.extent.width * copyParams_.extent.height *
                      copyParams_.extent.depth, *hip::getStream(stream));
@@ -1317,7 +1324,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) {
-    if (IsHtoHMemcpy(dst_, src_, kind_)) {
+    if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
       return hipSuccess;
     }
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -1332,7 +1339,10 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   }
 
   virtual void EnqueueCommands(hipStream_t stream) {
-    bool isH2H = IsHtoHMemcpy(dst_, src_, kind_);
+    bool isH2H = false;
+    if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
+      isH2H = true;
+    }
     if (!isH2H) {
       if (commands_.empty()) return;
       // commands_ should have just 1 item
@@ -1535,7 +1545,8 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
     if (dstMemory == nullptr && kind != hipMemcpyDeviceToHost && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
     } else if (dstMemory != nullptr && dstMemory->getMemFlags() == 0 &&
-               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
+               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
+               && kind != hipMemcpyDefault) {
       return hipErrorInvalidMemcpyDirection;
     } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyHostToDevice) {
       return hipErrorInvalidMemcpyDirection;
@@ -1625,7 +1636,8 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
     if (srcMemory == nullptr && kind != hipMemcpyHostToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
     } else if (srcMemory != nullptr && srcMemory->getMemFlags() == 0 &&
-               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDefault) {
+               kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
+               && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
     } else if (kind == hipMemcpyHostToHost || kind == hipMemcpyDeviceToHost) {
       return hipErrorInvalidValue;
@@ -1645,7 +1657,6 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
                      memcpyNode->kind_);
   }
 };
-
 class GraphMemsetNode : public GraphNode {
   hipMemsetParams memsetParams_;
 
@@ -1726,7 +1737,16 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(params, &memsetParams_, sizeof(hipMemsetParams));
   }
 
-  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
+  void GetParams(HIP_MEMSET_NODE_PARAMS* params) {
+    params->dst = memsetParams_.dst;
+    params->elementSize = memsetParams_.elementSize;
+    params->height = memsetParams_.height;
+    params->pitch = memsetParams_.pitch;
+    params->value = memsetParams_.value;
+    params->width = memsetParams_.width;
+  }
+
+  hipError_t SetParamsInternal(const hipMemsetParams* params, bool isExec) {
     hipError_t hip_error = hipSuccess;
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
@@ -1788,7 +1808,19 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(&memsetParams_, params, sizeof(hipMemsetParams));
     return hipSuccess;
   }
-
+  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
+    return SetParamsInternal(params, isExec);
+  }
+  hipError_t SetParams(const HIP_MEMSET_NODE_PARAMS* params, bool isExec = false) {
+    hipMemsetParams pmemsetParams;
+    pmemsetParams.dst = params->dst;
+    pmemsetParams.elementSize = params->elementSize;
+    pmemsetParams.height = params->height;
+    pmemsetParams.pitch = params->pitch;
+    pmemsetParams.value = params->value;
+    pmemsetParams.width = params->width;
+    return SetParamsInternal(&pmemsetParams, isExec);
+  }
   hipError_t SetParams(GraphNode* node) {
     const GraphMemsetNode* memsetNode = static_cast<GraphMemsetNode const*>(node);
     return SetParams(&memsetNode->memsetParams_);
@@ -1828,7 +1860,7 @@ class GraphEventRecordNode : public GraphNode {
       hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] Enqueue event record command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue event record command failed for node %p - status %d", this,
                 status);
       }
     }
@@ -1880,7 +1912,7 @@ class GraphEventWaitNode : public GraphNode {
       hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] Enqueue stream wait command failed for node %p - status %d\n", this,
+                "[hipGraph] Enqueue stream wait command failed for node %p - status %d", this,
                 status);
       }
       commands_[0]->release();
@@ -2220,6 +2252,82 @@ class GraphMemFreeNode : public GraphNode {
 
   void GetParams(void** params) const {
     *params = device_ptr_;
+  }
+};
+
+class GraphDrvMemcpyNode : public GraphNode {
+  HIP_MEMCPY3D copyParams_;
+
+ public:
+  GraphDrvMemcpyNode(const HIP_MEMCPY3D* pCopyParams)
+      : GraphNode(hipGraphNodeTypeMemcpy, "solid", "trapezium", "MEMCPY") {
+    copyParams_ = *pCopyParams;
+  }
+  ~GraphDrvMemcpyNode() {}
+
+  GraphDrvMemcpyNode(const GraphDrvMemcpyNode& rhs) : GraphNode(rhs) {
+    copyParams_ = rhs.copyParams_;
+  }
+
+  GraphNode* clone() const {
+    return new GraphDrvMemcpyNode(static_cast<GraphDrvMemcpyNode const&>(*this));
+  }
+
+  hipError_t CreateCommand(hip::Stream* stream) {
+    if(copyParams_.srcMemoryType == hipMemoryTypeHost &&
+       copyParams_.dstMemoryType == hipMemoryTypeHost &&
+       IsHtoHMemcpy(copyParams_.dstHost, copyParams_.srcHost)) {
+      return hipSuccess;
+    }
+    hipError_t status = GraphNode::CreateCommand(stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+    commands_.reserve(1);
+    amd::Command* command;
+    status = ihipGetMemcpyParam3DCommand(command, &copyParams_, stream);
+    commands_.emplace_back(command);
+    return status;
+  }
+
+  void EnqueueCommands(hipStream_t stream) override {
+    bool isHtoH = false;
+    if(copyParams_.srcMemoryType == hipMemoryTypeHost &&
+       copyParams_.dstMemoryType == hipMemoryTypeHost &&
+       IsHtoHMemcpy(copyParams_.dstHost, copyParams_.srcHost)) {
+      isHtoH = true;
+    }
+    if (isEnabled_ && isHtoH) {
+      ihipHtoHMemcpy(copyParams_.dstHost, copyParams_.srcHost,
+                     copyParams_.WidthInBytes * copyParams_.Height *
+                     copyParams_.Depth, *hip::getStream(stream));
+      return;
+    }
+    GraphNode::EnqueueCommands(stream);
+  }
+
+  void GetParams(HIP_MEMCPY3D* params) {
+    std::memcpy(params, &copyParams_, sizeof(HIP_MEMCPY3D));
+  }
+  hipError_t SetParams(const HIP_MEMCPY3D* params) {
+    hipError_t status = ValidateParams(params);
+    if (status != hipSuccess) {
+      return status;
+    }
+    std::memcpy(&copyParams_, params, sizeof(HIP_MEMCPY3D));
+    return hipSuccess;
+  }
+  hipError_t SetParams(GraphNode* node) {
+    const GraphDrvMemcpyNode* memcpyNode = static_cast<GraphDrvMemcpyNode const*>(node);
+    return SetParams(&memcpyNode->copyParams_);
+  }
+  // ToDo: use this when commands are cloned and command params are to be updated
+  hipError_t ValidateParams(const HIP_MEMCPY3D* pNodeParams) {
+    hipError_t status = ihipDrvMemcpy3D_validate(pNodeParams);
+    if (status != hipSuccess) {
+      return status;
+    }
+    return hipSuccess;
   }
 };
 }  // namespace hip

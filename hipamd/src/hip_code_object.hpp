@@ -34,10 +34,9 @@ THE SOFTWARE.
 #include "device/device.hpp"
 #include "platform/program.hpp"
 
+namespace hip {
 //Forward Declaration for friend usage
 class PlatformState;
-
-namespace hip {
 
 //Code Object base class
 class CodeObject {
@@ -105,7 +104,7 @@ public:
   // Device ID Check to check if module is launched in the same device it was loaded.
   inline void CheckDeviceIdMatch() const {
     guarantee(device_id_ == ihipGetDevice(), "Device mismatch from where this module is loaded,"
-              "device_id: %d ihipGetDevice:%d \n", device_id_, ihipGetDevice());
+              "device_id: %d ihipGetDevice:%d", device_id_, ihipGetDevice());
   }
 
 private:
@@ -150,7 +149,7 @@ public:
   //pointer to the alocated managed memory has to be copied to the address of symbol
   hipError_t initStatManagedVarDevicePtr(int deviceId);
 private:
-  friend class ::PlatformState;
+  friend class hip::PlatformState;
   //Populated during __hipRegisterFatBinary
   std::unordered_map<const void*, FatBinaryInfo*> modules_;
   //Populated during __hipRegisterFuncs

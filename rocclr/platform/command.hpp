@@ -104,7 +104,8 @@ class Event : public RuntimeObject {
   static const EventWaitList nullWaitList;
 
   struct ProfilingInfo {
-    ProfilingInfo(bool enabled = false) : enabled_(enabled), marker_ts_(false) {
+    ProfilingInfo(bool enabled = false)
+      : enabled_(enabled), marker_ts_(false) {
       if (enabled) {
         clear();
         correlation_id_ = activity_prof::correlation_id;
@@ -115,16 +116,17 @@ class Event : public RuntimeObject {
     uint64_t submitted_;
     uint64_t start_;
     uint64_t end_;
-    uint64_t correlation_id_;
-    bool enabled_;    //!< Profiling enabled for the wave limiter
-    bool marker_ts_;  //!< TS marker
 
-    void clear() {
+    uint64_t correlation_id_;
+    bool enabled_;        //!< Profiling enabled for the wave limiter
+    bool marker_ts_;      //!< TS marker
+
+   void clear() {
       queued_ = 0ULL;
       submitted_ = 0ULL;
       start_ = 0ULL;
       end_ = 0ULL;
-    }
+     }
   } profilingInfo_;
 
   //! Construct a new event.
@@ -269,7 +271,8 @@ class Command : public Event {
   uint32_t commandWaitBits_;
 
   //! Construct a new command of the given OpenCL type.
-  Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList = nullWaitList,
+  Command(HostQueue& queue, cl_command_type type,
+          const EventWaitList& eventWaitList = nullWaitList,
           uint32_t commandWaitBits = 0, const Event* waitingEvent = nullptr);
 
   //! Construct a new command of the given OpenCL type.
@@ -857,7 +860,7 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
       : TwoMemoryArgsCommand(queue, cmdType, eventWaitList, srcMemory, dstMemory),
         srcOrigin_(srcOrigin),
         dstOrigin_(dstOrigin),
-        size_(size), 
+        size_(size),
         copyMetadata_(copyMetadata){
     // Sanity checks
     assert(size.c[0] > 0 && "invalid");
@@ -1222,7 +1225,8 @@ class ExternalSemaphoreCmd : public Command {
  public:
   ExternalSemaphoreCmd(HostQueue& queue, const void* sem_ptr, uint64_t fence,
                        ExternalSemaphoreCmdType cmd_type)
-      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence), cmd_type_(cmd_type) {}
+      : Command::Command(queue, CL_COMMAND_USER), sem_ptr_(sem_ptr), fence_(fence),
+                         cmd_type_(cmd_type) {}
 
   virtual void submit(device::VirtualDevice& device) {
     device.submitExternalSemaphoreCmd(*this);
@@ -1239,10 +1243,61 @@ class Marker : public Command {
   //! Create a new Marker
   Marker(HostQueue& queue, bool userVisible, const EventWaitList& eventWaitList = nullWaitList,
          const Event* waitingEvent = nullptr, bool cpu_wait = false)
-      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent) { cpu_wait_ = cpu_wait; }
+      : Command(queue, userVisible ? CL_COMMAND_MARKER : 0, eventWaitList, 0, waitingEvent)
+    {
+      cpu_wait_ = cpu_wait;
+    }
 
   //! The actual command implementation.
   virtual void submit(device::VirtualDevice& device) { device.submitMarker(*this); }
+};
+
+class AccumulateCommand : public Command {
+ private:
+  uint8_t* lastPacket_;
+
+  //! Kernel names and timestamps list for activity profiling
+  std::vector<std::string> kernelNames_;
+  std::vector<std::pair<uint64_t, uint64_t>> tsList_;
+
+ public:
+  //! Create a new Marker
+  AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
+         const Event* waitingEvent = nullptr, uint8_t* lastPacket = nullptr)
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent),
+        lastPacket_(lastPacket)
+      {}
+  //! Return last packet
+  uint8_t* getLastPacket() const { return lastPacket_; }
+
+  //! Add kernel name to the list if available
+  void addKernelName(const std::string& kernelName) {
+    if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+      kernelNames_.push_back(kernelName);
+    }
+  }
+
+  //! Add kernel timestamp to the list if available
+  void addTimestamps(uint64_t startTs, uint64_t endTs) {
+    if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+      tsList_.push_back(std::make_pair(startTs, endTs));
+    }
+  }
+
+  //! Return the kernel names
+  const std::vector<std::string>& getKernelNames() const {
+    return kernelNames_;
+  }
+
+  //! Return the kernel timestamps
+  const std::vector<std::pair<uint64_t, uint64_t>>& getTimestamps() const {
+    return tsList_;
+  }
+
+  //! The command implementation
+  virtual void submit(device::VirtualDevice& device) {
+    device.submitAccumulate(*this);
+  }
 };
 
 /*! \brief  Maps CL objects created from external ones and syncs the contents (blocking).
@@ -1516,8 +1571,9 @@ class SvmFreeMemoryCommand : public Command {
   void* userData_;                  //!< Data passed to user-defined callback
 
  public:
-  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList, uint32_t numSvmPointers,
-                       void** svmPointers, freeCallBack pfnFreeFunc, void* userData)
+  SvmFreeMemoryCommand(HostQueue& queue, const EventWaitList& eventWaitList,
+                       uint32_t numSvmPointers, void** svmPointers,
+                       freeCallBack pfnFreeFunc, void* userData)
       : Command(queue, CL_COMMAND_SVM_FREE, eventWaitList),
         //! We copy svmPointers since it can be reused/deallocated after
         //  command creation

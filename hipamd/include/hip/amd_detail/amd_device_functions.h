@@ -23,30 +23,15 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_DEVICE_FUNCTIONS_H
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wreserved-macro-identifier"
-#pragma clang diagnostic ignored "-Wreserved-identifier"
-#pragma clang diagnostic ignored "-Wsign-conversion"
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#pragma clang diagnostic ignored "-Wold-style-cast"
-#pragma clang diagnostic ignored "-Wshorten-64-to-32"
-#pragma clang diagnostic ignored "-Wimplicit-int-conversion"
-#pragma clang diagnostic ignored "-Wimplicit-float-conversion"
-#pragma clang diagnostic ignored "-Wmissing-noreturn"
-#pragma clang diagnostic ignored "-Wimplicit-fallthrough"
-#pragma clang diagnostic ignored "-Wunneeded-internal-declaration"
-#pragma clang diagnostic ignored "-Wshift-count-overflow"
-#endif
-
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
+#include <hip/amd_detail/device_library_decls.h>
+#include <hip/amd_detail/hip_assert.h>
 #include "host_defines.h"
 #include "math_fwd.h"
 #include <hip/hip_runtime_api.h>
 #include <stddef.h>
 #include <hip/hip_vector_types.h>
-#include <hip/amd_detail/device_library_decls.h>
 #endif // !defined(__HIPCC_RTC__)
 
 #if defined(__clang__) && defined(__HIP__)
@@ -54,7 +39,7 @@ extern "C" __device__ int printf(const char *fmt, ...);
 #else
 template <typename... All>
 static inline __device__ void printf(const char* format, All... all) {}
-#endif // __HIP_CLANG_ONLY__
+#endif
 
 extern "C" __device__ unsigned long long __ockl_steadyctr_u64();
 
@@ -459,10 +444,6 @@ __device__ static inline unsigned long long int __double2ull_ru(double x) {
 __device__ static inline unsigned long long int __double2ull_rz(double x) {
   return (unsigned long long int)x;
 }
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
-#endif
 __device__ static inline long long int __double_as_longlong(double x) {
     static_assert(sizeof(long long) == sizeof(double), "");
 
@@ -471,9 +452,6 @@ __device__ static inline long long int __double_as_longlong(double x) {
 
     return tmp;
 }
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 /*
 __device__ unsigned short __float2half_rn(float x);
@@ -812,77 +790,6 @@ static void __threadfence_system()
 {
     __builtin_amdgcn_fence(__ATOMIC_SEQ_CST, "");
 }
-
-// abort
-__device__
-inline
-__attribute__((weak))
-void abort() {
-    return __builtin_trap();
-}
-
-// The noinline attribute helps encapsulate the printf expansion,
-// which otherwise has a performance impact just by increasing the
-// size of the calling function. Additionally, the weak attribute
-// allows the function to exist as a global although its definition is
-// included in every compilation unit.
-#if defined(_WIN32) || defined(_WIN64)
-extern "C" __device__ __attribute__((noinline)) __attribute__((weak))
-void _wassert(const wchar_t *_msg, const wchar_t *_file, unsigned _line) {
-    // FIXME: Need `wchar_t` support to generate assertion message.
-    __builtin_trap();
-}
-#else /* defined(_WIN32) || defined(_WIN64) */
-extern "C" __device__ __attribute__((noinline)) __attribute__((weak))
-void __assert_fail(const char *assertion,
-                   const char *file,
-                   unsigned int line,
-                   const char *function)
-{
-  const char fmt[] = "%s:%u: %s: Device-side assertion `%s' failed.\n";
-
-  // strlen is not available as a built-in yet, so we create our own
-  // loop in a macro. With a string literal argument, the compiler
-  // usually manages to replace the loop with a constant.
-  //
-  // The macro does not check for null pointer, since all the string
-  // arguments are defined to be constant literals when called from
-  // the assert() macro.
-  //
-  // NOTE: The loop below includes the null terminator in the length
-  // as required by append_string_n().
-#define __hip_get_string_length(LEN, STR)       \
-  do {                                          \
-    const char *tmp = STR;                      \
-    while (*tmp++);                             \
-    LEN = tmp - STR;                            \
-  } while (0)
-
-  auto msg = __ockl_fprintf_stderr_begin();
-  int len = 0;
-  __hip_get_string_length(len, fmt);
-  msg = __ockl_fprintf_append_string_n(msg, fmt, len, 0);
-  __hip_get_string_length(len, file);
-  msg = __ockl_fprintf_append_string_n(msg, file, len, 0);
-  msg = __ockl_fprintf_append_args(msg, 1, line, 0, 0, 0, 0, 0, 0, 0);
-  __hip_get_string_length(len, function);
-  msg = __ockl_fprintf_append_string_n(msg, function, len, 0);
-  __hip_get_string_length(len, assertion);
-  __ockl_fprintf_append_string_n(msg, assertion, len, /* is_last = */ 1);
-
-#undef __hip_get_string_length
-
-  __builtin_trap();
-}
-
-extern "C" __device__ __attribute__((noinline)) __attribute__((weak))
-void __assertfail()
-{
-    // ignore all the args for now.
-    __builtin_trap();
-}
-#endif /* defined(_WIN32) || defined(_WIN64) */
-
 __device__ inline static void __work_group_barrier(__cl_mem_fence_flags flags) {
     if (flags) {
         __builtin_amdgcn_fence(__ATOMIC_RELEASE, "workgroup");
@@ -949,7 +856,7 @@ int __syncthreads_or(int predicate)
   PIPE_ID     7:6     Pipeline from which the wave was dispatched.
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
-  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940
+  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940-942
               14:13   Shader Engine the wave is assigned to for Vega.
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
@@ -978,7 +885,7 @@ int __syncthreads_or(int predicate)
 #if (defined(__gfx908__) || defined(__gfx90a__) || \
      defined(__GFX11__))
   #define HW_ID_SE_ID_SIZE    3
-#else //4 SEs/XCC for gfx940
+#else //4 SEs/XCC for gfx940-942
   #define HW_ID_SE_ID_SIZE    2
 #endif
 #if (defined(__GFX10__) || defined(__GFX11__))
@@ -989,7 +896,7 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__))
+#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
   #define XCC_ID_XCC_ID_OFFSET     0
@@ -1027,7 +934,7 @@ unsigned __smid(void)
       unsigned sa_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(HW_ID_SA_ID_SIZE - 1, HW_ID_SA_ID_OFFSET, HW_ID));
     #else
-      #if defined(__gfx940__)
+      #if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
       unsigned xcc_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(XCC_ID_XCC_ID_SIZE - 1, XCC_ID_XCC_ID_OFFSET, XCC_ID));
       #endif
@@ -1040,7 +947,7 @@ unsigned __smid(void)
       temp = (temp << HW_ID_WGP_ID_SIZE) | wgp_id;
       return temp;
       //TODO : CU Mode impl
-    #elif defined(__gfx940__)
+    #elif (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
       unsigned temp = xcc_id;
       temp = (temp << HW_ID_SE_ID_SIZE) | se_id;
       temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;
@@ -1120,9 +1027,5 @@ static inline __device__ void* memset(void* ptr, int val, size_t size) {
     return __hip_hc_memset(ptr, val8, size);
 }
 #endif // !__OPENMP_AMDGCN__
-
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#endif
 
 #endif
