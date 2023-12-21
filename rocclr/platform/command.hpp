@@ -1273,7 +1273,8 @@ class AccumulateCommand : public Command {
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) {
     if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      kernelNames_.push_back(kernelName);
+      // "^" is to indicate kernel is captured at instantiate
+      kernelNames_.push_back("^  " + kernelName);
     }
   }
 
