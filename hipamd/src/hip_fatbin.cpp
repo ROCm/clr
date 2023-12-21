@@ -215,41 +215,39 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
     // Find the unique number of ISAs needed for this COMGR query.
     std::unordered_map<std::string, std::pair<size_t, size_t>> unique_isa_names;
-    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      std::string device_name = devices[dev_idx]->devices()[0]->isa().isaName();
-      if (unique_isa_names.cend() == unique_isa_names.find(device_name)) {
-        unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0,0)});
-      }
+    for (auto device : devices) {
+      std::string device_name = device->devices()[0]->isa().isaName();
+      unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0,0)});
     }
 
     // Create a query list using COMGR info for unique ISAs.
-    query_list_array = new amd_comgr_code_object_info_t[unique_isa_names.size()];
-    auto isa_it = unique_isa_names.begin();
-    for (size_t isa_idx = 0; isa_idx < unique_isa_names.size(); ++isa_idx) {
-      query_list_array[isa_idx].isa = isa_it->first.c_str();
-      query_list_array[isa_idx].size = 0;
-      query_list_array[isa_idx].offset = 0;
-      isa_it ++;
+    std::vector<amd_comgr_code_object_info_t> query_list_array;
+    query_list_array.reserve(unique_isa_names.size());
+    for (const auto &isa_name : unique_isa_names) {
+      auto &item = query_list_array.emplace_back();
+      item.isa = isa_name.first.c_str();
+      item.size = 0;
+      item.offset = 0;
     }
 
     // Look up the code object info passing the query list.
-    if ((comgr_status = amd_comgr_lookup_code_object(data_object, query_list_array,
+    if ((comgr_status = amd_comgr_lookup_code_object(data_object, query_list_array.data(),
                         unique_isa_names.size())) != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
       hip_status = hipErrorInvalidValue;
       break;
     }
 
-    for (size_t isa_idx = 0; isa_idx < unique_isa_names.size(); ++isa_idx) {
-      auto unique_it = unique_isa_names.find(query_list_array[isa_idx].isa);
+    for (const auto &item : query_list_array) {
+      auto unique_it = unique_isa_names.find(item.isa);
       guarantee(unique_isa_names.cend() != unique_it, "Cannot find unique isa ");
       unique_it->second = std::pair<size_t, size_t>
-                            (static_cast<size_t>(query_list_array[isa_idx].size),
-                             static_cast<size_t>(query_list_array[isa_idx].offset));
+                            (static_cast<size_t>(item.size),
+                             static_cast<size_t>(item.offset));
     }
 
-    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      std::string device_name = devices[dev_idx]->devices()[0]->isa().isaName();
+    for (auto device : devices) {
+      std::string device_name = device->devices()[0]->isa().isaName();
       auto dev_it = unique_isa_names.find(device_name);
       // If the size is 0, then COMGR API could not find the CO for this GPU device/ISA
       if (dev_it->second.first == 0) {
@@ -261,12 +259,12 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       }
       guarantee(unique_isa_names.cend() != dev_it,
                 "Cannot find the device name in the unique device name");
-      fatbin_dev_info_[devices[dev_idx]->deviceId()]
+      fatbin_dev_info_[device->deviceId()]
         = new FatBinaryDeviceInfo(reinterpret_cast<address>(const_cast<void*>(image_))
                                   + dev_it->second.second, dev_it->second.first,
                                                            dev_it->second.second);
-      fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_
-        = new amd::Program(*devices[dev_idx]->asContext());
+      fatbin_dev_info_[device->deviceId()]->program_
+        = new amd::Program(*(device->asContext()));
     }
 
     if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
@@ -275,10 +273,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     }
 
   } while(0);
-
-  if (query_list_array) {
-    delete[] query_list_array;
-  }
 
   // Clean up file and memory resouces if hip_status failed for some reason.
   if (hip_status != hipSuccess && hip_status != hipErrorInvalidKernelFile) {
