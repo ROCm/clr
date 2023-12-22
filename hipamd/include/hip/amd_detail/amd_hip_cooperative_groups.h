@@ -672,11 +672,16 @@ class thread_block_tile_type : public thread_block_tile_base<tileSize>,
                                public tiled_group,
                                public parent_group_info<tileSize, ParentCGTy> {
   _CG_STATIC_CONST_DECL_ unsigned int numThreads = tileSize;
+  typedef thread_block_tile_base<numThreads> tbtBase;
   protected:
     __CG_QUALIFIER__ thread_block_tile_type() : tiled_group(numThreads) {
       coalesced_info.tiled_info.size = numThreads;
       coalesced_info.tiled_info.is_tiled = true;
     }
+  public:
+    using tbtBase::size;
+    using tbtBase::sync;
+    using tbtBase::thread_rank;
 };
 
 // Partial template specialization
