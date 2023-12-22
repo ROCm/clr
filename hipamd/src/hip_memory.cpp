@@ -1909,24 +1909,42 @@ hipError_t ihipMemcpyHtoDCommand(amd::Command*& command, const void* srcHost, vo
   return hipSuccess;
 }
 
-hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOrigin,
+hipError_t ihipMemcpyHtoHValidate(const void* srcHost, void* dstHost, amd::Coord3D srcOrigin,
                           amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
                           size_t srcSlicePitch, size_t dstRowPitch, size_t dstSlicePitch,
-                          hip::Stream* stream) {
+                          amd::BufferRect& srcRect, amd::BufferRect& dstRect) {
+
   if ((srcHost == nullptr) || (dstHost == nullptr)) {
     return hipErrorInvalidValue;
   }
 
-  amd::BufferRect srcRect;
   if (!srcRect.create(static_cast<size_t*>(srcOrigin), static_cast<size_t*>(copyRegion),
                       srcRowPitch, srcSlicePitch)) {
     return hipErrorInvalidValue;
   }
 
-  amd::BufferRect dstRect;
   if (!dstRect.create(static_cast<size_t*>(dstOrigin), static_cast<size_t*>(copyRegion),
                       dstRowPitch, dstSlicePitch)) {
     return hipErrorInvalidValue;
+  }
+
+  return hipSuccess;
+}
+
+hipError_t ihipMemcpyHtoH(const void* srcHost, void* dstHost, amd::Coord3D srcOrigin,
+                          amd::Coord3D dstOrigin, amd::Coord3D copyRegion, size_t srcRowPitch,
+                          size_t srcSlicePitch, size_t dstRowPitch, size_t dstSlicePitch,
+                          hip::Stream* stream) {
+
+  amd::BufferRect srcRect;
+  amd::BufferRect dstRect;
+
+  hipError_t status = ihipMemcpyHtoHValidate(srcHost, dstHost, srcOrigin,
+                                             dstOrigin, copyRegion, srcRowPitch, srcSlicePitch,
+                                             dstRowPitch, dstSlicePitch, srcRect, dstRect);
+
+  if (status != hipSuccess) {
+    return status;
   }
 
   if (stream) {
@@ -2969,6 +2987,16 @@ hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy) {
 
     status = ihipMemcpyAtoAValidate(pCopy->srcArray, pCopy->dstArray, srcOrigin, dstOrigin,
                                     copyRegion, srcImage, dstImage);
+    if (status != hipSuccess) {
+      return status;
+    }
+  } else if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeHost)) {
+    amd::BufferRect srcRect;
+    amd::BufferRect dstRect;
+    status = ihipMemcpyHtoHValidate(pCopy->srcHost, pCopy->dstHost, srcOrigin, dstOrigin, copyRegion,
+                                    pCopy->srcPitch, pCopy->srcPitch * pCopy->srcHeight,
+                                    pCopy->dstPitch, pCopy->dstPitch * pCopy->dstHeight,
+                                    srcRect, dstRect);
     if (status != hipSuccess) {
       return status;
     }
