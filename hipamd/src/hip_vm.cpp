@@ -306,11 +306,17 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd::Memory* va = amd::MemObjMap::FindMemObj(ptr);
-  if (va && va->getSize() != size) {
+  amd::Memory* pa = amd::MemObjMap::FindMemObj(ptr);
+  if (pa == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  auto& queue = *g_devices[va->getUserData().deviceId]->NullStream();
+
+  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(ptr);
+  if (va == nullptr && va->getSize() != size) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  auto& queue = *g_devices[pa->getUserData().deviceId]->NullStream();
 
   amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
                                                  nullptr);
@@ -318,9 +324,9 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   cmd->awaitCompletion();
   cmd->release();
 
-  // restore the original va of the generic allocation
-  hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(va->getUserData().data);
-  va->setSvmPtr(ga->genericAddress());
+  // restore the original pa of the generic allocation
+  hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(pa->getUserData().data);
+  pa->setSvmPtr(ga->genericAddress());
 
   ga->release();
 
