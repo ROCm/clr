@@ -131,10 +131,12 @@ hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject, const hipResou
   return hip::GetHipDispatchTable()->hipCreateTextureObject_fn(pTexObject, pResDesc, pTexDesc,
                                                                pResViewDesc);
 }
-hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
+extern "C" hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
   return hip::GetHipDispatchTable()->hipCtxCreate_fn(ctx, flags, device);
 }
-hipError_t hipCtxDestroy(hipCtx_t ctx) { return hip::GetHipDispatchTable()->hipCtxDestroy_fn(ctx); }
+extern "C" hipError_t hipCtxDestroy(hipCtx_t ctx) {
+  return hip::GetHipDispatchTable()->hipCtxDestroy_fn(ctx);
+}
 hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx) {
   return hip::GetHipDispatchTable()->hipCtxDisablePeerAccess_fn(peerCtx);
 }

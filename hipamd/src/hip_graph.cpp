@@ -2295,21 +2295,19 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
         }
       }
 
-      switch(newGraphNodes[i]->GetType()) {
-        case hipGraphNodeTypeMemcpy: {
-          // Checks if the memcpy node's parameters are same
-          const hip::GraphMemcpyNode* newMemcpyNode =
-             static_cast<hip::GraphMemcpyNode const*>(newGraphNodes[i]);
-          const hip::GraphMemcpyNode* oldMemcpyNode =
-             static_cast<hip::GraphMemcpyNode const*>(oldGraphExecNodes[i]);
-          hipMemcpyKind newKind, oldKind;
-          newKind = newMemcpyNode->GetMemcpyKind();
-          oldKind = oldMemcpyNode->GetMemcpyKind();
-          if (newKind != oldKind) {
-            *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
-            *updateResult_out = hipGraphExecUpdateErrorParametersChanged;
-            HIP_RETURN(hipErrorGraphExecUpdateFailure);
-          }
+      if (newGraphNodes[i]->GetType() == hipGraphNodeTypeMemcpy) {
+        // Checks if the memcpy node's parameters are same
+        const hip::GraphMemcpyNode* newMemcpyNode =
+            static_cast<hip::GraphMemcpyNode const*>(newGraphNodes[i]);
+        const hip::GraphMemcpyNode* oldMemcpyNode =
+            static_cast<hip::GraphMemcpyNode const*>(oldGraphExecNodes[i]);
+        hipMemcpyKind newKind, oldKind;
+        newKind = newMemcpyNode->GetMemcpyKind();
+        oldKind = oldMemcpyNode->GetMemcpyKind();
+        if (newKind != oldKind) {
+          *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
+          *updateResult_out = hipGraphExecUpdateErrorParametersChanged;
+          HIP_RETURN(hipErrorGraphExecUpdateFailure);
         }
       }
       // Checks if all the node's dependencies are same

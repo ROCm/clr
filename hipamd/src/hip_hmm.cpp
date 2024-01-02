@@ -232,7 +232,7 @@ hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
                                    size_t length, unsigned int flags) {
   HIP_INIT_API(hipStreamAttachMemAsync, stream, dev_ptr, length, flags);
   // stream can be null, length can be 0.
-  if ((dev_ptr == nullptr)) {
+  if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
