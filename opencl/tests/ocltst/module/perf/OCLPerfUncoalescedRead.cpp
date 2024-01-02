@@ -136,9 +136,6 @@ void OCLPerfUncoalescedRead::open(unsigned int test, char* units,
   if (test > 0) {
     compileOptions = "-cl-std=CL2.0";
   }
-  if (test > 1) {
-    compileOptions += " -fsc-use-buffer-for-hsa-global ";
-  }
 
   error_ = _wrapper->clBuildProgram(program_, 1, &devices_[_deviceId],
                                     compileOptions.c_str(), NULL, NULL);
