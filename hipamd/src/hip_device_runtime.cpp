@@ -418,7 +418,7 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
       // HIP runtime always uses SVM for host memory allocations.
       // Note: Host registered memory isn't covered by this feature
       // and still requires hipMemHostGetDevicePointer() call
-      *pi = g_devices[device]->devices()[0]->info().hostUnifiedMemory_;
+      *pi = true;
       break;
     case hipDeviceAttributeCanUseStreamWaitValue:
       // hipStreamWaitValue64() and hipStreamWaitValue32() support
