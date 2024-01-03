@@ -936,6 +936,7 @@ typedef hipError_t (*t_hipGraphExecExternalSemaphoresWaitNodeSetParams)(hipGraph
 typedef hipError_t (*t_hipGraphAddNode)(hipGraphNode_t *pGraphNode, hipGraph_t graph,
                            const hipGraphNode_t *pDependencies, size_t numDependencies,
                            hipGraphNodeParams *nodeParams);
+typedef hipError_t (*t_hipExtGetLastError)();
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1396,4 +1397,5 @@ struct HipDispatchTable {
   t_hipGraphExecExternalSemaphoresSignalNodeSetParams hipGraphExecExternalSemaphoresSignalNodeSetParams_fn;
   t_hipGraphExecExternalSemaphoresWaitNodeSetParams hipGraphExecExternalSemaphoresWaitNodeSetParams_fn;
   t_hipGraphAddNode hipGraphAddNode_fn;
+  t_hipExtGetLastError hipExtGetLastError_fn;
 };

@@ -1711,3 +1711,6 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 extern "C" int hipGetStreamDeviceId(hipStream_t stream) {
   return hip::GetHipDispatchTable()->hipGetStreamDeviceId_fn(stream);
 }
+hipError_t hipExtGetLastError() {
+  return hip::GetHipDispatchTable()->hipExtGetLastError_fn();
+}
