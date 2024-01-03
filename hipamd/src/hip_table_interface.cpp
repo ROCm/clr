@@ -1719,3 +1719,9 @@ extern "C" int hipGetStreamDeviceId(hipStream_t stream) {
 hipError_t hipExtGetLastError() {
   return hip::GetHipDispatchTable()->hipExtGetLastError_fn();
 }
+hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef) {
+  return hip::GetHipDispatchTable()->hipTexRefGetBorderColor_fn(pBorderColor, texRef);
+}
+hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef) {
+  return hip::GetHipDispatchTable()->hipTexRefGetArray_fn(pArray, texRef);
+}

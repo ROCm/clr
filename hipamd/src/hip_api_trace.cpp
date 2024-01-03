@@ -759,6 +759,8 @@ hipError_t hipGraphExternalSemaphoresWaitNodeSetParams(
 hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
                                                        unsigned int numDevices, unsigned int flags);
 hipError_t hipExtGetLastError();
+hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef);
+hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef);
 }  // namespace hip
 
 namespace hip {
@@ -1230,6 +1232,8 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
   ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
   ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
+  ptrDispatchTable->hipTexRefGetBorderColor_fn =  hip::hipTexRefGetBorderColor;
+  ptrDispatchTable->hipTexRefGetArray_fn = hip::hipTexRefGetArray;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0

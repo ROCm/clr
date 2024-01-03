@@ -907,7 +907,6 @@ typedef hipError_t (*t_hipHccModuleLaunchKernel)(hipFunction_t f, uint32_t globa
                                                  void** extra, hipEvent_t startEvent,
                                                  hipEvent_t stopEvent);
 typedef int (*t_hipGetStreamDeviceId)(hipStream_t stream);
-
 typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
                                  const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
@@ -939,6 +938,10 @@ typedef hipError_t (*t_hipGraphAddNode)(hipGraphNode_t *pGraphNode, hipGraph_t g
 typedef hipError_t (*t_hipGraphInstantiateWithParams)(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                                      hipGraphInstantiateParams* instantiateParams);
 typedef hipError_t (*t_hipExtGetLastError)();
+
+typedef hipError_t (*t_hipTexRefGetBorderColor)(float* pBorderColor,
+                                                const textureReference* texRef);
+typedef hipError_t (*t_hipTexRefGetArray)(hipArray_t* pArray, const textureReference* texRef);
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1401,4 +1404,6 @@ struct HipDispatchTable {
   t_hipGraphAddNode hipGraphAddNode_fn;
   t_hipGraphInstantiateWithParams hipGraphInstantiateWithParams_fn;
   t_hipExtGetLastError hipExtGetLastError_fn;
+  t_hipTexRefGetBorderColor hipTexRefGetBorderColor_fn;
+  t_hipTexRefGetArray hipTexRefGetArray_fn;
 };
