@@ -93,6 +93,8 @@ struct MemoryTimestamp {
 
 class Heap : public amd::EmbeddedObject {
 public:
+  typedef std::map<std::pair<size_t, amd::Memory*>, MemoryTimestamp> SortedMap;
+
   Heap(hip::Device* device):
     total_size_(0), max_total_size_(0), release_threshold_(0), device_(device) {}
   ~Heap() {}
@@ -140,20 +142,20 @@ public:
   void SetMaxTotalSize(uint64_t value) { max_total_size_ = value; }
 
   /// Erases single allocation form the heap's map
-  std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator EraseAllocaton(
-    std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator& it);
+  SortedMap::iterator EraseAllocaton(SortedMap::iterator& it);
 
   /// Checks if memory belongs to this heap
   bool IsActiveMemory(amd::Memory* memory) const {
-    return (allocations_.find(memory) != allocations_.end());
+    return (allocations_.find({memory->getSize(), memory}) != allocations_.end());
   }
   const auto& Allocations() { return allocations_; }
+
 private:
   Heap() = delete;
   Heap(const Heap&) = delete;
   Heap& operator=(const Heap&) = delete;
 
-  std::unordered_map<amd::Memory*, MemoryTimestamp> allocations_;   //!< Map of allocations on a specific stream
+  SortedMap allocations_;       //!< Map of allocations on a specific stream
   uint64_t total_size_;         //!< Size of all allocations in the heap
   uint64_t max_total_size_;     //!< Maximum heap allocation size
   uint64_t release_threshold_;  //!< Threshold size in bytes for memory release from heap, default 0
