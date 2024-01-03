@@ -26,33 +26,37 @@ namespace hip {
 
 // ================================================================================================
 void Heap::AddMemory(amd::Memory* memory, hip::Stream* stream) {
-  allocations_.insert({memory, {stream, nullptr}});
-  total_size_ += memory->getSize();
+  auto mem_size = memory->getSize();
+  allocations_.insert({{mem_size, memory}, {stream, nullptr}});
+  total_size_ += mem_size;
   max_total_size_ = std::max(max_total_size_, total_size_);
 }
 
 // ================================================================================================
 void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
-  allocations_.insert({memory, ts});
-  total_size_ += memory->getSize();
+  auto mem_size = memory->getSize();
+  allocations_.insert({{mem_size, memory}, ts});
+  total_size_ += mem_size;
   max_total_size_ = std::max(max_total_size_, total_size_);
 }
 
 // ================================================================================================
 amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr) {
   amd::Memory* memory = nullptr;
-  for (auto it = allocations_.begin(); it != allocations_.end();) {
+  auto start = allocations_.lower_bound({size, nullptr});
+  // Runtime can accept an allocation with 12.5% on the size threshold
+  uint32_t i = 0;
+  for (auto it = start; (it != allocations_.end()) && (it->first.first <= (size / 8.0) * 9);) {
+    i++;
     bool check_address = (dptr == nullptr);
-    if (it->first->getSvmPtr() == dptr) {
+    if (it->first.second->getSvmPtr() == dptr) {
       // If the search is done for the specified address then runtime must wait
       it->second.Wait();
       check_address = true;
     }
     // Check if size can match and it's safe to use this resource.
-    // Runtime can accept an allocation with 12.5% on the size threshold
-    if ((it->first->getSize() >= size) && (it->first->getSize() <= (size / 8.0) * 9) &&
-        check_address && (it->second.IsSafeFind(stream, opportunistic))) {
-      memory = it->first;
+    if (check_address && (it->second.IsSafeFind(stream, opportunistic))) {
+      memory = it->first.second;
       total_size_ -= memory->getSize();
       // Remove found allocation from the map
       it = allocations_.erase(it);
@@ -66,7 +70,8 @@ amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunist
 
 // ================================================================================================
 bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
-  if (auto it = allocations_.find(memory); it != allocations_.end()) {
+  auto mem_size = memory->getSize();
+  if (auto it = allocations_.find({mem_size, memory}); it != allocations_.end()) {
     if (ts != nullptr) {
       // Preserve timestamp info for possible reuse later
       *ts = it->second;
@@ -75,7 +80,7 @@ bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
       it->second.Wait();
       it->second.SetEvent(nullptr);
     }
-    total_size_ -= memory->getSize();
+    total_size_ -= mem_size;
     allocations_.erase(it);
     return true;
   }
@@ -83,11 +88,11 @@ bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
 }
 
 // ================================================================================================
-std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator
-Heap::EraseAllocaton(std::unordered_map<amd::Memory*, MemoryTimestamp>::iterator& it) {
-  const device::Memory* dev_mem = it->first->getDeviceMemory(*device_->devices()[0]);
-  total_size_ -= it->first->getSize();
-  amd::SvmBuffer::free(it->first->getContext(), reinterpret_cast<void*>(dev_mem->virtualAddress()));
+Heap::SortedMap::iterator Heap::EraseAllocaton(Heap::SortedMap::iterator& it) {
+  auto memory = it->first.second;
+  const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
+  total_size_ -= it->first.first;
+  amd::SvmBuffer::free(memory->getContext(), reinterpret_cast<void*>(dev_mem->virtualAddress()));
   // Clear HIP event
   it->second.SetEvent(nullptr);
   // Remove the allocation from the map
@@ -141,7 +146,7 @@ void Heap::RemoveStream(hip::Stream* stream) {
 void Heap::SetAccess(hip::Device* device, bool enable) {
   for (const auto& it : allocations_) {
     auto peer_device = device->asContext()->devices()[0];
-    device::Memory* mem = it.first->getDeviceMemory(*peer_device);
+    device::Memory* mem = it.first.second->getDeviceMemory(*peer_device);
     if (mem != nullptr) {
       if (!mem->getAllowedPeerAccess() && enable) {
         // Enable p2p access for the specified device
@@ -429,7 +434,7 @@ void MemoryPool::GetAccess(hip::Device* device, hipMemAccessFlags* flags) {
 // ================================================================================================
 void MemoryPool::FreeAllMemory(hip::Stream* stream) {
   while (!busy_heap_.Allocations().empty()) {
-    FreeMemory(busy_heap_.Allocations().begin()->first, stream);
+    FreeMemory(busy_heap_.Allocations().begin()->first.second, stream);
   }
 }
 
