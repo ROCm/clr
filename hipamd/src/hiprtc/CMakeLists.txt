@@ -247,7 +247,7 @@ configure_package_config_file(
 
 write_basic_package_version_file(
   ${PROJECT_BINARY_DIR}/hiprtc-config-version.cmake
-  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_GITDATE}"
+  VERSION "${HIP_VERSION_MAJOR}.${HIP_VERSION_MINOR}.${HIP_VERSION_PATCH}"
   COMPATIBILITY SameMajorVersion)
 
 INSTALL(FILES ${HIP_COMMON_INCLUDE_DIR}/hip/hiprtc.h DESTINATION "include/hip")
