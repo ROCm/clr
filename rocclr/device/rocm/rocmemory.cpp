@@ -682,15 +682,12 @@ void Buffer::destroy() {
   }
 
   if (deviceMemory_ != nullptr) {
+    bool needUnlockHostMem = false;
     if (deviceMemory_ != owner()->getHostMem()) {
       // if they are identical, the host pointer will be
       // deallocated later on => avoid double deallocation
       if (isHostMemDirectAccess()) {
-        if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-          if (dev().agent_profile() != HSA_PROFILE_FULL) {
-            hsa_amd_memory_unlock(owner()->getHostMem());
-          }
-        }
+        needUnlockHostMem = true;
       } else {
         dev().memFree(deviceMemory_, size());
         const_cast<Device&>(dev()).updateFreeMemory(size(), true);
@@ -705,6 +702,15 @@ void Buffer::destroy() {
       } else if ((memFlags & CL_MEM_ALLOC_HOST_PTR) &&
                  (owner()->getContext().devices().size() == 1)) {
         dev().hostFree(deviceMemory_, size());
+      } else if (isHostMemDirectAccess()) {
+        needUnlockHostMem = true;
+      }
+    }
+
+    if (needUnlockHostMem) {
+      if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
+        if (dev().agent_profile() != HSA_PROFILE_FULL)
+          hsa_amd_memory_unlock(owner()->getHostMem());
       }
     }
   }
