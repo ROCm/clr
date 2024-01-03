@@ -535,6 +535,7 @@ hip_6.0 {
 global:
     hipChooseDeviceR0600;
     hipGetDevicePropertiesR0600;
+    hipExtGetLastError;
 local:
     *;
 } hip_5.6;

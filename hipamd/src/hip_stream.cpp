@@ -139,6 +139,8 @@ void Stream::SyncAllStreams(int deviceId, bool cpu_wait) {
     it->finish(cpu_wait);
     it->release();
   }
+  // Release freed memory for all memory pools on the device
+  g_devices[deviceId]->ReleaseFreedMemory();
 }
 
 // ================================================================================================
@@ -450,8 +452,14 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   }
   bool wait = (stream == nullptr) ? true : false;
   constexpr bool kDontWaitForCpu = false;
+
+  auto hip_stream = hip::getStream(stream, wait);
+
   // Wait for the current host queue
-  hip::getStream(stream, wait)->finish(kDontWaitForCpu);
+  hip_stream->finish(kDontWaitForCpu);
+
+  // Release freed memory for all memory pools on the device
+  hip_stream->GetDevice()->ReleaseFreedMemory();
   return hipSuccess;
 }
 

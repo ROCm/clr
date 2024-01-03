@@ -450,3 +450,4 @@ hipGraphAddMemFreeNode
 hipGraphMemFreeNodeGetParams
 hipDrvGraphAddMemcpyNode
 hipDrvGraphAddMemsetNode
+hipExtGetLastError
