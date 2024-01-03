@@ -756,6 +756,7 @@ hipError_t hipGraphExternalSemaphoresWaitNodeSetParams(
     hipGraphNode_t hNode, const hipExternalSemaphoreWaitNodeParams* nodeParams);
 hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
                                                        unsigned int numDevices, unsigned int flags);
+hipError_t hipExtGetLastError();
 }  // namespace hip
 
 namespace hip {
@@ -1225,6 +1226,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
   ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
+  ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
