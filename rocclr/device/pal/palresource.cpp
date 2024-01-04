@@ -2257,6 +2257,8 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
       cacheSize_ += size;
       if (desc->type_ == Resource::Local) {
         lclCacheSize_ += size;
+      } else if (desc->type_ == Resource::Persistent) {
+        persistentCacheSize_ += size;
       }
       result = true;
     }
@@ -2311,6 +2313,8 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
       cacheSize_ -= sizeRes;
       if (entry->type_ == Resource::Local) {
         lclCacheSize_ -= sizeRes;
+      } else if (entry->type_ == Resource::Persistent) {
+        persistentCacheSize_ -= sizeRes;
       }
       delete it.first;
       // Remove the found etry from the cache
@@ -2345,9 +2349,12 @@ void ResourceCache::removeLast() {
     if (resCache_.size() > 0) {
       entry = resCache_.back();
       resCache_.pop_back();
-      cacheSize_ -= entry.second->iMem()->Desc().size;
+      auto mem_size = entry.second->iMem()->Desc().size;
+      cacheSize_ -= mem_size;
       if (entry.first->type_ == Resource::Local) {
-        lclCacheSize_ -= entry.second->iMem()->Desc().size;
+        lclCacheSize_ -= mem_size;
+      } else if (entry.first->type_ == Resource::Persistent) {
+        persistentCacheSize_ -= mem_size;
       }
       // Delete Descriptor
       delete entry.first;

@@ -582,6 +582,7 @@ class ResourceCache : public amd::HeapObject {
       : lockCacheOps_("PAL resource cache", true),
         cacheSize_(0),
         lclCacheSize_(0),
+        persistentCacheSize_(0),
         cacheSizeLimit_(cacheSizeLimit),
         mem_sub_alloc_local_(device),
         mem_sub_alloc_coarse_(device),
@@ -614,6 +615,9 @@ class ResourceCache : public amd::HeapObject {
   //! Returns the size of local memory, stored in the cache
   size_t lclCacheSize() const { return lclCacheSize_; }
 
+  //! Returns the size of persistent memory, stored in the cache
+  size_t persistentCacheSize() const { return persistentCacheSize_; }
+
  private:
   //! Disable copy constructor
   ResourceCache(const ResourceCache&);
@@ -628,6 +632,7 @@ class ResourceCache : public amd::HeapObject {
 
   size_t cacheSize_;            //!< Current cache size in bytes
   size_t lclCacheSize_;         //!< Local memory stored in the cache
+  size_t persistentCacheSize_;  //!< Persistent memory stored in the cache
   const size_t cacheSizeLimit_; //!< Cache size limit in bytes
 
   //! PAL resource cache
