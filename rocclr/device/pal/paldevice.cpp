@@ -1961,15 +1961,15 @@ bool Device::unbindExternalDevice(uint flags, void* const pDevice[], void* pCont
 }
 
 bool Device::globalFreeMemory(size_t* freeMemory) const {
-  const uint TotalFreeMemory = 0;
-  const uint LargestFreeBlock = 1;
+  constexpr uint32_t TotalFreeMemory = 0;
+  constexpr uint32_t LargestFreeBlock = 1;
 
   // Initialization of heap and other resources because getMemInfo needs it.
   if (!(const_cast<Device*>(this)->initializeHeapResources())) {
     return false;
   }
-
-  Pal::gpusize local = allocedMem[Pal::GpuHeapLocal];
+  // Don't report cached memory in runtime as allocated, since allocedMem tracked at PAL calls
+  Pal::gpusize local = allocedMem[Pal::GpuHeapLocal] - resourceCache().persistentCacheSize();
   Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
   Pal::gpusize total_alloced = local + invisible;
 
@@ -1987,7 +1987,9 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
                                   HIP_HIDDEN_FREE_MEM * Ki : 0;
 
   if (settings().apuSystem_) {
-    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] -
+    // Allocated system memory without cached allocations. Don't count persistent and local 
+    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] +
+        resourceCache().persistentCacheSize() -
         resourceCache().cacheSize() + resourceCache().lclCacheSize();
     sysMem /= Ki;
     if (sysMem >= freeMemory[TotalFreeMemory]) {
