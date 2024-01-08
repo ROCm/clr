@@ -789,6 +789,10 @@ hipError_t hipMemcpyHtoAAsync(hipArray_t dstArray, size_t dstOffset, const void*
 hipError_t hipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst,
                                    hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc,
                                    size_t width, size_t height, hipMemcpyKind kind);
+hipError_t hipGraphExecGetFlags(hipGraphExec_t graphExec, unsigned long long* flags);
+hipError_t hipGraphNodeSetParams(hipGraphNode_t node, hipGraphNodeParams *nodeParams);
+hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t node,
+                        hipGraphNodeParams* nodeParams);
 }  // namespace hip
 
 namespace hip {
@@ -1275,6 +1279,9 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemcpyAtoHAsync_fn = hip::hipMemcpyAtoHAsync;
   ptrDispatchTable->hipMemcpyHtoAAsync_fn = hip::hipMemcpyHtoAAsync;
   ptrDispatchTable->hipMemcpy2DArrayToArray_fn = hip::hipMemcpy2DArrayToArray;
+  ptrDispatchTable->hipGraphExecGetFlags_fn = hip::hipGraphExecGetFlags;
+  ptrDispatchTable->hipGraphNodeSetParams_fn = hip::hipGraphNodeSetParams;
+  ptrDispatchTable->hipGraphExecNodeSetParams_fn = hip::hipGraphExecNodeSetParams;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1847,7 +1854,9 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoA_fn, 451)
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoHAsync_fn, 452)
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoAAsync_fn, 453)
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 454)
-
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecGetFlags_fn, 455);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeSetParams_fn, 456);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecNodeSetParams_fn, 457);
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1855,7 +1864,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 454)
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 455)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 458)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 3,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

@@ -2891,11 +2891,11 @@ hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
                                        numDependencies, false);
       break;
     case hipGraphNodeTypeExtSemaphoreSignal:
-      status = hipSuccess;
+      status = hipErrorNotSupported;
       // to be added.
       break;
     case hipGraphNodeTypeExtSemaphoreWait:
-      status = hipSuccess;
+      status = hipErrorNotSupported;
       // to be added.
       break;
     case hipGraphNodeTypeMemAlloc:
@@ -3140,4 +3140,90 @@ hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGrap
   HIP_RETURN(reinterpret_cast<hip::GraphMemsetNode*>(clonedNode)->SetParams(memsetParams, true));
 }
 
+hipError_t hipGraphExecGetFlags(hipGraphExec_t graphExec, unsigned long long* flags) {
+  HIP_INIT_API(hipGraphExecGetFlags, graphExec, flags);
+  if (graphExec == nullptr || flags == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphExec* pgraphExec = reinterpret_cast<hip::GraphExec*>(graphExec);
+  *flags = pgraphExec->GetFlags();
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t ihipGraphNodeSetParams(hip::GraphNode* n, hipGraphNodeParams *nodeParams) {
+  hipGraphNodeType nodeType = nodeParams->type;
+  hipError_t status = hipSuccess;
+  switch(nodeType) {
+    case hipGraphNodeTypeKernel:
+      status = reinterpret_cast<hip::GraphKernelNode*>(n)->SetParams(&nodeParams->kernel);
+      break;
+    case hipGraphNodeTypeMemcpy:
+      status = reinterpret_cast<hip::GraphMemcpyNode*>(n)->SetParams(
+                                                &nodeParams->memcpy.copyParams);
+      break;
+    case hipGraphNodeTypeMemset:
+      status =
+      reinterpret_cast<hip::GraphMemsetNode*>(n)->SetParams(&nodeParams->memset);
+      break;
+    case hipGraphNodeTypeHost:
+      status =
+      reinterpret_cast<hip::GraphHostNode*>(n)->SetParams(&nodeParams->host);
+      break;
+    case hipGraphNodeTypeGraph:
+      status = reinterpret_cast<hip::ChildGraphNode*>(n)->SetParams(
+             reinterpret_cast<hip::Graph*>(nodeParams->graph.graph));
+      break;
+    case hipGraphNodeTypeWaitEvent:
+      status = reinterpret_cast<hip::GraphEventWaitNode*>(n)->SetParams(
+                                                 nodeParams->eventWait.event);
+      break;
+    case hipGraphNodeTypeEventRecord:
+      status = reinterpret_cast<hip::GraphEventRecordNode*>(n)->SetParams(
+                                                 nodeParams->eventRecord.event);
+      break;
+    case hipGraphNodeTypeExtSemaphoreSignal:
+      status = hipErrorNotSupported;
+      // to be added.
+      break;
+    case hipGraphNodeTypeExtSemaphoreWait:
+      status = hipErrorNotSupported;
+      // to be added.
+      break;
+    case hipGraphNodeTypeMemAlloc:
+      status = hipErrorNotSupported;
+      break;
+    case hipGraphNodeTypeMemFree:
+      status = hipErrorNotSupported;
+      break;
+    default:
+      status = hipErrorInvalidValue;
+      break;
+  }
+  HIP_RETURN(status);
+}
+
+hipError_t hipGraphNodeSetParams(hipGraphNode_t node, hipGraphNodeParams *nodeParams) {
+  HIP_INIT_API(hipGraphNodeSetParams, node, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(node);
+  if (node == nullptr || nodeParams == nullptr || !hip::GraphNode::isNodeValid(n)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(ihipGraphNodeSetParams(n, nodeParams));
+}
+
+hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t node,
+                                     hipGraphNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphNodeSetParams, graphExec, node, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(node);
+  if (node == nullptr || nodeParams == nullptr || graphExec == nullptr
+      || !hip::GraphNode::isNodeValid(n)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphNode*>(
+      reinterpret_cast<hip::GraphExec*>(graphExec)->GetClonedNode(n));
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(ihipGraphNodeSetParams(clonedNode, nodeParams));
+}
 }  // namespace hip

@@ -570,6 +570,9 @@ global:
     hipMemcpyAtoHAsync;
     hipMemcpyHtoAAsync;
     hipMemcpy2DArrayToArray;
+    hipGraphExecGetFlags;
+    hipGraphNodeSetParams;
+    hipGraphExecNodeSetParams;
 local:
     *;
 } hip_6.1;

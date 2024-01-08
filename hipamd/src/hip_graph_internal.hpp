@@ -643,6 +643,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   }
 
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
+  uint64_t GetFlags() const { return flags_; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
   hipError_t Run(hipStream_t stream);
