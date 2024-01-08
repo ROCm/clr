@@ -786,6 +786,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipCtxSetCurrent_fn = hip::hipCtxSetCurrent;
   ptrDispatchTable->hipCtxSetSharedMemConfig_fn = hip::hipCtxSetSharedMemConfig;
   ptrDispatchTable->hipCtxSynchronize_fn = hip::hipCtxSynchronize;
+  ptrDispatchTable->hipDestroyExternalMemory_fn = hip::hipDestroyExternalMemory;
   ptrDispatchTable->hipDestroySurfaceObject_fn = hip::hipDestroySurfaceObject;
   ptrDispatchTable->hipDestroyTextureObject_fn = hip::hipDestroyTextureObject;
   ptrDispatchTable->hipDeviceCanAccessPeer_fn = hip::hipDeviceCanAccessPeer;
