@@ -90,7 +90,7 @@ void setCurrentDevice(unsigned int index) {
 
 hip::Stream* getStream(hipStream_t stream, bool wait) {
  if (stream == nullptr) {
-    return getNullStream();
+    return getNullStream(wait);
   } else {
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);
     if (wait && !(hip_stream->Flags() & hipStreamNonBlocking)) {
@@ -128,9 +128,9 @@ int getDeviceID(amd::Context& ctx) {
 }
 
 // ================================================================================================
-hip::Stream* getNullStream() {
+hip::Stream* getNullStream(bool wait ) {
   Device* device = getCurrentDevice();
-  return device ? device->NullStream() : nullptr;
+  return device ? device->NullStream(wait) : nullptr;
 }
 
 hipError_t hipInit(unsigned int flags) {

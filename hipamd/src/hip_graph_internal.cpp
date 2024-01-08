@@ -332,6 +332,9 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
     }
     parallel_streams_.push_back(stream);
   }
+  // Don't wait for other streams to finish.
+  // Capture stream is to capture AQL packet.
+  capture_stream_ = hip::getNullStream(false);
   return hipSuccess;
 }
 
@@ -353,13 +356,10 @@ hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
   if (parallelLists_.size() == 1) {
     size_t kernArgSizeForGraph = 0;
-    hip::Stream* stream = nullptr;
     // GPU packet capture is enabled for kernel nodes. Calculate the kernel
     // arg size required for all graph kernel nodes to allocate
     for (const auto& list : parallelLists_) {
-      stream = GetAvailableStreams();
       for (auto& node : list) {
-        node->SetStream(stream, this);
         if (node->GetType() == hipGraphNodeTypeKernel) {
           kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
         }
@@ -386,7 +386,6 @@ hipError_t GraphExec::CaptureAQLPackets() {
     for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeKernel) {
         auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
-        status = node->CreateCommand(node->GetQueue());
         // From the kernel pool allocate the kern arg size required for the current kernel node.
         address kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
                                              kernelNode->GetKernargSegmentAlignment());
@@ -394,7 +393,7 @@ hipError_t GraphExec::CaptureAQLPackets() {
           return hipErrorMemoryAllocation;
         }
         // Form GPU packet capture for the kernel node.
-        kernelNode->CaptureAndFormPacket(kernArgOffset);
+        kernelNode->CaptureAndFormPacket(capture_stream_, kernArgOffset) ;
       }
     }
 
@@ -408,7 +407,7 @@ hipError_t GraphExec::CaptureAQLPackets() {
         address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
         *dev_ptr = host_val;
         if (device->info().hdpMemFlushCntl == nullptr) {
-          amd::Command* command = new amd::Marker(*stream, true);
+          amd::Command* command = new amd::Marker(*capture_stream_, true);
           if (command != nullptr) {
             command->enqueue();
             command->release();
@@ -424,6 +423,50 @@ hipError_t GraphExec::CaptureAQLPackets() {
     ResetQueueIndex();
   }
   return status;
+}
+
+hipError_t GraphExec::UpdateAQLPacket(hip::GraphKernelNode* node) {
+  if (parallelLists_.size() == 1) {
+    size_t pool_new_usage = 0;
+    address result = nullptr;
+    if (!kernarg_graph_.empty()) {
+      // 1. Allocate memory for the kernel args
+      size_t kernArgSizeForNode = 0;
+      kernArgSizeForNode = node->GetKerArgSize();
+
+      result = amd::alignUp(kernarg_graph_.back() + kernarg_graph_cur_offset_,
+                            node->GetKernargSegmentAlignment());
+      pool_new_usage = (result + kernArgSizeForNode) - kernarg_graph_.back();
+    }
+    if (pool_new_usage != 0 && pool_new_usage <= kernarg_graph_size_) {
+      kernarg_graph_cur_offset_ = pool_new_usage;
+    } else {
+      address kernarg_graph;
+      auto device = g_devices[ihipGetDevice()]->devices()[0];
+      if (device->info().largeBar_) {
+        kernarg_graph = reinterpret_cast<address>(device->deviceLocalAlloc(kernarg_graph_size_));
+      } else {
+        kernarg_graph = reinterpret_cast<address>(
+            device->hostAlloc(kernarg_graph_size_, 0, amd::Device::MemorySegment::kKernArg));
+      }
+      kernarg_graph_.push_back(kernarg_graph);
+      kernarg_graph_cur_offset_ = 0;
+
+      // 1. Allocate memory for the kernel args
+      size_t kernArgSizeForNode = 0;
+      kernArgSizeForNode = node->GetKerArgSize();
+      result = amd::alignUp(kernarg_graph_.back() + kernarg_graph_cur_offset_,
+                            node->GetKernargSegmentAlignment());
+      const size_t pool_new_usage = (result + kernArgSizeForNode) - kernarg_graph_.back();
+      if (pool_new_usage <= kernarg_graph_size_) {
+        kernarg_graph_cur_offset_ = pool_new_usage;
+      }
+    }
+
+    // 2. copy kernel args / create new AQL packet
+    node->CaptureAndFormPacket(capture_stream_, result);
+  }
+  return hipSuccess;
 }
 
 hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,

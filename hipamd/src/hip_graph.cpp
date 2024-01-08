@@ -1552,7 +1552,15 @@ hipError_t hipGraphExecKernelNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(clonedNode)->SetParams(pNodeParams));
+  hipError_t status = reinterpret_cast<hip::GraphKernelNode*>(clonedNode)->SetParams(pNodeParams);
+  if(status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+        ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGraph) {

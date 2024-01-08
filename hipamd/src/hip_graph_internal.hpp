@@ -543,7 +543,7 @@ struct Graph {
     graphInstantiated_ = graphInstantiate;
   }
 };
-
+struct GraphKernelNode;
 struct GraphExec {
   std::vector<std::vector<Node>> parallelLists_;
   // Topological order of the graph doesn't include nodes embedded as part of the child graph
@@ -551,6 +551,7 @@ struct GraphExec {
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
   struct Graph* clonedGraph_;
   std::vector<hip::Stream*> parallel_streams_;
+  hip::Stream* capture_stream_;
   uint currentQueueIndex_;
   std::unordered_map<Node, Node> clonedNodes_;
   amd::Command* lastEnqueuedCommand_;
@@ -563,6 +564,10 @@ struct GraphExec {
   address kernarg_pool_graph_ = nullptr;
   uint32_t kernarg_pool_size_graph_ = 0;
   uint32_t kernarg_pool_cur_graph_offset_ = 0;
+  std::vector<address> kernarg_graph_;
+  uint32_t kernarg_graph_cur_offset_ = 0;
+  uint32_t kernarg_graph_size_ = 128 * Ki;
+
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
             std::unordered_map<Node, std::vector<Node>>& nodeWaitLists, struct Graph*& clonedGraph,
@@ -591,6 +596,9 @@ struct GraphExec {
     auto device = g_devices[ihipGetDevice()]->devices()[0];
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       device->hostFree(kernarg_pool_graph_, kernarg_pool_size_graph_);
+      for (auto& element : kernarg_graph_) {
+        device->hostFree(element, kernarg_graph_size_);
+      }
     }
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.erase(this);
@@ -636,6 +644,7 @@ struct GraphExec {
   hipError_t Run(hipStream_t stream);
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
+  hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
 };
 
 struct ChildGraphNode : public GraphNode {
@@ -793,19 +802,20 @@ class GraphKernelNode : public GraphNode {
     out << "];";
     }
 
-    void CaptureAndFormPacket(address kernArgOffset) {
-      for (auto& command : commands_) {
-        reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
-            true, GetAqlPacket(), kernArgOffset);
+  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
+    hipError_t status = CreateCommand(capture_stream);
+    for (auto& command : commands_) {
+      reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
+          true, GetAqlPacket(), kernArgOffset);
 
-        // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
-        // The packet is stored in gpuPacket_ and submitted during graph launch.
-        command->submit(*(command->queue())->vdev());
-        // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
-        SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
-        command->release();
-      }
+      // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
+      // The packet is stored in gpuPacket_ and submitted during graph launch.
+      command->submit(*(command->queue())->vdev());
+      // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
+      SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
+      command->release();
     }
+  }
 
   std::string GetLabel(hipGraphDebugDotFlags flag) {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());

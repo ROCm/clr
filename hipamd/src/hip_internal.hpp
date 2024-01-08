@@ -487,7 +487,7 @@ public:
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-    hip::Stream* NullStream();
+    hip::Stream* NullStream(bool wait = true);
     Stream* GetNullStream() const {return null_stream_;};
 
     void SetActiveStatus() {
@@ -572,7 +572,7 @@ public:
   /// Get default stream associated with the ROCclr context
   extern hip::Stream* getNullStream(amd::Context&);
   /// Get default stream of the thread
-  extern hip::Stream* getNullStream();
+  extern hip::Stream* getNullStream(bool wait = true);
   /// Get device ID associated with the ROCclr context
   int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid
