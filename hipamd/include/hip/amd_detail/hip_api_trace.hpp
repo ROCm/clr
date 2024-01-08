@@ -982,6 +982,13 @@ typedef hipError_t (*t_hipMemcpy2DArrayToArray)(hipArray_t dst, size_t wOffsetDs
                                                 size_t height, hipMemcpyKind kind);
 
 
+typedef hipError_t (*t_hipGraphExecGetFlags)(hipGraphExec_t graphExec, unsigned long long* flags);
+typedef hipError_t (*t_hipGraphNodeSetParams)(hipGraphNode_t node, hipGraphNodeParams *nodeParams);
+typedef hipError_t (*t_hipGraphExecNodeSetParams)(hipGraphExec_t graphExec, hipGraphNode_t node,
+                                    hipGraphNodeParams* nodeParams);
+
+
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1458,4 +1465,7 @@ struct HipDispatchTable {
   t_hipMemcpyAtoHAsync hipMemcpyAtoHAsync_fn;
   t_hipMemcpyHtoAAsync hipMemcpyHtoAAsync_fn;
   t_hipMemcpy2DArrayToArray hipMemcpy2DArrayToArray_fn;
+  t_hipGraphExecGetFlags hipGraphExecGetFlags_fn;
+  t_hipGraphNodeSetParams hipGraphNodeSetParams_fn;
+  t_hipGraphExecNodeSetParams hipGraphExecNodeSetParams_fn;
 };
