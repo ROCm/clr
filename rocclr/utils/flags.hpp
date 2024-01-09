@@ -235,7 +235,7 @@ release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
 release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
          "Force device mem for kernel args.")                                 \
-release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, false,                          \
+release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, true,                           \
          "Enable/Disable graph packet capturing")                             \
 release(bool, GPU_DEBUG_ENABLE, false,                                        \
         "Enables collection of extra info for debugger at some perf cost")    \
