@@ -585,8 +585,9 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     amd::AccumulateCommand* accumulate = nullptr;
     bool isLastPacketKernel = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      uint8_t* lastCapturedPacket = (topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) ?
-                                  topoOrder_.back()->GetAqlPacket() : nullptr;
+      uint8_t* lastCapturedPacket = (topoOrder_.back()->GetType() == hipGraphNodeTypeKernel)
+          ? topoOrder_.back()->GetAqlPacket()
+          : nullptr;
       accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
     }
 
