@@ -54,6 +54,7 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
     - hipGLGetDevices
     - hipGraphicsGLRegisterBuffer
     - hipGraphicsGLRegisterImage
+- With ROCm 6.0, the HIP version is 6.0. As the HIP runtime binary suffix is updated in every major ROCm release, in ROCm 6.0, the new filename is libamdhip64.so.6. Furthermore, in ROCm 6.0 release, the libamdhip64.so.5 binary from ROCm 5.7 is made available to maintain binary backward compatibility with ROCm 5.x.
 
 ### Changes Impacting Backward Compatibility
 - Data types for members in HIP_MEMCPY3D structure are changed from "unsigned int" to "size_t".
@@ -96,11 +97,11 @@ The change won't affect usage of applications, and makes them behave the same on
 - Catch tests are available [hip-tests] (https://github.com/ROCm/hip-tests) project
 
 ### Known Issues
-- Dynamically loaded HIP runtime library references incorrect version of hipDeviceGetProperties API
+- Dynamically loaded HIP runtime library references incorrect version of hipDeviceGetProperties and hipChooseDevice APIs
 
-When an application loads the HIP runtime library dynamically from ROCm 6.0 and attempts to use hipDeviceGetProperties, the application incorrectly uses the hipDeviceGetProperties API from a previous ROCm release instead of the newer ROCm 6.0 implementation
-The issue will be fixed in a future ROCm release.. 
+When an application dynamically loads the HIP runtime library from ROCm 6.0 and attempts to get the hipDeviceGetProperties and/or hipChooseDevice entry-points using dlsym, the application gets the older version (ROCm 5.7) of those entry-points.
 
+As a workaround, while compiling with ROCm 6.0, use the string "hipDeviceGetPropertiesR0600", and "hipChooseDeviceR0600" respectively for hipDeviceGetProperties and hipChooseDevice APIs.
 
 ## HIP 5.7.1 (For ROCm 5.7.1)
 
