@@ -2661,7 +2661,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    dispatchParam.wavesPerSh = 0;
+    if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
+      constexpr uint32_t kWavesPerSimdLimit = 4;
+      dispatchParam.wavesPerSh = kWavesPerSimdLimit *
+        dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
+    } else {
+      dispatchParam.wavesPerSh = 0;
+    }
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
     dispatchParam.aqlPacketIndex = aql_index;
