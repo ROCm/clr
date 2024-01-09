@@ -146,6 +146,7 @@ Settings::Settings() {
   useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? true : HIP_FORCE_DEV_KERNARG;
 
   limit_blit_wg_ = 16;
+  DEBUG_CLR_GRAPH_PACKET_CAPTURE = false; // disable graph performance optimizations for PAL
 }
 
 bool Settings::create(const Pal::DeviceProperties& palProp,
