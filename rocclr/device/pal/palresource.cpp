@@ -1474,7 +1474,6 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
   GpuEvent event;
   EngineType activeEngineID = gpu.engineID_;
   static const bool waitOnBusyEngine = true;
-  assert(!(desc().cardMemory_ && dstResource.desc().cardMemory_) && "Unsupported configuraiton!");
   uint64_t gpuMemoryOffset = 0;
   uint64_t gpuMemoryRowPitch = 0;
   uint64_t imageOffsetx = 0;
