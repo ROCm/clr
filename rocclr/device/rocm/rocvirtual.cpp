@@ -859,10 +859,6 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
 
-  if (expected_fence_state != amd::Device::kCacheStateSystem) {
-    fence_dirty_ = true;
-  }
-
   if (timestamp_ != nullptr) {
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
@@ -3476,6 +3472,11 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
     constexpr size_t kPacketSize = 1;
     auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlPacket);
     dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
+    // We need to set fence_dirty_ flag as we would use a dispatch packet with  a completion signal
+    // to track graph finish for the last. The sync logic assumes HW event to a barrier packet that
+    // has a system scope release. This would cause isFenceDirty() check at top level to insert
+    // barrier packet wherever needed
+    fence_dirty_ = true;
   } else {
     const Settings& settings = dev().settings();
     if (settings.barrier_value_packet_) {
