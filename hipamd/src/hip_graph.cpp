@@ -1255,7 +1255,8 @@ hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t g
   }
 
   // invalid flag check
-  if (flags != 0 && flags != hipGraphInstantiateFlagAutoFreeOnLaunch) {
+  if (flags != 0 && flags != hipGraphInstantiateFlagAutoFreeOnLaunch &&
+      flags != hipGraphInstantiateFlagUseNodePriority) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -1395,7 +1396,8 @@ hipError_t hipGraphKernelNodeSetAttribute(hipGraphNode_t hNode, hipKernelNodeAtt
     HIP_RETURN(hipErrorInvalidValue);
   }
   if (attr != hipKernelNodeAttributeAccessPolicyWindow &&
-      attr != hipKernelNodeAttributeCooperative) {
+      attr != hipKernelNodeAttributeCooperative &&
+      attr != hipLaunchAttributePriority) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(hNode)->SetAttrParams(attr, value));
@@ -1408,7 +1410,8 @@ hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAtt
     HIP_RETURN(hipErrorInvalidValue);
   }
   if (attr != hipKernelNodeAttributeAccessPolicyWindow &&
-      attr != hipKernelNodeAttributeCooperative) {
+      attr != hipKernelNodeAttributeCooperative &&
+      attr != hipLaunchAttributePriority) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(hNode)->GetAttrParams(attr, value));
@@ -2870,5 +2873,3 @@ hipError_t hipGraphExecExternalSemaphoresWaitNodeSetParams(hipGraphExec_t hGraph
 }
 
 }  // namespace hip
-
-

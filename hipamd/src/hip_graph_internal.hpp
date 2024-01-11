@@ -817,14 +817,15 @@ class GraphKernelNode : public GraphNode {
               "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
               "handle | func handle} | {%p | %p}}\n| {accessPolicyWindow | {base_ptr | num_bytes | "
               "hitRatio | hitProp | missProp} | {%p | %zu | %f | %d | %d}}\n| {cooperative | "
-              "%u}\n| {priority | 0}\n}",
+              "%u}\n| {priority | %d}\n}",
               label_.c_str(), GetID(), function->name().c_str(), kernelParams_.gridDim.x,
               kernelParams_.gridDim.y, kernelParams_.gridDim.z, kernelParams_.blockDim.x,
               kernelParams_.blockDim.y, kernelParams_.blockDim.z,
               kernelParams_.sharedMemBytes, this, kernelParams_.func,
               kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
               kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
-              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative);
+              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative,
+              kernelAttr_.priority);
       label = buffer;
     }
     else if (flag == hipGraphDebugDotFlagsKernelNodeAttributes) {
@@ -832,11 +833,12 @@ class GraphKernelNode : public GraphNode {
               "{\n%s\n| {ID | %d | %s}\n"
               "| {accessPolicyWindow | {base_ptr | num_bytes | "
               "hitRatio | hitProp | missProp} |\n| {%p | %zu | %f | %d | %d}}\n| {cooperative | "
-              "%u}\n| {priority | 0}\n}",
+              "%u}\n| {priority | %d}\n}",
               label_.c_str(), GetID(), function->name().c_str(),
               kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
               kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
-              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative);
+              kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative,
+              kernelAttr_.priority);
       label = buffer;
     }
     else if (flag == hipGraphDebugDotFlagsKernelNodeParams) {
@@ -1072,7 +1074,10 @@ class GraphKernelNode : public GraphNode {
       kernelAttr_.accessPolicyWindow.num_bytes = params->accessPolicyWindow.num_bytes;
     } else if (attr == hipKernelNodeAttributeCooperative) {
       kernelAttr_.cooperative = params->cooperative;
+    } else if (attr == hipLaunchAttributePriority) {
+      kernelAttr_.priority = params->priority;
     }
+
     kernelAttrInUse_ = attr;
     return hipSuccess;
   }
@@ -1087,6 +1092,8 @@ class GraphKernelNode : public GraphNode {
       params->accessPolicyWindow.num_bytes = kernelAttr_.accessPolicyWindow.num_bytes;
     } else if (attr == hipKernelNodeAttributeCooperative) {
       params->cooperative = kernelAttr_.cooperative;
+    } else if (attr == hipLaunchAttributePriority) {
+      params->priority = kernelAttr_.priority;
     }
     return hipSuccess;
   }
@@ -1109,6 +1116,9 @@ class GraphKernelNode : public GraphNode {
         break;
       case hipKernelNodeAttributeCooperative:
         kernelAttr_.cooperative = srcNode->kernelAttr_.cooperative;
+        break;
+      case hipLaunchAttributePriority:
+        kernelAttr_.priority = srcNode->kernelAttr_.priority;
         break;
       default:
         return hipErrorInvalidValue;
@@ -2447,6 +2457,3 @@ class hipGraphExternalSemWaitNode : public GraphNode {
 };
 
 }  // namespace hip
-
-
-
