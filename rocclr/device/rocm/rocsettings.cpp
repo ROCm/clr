@@ -81,6 +81,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   imageBufferWar_ = false;
 
+  sdma_p2p_threshold_ = ROC_P2P_SDMA_SIZE * Ki;
   hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : 0;
 
   rocr_backend_ = true;
