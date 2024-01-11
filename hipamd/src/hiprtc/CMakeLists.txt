@@ -146,8 +146,9 @@ ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_surface_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_complex.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_math_constants.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/math_fwd.h
-${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_sync_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_cooperative_groups_helper.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_cooperative_groups.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_unsafe_atomics.h
