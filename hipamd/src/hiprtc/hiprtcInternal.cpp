@@ -59,7 +59,8 @@ RTCProgram::RTCProgram(std::string name) : name_(name) {
 bool RTCProgram::findIsa() {
   const char* libName;
 #ifdef _WIN32
-  libName = "amdhip64.dll";
+  std::string dll_name = std::string("amdhip64_" + std::to_string(HIP_VERSION_MAJOR) + ".dll");
+  libName = dll_name.c_str();
 #else
   libName = "libamdhip64.so";
 #endif

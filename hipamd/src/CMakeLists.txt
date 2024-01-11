@@ -59,6 +59,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 if(BUILD_SHARED_LIBS)
   add_library(amdhip64 SHARED)
+  if(WIN32)
+    set_target_properties(amdhip64 PROPERTIES RUNTIME_OUTPUT_NAME "amdhip64_${HIP_VERSION_MAJOR}")
+  endif()
   # Windows doesn't have a strip utility, so CMAKE_STRIP won't be set.
   if((CMAKE_BUILD_TYPE STREQUAL "Release") AND NOT ("${CMAKE_STRIP}" STREQUAL ""))
     add_custom_command(TARGET amdhip64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdhip64>)

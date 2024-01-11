@@ -57,9 +57,11 @@ bool Comgr::LoadLib(bool is_versioned) {
     cep_.handle = Os::loadLibrary(comgr_lib_name);
 #endif
   } else {
-    static constexpr const char* comgr_lib_name =
+    std::string comgr_major_dll = "amd_comgr_" +
+                                  std::to_string(AMD_COMGR_INTERFACE_VERSION_MAJOR) + ".dll";
+    static const char* comgr_lib_name =
     LP64_SWITCH(WINDOWS_SWITCH("amd_comgr32.dll", "libamd_comgr32.so.2"),
-                WINDOWS_SWITCH("amd_comgr.dll", "libamd_comgr.so.2"));
+                WINDOWS_SWITCH(comgr_major_dll.c_str(), "libamd_comgr.so.2"));
     cep_.handle = Os::loadLibrary(comgr_lib_name);
   }
   if (nullptr == cep_.handle) {
