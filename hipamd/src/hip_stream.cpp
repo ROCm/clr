@@ -592,6 +592,14 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   bool wait = (stream == nullptr) ? true : false;
   hip::Stream* hip_stream = hip::getStream(stream, wait);
 
+  if (hip_stream->vdev()->isFenceDirty()) {
+    amd::Command* command = new amd::Marker(*hip_stream, kMarkerDisableFlush);
+    if (command != nullptr) {
+      command->enqueue();
+      command->release();
+    }
+  }
+
   amd::Command* command = hip_stream->getLastQueuedCommand(true);
   if (command == nullptr) {
     // Nothing was submitted to the queue
@@ -602,6 +610,7 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   if (command->type() != 0) {
     event.notifyCmdQueue();
   }
+
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   bool ready = command->queue()->device().IsHwEventReady(event);
   if (!ready) {
