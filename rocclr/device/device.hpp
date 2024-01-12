@@ -1296,9 +1296,6 @@ class VirtualDevice : public amd::HeapObject {
   //! Dispatch captured AQL packet
   virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
 
-  //! Resets fence state of the VirtualGPU
-  virtual void resetFenceDirty() = 0;
-
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
