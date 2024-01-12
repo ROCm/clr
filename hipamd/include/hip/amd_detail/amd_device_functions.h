@@ -845,6 +845,10 @@ int __syncthreads_or(int predicate)
 #if (defined(__GFX10__) || defined(__GFX11__))
   #define HW_ID_WGP_ID_SIZE   4
   #define HW_ID_WGP_ID_OFFSET 10
+  #if (defined(__AMDGCN_CUMODE__))
+    #define HW_ID_CU_ID_SIZE    1
+    #define HW_ID_CU_ID_OFFSET  8
+  #endif
 #else
   #define HW_ID_CU_ID_SIZE    4
   #define HW_ID_CU_ID_OFFSET  8
@@ -901,6 +905,10 @@ unsigned __smid(void)
             GETREG_IMMED(HW_ID_WGP_ID_SIZE - 1, HW_ID_WGP_ID_OFFSET, HW_ID));
       unsigned sa_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(HW_ID_SA_ID_SIZE - 1, HW_ID_SA_ID_OFFSET, HW_ID));
+      #if (defined(__AMDGCN_CUMODE__))
+        unsigned cu_id = __builtin_amdgcn_s_getreg(
+            GETREG_IMMED(HW_ID_CU_ID_SIZE - 1, HW_ID_CU_ID_OFFSET, HW_ID));
+      #endif
     #else
       #if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
       unsigned xcc_id = __builtin_amdgcn_s_getreg(
@@ -913,6 +921,9 @@ unsigned __smid(void)
       unsigned temp = se_id;
       temp = (temp << HW_ID_SA_ID_SIZE) | sa_id;
       temp = (temp << HW_ID_WGP_ID_SIZE) | wgp_id;
+      #if (defined(__AMDGCN_CUMODE__))
+        temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;
+      #endif
       return temp;
       //TODO : CU Mode impl
     #elif (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
