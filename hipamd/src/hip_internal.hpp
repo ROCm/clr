@@ -230,7 +230,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
   hip::getStreamPerThread(stream);                                                                 \
-  if (stream != nullptr &&                                                                         \
+  if (stream != nullptr && stream != hipStreamLegacy &&                                            \
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = hip::capture##name(stream, ##__VA_ARGS__);                                 \
@@ -242,7 +242,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
   }
 
 #define PER_THREAD_DEFAULT_STREAM(stream)                                                         \
-  if (stream == nullptr) {                                                                        \
+  if (stream == nullptr || stream == hipStreamLegacy) {                                           \
     stream = getPerThreadDefaultStream();                                                         \
   }
 

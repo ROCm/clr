@@ -91,7 +91,7 @@ void setCurrentDevice(unsigned int index) {
 }
 
 hip::Stream* getStream(hipStream_t stream, bool wait) {
- if (stream == nullptr) {
+ if (stream == nullptr || stream == hipStreamLegacy) {
     return getNullStream(wait);
   } else {
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);

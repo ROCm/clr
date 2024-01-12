@@ -855,10 +855,11 @@ hipError_t hipStreamIsCapturing_common(hipStream_t stream, hipStreamCaptureStatu
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
-  if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
+  if (hip::Stream::StreamCaptureBlocking() == true &&
+      (stream == nullptr || stream == hipStreamLegacy)) {
     return hipErrorStreamCaptureImplicit;
   }
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     *pCaptureStatus = hipStreamCaptureStatusNone;
   } else {
     *pCaptureStatus = reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus();
@@ -898,7 +899,7 @@ hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode
     return hipErrorContextIsDestroyed;
   }
   // capture cannot be initiated on legacy stream
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     return hipErrorStreamCaptureUnsupported;
   }
   if (mode < hipStreamCaptureModeGlobal || mode > hipStreamCaptureModeRelaxed) {
@@ -977,7 +978,7 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
   if (pGraph == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     return hipErrorIllegalState;
   }
   if (!hip::isValid(stream)) {
@@ -1771,10 +1772,11 @@ hipError_t hipStreamGetCaptureInfo_common(hipStream_t stream,
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
-  if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
+  if (hip::Stream::StreamCaptureBlocking() == true &&
+      (stream == nullptr || stream == hipStreamLegacy)) {
     return hipErrorStreamCaptureImplicit;
   }
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     *pCaptureStatus = hipStreamCaptureStatusNone;
     return hipSuccess;
   }
@@ -1807,10 +1809,11 @@ hipError_t hipStreamGetCaptureInfo_v2_common(hipStream_t stream,
   if (captureStatus_out == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (hip::Stream::StreamCaptureBlocking() == true && stream == nullptr) {
+  if (hip::Stream::StreamCaptureBlocking() == true &&
+      (stream == nullptr || stream == hipStreamLegacy)) {
     return hipErrorStreamCaptureImplicit;
   }
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     *captureStatus_out = hipStreamCaptureStatusNone;
     return hipSuccess;
   }
