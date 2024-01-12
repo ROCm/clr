@@ -108,10 +108,12 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
   // Pick the specified stream or Null one from the provided device
   if (device == hipCpuDeviceId) {
     cpu_access = true;
-    hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() : hip::getStream(stream);
+    hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+                  hip::getCurrentDevice()->NullStream() : hip::getStream(stream);
   } else {
     dev = g_devices[device]->devices()[0];
-    hip_stream = (stream == nullptr) ? g_devices[device]->NullStream() : hip::getStream(stream);
+    hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+                  g_devices[device]->NullStream() : hip::getStream(stream);
   }
 
   if (hip_stream == nullptr) {
@@ -250,8 +252,8 @@ hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
   // host-accessible region of system-allocated pageable memory.
   // This type of memory may only be specified if the device associated with the
   // stream reports a non-zero value for the device attribute hipDevAttrPageableMemoryAccess.
-  hip::Stream* hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
-                                                : hip::getStream(stream);
+  hip::Stream* hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+                             hip::getCurrentDevice()->NullStream() : hip::getStream(stream);
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
   if (memObj == nullptr) {

@@ -80,7 +80,7 @@ void Stream::Destroy(hip::Stream* stream) {
 // ================================================================================================
 bool isValid(hipStream_t& stream) {
   // NULL stream is always valid
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     return true;
   }
 

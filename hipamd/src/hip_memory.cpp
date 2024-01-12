@@ -674,7 +674,7 @@ hipError_t hipMemcpy_common(void* dst, const void* src, size_t sizeBytes,
   CHECK_STREAM_CAPTURING();
   hip::Stream* hip_stream = nullptr;
 
-  if (stream != nullptr) {
+  if (stream != nullptr && stream != hipStreamLegacy) {
     hip_stream = hip::getStream(stream);
   } else {
     hip_stream = hip::getNullStream();
