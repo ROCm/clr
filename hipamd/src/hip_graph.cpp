@@ -34,6 +34,18 @@ amd::Monitor g_streamSetLock{"StreamCaptureset"};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
 hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags);
 
+
+inline hipError_t ihipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
+  if (graphExec == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+
+  return hipSuccess;
+}
+
 inline hipError_t ihipGraphAddNode(hip::GraphNode* graphNode, hip::Graph* graph,
                                    hip::GraphNode* const* pDependencies, size_t numDependencies,
                                    bool capture = true) {
@@ -1275,6 +1287,37 @@ hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t g
   hipError_t status = ihipGraphInstantiate(&ge, reinterpret_cast<hip::Graph*>(graph), flags);
   *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
   HIP_RETURN(status);
+}
+
+hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                              hipGraphInstantiateParams* instantiateParams) {
+
+  HIP_INIT_API(hipGraphInstantiateWithParams, pGraphExec, graph, instantiateParams);
+  if (pGraphExec == nullptr || graph == nullptr || instantiateParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  unsigned long long flags = instantiateParams->flags;
+
+  if (flags != 0 && flags != hipGraphInstantiateFlagAutoFreeOnLaunch &&
+    flags != hipGraphInstantiateFlagUpload && flags != hipGraphInstantiateFlagDeviceLaunch &&
+    flags != hipGraphInstantiateFlagUseNodePriority) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hip::GraphExec* ge;
+  hipError_t status = ihipGraphInstantiate(&ge, reinterpret_cast<hip::Graph*>(graph), flags);
+  *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
+  if(status != hipSuccess){
+    HIP_RETURN(status);
+  }
+
+  if (flags == hipGraphInstantiateFlagUpload) {
+    hipError_t status = ihipGraphUpload(*pGraphExec, instantiateParams->uploadStream);
+    HIP_RETURN(status);
+  }
+
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
@@ -2635,15 +2678,10 @@ hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNod
 
 hipError_t hipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) {
   HIP_INIT_API(hipGraphUpload, graphExec, stream);
-  if (graphExec == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
   // TODO: stream is known before launch, do preperatory work with graph optimizations. pre-allocate
   // memory for memAlloc nodes if any when support is added with mempool feature
-  HIP_RETURN(hipSuccess);
+  hipError_t status =  ihipGraphUpload(graphExec, stream);
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
@@ -2789,7 +2827,7 @@ hipError_t hipGraphAddExternalSemaphoresSignalNode(hipGraphNode_t* pGraphNode, h
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
                                  const hipExternalSemaphoreSignalNodeParams* nodeParams) {
   HIP_INIT_API(hipGraphAddExternalSemaphoresSignalNode, pGraphNode, graph, pDependencies,
-               numDependencies, nodeParams);  
+               numDependencies, nodeParams);
   hip::GraphNode* node = new hip::hipGraphExternalSemSignalNode(nodeParams);
   hipError_t status = ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
                          reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
