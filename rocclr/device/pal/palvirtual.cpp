@@ -2487,7 +2487,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
-                                     vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+                                     vcmd.sharedMemBytes())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -2503,7 +2503,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
-                              vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+                              vcmd.sharedMemBytes(), vcmd.getAnyOrderLaunchFlag())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -2515,9 +2515,10 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                       const amd::Kernel& kernel, const_address parameters,
                                       bool nativeMem, uint32_t sharedMemBytes,
-                                      bool cooperativeGroup) {
+                                      bool anyOrder) {
   size_t newOffset[3] = {0, 0, 0};
   size_t newGlobalSize[3] = {0, 0, 0};
+  state_.anyOrder_ = anyOrder;
 
   int dim = -1;
   int iteration = 1;
