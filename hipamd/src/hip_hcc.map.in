@@ -547,3 +547,10 @@ global:
 local:
     *;
 } hip_5.6;
+
+hip_6.1 {
+global:
+    hipGraphInstantiateWithParams;
+local:
+    *;
+} hip_6.0;

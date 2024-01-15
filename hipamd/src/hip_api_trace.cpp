@@ -290,6 +290,8 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                hipGraphNode_t* pErrorNode, char* pLogBuffer, size_t bufferSize);
 hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                         unsigned long long flags);
+hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                         hipGraphInstantiateParams* instantiateParams);
 hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t hDst);
 hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
                                           hipKernelNodeAttrValue* value);
@@ -942,6 +944,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphHostNodeSetParams_fn = hip::hipGraphHostNodeSetParams;
   ptrDispatchTable->hipGraphInstantiate_fn = hip::hipGraphInstantiate;
   ptrDispatchTable->hipGraphInstantiateWithFlags_fn = hip::hipGraphInstantiateWithFlags;
+  ptrDispatchTable->hipGraphInstantiateWithParams_fn = hip::hipGraphInstantiateWithParams;
   ptrDispatchTable->hipGraphKernelNodeCopyAttributes_fn = hip::hipGraphKernelNodeCopyAttributes;
   ptrDispatchTable->hipGraphKernelNodeGetAttribute_fn = hip::hipGraphKernelNodeGetAttribute;
   ptrDispatchTable->hipGraphKernelNodeGetParams_fn = hip::hipGraphKernelNodeGetParams;
@@ -1310,7 +1313,7 @@ const HipCompilerDispatchTable* GetHipCompilerDispatchTable() {
 #define HIP_ENFORCE_ABI(TABLE, ENTRY, NUM)                                                         \
   static_assert(offsetof(TABLE, ENTRY) == (sizeof(size_t) + (NUM * sizeof(void*))),                \
                 "ABI break for " #TABLE "." #ENTRY                                                 \
-                ". Only add new function pointers to end of struct and do not rearrange them");
+                ". Only add new function pointers to end of struct and do not rearrange them " );
 
 // These ensure that function pointers are not re-ordered
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipPopCallConfiguration_fn, 0)
@@ -1758,6 +1761,16 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_v2_spt_fn, 425)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchHostFunc_spt_fn, 426)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetStreamDeviceId_fn, 427)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemsetNode_fn, 428)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438);
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 0,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
