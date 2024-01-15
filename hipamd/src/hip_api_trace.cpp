@@ -768,6 +768,13 @@ hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
                                         const hipGraphEdgeData* dependencyData,
                                         size_t numDependencies, hipStreamCaptureMode mode);
 hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr);
+hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                  const hipGraphNode_t* dependencies, size_t numDependencies,
+                                  hipDeviceptr_t dptr);
+hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMCPY3D* copyParams, hipCtx_t ctx);
+hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
 }  // namespace hip
 
 namespace hip {
@@ -1244,6 +1251,9 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetProcAddress_fn = hip::hipGetProcAddress;
   ptrDispatchTable->hipStreamBeginCaptureToGraph_fn = hip::hipStreamBeginCaptureToGraph;
   ptrDispatchTable->hipGetFuncBySymbol_fn = hip::hipGetFuncBySymbol;
+  ptrDispatchTable->hipDrvGraphAddMemFreeNode_fn = hip::hipDrvGraphAddMemFreeNode;
+  ptrDispatchTable->hipDrvGraphExecMemcpyNodeSetParams_fn = hip::hipDrvGraphExecMemcpyNodeSetParams;
+  ptrDispatchTable->hipDrvGraphExecMemsetNodeSetParams_fn = hip::hipDrvGraphExecMemsetNodeSetParams;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1806,7 +1816,9 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetArray_fn, 441)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCaptureToGraph_fn, 443);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444);
-
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemFreeNode_fn, 445)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemcpyNodeSetParams_fn, 446)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemsetNodeSetParams_fn, 447)
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1814,7 +1826,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444);
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 445)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 448)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 3,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
