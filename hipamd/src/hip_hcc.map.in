@@ -560,6 +560,9 @@ local:
 hip_6.2 {
 global:
     hipGetFuncBySymbol;
+    hipDrvGraphExecMemcpyNodeSetParams;
+    hipDrvGraphExecMemsetNodeSetParams;
+    hipDrvGraphAddMemFreeNode;
 local:
     *;
 } hip_6.1;

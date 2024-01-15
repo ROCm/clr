@@ -463,3 +463,6 @@ hipGraphAddNode
 hipGraphInstantiateWithParams
 hipStreamBeginCaptureToGraph
 hipGetFuncBySymbol
+hipDrvGraphAddMemFreeNode
+hipDrvGraphExecMemcpyNodeSetParams
+hipDrvGraphExecMemsetNodeSetParams

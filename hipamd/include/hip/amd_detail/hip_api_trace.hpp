@@ -954,6 +954,18 @@ typedef hipError_t (*t_hipStreamBeginCaptureToGraph)(hipStream_t stream, hipGrap
                                                      hipStreamCaptureMode mode);
 typedef hipError_t (*t_hipGetFuncBySymbol)(hipFunction_t* functionPtr, const void* symbolPtr);
 
+typedef hipError_t (*t_hipDrvGraphAddMemFreeNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                  const hipGraphNode_t* dependencies, size_t numDependencies,
+                                  hipDeviceptr_t dptr);
+
+typedef hipError_t (*t_hipDrvGraphExecMemcpyNodeSetParams)(hipGraphExec_t hGraphExec,
+                                   hipGraphNode_t hNode, const HIP_MEMCPY3D* copyParams,
+                                   hipCtx_t ctx);
+
+typedef hipError_t (*t_hipDrvGraphExecMemsetNodeSetParams)(hipGraphExec_t hGraphExec,
+                                   hipGraphNode_t hNode, const HIP_MEMSET_NODE_PARAMS* memsetParams,
+                                   hipCtx_t ctx);
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1420,4 +1432,7 @@ struct HipDispatchTable {
   t_hipGetProcAddress hipGetProcAddress_fn;
   t_hipStreamBeginCaptureToGraph hipStreamBeginCaptureToGraph_fn;
   t_hipGetFuncBySymbol hipGetFuncBySymbol_fn;
+  t_hipDrvGraphAddMemFreeNode hipDrvGraphAddMemFreeNode_fn;
+  t_hipDrvGraphExecMemcpyNodeSetParams hipDrvGraphExecMemcpyNodeSetParams_fn;
+  t_hipDrvGraphExecMemsetNodeSetParams hipDrvGraphExecMemsetNodeSetParams_fn;
 };

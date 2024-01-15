@@ -2501,6 +2501,28 @@ hipError_t hipGraphMemAllocNodeGetParams(hipGraphNode_t node, hipMemAllocNodePar
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t ihipGraphAddMemFreeNode(hip::GraphNode** graphNode, hip::Graph* graph,
+                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
+                                   void* dptr) {
+  // Is memory passed to be free'd valid
+  size_t offset = 0;
+  auto memory = getMemoryObject(dptr, offset);
+  if (memory == nullptr) {
+    if (HIP_MEM_POOL_USE_VM) {
+      // When VM is on the address must be valid and may point to a VA object
+      memory = amd::MemObjMap::FindVirtualMemObj(dptr);
+    }
+    if (memory == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
+  auto mem_free_node = new hip::GraphMemFreeNode(dptr);
+  *graphNode = mem_free_node;
+  auto status =
+      ihipGraphAddNode(*graphNode, graph, pDependencies, numDependencies);
+  HIP_RETURN(status);
+}
 // ================================================================================================
 hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                   const hipGraphNode_t* pDependencies, size_t numDependencies,
@@ -2512,26 +2534,12 @@ hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
-  // Is memory passed to be free'd valid
-  size_t offset = 0;
-  auto memory = getMemoryObject(dev_ptr, offset);
-  if (memory == nullptr) {
-    if (HIP_MEM_POOL_USE_VM) {
-      // When VM is on the address must be valid and may point to a VA object
-      memory = amd::MemObjMap::FindVirtualMemObj(dev_ptr);
-    }
-    if (memory == nullptr) {
-      HIP_RETURN(hipErrorInvalidValue);
-    }
-  }
-
-  auto mem_free_node = new hip::GraphMemFreeNode(dev_ptr);
-  hip::GraphNode* node = mem_free_node;
+  hip::GraphNode* pNode;
   auto status =
-      ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
-                       reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
-  *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+      ihipGraphAddMemFreeNode(&pNode,
+                reinterpret_cast<hip::Graph*>(graph),
+                reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies, dev_ptr);
+  *pGraphNode = reinterpret_cast<hipGraphNode_t>(pNode);
   HIP_RETURN(status);
 }
 
@@ -3034,6 +3042,88 @@ hipError_t hipGraphExecExternalSemaphoresWaitNodeSetParams(hipGraphExec_t hGraph
   }
   HIP_RETURN(reinterpret_cast<hip::hipGraphExternalSemWaitNode*>(clonedNode)->SetParams(
       nodeParams));
+}
+
+hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                  const hipGraphNode_t* dependencies, size_t numDependencies,
+                                  hipDeviceptr_t dptr) {
+  HIP_INIT_API(hipDrvGraphAddMemFreeNode, phGraphNode, hGraph, dependencies, numDependencies, dptr);
+  if (phGraphNode == nullptr || hGraph == nullptr ||
+      ((numDependencies > 0 && dependencies == nullptr) ||
+       (dependencies != nullptr && numDependencies == 0)) ||
+      dptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // Is memory passed to be free'd valid
+  size_t offset = 0;
+  auto memory = getMemoryObject(dptr, offset);
+  if (memory == nullptr) {
+    if (HIP_MEM_POOL_USE_VM) {
+      // When VM is on the address must be valid and may point to a VA object
+      memory = amd::MemObjMap::FindVirtualMemObj(dptr);
+    }
+    if (memory == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+  hip::GraphNode* pNode;
+  auto status =
+      ihipGraphAddMemFreeNode(&pNode,
+                    reinterpret_cast<hip::Graph*>(hGraph),
+                    reinterpret_cast<hip::GraphNode* const*>(dependencies), numDependencies, dptr);
+  *phGraphNode = reinterpret_cast<hipGraphNode_t>(pNode);
+  HIP_RETURN(status);
+}
+
+hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMCPY3D* copyParams, hipCtx_t ctx) {
+  HIP_INIT_API(hipDrvGraphExecMemcpyNodeSetParams, hGraphExec, hNode, copyParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (hGraphExec == nullptr ||
+                    !hip::GraphNode::isNodeValid(reinterpret_cast<hip::GraphNode*>(n))) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (ihipDrvMemcpy3D_validate(copyParams) != hipSuccess) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // Check if pNodeParams passed is a empty struct
+  if (((copyParams->srcArray == 0) && (copyParams->srcHost == nullptr)
+       && (copyParams->srcDevice == nullptr)) ||
+      ((copyParams->dstArray == 0) && (copyParams->dstHost == nullptr)
+       && (copyParams->dstDevice == nullptr))) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::GraphDrvMemcpyNode*>(clonedNode)->SetParams(copyParams));
+}
+
+hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+  HIP_INIT_API(hipDrvGraphExecMemsetNodeSetParams, hGraphExec, hNode, memsetParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+
+  if (hGraphExec == nullptr || !hip::GraphNode::isNodeValid(n) || memsetParams == nullptr ||
+      memsetParams->dst == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hipMemsetParams pmemsetParams;
+  pmemsetParams.dst = reinterpret_cast<void*>(memsetParams->dst);
+  pmemsetParams.elementSize = memsetParams->elementSize;
+  pmemsetParams.height = memsetParams->height;
+  pmemsetParams.pitch = memsetParams->pitch;
+  pmemsetParams.value = memsetParams->value;
+  pmemsetParams.width = memsetParams->width;
+  if (ihipGraphMemsetParams_validate(&pmemsetParams) != hipSuccess) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::GraphMemsetNode*>(clonedNode)->SetParams(memsetParams, true));
 }
 
 }  // namespace hip
