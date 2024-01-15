@@ -240,6 +240,7 @@ class VirtualGPU : public device::VirtualDevice {
       uint perfCounterEnabled_ : 1;  //!< PerfCounter is enabled
       uint rgpCaptureEnabled_ : 1;   //!< RGP capture is enabled in the runtime
       uint imageBufferWrtBack_ : 1;  //!< Enable image buffer write back
+      uint anyOrder_ : 1;            //!< Kernel launches don't need a barrier
     };
     uint value_;
     State() : value_(0) {}
@@ -267,7 +268,12 @@ class VirtualGPU : public device::VirtualDevice {
     //! Invalidates GPU caches if memory dependency tracking is disabled
     void sync(VirtualGPU& gpu) const {
       if (maxMemObjectsInQueue_ == 0) {
-        gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+        // Ignore the barrier in any order mode. The app is responsible for synchronization.
+        // HW will execute the kernels asynchronously
+        if (!gpu.anyOrder()) {
+          // Wait for GPU and invalidate L1 cache
+          gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+        }
       }
     }
 
@@ -309,7 +315,7 @@ class VirtualGPU : public device::VirtualDevice {
       const_address parameters,            //!< Parameters for the kernel
       bool nativeMem = true,               //!< Native memory objects
       uint32_t sharedMemBytes = 0,         //!< Shared memory size
-      bool cooperativeGroups = false       //!< TRUE if cooperative groups mode is required
+      bool anyOrder = false                //!< TRUE if any order launch mode is enabled
   );
   void submitNativeFn(amd::NativeFnCommand& vcmd);
   void submitFillMemory(amd::FillMemoryCommand& vcmd);
@@ -433,6 +439,9 @@ class VirtualGPU : public device::VirtualDevice {
 
   //! Checks if profiling is enabled
   bool profiling() const { return state_.profiling_; }
+
+  //! Checks if the queue is in any order mode
+  bool anyOrder() const { return state_.anyOrder_; }
 
   //! Returns memory dependency class
   MemoryDependency& memoryDependency() { return memoryDependency_; }
