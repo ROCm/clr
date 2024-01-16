@@ -2520,13 +2520,11 @@ bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
   if (is32BitWrite) {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
-    setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
   } else {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
-    setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
   }
-  setArgument(kernels_[blitType], 3, sizeof(size_t), &sizeBytes);
+  setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
   // Create ND range object for the kernel's execution
   amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
   // Execute the blit
@@ -2555,16 +2553,13 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
   if (is32BitWait) {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), nullptr);
-    setArgument(kernels_[blitType], 2, sizeof(uint32_t), &value);
-    setArgument(kernels_[blitType], 3, sizeof(uint32_t), &flags);
-    setArgument(kernels_[blitType], 4, sizeof(uint32_t), &mask);
   } else {
     setArgument(kernels_[blitType], 0, sizeof(cl_mem), nullptr);
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
-    setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
-    setArgument(kernels_[blitType], 3, sizeof(uint64_t), &flags);
-    setArgument(kernels_[blitType], 4, sizeof(uint64_t), &mask);
   }
+  setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
+  setArgument(kernels_[blitType], 3, sizeof(uint64_t), &flags);
+  setArgument(kernels_[blitType], 4, sizeof(uint64_t), &mask);
 
   // Create ND range object for the kernel's execution
   amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
