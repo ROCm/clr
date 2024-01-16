@@ -134,7 +134,11 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define Untested(msg) (void)(0)
 #endif /*NDEBUG*/
 
+#ifdef _WIN32
+#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#else
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#endif
 
 #define Log(level, msg)                                                                            \
   do {                                                                                             \
