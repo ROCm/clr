@@ -246,7 +246,7 @@ if(USE_PROF_API)
         -E ${PROF_API_NEWHDR} -o ${PROF_API_NEWHDR}.i
     COMMAND_EXPAND_LISTS VERBATIM
     IMPLICIT_DEPENDS C ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED}
-    DEPENDS ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED} 
+    DEPENDS ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED}
     COMMENT "Generating new header from hip_runtime_api.h")
 
   add_custom_command(OUTPUT ${PROF_API_STR}
@@ -284,7 +284,7 @@ if(WIN32)
     # rocprofiler-register is not support on Windows
     set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
 else()
-    option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
+    option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" OFF)
 endif()
 
 if(HIP_ENABLE_ROCPROFILER_REGISTER)
