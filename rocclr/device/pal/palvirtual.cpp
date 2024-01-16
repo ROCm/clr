@@ -1061,14 +1061,17 @@ VirtualGPU::~VirtualGPU() {
   amd::ScopedLock k(dev().lockAsyncOps());
   amd::ScopedLock lock(dev().vgpusAccess());
 
-  // Clear all timestamps, associated with this virtual GPU
-  auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
-  for (uint32_t i = 0; i < AqlPacketMgmt::kAqlPacketsListSize; ++i) {
-    if (mgmt.aql_vgpus_[i] == this) {
-      mgmt.aql_vgpus_[i] = nullptr;
-      mgmt.aql_events_[i].invalidate();
+  if (queues_[MainEngine] != nullptr) {
+    // Clear all timestamps, associated with this virtual GPU
+    auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
+    for (uint32_t i = 0; i < AqlPacketMgmt::kAqlPacketsListSize; ++i) {
+      if (mgmt.aql_vgpus_[i] == this) {
+        mgmt.aql_vgpus_[i] = nullptr;
+        mgmt.aql_events_[i].invalidate();
+      }
     }
   }
+
   // Destroy RGP trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->FinishRGPTrace(this, true);

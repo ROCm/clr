@@ -39,7 +39,7 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
 
   extern void __amd_copyBufferRectAligned(__global uint*, __global uint*, ulong4, ulong4, ulong4);
 
-  extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong, ulong);
+  extern void __amd_streamOpsWrite(__global uint*, __global ulong*, ulong);
 
   extern void __amd_streamOpsWait(__global uint*, __global ulong*, ulong, ulong, ulong);
 
@@ -165,8 +165,8 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
 
 const char* HipExtraSourceCode = BLIT_KERNELS(
   __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
-                                            ulong value, ulong sizeBytes) {
-    __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);
+                                            ulong value) {
+    __amd_streamOpsWrite(ptrInt, ptrUlong, value);
   }
 
   __kernel void __amd_rocclr_streamOpsWait(__global uint* ptrInt, __global ulong* ptrUlong,
@@ -186,8 +186,8 @@ const char* HipExtraSourceCode = BLIT_KERNELS(
 
 const char* HipExtraSourceCodeNoGWS = BLIT_KERNELS(
   __kernel void __amd_rocclr_streamOpsWrite(__global uint* ptrInt, __global ulong* ptrUlong,
-                                            ulong value, ulong sizeBytes) {
-    __amd_streamOpsWrite(ptrInt, ptrUlong, value, sizeBytes);
+                                            ulong value) {
+    __amd_streamOpsWrite(ptrInt, ptrUlong, value);
   }
 
   __kernel void __amd_rocclr_streamOpsWait(__global uint* ptrInt, __global ulong* ptrUlong,

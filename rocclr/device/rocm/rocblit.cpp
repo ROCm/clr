@@ -2567,7 +2567,6 @@ bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
   }
-  setArgument(kernels_[blitType], 3, sizeof(size_t), &sizeBytes);
   // Create ND range object for the kernel's execution
   amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
   // Execute the blit

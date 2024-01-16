@@ -660,6 +660,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
 
     info_.cooperativeGroups_ = settings().enableCoopGroups_;
     info_.cooperativeMultiDeviceGroups_ = settings().enableCoopMultiDeviceGroups_;
+    // Enable StreamWrite and StreamWait for all devices
+    info_.aqlBarrierValue_ = true;
 
     if (amd::IS_HIP) {
       info_.largeBar_ = false;
