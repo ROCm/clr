@@ -41,6 +41,10 @@ bool extractByteCodeBinary(const amd_comgr_data_set_t inDataSet,
 bool createAction(amd_comgr_action_info_t& action, std::vector<std::string>& options,
                   const std::string& isa,
                   const amd_comgr_language_t lang = AMD_COMGR_LANGUAGE_NONE);
+bool compileToExecutable(const amd_comgr_data_set_t compileInputs, const std::string& isa,
+                         std::vector<std::string>& compileOptions,
+                         std::vector<std::string>& linkOptions, std::string& buildLog,
+                         std::vector<char>& exe);
 bool compileToBitCode(const amd_comgr_data_set_t compileInputs, const std::string& isa,
                       std::vector<std::string>& compileOptions, std::string& buildLog,
                       std::vector<char>& LLVMBitcode);
@@ -54,8 +58,8 @@ bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
                    std::vector<std::string>& exeOptions, std::string name, std::string& buildLog);
 bool demangleName(const std::string& mangledName, std::string& demangledName);
 std::string handleMangledName(std::string loweredName);
-bool fillMangledNames(std::vector<char>& executable, std::map<std::string, std::string>& mangledNames,
-                      bool isBitcode);
+bool fillMangledNames(std::vector<char>& executable,
+                      std::map<std::string, std::string>& mangledNames, bool isBitcode);
 void GenerateUniqueFileName(std::string& name);
 }  // namespace helpers
 }  // namespace hiprtc
