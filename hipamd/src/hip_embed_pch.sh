@@ -203,7 +203,7 @@ __hipRTC_header_size:
 EOF
 
   set -x
-  $LLVM_DIR/bin/clang -O3 --hip-path=$HIP_INC_DIR/.. -std=c++14 -nogpulib --hip-version=4.4 -isystem $HIP_INC_DIR -isystem $HIP_BUILD_INC_DIR -isystem $HIP_AMD_INC_DIR --cuda-device-only -D__HIPCC_RTC__ -x hip $tmp/hipRTC_header.h -E -o $tmp/hiprtc &&
+  $LLVM_DIR/bin/clang -O3 --hip-path=$HIP_INC_DIR/.. -std=c++14 -nogpulib --hip-version=4.4 -isystem $HIP_INC_DIR -isystem $HIP_BUILD_INC_DIR -isystem $HIP_AMD_INC_DIR --cuda-device-only -D__HIPCC_RTC__ -x hip $tmp/hipRTC_header.h -E -P -o $tmp/hiprtc &&
   cat $macroFile >> $tmp/hiprtc &&
   $LLVM_DIR/bin/llvm-mc -o $tmp/hiprtc_header.o $tmp/hipRTC_header.mcin --filetype=obj &&
   $LLVM_DIR/bin/clang $tmp/hiprtc_header.o -o $rtc_shared_lib_out -shared &&
