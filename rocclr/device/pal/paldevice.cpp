@@ -2603,15 +2603,6 @@ bool Device::createBlitProgram() {
     }
   }
 
-  blitProgram_ = new BlitProgram(context_);
-  // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraBlits, ocl20)) {
-    delete blitProgram_;
-    blitProgram_ = nullptr;
-    LogError("Couldn't create blit kernels!");
-    result = false;
-  }
-
   if (settings().useLightning_) {
     const std::string TrapHandlerAsm = TrapHandlerCode;
     // Create a program for trap handler
@@ -2636,6 +2627,15 @@ bool Device::createBlitProgram() {
     } else {
       DevLogPrintfError("Trap handler creation failed\n");
     }
+  }
+
+  blitProgram_ = new BlitProgram(context_);
+  // Create blit programs
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraBlits, ocl20)) {
+    delete blitProgram_;
+    blitProgram_ = nullptr;
+    LogError("Couldn't create blit kernels!");
+    result = false;
   }
   return result;
 }
