@@ -585,6 +585,86 @@ bool createAction(amd_comgr_action_info_t& action, std::vector<std::string>& opt
   return AMD_COMGR_STATUS_SUCCESS;
 }
 
+bool compileToExecutable(const amd_comgr_data_set_t compileInputs, const std::string& isa,
+                         std::vector<std::string>& compileOptions, std::string& buildLog,
+                         std::vector<char>& exe) {
+  amd_comgr_language_t lang = AMD_COMGR_LANGUAGE_HIP;
+  amd_comgr_action_info_t action;
+  amd_comgr_data_set_t reloc;
+  amd_comgr_data_set_t output;
+  amd_comgr_data_set_t input = compileInputs;
+
+  if (auto res = createAction(action, compileOptions, isa, lang); res != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  if (auto res = amd::Comgr::create_data_set(&reloc); res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    return false;
+  }
+
+  if (auto res = amd::Comgr::create_data_set(&output); res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(reloc);
+    return false;
+  }
+
+  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SOURCE_TO_RELOCATABLE, action,
+                                       input, reloc);
+      res != AMD_COMGR_STATUS_SUCCESS) {
+    extractBuildLog(reloc, buildLog);
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(reloc);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  if (!extractBuildLog(reloc, buildLog)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(reloc);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  amd::Comgr::destroy_action_info(action);
+  if (auto res = createAction(action, compileOptions, isa, lang); res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(reloc);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE, action,
+                                       reloc, output);
+      res != AMD_COMGR_STATUS_SUCCESS) {
+    extractBuildLog(output, buildLog);
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    amd::Comgr::destroy_data_set(reloc);
+    return false;
+  }
+
+  if (!extractBuildLog(output, buildLog)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    amd::Comgr::destroy_data_set(reloc);
+    return false;
+  }
+
+  if (!extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_EXECUTABLE, exe)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    amd::Comgr::destroy_data_set(reloc);
+    return false;
+  }
+
+  // Clean up
+  amd::Comgr::destroy_action_info(action);
+  amd::Comgr::destroy_data_set(output);
+  amd::Comgr::destroy_data_set(reloc);
+  return true;
+}
+
 bool compileToBitCode(const amd_comgr_data_set_t compileInputs, const std::string& isa,
                       std::vector<std::string>& compileOptions, std::string& buildLog,
                       std::vector<char>& LLVMBitcode) {
@@ -646,8 +726,7 @@ bool linkLLVMBitcode(const amd_comgr_data_set_t linkInputs, const std::string& i
     return false;
   }
 
-  if (auto res =
-          amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, linkInputs, output);
+  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_BC_TO_BC, action, linkInputs, output);
       res != AMD_COMGR_STATUS_SUCCESS) {
     amd::Comgr::destroy_action_info(action);
     amd::Comgr::destroy_data_set(output);
@@ -915,9 +994,9 @@ bool fillMangledNames(std::vector<char>& dataVec, std::map<std::string, std::str
     return false;
   }
 
-  for (auto &it : mangledNames) {
+  for (auto& it : mangledNames) {
     size_t Size;
-    char *data = const_cast<char*>(it.first.data());
+    char* data = const_cast<char*>(it.first.data());
 
     if (auto res = amd::Comgr::map_name_expression_to_symbol_name(dataObject, &Size, data, NULL)) {
       amd::Comgr::release_data(dataObject);
@@ -925,7 +1004,8 @@ bool fillMangledNames(std::vector<char>& dataVec, std::map<std::string, std::str
     }
 
     std::unique_ptr<char[]> mName(new char[Size]());
-    if (auto res = amd::Comgr::map_name_expression_to_symbol_name(dataObject, &Size, data, mName.get())) {
+    if (auto res =
+            amd::Comgr::map_name_expression_to_symbol_name(dataObject, &Size, data, mName.get())) {
       amd::Comgr::release_data(dataObject);
       return false;
     }
