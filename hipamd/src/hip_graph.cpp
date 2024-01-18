@@ -3271,4 +3271,23 @@ hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t no
   }
   HIP_RETURN(ihipGraphNodeSetParams(clonedNode, nodeParams));
 }
+hipError_t hipDrvGraphMemcpyNodeGetParams(hipGraphNode_t hNode, HIP_MEMCPY3D* nodeParams) {
+  HIP_INIT_API(hipDrvGraphMemcpyNodeGetParams, hNode, nodeParams);
+  if (!hip::GraphNode::isNodeValid(reinterpret_cast<hip::GraphNode*>(hNode)) ||
+                                   nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hip::GraphDrvMemcpyNode*>(hNode)->GetParams(nodeParams);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipDrvGraphMemcpyNodeSetParams(hipGraphNode_t hNode, const HIP_MEMCPY3D* nodeParams) {
+  HIP_INIT_API(hipDrvGraphMemcpyNodeSetParams, hNode, nodeParams);
+  if (!hip::GraphNode::isNodeValid(reinterpret_cast<hip::GraphNode*>(hNode)) ||
+                                   nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::GraphDrvMemcpyNode*>(hNode)->SetParams(nodeParams));
+}
+
 }  // namespace hip

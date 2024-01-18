@@ -476,3 +476,5 @@ hipMemcpy2DArrayToArray
 hipGraphExecGetFlags
 hipGraphNodeSetParams
 hipGraphExecNodeSetParams
+hipDrvGraphMemcpyNodeSetParams
+hipDrvGraphMemcpyNodeGetParams
