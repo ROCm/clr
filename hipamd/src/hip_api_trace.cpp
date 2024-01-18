@@ -762,7 +762,7 @@ hipError_t hipExtGetLastError();
 hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef);
 hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef);
 hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
-                             hipDriverProcAddressQueryResult* symbolStatus);
+                             hipDriverProcAddressQueryResult* symbolStatus = NULL);
 hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
                                         const hipGraphNode_t* dependencies,
                                         const hipGraphEdgeData* dependencyData,
@@ -796,6 +796,9 @@ hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t no
 hipError_t hipExternalMemoryGetMappedMipmappedArray(
     hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
     const hipExternalMemoryMipmappedArrayDesc* mipmapDesc);
+hipError_t hipDrvGraphMemcpyNodeGetParams(hipGraphNode_t hNode, HIP_MEMCPY3D* nodeParams);
+hipError_t hipDrvGraphMemcpyNodeSetParams(hipGraphNode_t hNode, const HIP_MEMCPY3D* nodeParams);
+
 }  // namespace hip
 
 namespace hip {
@@ -1287,6 +1290,8 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphExecNodeSetParams_fn = hip::hipGraphExecNodeSetParams;
   ptrDispatchTable->hipExternalMemoryGetMappedMipmappedArray_fn =
       hip::hipExternalMemoryGetMappedMipmappedArray;
+  ptrDispatchTable->hipDrvGraphMemcpyNodeGetParams_fn = hip::hipDrvGraphMemcpyNodeGetParams;
+  ptrDispatchTable->hipDrvGraphMemcpyNodeSetParams_fn = hip::hipDrvGraphMemcpyNodeSetParams;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1863,6 +1868,8 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecGetFlags_fn, 455);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeSetParams_fn, 456);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecNodeSetParams_fn, 457);
 HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 458)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeGetParams_fn, 459)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeSetParams_fn, 460)
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1870,9 +1877,9 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 4
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 459)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 461)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 3,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 4,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif
