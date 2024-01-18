@@ -76,8 +76,9 @@ static amd::Monitor g_hiprtcInitlock{"hiprtcInit lock"};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
   amd::Thread* thread = amd::Thread::current();                                                    \
   if (!VDI_CHECK_THREAD(thread)) {                                                                 \
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "An internal error has occurred."                      \
-      " This may be due to insufficient memory.");                                                 \
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,                                                        \
+            "An internal error has occurred."                                                      \
+            " This may be due to insufficient memory.");                                           \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
   }                                                                                                \
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
@@ -107,7 +108,6 @@ static void crashWithMessage(std::string message) {
 }
 
 struct Settings {
-  bool dumpISA{false};
   bool offloadArchProvided{false};
 };
 
@@ -156,10 +156,8 @@ class RTCCompileProgram : public RTCProgram {
   bool addBuiltinHeader();
   bool transformOptions(std::vector<std::string>& compile_options);
   bool findExeOptions(const std::vector<std::string>& options,
-                       std::vector<std::string>& exe_options);
-  void AppendCompileOptions() {
-    AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_);
-  }
+                      std::vector<std::string>& exe_options);
+  void AppendCompileOptions() { AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_); }
 
   RTCCompileProgram() = delete;
   RTCCompileProgram(RTCCompileProgram&) = delete;
@@ -288,9 +286,7 @@ class RTCLinkProgram : public RTCProgram {
   bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                      hiprtcJITInputType input_type);
   bool LinkComplete(void** bin_out, size_t* size_out);
-  void AppendLinkerOptions() {
-    AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_);
-  }
+  void AppendLinkerOptions() { AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_); }
 };
 
 // Thread Local Storage Variables Aggregator Class
