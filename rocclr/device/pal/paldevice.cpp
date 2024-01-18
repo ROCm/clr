@@ -1141,15 +1141,15 @@ bool Device::initializeHeapResources() {
     if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
       return false;
     }
-#ifdef PAL_DEBUGGER
-    Pal::RuntimeSetup setup;
-    setup.r_debug = reinterpret_cast<uint64_t>(_amdgpu_r_debug_ptr);
-    if (iDev()->RegisterRuntimeState(&setup) != Pal::Result::Success) {
+    Pal::HipRuntimeSetup setup {.pRdebug = _amdgpu_r_debug_ptr,
+                                .runtimeState = 1,    // Always valid debug state
+                                .ttmpSetupHint = GPU_DEBUG_ENABLE};
+    setup.pRdebug = _amdgpu_r_debug_ptr;
+    if (iDev()->RegisterHipRuntimeState(setup) != Pal::Result::Success) {
       LogError("Couldn't register debug state from the loader!");
       // Note: ignore debug state error, since it's not a critical
       // error for the execution
     }
-#endif
 
     heapInitComplete_ = true;
 
@@ -1211,10 +1211,11 @@ bool Device::initializeHeapResources() {
           // Find an offset in memory for the trap handler.
           // Loader returns an absolute address, but PAL accepts base + offset, hense find offset
           auto offset = program->GetTrapHandlerAddress() - memRef.pGpuMemory->Desc().gpuVirtAddr;
-#ifdef PAL_DEBUGGER
-          // Bind trap handler to the kernel mode driver
-          iDev()->BindTrapHandler(Pal::PipelineBindPoint::Compute, memRef.pGpuMemory, offset);
-#endif
+          // Bind the trap handler's executable to the kernel mode driver
+          result = iDev()->SetHipTrapHandler(memRef.pGpuMemory, offset, nullptr, 0);
+          if (result != Pal::Result::Success) {
+            LogError("KMD failed to setup the trap handler");
+          }
         } else {
           LogError("Failed to make trap handler resident in memory");
         }
@@ -1960,15 +1961,15 @@ bool Device::unbindExternalDevice(uint flags, void* const pDevice[], void* pCont
 }
 
 bool Device::globalFreeMemory(size_t* freeMemory) const {
-  const uint TotalFreeMemory = 0;
-  const uint LargestFreeBlock = 1;
+  constexpr uint32_t TotalFreeMemory = 0;
+  constexpr uint32_t LargestFreeBlock = 1;
 
   // Initialization of heap and other resources because getMemInfo needs it.
   if (!(const_cast<Device*>(this)->initializeHeapResources())) {
     return false;
   }
-
-  Pal::gpusize local = allocedMem[Pal::GpuHeapLocal];
+  // Don't report cached memory in runtime as allocated, since allocedMem tracked at PAL calls
+  Pal::gpusize local = allocedMem[Pal::GpuHeapLocal] - resourceCache().persistentCacheSize();
   Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
   Pal::gpusize total_alloced = local + invisible;
 
@@ -1986,7 +1987,9 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
                                   HIP_HIDDEN_FREE_MEM * Ki : 0;
 
   if (settings().apuSystem_) {
-    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] -
+    // Allocated system memory without cached allocations. Don't count persistent and local 
+    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] +
+        resourceCache().persistentCacheSize() -
         resourceCache().cacheSize() + resourceCache().lclCacheSize();
     sysMem /= Ki;
     if (sysMem >= freeMemory[TotalFreeMemory]) {
@@ -2607,28 +2610,31 @@ bool Device::createBlitProgram() {
     result = false;
   }
 
-#ifdef PAL_DEBUGGER
   if (settings().useLightning_) {
     const std::string TrapHandlerAsm = TrapHandlerCode;
     // Create a program for trap handler
     // note: It's not critical for runtime functionality to fail trap handler initialization
-    trap_handler_ = new amd::Program(*context_, TrapHandlerAsm.c_str(), amd::Program::Assembly);
-    if (trap_handler_ != nullptr) {
+    auto asm_program = new amd::Program(*context_, TrapHandlerAsm.c_str(), amd::Program::Assembly);
+    if (asm_program != nullptr) {
       std::vector<amd::Device*> devices;
       devices.push_back(this);
       std::string opt = "-cl-internal-kernel ";
       if (auto retval =
-              trap_handler_->build(devices, opt.c_str(), nullptr, nullptr, false) != CL_SUCCESS) {
+              asm_program->build(devices, opt.c_str(), nullptr, nullptr, false) != CL_SUCCESS) {
         DevLogPrintfError("Build failed for trap handler with error code: %d\n", retval);
-      }
-      if (!trap_handler_->load()) {
-        DevLogPrintfError("Could not load the trap handler \n");
+        asm_program->release();
+      } else {
+        if (asm_program->load()) {
+          trap_handler_ = asm_program;
+        } else {
+          DevLogPrintfError("Could not load the trap handler \n");
+          asm_program->release();
+        }
       }
     } else {
       DevLogPrintfError("Trap handler creation failed\n");
     }
   }
-#endif
   return result;
 }
 

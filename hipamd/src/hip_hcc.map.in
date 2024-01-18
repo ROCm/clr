@@ -504,6 +504,14 @@ global:
     hipGraphNodeGetEnabled;
     hipGraphNodeSetEnabled;
     hipGraphUpload;
+    hipGraphAddExternalSemaphoresSignalNode;
+    hipGraphAddExternalSemaphoresWaitNode;
+    hipGraphExternalSemaphoresSignalNodeSetParams;
+    hipGraphExternalSemaphoresSignalNodeGetParams;
+    hipGraphExternalSemaphoresWaitNodeSetParams;
+    hipGraphExternalSemaphoresWaitNodeGetParams;
+    hipGraphExecExternalSemaphoresSignalNodeSetParams;
+    hipGraphExecExternalSemaphoresWaitNodeSetParams;
 local:
     *;
 } hip_5.2;

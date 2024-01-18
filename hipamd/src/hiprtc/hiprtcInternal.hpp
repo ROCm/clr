@@ -140,8 +140,7 @@ class RTCCompileProgram : public RTCProgram {
 
   std::string source_code_;
   std::string source_name_;
-  std::map<std::string, std::string> stripped_names_;
-  std::map<std::string, std::string> demangled_names_;
+  std::map<std::string, std::string> mangled_names_;
 
   std::vector<std::string> compile_options_;
   std::vector<std::string> link_options_;

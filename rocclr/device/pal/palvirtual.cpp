@@ -156,9 +156,7 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
           return nullptr;
         }
         addrQ = reinterpret_cast<address>(&info[1]);
-#ifdef PAL_DEBUGGER
         qCreateInfo.aqlPacketList = info->AqlPacketList();
-#endif
         result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
         if (result == Pal::Result::Success) {
           const_cast<Device&>(gpu.dev()).QueuePool().insert({queue->iQueue_, info});
@@ -203,9 +201,7 @@ VirtualGPU::Queue* VirtualGPU::Queue::Create(VirtualGPU& gpu, Pal::QueueType que
       queue->aql_mgmt_ = &info->aql_packet_mgmt_;
       // Exclusive compute path
       addrQ = reinterpret_cast<address>(&queue[1]);
-#ifdef PAL_DEBUGGER
       qCreateInfo.aqlPacketList = info->AqlPacketList();
-#endif
       result = palDev->CreateQueue(qCreateInfo, addrQ, &queue->iQueue_);
     }
     if (result != Pal::Result::Success) {
@@ -2665,12 +2661,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    dispatchParam.wavesPerSh = 0;
+    if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
+      constexpr uint32_t kWavesPerSimdLimit = 4;
+      dispatchParam.wavesPerSh = kWavesPerSimdLimit *
+        dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
+    } else {
+      dispatchParam.wavesPerSh = 0;
+    }
     dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
-#ifdef PAL_DEBUGGER
     dispatchParam.aqlPacketIndex = aql_index;
-#endif
     // Run AQL dispatch in HW
     eventBegin(MainEngine);
     iCmd()->CmdDispatchAql(dispatchParam);

@@ -60,9 +60,6 @@ struct AqlPacketMgmt : public amd::EmbeddedObject {
     memset(aql_vgpus_, 0, sizeof(aql_vgpus_));
   }
 
-  //! Returns the aql packet list
-  uintptr_t AqlPacketList() const { return reinterpret_cast<uintptr_t>(&aql_packets_); }
-
   hsa_kernel_dispatch_packet_t aql_packets_[kAqlPacketsListSize];  //!< The list of AQL packets
   GpuEvent aql_events_[kAqlPacketsListSize];    //!< The list of gpu for each AQL packet
   VirtualGPU* aql_vgpus_[kAqlPacketsListSize];  //!< The list of vgpus which had submissions

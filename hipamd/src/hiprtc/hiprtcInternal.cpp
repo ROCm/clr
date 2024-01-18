@@ -149,7 +149,9 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.reserve(20);  // count of options below
   compile_options_.push_back("-O3");
 
-  if (GPU_ENABLE_WGP_MODE) compile_options_.push_back("-mcumode");
+  if (!(GPU_ENABLE_WGP_MODE)) {
+    compile_options_.push_back("-mcumode");
+  }
 
   compile_options_.push_back(hipVerOpt);
   compile_options_.push_back(hipVerMajor);
@@ -313,17 +315,12 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
     return false;
   }
 
-  if (fgpu_rdc_) {
-    std::vector<std::string> mangledNames;
-    if (!fillMangledNames(LLVMBitcode_, mangledNames, true)) {
+  if (fgpu_rdc_ && !mangled_names_.empty()) {
+    if (!fillMangledNames(LLVMBitcode_, mangled_names_, true)) {
       LogError("Error in hiprtc: unable to fill mangled names");
       return false;
     }
 
-    if (!getDemangledNames(mangledNames, demangled_names_)) {
-      LogError("Error in hiprtc: unable to get demangled names");
-      return false;
-    }
     return true;
   }
 
@@ -373,15 +370,11 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
     return false;
   }
 
-  std::vector<std::string> mangledNames;
-  if (!fillMangledNames(executable_, mangledNames, false)) {
-    LogError("Error in hiprtc: unable to fill mangled names");
-    return false;
-  }
-
-  if (!getDemangledNames(mangledNames, demangled_names_)) {
-    LogError("Error in hiprtc: unable to get demangled names");
-    return false;
+  if (!mangled_names_.empty()) {
+    if (!fillMangledNames(executable_, mangled_names_, false)) {
+      LogError("Error in hiprtc: unable to fill mangled names");
+      return false;
+    }
   }
 
   return true;
@@ -395,10 +388,7 @@ void RTCCompileProgram::stripNamedExpression(std::string& strippedName) {
   if (strippedName.front() == '&') {
     strippedName.erase(0, 1);
   }
-  // Removes the spaces from strippedName if present
-  strippedName.erase(std::remove_if(strippedName.begin(), strippedName.end(),
-                                    [](unsigned char c) { return std::isspace(c); }),
-                     strippedName.end());
+
 }
 
 bool RTCCompileProgram::trackMangledName(std::string& name) {
@@ -406,14 +396,16 @@ bool RTCCompileProgram::trackMangledName(std::string& name) {
 
   if (name.size() == 0) return false;
 
-  std::string strippedNameNoSpace = name;
-  stripNamedExpression(strippedNameNoSpace);
+  std::string strippedName = name;
+  stripNamedExpression(strippedName);
 
-  stripped_names_.insert(std::pair<std::string, std::string>(name, strippedNameNoSpace));
-  demangled_names_.insert(std::pair<std::string, std::string>(strippedNameNoSpace, ""));
+  mangled_names_.insert(std::pair<std::string, std::string>(strippedName, ""));
 
-  const auto var{"__hiprtc_" + std::to_string(stripped_names_.size())};
-  const auto code{"\nextern \"C\" constexpr auto " + var + " = " + name + ";\n"};
+  std::string gcn_expr = "__amdgcn_name_expr_";
+  std::string size = std::to_string(mangled_names_.size());
+  const auto var1{"\n static __device__ const void* " + gcn_expr + size + "[]= {\"" + strippedName + "\", (void*)&" + strippedName + "};"};
+  const auto var2{"\n static auto __amdgcn_name_expr_stub_" + size + " = " + gcn_expr + size + ";\n"};
+  const auto code{var1 + var2};
 
   source_code_ += code;
   return true;
@@ -423,7 +415,7 @@ bool RTCCompileProgram::getMangledName(const char* name_expression, const char**
   std::string strippedName = name_expression;
   stripNamedExpression(strippedName);
 
-  if (auto dres = demangled_names_.find(strippedName); dres != demangled_names_.end()) {
+  if (auto dres = mangled_names_.find(strippedName); dres != mangled_names_.end()) {
     if (dres->second.size() != 0) {
       *loweredName = dres->second.c_str();
       return true;

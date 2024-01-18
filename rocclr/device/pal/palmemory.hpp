@@ -158,7 +158,8 @@ class Memory : public device::Memory, public Resource {
   //! forced USWC memory on APU and will cause a switch to
   //! indirect map for allocations with a possibility of host read
   bool isDirectMap() {
-    return (isCacheable() || (!isHostMemDirectAccess() && !IsPersistent()) ||
+    return (isCacheable() || (!isHostMemDirectAccess() &&
+                              (!IsPersistent() || (owner()->getContext().devices().size() > 1))) ||
              (owner()->getMemFlags() &
               (CL_MEM_ALLOC_HOST_PTR | CL_MEM_HOST_WRITE_ONLY | CL_MEM_READ_ONLY)));
   }

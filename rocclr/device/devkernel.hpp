@@ -64,7 +64,8 @@ struct KernelParameterDescriptor {
     HiddenPrivateBase = 27,
     HiddenSharedBase = 28,
     HiddenQueuePtr = 29,
-    HiddenLast = 30
+    HiddenDynamicLdsSize = 30,
+    HiddenLast = 31
   };
   clk_value_type_t type_;  //!< The parameter's type
   size_t offset_;          //!< Its offset in the parameter's stack
@@ -292,7 +293,8 @@ static const std::map<std::string, uint32_t> ArgValueKindV3 = {
   {"hidden_grid_dims",          amd::KernelParameterDescriptor::HiddenGridDims},
   {"hidden_private_base",       amd::KernelParameterDescriptor::HiddenPrivateBase},
   {"hidden_shared_base",        amd::KernelParameterDescriptor::HiddenSharedBase},
-  {"hidden_queue_ptr",          amd::KernelParameterDescriptor::HiddenQueuePtr}
+  {"hidden_queue_ptr",          amd::KernelParameterDescriptor::HiddenQueuePtr},
+  {"hidden_dynamic_lds_size",   amd::KernelParameterDescriptor::HiddenDynamicLdsSize}
 };
 
 static const std::map<std::string, cl_kernel_arg_access_qualifier> ArgAccQualV3 = {

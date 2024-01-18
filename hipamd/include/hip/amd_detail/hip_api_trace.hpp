@@ -870,6 +870,24 @@ typedef int (*t_hipGetStreamDeviceId)(hipStream_t stream);
 typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
                                  const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+typedef hipError_t (*t_hipGraphAddExternalSemaphoresWaitNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                               const hipGraphNode_t* pDependencies, size_t numDependencies,
+                               const hipExternalSemaphoreWaitNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphAddExternalSemaphoresSignalNode)(hipGraphNode_t* pGraphNode, hipGraph_t graph,
+                               const hipGraphNode_t* pDependencies, size_t numDependencies,
+                               const hipExternalSemaphoreSignalNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphExternalSemaphoresSignalNodeSetParams)(hipGraphNode_t hNode,
+                                                         const hipExternalSemaphoreSignalNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphExternalSemaphoresWaitNodeSetParams)(hipGraphNode_t hNode,
+                                                       const hipExternalSemaphoreWaitNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphExternalSemaphoresSignalNodeGetParams)(hipGraphNode_t hNode,
+                                                         hipExternalSemaphoreSignalNodeParams* params_out);
+typedef hipError_t (*t_hipGraphExternalSemaphoresWaitNodeGetParams)(hipGraphNode_t hNode,
+                                                       hipExternalSemaphoreWaitNodeParams* params_out);
+typedef hipError_t (*t_hipGraphExecExternalSemaphoresSignalNodeSetParams)(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                                             const hipExternalSemaphoreSignalNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphExecExternalSemaphoresWaitNodeSetParams)(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                                           const hipExternalSemaphoreWaitNodeParams* nodeParams);
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1321,4 +1339,12 @@ struct HipDispatchTable {
   t_hipLaunchHostFunc_spt hipLaunchHostFunc_spt_fn;
   t_hipGetStreamDeviceId hipGetStreamDeviceId_fn;
   t_hipDrvGraphAddMemsetNode hipDrvGraphAddMemsetNode_fn;
+  t_hipGraphAddExternalSemaphoresWaitNode hipGraphAddExternalSemaphoresWaitNode_fn;
+  t_hipGraphAddExternalSemaphoresSignalNode hipGraphAddExternalSemaphoresSignalNode_fn;
+  t_hipGraphExternalSemaphoresSignalNodeSetParams hipGraphExternalSemaphoresSignalNodeSetParams_fn;
+  t_hipGraphExternalSemaphoresWaitNodeSetParams hipGraphExternalSemaphoresWaitNodeSetParams_fn;
+  t_hipGraphExternalSemaphoresSignalNodeGetParams hipGraphExternalSemaphoresSignalNodeGetParams_fn;
+  t_hipGraphExternalSemaphoresWaitNodeGetParams hipGraphExternalSemaphoresWaitNodeGetParams_fn;
+  t_hipGraphExecExternalSemaphoresSignalNodeSetParams hipGraphExecExternalSemaphoresSignalNodeSetParams_fn;
+  t_hipGraphExecExternalSemaphoresWaitNodeSetParams hipGraphExecExternalSemaphoresWaitNodeSetParams_fn;
 };
