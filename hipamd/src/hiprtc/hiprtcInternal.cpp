@@ -170,8 +170,6 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back("-fms-compatibility");
 #endif
   AppendCompileOptions();
-
-  exe_options_.push_back("-O3");
 }
 
 bool RTCCompileProgram::addSource(const std::string& source, const std::string& name) {
