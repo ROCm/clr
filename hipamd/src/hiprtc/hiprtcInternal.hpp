@@ -131,7 +131,6 @@ class RTCProgram {
   std::vector<char> executable_;
 
   amd_comgr_data_set_t exec_input_;
-  std::vector<std::string> exe_options_;
 };
 
 class RTCCompileProgram : public RTCProgram {
