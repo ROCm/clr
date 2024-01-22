@@ -1311,8 +1311,8 @@ hipError_t hipMemcpyToSymbol_common(const void* symbol, const void* src, size_t 
                              size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1345,8 +1345,8 @@ hipError_t hipMemcpyFromSymbol_common(void* dst, const void* symbol, size_t size
                                size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1379,8 +1379,8 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
                                   size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1412,8 +1412,8 @@ hipError_t hipMemcpyFromSymbolAsync_common(void* dst, const void* symbol, size_t
                                     size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
 
