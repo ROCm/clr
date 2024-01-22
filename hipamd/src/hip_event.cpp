@@ -85,8 +85,6 @@ hipError_t Event::synchronize() {
       event_->awaitCompletion();
     }
   }
-  // Release freed memory for all memory pools on the device
-  hip_device->ReleaseFreedMemory();
   return hipSuccess;
 }
 
@@ -443,7 +441,12 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream()) == true) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
-  HIP_RETURN(e->synchronize());
+
+  hipError_t status = e->synchronize();
+  // Release freed memory for all memory pools on the device
+  g_devices[e->deviceId()]->ReleaseFreedMemory();
+
+  HIP_RETURN(status);
 }
 
 hipError_t ihipEventQuery(hipEvent_t event) {
