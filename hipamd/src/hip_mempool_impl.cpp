@@ -44,18 +44,21 @@ void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
 amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr) {
   amd::Memory* memory = nullptr;
   auto start = allocations_.lower_bound({size, nullptr});
-  // Runtime can accept an allocation with 12.5% on the size threshold
-  uint32_t i = 0;
-  for (auto it = start; (it != allocations_.end()) && (it->first.first <= (size / 8.0) * 9);) {
-    i++;
+  for (auto it = start; it != allocations_.end();) {
     bool check_address = (dptr == nullptr);
     if (it->first.second->getSvmPtr() == dptr) {
       // If the search is done for the specified address then runtime must wait
       it->second.Wait();
       check_address = true;
     }
+    // Runtime can accept an allocation with 12.5% on the size threshold
+    bool opp_mode = opportunistic;
+    if (it->first.first > (size / 8.0) * 9) {
+      // Disable opportunistic mode for more aggressive search
+      opp_mode = false;
+    }
     // Check if size can match and it's safe to use this resource.
-    if (check_address && (it->second.IsSafeFind(stream, opportunistic))) {
+    if (check_address && (it->second.IsSafeFind(stream, opp_mode))) {
       memory = it->first.second;
       total_size_ -= memory->getSize();
       // Remove found allocation from the map
@@ -219,6 +222,22 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
 bool MemoryPool::FreeMemory(amd::Memory* memory, hip::Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
+  // If the free heap grows over the busy heap, then force release
+  if (free_heap_.GetTotalSize() > busy_heap_.GetTotalSize()) {
+    // Use event base release to reduce memory pressure
+    constexpr size_t kBytesToHold = 0;
+    free_heap_.ReleaseAllMemory(kBytesToHold);
+
+    // If free mmeory is less than 12.5% of total, then force wait release
+    size_t free = 0;
+    size_t total = 0;
+    hipError_t err = hipMemGetInfo(&free, &total);
+    if ((err == hipSuccess) && (free < (total >> 3))) {
+      constexpr bool kSafeRelease = true;
+      free_heap_.ReleaseAllMemory(free_heap_.GetTotalSize() >> 1, kSafeRelease);
+    }
+  }
+
   MemoryTimestamp ts;
   // Remove memory object from the busy pool
   if (!busy_heap_.RemoveMemory(memory, &ts)) {
@@ -327,6 +346,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
         return hipErrorInvalidValue;
       }
       free_heap_.SetMaxTotalSize(reset);
+      busy_heap_.SetMaxTotalSize(reset);
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
@@ -372,7 +392,8 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       break;
     case hipMemPoolAttrReservedMemHigh:
       // High watermark of all allocated memory in OS, since the last reset
-      *reinterpret_cast<uint64_t*>(value) = busy_heap_.GetTotalSize() + free_heap_.GetMaxTotalSize();
+      *reinterpret_cast<uint64_t*>(value) = busy_heap_.GetMaxTotalSize() +
+                                            free_heap_.GetMaxTotalSize();
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Total currently used memory by the pool
