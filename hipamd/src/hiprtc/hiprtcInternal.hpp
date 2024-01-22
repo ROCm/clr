@@ -107,6 +107,7 @@ static void crashWithMessage(std::string message) {
 }
 
 struct Settings {
+  bool dumpISA{false};
   bool offloadArchProvided{false};
 };
 
