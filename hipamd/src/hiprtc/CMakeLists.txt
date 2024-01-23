@@ -27,6 +27,10 @@
 cmake_minimum_required(VERSION 3.16.1)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 if(BUILD_SHARED_LIBS)
