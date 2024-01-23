@@ -20,6 +20,10 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 include(GNUInstallDirs)
 
 set(VERSION_MAJOR_AMDHIP ${HIP_VERSION_MAJOR})
