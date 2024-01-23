@@ -2274,7 +2274,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   uint32_t blit_wg_ = dev().settings().limit_blit_wg_;
 
   if (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev()) {
-    if ((sizeIn[0] > dev().settings().sdma_p2p_threshold_) || !gpu().IsPendingDispatch()) {
+    if (sizeIn[0] > dev().settings().sdma_p2p_threshold_) {
       p2p = true;
     } else {
       constexpr uint32_t kLimitWgForKernelP2p = 16;
