@@ -270,7 +270,7 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
     buildLog_ += "Error: AMD HSA Code Object loading failed.\n";
     return false;
   }
-  status = executable_->Freeze(nullptr);
+  status = loader_->FreezeExecutable(executable_, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
     buildLog_ += "Error: AMD HSA Code Object freeze failed.\n";
     return false;
@@ -782,7 +782,7 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
     return false;
   }
 
-  status = executable_->Freeze(nullptr);
+  status = loader_->FreezeExecutable(executable_, nullptr);
   if (status != HSA_STATUS_SUCCESS) {
     LogError("Error: Freezing the executable failed.");
     return false;
