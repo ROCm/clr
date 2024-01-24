@@ -103,14 +103,16 @@ unsigned long long int __ballot64(int predicate) {
     return __builtin_amdgcn_uicmp(predicate, 0, ICMP_NE);
 }
 
+// See amd_warp_sync_functions.h for an explanation of this preprocessor flag.
+#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
 // Since threads in a wave do not make independent progress, __activemask()
 // always returns the exact active mask, i.e, all active threads in the wave.
-
 __device__
 inline
 unsigned long long __activemask() {
   return __ballot(true);
 }
+#endif // HIP_ENABLE_WARP_SYNC_BUILTINS
 
 __device__ static inline unsigned int __lane_id() {
     return  __builtin_amdgcn_mbcnt_hi(
