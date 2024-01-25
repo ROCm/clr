@@ -961,7 +961,7 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
   if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
     return hipErrorIllegalState;
   }
-  // Capture must be ended on the same stream in which it was initiated
+   // Capture must be ended on the same stream in which it was initiated
   if (!s->IsOriginStream()) {
     return hipErrorStreamCaptureUnmatched;
   }
@@ -978,15 +978,17 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
     amd::ScopedLock lock(g_captureStreamsLock);
     g_captureStreams.erase(std::find(g_captureStreams.begin(), g_captureStreams.end(), s));
   }
+  {
+    amd::ScopedLock lock(g_streamSetLock);
+    g_allCapturingStreams.erase(
+        std::find(g_allCapturingStreams.begin(), g_allCapturingStreams.end(), s));
+  }
   // If capture was invalidated, due to a violation of the rules of stream capture
   if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
     *pGraph = nullptr;
     return hipErrorStreamCaptureInvalidated;
   }
-  {
-    amd::ScopedLock lock(g_streamSetLock);
-    g_allCapturingStreams.erase(std::find(g_allCapturingStreams.begin(), g_allCapturingStreams.end(), s));
-  }
+
   // check if all parallel streams have joined
   // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do
   // not result in hipErrorStreamCaptureUnjoined
