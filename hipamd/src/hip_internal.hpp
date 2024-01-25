@@ -180,23 +180,48 @@ const char* ihipGetErrorName(hipError_t hip_error);
     }                                    \
   } while (0);
 
+// During stream capture some actions, such as a call to hipMalloc, may be unsafe and prohibited
+// during capture. It is allowed only in relaxed mode.
 #define CHECK_STREAM_CAPTURE_SUPPORTED()                                                           \
   if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeThreadLocal) {                          \
     if (hip::tls.capture_streams_.size() != 0) {                                                   \
+      for (auto stream : hip::tls.capture_streams_) {                                              \
+        stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);                               \
+      }                                                                                            \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
   } else if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeGlobal) {                        \
     if (hip::tls.capture_streams_.size() != 0) {                                                   \
+      for (auto stream : hip::tls.capture_streams_) {                                              \
+        stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);                               \
+      }                                                                                            \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
     if (g_captureStreams.size() != 0) {                                                            \
+      for (auto stream : g_captureStreams) {                                                       \
+        stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);                               \
+      }                                                                                            \
       HIP_RETURN(hipErrorStreamCaptureUnsupported);                                                \
     }                                                                                              \
   }
 
-// Sync APIs cannot be called when stream capture is active
+// Device sync is not supported during capture
+#define CHECK_SUPPORTED_DURING_CAPTURE()                                                           \
+  if (!g_allCapturingStreams.empty()) {                                                            \
+    for (auto stream : g_allCapturingStreams) {                                                    \
+      stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);                                 \
+    }                                                                                              \
+    return hipErrorStreamCaptureUnsupported;                                                       \
+  }
+
+// Sync APIs like hipMemset, hipMemcpy etc.. cannot be called when stream capture is active
+// for all capture modes hipStreamCaptureModeGlobal, hipStreamCaptureModeThreadLocal and
+// hipStreamCaptureModeRelaxed
 #define CHECK_STREAM_CAPTURING()                                                                   \
-  if (!g_captureStreams.empty()) {                                                                 \
+  if (!g_allCapturingStreams.empty()) {                                                            \
+    for (auto stream : g_allCapturingStreams) {                                                    \
+      stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);                                 \
+    }                                                                                              \
     return hipErrorStreamCaptureImplicit;                                                          \
   }
 
@@ -207,6 +232,10 @@ const char* ihipGetErrorName(hipError_t hip_error);
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = hip::capture##name(stream, ##__VA_ARGS__);                                 \
     return status;                                                                                 \
+  } else if (stream != nullptr &&                                                                  \
+             reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                         \
+                 hipStreamCaptureStatusInvalidated) {                                              \
+    return hipErrorStreamCaptureInvalidated;                                                       \
   }
 
 #define PER_THREAD_DEFAULT_STREAM(stream)                                                         \
@@ -310,7 +339,6 @@ public:
     static bool StreamCaptureBlocking();
 
     static void Destroy(hip::Stream* stream);
-
     /// Check Stream Capture status to make sure it is done
     static bool StreamCaptureOngoing(hipStream_t hStream);
 

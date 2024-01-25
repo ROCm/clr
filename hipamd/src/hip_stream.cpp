@@ -130,21 +130,34 @@ bool Stream::StreamCaptureBlocking() {
 
 bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
-  // Allow capture to be less restrictive one one changes the stream capture interaction
-  // mode for the thread
-  if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeRelaxed) {
-    return false;
-  }
-  // If any local thread has an ongoing or concurrent capture sequence initiated
-  // with hipStreamCaptureModeGlobal, it is prohibited from unsafe calls
-  if (s != nullptr && s->GetCaptureMode() == hipStreamCaptureModeGlobal) {
+  if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
+    // If current thread is capturing in relaxed mode
+    if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeRelaxed) {
+      return false;
+    }
+    // If any stream in current/concurrent thread is capturing in global mode
     amd::ScopedLock lock(g_captureStreamsLock);
-    return (g_captureStreams.empty() == true && hip::tls.capture_streams_.empty()) ? false : true;
+    if (!g_captureStreams.empty()) {
+      for (auto stream : hip::g_captureStreams) {
+        stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+      }
+      return true;
+    }
+    // If any stream in current thread is capturing in ThreadLocal mode
+    if (!hip::tls.capture_streams_.empty()) {
+      for (auto stream : hip::tls.capture_streams_) {
+        stream->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+      }
+      return true;
+    }
+    return false;
+  } else if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+    s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+    return true;
+  } else if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
+    return true;
   }
-  else {
-    amd::ScopedLock lock(g_streamSetLock);
-    return (g_allCapturingStreams.find(s) == g_allCapturingStreams.end() ? false : true);
-  }
+  return false;
 }
 
 // ================================================================================================
