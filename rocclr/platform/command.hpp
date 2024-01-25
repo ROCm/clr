@@ -126,6 +126,7 @@ class Event : public RuntimeObject {
       submitted_ = 0ULL;
       start_ = 0ULL;
       end_ = 0ULL;
+      correlation_id_ = 0ULL;
      }
   } profilingInfo_;
 
