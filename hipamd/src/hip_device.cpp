@@ -401,8 +401,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.directManagedMemAccessFromHost = info.hmmDirectHostAccess_;
   deviceProps.canUseHostPointerForRegisteredMem = info.hostUnifiedMemory_;
   deviceProps.pageableMemoryAccess = info.hmmCpuMemoryAccessible_;
-  deviceProps.hostRegisterSupported = info.hostUnifiedMemory_;
-  deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
+  deviceProps.hostRegisterSupported = true;
+  deviceProps.pageableMemoryAccessUsesHostPageTables = info.iommuv2_;
 
   // Mem pool
   deviceProps.memoryPoolsSupported = HIP_MEM_POOL_SUPPORT;
@@ -467,7 +467,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.timelineSemaphoreInteropSupported = 0;
   deviceProps.unifiedFunctionPointers = 0;
 
-  deviceProps.integrated = info.accelerator_;
+  deviceProps.integrated = info.hostUnifiedMemory_;
 
   *props = deviceProps;
   return hipSuccess;
