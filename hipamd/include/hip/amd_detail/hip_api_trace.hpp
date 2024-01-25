@@ -51,8 +51,8 @@
 //   HipCompilerDispatchTable struct, such as a *change* to type/name an existing member variable.
 //   DO NOT REMOVE IT.
 #define HIP_API_TABLE_MAJOR_VERSION 0
-#define HIP_RUNTIME_API_TABLE_MAJOR_VERSION 0
 #define HIP_COMPILER_API_TABLE_MAJOR_VERSION 0
+#define HIP_RUNTIME_API_TABLE_MAJOR_VERSION 0
 
 // The step version number should be changed whenever the size of the API table struct(s) change.
 // - Increment the HIP_API_TABLE_STEP_VERSION when/if new API table structs are added
@@ -60,8 +60,8 @@
 // - Increment the HIP_COMPILER_API_TABLE_STEP_VERSION when new compiler API functions are added
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 1
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 1
 
 // HIP API interface
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
