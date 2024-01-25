@@ -865,7 +865,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
     // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
     // retrieve this correlation ID to attribute waves to specific dispatch locations.
-    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value) {
+    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value &&
+        activity_prof::IsEnabled(OP_ID_DISPATCH)) {
       auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
       dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
     }
