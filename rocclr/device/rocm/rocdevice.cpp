@@ -1425,6 +1425,7 @@ bool Device::populateOCLDeviceConstants() {
   if (agent_profile_ == HSA_PROFILE_FULL) {  // full-profile = participating in coherent memory,
                                              // base-profile = NUMA based non-coherent memory
     info_.hostUnifiedMemory_ = true;
+    info_.iommuv2_ = true;
   }
   info_.memBaseAddrAlign_ =
       8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
@@ -1625,14 +1626,14 @@ bool Device::populateOCLDeviceConstants() {
     }
     if (amd::IS_HIP) {
       // Report atomics capability based on GFX IP, control on Hawaii
-      if (info_.hostUnifiedMemory_ || isa().versionMajor() >= 8) {
+      if (info_.iommuv2_ || isa().versionMajor() >= 8) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
     else if (!settings().useLightning_) {
       // Report atomics capability based on GFX IP, control on Hawaii
       // and Vega10.
-      if (info_.hostUnifiedMemory_ || (isa().versionMajor() == 8)) {
+      if (info_.iommuv2_ || (isa().versionMajor() == 8)) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
@@ -1847,7 +1848,7 @@ bool Device::populateOCLDeviceConstants() {
 
   // Check if the device is APU
   if (hsa_flag_isset64(memory_properties, HSA_AMD_MEMORY_PROPERTY_AGENT_IS_APU)) {
-    info_.accelerator_ = 1;
+    info_.hostUnifiedMemory_ = 1;
   }
 
   return true;

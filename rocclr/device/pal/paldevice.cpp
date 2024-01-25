@@ -513,6 +513,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     info_.hostUnifiedMemory_ = true;
   }
 
+  info_.iommuv2_ = palProp.gpuMemoryProperties.flags.iommuv2Support;
+
   info_.profilingTimerResolution_ = 1;
   info_.profilingTimerOffset_ = amd::Os::offsetToEpochNanos();
   info_.littleEndian_ = true;

@@ -412,9 +412,12 @@ struct Info : public amd::EmbeddedObject {
   //  the device implement error correction.
   uint32_t errorCorrectionSupport_;
 
-  //! true if the device and the host have a unified memory subsystem and
-  //  is false otherwise.
+  //! true if the device and the host have a unified memory and is false otherwise.
   uint32_t hostUnifiedMemory_;
+
+  //! true if the device and the host have a unified memory management subsystem and
+  //  is false otherwise.
+  uint32_t iommuv2_;
 
   //! Describes the resolution of device timer.
   size_t profilingTimerResolution_;
@@ -623,8 +626,6 @@ struct Info : public amd::EmbeddedObject {
 
   //! global CU mask which will be applied to all queues created on this device
   std::vector<uint32_t> globalCUMask_;
-
-  bool accelerator_; //!< Accelerator or discrete graphics card.
 
   //! AQL Barrier Value Packet support
   bool aqlBarrierValue_;
