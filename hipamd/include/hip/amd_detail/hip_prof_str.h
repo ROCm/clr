@@ -2126,9 +2126,9 @@ typedef struct hip_api_data_s {
     } hipGraphKernelNodeCopyAttributes;
     struct {
       hipGraphNode_t hNode;
-      hipKernelNodeAttrID attr;
-      hipKernelNodeAttrValue* value;
-      hipKernelNodeAttrValue value__val;
+      hipLaunchAttributeID attr;
+      hipLaunchAttributeValue* value;
+      hipLaunchAttributeValue value__val;
     } hipGraphKernelNodeGetAttribute;
     struct {
       hipGraphNode_t node;
@@ -2137,9 +2137,9 @@ typedef struct hip_api_data_s {
     } hipGraphKernelNodeGetParams;
     struct {
       hipGraphNode_t hNode;
-      hipKernelNodeAttrID attr;
-      const hipKernelNodeAttrValue* value;
-      hipKernelNodeAttrValue value__val;
+      hipLaunchAttributeID attr;
+      const hipLaunchAttributeValue* value;
+      hipLaunchAttributeValue value__val;
     } hipGraphKernelNodeSetAttribute;
     struct {
       hipGraphNode_t node;
@@ -4326,22 +4326,22 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGraphKernelNodeCopyAttributes.hSrc = (hipGraphNode_t)hSrc; \
   cb_data.args.hipGraphKernelNodeCopyAttributes.hDst = (hipGraphNode_t)hDst; \
 };
-// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
+// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('hipLaunchAttributeValue*', 'value')]
 #define INIT_hipGraphKernelNodeGetAttribute_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphKernelNodeGetAttribute.hNode = (hipGraphNode_t)hNode; \
-  cb_data.args.hipGraphKernelNodeGetAttribute.attr = (hipKernelNodeAttrID)attr; \
-  cb_data.args.hipGraphKernelNodeGetAttribute.value = (hipKernelNodeAttrValue*)value; \
+  cb_data.args.hipGraphKernelNodeGetAttribute.attr = (hipLaunchAttributeID)attr; \
+  cb_data.args.hipGraphKernelNodeGetAttribute.value = (hipLaunchAttributeValue*)value; \
 };
 // hipGraphKernelNodeGetParams[('hipGraphNode_t', 'node'), ('hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeGetParams_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphKernelNodeGetParams.node = (hipGraphNode_t)node; \
   cb_data.args.hipGraphKernelNodeGetParams.pNodeParams = (hipKernelNodeParams*)pNodeParams; \
 };
-// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('const hipKernelNodeAttrValue*', 'value')]
+// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value')]
 #define INIT_hipGraphKernelNodeSetAttribute_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipGraphKernelNodeSetAttribute.hNode = (hipGraphNode_t)hNode; \
-  cb_data.args.hipGraphKernelNodeSetAttribute.attr = (hipKernelNodeAttrID)attr; \
-  cb_data.args.hipGraphKernelNodeSetAttribute.value = (const hipKernelNodeAttrValue*)value; \
+  cb_data.args.hipGraphKernelNodeSetAttribute.attr = (hipLaunchAttributeID)attr; \
+  cb_data.args.hipGraphKernelNodeSetAttribute.value = (const hipLaunchAttributeValue*)value; \
 };
 // hipGraphKernelNodeSetParams[('hipGraphNode_t', 'node'), ('const hipKernelNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphKernelNodeSetParams_CB_ARGS_DATA(cb_data) { \
@@ -6405,7 +6405,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipGraphKernelNodeCopyAttributes[('hipGraphNode_t', 'hSrc'), ('hipGraphNode_t', 'hDst')]
     case HIP_API_ID_hipGraphKernelNodeCopyAttributes:
       break;
-// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('hipKernelNodeAttrValue*', 'value')]
+// hipGraphKernelNodeGetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('hipLaunchAttributeValue*', 'value')]
     case HIP_API_ID_hipGraphKernelNodeGetAttribute:
       if (data->args.hipGraphKernelNodeGetAttribute.value) data->args.hipGraphKernelNodeGetAttribute.value__val = *(data->args.hipGraphKernelNodeGetAttribute.value);
       break;
@@ -6413,7 +6413,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipGraphKernelNodeGetParams:
       if (data->args.hipGraphKernelNodeGetParams.pNodeParams) data->args.hipGraphKernelNodeGetParams.pNodeParams__val = *(data->args.hipGraphKernelNodeGetParams.pNodeParams);
       break;
-// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipKernelNodeAttrID', 'attr'), ('const hipKernelNodeAttrValue*', 'value')]
+// hipGraphKernelNodeSetAttribute[('hipGraphNode_t', 'hNode'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value')]
     case HIP_API_ID_hipGraphKernelNodeSetAttribute:
       if (data->args.hipGraphKernelNodeSetAttribute.value) data->args.hipGraphKernelNodeSetAttribute.value__val = *(data->args.hipGraphKernelNodeSetAttribute.value);
       break;
