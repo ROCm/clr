@@ -291,6 +291,11 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
       case 2:
       case 4:
         if (printFloat) {
+          uint32_t arg = *argument;
+          if (size == 2) {
+            auto p = reinterpret_cast<const uint16_t*>(argument);
+            amd::half2float(*p, &arg);
+          }
           static const char* fSpecifiers = "eEfgGa";
           std::string fmtF = fmt;
           size_t posS = fmtF.find_first_of("%");
@@ -298,7 +303,7 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
           if (posS != std::string::npos && posE != std::string::npos) {
             fmtF.replace(posS + 1, posE - posS, "s");
           }
-          float fArg = *(reinterpret_cast<const float*>(argument));
+          float fArg = *(reinterpret_cast<const float*>(&arg));
           float fSign = copysign(1.0, fArg);
           if (isinf(fArg) && !isnan(fArg)) {
             if (fSign < 0) {
@@ -466,6 +471,7 @@ void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* 
         // Print other elemnts with separator if available
         for (int e = 1; e < vectorSize; ++e) {
           const char* t = reinterpret_cast<const char*>(s);
+
           // Output the vector separator
           outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(Separator));
 
