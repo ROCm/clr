@@ -1242,10 +1242,9 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
 #if HIP_ROCPROFILER_REGISTER > 0
 template <typename Tp> struct dispatch_table_info;
 
-#define HIP_DEFINE_DISPATCH_TABLE_INFO(TYPE, NAME, NUM_FUNCTORS)                                   \
+#define HIP_DEFINE_DISPATCH_TABLE_INFO(TYPE, NAME)                                                 \
   template <> struct dispatch_table_info<TYPE> {                                                   \
     static constexpr auto name = #NAME;                                                            \
-    static constexpr auto size = ComputeTableSize(NUM_FUNCTORS);                                   \
     static constexpr auto version = HIP_ROCP_REG_VERSION;                                          \
     static constexpr auto import_func = &ROCPROFILER_REGISTER_IMPORT_FUNC(NAME);                   \
   };
@@ -1254,8 +1253,8 @@ constexpr auto ComputeTableSize(size_t num_funcs) {
   return (num_funcs * sizeof(void*)) + sizeof(uint64_t);
 }
 
-HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip, 440)
-HIP_DEFINE_DISPATCH_TABLE_INFO(HipCompilerDispatchTable, hip_compiler, 9)
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip)
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipCompilerDispatchTable, hip_compiler)
 #endif
 
 template <typename Tp> void ToolInit(Tp* table) {
@@ -1281,21 +1280,6 @@ template <typename Tp> Tp& GetDispatchTableImpl() {
   // using a static inside a function prevents static initialization fiascos
   static auto dispatch_table = Tp{};
 
-#if HIP_ROCPROFILER_REGISTER > 0
-  // cause a compiler error if the size of the API table changed (most likely due to addition of new
-  // dispatch table entry) to make sure the developer is reminded to update the table
-  // versioning value before changing the value in HIP_DEFINE_DISPATCH_TABLE_INFO to make this
-  // static assert pass. Please note: rocprofiler will do very strict compile time checks to make
-  // sure these versioning values are appropriately updated -- so commenting out this check, only
-  // updating the size field in HIP_DEFINE_DISPATCH_TABLE_INFO, etc. will result in the
-  // rocprofiler-sdk failing to build and your modifications will not be able to be staged.
-  static_assert(
-      sizeof(Tp) == dispatch_table_info<Tp>::size,
-      "size of the API table struct has changed. Update the STEP_VERSION number (or in rare cases, "
-      "the MAJOR_VERSION number) in <hipamd/include/hip/amd_detail/hip_api_trace.hpp> for the "
-      "failing API struct before changing the SIZE field passed to HIP_DEFINE_DISPATCH_TABLE_INFO");
-#endif
-
   // Change all the function pointers to point to the HIP runtime implementation functions
   UpdateDispatchTable(&dispatch_table);
 
@@ -1317,8 +1301,31 @@ const HipCompilerDispatchTable* GetHipCompilerDispatchTable() {
 }  // namespace hip
 
 #if !defined(_WIN32)
+constexpr auto ComputeTableOffset(size_t num_funcs) {
+  return (num_funcs * sizeof(void*)) + sizeof(size_t);
+}
+
+// HIP_ENFORCE_ABI_VERSIONING will cause a compiler error if the size of the API table changed (most
+// likely due to addition of new dispatch table entry) to make sure the developer is reminded to
+// update the table versioning value before changing the value in HIP_ENFORCE_ABI_VERSIONING to make
+// this static assert pass.
+//
+// HIP_ENFORCE_ABI will cause a compiler error if the order of the members in the API table change. Do not reorder member variables and change existing HIP_ENFORCE_ABI values -- always
+//
+// Please note: rocprofiler will do very strict compile time checks to make
+// sure these versioning values are appropriately updated -- so commenting out this check, only
+// updating the size field in HIP_ENFORCE_ABI_VERSIONING, etc. will result in the
+// rocprofiler-sdk failing to build and you will be forced to do the work anyway.
+#define HIP_ENFORCE_ABI_VERSIONING(TABLE, NUM)                                                     \
+  static_assert(                                                                                   \
+      sizeof(TABLE) == ComputeTableOffset(NUM),                                                    \
+      "size of the API table struct has changed. Update the STEP_VERSION number (or in rare "      \
+      "cases, the MAJOR_VERSION number) in <hipamd/include/hip/amd_detail/hip_api_trace.hpp> for " \
+      "the failing API struct before changing the SIZE field passed to "                           \
+      "HIP_DEFINE_DISPATCH_TABLE_INFO");
+
 #define HIP_ENFORCE_ABI(TABLE, ENTRY, NUM)                                                         \
-  static_assert(offsetof(TABLE, ENTRY) == (sizeof(size_t) + (NUM * sizeof(void*))),                \
+  static_assert(offsetof(TABLE, ENTRY) == ComputeTableOffset(NUM),                                 \
                 "ABI break for " #TABLE "." #ENTRY                                                 \
                 ". Only add new function pointers to end of struct and do not rearrange them " );
 
@@ -1332,6 +1339,14 @@ HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterSurface_fn, 5)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterTexture_fn, 6)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterVar_fn, 7)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipUnregisterFatBinary_fn, 8)
+
+// if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
+// will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
+//
+//  HIP_ENFORCE_ABI(<table>, <functor>, 8)
+//
+//  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
+HIP_ENFORCE_ABI_VERSIONING(HipCompilerDispatchTable, 9)
 
 static_assert(HIP_COMPILER_API_TABLE_MAJOR_VERSION == 0 && HIP_COMPILER_API_TABLE_STEP_VERSION == 0,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
@@ -1768,17 +1783,28 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_v2_spt_fn, 425)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchHostFunc_spt_fn, 426)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetStreamDeviceId_fn, 427)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemsetNode_fn, 428)
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtGetLastError_fn, 439)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetBorderColor_fn, 440)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetArray_fn, 441)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
+
+// if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
+// will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
+//
+//  HIP_ENFORCE_ABI(<table>, <functor>, 8)
+//
+//  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 443)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 1,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
