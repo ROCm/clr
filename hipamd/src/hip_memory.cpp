@@ -3688,6 +3688,10 @@ hipError_t ihipPointerSetAttribute(const void* value, hipPointer_attribute attri
   if (attribute != HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS) {
     return hipErrorInvalidValue;
   }
+  const unsigned int syncMemops = *reinterpret_cast<const unsigned int*>(value);
+  if (syncMemops != 0 && syncMemops != 1) {
+    return hipErrorInvalidValue;
+  }
 
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(ptr, offset);
@@ -3695,8 +3699,7 @@ hipError_t ihipPointerSetAttribute(const void* value, hipPointer_attribute attri
     return hipErrorInvalidDevicePointer;
   }
 
-  memObj->getUserData().sync_mem_ops_
-               = static_cast<const bool>(*(reinterpret_cast<const unsigned int*>(value)));
+  memObj->getUserData().sync_mem_ops_ = static_cast<const bool>(syncMemops);
 
   return hipSuccess;
 }
