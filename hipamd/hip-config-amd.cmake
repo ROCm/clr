@@ -146,7 +146,7 @@ foreach(GPU_TARGET ${GPU_TARGETS})
     hip_add_interface_link_flags(hip::device --offload-arch=${GPU_TARGET})
 endforeach()
 #Add support for parallel build and link
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   check_cxx_compiler_flag("-parallel-jobs=1" HIP_CLANG_SUPPORTS_PARALLEL_JOBS)
 endif()
 if(HIP_CLANG_NUM_PARALLEL_JOBS GREATER 1)
