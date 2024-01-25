@@ -158,7 +158,9 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       releaseResources();
     }
 
-    if (profilingInfo().enabled_) activity_prof::ReportActivity(command());
+    if (profilingInfo().enabled_ && activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+      activity_prof::ReportActivity(command());
+    }
 
     // Broadcast all the waiters.
     if (referenceCount() > 1) {
