@@ -4,15 +4,15 @@ AMD Common Language Runtime contains source code for AMD's compute languages run
 
 ## Project Organisation
 
-- `hipamd` - contains implementation of `HIP` language on AMD platform. Previously this was hosted at [ROCm-Developer-Tools/hipamd](https://github.com/ROCm-Developer-Tools/hipamd)
-- `opencl` - contains implementation of [OpenCL™](https://www.khronos.org/opencl/) on AMD platform. Previously this was hosted at [RadeonOpenCompute/ROCm-OpenCL-Runtime](https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime)
-- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. Previously this was hosted at [ROCm-Developer-Tools/ROCclr](https://github.com/ROCm-Developer-Tools/ROCclr)
+- `hipamd` - contains implementation of `HIP` language on AMD platform. Previously this was hosted at [ROCm/hipamd](https://github.com/ROCm/hipamd)
+- `opencl` - contains implementation of [OpenCL™](https://www.khronos.org/opencl/) on AMD platform. Previously this was hosted at [ROCm/ROCm-OpenCL-Runtime](https://github.com/ROCm/ROCm-OpenCL-Runtime)
+- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. Previously this was hosted at [ROCm/ROCclr](https://github.com/ROCm/ROCclr)
 
 ## How to build/install
 
 ### Prerequisites
 
-Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/en/latest/deploy/linux/quick_start.html).
+Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/)).
 
 Building clr requires `rocm-hip-libraries` meta package, which provides the pre-requisites for clr.
 
