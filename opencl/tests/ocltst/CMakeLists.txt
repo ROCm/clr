@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.5.1)
 
+if (POLICY CMP0072)
+        cmake_policy(SET CMP0072 NEW)
+endif()
+
 set(OCLTST_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
 if (WIN32)
