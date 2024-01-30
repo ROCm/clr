@@ -246,6 +246,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                              static_cast<size_t>(item.offset));
     }
 
+    int unfound = 0;
     for (auto device : devices) {
       std::string device_name = device->devices()[0]->isa().isaName();
       auto dev_it = unique_isa_names.find(device_name);
@@ -253,9 +254,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       if (dev_it->second.first == 0) {
         LogPrintfError("Cannot find CO in the bundle %s for ISA: %s",
                         fname_.c_str(), device_name.c_str());
-        hip_status = hipErrorNoBinaryForGpu;
-        ListAllDeviceWithNoCOFromBundle(unique_isa_names);
-        break;
+        unfound++;
+        continue;
       }
       guarantee(unique_isa_names.cend() != dev_it,
                 "Cannot find the device name in the unique device name");
@@ -265,6 +265,14 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                                            dev_it->second.second);
       fatbin_dev_info_[device->deviceId()]->program_
         = new amd::Program(*(device->asContext()));
+    }
+
+    if (unfound > 0) {
+      ListAllDeviceWithNoCOFromBundle(unique_isa_names);
+      // Report NoBinaryForGpu if no device has a matching code object.
+      if (unfound == devices.size()) {
+        hip_status = hipErrorNoBinaryForGpu;
+      }
     }
   } while(0);
 
