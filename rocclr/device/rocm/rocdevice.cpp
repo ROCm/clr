@@ -273,11 +273,12 @@ Device::~Device() {
       auto& qInfo = qIter->second;
       if (qInfo.hostcallBuffer_) {
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hostcall buffer %p for hardware queue %p",
-                qInfo.hostcallBuffer_, qIter->first);
+                qInfo.hostcallBuffer_, qIter->first->base_address);
         disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0", queue);
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0",
+              queue->base_address);
       qIter = it.erase(qIter);
       hsa_queue_destroy(queue);
     }
@@ -2350,7 +2351,7 @@ void Device::updateFreeMemory(size_t size, bool free) {
     }
     freeMem_ -= size;
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_MEM, "device=0x%lx, freeMem_ = 0x%zx", this, freeMem_.load());
+  ClPrint(amd::LOG_INFO, amd::LOG_MEM, "Device=0x%lx, freeMem_ = 0x%zx", this, freeMem_.load());
 }
 
 // ================================================================================================
@@ -2895,8 +2896,8 @@ hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
     for (auto it = queuePool_[qIndex].begin(); it != queuePool_[qIndex].end(); it++) {
       if (it->second.refCount == 0) {
         it->second.refCount++;
-        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)", it->first,
-                it->second.refCount);
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Selected queue refCount: %p (%d)",
+                it->first->base_address, it->second.refCount);
         return it->first;
       }
     }
@@ -2907,8 +2908,8 @@ hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
           queuePool_[qIndex].begin(), queuePool_[qIndex].end(),
           [](PoolRef A, PoolRef B) { return A.second.refCount < B.second.refCount; });
       lowest->second.refCount++;
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "selected queue refCount: %p (%d)", lowest->first,
-              lowest->second.refCount);
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Selected queue refCount: %p (%d)",
+              lowest->first->base_address, lowest->second.refCount);
       return lowest->first;
     }
   }
@@ -2922,7 +2923,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
          queuePool_[QueuePriority::Normal].size() <= GPU_MAX_HW_QUEUES ||
          queuePool_[QueuePriority::High].size() <= GPU_MAX_HW_QUEUES);
 
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "number of allocated hardware queues with low priority: %d,"
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Number of allocated hardware queues with low priority: %d,"
       " with normal priority: %d, with high priority: %d, maximum per priority is: %d",
       queuePool_[QueuePriority::Low].size(),
       queuePool_[QueuePriority::Normal].size(),
@@ -3000,8 +3001,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     }
   }
 
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "created hardware queue %p with size %d with priority %d,"
-      " cooperative: %i", queue, queue_size, queue_priority, coop_queue);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hardware queue %p with size %d with priority %d,"
+      " cooperative: %i", queue->base_address, queue_size, queue_priority, coop_queue);
 
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
   if (cuMask.size() != 0 || info_.globalCUMask_.size() != 0) {
@@ -3038,7 +3039,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
       ss << mask[i];
     }
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Setting CU mask 0x%s for hardware queue %p",
-            ss.str().c_str(), queue);
+            ss.str().c_str(), queue->base_address);
 
     std::vector<uint32_t> final_mask = {};
     // hsa_amd_queue_cu_set_mask expects each bit in cuMask to represent each CU
@@ -3092,8 +3093,8 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   assert(result.second && "QueueInfo already exists");
   auto &qInfo = result.first->second;
   qInfo.refCount = 1;
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)", result.first->first,
-          result.first->second.refCount);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)",
+          result.first->first->base_address, result.first->second.refCount);
   return queue;
 }
 
@@ -3104,8 +3105,8 @@ void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMas
       auto &qInfo = qIter->second;
       assert(qInfo.refCount > 0);
       qInfo.refCount--;
-      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)", qIter->first,
-              qIter->second.refCount);
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)",
+              qIter->first->base_address, qIter->second.refCount);
     }
   }
 }
@@ -3147,11 +3148,11 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   void* buffer = context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
   if (!buffer) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
-            "Failed to create hostcall buffer for hardware queue %p", queue);
+            "Failed to create hostcall buffer for hardware queue %p", queue->base_address);
     return nullptr;
   }
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hostcall buffer %p for hardware queue %p", buffer,
-          queue);
+          queue->base_address);
   if (!coop_queue) {
     qIter->second.hostcallBuffer_ = buffer;
   } else {
