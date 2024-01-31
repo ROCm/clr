@@ -116,6 +116,9 @@ cl_int clEnqueueReleaseExtObjectsAMD(cl_command_queue command_queue,
     cl_uint num_objects, const cl_mem* mem_objects,
     cl_uint num_events_in_wait_list, const cl_event* event_wait_list,
     cl_event* event, cl_command_type cmd_type);
+static inline cl_int clDXTranslateErrorCode(cl_int err) {
+    return err == CL_INVALID_GL_OBJECT ? CL_INVALID_MEM_OBJECT : err;
+}
 
 } // namespace amd
 
