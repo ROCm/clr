@@ -114,7 +114,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       flags_(flags),
       version_(parent.getVersion()),
       lastWriter_(parent.getLastWriter()),
-      interopObj_(nullptr),
+      interopObj_(amd::IS_HIP ? nullptr : parent.getInteropObj()),
       vDev_(NULL),
       mapCount_(0),
       svmHostAddress_(parent.getSvmPtr()),
