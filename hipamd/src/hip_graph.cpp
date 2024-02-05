@@ -1302,6 +1302,7 @@ hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t 
   if (flags != 0 && flags != hipGraphInstantiateFlagAutoFreeOnLaunch &&
     flags != hipGraphInstantiateFlagUpload && flags != hipGraphInstantiateFlagDeviceLaunch &&
     flags != hipGraphInstantiateFlagUseNodePriority) {
+    instantiateParams->result_out = hipGraphInstantiateError;
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -1309,10 +1310,14 @@ hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t 
   hipError_t status = ihipGraphInstantiate(&ge, reinterpret_cast<hip::Graph*>(graph), flags);
   *pGraphExec = reinterpret_cast<hipGraphExec_t>(ge);
   if(status != hipSuccess){
+    instantiateParams->result_out = hipGraphInstantiateError;
     HIP_RETURN(status);
   }
 
-  if (flags == hipGraphInstantiateFlagUpload) {
+  instantiateParams->result_out = hipGraphInstantiateSuccess;
+  instantiateParams->errNode_out = nullptr;
+
+  if(flags == hipGraphInstantiateFlagUpload) {
     hipError_t status = ihipGraphUpload(*pGraphExec, instantiateParams->uploadStream);
     HIP_RETURN(status);
   }
