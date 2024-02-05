@@ -648,6 +648,12 @@ void Buffer::destroy() {
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
 
+    if (memFlags & ROCCLR_MEM_PHYMEM) {
+      // If this is physical memory, dont call hsa free function, since device mem was never created
+      dev().deviceVmemRelease(owner()->getUserData().hsa_handle);
+      return;
+    }
+
     if (kind_ != MEMORY_KIND_PTRGIVEN) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
@@ -767,7 +773,10 @@ bool Buffer::create(bool alloc_local) {
     owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
     if (owner()->getUserData().hsa_handle == 0) {
       LogError("HSA Opaque Handle returned was null");
+      return false;
     }
+    deviceMemory_ = reinterpret_cast<void*>(amd::Memory::MemoryType::kPhyMemHandlePtr);
+    return true;
   }
 
   if ((owner()->parent() == nullptr) &&

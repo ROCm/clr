@@ -2192,18 +2192,18 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(vcmd);
-  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
-  if (va == nullptr || !(va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
+  if (vaddr_mem_obj == nullptr || !(vaddr_mem_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     profilingEnd(vcmd);
     return;
   }
-  pal::Memory* vaRange = dev().getGpuMemory(va);
-  Pal::IGpuMemory* memory = (vcmd.memory() == nullptr) ?
+  pal::Memory* vaddr_pal_mem = dev().getGpuMemory(vaddr_mem_obj);
+  Pal::IGpuMemory* phymem_igpu_mem = (vcmd.memory() == nullptr) ?
       nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
   Pal::VirtualMemoryRemapRange range{
-    vaRange->iMem(),
+    vaddr_pal_mem->iMem(),
     0,
-    memory,
+    phymem_igpu_mem,
     0,
     vcmd.size(),
     Pal::VirtualGpuMemAccessMode::NoAccess
@@ -2224,13 +2224,15 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   setGpuEvent(event);
   if (result == Pal::Result::Success) {
     if (vcmd.memory() != nullptr) {
-      // assert the va wasn't mapped already
+      // assert the vaddr_mem_obj wasn't mapped already
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
-      amd::MemObjMap::AddMemObj(vcmd.ptr(), vcmd.memory());
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
+      vaddr_mem_obj->getUserData().phys_mem_obj = vcmd.memory();
     } else {
-      // assert the va is mapped and needs to be removed
+      // assert the vaddr_mem_obj is mapped and needs to be removed
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
+      vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
     }
   }
   profilingEnd(vcmd);

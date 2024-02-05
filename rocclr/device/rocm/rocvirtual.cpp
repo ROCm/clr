@@ -2589,36 +2589,39 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
 
   profilingBegin(vcmd);
 
-  // Find the amd::Memory object for virtual ptr.
-  amd::Memory* va = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
-  if (va == nullptr || !(va->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  // Find the amd::Memory object for virtual ptr. vcmd.ptr() is vaddr.
+  amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
+  if (vaddr_mem_obj == nullptr || !(vaddr_mem_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     profilingEnd(vcmd);
     return;
   }
 
   // Get the amd::Memory object for the physical address
-  amd::Memory* pa = vcmd.memory();
+  amd::Memory* phys_mem_obj = vcmd.memory();
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
 
   // If Physical address is not set, then it is map command. If set, it is unmap command.
-  if (pa != nullptr) {
+  if (phys_mem_obj != nullptr) {
     // Map the physical to virtual address the hsa api
     hsa_amd_vmem_alloc_handle_t opaque_hsa_handle;
-    opaque_hsa_handle.handle = pa->getUserData().hsa_handle;
-    if ((hsa_status = hsa_amd_vmem_map(va->getSvmPtr(), va->getSize(), va->getOffset(),
-                                       opaque_hsa_handle, 0)) == HSA_STATUS_SUCCESS) {
+    opaque_hsa_handle.handle = phys_mem_obj->getUserData().hsa_handle;
+    if ((hsa_status = hsa_amd_vmem_map(vaddr_mem_obj->getSvmPtr(), vcmd.size(),
+                        vaddr_mem_obj->getOffset(), opaque_hsa_handle, 0)) == HSA_STATUS_SUCCESS) {
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
       // Now that we have mapped physical addr to virtual addr, make an entry in the MemObjMap.
-      amd::MemObjMap::AddMemObj(vcmd.ptr(), vcmd.memory());
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
+      vaddr_mem_obj->getUserData().phys_mem_obj = phys_mem_obj;
     } else {
       LogError("HSA Command: hsa_amd_vmem_map failed!");
     }
   } else {
     // Unmap the object, since the physical addr is set.
-    if ((hsa_status = hsa_amd_vmem_unmap(va->getSvmPtr(), va->getSize())) == HSA_STATUS_SUCCESS) {
+    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_mem_obj->getSvmPtr(), vcmd.size()))
+                        == HSA_STATUS_SUCCESS) {
       // assert the va is mapped and needs to be removed
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
+      vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
     } else {
       LogError("HSA Command: hsa_amd_vmem_unmap failed");
     }

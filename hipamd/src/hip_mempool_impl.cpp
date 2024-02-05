@@ -225,6 +225,10 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
   {
     amd::ScopedLock lock(lock_pool_ops_);
 
+    if (memory->getUserData().phys_mem_obj != nullptr) {
+      memory = memory->getUserData().phys_mem_obj;
+    }
+
     // If the free heap grows over the busy heap, then force release
     if (AMD_DIRECT_DISPATCH && (free_heap_.GetTotalSize() > busy_heap_.GetTotalSize())) {
       // Use event base release to reduce memory pressure
@@ -249,22 +253,14 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
     }
     ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool FreeMem: %p, %p", memory->getSvmPtr(), memory);
 
-    auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(memory->getUserData().data);
-    if (ga != nullptr) {
-      if (stream == nullptr) {
+    if (stream == nullptr) {
         stream = g_devices[memory->getUserData().deviceId]->NullStream();
-      }
-      // Unmap virtual address from memory
-      auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
-                                            memory->getSvmPtr(), ga->size_, nullptr);
-      cmd->enqueue();
-      cmd->release();
-      memory->setSvmPtr(ga->ptr_);
-      // Free virtual address and destroy generic allocation object
-      ga->va_->release();
-      delete ga;
-      memory->getUserData().data = nullptr;
     }
+    // Unmap virtual address from memory
+    auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
+                                          memory->getSvmPtr(), memory->getSize(), nullptr);
+    cmd->enqueue();
+    cmd->release();
 
     if (stream != nullptr) {
       // The stream of destruction is a safe stream, because the app must handle sync
