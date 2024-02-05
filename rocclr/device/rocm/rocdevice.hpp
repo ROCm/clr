@@ -450,6 +450,7 @@ class Device : public NullDevice {
   bool deviceAllowAccess(void* dst) const;
 
   bool allowPeerAccess(device::Memory* memory) const;
+  void deviceVmemRelease(uint64_t mem_handle) const;
   uint64_t deviceVmemAlloc(size_t size, uint64_t flags) const;
   void* deviceLocalAlloc(size_t size, bool atomics = false, bool pseudo_fine_grain=false) const;
 

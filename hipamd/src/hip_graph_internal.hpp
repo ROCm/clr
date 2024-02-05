@@ -2104,13 +2104,8 @@ class GraphMemAllocNode final : public GraphNode {
       // Retain memory object because command release will release it
       memory_->retain();
       size_ = aligned_size;
-      // Save geenric allocation info to match VM interfaces
-      memory_->getUserData().data = new hip::MemMapAllocUserData(dptr, aligned_size, va_);
       // Execute the original mapping command
       VirtualMapCommand::submit(device);
-      // Update the internal svm address to ptr
-      memory()->setSvmPtr(va_->getSvmPtr());
-      // Can't destroy VA, because it's used in mapping even if the node will be destroyed
       va_->retain();
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc execute: %p, %p",
           va_->getSvmPtr(), memory());
@@ -2234,24 +2229,21 @@ class GraphMemFreeNode : public GraphNode {
 
     virtual void submit(device::VirtualDevice& device) final {
       // Find memory object before unmap logic
-      auto alloc = amd::MemObjMap::FindMemObj(ptr());
+      auto vaddr_mem_obj = amd::MemObjMap::FindMemObj(ptr());
+      amd::Memory* phys_mem_obj = vaddr_mem_obj->getUserData().phys_mem_obj;
+      assert(phys_mem_obj != nullptr);
       VirtualMapCommand::submit(device);
-      // Restore the original address of the generic allocation
-      auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(alloc->getUserData().data);
-      alloc->setSvmPtr(ga->ptr_);
       if (!AMD_DIRECT_DISPATCH) {
         // Update the current device, since hip event, used in mem pools, requires device
         hip::setCurrentDevice(device_id_);
       }
       // Free virtual address
-      ga->va_->release();
-      alloc->getUserData().data = nullptr;
+      vaddr_mem_obj->release();
       // Release the allocation back to graph's pool
-      graph_->FreeMemory(ga->ptr_, static_cast<hip::Stream*>(queue()));
-      amd::MemObjMap::AddMemObj(ptr(), ga->va_);
-      delete ga;
+      graph_->FreeMemory(phys_mem_obj->getSvmPtr(), static_cast<hip::Stream*>(queue()));
+      amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
-          ptr(), alloc);
+          ptr(), vaddr_mem_obj);
     }
 
    private:

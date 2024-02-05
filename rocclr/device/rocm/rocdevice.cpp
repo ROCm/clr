@@ -2301,6 +2301,16 @@ uint64_t Device::deviceVmemAlloc(size_t size, uint64_t flags) const {
   return hsa_vmem_handle.handle;
 }
 
+void Device::deviceVmemRelease(uint64_t mem_handle) const {
+  hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+  hsa_vmem_handle.handle = mem_handle;
+
+  hsa_status_t hsa_status = hsa_amd_vmem_handle_release(hsa_vmem_handle);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_handle_release! Failed with hsa status: %d \n", hsa_status);
+  }
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain) ? gpu_ext_fine_grained_segment_
                                       : (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
@@ -2381,7 +2391,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
       return nullptr;
     }
 
-    if (mem->getSvmPtr() != nullptr) {
+    if (mem->getSvmPtr() != nullptr || mem->getMemFlags() & ROCCLR_MEM_PHYMEM) {
       // add the information to context so that we can use it later.
       amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     }
