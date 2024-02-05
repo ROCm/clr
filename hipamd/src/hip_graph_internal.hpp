@@ -597,9 +597,11 @@ struct GraphExec {
     // Release the kernel arg memory.
     auto device = g_devices[ihipGetDevice()]->devices()[0];
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      device->hostFree(kernarg_pool_graph_, kernarg_pool_size_graph_);
-      for (auto& element : kernarg_graph_) {
-        device->hostFree(element, kernarg_graph_size_);
+      if (kernarg_pool_size_graph_ != 0) {
+        device->hostFree(kernarg_pool_graph_, kernarg_pool_size_graph_);
+        for (auto& element : kernarg_graph_) {
+          device->hostFree(element, kernarg_graph_size_);
+        }
       }
     }
     amd::ScopedLock lock(graphExecSetLock_);
