@@ -365,35 +365,38 @@ hipError_t GraphExec::CaptureAQLPackets() {
         }
       }
     }
-
     auto device = g_devices[ihipGetDevice()]->devices()[0];
-    if (device->info().largeBar_) {
-      // Pad kernel argument buffer with sentinal size bytes to do a readback later
-      kernArgSizeForGraph += sizeof(int);
-      kernarg_pool_graph_ =
-          reinterpret_cast<address>(device->deviceLocalAlloc(kernArgSizeForGraph));
-      device_kernarg_pool_ = true;
-    } else {
-      kernarg_pool_graph_ = reinterpret_cast<address>(
-          device->hostAlloc(kernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
-    }
+    if (kernArgSizeForGraph != 0) {
+      if (device->info().largeBar_) {
+        // Pad kernel argument buffer with sentinal size bytes to do a readback later
+        kernArgSizeForGraph += sizeof(int);
+        kernarg_pool_graph_ =
+            reinterpret_cast<address>(device->deviceLocalAlloc(kernArgSizeForGraph));
+        device_kernarg_pool_ = true;
+      } else {
+        kernarg_pool_graph_ = reinterpret_cast<address>(
+            device->hostAlloc(kernArgSizeForGraph, 0, amd::Device::MemorySegment::kKernArg));
+      }
 
-    if (kernarg_pool_graph_ == nullptr) {
-      return hipErrorMemoryAllocation;
+      if (kernarg_pool_graph_ == nullptr) {
+        return hipErrorMemoryAllocation;
+      }
+      kernarg_pool_size_graph_ = kernArgSizeForGraph;
     }
-    kernarg_pool_size_graph_ = kernArgSizeForGraph;
-
     for (auto& node : topoOrder_) {
       if (node->GetType() == hipGraphNodeTypeKernel) {
         auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
         // From the kernel pool allocate the kern arg size required for the current kernel node.
-        address kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
-                                             kernelNode->GetKernargSegmentAlignment());
-        if (kernArgOffset == nullptr) {
-          return hipErrorMemoryAllocation;
+        address kernArgOffset = nullptr;
+        if (kernelNode->GetKernargSegmentByteSize()) {
+          kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
+                                       kernelNode->GetKernargSegmentAlignment());
+          if (kernArgOffset == nullptr) {
+            return hipErrorMemoryAllocation;
+          }
         }
         // Form GPU packet capture for the kernel node.
-        kernelNode->CaptureAndFormPacket(capture_stream_, kernArgOffset) ;
+        kernelNode->CaptureAndFormPacket(capture_stream_, kernArgOffset);
       }
     }
 
@@ -419,7 +422,6 @@ hipError_t GraphExec::CaptureAQLPackets() {
         host_val++;
       }
     }
-
     ResetQueueIndex();
   }
   return status;
