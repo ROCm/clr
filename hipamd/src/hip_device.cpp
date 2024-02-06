@@ -31,11 +31,11 @@ namespace hip {
 
 // ================================================================================================
 hip::Stream* Device::NullStream(bool wait) {
-  {
-     amd::ScopedLock lock(lock_);
-     if (null_stream_ == nullptr) {
-       null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
-     }
+  if (null_stream_ == nullptr) {
+    amd::ScopedLock lock(lock_);
+    if (null_stream_ == nullptr) {
+      null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+    }
   }
   if (null_stream_ == nullptr) {
     return nullptr;
