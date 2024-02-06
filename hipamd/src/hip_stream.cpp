@@ -25,8 +25,6 @@
 #include "hip_prof_api.h"
 
 namespace hip {
-static amd::Monitor streamSetLock{"Guards global stream set"};
-static std::unordered_set<hip::Stream*> streamSet;
 
 // ================================================================================================
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
@@ -43,8 +41,7 @@ Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
       originStream_(false),
       captureID_(0)
       {
-        amd::ScopedLock lock(streamSetLock);
-        streamSet.insert(this);
+        device_->AddStream(this);
       }
 
 // ================================================================================================
@@ -76,10 +73,7 @@ bool Stream::Create() {
 
 // ================================================================================================
 void Stream::Destroy(hip::Stream* stream) {
-  {
-    amd::ScopedLock lock(streamSetLock);
-    streamSet.erase(stream);
-  }
+  stream->device_->RemoveStream(stream);
   stream->release();
 }
 
@@ -95,11 +89,12 @@ bool isValid(hipStream_t& stream) {
   }
 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  amd::ScopedLock lock(streamSetLock);
-  if (streamSet.find(s) == streamSet.end()) {
-    return false;
+  for (auto& device : g_devices) {
+    if (device->StreamExists(s)) {
+      return true;
+    }
   }
-  return true;
+  return false;
 }
 
 // ================================================================================================
@@ -122,51 +117,15 @@ int Stream::DeviceId(const hipStream_t hStream) {
 }
 
 // ================================================================================================
-void Stream::SyncAllStreams(int deviceId, bool cpu_wait) {
-  // Make a local copy to avoid stalls for GPU finish with multiple threads
-  std::vector<hip::Stream*> streams;
-  streams.reserve(streamSet.size());
-  {
-    amd::ScopedLock lock(streamSetLock);
-    for (auto it : streamSet) {
-      if (it->DeviceId() == deviceId) {
-        streams.push_back(it);
-        it->retain();
-      }
-    }
-  }
-  for (auto it : streams) {
-    it->finish(cpu_wait);
-    it->release();
-  }
-  // Release freed memory for all memory pools on the device
-  g_devices[deviceId]->ReleaseFreedMemory();
-}
 
 // ================================================================================================
 bool Stream::StreamCaptureBlocking() {
-  amd::ScopedLock lock(streamSetLock);
-  for (auto& it : streamSet) {
-    if (it->GetCaptureStatus() == hipStreamCaptureStatusActive && it->Flags() != hipStreamNonBlocking) {
+  for (auto& device : g_devices) {
+    if (device->StreamCaptureBlocking()) {
       return true;
     }
   }
   return false;
-}
-
-void Stream::destroyAllStreams(int deviceId) {
-  std::vector<Stream*> toBeDeleted;
-  {
-    amd::ScopedLock lock(streamSetLock);
-    for (auto& it : streamSet) {
-      if (it->Null() == false && it->DeviceId() == deviceId) {
-        toBeDeleted.push_back(it);
-      }
-    }
-  }
-  for (auto& it : toBeDeleted) {
-    hip::Stream::Destroy(it);
-  }
 }
 
 bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
@@ -185,80 +144,6 @@ bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
   else {
     amd::ScopedLock lock(g_streamSetLock);
     return (g_allCapturingStreams.find(s) == g_allCapturingStreams.end() ? false : true);
-  }
-}
-
-bool Stream::existsActiveStreamForDevice(hip::Device* device) {
-
-  amd::ScopedLock lock(streamSetLock);
-
-  for (const auto& active_stream : streamSet) {
-    if ((active_stream->GetDevice() == device) &&
-      active_stream->GetQueueStatus()) {
-      return true;
-    }
-  }
-  return false;
-}
-
-// ================================================================================================
-void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) {
-  amd::Command::EventWaitList eventWaitList(0);
-  bool submitMarker = 0;
-
-  auto waitForStream = [&submitMarker,
-                         &eventWaitList](hip::Stream* stream) {
-    if (amd::Command *command = stream->getLastQueuedCommand(true)) {
-      amd::Event &event = command->event();
-      // Check HW status of the ROCcrl event.
-      // Note: not all ROCclr modes support HW status
-      bool ready = stream->device().IsHwEventReady(event);
-      if (!ready) {
-        ready = (command->status() == CL_COMPLETE);
-      }
-      submitMarker |= stream->vdev()->isFenceDirty();
-      // Check the current active status
-      if (!ready) {
-        command->notifyCmdQueue();
-        eventWaitList.push_back(command);
-      } else {
-        command->release();
-      }
-    }
-  };
-
-  if (wait_null_stream) {
-    if (hip::Stream* null_stream = blocking_stream->GetDevice()->GetNullStream()) {
-      waitForStream(null_stream);
-    }
-  } else {
-    amd::ScopedLock lock(streamSetLock);
-
-    for (const auto& active_stream : streamSet) {
-      // If it's the current device
-      if ((&active_stream->device() == &blocking_stream->device()) &&
-        // Make sure it's a default stream
-        ((active_stream->Flags() & hipStreamNonBlocking) == 0) &&
-        // and it's not the current stream
-        (active_stream != blocking_stream)) {
-        // Get the last valid command
-        waitForStream(active_stream);
-      }
-    }
-  }
-
-  // Check if we have to wait anything
-  if (eventWaitList.size() > 0 || submitMarker) {
-    amd::Command* command = new amd::Marker(*blocking_stream, kMarkerDisableFlush, eventWaitList);
-    if (command != nullptr) {
-      command->enqueue();
-      command->release();
-    }
-  }
-
-  // Release all active commands. It's safe after the marker was enqueued
-  for (const auto& it : eventWaitList) {
-    it->release();
   }
 }
 

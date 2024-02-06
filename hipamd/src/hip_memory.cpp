@@ -76,7 +76,7 @@ hipError_t ihipFree(void *ptr) {
   if (memory_object != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
     auto device_id = memory_object->getUserData().deviceId;
-    hip::Stream::SyncAllStreams(device_id);
+    g_devices[device_id]->SyncAllStreams();
 
     // Find out if memory belongs to any memory pool
     if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
@@ -743,7 +743,7 @@ hipError_t ihipArrayDestroy(hipArray_t array) {
 
   auto image = as_amd(memObj);
   // Wait on the device, associated with the current memory object during allocation
-  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  g_devices[image->getUserData().deviceId]->SyncAllStreams();
   image->release();
 
   delete array;
@@ -1252,7 +1252,7 @@ hipError_t ihipHostUnregister(void* hostPtr) {
 
   if (mem != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
-    hip::Stream::SyncAllStreams(mem->getUserData().deviceId);
+    g_devices[mem->getUserData().deviceId]->SyncAllStreams();
 
     amd::MemObjMap::RemoveMemObj(hostPtr);
     for (const auto& device: g_devices) {
@@ -4304,7 +4304,7 @@ hipError_t ihipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
 
   auto image = as_amd(mem_obj);
   // Wait on the device, associated with the current memory object during allocation
-  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  g_devices[image->getUserData().deviceId]->SyncAllStreams();
   image->release();
 
   delete mipmapped_array_ptr;
