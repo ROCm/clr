@@ -95,7 +95,7 @@ hip::Stream* getStream(hipStream_t stream, bool wait) {
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(stream);
     if (wait && !(hip_stream->Flags() & hipStreamNonBlocking)) {
       constexpr bool WaitNullStreamOnly = true;
-      iHipWaitActiveStreams(hip_stream, WaitNullStreamOnly);
+      hip_stream->GetDevice()->WaitActiveStreams(hip_stream, WaitNullStreamOnly);
     }
     return hip_stream;
   }

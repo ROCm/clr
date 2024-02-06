@@ -306,14 +306,8 @@ public:
     /// Returns the CU mask for the current stream
     const std::vector<uint32_t> GetCUMask() const { return cuMask_; }
 
-    /// Sync all streams
-    static void SyncAllStreams(int deviceId, bool cpu_wait = true);
-
     /// Check whether any blocking stream running
     static bool StreamCaptureBlocking();
-
-    /// Destroy all streams on a given device
-    static void destroyAllStreams(int deviceId);
 
     static void Destroy(hip::Stream* stream);
 
@@ -416,7 +410,6 @@ public:
         parallelCaptureStreams_.erase(it);
       }
     }
-    static bool existsActiveStreamForDevice(hip::Device* device);
 
     /// The stream should be destroyed via release() rather than delete
     private:
@@ -426,6 +419,8 @@ public:
   /// HIP Device class
   class Device {
     amd::Monitor lock_{"Device lock", true};
+    amd::Monitor streamSetLock{"Guards device stream set"};
+    std::unordered_set<hip::Stream*> streamSet;
     /// ROCclr context
     amd::Context* context_;
     /// Device's ID
@@ -499,7 +494,7 @@ public:
       amd::ScopedLock lock(lock_);
       /// Either stream is active or device is active
       if (isActive_) return true;
-      if (Stream::existsActiveStreamForDevice(this)) {
+      if (existsActiveStreamForDevice()) {
         isActive_ = true;
         return true;
       }
@@ -540,6 +535,22 @@ public:
 
     /// Returns true if memory pool is valid on this device
     bool IsMemoryPoolValid(MemoryPool* pool);
+    void AddStream(Stream* stream);
+
+    void RemoveStream(Stream* stream);
+
+    bool StreamExists(Stream* stream);
+
+    void destroyAllStreams();
+
+    void SyncAllStreams( bool cpu_wait = true);
+
+    bool StreamCaptureBlocking();
+
+    bool existsActiveStreamForDevice();
+  /// Wait all active streams on the blocking queue. The method enqueues a wait command and
+  /// doesn't stall the current thread
+    void WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream = false);
   };
 
   /// Thread Local Storage Variables Aggregator Class
@@ -588,10 +599,6 @@ public:
   extern std::unordered_set<hipArray*> hipArraySet;
 
   extern void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_data);
-
-  /// Wait all active streams on the blocking queue. The method enqueues a wait command and
-  /// doesn't stall the current thread
-  extern void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream = false);
 
   extern std::vector<hip::Device*> g_devices;
   extern hipError_t ihipDeviceGetCount(int* count);

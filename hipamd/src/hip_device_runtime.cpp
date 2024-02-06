@@ -610,7 +610,7 @@ hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) {
 hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
   constexpr bool kDoWaitForCpu = true;
-  hip::Stream::SyncAllStreams(hip::getCurrentDevice()->deviceId(), kDoWaitForCpu);
+  hip::getCurrentDevice()->SyncAllStreams(kDoWaitForCpu);
   HIP_RETURN(hipSuccess);
 }
 
