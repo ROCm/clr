@@ -1733,3 +1733,10 @@ extern "C" hipError_t hipGetProcAddress(const char* symbol, void** pfn, int  hip
   return hip::GetHipDispatchTable()->hipGetProcAddress_fn(symbol, pfn, hipVersion, flags,
                                                           symbolStatus);
 }
+hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
+                                        const hipGraphNode_t* dependencies,
+                                        const hipGraphEdgeData* dependencyData,
+                                        size_t numDependencies, hipStreamCaptureMode mode) {
+  return hip::GetHipDispatchTable()->hipStreamBeginCaptureToGraph_fn(
+      stream, graph, dependencies, dependencyData, numDependencies, mode);
+}
