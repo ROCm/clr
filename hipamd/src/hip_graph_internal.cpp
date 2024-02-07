@@ -344,11 +344,18 @@ hipError_t GraphExec::Init() {
 
   for (auto& node : topoOrder_) {
     status = node->GetNumParallelStreams(min_num_streams);
-    if(status != hipSuccess) {
+    if (status != hipSuccess) {
       return status;
     }
   }
   status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
+  if (status != hipSuccess) {
+    return status;
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    // For graph nodes capture AQL packets to dispatch them directly during graph launch.
+    status = CaptureAQLPackets();
+  }
   return status;
 }
 
