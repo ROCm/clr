@@ -615,7 +615,7 @@ Buffer::Buffer(const roc::Device& dev, size_t size) : roc::Memory(dev, size) {}
 
 Buffer::~Buffer() {
   if (owner() == nullptr) {
-    dev().hostFree(deviceMemory_, size());
+    dev().memFree(deviceMemory_, size());
   } else {
     destroy();
 
@@ -657,7 +657,7 @@ void Buffer::destroy() {
               ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
             }
           } else {
-            dev().hostFree(deviceMemory_, size());
+            dev().memFree(deviceMemory_, size());
           }
         } else if (memFlags & ROCCLR_MEM_HSA_SIGNAL_MEMORY) {
           if (HSA_STATUS_SUCCESS != hsa_signal_destroy(signal_)) {
@@ -666,7 +666,7 @@ void Buffer::destroy() {
           }
           deviceMemory_ = nullptr;
         } else {
-          dev().hostFree(deviceMemory_, size());
+          dev().memFree(deviceMemory_, size());
         }
       } else {
         dev().memFree(deviceMemory_, size());
