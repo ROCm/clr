@@ -120,4 +120,12 @@ uint ReferenceCountedObject::release() {
   return newCount;
 }
 
+#ifndef _WIN32
+void __attribute__((destructor)) hipTearDown() {
+  if (amd::IS_HIP) {
+    Runtime::tearDown();
+  }
+}
+#endif
+
 }  // namespace amd
