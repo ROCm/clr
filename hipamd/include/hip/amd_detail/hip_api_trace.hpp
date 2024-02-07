@@ -61,7 +61,7 @@
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 1
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 2
 
 // HIP API interface
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
@@ -947,7 +947,11 @@ typedef hipError_t (*t_hipTexRefGetBorderColor)(float* pBorderColor,
 typedef hipError_t (*t_hipTexRefGetArray)(hipArray_t* pArray, const textureReference* texRef);
 typedef hipError_t (*t_hipGetProcAddress)(const char* symbol, void** pfn, int  hipVersion, uint64_t flags,
                                           hipDriverProcAddressQueryResult* symbolStatus);
-
+typedef hipError_t (*t_hipStreamBeginCaptureToGraph)(hipStream_t stream, hipGraph_t graph,
+                                                     const hipGraphNode_t* dependencies,
+                                                     const hipGraphEdgeData* dependencyData,
+                                                     size_t numDependencies,
+                                                     hipStreamCaptureMode mode);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1412,4 +1416,5 @@ struct HipDispatchTable {
   t_hipTexRefGetBorderColor hipTexRefGetBorderColor_fn;
   t_hipTexRefGetArray hipTexRefGetArray_fn;
   t_hipGetProcAddress hipGetProcAddress_fn;
+  t_hipStreamBeginCaptureToGraph hipStreamBeginCaptureToGraph_fn;
 };

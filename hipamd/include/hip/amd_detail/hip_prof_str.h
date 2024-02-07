@@ -408,7 +408,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams = 388,
   HIP_API_ID_hipTexRefGetArray = 389,
   HIP_API_ID_hipTexRefGetBorderColor = 390,
-  HIP_API_ID_LAST = 390,
+  HIP_API_ID_hipStreamBeginCaptureToGraph = 391,
+  HIP_API_ID_LAST = 391,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -795,6 +796,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamAddCallback: return "hipStreamAddCallback";
     case HIP_API_ID_hipStreamAttachMemAsync: return "hipStreamAttachMemAsync";
     case HIP_API_ID_hipStreamBeginCapture: return "hipStreamBeginCapture";
+    case HIP_API_ID_hipStreamBeginCaptureToGraph: return "hipStreamBeginCaptureToGraph";
     case HIP_API_ID_hipStreamCreate: return "hipStreamCreate";
     case HIP_API_ID_hipStreamCreateWithFlags: return "hipStreamCreateWithFlags";
     case HIP_API_ID_hipStreamCreateWithPriority: return "hipStreamCreateWithPriority";
@@ -1188,6 +1190,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamAddCallback", name) == 0) return HIP_API_ID_hipStreamAddCallback;
   if (strcmp("hipStreamAttachMemAsync", name) == 0) return HIP_API_ID_hipStreamAttachMemAsync;
   if (strcmp("hipStreamBeginCapture", name) == 0) return HIP_API_ID_hipStreamBeginCapture;
+  if (strcmp("hipStreamBeginCaptureToGraph", name) == 0) return HIP_API_ID_hipStreamBeginCaptureToGraph;
   if (strcmp("hipStreamCreate", name) == 0) return HIP_API_ID_hipStreamCreate;
   if (strcmp("hipStreamCreateWithFlags", name) == 0) return HIP_API_ID_hipStreamCreateWithFlags;
   if (strcmp("hipStreamCreateWithPriority", name) == 0) return HIP_API_ID_hipStreamCreateWithPriority;
@@ -3267,6 +3270,16 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
       hipStreamCaptureMode mode;
     } hipStreamBeginCapture;
+    struct {
+      hipStream_t stream;
+      hipGraph_t graph;
+      const hipGraphNode_t* dependencies;
+      hipGraphNode_t dependencies__val;
+      const hipGraphEdgeData* dependencyData;
+      hipGraphEdgeData dependencyData__val;
+      size_t numDependencies;
+      hipStreamCaptureMode mode;
+    } hipStreamBeginCaptureToGraph;
     struct {
       hipStream_t* stream;
       hipStream_t stream__val;
@@ -5582,6 +5595,15 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamBeginCapture.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamBeginCapture.mode = (hipStreamCaptureMode)mode; \
 };
+// hipStreamBeginCaptureToGraph[('hipStream_t', 'stream'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'dependencies'), ('const hipGraphEdgeData*', 'dependencyData'), ('size_t', 'numDependencies'), ('hipStreamCaptureMode', 'mode')]
+#define INIT_hipStreamBeginCaptureToGraph_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipStreamBeginCaptureToGraph.stream = (hipStream_t)stream; \
+  cb_data.args.hipStreamBeginCaptureToGraph.graph = (hipGraph_t)graph; \
+  cb_data.args.hipStreamBeginCaptureToGraph.dependencies = (const hipGraphNode_t*)dependencies; \
+  cb_data.args.hipStreamBeginCaptureToGraph.dependencyData = (const hipGraphEdgeData*)dependencyData; \
+  cb_data.args.hipStreamBeginCaptureToGraph.numDependencies = (size_t)numDependencies; \
+  cb_data.args.hipStreamBeginCaptureToGraph.mode = (hipStreamCaptureMode)mode; \
+};
 // hipStreamCreate[('hipStream_t*', 'stream')]
 #define INIT_hipStreamCreate_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamCreate.stream = (hipStream_t*)stream; \
@@ -7230,6 +7252,11 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipStreamBeginCapture[('hipStream_t', 'stream'), ('hipStreamCaptureMode', 'mode')]
     case HIP_API_ID_hipStreamBeginCapture:
+      break;
+// hipStreamBeginCaptureToGraph[('hipStream_t', 'stream'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'dependencies'), ('const hipGraphEdgeData*', 'dependencyData'), ('size_t', 'numDependencies'), ('hipStreamCaptureMode', 'mode')]
+    case HIP_API_ID_hipStreamBeginCaptureToGraph:
+      if (data->args.hipStreamBeginCaptureToGraph.dependencies) data->args.hipStreamBeginCaptureToGraph.dependencies__val = *(data->args.hipStreamBeginCaptureToGraph.dependencies);
+      if (data->args.hipStreamBeginCaptureToGraph.dependencyData) data->args.hipStreamBeginCaptureToGraph.dependencyData__val = *(data->args.hipStreamBeginCaptureToGraph.dependencyData);
       break;
 // hipStreamCreate[('hipStream_t*', 'stream')]
     case HIP_API_ID_hipStreamCreate:
@@ -10154,6 +10181,18 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << "hipStreamBeginCapture(";
       oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.stream);
       oss << ", mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.mode);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipStreamBeginCaptureToGraph:
+      oss << "hipStreamBeginCaptureToGraph(";
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.stream);
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.graph);
+      if (data->args.hipStreamBeginCaptureToGraph.dependencies == NULL) oss << ", dependencies=NULL";
+      else { oss << ", dependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.dependencies__val); }
+      if (data->args.hipStreamBeginCaptureToGraph.dependencyData == NULL) oss << ", dependencyData=NULL";
+      else { oss << ", dependencyData="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.dependencyData__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.numDependencies);
+      oss << ", mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.mode);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamCreate:
