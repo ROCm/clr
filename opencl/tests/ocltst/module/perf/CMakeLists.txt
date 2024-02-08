@@ -95,9 +95,10 @@ target_include_directories(oclperf
     PRIVATE
         $<TARGET_PROPERTY:Common,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(oclperf
-    PRIVATE
-        OpenCL)
+target_link_libraries(oclperf PRIVATE OpenCL::OpenCL ${CMAKE_DL_LIBS})
+if(NOT WIN32)
+  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+endif()
 
 add_custom_command(
     TARGET oclperf POST_BUILD

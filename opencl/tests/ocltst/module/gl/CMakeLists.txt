@@ -45,9 +45,7 @@ target_include_directories(oclgl
     PRIVATE
         $<TARGET_PROPERTY:Common,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(oclgl
-    PRIVATE
-        OpenCL
+target_link_libraries(oclgl PRIVATE
         ${GLEW_LIBRARIES}
         ${OPENGL_LIBRARIES})
 
