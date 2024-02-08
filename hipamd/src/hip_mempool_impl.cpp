@@ -210,6 +210,8 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
   // Place the allocated memory into the busy heap
   busy_heap_.AddMemory(memory, stream);
 
+  max_total_size_ = std::max(max_total_size_, busy_heap_.GetTotalSize() +
+                                                  free_heap_.GetTotalSize());
   // Increment the reference counter on the pool
   retain();
 
@@ -345,8 +347,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
       if (reset != 0) {
         return hipErrorInvalidValue;
       }
-      free_heap_.SetMaxTotalSize(reset);
-      busy_heap_.SetMaxTotalSize(reset);
+      max_total_size_ = reset;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
@@ -392,8 +393,7 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       break;
     case hipMemPoolAttrReservedMemHigh:
       // High watermark of all allocated memory in OS, since the last reset
-      *reinterpret_cast<uint64_t*>(value) = busy_heap_.GetMaxTotalSize() +
-                                            free_heap_.GetMaxTotalSize();
+      *reinterpret_cast<uint64_t*>(value) = max_total_size_;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Total currently used memory by the pool

@@ -187,7 +187,8 @@ class MemoryPool : public amd::ReferenceCountedObject {
         free_heap_(device),
         lock_pool_ops_("Pool operations", true),
         device_(device),
-        shared_(nullptr) {
+        shared_(nullptr),
+        max_total_size_(0) {
     device_->AddMemoryPool(this);
     state_.value_ = 0;
     state_.event_dependencies_ = 1;
@@ -286,6 +287,7 @@ private:
   std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
   hip::Device*  device_;    //!< Hip device the heap will reside
   SharedMemPool* shared_;   //!< Pointer to shared memory for IPC
+  uint64_t max_total_size_; //!< Max of total reserved memory in the pool since last reset
 };
 
 
