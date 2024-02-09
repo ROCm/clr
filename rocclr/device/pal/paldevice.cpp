@@ -113,6 +113,8 @@ static constexpr PalDevice supportedPalDevices[] = {
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::Phoenix2},
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint1},
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint2},
+  {11, 5,  0,  Pal::GfxIpLevel::GfxIp11_5, "gfx1150",       Pal::AsicRevision::Strix1},
+  {11, 5,  1,  Pal::GfxIpLevel::GfxIp11_5, "gfx1151",       Pal::AsicRevision::StrixHalo},
 };
 
 static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,
@@ -2601,15 +2603,6 @@ bool Device::createBlitProgram() {
     }
   }
 
-  blitProgram_ = new BlitProgram(context_);
-  // Create blit programs
-  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraBlits, ocl20)) {
-    delete blitProgram_;
-    blitProgram_ = nullptr;
-    LogError("Couldn't create blit kernels!");
-    result = false;
-  }
-
   if (settings().useLightning_) {
     const std::string TrapHandlerAsm = TrapHandlerCode;
     // Create a program for trap handler
@@ -2634,6 +2627,15 @@ bool Device::createBlitProgram() {
     } else {
       DevLogPrintfError("Trap handler creation failed\n");
     }
+  }
+
+  blitProgram_ = new BlitProgram(context_);
+  // Create blit programs
+  if (blitProgram_ == nullptr || !blitProgram_->create(this, extraBlits, ocl20)) {
+    delete blitProgram_;
+    blitProgram_ = nullptr;
+    LogError("Couldn't create blit kernels!");
+    result = false;
   }
   return result;
 }

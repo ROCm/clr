@@ -1311,8 +1311,8 @@ hipError_t hipMemcpyToSymbol_common(const void* symbol, const void* src, size_t 
                              size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1345,8 +1345,8 @@ hipError_t hipMemcpyFromSymbol_common(void* dst, const void* symbol, size_t size
                                size_t offset, hipMemcpyKind kind, hipStream_t stream=nullptr) {
   CHECK_STREAM_CAPTURING();
 
-  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     HIP_RETURN(hipErrorInvalidMemcpyDirection);
   }
 
@@ -1379,8 +1379,8 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
                                   size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyToSymbolAsync, stream, symbol, src, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyHostToDevice && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1412,8 +1412,8 @@ hipError_t hipMemcpyFromSymbolAsync_common(void* dst, const void* symbol, size_t
                                     size_t offset, hipMemcpyKind kind, hipStream_t stream) {
   STREAM_CAPTURE(hipMemcpyFromSymbolAsync, stream, dst, symbol, sizeBytes, offset, kind);
 
-  if (kind != hipMemcpyDeviceToHost && (kind != hipMemcpyDeviceToDevice ||
-                                        kind != hipMemcpyDeviceToDeviceNoCU)) {
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
 
@@ -1820,28 +1820,43 @@ hipError_t ihipMemcpyDtoHCommand(amd::Command*& command, void* srcDevice, void* 
   amd::Memory* srcMemory;
   amd::BufferRect srcRect;
   amd::BufferRect dstRect;
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dstHost, dOffset);
+
   hipError_t status = ihipMemcpyDtoHValidate(srcDevice, dstHost, srcOrigin, dstOrigin, copyRegion,
                                              srcRowPitch, srcSlicePitch, dstRowPitch, dstSlicePitch,
                                              srcMemory, srcRect, dstRect);
   if (status != hipSuccess) {
     return status;
   }
+
   amd::Coord3D srcStart(srcRect.start_, 0, 0);
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
-  amd::ReadMemoryCommand* readCommand =
+  if (dstMemory) {
+    amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
+      *stream, CL_COMMAND_COPY_BUFFER_RECT, amd::Command::EventWaitList{},
+      *srcMemory, *dstMemory, srcOrigin, dstOrigin,
+      copyRegion, srcRect, dstRect, copyMetadata);
+    if (copyCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+    command = copyCommand;
+  } else {
+    amd::ReadMemoryCommand* readCommand =
       new amd::ReadMemoryCommand(*stream, CL_COMMAND_READ_BUFFER_RECT, amd::Command::EventWaitList{},
                                  *srcMemory, srcStart, copyRegion, dstHost, srcRect, dstRect,
                                  copyMetadata);
+    if (readCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
 
-  if (readCommand == nullptr) {
-    return hipErrorOutOfMemory;
+    if (!readCommand->validatePeerMemory()) {
+      delete readCommand;
+      return hipErrorInvalidValue;
+    }
+    command = readCommand;
   }
 
-  if (!readCommand->validatePeerMemory()) {
-    delete readCommand;
-    return hipErrorInvalidValue;
-  }
-  command = readCommand;
   return hipSuccess;
 }
 
@@ -1884,6 +1899,8 @@ hipError_t ihipMemcpyHtoDCommand(amd::Command*& command, const void* srcHost, vo
   amd::Memory* dstMemory;
   amd::BufferRect srcRect;
   amd::BufferRect dstRect;
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(srcHost, sOffset);
 
   hipError_t status = ihipMemcpyHtoDValidate(srcHost, dstDevice, srcOrigin, dstOrigin, copyRegion,
                                              srcRowPitch, srcSlicePitch, dstRowPitch, dstSlicePitch,
@@ -1891,21 +1908,33 @@ hipError_t ihipMemcpyHtoDCommand(amd::Command*& command, const void* srcHost, vo
   if (status != hipSuccess) {
     return status;
   }
+
   amd::Coord3D dstStart(dstRect.start_, 0, 0);
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
-  amd::WriteMemoryCommand* writeCommand = new amd::WriteMemoryCommand(
+  if (srcMemory) {
+    amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
+      *stream, CL_COMMAND_COPY_BUFFER_RECT, amd::Command::EventWaitList{},
+      *srcMemory, *dstMemory, srcOrigin, dstOrigin,
+      copyRegion, srcRect, dstRect, copyMetadata);
+    if (copyCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+    command = copyCommand;
+  } else {
+    amd::WriteMemoryCommand *writeCommand = new amd::WriteMemoryCommand(
       *stream, CL_COMMAND_WRITE_BUFFER_RECT, amd::Command::EventWaitList{}, *dstMemory, dstStart,
       copyRegion, srcHost, dstRect, srcRect, copyMetadata);
+    if (writeCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
 
-  if (writeCommand == nullptr) {
-    return hipErrorOutOfMemory;
+    if (!writeCommand->validatePeerMemory()) {
+      delete writeCommand;
+      return hipErrorInvalidValue;
+    }
+    command = writeCommand;
   }
 
-  if (!writeCommand->validatePeerMemory()) {
-    delete writeCommand;
-    return hipErrorInvalidValue;
-  }
-  command = writeCommand;
   return hipSuccess;
 }
 
@@ -2068,6 +2097,8 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
                                  hip::Stream* stream, bool isAsync = false) {
   amd::Image* dstImage;
   size_t start = 0;  //!< Start offset for the copy region
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(srcHost, sOffset);
 
   hipError_t status = ihipMemcpyHtoAValidate(srcHost, dstArray, srcOrigin, dstOrigin, copyRegion,
                                              srcRowPitch, srcSlicePitch, dstImage, start);
@@ -2076,20 +2107,31 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, const void* srcHost, hi
   }
 
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
-  amd::WriteMemoryCommand* writeMemCmd = new amd::WriteMemoryCommand(
+  if (srcMemory) {
+    amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
+      *stream, CL_COMMAND_COPY_BUFFER_TO_IMAGE, amd::Command::EventWaitList{},
+      *srcMemory, *dstImage, srcOrigin, dstOrigin,
+      copyRegion, copyMetadata);
+    if (copyCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+    command = copyCommand;
+  } else {
+    amd::WriteMemoryCommand* writeMemCmd = new amd::WriteMemoryCommand(
       *stream, CL_COMMAND_WRITE_IMAGE, amd::Command::EventWaitList{}, *dstImage, dstOrigin,
       copyRegion, static_cast<const char*>(srcHost) + start, srcRowPitch, srcSlicePitch,
       copyMetadata);
+    if (writeMemCmd == nullptr) {
+      return hipErrorOutOfMemory;
+    }
 
-  if (writeMemCmd == nullptr) {
-    return hipErrorOutOfMemory;
+    if (!writeMemCmd->validatePeerMemory()) {
+      delete writeMemCmd;
+      return hipErrorInvalidValue;
+    }
+    command = writeMemCmd;
   }
 
-  if (!writeMemCmd->validatePeerMemory()) {
-    delete writeMemCmd;
-    return hipErrorInvalidValue;
-  }
-  command = writeMemCmd;
   return hipSuccess;
 }
 
@@ -2127,8 +2169,9 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray_t srcArray, vo
                                  hip::Stream* stream, bool isAsync = false) {
   amd::Image* srcImage;
   amd::BufferRect dstRect;
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
   size_t start = 0;  //!< Start offset for the copy region
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dstHost, dOffset);
 
   hipError_t status = ihipMemcpyAtoHValidate(srcArray, dstHost, srcOrigin, dstOrigin, copyRegion,
                                              dstRowPitch, dstSlicePitch, srcImage, start);
@@ -2136,20 +2179,32 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, hipArray_t srcArray, vo
     return status;
   }
 
-  amd::ReadMemoryCommand* readMemCmd = new amd::ReadMemoryCommand(
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  if (dstMemory) {
+    amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
+      *stream, CL_COMMAND_COPY_IMAGE_TO_BUFFER, amd::Command::EventWaitList{},
+      *srcImage, *dstMemory, srcOrigin, dstOrigin, copyRegion, copyMetadata);
+    if (copyCommand == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+    command = copyCommand;
+  } else {
+    amd::ReadMemoryCommand* readMemCmd = new amd::ReadMemoryCommand(
       *stream, CL_COMMAND_READ_IMAGE, amd::Command::EventWaitList{}, *srcImage, srcOrigin,
       copyRegion, static_cast<char*>(dstHost) + start, dstRowPitch, dstSlicePitch,
       copyMetadata);
 
-  if (readMemCmd == nullptr) {
-    return hipErrorOutOfMemory;
+    if (readMemCmd == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+
+    if (!readMemCmd->validatePeerMemory()) {
+      delete readMemCmd;
+      return hipErrorInvalidValue;
+    }
+    command = readMemCmd;
   }
 
-  if (!readMemCmd->validatePeerMemory()) {
-    delete readMemCmd;
-    return hipErrorInvalidValue;
-  }
-  command = readMemCmd;
   return hipSuccess;
 }
 

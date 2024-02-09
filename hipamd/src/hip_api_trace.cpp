@@ -756,6 +756,7 @@ hipError_t hipGraphExternalSemaphoresWaitNodeSetParams(
     hipGraphNode_t hNode, const hipExternalSemaphoreWaitNodeParams* nodeParams);
 hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
                                                        unsigned int numDevices, unsigned int flags);
+hipError_t hipExtGetLastError();
 }  // namespace hip
 
 namespace hip {
@@ -808,6 +809,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipCtxSetSharedMemConfig_fn = hip::hipCtxSetSharedMemConfig;
   ptrDispatchTable->hipCtxSynchronize_fn = hip::hipCtxSynchronize;
   ptrDispatchTable->hipDestroyExternalMemory_fn = hip::hipDestroyExternalMemory;
+  ptrDispatchTable->hipDestroyExternalSemaphore_fn = hip::hipDestroyExternalSemaphore;
   ptrDispatchTable->hipDestroySurfaceObject_fn = hip::hipDestroySurfaceObject;
   ptrDispatchTable->hipDestroyTextureObject_fn = hip::hipDestroyTextureObject;
   ptrDispatchTable->hipDeviceCanAccessPeer_fn = hip::hipDeviceCanAccessPeer;
@@ -1224,6 +1226,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
   ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
+  ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0

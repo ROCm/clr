@@ -288,6 +288,10 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
       HIP_RETURN(hipErrorInvalidValue)
     }
 
+    if (desc[desc_idx].flags == hipMemAccessFlagsProtRead) {
+      HIP_RETURN(hipErrorInvalidValue)
+    }
+
     auto& dev = g_devices[desc[desc_idx].location.id];
     amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(desc[desc_idx].flags);
 

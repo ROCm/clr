@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -115,10 +115,9 @@ void ListAllDeviceWithNoCOFromBundle(const std::unordered_map<std::string,
 }
 
 hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices) {
-  amd_comgr_data_t data_object;
+  amd_comgr_data_t data_object {0};
   amd_comgr_status_t comgr_status = AMD_COMGR_STATUS_SUCCESS;
   hipError_t hip_status = hipSuccess;
-  amd_comgr_code_object_info_t* query_list_array = nullptr;
 
   // If image was passed as a pointer to our hipMod* api, we can try to extract the file name
   // if it was mapped by the app. Otherwise use the COMGR data API.
@@ -266,12 +265,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       fatbin_dev_info_[device->deviceId()]->program_
         = new amd::Program(*(device->asContext()));
     }
-
-    if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
-      LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
-      return hipErrorInvalidValue;
-    }
-
   } while(0);
 
   // Clean up file and memory resouces if hip_status failed for some reason.
@@ -292,7 +285,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       fdesc_ = 0;
       fsize_ = 0;
     }
+  }
 
+  if (data_object.handle) {
     if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
       return hipErrorInvalidValue;

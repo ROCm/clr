@@ -30,7 +30,7 @@
 namespace hip {
 
 // ================================================================================================
-hip::Stream* Device::NullStream() {
+hip::Stream* Device::NullStream(bool wait) {
   if (null_stream_ == nullptr) {
     null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
   }
@@ -38,8 +38,10 @@ hip::Stream* Device::NullStream() {
   if (null_stream_ == nullptr) {
     return nullptr;
   }
-  // Wait for all active streams before executing commands on the default
-  iHipWaitActiveStreams(null_stream_);
+  if (wait == true) {
+    // Wait for all active streams before executing commands on the default
+    iHipWaitActiveStreams(null_stream_);
+  }
   return null_stream_;
 }
 
@@ -462,6 +464,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.sparseHipArraySupported = 0;
   deviceProps.timelineSemaphoreInteropSupported = 0;
   deviceProps.unifiedFunctionPointers = 0;
+
+  deviceProps.integrated = info.accelerator_;
 
   *props = deviceProps;
   return hipSuccess;

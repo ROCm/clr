@@ -2857,48 +2857,41 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
   }
 
   uint64_t vqVA = reinterpret_cast<uint64_t>(vqMem->getDeviceMemory());
-  uint64_t pattern = 0;
-  amd::Coord3D origin(0, 0, 0);
-  amd::Coord3D region(virtualQueue_->getSize(), 1, 1);
 
-  if (!dev().xferMgr().fillBuffer(*vqMem, &pattern, sizeof(pattern), region, origin, region)) {
-    return false;
-  }
+  // Use shadow to prepare the data structure in host.
+  auto shadow = std::make_unique<uint8_t[]>(allocSize);
 
-  AmdVQueueHeader header = {};
+  std::memset(&shadow[0], 0, allocSize);
+
+  AmdVQueueHeader* header = reinterpret_cast<AmdVQueueHeader*>(&shadow[0]);
   // Initialize the virtual queue header
-  header.aql_slot_num = numSlots;
-  header.event_slot_num = dev().settings().numDeviceEvents_;
-  header.event_slot_mask = vqVA + eventMaskOffs;
-  header.event_slots = vqVA + eventsOffs;
-  header.aql_slot_mask = vqVA + slotMaskOffs;
-  header.wait_size = dev().settings().numWaitEvents_;
-  header.arg_size = dev().info().maxParameterSize_ + 64;
-  header.mask_groups = maskGroups_;
-
-  amd::Coord3D origin_header(0);
-  amd::Coord3D region_header(sizeof(AmdVQueueHeader));
-
-  if (!dev().xferMgr().writeBuffer(&header, *vqMem, origin_header, region_header)) {
-    return false;
-  }
+  header->aql_slot_num = numSlots;
+  header->event_slot_num = dev().settings().numDeviceEvents_;
+  header->event_slot_mask = vqVA + eventMaskOffs;
+  header->event_slots = vqVA + eventsOffs;
+  header->aql_slot_mask = vqVA + slotMaskOffs;
+  header->wait_size = dev().settings().numWaitEvents_;
+  header->arg_size = dev().info().maxParameterSize_ + 64;
+  header->mask_groups = maskGroups_;
 
   // Go over all slots and perform initialization
-  AmdAqlWrap slot = {};
   size_t offset = sizeof(AmdVQueueHeader);
   for (uint i = 0; i < numSlots; ++i) {
+    AmdAqlWrap * slot = reinterpret_cast<AmdAqlWrap*>(&shadow[0] + offset);
     uint64_t argStart = vqVA + argOffs + i * singleArgSize;
-    amd::Coord3D origin_slot(offset);
-    amd::Coord3D region_slot(sizeof(AmdAqlWrap));
 
-    slot.aql.kernarg_address = reinterpret_cast<void*>(argStart);
-    slot.wait_list = argStart + dev().info().maxParameterSize_ + 64;
-
-    if (!dev().xferMgr().writeBuffer(&slot, *vqMem, origin_slot, region_slot)) {
-      return false;
-    }
+    slot->aql.kernarg_address = reinterpret_cast<void*>(argStart);
+    slot->wait_list = argStart + dev().info().maxParameterSize_ + 64;
 
     offset += sizeof(AmdAqlWrap);
+  }
+
+  amd::Coord3D origin (0, 0, 0);
+  amd::Coord3D region (allocSize, 1, 1);
+
+  // copy the data structure from host to GPU
+  if (!dev().xferMgr().writeBuffer(&shadow[0], *vqMem, origin, region)) {
+    return false;
   }
 
   deviceQueueSize_ = deviceQueueSize;
@@ -3643,6 +3636,11 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     // one to get the profile object
     amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[0]);
     PerfCounter* counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
+    if (counter == nullptr) {
+      LogError("Invalid Performance Counter");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+      return;
+    }
     PerfCounterProfile* profileRef =  counter->profileRef();
 
     // create the AQL packet for stop profiling
