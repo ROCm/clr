@@ -95,22 +95,19 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
 // memory allocatiom in graph, which occurs in a worker thread, and host execution of hipFreeAsync
 class FreeAsyncCommand : public amd::Command {
  private:
-  void* ptr_;     //!< Virtual address for asynchronious free
+  void*   ptr_;         //!< Virtual address for asynchronious free
+  hip::Event* event_;   //!< HIP event, associated with this memory release
 
  public:
-  FreeAsyncCommand(amd::HostQueue& queue, void* ptr)
-      : amd::Command(queue, 1, amd::Event::nullWaitList), ptr_(ptr) {}
+  FreeAsyncCommand(amd::HostQueue& queue, void* ptr, hip::Event* event)
+      : amd::Command(queue, 1, amd::Event::nullWaitList), ptr_(ptr), event_(event) {}
 
   virtual void submit(device::VirtualDevice& device) final {
     size_t offset = 0;
     auto memory = getMemoryObject(ptr_, offset);
     if (memory != nullptr) {
       auto id = memory->getUserData().deviceId;
-      if (!AMD_DIRECT_DISPATCH) {
-        // Required for HIP events
-        hip::setCurrentDevice(id);
-      }
-      if (!g_devices[id]->FreeMemory(memory, static_cast<hip::Stream*>(queue()))) {
+      if (!g_devices[id]->FreeMemory(memory, static_cast<hip::Stream*>(queue()), event_)) {
         // @note It's not the most optimal logic.
         // The current implementation has unconditional waits
         if (ihipFree(ptr_) != hipSuccess) {
@@ -131,12 +128,55 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
 
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
                     : reinterpret_cast<hip::Stream*>(stream);
-  auto cmd = new FreeAsyncCommand(*hip_stream, dev_ptr);
-  if (cmd == nullptr) {
-    HIP_RETURN(hipErrorUnknown);
+
+  hip::Event* event = nullptr;
+  bool graph_in_use = false;
+
+  if (!AMD_DIRECT_DISPATCH) {
+    // Note: This logic is required for multithreading execution only and
+    // can reduce mempool reserved memory efficiency
+    for (auto dev : g_devices) {
+      graph_in_use |= dev->GetGraphMemoryPool()->GraphInUse();
+    }
   }
-  cmd->enqueue();
-  cmd->release();
+
+  if (!graph_in_use) {
+    size_t offset = 0;
+    auto memory = getMemoryObject(dev_ptr, offset);
+    if (memory != nullptr) {
+      auto id = memory->getUserData().deviceId;
+      if (!g_devices[id]->FreeMemory(memory, hip_stream, event)) {
+        // @note It's not the most optimal logic.
+        // The current implementation has unconditional waits
+        return ihipFree(dev_ptr);
+      }
+    }
+  } else {
+    if (!AMD_DIRECT_DISPATCH) {
+      // Add a marker to the stream to trace availability of this memory
+      // Note: MT path requires the marker command to be created in the host thread,
+      // so the queue thread could process it, because creating a command from the queue thread
+      // may block the execution
+      event = new hip::Event(0);
+      if (event != nullptr) {
+        if (hipSuccess !=
+            event->addMarker(reinterpret_cast<hipStream_t>(hip_stream), nullptr, true)) {
+          delete event;
+          event = nullptr;
+        } else {
+          // Make sure runtime sends a notification to the worker thread
+          auto result = event->ready(Query);
+        }
+      }
+    }
+    
+    auto cmd = new FreeAsyncCommand(*hip_stream, dev_ptr, event);
+    if (cmd == nullptr) {
+      HIP_RETURN(hipErrorUnknown);
+    }
+    cmd->enqueue();
+    cmd->release();
+  }
 
   HIP_RETURN(hipSuccess);
 }

@@ -241,6 +241,7 @@ public:
 
   class Device;
   class MemoryPool;
+  class Event;
   class Stream : public amd::HostQueue {
   public:
     enum Priority : int { High = -1, Normal = 0, Low = 1 };
@@ -526,7 +527,7 @@ public:
     void RemoveMemoryPool(MemoryPool* pool);
 
     /// Free memory from the device
-    bool FreeMemory(amd::Memory* memory, Stream* stream);
+    bool FreeMemory(amd::Memory* memory, Stream* stream, Event* event = nullptr);
 
     /// Release freed memory from all pools on the current device
     void ReleaseFreedMemory();
