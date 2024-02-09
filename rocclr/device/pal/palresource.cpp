@@ -1338,8 +1338,10 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
   } else if (memoryType() == VaRange) {
     createInfo.flags.virtualAlloc = true;
     if (params->owner_->getSvmPtr() != nullptr) {
-      createInfo.flags.startVaHintFlag = true;
-      createInfo.startVaHint = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+      createInfo.vaRange = Pal::VaRange::Svm;
+      createInfo.flags.useReservedGpuVa = true;
+      createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+      desc_.SVMRes_ = true;
     }
   }
 
