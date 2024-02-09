@@ -91,11 +91,11 @@ void Device::RemoveMemoryPool(MemoryPool* pool) {
 }
 
 // ================================================================================================
-bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
+bool Device::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
   amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
   for (auto it : mem_pools_) {
-    if (it->FreeMemory(memory, stream)) {
+    if (it->FreeMemory(memory, stream, event)) {
       return true;
     }
   }

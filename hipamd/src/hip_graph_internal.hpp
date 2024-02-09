@@ -2138,6 +2138,7 @@ class GraphMemAllocNode final : public GraphNode {
       auto graph = GetParentGraph();
       if (graph != nullptr) {
         assert(va_ != nullptr && "Runtime can't create a command for an invalid node!");
+        stream->GetDevice()->GetGraphMemoryPool()->SetGraphInUse();
         // Create command for memory mapping
         auto cmd = new VirtualMemAllocNode(*stream, amd::Event::EventWaitList{},
             va_, node_params_.bytesize, nullptr, graph);
