@@ -233,7 +233,7 @@ release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
         "Set this to true to force runtime unbundler in hiprtc.")             \
 release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
-release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
+release(bool, HIP_FORCE_DEV_KERNARG, 1,                                       \
          "Force device mem for kernel args.")                                 \
 release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, true,                           \
          "Enable/Disable graph packet capturing")                             \

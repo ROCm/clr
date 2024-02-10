@@ -52,7 +52,7 @@ class Settings : public device::Settings {
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint host_hdp_flush_ : 1;         //!< Host HDP flush needed
+      uint device_kernel_args_ : 1;     //!< Allocate kernel args in device memory
       uint reserved_ : 20;
     };
     uint value_;
