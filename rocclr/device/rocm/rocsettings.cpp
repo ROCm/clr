@@ -94,7 +94,7 @@ Settings::Settings() {
   fgs_kernel_arg_ = false;
   barrier_value_packet_ = false;
 
-  host_hdp_flush_ = true;
+  device_kernel_args_ = false;
   gwsInitSupported_ = true;
   limit_blit_wg_ = 16;
 }
@@ -162,8 +162,10 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)))) {
     // Enable Barrier Value packet is only for MI2XX/300
     barrier_value_packet_ = true;
-    // On MI200 and MI300, the HDP will not cache RO=0 writes, so no flush is needed
-    host_hdp_flush_ = false;
+  }
+
+  if (gfxipMajor >= 9) {
+    device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
   }
 
   if (gfxipMajor >= 10) {

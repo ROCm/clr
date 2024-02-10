@@ -1374,8 +1374,9 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
   kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
   active_chunk_ = 0;
-  if (HIP_FORCE_DEV_KERNARG && roc_device_.info().largeBar_) {
-    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
+  if (dev().settings().device_kernel_args_ && roc_device_.info().largeBar_) {
+    kernarg_pool_base_ =
+      reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
   } else {
     kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
                                                    Device::MemorySegment::kKernArg));
@@ -3210,8 +3211,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    constexpr uint64_t kSentinel = 0xdeadbeefdeadbeefull;
-    const auto pcieKernargs = !dev().isXgmi() && HIP_FORCE_DEV_KERNARG;
+    const auto pcieKernargs = !dev().isXgmi() && dev().settings().device_kernel_args_;
 
     address argBuffer = hidden_arguments;
     // Find all parameters for the current kernel
@@ -3220,8 +3220,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       if(vcmd != nullptr && vcmd->getCapturingState()) {
         argBuffer = vcmd->getKernArgOffset();
       } else {
-        const auto kernargSize = gpuKernel.KernargSegmentByteSize() +
-                                  sizeof(kSentinel) * pcieKernargs;
+        const auto kernargSize = gpuKernel.KernargSegmentByteSize();
         argBuffer = reinterpret_cast<address>(allocKernArg(kernargSize,
                                               gpuKernel.KernargSegmentAlignment()));
       }
@@ -3230,11 +3229,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                         std::min(gpuKernel.KernargSegmentByteSize(),
                                  signature.paramsSize()));
       if (pcieKernargs) {
-        nontemporalMemcpy(argBuffer + gpuKernel.KernargSegmentByteSize(),
-                          &kSentinel, sizeof(kSentinel));
-        if (dev().settings().host_hdp_flush_) {
-          *dev().info().hdpMemFlushCntl = 1u;
-        }
+        *dev().info().hdpMemFlushCntl = 1u;
       }
     }
 
@@ -3297,9 +3292,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
     if (pcieKernargs) {
-      __builtin_ia32_mfence();
-      while (*reinterpret_cast<volatile decltype(kSentinel)*>(
-        argBuffer + gpuKernel.KernargSegmentByteSize()) != kSentinel);
+      if (*dev().info().hdpMemFlushCntl != UINT32_MAX) {
+        LogError("Unexpected HDP Register readback value!");
+      }
     }
     if (vcmd == nullptr) {
       // Dispatch the packet

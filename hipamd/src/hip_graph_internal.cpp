@@ -368,8 +368,6 @@ hipError_t GraphExec::CaptureAQLPackets() {
 
     auto device = g_devices[ihipGetDevice()]->devices()[0];
     if (device->info().largeBar_) {
-      // Pad kernel argument buffer with sentinal size bytes to do a readback later
-      kernArgSizeForGraph += sizeof(int);
       kernarg_pool_graph_ =
           reinterpret_cast<address>(device->deviceLocalAlloc(kernArgSizeForGraph));
       device_kernarg_pool_ = true;
@@ -398,26 +396,10 @@ hipError_t GraphExec::CaptureAQLPackets() {
       }
     }
 
-    if (device_kernarg_pool_) {
-      // Write HDP_MEM_COHERENCY_FLUSH_CNTL reg to initiate flush read to HDP mem. Verify mem
-      // by readback of sentinal value at the tail end of the kernarg surface (allocated above)
-      // This needs to be done for PCIE connected devices only. HDP path is disabled for XGMI
-      // between CPU<->GPU
-      if (!device->isXgmi()) {
-        static int host_val = 1;
-        address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
-        *dev_ptr = host_val;
-        if (device->info().hdpMemFlushCntl == nullptr) {
-          amd::Command* command = new amd::Marker(*stream, true);
-          if (command != nullptr) {
-            command->enqueue();
-            command->release();
-          }
-        } else {
-          *device->info().hdpMemFlushCntl = 1;
-        }
-        while (*dev_ptr != host_val);
-        host_val++;
+    if (device_kernarg_pool_ && !device->isXgmi()) {
+      *device->info().hdpMemFlushCntl = 1u;
+      if (*device->info().hdpMemFlushCntl != UINT32_MAX) {
+        LogError("Unexpected HDP Register readback value!");
       }
     }
 
