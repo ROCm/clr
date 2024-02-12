@@ -4776,6 +4776,12 @@ typedef struct hip_api_data_s {
 };
 // hipLaunchKernel[('const void*', 'function_address'), ('dim3', 'numBlocks'), ('dim3', 'dimBlocks'), ('void**', 'args'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'stream')]
 #define INIT_hipLaunchKernel_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLaunchKernel.function_address = (const void*)hostFunction; \
+  cb_data.args.hipLaunchKernel.numBlocks = (dim3)gridDim; \
+  cb_data.args.hipLaunchKernel.dimBlocks = (dim3)blockDim; \
+  cb_data.args.hipLaunchKernel.args = (void**)args; \
+  cb_data.args.hipLaunchKernel.sharedMemBytes = (size_t)sharedMemBytes; \
+  cb_data.args.hipLaunchKernel.stream = (hipStream_t)stream; \
 };
 // hipMalloc[('void**', 'ptr'), ('size_t', 'size')]
 #define INIT_hipMalloc_CB_ARGS_DATA(cb_data) { \
