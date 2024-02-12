@@ -785,11 +785,14 @@ class GraphKernelNode : public GraphNode {
   size_t alignedKernArgSize_;          //!< Aligned size required for kernel args
   size_t kernargSegmentByteSize_;      //!< Kernel arg segment byte size
   size_t kernargSegmentAlignment_;     //!< Kernel arg segment alignment
+  bool hasHiddenHeap_;                 //!< Kernel has hidden heap(device side allocation)
+
 
  public:
   size_t GetKerArgSize() const { return alignedKernArgSize_; }
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  bool HasHiddenHeap() const { return hasHiddenHeap_; }
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
     out << "style";
@@ -926,6 +929,11 @@ class GraphKernelNode : public GraphNode {
         }
         ::memcpy(kernelParams_.kernelParams[i], (pNodeParams->kernelParams[i]), desc.size_);
       }
+      for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
+        if (signature.at(i).info_.oclObject_ == amd::KernelParameterDescriptor::HiddenHeap) {
+          hasHiddenHeap_ = true;
+        }
+      }
     }
 
     // Allocate/assign memory if params are passed as part of 'extra'
@@ -969,6 +977,7 @@ class GraphKernelNode : public GraphNode {
     }
     memset(&kernelAttr_, 0, sizeof(kernelAttr_));
     kernelAttrInUse_ = 0;
+    hasHiddenHeap_ = false;
   }
 
   ~GraphKernelNode() { freeParams(); }

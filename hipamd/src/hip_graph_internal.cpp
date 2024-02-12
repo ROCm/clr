@@ -351,7 +351,8 @@ hipError_t GraphExec::CaptureAQLPackets() {
     // arg size required for all graph kernel nodes to allocate
     for (const auto& list : parallelLists_) {
       for (auto& node : list) {
-        if (node->GetType() == hipGraphNodeTypeKernel) {
+        if (node->GetType() == hipGraphNodeTypeKernel &&
+            !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
           kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
         }
       }
@@ -373,7 +374,8 @@ hipError_t GraphExec::CaptureAQLPackets() {
       kernarg_pool_size_graph_ = kernArgSizeForGraph;
     }
     for (auto& node : topoOrder_) {
-      if (node->GetType() == hipGraphNodeTypeKernel) {
+      if (node->GetType() == hipGraphNodeTypeKernel &&
+          !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
         auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
         // From the kernel pool allocate the kern arg size required for the current kernel node.
         address kernArgOffset = nullptr;
@@ -560,16 +562,20 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   if (parallelLists_.size() == 1 &&
       instantiateDeviceId_ == hip_stream->DeviceId()) {
     amd::AccumulateCommand* accumulate = nullptr;
-    bool isLastPacketKernel = false;
+    bool isLastKernelWithoutHiddenHeap =
+        ((topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) &&
+         !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_.back())->HasHiddenHeap());
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      uint8_t* lastCapturedPacket = (topoOrder_.back()->GetType() == hipGraphNodeTypeKernel)
-          ? topoOrder_.back()->GetAqlPacket()
-          : nullptr;
-      accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
+      uint8_t* lastCapturedPacket =
+          isLastKernelWithoutHiddenHeap ? topoOrder_.back()->GetAqlPacket() : nullptr;
+      if (topoOrder_.back()->GetEnabled()) {
+        accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
+      }
     }
 
     for (int i = 0; i < topoOrder_.size() - 1; i++) {
-      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel) {
+      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
+          !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_[i])->HasHiddenHeap()) {
         if (topoOrder_[i]->GetEnabled()) {
           hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
           accumulate->addKernelName(topoOrder_[i]->GetKernelName());
@@ -583,20 +589,18 @@ hipError_t GraphExec::Run(hipStream_t stream) {
 
     // If last captured packet is kernel, optimize to detect completion of last kernel
     // This saves on extra packet submitted to determine end of graph
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) {
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && isLastKernelWithoutHiddenHeap) {
       // Add the last kernel node name to the accumulate command
-      accumulate->addKernelName(topoOrder_.back()->GetKernelName());
-      accumulate->enqueue();
-      accumulate->release();
-      isLastPacketKernel = true;
+      if (topoOrder_.back()->GetEnabled()) {
+        accumulate->addKernelName(topoOrder_.back()->GetKernelName());
+      }
     } else {
       topoOrder_.back()->SetStream(hip_stream, this);
       status = topoOrder_.back()->CreateCommand(topoOrder_.back()->GetQueue());
       topoOrder_.back()->EnqueueCommands(stream);
     }
 
-    // If last packet is not kernel, submit a marker to detect end of graph
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && !isLastPacketKernel) {
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       accumulate->enqueue();
       accumulate->release();
     }
