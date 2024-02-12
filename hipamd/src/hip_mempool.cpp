@@ -252,9 +252,12 @@ hipError_t hipMemPoolDestroy(hipMemPool_t mem_pool) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::MemoryPool* hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
-  hip_mem_pool->ReleaseFreedMemory();
 
   auto device = hip_mem_pool->Device();
+  if (hip_mem_pool == device->GetDefaultMemoryPool()) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip_mem_pool->ReleaseFreedMemory();
 
   // Force default pool if the current one is destroyed
   if (hip_mem_pool == device->GetCurrentMemoryPool()) {
