@@ -413,9 +413,9 @@ hipError_t GraphExec::CaptureAQLPackets() {
       // This needs to be done for PCIE connected devices only. HDP path is disabled for XGMI
       // between CPU<->GPU
       if (!device->isXgmi()) {
-        static int host_val = 1;
+        int host_val = 1;
         address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_ - sizeof(int);
-        *dev_ptr = host_val;
+        *(reinterpret_cast<int*>(dev_ptr)) = host_val;
         if (device->info().hdpMemFlushCntl == nullptr) {
           amd::Command* command = new amd::Marker(*capture_stream_, true);
           if (command != nullptr) {
@@ -425,8 +425,7 @@ hipError_t GraphExec::CaptureAQLPackets() {
         } else {
           *device->info().hdpMemFlushCntl = 1;
         }
-        while (*dev_ptr != host_val);
-        host_val++;
+        if (*(reinterpret_cast<volatile int*>(dev_ptr)) != host_val);
       }
     }
     ResetQueueIndex();
