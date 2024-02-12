@@ -1970,39 +1970,80 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   if (!(const_cast<Device*>(this)->initializeHeapResources())) {
     return false;
   }
+
+  // First, runtime calculates per process memory usage
+
   // Don't report cached memory in runtime as allocated, since allocedMem tracked at PAL calls
   Pal::gpusize local = allocedMem[Pal::GpuHeapLocal] - resourceCache().persistentCacheSize();
   Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
   Pal::gpusize total_alloced = local + invisible;
+  size_t cache_group_local =
+    resourceCache().persistentCacheSize() + resourceCache().lclCacheSize();
+  // Allocated system memory without cached allocations. Cache size contains all allocations, so
+  // don't count persistent and local
+  Pal::gpusize system_memory = allocedMem[Pal::GpuHeapGartCacheable] +
+    allocedMem[Pal::GpuHeapGartUswc] + cache_group_local - resourceCache().cacheSize();
+
+  // Second, query OS for overall memory usage on the system
+
+  if (properties().osProperties.supportMemoryBudgetQuery) {
+    Pal::GpuMemoryBudgetInfo mem_budget_info = {};
+    // Query OS how much memory is available
+    iDev()->QueryGpuMemoryBudgetInfo(&mem_budget_info);
+
+    Pal::gpusize system_total_alloced = mem_budget_info.usage[Pal::GpuHeapGroupLocal];
+    // Avoid possible negative values in case of alignments
+    if (mem_budget_info.usage[Pal::GpuHeapGroupLocal] > cache_group_local) {
+      system_total_alloced = mem_budget_info.usage[Pal::GpuHeapGroupLocal] - cache_group_local;
+    }
+    // System usage exceeds per process usage for device memory
+    if (system_total_alloced > total_alloced) {
+      total_alloced = system_total_alloced;
+    }
+    // Avoid possible negative values in case of extra alignments
+    if (mem_budget_info.usage[Pal::GpuHeapGroupNonLocal] >
+        (resourceCache().cacheSize() - cache_group_local)) {
+      system_total_alloced = mem_budget_info.usage[Pal::GpuHeapGroupNonLocal] +
+        cache_group_local - resourceCache().cacheSize();
+    }
+    // System usage exceeds per process usage for system memory
+    if (system_total_alloced > system_memory) {
+      system_memory = system_total_alloced;
+    }
+  }
+
+  // Third, finalize reported free memory
 
   // Fill free memory info
   freeMemory[TotalFreeMemory] = (total_alloced > info().globalMemSize_ ) ? 0 :
       static_cast<size_t>((info().globalMemSize_ - total_alloced) / Ki);
-  if (invisible >= heaps_[Pal::GpuHeapInvisible].logicalSize) {
-    invisible = 0;
-  } else {
-    invisible = heaps_[Pal::GpuHeapInvisible].logicalSize - invisible;
-  }
-  freeMemory[LargestFreeBlock] = static_cast<size_t>(invisible) / Ki;
 
   freeMemory[TotalFreeMemory] -= (freeMemory[TotalFreeMemory] > HIP_HIDDEN_FREE_MEM * Ki) ?
                                   HIP_HIDDEN_FREE_MEM * Ki : 0;
 
+  Pal::gpusize largest_block = 0;
   if (settings().apuSystem_) {
-    // Allocated system memory without cached allocations. Don't count persistent and local 
-    Pal::gpusize sysMem = allocedMem[Pal::GpuHeapGartCacheable] + allocedMem[Pal::GpuHeapGartUswc] +
-        resourceCache().persistentCacheSize() -
-        resourceCache().cacheSize() + resourceCache().lclCacheSize();
-    sysMem /= Ki;
-    if (sysMem >= freeMemory[TotalFreeMemory]) {
+    system_memory /= Ki;
+    if (system_memory >= freeMemory[TotalFreeMemory]) {
       freeMemory[TotalFreeMemory] = 0;
     } else {
-      freeMemory[TotalFreeMemory] -= sysMem;
+      freeMemory[TotalFreeMemory] -= system_memory;
     }
-    if (freeMemory[LargestFreeBlock] < freeMemory[TotalFreeMemory]) {
-      freeMemory[LargestFreeBlock] = freeMemory[TotalFreeMemory];
+    if (system_memory < heaps_[Pal::GpuHeapGartUswc].logicalSize) {
+      largest_block = heaps_[Pal::GpuHeapGartUswc].logicalSize - system_memory;
     }
   }
+
+  if (invisible < heaps_[Pal::GpuHeapInvisible].logicalSize) {
+    largest_block = std::max(largest_block, heaps_[Pal::GpuHeapInvisible].logicalSize - invisible);
+  }
+  if (local < heaps_[Pal::GpuHeapLocal].logicalSize) {
+    largest_block = std::max(largest_block, heaps_[Pal::GpuHeapLocal].logicalSize - invisible);
+  }
+
+  largest_block /= Ki;
+  freeMemory[LargestFreeBlock] = (largest_block > freeMemory[TotalFreeMemory]) ?
+    freeMemory[TotalFreeMemory] : largest_block;
 
   return true;
 }
