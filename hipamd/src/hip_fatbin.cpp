@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -118,7 +118,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   amd_comgr_data_t data_object {0};
   amd_comgr_status_t comgr_status = AMD_COMGR_STATUS_SUCCESS;
   hipError_t hip_status = hipSuccess;
-  amd_comgr_code_object_info_t* query_list_array = nullptr;
 
   // If image was passed as a pointer to our hipMod* api, we can try to extract the file name
   // if it was mapped by the app. Otherwise use the COMGR data API.
