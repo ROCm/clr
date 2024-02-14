@@ -356,6 +356,7 @@ hipError_t GraphExec::Init() {
     // For graph nodes capture AQL packets to dispatch them directly during graph launch.
     status = CaptureAQLPackets();
   }
+  instantiateDeviceId_ = hip::getCurrentDevice()->deviceId();
   return status;
 }
 
@@ -589,7 +590,8 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
 
-  if (parallelLists_.size() == 1) {
+  if (parallelLists_.size() == 1 &&
+      instantiateDeviceId_ == hip_stream->DeviceId()) {
     amd::AccumulateCommand* accumulate = nullptr;
     bool isLastPacketKernel = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
@@ -630,6 +632,13 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && !isLastPacketKernel) {
       accumulate->enqueue();
       accumulate->release();
+    }
+  } else if (parallelLists_.size() == 1 &&
+             instantiateDeviceId_ != hip_stream->DeviceId()) {
+    for (int i = 0; i < topoOrder_.size(); i++) {
+      topoOrder_[i]->SetStream(hip_stream, this);
+      status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
+      topoOrder_[i]->EnqueueCommands(stream);
     }
   } else {
     UpdateStream(parallelLists_, hip_stream, this);

@@ -569,6 +569,7 @@ struct GraphExec {
   std::vector<address> kernarg_graph_;
   uint32_t kernarg_graph_cur_offset_ = 0;
   uint32_t kernarg_graph_size_ = 128 * Ki;
+  int instantiateDeviceId_ = -1;
 
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,

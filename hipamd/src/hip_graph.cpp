@@ -42,7 +42,9 @@ inline hipError_t ihipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) 
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
-
+  if (!hip::GraphExec::isGraphExecValid(reinterpret_cast<hip::GraphExec*>(graphExec))) {
+    return hipErrorInvalidValue;
+  }
   return hipSuccess;
 }
 
