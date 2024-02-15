@@ -266,14 +266,14 @@ __device__ static inline int __mul24(int x, int y) {
 }
 
 __device__ static inline long long __mul64hi(long long int x, long long int y) {
-    ulong x0 = (ulong)x & 0xffffffffUL;
-    long x1 = x >> 32;
-    ulong y0 = (ulong)y & 0xffffffffUL;
-    long y1 = y >> 32;
-    ulong z0 = x0*y0;
-    long t = x1*y0 + (z0 >> 32);
-    long z1 = t & 0xffffffffL;
-    long z2 = t >> 32;
+    unsigned long long x0 = (unsigned long long)x & 0xffffffffUL;
+    long long x1 = x >> 32;
+    unsigned long long y0 = (unsigned long long)y & 0xffffffffUL;
+    long long y1 = y >> 32;
+    unsigned long long z0 = x0*y0;
+    long long t = x1*y0 + (z0 >> 32);
+    long long z1 = t & 0xffffffffL;
+    long long z2 = t >> 32;
     z1 = x0*y1 + z1;
     return x1*y1 + z2 + (z1 >> 32);
 }
@@ -300,14 +300,14 @@ __device__ static inline int __umul24(unsigned int x, unsigned int y) {
 
 __device__
 static inline unsigned long long __umul64hi(unsigned long long int x, unsigned long long int y) {
-    ulong x0 = x & 0xffffffffUL;
-    ulong x1 = x >> 32;
-    ulong y0 = y & 0xffffffffUL;
-    ulong y1 = y >> 32;
-    ulong z0 = x0*y0;
-    ulong t = x1*y0 + (z0 >> 32);
-    ulong z1 = t & 0xffffffffUL;
-    ulong z2 = t >> 32;
+    unsigned long long x0 = x & 0xffffffffUL;
+    unsigned long long x1 = x >> 32;
+    unsigned long long y0 = y & 0xffffffffUL;
+    unsigned long long y1 = y >> 32;
+    unsigned long long z0 = x0*y0;
+    unsigned long long t = x1*y0 + (z0 >> 32);
+    unsigned long long z1 = t & 0xffffffffUL;
+    unsigned long long z2 = t >> 32;
     z1 = x0*y1 + z1;
     return x1*y1 + z2 + (z1 >> 32);
 }
