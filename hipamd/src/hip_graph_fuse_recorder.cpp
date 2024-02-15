@@ -260,9 +260,12 @@ GraphFuseRecorder::KernelDescriptions GraphFuseRecorder::collectImages(
     descr.name = kernel->name();
     rtrim(descr.name);
 
-    for (auto& argDescriptor : kernel->signature().parameters()) {
+    auto& kernelargs = kernel->signature().parameters();
+    for (uint32_t i = 0; i < kernel->signature().numParametersAll(); ++i) {
+      auto& argDescriptor = kernelargs[i];
       descr.argsSizes.push_back(argDescriptor.size_);
-      descr.argsTypes.push_back(argDescriptor.type_);
+      const auto& it = kernel->signature().at(i);
+      descr.argsTypes.push_back(it.info_.oclObject_);
     }
 
     auto& program = kernel->program();
