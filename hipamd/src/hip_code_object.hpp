@@ -161,6 +161,32 @@ private:
   std::unordered_map<int, bool> managedVarsDevicePtrInitalized_;
 };
 
+class ExternalCOs {
+  amd::Monitor sclock_{"Guards External Code objects", true};
+  public:
+  using SymbolTableType = std::unordered_map<std::string, std::pair<void*, hip::Function*>>;
+
+  ExternalCOs();
+  virtual ~ExternalCOs();
+  void load(const std::string& symbolName, const std::string& imagePath, StatCO& statCO);
+  SymbolTableType getExternalTable() {
+    return symbolsTable_;
+  }
+
+  private:
+  struct ImageHandle {
+    amd::Os::FileDesc fdesc_{};
+    size_t fsize_{0};
+    const void* image_{nullptr};
+    FatBinaryInfo** modules_{};
+  };
+
+  int device_id_;
+  SymbolTableType symbolsTable_{};
+  std::vector<std::pair<size_t*, hip::Function*>> funcHandles_{};
+
+  std::unordered_map<std::string, ImageHandle> imageHandles_{};
+};
 }; // namespace hip
 
 #endif /* HIP_CODE_OBJECT_HPP */

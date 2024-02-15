@@ -691,6 +691,13 @@ extern "C"
   return (unsigned short)__convert_float_to_half(f);
 }
 
+PlatformState::~PlatformState() {
+  auto status = hipFree(semaphore_);
+  if (status != hipSuccess) {
+    LogPrintfError("%s", "failed to delete semaphore");
+  }
+}
+
 void PlatformState::init() {
   amd::ScopedLock lock(lock_);
   if (initialized_ || g_devices.empty()) {
@@ -957,5 +964,33 @@ bool PlatformState::CloseUniqueFileHandle(const std::shared_ptr<UniqueFD>& ufd) 
     }
   }
   return true;
+}
+
+void PlatformState::loadExternalSymbol(const std::string& symbolName, const std::string imagePath) {
+  externalCOs_.load(symbolName, imagePath, statCO_);
+}
+
+hip::ExternalCOs::SymbolTableType PlatformState::getExternalSymbolTable() {
+  return externalCOs_.getExternalTable();
+}
+
+bool PlatformState::initSemaphore() {
+  auto status = hipMalloc(&semaphore_, sizeof(size_t));
+  if (status != hipSuccess) {
+    LogPrintfError("%s", "failed to allocate semaphore on the current device");
+    return false;
+  }
+  status = hipMemset(semaphore_, 0, sizeof(size_t));
+  if (status != hipSuccess) {
+    LogPrintfError("%s", "failed to set semaphore value on the current device");
+    return false;
+  }
+  LogPrintfInfo("%s", "semaphore is set");
+  return true;
+}
+
+void* PlatformState::getSemaphore() {
+  guarantee(semaphore_ != nullptr, "semaphore must be initialized");
+  return semaphore_;
 }
 } //namespace hip

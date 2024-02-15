@@ -20,6 +20,8 @@
 
 #include "top.hpp"
 #include "hip_graph_internal.hpp"
+#include "hip_graph_fuse_recorder.hpp"
+#include "hip_graph_modifier.hpp"
 #include "platform/command.hpp"
 #include "hip_conversions.hpp"
 #include "hip_platform.hpp"
@@ -1199,6 +1201,17 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   if (pGraphExec == nullptr || graph == nullptr) {
     return hipErrorInvalidValue;
   }
+
+  if (hip::GraphFuseRecorder::isRecordingOn()) {
+    hip::GraphFuseRecorder recorder(graph);
+    recorder.run();
+  }
+
+  if (hip::GraphModifier::isSubstitutionOn()) {
+    hip::GraphModifier modifier(graph);
+    modifier.run();
+  }
+
   if (graph->IsGraphInstantiated() == true) {
     for (auto node : graph->GetNodes()) {
       if ((node->GetType() == hipGraphNodeTypeMemAlloc) ||

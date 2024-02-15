@@ -74,6 +74,9 @@ else()
   add_library(amdhip64 STATIC rocclr)
 endif()
 
+find_package(yaml-cpp REQUIRED)
+target_link_libraries(amdhip64 PRIVATE yaml-cpp)
+
 set_target_properties(amdhip64 PROPERTIES
   CXX_STANDARD 17
   CXX_STANDARD_REQUIRED ON
@@ -115,6 +118,8 @@ target_sources(amdhip64 PRIVATE
   hip_global.cpp
   hip_graph_internal.cpp
   hip_graph.cpp
+  hip_graph_fuse_recorder.cpp
+  hip_graph_modifier.cpp
   hip_hmm.cpp
   hip_intercept.cpp
   hip_memory.cpp
