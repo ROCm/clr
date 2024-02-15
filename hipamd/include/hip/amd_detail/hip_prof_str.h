@@ -409,7 +409,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipTexRefGetArray = 389,
   HIP_API_ID_hipTexRefGetBorderColor = 390,
   HIP_API_ID_hipStreamBeginCaptureToGraph = 391,
-  HIP_API_ID_LAST = 391,
+  HIP_API_ID_hipGetFuncBySymbol = 392,
+  HIP_API_ID_LAST = 392,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -563,6 +564,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGetDevicePropertiesR0000: return "hipGetDevicePropertiesR0000";
     case HIP_API_ID_hipGetDevicePropertiesR0600: return "hipGetDevicePropertiesR0600";
     case HIP_API_ID_hipGetErrorString: return "hipGetErrorString";
+    case HIP_API_ID_hipGetFuncBySymbol: return "hipGetFuncBySymbol";
     case HIP_API_ID_hipGetLastError: return "hipGetLastError";
     case HIP_API_ID_hipGetMipmappedArrayLevel: return "hipGetMipmappedArrayLevel";
     case HIP_API_ID_hipGetProcAddress: return "hipGetProcAddress";
@@ -957,6 +959,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGetDevicePropertiesR0000", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0000;
   if (strcmp("hipGetDevicePropertiesR0600", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0600;
   if (strcmp("hipGetErrorString", name) == 0) return HIP_API_ID_hipGetErrorString;
+  if (strcmp("hipGetFuncBySymbol", name) == 0) return HIP_API_ID_hipGetFuncBySymbol;
   if (strcmp("hipGetLastError", name) == 0) return HIP_API_ID_hipGetLastError;
   if (strcmp("hipGetMipmappedArrayLevel", name) == 0) return HIP_API_ID_hipGetMipmappedArrayLevel;
   if (strcmp("hipGetProcAddress", name) == 0) return HIP_API_ID_hipGetProcAddress;
@@ -1786,6 +1789,11 @@ typedef struct hip_api_data_s {
       hipDeviceProp_tR0600 prop__val;
       int deviceId;
     } hipGetDevicePropertiesR0600;
+    struct {
+      hipFunction_t* functionPtr;
+      hipFunction_t functionPtr__val;
+      const void* symbolPtr;
+    } hipGetFuncBySymbol;
     struct {
       hipArray_t* levelArray;
       hipArray_t levelArray__val;
@@ -4093,6 +4101,11 @@ typedef struct hip_api_data_s {
 // hipGetErrorString[]
 #define INIT_hipGetErrorString_CB_ARGS_DATA(cb_data) { \
 };
+// hipGetFuncBySymbol[('hipFunction_t*', 'functionPtr'), ('const void*', 'symbolPtr')]
+#define INIT_hipGetFuncBySymbol_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetFuncBySymbol.functionPtr = (hipFunction_t*)functionPtr; \
+  cb_data.args.hipGetFuncBySymbol.symbolPtr = (const void*)symbolPtr; \
+};
 // hipGetLastError[]
 #define INIT_hipGetLastError_CB_ARGS_DATA(cb_data) { \
 };
@@ -6344,6 +6357,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipGetErrorString[]
     case HIP_API_ID_hipGetErrorString:
       break;
+// hipGetFuncBySymbol[('hipFunction_t*', 'functionPtr'), ('const void*', 'symbolPtr')]
+    case HIP_API_ID_hipGetFuncBySymbol:
+      if (data->args.hipGetFuncBySymbol.functionPtr) data->args.hipGetFuncBySymbol.functionPtr__val = *(data->args.hipGetFuncBySymbol.functionPtr);
+      break;
 // hipGetLastError[]
     case HIP_API_ID_hipGetLastError:
       break;
@@ -8223,6 +8240,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipGetErrorString:
       oss << "hipGetErrorString(";
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGetFuncBySymbol:
+      oss << "hipGetFuncBySymbol(";
+      if (data->args.hipGetFuncBySymbol.functionPtr == NULL) oss << "functionPtr=NULL";
+      else { oss << "functionPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetFuncBySymbol.functionPtr__val); }
+      oss << ", symbolPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetFuncBySymbol.symbolPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipGetLastError:

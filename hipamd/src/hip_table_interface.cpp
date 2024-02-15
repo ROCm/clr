@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+    Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -1739,4 +1739,7 @@ hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
                                         size_t numDependencies, hipStreamCaptureMode mode) {
   return hip::GetHipDispatchTable()->hipStreamBeginCaptureToGraph_fn(
       stream, graph, dependencies, dependencyData, numDependencies, mode);
+}
+hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr) {
+  return hip::GetHipDispatchTable()->hipGetFuncBySymbol_fn(functionPtr, symbolPtr);
 }
