@@ -47,6 +47,7 @@ class FusionGroup : public hip::GraphNode {
   hip::GraphKernelNode* fusedNode_;
   hipKernelNodeParams fusedNodeParams_{};
   std::vector<void*> kernelArgs_{};
+  std::vector<void*> hiddenkernelArgs_{};
   void* semaphore_{};
 };
 
@@ -64,15 +65,18 @@ void FusionGroup::generateNode(void* functionHandle) {
         std::max(fusedNodeParams_.sharedMemBytes, nodeParams.sharedMemBytes);
 
     auto* kernel = hip::GraphFuseRecorder::getDeviceKernel(nodeParams);
-    const auto numKernelArgs = kernel->signature().numParameters();
+    const auto numKernelArgs = kernel->signature().numParametersAll();
 
     for (size_t i = 0; i < numKernelArgs; ++i) {
-      kernelArgs_.push_back(nodeParams.kernelParams[i]);
+      if (kernel->signature().at(i).info_.hidden_) hiddenkernelArgs_.push_back(nodeParams.kernelParams[i]);
+      else kernelArgs_.push_back(nodeParams.kernelParams[i]); 
     }
     guarantee(nodeParams.extra == nullptr,
               "current implementation does not support `extra` params");
   }
   kernelArgs_.push_back(&semaphore_);
+  kernelArgs_.reserve(kernelArgs_.size() + hiddenkernelArgs_.size());
+  kernelArgs_.insert(kernelArgs_.end(), hiddenkernelArgs_.begin(), hiddenkernelArgs_.end());
 
   fusedNodeParams_.kernelParams = kernelArgs_.data();
   fusedNodeParams_.extra = nullptr;
@@ -226,20 +230,6 @@ void GraphModifier::generateFusedNodes() {
   }
 }
 
-void GraphModifier::adjustNodeLevels() {
-  // roots node must be grabbed firt - i.e., before modifying node levels
-  /*
-  const auto& roots = graph_->GetRootNodes();
-  const auto& nodes = graph_->GetNodes();
-  for (auto& node: nodes) {
-    node->SetLevel(0);
-  }
-  for (auto& root: roots) {
-    root->UpdateEdgeLevel();
-  }
-  */
-}
-
 void GraphModifier::run() {
   amd::ScopedLock lock(fclock_);
   currDescription = descriptions_[instanceId_];
@@ -264,7 +254,7 @@ void GraphModifier::run() {
       const auto& dependencies = groupHead->GetDependencies();
       std::vector<Node> additionalEdges{fusedNode};
       for (const auto& dependency : dependencies) {
-        dependency->RemoveEdge(groupHead);
+        dependency->RemoveUpdateEdge(groupHead);
         dependency->AddEdge(fusedNode);
       }
     }
@@ -273,7 +263,7 @@ void GraphModifier::run() {
     if (groupTail) {
       const auto& edges = groupTail->GetEdges();
       for (const auto& edge : edges) {
-        edge->RemoveDependency(groupTail);
+        groupTail->RemoveUpdateEdge(edge);
         fusedNode->AddEdge(edge);
       }
     }
@@ -284,6 +274,5 @@ void GraphModifier::run() {
     }
     graph_->AddNode(fusedNode);
   }
-  adjustNodeLevels();
 }
 }  // namespace hip
