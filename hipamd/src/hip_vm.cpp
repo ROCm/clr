@@ -168,7 +168,9 @@ hipError_t hipMemGetAllocationGranularity(size_t* granularity, const hipMemAlloc
   HIP_INIT_API(hipMemGetAllocationGranularity, granularity, prop, option);
 
   if (granularity == nullptr || prop == nullptr || prop->type != hipMemAllocationTypePinned ||
-      prop->location.type != hipMemLocationTypeDevice || prop->location.id >= g_devices.size()) {
+      prop->location.type != hipMemLocationTypeDevice || prop->location.id >= g_devices.size() ||
+      (option != hipMemAllocationGranularityMinimum &&
+       option != hipMemAllocationGranularityRecommended)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
