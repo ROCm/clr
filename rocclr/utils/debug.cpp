@@ -31,6 +31,7 @@
 #include <cstdarg>
 #include <thread>
 #include <sstream>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -78,15 +79,21 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
 // ================================================================================================
 void log_printf(LogLevel level, const char* file, int line, const char* format, ...) {
   va_list ap;
-  std::stringstream str_thrd_id;
-  str_thrd_id << std::hex << std::this_thread::get_id();
+  std::stringstream pidtid;
+  if (AMD_LOG_LEVEL > 4) {
+    pidtid << "[pid:" << Os::getProcessId() << " tid: " ;
+    pidtid << std::hex << std::setw(5) << std::this_thread::get_id() << "]";
+  }
+
   va_start(ap, format);
   char message[4096];
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
-  fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: [pid:%-5d tid:0x%s] %s\n", level, file, line,
-    timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message);
+
+  fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
+    timeUs, pidtid.str().c_str(),message);
+
   fflush(outFile);
 }
 
@@ -94,20 +101,23 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
 void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
                 const char* format, ...) {
   va_list ap;
-  std::stringstream str_thrd_id;
-  str_thrd_id << std::hex << std::this_thread::get_id();
+  std::stringstream pidtid;
+  if (AMD_LOG_LEVEL > 4) {
+    pidtid << "[pid:" << Os::getProcessId() << " tid: " ;
+    pidtid << std::hex << std::setw(5) << std::this_thread::get_id() << "]";
+  }
   va_start(ap, format);
   char message[4096];
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
+
   if (start == 0 || *start == 0) {
-     fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: [pid:%-5d tid:0x%s] %s\n", level, file, line,
-      timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message);
+    fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
+      timeUs, pidtid.str().c_str(), message);
   } else {
-     fprintf(outFile, ":%d:%-25s:%-4d: %010lld us: [pid:%-5d tid:0x%s] %s: duration: %lld us\n",
-      level, file, line, timeUs/1ULL, Os::getProcessId(), str_thrd_id.str().c_str(), message,
-      (timeUs - *start)/1ULL);
+    fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s: duration: %lud us\n",
+      level, file, line, timeUs, pidtid.str().c_str(), message, timeUs - *start);
   }
   fflush(outFile);
   if (*start == 0) {
