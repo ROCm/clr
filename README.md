@@ -1,24 +1,24 @@
 # AMD CLR - Compute Language Runtimes
 
-AMD Common Language Runtime contains source code for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
+AMD Common Language Runtime contains source codes for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
 
 ## Project Organisation
 
-- `hipamd` - contains implementation of `HIP` language on AMD platform. Previously this was hosted at [ROCm-Developer-Tools/hipamd](https://github.com/ROCm-Developer-Tools/hipamd)
-- `opencl` - contains implementation of [OpenCL™](https://www.khronos.org/opencl/) on AMD platform. Previously this was hosted at [RadeonOpenCompute/ROCm-OpenCL-Runtime](https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime)
-- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. Previously this was hosted at [ROCm-Developer-Tools/ROCclr](https://github.com/ROCm-Developer-Tools/ROCclr)
+- `hipamd` - contains implementation of `HIP` language on AMD platform. It is hosted at [ROCm/clr/hipamd](https://github.com/ROCm/clr/tree/develop/hipamd)
+- `opencl` - contains implementation of [OpenCL™](https://www.khronos.org/opencl/) on AMD platform. Now it is hosted at [ROCm/clr/opencl](https://github.com/ROCm/clr/tree/develop/opencl)
+- `rocclr` - contains common runtime used in `HIP` and `OpenCL™`. This is hosted at [ROCm/clr/rocclr](https://github.com/ROCm/clr/tree/develop/rocclr)
 
 ## How to build/install
 
 ### Prerequisites
 
-Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/en/latest/deploy/linux/quick_start.html).
+Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/quick-start.html).
 
 Building clr requires `rocm-hip-libraries` meta package, which provides the pre-requisites for clr.
 
 ### Linux
 
-- Clone this repo
+- Clone this repository
 - `cd clr && mkdir build && cd build`
 - For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
   - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
@@ -29,13 +29,15 @@ Building clr requires `rocm-hip-libraries` meta package, which provides the pre-
 
 Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=ON` to configure command.
 
+For detail instructions, please refer to [how to build HIP](https://github.com/ROCm/HIP/blob/develop/docs/developer_guide/build.md)
+
 ## Tests
 
-`hip-tests` is a separate repo hosted at [hip-tests](https://github.com/ROCm/hip-tests).
+`hip-tests` is a separate repository hosted at [hip-tests](https://github.com/ROCm/hip-tests).
 
-To run `hip-tests` please go to the repo and follow the steps.
+To run `hip-tests` please go to the repository and follow the steps.
 
-There used to be directed tests in [ROCm/HIP](https://github.com/ROCm/HIP) which are now removed in favor of `hip-tests` repo.
+There used to be directed tests in [ROCm/HIP](https://github.com/ROCm/HIP) which are now removed in favor of `hip-tests` repository.
 
 ## Disclaimer
 
