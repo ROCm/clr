@@ -13,16 +13,16 @@ The information presented in this document is for informational purposes only an
 Download the git projects using the following commands:
 
 ```bash
-git clone -b main https://github.com/RadeonOpenCompute/ROCm-OpenCL-Runtime.git
+git clone -b develop https://github.com/ROCm/clr.git
+export CLR_DIR="$(readlink -f clr)"
 ```
 
 ## Repository branches
 
 The repository maintains several branches. The branches that are of importance are:
 
-- Main branch: This is the stable branch. It is up to date with the latest release branch, for example, if the latest ROCM release is rocm-4.1, main branch will be the repository based on this release.
 - Develop branch: This is the default branch, on which the new features are still under development and visible. While this maybe of interest to many, it should be noted that this branch and the features under development might not be stable.
-- Release branches: These are branches corresponding to each ROCM release, listed with release tags, such as rocm-4.0, rocm-4.1, etc.
+- Release branches: These are branches corresponding to each ROCM release, listed with release tags, such as rocm-6.0.x, rocm-5.7.x, etc.
 
 ## Setup OpenCL
 Copy the amdocl64.icd file to /etc/OpenCL/vendors
@@ -32,19 +32,13 @@ sudo cp api/opencl/config/amdocl64.icd /etc/OpenCL/vendors/
 ```
 
 ## Building
-Follow these steps:
 
--   Build ROCclr first. Follow the steps in the following link to build ROCclr
-   [ROCclr Readme](https://github.com/ROCm-Developer-Tools/ROCclr)
-   In this step, $OPENCL_DIR and $ROCclr_DIR are defined.
-
--   Building OpenCL
 Run these commands:
 
 ```bash
-cd "$OPENCL_DIR"
+cd "$CLR_DIR"
 mkdir -p build; cd build
-cmake -DUSE_COMGR_LIBRARY=ON -DCMAKE_PREFIX_PATH="$ROCclr_DIR/build;/opt/rocm/" ..
+cmake -DUSE_COMGR_LIBRARY=ON -DCMAKE_PREFIX_PATH="/opt/rocm/" -DCLR_BUILD_HIP=OFF -DCLR_BUILD_OCL=ON ..
 make -j$(nproc)
 ```
 
