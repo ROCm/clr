@@ -2335,6 +2335,11 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
           *updateResult_out = hipGraphExecUpdateErrorNotSupported;
         }
         HIP_RETURN(hipErrorGraphExecUpdateFailure);
+      } else if (DEBUG_CLR_GRAPH_PACKET_CAPTURE &&
+                 oldGraphExecNodes[i]->GetType() == hipGraphNodeTypeKernel) {
+        status =
+            reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(oldGraphExecNodes[i]));
       }
     } else {
       *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
