@@ -66,38 +66,21 @@ hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t 
   if (status != hipSuccess) {
     return status;
   }
-  size_t sOffsetOrig = 0;
-  amd::Memory* origSrcMemory = getMemoryObject(src, sOffsetOrig);
-  size_t dOffsetOrig = 0;
-  amd::Memory* origDstMemory = getMemoryObject(dst, dOffsetOrig);
-
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
 
   if ((srcMemory == nullptr) && (dstMemory != nullptr)) {  // host to device
-    if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
-      return hipErrorInvalidValue;
-    }
     if ((kind != hipMemcpyHostToDevice) && (kind != hipMemcpyDefault)) {
       return hipErrorInvalidValue;
     }
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {  // device to host
-    if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
-      return hipErrorInvalidValue;
-    }
     if ((kind != hipMemcpyDeviceToHost) && (kind != hipMemcpyDefault)) {
       return hipErrorInvalidValue;
     }
-  } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
-    if (origDstMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
-      return hipErrorInvalidValue;
-    }
-    if (origSrcMemory->getContext().devices()[0] != srcMemory->getContext().devices()[0]) {
-      return hipErrorInvalidValue;
-    }
   }
+
   return hipSuccess;
 }
 

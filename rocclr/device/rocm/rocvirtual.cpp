@@ -900,7 +900,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
             "HWq=0x%zx, Dispatch Header = "
             "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
             "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
-            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
+            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx "
+            "rptr=%u, wptr=%u",
             gpu_queue_->base_address, header,
             extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
             extractAqlBits(header, HSA_PACKET_HEADER_BARRIER,
@@ -919,7 +920,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal);
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal, read, index);
   }
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index - 1);
