@@ -283,7 +283,7 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
   }
 
   for (size_t desc_idx = 0; desc_idx < count; ++desc_idx) {
-
+    
     if (desc[desc_idx].location.id >= g_devices.size()) {
       HIP_RETURN(hipErrorInvalidValue)
     }
@@ -295,7 +295,7 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
     auto& dev = g_devices[desc[desc_idx].location.id];
     amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(desc[desc_idx].flags);
 
-    if (!dev->devices()[0]->SetMemAccess(ptr, size, access_flags, count)) {
+    if (!dev->devices()[0]->SetMemAccess(ptr, size, access_flags)) {
       HIP_RETURN(hipErrorInvalidValue);
     }
   }

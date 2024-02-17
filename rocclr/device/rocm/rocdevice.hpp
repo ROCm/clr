@@ -231,7 +231,7 @@ class NullDevice : public amd::Device {
     return;
   }
 
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count)
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags)
                             override {
     ShouldNotReachHere();
     return false;
@@ -468,7 +468,7 @@ class Device : public NullDevice {
   virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
 
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count);
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
   virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
 
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
