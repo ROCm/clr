@@ -42,7 +42,12 @@ static bool useGPU = true;
 
 static const cl_uint NumQueues = 8;  // must be power of 2
 static cl_uint NumElements = 4096;
+#if EMU_ENV
+static const cl_uint NumRuns = 16;
+#else
 static const cl_uint NumRuns = 16384;
+#endif
+
 static const cl_uint ExecutionsPerQueue = 256;
 std::stringstream lerror;
 

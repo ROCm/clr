@@ -30,8 +30,12 @@
 static const size_t Iterations = 0x100;
 static const size_t IterationDivider = 2;
 static const size_t MaxBuffers = IterationDivider;
-static const size_t BufSize = 0x800000;
 
+#if EMU_ENV
+static const size_t BufSize = 0x800;
+#else
+static const size_t BufSize = 0x800000;
+#endif
 const static char* strKernel =
     "__kernel void factorial(__global uint* out)                        \n"
     "{                                                                  \n"
