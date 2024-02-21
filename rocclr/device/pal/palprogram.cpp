@@ -782,7 +782,13 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
     return false;
   }
 
-  status = loader_->FreezeExecutable(executable_, nullptr);
+  if (isInternal() && (owner()->language() == amd::Program::Assembly)) {
+    // Don't register trap handler with the debugger, since user shouldn't see this kernel
+    status = executable_->Freeze(nullptr);
+    trapHandler_ = true;
+  } else {
+    status = loader_->FreezeExecutable(executable_, nullptr);
+  }
   if (status != HSA_STATUS_SUCCESS) {
     LogError("Error: Freezing the executable failed.");
     return false;
@@ -795,8 +801,8 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
 bool LightningProgram::setKernels(void* binary, size_t binSize, amd::Os::FileDesc fdesc,
                                   size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
-  // Collect the information about compiled binary
-  if (!isNull() && (palDevice().rgpCaptureMgr() != nullptr)) {
+  // Collect the information about compiled binary, except the trap handler
+  if (!isNull() && (palDevice().rgpCaptureMgr() != nullptr) && !isTrapHandler()) {
     apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(
         binary, binSize, binary, binSize, codeSegGpu_->iMem(), codeSegGpu_->offset());
   }

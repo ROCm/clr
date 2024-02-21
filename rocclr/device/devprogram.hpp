@@ -131,6 +131,7 @@ class Program : public amd::HeapObject {
        uint32_t hasGlobalStores_ : 1; //!< Program has writable program scope variables
        uint32_t isHIP_ : 1;           //!< Determine if the program is for HIP
        uint32_t coLoaded_ : 1;        //!< Has the code objected been loaded
+       uint32_t trapHandler_ : 1;     //!< It is a trap handler for debugger
      };
      uint32_t flags_;  //!< Program flags
    };
@@ -262,6 +263,9 @@ class Program : public amd::HeapObject {
 
   //! Return TRUE if the program has been loaded
   bool isCodeObjectLoaded() const { return coLoaded_; }
+
+  //! Returns TRUE if the program is a trap handler for debugger support
+  bool isTrapHandler() const { return trapHandler_; }
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t metadata() const { return metadata_; }
