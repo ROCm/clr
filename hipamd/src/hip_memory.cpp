@@ -3725,6 +3725,12 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
           ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
             memObj->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
         } else { // checks for array type
+          // ptr must be a host allocation using malloc since memObj is null and is
+          // not found in hipArraySet.
+          if (hip::hipArraySet.find(static_cast<hipArray*>(ptr)) == hip::hipArraySet.end()) {
+            *reinterpret_cast<uint32_t*>(data) = 0;
+            return hipErrorInvalidValue;
+          }
           cl_mem dstMemObj = reinterpret_cast<cl_mem>((static_cast<hipArray*>(ptr))->data);
           if (!is_valid(dstMemObj)) {
             *reinterpret_cast<uint32_t*>(data) = 0;
