@@ -12,7 +12,7 @@ AMD Common Language Runtime contains source code for AMD's compute languages run
 
 ### Prerequisites
 
-Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/en/latest/deploy/linux/quick_start.html).
+Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/quick-start.html#rocm-install-quick).
 
 Building clr requires `rocm-hip-libraries` meta package, which provides the pre-requisites for clr.
 
