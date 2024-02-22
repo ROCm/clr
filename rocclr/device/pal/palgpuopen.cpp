@@ -874,7 +874,9 @@ void RgpCaptureMgr::WriteBarrierStartMarker(const VirtualGPU* gpu,
     RgpSqttMarkerBarrierStart marker = {};
 
     marker.identifier = RgpSqttMarkerIdentifierBarrierStart;
-    marker.cbId = trace_.begin_queue_->queue(MainEngine).cmdBufId();
+    if (trace_.begin_queue_ != nullptr) {
+      marker.cbId = trace_.begin_queue_->queue(MainEngine).cmdBufId();
+    }
     marker.dword02 = data.reason;
     marker.internal = true;
 
@@ -898,8 +900,9 @@ void RgpCaptureMgr::WriteBarrierEndMarker(const VirtualGPU* gpu,
     RgpSqttMarkerBarrierEnd marker = {};
 
     marker.identifier = RgpSqttMarkerIdentifierBarrierEnd;
-    marker.cbId = trace_.begin_queue_->queue(MainEngine).cmdBufId();
-
+    if (trace_.begin_queue_ != nullptr) {
+      marker.cbId = trace_.begin_queue_->queue(MainEngine).cmdBufId();
+    }
     marker.waitOnEopTs = operations.pipelineStalls.eopTsBottomOfPipe;
     marker.vsPartialFlush = operations.pipelineStalls.vsPartialFlush;
     marker.psPartialFlush = operations.pipelineStalls.psPartialFlush;
