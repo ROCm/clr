@@ -2275,7 +2275,7 @@ bool Device::deviceAllowAccess(void* ptr) const {
     hsa_status_t stat = hsa_amd_agents_allow_access(p2pAgents().size(),
                                                     p2pAgents().data(), nullptr, ptr);
     if (stat != HSA_STATUS_SUCCESS) {
-      LogError("Allow p2p access failed - hsa_amd_agents_allow_access");
+      LogPrintfError("Allow p2p access failed - hsa_amd_agents_allow_access with err %d", stat);
       return false;
     }
   }
@@ -2291,7 +2291,7 @@ bool Device::allowPeerAccess(device::Memory* memory) const {
     hsa_agent_t agent = getBackendDevice();
     hsa_status_t stat = hsa_amd_agents_allow_access(1, &agent, nullptr, ptr);
     if (stat != HSA_STATUS_SUCCESS) {
-      LogError("Allow p2p access failed - hsa_amd_agents_allow_access");
+      LogPrintfError("Allow p2p access failed - hsa_amd_agents_allow_access with err: %d", stat);
       return false;
     }
   }
