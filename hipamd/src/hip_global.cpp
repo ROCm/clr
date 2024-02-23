@@ -167,7 +167,10 @@ hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
 }
 
 hipError_t Function::getStatFuncAttr(hipFuncAttributes* func_attr, int deviceId) {
-  guarantee((modules_ != nullptr), "Module not initialized");
+
+  if (modules_ == nullptr || *modules_ == nullptr) {
+    return hipErrorInvalidDeviceFunction;
+  }
 
   hipModule_t hmod = nullptr;
   IHIP_RETURN_ONFAIL((*modules_)->BuildProgram(deviceId));
