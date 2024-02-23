@@ -33,6 +33,7 @@ THE SOFTWARE.
 
 namespace hiprtc {
 using namespace helpers;
+std::unordered_set<RTCLinkProgram*>RTCLinkProgram::linker_set_;
 
 std::vector<std::string> getLinkOptions(const LinkArguments& args) {
   std::vector<std::string> res;
@@ -393,6 +394,16 @@ RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
   if (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS) {
     crashWithMessage("Failed to allocate internal hiprtc structure");
   }
+  amd::ScopedLock lock(lock_);
+  linker_set_.insert(this);
+}
+
+bool RTCLinkProgram::isLinkerValid(RTCLinkProgram* link_program) {
+  amd::ScopedLock lock(lock_);
+  if (linker_set_.find(link_program) == linker_set_.end()) {
+    return false;
+  }
+  return true;
 }
 
 bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
