@@ -285,6 +285,10 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     }
     clonedNodes[node]->SetDependencies(clonedDependencies);
   }
+  for (auto userObj : graphUserObj_) {
+    userObj->retain();
+    newGraph->graphUserObj_.insert(userObj);
+  }
   return newGraph;
 }
 
