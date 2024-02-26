@@ -463,12 +463,6 @@ struct Graph {
   void GetRunList(std::vector<std::vector<Node>>& parallelLists,
                   std::unordered_map<Node, std::vector<Node>>& dependencies);
   bool TopologicalOrder(std::vector<Node>& TopoOrder);
-  void GetUserObjs(std::unordered_set<UserObject*>& graphExeUserObjs) {
-    for (auto userObj : graphUserObj_) {
-      userObj->retain();
-      graphExeUserObjs.insert(userObj);
-    }
-  }
 
   Graph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
   Graph* clone() const;
