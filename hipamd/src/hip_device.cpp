@@ -75,6 +75,13 @@ bool Device::Create() {
 }
 
 // ================================================================================================
+bool Device::IsMemoryPoolValid(MemoryPool* pool) {
+  amd::ScopedLock lock(lock_);
+  bool result = (mem_pools_.find(pool) != mem_pools_.end()) ? true : false;
+  return result;
+}
+
+// ================================================================================================
 void Device::AddMemoryPool(MemoryPool* pool) {
   amd::ScopedLock lock(lock_);
   if (auto it = mem_pools_.find(pool); it == mem_pools_.end()) {

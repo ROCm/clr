@@ -26,6 +26,20 @@ namespace hip {
  */
 extern hipError_t ihipFree(void* ptr);
 
+// Static declarations
+namespace {
+// ================================================================================================
+inline bool IsMemPoolValid(MemoryPool* mem_pool) {
+  bool result = false;
+  for (auto it : g_devices) {
+    if (result = it->IsMemoryPoolValid(mem_pool) == true) {
+      break;
+    }
+  }
+  return result;
+}
+}  // namespace
+
 // ================================================================================================
 hipError_t hipDeviceGetDefaultMemPool(hipMemPool_t* mem_pool, int device) {
   HIP_INIT_API(hipDeviceGetDefaultMemPool, mem_pool, device);
@@ -221,11 +235,17 @@ hipError_t hipMemPoolSetAccess(
   if ((mem_pool == nullptr) || (desc_list == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (count > g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
   auto hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
   for (int i = 0; i < count; ++i) {
     if (desc_list[i].location.type == hipMemLocationTypeDevice) {
       if (desc_list[i].location.id >= g_devices.size()) {
-        HIP_RETURN(hipErrorInvalidValue);
+        HIP_RETURN(hipErrorInvalidDevice);
+      }
+      if (desc_list[i].flags == hipMemAccessFlagsProtNone) {
+        HIP_RETURN(hipErrorInvalidDevice);
       }
       if (desc_list[i].flags > hipMemAccessFlagsProtReadWrite) {
         HIP_RETURN(hipErrorInvalidValue);
@@ -264,7 +284,7 @@ hipError_t hipMemPoolGetAccess(
 // ================================================================================================
 hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_props) {
   HIP_INIT_API(hipMemPoolCreate, mem_pool, pool_props);
-  if (mem_pool == nullptr) {
+  if ((mem_pool == nullptr) || (pool_props == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   // validate hipMemAllocationType value
@@ -292,6 +312,10 @@ hipError_t hipMemPoolDestroy(hipMemPool_t mem_pool) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::MemoryPool* hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+
+  if (!IsMemPoolValid(hip_mem_pool)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
   auto device = hip_mem_pool->Device();
   if (hip_mem_pool == device->GetDefaultMemoryPool()) {
