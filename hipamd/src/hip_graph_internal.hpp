@@ -331,6 +331,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
         (type_ == hipGraphNodeTypeKernel || type_ == hipGraphNodeTypeMemcpy ||
          type_ == hipGraphNodeTypeMemset)) {
       amd::Command::EventWaitList waitList;
+      if (!commands_.empty()) {
+        waitList = commands_[0]->eventWaitList();
+      }
       hip::Stream* hip_stream = hip::getStream(stream);
       amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
       command->enqueue();

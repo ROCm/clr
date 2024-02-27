@@ -629,7 +629,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
       rootCommand->release();
     }
     for (int i = 0; i < topoOrder_.size(); i++) {
-      topoOrder_[i]->EnqueueCommands(stream);
+      topoOrder_[i]->EnqueueCommands(reinterpret_cast<hipStream_t>(topoOrder_[i]->GetQueue()));
     }
     if (endCommand != nullptr) {
       endCommand->enqueue();
