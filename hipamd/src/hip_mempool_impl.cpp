@@ -171,6 +171,9 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
   void* dev_ptr = nullptr;
   amd::Memory* memory = free_heap_.FindMemory(size, stream, Opportunistic(), dptr);
   if (memory == nullptr) {
+    if (Properties().maxSize != 0 && (max_total_size_ + size) > Properties().maxSize) {
+      return nullptr;
+    }
     amd::Context* context = device_->asContext();
     const auto& dev_info = context->devices()[0]->info();
     if (dev_info.maxMemAllocSize_ < size) {

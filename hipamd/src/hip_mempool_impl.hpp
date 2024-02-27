@@ -215,6 +215,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
                      .handleTypes = hipMemHandleTypeNone,
                      .location = {.type = hipMemLocationTypeDevice, .id = device_->deviceId()},
                      .win32SecurityAttributes = nullptr,
+                     .maxSize = 0;
                      .reserved = {}};
     }
     state_.interprocess_ = properties_.handleTypes != hipMemHandleTypeNone;
