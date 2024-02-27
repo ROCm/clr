@@ -891,6 +891,7 @@ class GraphKernelNode : public GraphNode {
   }
 
   hipError_t copyParams(const hipKernelNodeParams* pNodeParams) {
+    hasHiddenHeap_ = false;
     hipFunction_t func = getFunc(*pNodeParams, ihipGetDevice());
     if (!func) {
       return hipErrorInvalidDeviceFunction;
