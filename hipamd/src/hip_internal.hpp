@@ -535,6 +535,8 @@ public:
     /// Removes a destroyed stream from the safe list of memory pools
     void RemoveStreamFromPools(Stream* stream);
 
+    /// Returns true if memory pool is valid on this device
+    bool IsMemoryPoolValid(MemoryPool* pool);
   };
 
   /// Thread Local Storage Variables Aggregator Class
