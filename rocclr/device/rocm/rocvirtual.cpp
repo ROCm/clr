@@ -3210,12 +3210,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     }
 
     const auto pcieKernargs = !dev().isXgmi() && dev().settings().device_kernel_args_;
-
     address argBuffer = hidden_arguments;
+    bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
+
     // Find all parameters for the current kernel
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
       // Allocate buffer to hold kernel arguments
-      if(vcmd != nullptr && vcmd->getCapturingState()) {
+      if (isGraphCapture) {
         argBuffer = vcmd->getKernArgOffset();
       } else {
         const auto kernargSize = gpuKernel.KernargSegmentByteSize();
@@ -3226,7 +3227,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       nontemporalMemcpy(argBuffer, parameters,
                         std::min(gpuKernel.KernargSegmentByteSize(),
                                  signature.paramsSize()));
-      if (pcieKernargs) {
+      if (pcieKernargs && !isGraphCapture) {
         *dev().info().hdpMemFlushCntl = 1u;
       }
     }
@@ -3289,7 +3290,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
-    if (pcieKernargs) {
+    if (pcieKernargs && !isGraphCapture) {
       if (*dev().info().hdpMemFlushCntl != UINT32_MAX) {
         LogError("Unexpected HDP Register readback value!");
       }
