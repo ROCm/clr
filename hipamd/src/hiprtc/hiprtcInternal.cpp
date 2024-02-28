@@ -37,10 +37,17 @@ std::unordered_set<RTCLinkProgram*>RTCLinkProgram::linker_set_;
 
 std::vector<std::string> getLinkOptions(const LinkArguments& args) {
   std::vector<std::string> res;
-  auto irArgCount = args.linkerIRArgCount();
+
+  {  // process optimization level
+    std::string opt("-O");
+    opt += std::to_string(args.optimization_level_);
+    res.push_back(opt);
+  }
+
+  const auto irArgCount = args.linker_ir2isa_args_count_;
   if (irArgCount > 0) {
     res.reserve(irArgCount);
-    auto irArg = args.linkerIRArg();
+    const auto irArg = args.linker_ir2isa_args_;
     for (size_t i = 0; i < irArgCount; i++) {
       res.emplace_back(std::string(irArg[i]));
     }
@@ -636,7 +643,6 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
   }
 
   std::vector<std::string> exe_options = getLinkOptions(link_args_);
-  exe_options.push_back("-O3");
   LogPrintfInfo("Exe options forwarded to compiler: %s",
                 [&]() {
                   std::string ret;
@@ -648,7 +654,7 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
                 }()
                     .c_str());
   if (!createExecutable(exec_input_, isa_, exe_options, build_log_, executable_)) {
-    LogError("Error in hiprtc: unable to create exectuable");
+    LogPrintfInfo("Error in hiprtc: unable to create exectuable: %s", build_log_.c_str());
     return false;
   }
 
