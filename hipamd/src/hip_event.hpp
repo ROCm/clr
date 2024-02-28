@@ -102,7 +102,7 @@ class Event {
     if (type == Query) {
       ready = g_devices[deviceId()]->devices()[0]->IsHwEventReadyForcedWait(*event_);
     } else {
-      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_);
+      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, flags);
     }
     return ready;
   }
