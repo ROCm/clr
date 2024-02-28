@@ -1422,6 +1422,9 @@ hipError_t hipGraphKernelNodeGetParams(hipGraphNode_t node, hipKernelNodeParams*
       pNodeParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (reinterpret_cast<hip::GraphNode*>(node)->GetType() != hipGraphNodeTypeKernel){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   reinterpret_cast<hip::GraphKernelNode*>(node)->GetParams(pNodeParams);
   HIP_RETURN(hipSuccess);
 }
@@ -1431,6 +1434,9 @@ hipError_t hipGraphKernelNodeSetParams(hipGraphNode_t node,
   HIP_INIT_API(hipGraphKernelNodeSetParams, node, pNodeParams);
   if (!hip::GraphNode::isNodeValid(reinterpret_cast<hip::GraphNode*>(node)) ||
                                    pNodeParams == nullptr || pNodeParams->func == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (reinterpret_cast<hip::GraphNode*>(node)->GetType() != hipGraphNodeTypeKernel){
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(node)->SetParams(pNodeParams));
@@ -1457,6 +1463,11 @@ hipError_t hipGraphKernelNodeSetAttribute(hipGraphNode_t hNode, hipKernelNodeAtt
       attr != hipLaunchAttributePriority) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (reinterpret_cast<hip::GraphNode*>(hNode)->GetType() != hipGraphNodeTypeKernel){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(hNode)->SetAttrParams(attr, value));
 }
 
@@ -1471,6 +1482,11 @@ hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAtt
       attr != hipLaunchAttributePriority) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (reinterpret_cast<hip::GraphNode*>(hNode)->GetType() != hipGraphNodeTypeKernel){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(reinterpret_cast<hip::GraphKernelNode*>(hNode)->GetAttrParams(attr, value));
 }
 

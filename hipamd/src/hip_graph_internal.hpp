@@ -1070,7 +1070,12 @@ class GraphKernelNode : public GraphNode {
   }
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
-    constexpr int accessPolicyMaxWindowSize = 1024;
+    hipDeviceProp_t prop = {0};
+    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice()); 
+    if (hipSuccess != status){
+      return status;
+    }
+    int accessPolicyMaxWindowSize = prop.accessPolicyMaxWindowSize;
     // updates kernel attr params
     if (attr == hipKernelNodeAttributeAccessPolicyWindow) {
       if (params->accessPolicyWindow.hitRatio > 1 ||
@@ -1087,7 +1092,7 @@ class GraphKernelNode : public GraphNode {
 
       // need to check against accessPolicyMaxWindowSize from device
       // accessPolicyMaxWindowSize not implemented on the device side yet
-      if (params->accessPolicyWindow.num_bytes >= accessPolicyMaxWindowSize) {
+      if (params->accessPolicyWindow.num_bytes > accessPolicyMaxWindowSize) {
         return hipErrorInvalidValue;
       }
 
@@ -1099,6 +1104,10 @@ class GraphKernelNode : public GraphNode {
     } else if (attr == hipKernelNodeAttributeCooperative) {
       kernelAttr_.cooperative = params->cooperative;
     } else if (attr == hipLaunchAttributePriority) {
+      if (params->priority < hip::Stream::Priority::Low ||
+          params->priority > hip::Stream::Priority::High){
+        return hipErrorInvalidValue;
+      }
       kernelAttr_.priority = params->priority;
     }
 
