@@ -2924,14 +2924,16 @@ bool Device::IsHwEventReadyForcedWait(const amd::Event& event) const {
 }
 
 // ================================================================================================
-bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
+bool Device::IsHwEventReady(const amd::Event& event, bool wait, int hip_event_flags) const {
   void* hw_event =
       (event.NotifyEvent() != nullptr) ? event.NotifyEvent()->HwEvent() : event.HwEvent();
   if (hw_event == nullptr) {
     ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event");
     return false;
   } else if (wait) {
-    return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, ActiveWait());
+    constexpr int kHipEventBlockingSync = 0x1;
+    bool active_wait = !(hip_event_flags & kHipEventBlockingSync) && ActiveWait();
+    return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, active_wait);
   }
   return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) == 0);
 }
