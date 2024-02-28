@@ -164,7 +164,9 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
     barrier_value_packet_ = true;
   }
 
-  if (gfxipMajor >= 9) {
+  // Enable device kernel args for MI300* for now
+  if (gfxipMajor == 9 && gfxipMinor == 4 &&
+      (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)) {
     device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
   }
 
@@ -177,6 +179,7 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
        imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
      }
   }
+
   if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
   }
@@ -227,6 +230,10 @@ void Settings::override() {
 
   if (!flagIsDefault(ROC_USE_FGS_KERNARG)) {
     fgs_kernel_arg_ = ROC_USE_FGS_KERNARG;
+  }
+
+  if (!flagIsDefault(HIP_FORCE_DEV_KERNARG)) {
+    device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
   }
 }
 }  // namespace roc
