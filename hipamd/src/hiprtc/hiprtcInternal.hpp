@@ -247,14 +247,11 @@ struct LinkArguments {
         global_symbol_count_{0},
         lto_{0},
         ftz_{0},
-        prec_div_{0},
-        prec_sqrt_{0},
-        fma_{0},
+        prec_div_{1},
+        prec_sqrt_{1},
+        fma_{1},
         linker_ir2isa_args_{nullptr},
         linker_ir2isa_args_count_{0} {}
-
-  size_t linkerIRArgCount() const { return linker_ir2isa_args_count_; }
-  const char** linkerIRArg() const { return linker_ir2isa_args_; }
 };
 
 class RTCLinkProgram : public RTCProgram {
