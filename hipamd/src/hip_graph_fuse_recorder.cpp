@@ -350,6 +350,7 @@ void GraphFuseRecorder::saveFusionConfig(std::vector<KernelDescriptions>& groupD
       }
       out << YAML::EndSeq << YAML::EndMap;
     }
+    out << YAML::EndSeq << YAML::EndMap;
   }
   out << YAML::EndSeq << YAML::EndMap;
 
