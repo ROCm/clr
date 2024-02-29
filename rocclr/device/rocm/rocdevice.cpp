@@ -3002,8 +3002,9 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
     }
   }
 
-  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created hardware queue %p with size %d with priority %d,"
-      " cooperative: %i", queue->base_address, queue_size, queue_priority, coop_queue);
+  ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Created SWq=%p to map on HWq=%p with "
+          "size %d with priority %d, cooperative: %i",
+          queue, queue->base_address, queue_size, queue_priority, coop_queue);
 
   hsa_amd_profiling_set_profiler_enabled(queue, 1);
   if (cuMask.size() != 0 || info_.globalCUMask_.size() != 0) {
