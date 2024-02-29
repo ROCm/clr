@@ -788,7 +788,7 @@ hipError_t PlatformState::getDynGlobalVar(const char* hostVar, hipModule_t hmod,
                                           hipDeviceptr_t* dev_ptr, size_t* size_ptr) {
   amd::ScopedLock lock(lock_);
 
-  if (hostVar == nullptr || dev_ptr == nullptr || size_ptr == nullptr) {
+  if (hostVar == nullptr) {
     return hipErrorInvalidValue;
   }
 
@@ -797,14 +797,20 @@ hipError_t PlatformState::getDynGlobalVar(const char* hostVar, hipModule_t hmod,
     LogPrintfError("Cannot find the module: 0x%x", hmod);
     return hipErrorNotFound;
   }
-  *dev_ptr = nullptr;
+  if (dev_ptr) {
+    *dev_ptr = nullptr;
+  }
   IHIP_RETURN_ONFAIL(it->second->getManagedVarPointer(hostVar, dev_ptr, size_ptr));
   // if dev_ptr is nullptr, hostvar is not in managed variable list
-  if (*dev_ptr == nullptr) {
+  if ((dev_ptr && *dev_ptr == nullptr) || (size_ptr && *size_ptr == 0)) {
     hip::DeviceVar* dvar = nullptr;
     IHIP_RETURN_ONFAIL(it->second->getDeviceVar(&dvar, hostVar));
-    *dev_ptr = dvar->device_ptr();
-    *size_ptr = dvar->size();
+    if (dev_ptr != nullptr) {
+      *dev_ptr = dvar->device_ptr();
+    }
+    if (size_ptr != nullptr) {
+      *size_ptr = dvar->size();
+    }
   }
   return hipSuccess;
 }
