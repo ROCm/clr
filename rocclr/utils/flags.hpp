@@ -219,7 +219,7 @@ release(uint, ROC_P2P_SDMA_SIZE, 1024,                                        \
         "The minimum size in KB for P2P transfer with SDMA")                  \
 release(uint, ROC_AQL_QUEUE_SIZE, 16384,                                      \
         "AQL queue size in AQL packets")                                      \
-release(uint, ROC_SIGNAL_POOL_SIZE, 32,                                       \
+release(uint, ROC_SIGNAL_POOL_SIZE, 4096,                                     \
         "Initial size of HSA signal pool")                                    \
 release(uint, DEBUG_CLR_LIMIT_BLIT_WG, 16,                                    \
         "Limit the number of workgroups in blit operations")                  \
