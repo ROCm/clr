@@ -340,6 +340,29 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
     } else {
       LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for ptr: 0x%x", image_);
     }
+
+    // For the condition: unable to find code object for all devices,
+    // still extract available images to those devices owning them.
+    // This helps users to work with ROCm if there is any supported
+    // GFX on system.
+    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
+      if (code_objs[dev_idx].first) {
+        // Calculate the offset wrt binary_image and the original image
+        size_t offset_l
+          = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first))
+              - reinterpret_cast<address>(const_cast<void*>(image_)));
+
+        fatbin_dev_info_[devices[dev_idx]->deviceId()]
+          = new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
+
+        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_
+          = new amd::Program(*devices[dev_idx]->asContext());
+        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
+          break;
+        }
+      }
+    }
+
     return hip_error;
   }
 
