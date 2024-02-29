@@ -92,10 +92,6 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
                               const char* name) {
   HIP_INIT_API(hipModuleGetGlobal, dptr, bytes, hmod, name);
 
-  if (dptr == nullptr || bytes == nullptr) {
-    // If either is nullptr, ignore it
-    HIP_RETURN(hipSuccess);
-  }
   if ((dptr == nullptr && bytes == nullptr) || name == nullptr || strlen(name) == 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }

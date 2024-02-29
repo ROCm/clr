@@ -96,8 +96,12 @@ public:
   hipError_t getManagedVarPointer(std::string name, void** pointer, size_t* size_ptr) const {
     auto it = vars_.find(name);
     if (it != vars_.end() && it->second->getVarKind() == Var::DVK_Managed) {
-      *pointer = it->second->getManagedVarPtr();
-      *size_ptr = it->second->getSize();
+      if (pointer != nullptr) {
+        *pointer = it->second->getManagedVarPtr();
+      }
+      if (size_ptr != nullptr) {
+        *size_ptr = it->second->getSize();
+      }
     }
     return hipSuccess;
   }
