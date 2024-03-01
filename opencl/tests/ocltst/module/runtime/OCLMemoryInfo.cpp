@@ -83,11 +83,7 @@ void OCLMemoryInfo::run(void) {
   if (failed_) {
     return;
   }
-#if EMU_ENV
-  size_t BufSize = 0x10000;
-#else
   size_t BufSize = 0x1000000;
-#endif  // EMU_ENV
   bool succeed = false;
   bool done = false;
   if (test_ == 0) {
@@ -108,14 +104,14 @@ void OCLMemoryInfo::run(void) {
 
       unsigned int* values;
       values = reinterpret_cast<unsigned int*>(new cl_int4[BufSize]);
-
+#if !EMU_ENV
       // Clear destination buffer
       memset(values, 0, BufSize * sizeof(cl_int4));
       error_ = _wrapper->clEnqueueWriteBuffer(
           cmdQueues_[_deviceId], buffer, CL_TRUE, 0, BufSize * sizeof(cl_int4),
           values, 0, NULL, NULL);
       CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueWriteBuffer() failed");
-
+#endif
       size_t memoryInfo2[2];
       _wrapper->clGetDeviceInfo(devices_[_deviceId],
                                 CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
@@ -157,24 +153,19 @@ void OCLMemoryInfo::run(void) {
                                      BufSize * sizeof(cl_int4), NULL, &error_);
         CHECK_RESULT((error_ != CL_SUCCESS), "clCreateBuffer() failed");
         buffers_.push_back(buffer);
-
+#if !EMU_ENV
         // Clear destination buffer
         error_ = _wrapper->clEnqueueWriteBuffer(
             cmdQueues_[_deviceId], buffer, CL_TRUE, 0,
             BufSize * sizeof(cl_int4), values, 0, NULL, NULL);
         CHECK_RESULT((error_ != CL_SUCCESS), "clEnqueueWriteBuffer() failed");
-
+#endif
         sizeAll += BufSize * sizeof(cl_int4) / 1024;
         size_t memoryInfo2[2];
         _wrapper->clGetDeviceInfo(devices_[_deviceId],
                                   CL_DEVICE_GLOBAL_FREE_MEMORY_AMD,
                                   2 * sizeof(size_t), memoryInfo2, NULL);
-#if EMU_ENV
-        // For testing on emulator with 2G RAM and buffer size of x10000
-        if (memoryInfo2[0] < (0x3e000 + (BufSize * sizeof(cl_int4) / 1024))) {
-#else
         if (memoryInfo2[0] < (0x50000 + (BufSize * sizeof(cl_int4) / 1024))) {
-#endif  // EMU_ENV
           break;
         }
         size_t dif = memoryInfo[0] - memoryInfo2[0];
