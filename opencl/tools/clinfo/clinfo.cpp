@@ -504,7 +504,7 @@ main(int argc, char** argv)
             std::cout << "  Local memory type:\t\t\t\t " ;
             switch (device.getInfo<CL_DEVICE_LOCAL_MEM_TYPE>()) {
             case CL_LOCAL:
-                std::cout << "Scratchpad" << std::endl;
+                std::cout << "Local" << std::endl;
                 break;
             case CL_GLOBAL:
                 std::cout << "Global" << std::endl;
