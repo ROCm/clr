@@ -82,8 +82,11 @@ hipError_t hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device) {
 // ================================================================================================
 hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   HIP_INIT_API(hipMallocAsync, dev_ptr, size, stream);
-  if ((dev_ptr == nullptr) || (!hip::isValid(stream))) {
+  if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   if (size == 0) {
     *dev_ptr = nullptr;
@@ -135,9 +138,13 @@ class FreeAsyncCommand : public amd::Command {
 // ================================================================================================
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   HIP_INIT_API(hipFreeAsync, dev_ptr, stream);
-  if ((dev_ptr == nullptr) || (!hip::isValid(stream))) {
+  if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
 
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
@@ -340,8 +347,11 @@ hipError_t hipMallocFromPoolAsync(
     hipMemPool_t mem_pool,
     hipStream_t stream) {
   HIP_INIT_API(hipMallocFromPoolAsync, dev_ptr, size, mem_pool, stream);
-  if ((dev_ptr == nullptr) || (mem_pool == nullptr) || (!hip::isValid(stream))) {
+  if ((dev_ptr == nullptr) || (mem_pool == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   if (size == 0) {
     *dev_ptr = nullptr;
@@ -353,6 +363,9 @@ hipError_t hipMallocFromPoolAsync(
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
     reinterpret_cast<hip::Stream*>(stream);
   *dev_ptr = mpool->AllocateMemory(size, hip_stream);
+  if (*dev_ptr == nullptr) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
   HIP_RETURN(hipSuccess);
 }
 
