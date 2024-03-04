@@ -535,6 +535,9 @@ public:
     /// Removes a destroyed stream from the safe list of memory pools
     void RemoveStreamFromPools(Stream* stream);
 
+    /// Add safe streams into the memppools for reuse
+    void AddSafeStream(Stream* event_stream, Stream* wait_stream);
+
     /// Returns true if memory pool is valid on this device
     bool IsMemoryPoolValid(MemoryPool* pool);
   };

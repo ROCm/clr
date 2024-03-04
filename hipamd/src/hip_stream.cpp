@@ -553,10 +553,14 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
     if (flags != 0) {
       return hipErrorInvalidValue;
     }
-    if ((eventStream != nullptr) &&
-      (eventStream->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
-      // If stream is capturing but event is not recorded on event's stream.
-      return hipErrorStreamCaptureIsolation;
+    if (eventStream != nullptr) {
+      if (eventStream->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+        // If stream is capturing but event is not recorded on event's stream.
+        return hipErrorStreamCaptureIsolation;
+      }
+      if (eventStream->DeviceId() == waitStream->DeviceId()) {
+        eventStream->GetDevice()->AddSafeStream(eventStream, waitStream);
+      }
     }
     status = e->streamWait(stream, flags);
   }

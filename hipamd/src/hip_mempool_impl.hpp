@@ -46,9 +46,15 @@ struct MemoryTimestamp {
   MemoryTimestamp(): event_(nullptr) {}
 
   /// Adds a safe stream to the list of stream for possible reuse
-  void AddSafeStream(hip::Stream* stream) {
-    if (safe_streams_.find(stream) != safe_streams_.end()) {
-      safe_streams_.insert(stream);
+  void AddSafeStream(Stream* event_stream, Stream* wait_stream = nullptr) {
+    if (wait_stream == nullptr) {
+      if (safe_streams_.find(event_stream) == safe_streams_.end()) {
+        safe_streams_.insert(event_stream);
+      }
+    } else {
+      if (safe_streams_.find(event_stream) != safe_streams_.end()) {
+        safe_streams_.insert(wait_stream);
+      }
     }
   }
   /// Changes last known valid event asociated with memory
@@ -144,6 +150,14 @@ public:
   /// Erases single allocation form the heap's map
   SortedMap::iterator EraseAllocaton(SortedMap::iterator& it);
 
+  /// Add a safe stream for  quick looks-ups in all allocations
+  void AddSafeStream(Stream* event_stream, Stream* wait_stream) {
+    for (auto& it : allocations_) {
+      it.second.AddSafeStream(event_stream, wait_stream);
+    }
+  }
+
+
   /// Checks if memory belongs to this heap
   bool IsActiveMemory(amd::Memory* memory) const {
     return (allocations_.find({memory->getSize(), memory}) != allocations_.end());
@@ -233,6 +247,14 @@ class MemoryPool : public amd::ReferenceCountedObject {
   void AddBusyMemory(amd::Memory* memory) {
     busy_heap_.AddMemory(memory, nullptr);
   }
+
+  /// Add a safe stream for quick looks-ups if event dependencies option is enabled
+  void AddSafeStream(Stream* event_stream, Stream* wait_stream) {
+    if (EventDependencies()) {
+      free_heap_.AddSafeStream(event_stream, wait_stream);
+    }
+  }
+
   /// Trims the pool until it has only min_bytes_to_hold
   void TrimTo(size_t min_bytes_to_hold);
 
