@@ -128,6 +128,15 @@ void Device::RemoveStreamFromPools(Stream* stream) {
 }
 
 // ================================================================================================
+void Device::AddSafeStream(Stream* event_stream, Stream* wait_stream) {
+  amd::ScopedLock lock(lock_);
+  // Update all pools with the safe streams
+  for (auto it : mem_pools_) {
+    it->AddSafeStream(event_stream, wait_stream);
+  }
+}
+
+// ================================================================================================
 void Device::Reset() {
   {
     amd::ScopedLock lock(lock_);
