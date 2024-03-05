@@ -236,6 +236,8 @@ class DmaBlitManager : public device::HostBlitManager {
   const size_t MinSizeForPinnedTransfer;
   bool completeOperation_;                    //!< DMA blit manager must complete operation
   amd::Context* context_;                     //!< A dummy context
+  mutable size_t sdmaEngineRetainCount_;      //!< Keeps track of memcopies to either get the last
+                                              //!< used SDMA engine or fetch the new mask
 
  private:
   //! Disable copy constructor
