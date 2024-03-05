@@ -1477,7 +1477,7 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
     } while (end != std::string::npos);
 
     if (tokens.size() < 2) {
-      ClPrint(amd::LOG_WARNING, amd::LOG_KERN, "Invalid PrintInfo string: \"%s\"", str.c_str());
+      LogPrintfError("Invalid PrintInfo string: \"%s\"", str.c_str());
       continue;
     }
 
@@ -1503,7 +1503,7 @@ void Kernel::InitPrintf(const std::vector<std::string>& printfInfoStrings) {
 
     // ensure that we have the correct number of tokens
     if (tokens.size() < end + 1 /*last token is the fmtString*/) {
-      ClPrint(amd::LOG_WARNING, amd::LOG_KERN, "Invalid PrintInfo string: \"%s\"", str.c_str());
+      LogPrintfError("Invalid PrintInfo string: \"%s\"", str.c_str());
       continue;
     }
 

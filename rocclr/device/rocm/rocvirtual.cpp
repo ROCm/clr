@@ -3056,14 +3056,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
               uintptr_t buffer = reinterpret_cast<uintptr_t>(
                 roc_device_.getOrCreateHostcallBuffer(gpu_queue_, coopGroups, cuMask_));
               if (!buffer) {
-                ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
-                        "Kernel expects a hostcall buffer, but none found");
+                LogError("Kernel expects a hostcall buffer, but none found");
                 return false;
               }
               WriteAqlArgAt(hidden_arguments, buffer, it.size_, it.offset_);
             } else {
-              ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
-                      "Pcie atomics not enabled, hostcall not supported");
+              LogError("Pcie atomics not enabled, hostcall not supported");
               return false;
             }
           }
