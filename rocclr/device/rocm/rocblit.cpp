@@ -32,7 +32,8 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr) {}
+      context_(nullptr),
+      sdmaEngineRetainCount_(0) {}
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -684,6 +685,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
   bool kUseRegularCopyApi = 0;
+  constexpr size_t kRetainCountThreshold = 8;
   bool forceSDMA = (copyMetadata.copyEnginePreference_ ==
                       amd::CopyMetadata::CopyEnginePreference::SDMA);
   HwQueueEngine engine = HwQueueEngine::Unknown;
@@ -694,10 +696,21 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
+    if (copyMask == 0) {
+      // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
+      // and using it everytime can cause contention. When the count exceeds the threshold,
+      // reset it so as to check the engine status and fetch the new mask.
+      sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
+                               ? 0 : sdmaEngineRetainCount_++;
+    }
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+    if (copyMask == 0 && sdmaEngineRetainCount_ > 0) {
+      // Track the DtoH copies and decrement the count.
+      sdmaEngineRetainCount_--;
+    }
   }
 
   if (engine == HwQueueEngine::Unknown && forceSDMA) {
@@ -714,9 +727,11 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
-      // Check if there a recently used SDMA engine for the stream
-      copyMask = gpu().getLastUsedSdmaEngine();
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      if (sdmaEngineRetainCount_) {
+        // Check if there a recently used SDMA engine for the stream
+        copyMask = gpu().getLastUsedSdmaEngine();
+        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      }
       if (copyMask == 0) {
         // Check SDMA engine status
         status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
