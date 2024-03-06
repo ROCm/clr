@@ -3739,8 +3739,12 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
         break;
       }
       case HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS : {
-        // This attribute is ideally used in hipPointerSetAttribute, defaults to true
-        *reinterpret_cast<bool*>(data) = true;
+        if (memObj) {
+          *reinterpret_cast<bool*>(data) = memObj->getUserData().sync_mem_ops_;
+        } else {
+          *reinterpret_cast<bool*>(data) = false;
+          return hipErrorInvalidValue;
+        }
         break;
       }
       case HIP_POINTER_ATTRIBUTE_BUFFER_ID : {
