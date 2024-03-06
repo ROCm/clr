@@ -59,7 +59,7 @@ __device__ static inline int __clz(int input) {
 }
 
 __device__ static inline int __clzll(long long int input) {
-    return __ockl_clz_u64((uint64_t)input);
+    return __ockl_clz_u64((__hip_uint64_t)input);
 }
 
 __device__ static inline unsigned int __ffs(unsigned int input) {
@@ -81,9 +81,9 @@ __device__ static inline unsigned int __ffsll(long long int input) {
 // Given a 32/64-bit value exec mask and an integer value base (between 0 and WAVEFRONT_SIZE),
 // find the n-th (given by offset) set bit in the exec mask from the base bit, and return the bit position.
 // If not found, return -1.
-__device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset) {
-  uint64_t temp_mask = mask;
-  int32_t temp_offset = offset;
+__device__  static __hip_int32_t __fns64(__hip_uint64_t mask, __hip_uint32_t base, __hip_int32_t offset) {
+  __hip_uint64_t temp_mask = mask;
+  __hip_int32_t temp_offset = offset;
 
   if (offset == 0) {
     temp_mask &= (1 << base);
@@ -98,10 +98,10 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
   temp_mask = temp_mask & ((~0ULL) << base);
   if (__builtin_popcountll(temp_mask) < temp_offset)
     return -1;
-  int32_t total = 0;
+  __hip_int32_t total = 0;
   for (int i = 0x20; i > 0; i >>= 1) {
-    uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
+    __hip_uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
+    __hip_int32_t pcnt = __builtin_popcountll(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -117,9 +117,9 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
     return total;
 }
 
-__device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) {
-  uint64_t temp_mask = mask;
-  int32_t temp_offset = offset;
+__device__ static __hip_int32_t __fns32(__hip_uint64_t mask, __hip_uint32_t base, __hip_int32_t offset) {
+  __hip_uint64_t temp_mask = mask;
+  __hip_int32_t temp_offset = offset;
   if (offset == 0) {
     temp_mask &= (1 << base);
     temp_offset = 1;
@@ -132,10 +132,10 @@ __device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) 
   temp_mask = temp_mask & ((~0ULL) << base);
   if (__builtin_popcountll(temp_mask) < temp_offset)
     return -1;
-  int32_t total = 0;
+  __hip_int32_t total = 0;
   for (int i = 0x20; i > 0; i >>= 1) {
-    uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
+    __hip_uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
+    __hip_int32_t pcnt = __builtin_popcountll(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -158,45 +158,45 @@ __device__ static inline unsigned long long int __brevll(unsigned long long int 
     return __builtin_bitreverse64(input);
 }
 
-__device__ static inline unsigned int __lastbit_u32_u64(uint64_t input) {
+__device__ static inline unsigned int __lastbit_u32_u64(__hip_uint64_t input) {
     return input == 0 ? -1 : __builtin_ctzl(input);
 }
 
 __device__ static inline unsigned int __bitextract_u32(unsigned int src0, unsigned int src1, unsigned int src2) {
-    uint32_t offset = src1 & 31;
-    uint32_t width = src2 & 31;
+    __hip_uint32_t offset = src1 & 31;
+    __hip_uint32_t width = src2 & 31;
     return width == 0 ? 0 : (src0 << (32 - offset - width)) >> (32 - width);
 }
 
-__device__ static inline uint64_t __bitextract_u64(uint64_t src0, unsigned int src1, unsigned int src2) {
-    uint64_t offset = src1 & 63;
-    uint64_t width = src2 & 63;
+__device__ static inline __hip_uint64_t __bitextract_u64(__hip_uint64_t src0, unsigned int src1, unsigned int src2) {
+    __hip_uint64_t offset = src1 & 63;
+    __hip_uint64_t width = src2 & 63;
     return width == 0 ? 0 : (src0 << (64 - offset - width)) >> (64 - width);
 }
 
 __device__ static inline unsigned int __bitinsert_u32(unsigned int src0, unsigned int src1, unsigned int src2, unsigned int src3) {
-    uint32_t offset = src2 & 31;
-    uint32_t width = src3 & 31;
-    uint32_t mask = (1 << width) - 1;
+    __hip_uint32_t offset = src2 & 31;
+    __hip_uint32_t width = src3 & 31;
+    __hip_uint32_t mask = (1 << width) - 1;
     return ((src0 & ~(mask << offset)) | ((src1 & mask) << offset));
 }
 
-__device__ static inline uint64_t __bitinsert_u64(uint64_t src0, uint64_t src1, unsigned int src2, unsigned int src3) {
-    uint64_t offset = src2 & 63;
-    uint64_t width = src3 & 63;
-    uint64_t mask = (1ULL << width) - 1;
+__device__ static inline __hip_uint64_t __bitinsert_u64(__hip_uint64_t src0, __hip_uint64_t src1, unsigned int src2, unsigned int src3) {
+    __hip_uint64_t offset = src2 & 63;
+    __hip_uint64_t width = src3 & 63;
+    __hip_uint64_t mask = (1ULL << width) - 1;
     return ((src0 & ~(mask << offset)) | ((src1 & mask) << offset));
 }
 
 __device__ inline unsigned int __funnelshift_l(unsigned int lo, unsigned int hi, unsigned int shift)
 {
-    uint32_t mask_shift = shift & 31;
+    __hip_uint32_t mask_shift = shift & 31;
     return mask_shift == 0 ? hi : __builtin_amdgcn_alignbit(hi, lo, 32 - mask_shift);
 }
 
 __device__ inline unsigned int __funnelshift_lc(unsigned int lo, unsigned int hi, unsigned int shift)
 {
-    uint32_t min_shift = shift >= 32 ? 32 : shift;
+    __hip_uint32_t min_shift = shift >= 32 ? 32 : shift;
     return min_shift == 0 ? hi : __builtin_amdgcn_alignbit(hi, lo, 32 - min_shift);
 }
 
@@ -525,9 +525,9 @@ __device__ static inline unsigned int __float_as_uint(float x) {
 }
 
 __device__ static inline double __hiloint2double(int hi, int lo) {
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
-    uint64_t tmp0 = (static_cast<uint64_t>(hi) << 32ull) | static_cast<uint32_t>(lo);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(hi) << 32ull) | static_cast<__hip_uint32_t>(lo);
     double tmp1;
     __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
 
@@ -717,32 +717,32 @@ unsigned long long int __ballot64(int predicate) {
 // hip.amdgcn.bc - lanemask
 __device__
 inline
-uint64_t  __lanemask_gt()
+__hip_uint64_t  __lanemask_gt()
 {
-    uint32_t lane = __ockl_lane_u32();
+    __hip_uint32_t lane = __ockl_lane_u32();
     if (lane == 63)
       return 0;
-    uint64_t ballot = __ballot64(1);
-    uint64_t mask = (~((uint64_t)0)) << (lane + 1);
+    __hip_uint64_t ballot = __ballot64(1);
+    __hip_uint64_t mask = (~((__hip_uint64_t)0)) << (lane + 1);
     return mask & ballot;
 }
 
 __device__
 inline
-uint64_t __lanemask_lt()
+__hip_uint64_t __lanemask_lt()
 {
-    uint32_t lane = __ockl_lane_u32();
-    int64_t ballot = __ballot64(1);
-    uint64_t mask = ((uint64_t)1 << lane) - (uint64_t)1;
+    __hip_uint32_t lane = __ockl_lane_u32();
+    __hip_int64_t ballot = __ballot64(1);
+    __hip_uint64_t mask = ((__hip_uint64_t)1 << lane) - (__hip_uint64_t)1;
     return mask & ballot;
 }
 
 __device__
 inline
-uint64_t  __lanemask_eq()
+__hip_uint64_t  __lanemask_eq()
 {
-    uint32_t lane = __ockl_lane_u32();
-    int64_t mask = ((uint64_t)1 << lane);
+    __hip_uint32_t lane = __ockl_lane_u32();
+    __hip_int64_t mask = ((__hip_uint64_t)1 << lane);
     return mask;
 }
 
