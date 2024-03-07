@@ -430,6 +430,12 @@ hipError_t hipGetMipmappedArrayLevel(hipArray_t* levelArray,
   return hip::GetHipDispatchTable()->hipGetMipmappedArrayLevel_fn(levelArray, mipmappedArray,
                                                                   level);
 }
+hipError_t hipExternalMemoryGetMappedMipmappedArray(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
+  return hip::GetHipDispatchTable()->hipExternalMemoryGetMappedMipmappedArray_fn(mipmap, extMem,
+                                                                                 mipmapDesc);
+}
 hipError_t hipGetSymbolAddress(void** devPtr, const void* symbol) {
   return hip::GetHipDispatchTable()->hipGetSymbolAddress_fn(devPtr, symbol);
 }

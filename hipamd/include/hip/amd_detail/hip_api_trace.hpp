@@ -989,6 +989,9 @@ typedef hipError_t (*t_hipGraphExecNodeSetParams)(hipGraphExec_t graphExec, hipG
 
 
 
+typedef hipError_t (*t_hipExternalMemoryGetMappedMipmappedArray)(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1468,4 +1471,5 @@ struct HipDispatchTable {
   t_hipGraphExecGetFlags hipGraphExecGetFlags_fn;
   t_hipGraphNodeSetParams hipGraphNodeSetParams_fn;
   t_hipGraphExecNodeSetParams hipGraphExecNodeSetParams_fn;
+  t_hipExternalMemoryGetMappedMipmappedArray hipExternalMemoryGetMappedMipmappedArray_fn;
 };
