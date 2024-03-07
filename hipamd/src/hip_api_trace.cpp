@@ -793,6 +793,9 @@ hipError_t hipGraphExecGetFlags(hipGraphExec_t graphExec, unsigned long long* fl
 hipError_t hipGraphNodeSetParams(hipGraphNode_t node, hipGraphNodeParams *nodeParams);
 hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t node,
                         hipGraphNodeParams* nodeParams);
+hipError_t hipExternalMemoryGetMappedMipmappedArray(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc);
 }  // namespace hip
 
 namespace hip {
@@ -1282,6 +1285,8 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphExecGetFlags_fn = hip::hipGraphExecGetFlags;
   ptrDispatchTable->hipGraphNodeSetParams_fn = hip::hipGraphNodeSetParams;
   ptrDispatchTable->hipGraphExecNodeSetParams_fn = hip::hipGraphExecNodeSetParams;
+  ptrDispatchTable->hipExternalMemoryGetMappedMipmappedArray_fn =
+      hip::hipExternalMemoryGetMappedMipmappedArray;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1857,6 +1862,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 454)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecGetFlags_fn, 455);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeSetParams_fn, 456);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecNodeSetParams_fn, 457);
+HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 458)
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1864,7 +1870,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecNodeSetParams_fn, 457);
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 458)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 459)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 3,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
