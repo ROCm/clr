@@ -196,7 +196,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
     SharedAccess access_[kMaxMgpuAccess]; //!< The list of devices for access
   };
 
-  MemoryPool(hip::Device* device, bool interprocess = false)
+  MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr)
       : busy_heap_(device),
         free_heap_(device),
         lock_pool_ops_("Pool operations", true),
@@ -208,7 +208,16 @@ class MemoryPool : public amd::ReferenceCountedObject {
     state_.event_dependencies_ = 1;
     state_.opportunistic_ = 1;
     state_.internal_dependencies_ = 1;
-    state_.interprocess_ = interprocess;
+    if (props != nullptr) {
+      properties_ = *props;
+    } else {
+      properties_ = {.allocType = hipMemAllocationTypePinned,
+                     .handleTypes = hipMemHandleTypeNone,
+                     .location = {.type = hipMemLocationTypeDevice, .id = device_->deviceId()},
+                     .win32SecurityAttributes = nullptr,
+                     .reserved = {}};
+    }
+    state_.interprocess_ = properties_.handleTypes != hipMemHandleTypeNone;
   }
 
   virtual ~MemoryPool() {
@@ -282,6 +291,9 @@ class MemoryPool : public amd::ReferenceCountedObject {
   /// Imports memory pool from an OS specific handle
   bool Import(amd::Os::FileDesc handle);
 
+  /// Returns properties of this memory pool
+  const hipMemPoolProps& Properties() const { return properties_; }
+
   /// Accessors for the pool state
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
@@ -308,7 +320,8 @@ class MemoryPool : public amd::ReferenceCountedObject {
     uint32_t value_;
   } state_;
 
-  amd::Monitor  lock_pool_ops_;  //!< Access to the pool must be lock protected
+  hipMemPoolProps properties_;  //!< Properties of the memory pool
+  amd::Monitor lock_pool_ops_;  //!< Access to the pool must be lock protected
   std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
   hip::Device*  device_;    //!< Hip device the heap will reside
   SharedMemPool* shared_;   //!< Pointer to shared memory for IPC
