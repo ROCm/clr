@@ -762,7 +762,7 @@ hipError_t hipExtGetLastError();
 hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef);
 hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef);
 hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
-                             hipDriverProcAddressQueryResult* symbolStatus = NULL);
+                             hipDriverProcAddressQueryResult* symbolStatus);
 hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
                                         const hipGraphNode_t* dependencies,
                                         const hipGraphEdgeData* dependencyData,

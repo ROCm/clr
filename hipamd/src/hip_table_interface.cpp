@@ -1729,7 +1729,7 @@ hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef)
 }
 extern "C" hipError_t hipGetProcAddress(const char* symbol, void** pfn, int  hipVersion,
                                         uint64_t flags,
-                                        hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+                                        hipDriverProcAddressQueryResult* symbolStatus) {
   return hip::GetHipDispatchTable()->hipGetProcAddress_fn(symbol, pfn, hipVersion, flags,
                                                           symbolStatus);
 }

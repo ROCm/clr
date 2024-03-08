@@ -602,11 +602,11 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
 }
 
 hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
-                             hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+                             hipDriverProcAddressQueryResult* symbolStatus) {
   HIP_INIT_API(hipGetProcAddress, symbol, pfn, hipVersion, flags, symbolStatus);
 
   std::string symbolString = symbol;
-  if(symbol == nullptr || symbolString == "" || *pfn == nullptr){
+  if(symbol == nullptr || symbolString == "" || pfn == nullptr){
     HIP_RETURN(hipErrorInvalidValue);
   }
 
