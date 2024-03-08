@@ -814,11 +814,6 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
     return hipSuccess;
   }
 
-  if (device && !device->info().imageSupport_) {
-    LogPrintfError("Image is not supported on device %p", device);
-    return hipErrorInvalidValue;
-  }
-
   //avoid size_t overflow for pitch calculation
   if (width  > (std::numeric_limits<size_t>::max() - device->info().imagePitchAlignment_)) {
     return hipErrorInvalidValue;
