@@ -137,6 +137,9 @@ void OCLOfflineCompilation::open(unsigned int test, char* units,
       char strVersion[128];
       _wrapper->clGetDeviceInfo(devices[i], CL_DEVICE_NAME, sizeof(name), name,
                                 NULL);
+      if (strstr(name, "-generic") != NULL) {
+        continue; // Skip generic target because it needs code object version 6
+      }
       error_ = _wrapper->clGetDeviceInfo(devices[i], CL_DEVICE_VERSION,
                                          sizeof(strVersion), strVersion, 0);
       CHECK_RESULT(error_ != CL_SUCCESS, "clGetDeviceInfo failed");

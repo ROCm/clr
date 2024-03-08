@@ -266,6 +266,30 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       xnackSupported = false;
       sramEccSupported = false;
       proc_name = "gfx1201";
+    case EF_AMDGPU_MACH_AMDGCN_GFX9_GENERIC:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx9-generic";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX10_1_GENERIC:
+      xnackSupported = true;
+      sramEccSupported = false;
+      proc_name = "gfx10-1-generic";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX10_3_GENERIC:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx10-3-generic";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX11_GENERIC:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx11-generic";
+      break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX12_GENERIC:
+      xnackSupported = false;
+      sramEccSupported = false;
+      proc_name = "gfx12-generic";
       break;
     default:
       return false;
@@ -309,12 +333,16 @@ static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string
     }
 
     case ELFABIVERSION_AMDGPU_HSA_V4:
-    case ELFABIVERSION_AMDGPU_HSA_V5: {
+    case ELFABIVERSION_AMDGPU_HSA_V5:
+    case ELFABIVERSION_AMDGPU_HSA_V6: {
       if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V4) {
         LogPrintfInfo("[Code Object V4, target id:%s]", target_id.c_str());
-      } else {
+      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V5) {
         LogPrintfInfo("[Code Object V5, target id:%s]", target_id.c_str());
+      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V6) {
+        LogPrintfInfo("[Code Object V6, target id:%s]", target_id.c_str());
       }
+
       unsigned co_sram_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_SRAMECC_V4;
       if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_OFF_V4)
         target_id += ":sramecc-";
@@ -345,6 +373,42 @@ static bool consume(std::string& input, std::string consume_) {
   }
   input = input.substr(consume_.size());
   return true;
+}
+
+// Is agent target compatible with generic code object target?
+static bool isCompatibleWithGenericTarget(std::string& coTarget, std::string& agentTarget) {
+  // The map is subject to change per removing policy
+  static std::map<std::string, std::string> genericTargetMap{
+      // "gfx9-generic"
+      {"gfx900", "gfx9-generic"},
+      {"gfx902", "gfx9-generic"},
+      {"gfx904", "gfx9-generic"},
+      {"gfx906", "gfx9-generic"},
+      {"gfx909", "gfx9-generic"},
+      {"gfx90c", "gfx9-generic"},
+      // "gfx10-1-generic"
+      {"gfx1010", "gfx10-1-generic"},
+      {"gfx1011", "gfx10-1-generic"},
+      {"gfx1012", "gfx10-1-generic"},
+      {"gfx1013", "gfx10-1-generic"},
+      // "gfx10-3-generic"
+      {"gfx1030", "gfx10-3-generic"},
+      {"gfx1031", "gfx10-3-generic"},
+      {"gfx1032", "gfx10-3-generic"},
+      {"gfx1033", "gfx10-3-generic"},
+      {"gfx1034", "gfx10-3-generic"},
+      {"gfx1035", "gfx10-3-generic"},
+      {"gfx1036", "gfx10-3-generic"},
+      // "gfx11-generic"
+      {"gfx1100", "gfx11-generic"},
+      {"gfx1101", "gfx11-generic"},
+      {"gfx1102", "gfx11-generic"},
+      {"gfx1103", "gfx11-generic"},
+      {"gfx1150", "gfx11-generic"},
+      {"gfx1151", "gfx11-generic"},
+  };
+  auto search = genericTargetMap.find(agentTarget);
+  return search != genericTargetMap.end() && coTarget == search->second;
 }
 
 // Trim String till character, will be used to get gpuname
@@ -382,7 +446,7 @@ static bool getTargetIDValue(std::string& input, std::string& processor, char& s
 }
 
 static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
-                              std::string& co_triple_target_id) {
+                       std::string& co_triple_target_id) {
   std::string offload_kind = trimName(bundled_co_entry_id, '-');
   if (offload_kind != OFFLOAD_KIND_HIPV4 && offload_kind != OFFLOAD_KIND_HIP &&
       offload_kind != OFFLOAD_KIND_HCC)
@@ -398,7 +462,7 @@ static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_
 }
 
 bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
-                                      std::string agent_triple_target_id) {
+         std::string agent_triple_target_id, unsigned& genericVersion) {
   // Primitive Check
   if (co_triple_target_id == agent_triple_target_id) return true;
 
@@ -430,7 +494,14 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   if (!agent_triple_target_id.empty()) return false;
 
   // Check for compatibility
-  if (agent_isa_processor != co_processor) return false;
+  if (genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
+    // co_processor is generic target
+    if (!isCompatibleWithGenericTarget(co_processor, agent_isa_processor))
+    return false;
+  } else if (agent_isa_processor != co_processor) {
+    return false;
+  }
+
   if (co_sram_ecc != ' ') {
     if (co_sram_ecc != isa_sram_ecc) return false;
   }
@@ -439,6 +510,17 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   }
 
   return true;
+}
+
+static inline unsigned int getGenericVersion(const void* image) {
+  const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(image);
+  return ehdr->e_ident[EI_ABIVERSION] == ELFABIVERSION_AMDGPU_HSA_V6
+      ? ((ehdr->e_flags & EF_AMDGPU_GENERIC_VERSION) >> EF_AMDGPU_GENERIC_VERSION_OFFSET)
+      : 0;
+}
+
+static inline bool isGenericTarget(const void* image) {
+  return getGenericVersion(image) >= EF_AMDGPU_GENERIC_VERSION_MIN;
 }
 
 bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::string& isa,
@@ -464,8 +546,10 @@ bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::s
     const size_t image_size = desc->size;
     std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
 
+    // Need call getTripleTargetID(...).
     // Check if the device id and code object id are compatible
-    if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa)) {
+    unsigned genericVersion = getGenericVersion(image);
+    if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa, genericVersion)) {
       co_offset = (reinterpret_cast<uintptr_t>(image) - reinterpret_cast<uintptr_t>(data));
       co_size = image_size;
       break;

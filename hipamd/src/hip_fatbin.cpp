@@ -118,7 +118,8 @@ void ListAllDeviceWithNoCOFromBundle(const std::unordered_map<std::string,
   }
 }
 
-hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices) {
+hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices,
+    bool &containGenericTarget) {
   amd_comgr_data_t data_object {0};
   amd_comgr_status_t comgr_status = AMD_COMGR_STATUS_SUCCESS;
   hipError_t hip_status = hipSuccess;
@@ -186,6 +187,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         }
       }
       break;
+    }
+    if (!isCompressed) {
+       if (CodeObject::containGenericTarget(image_)) {
+         LogInfo("offload bundle contains generic target code object");
+         containGenericTarget = true;
+         return hipErrorNoBinaryForGpu; // This path doesn't support generic target
+       }
     }
     if (isCompressed || HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
       size_t major = 0, minor = 0;
@@ -294,7 +302,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   // Clean up file and memory resouces if hip_status failed for some reason.
   if (hip_status != hipSuccess && hip_status != hipErrorInvalidKernelFile) {
     if (image_mapped_) {
-      if (!amd::Os::MemoryUnmapFile(image_, fsize_))
+      if (!amd::Os::MemoryUnmapFile(image_, ufd_->fsize_))
         guarantee(false, "Cannot unmap the file");
 
       image_ = nullptr;
@@ -323,9 +331,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
 hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devices) {
   if (!HIP_USE_RUNTIME_UNBUNDLER) {
-    return ExtractFatBinaryUsingCOMGR(devices);
+    bool containGenericTarget = false;
+    hipError_t status = ExtractFatBinaryUsingCOMGR(devices, containGenericTarget);
+    if (!containGenericTarget) return status;
   }
-
   hipError_t hip_error = hipSuccess;
   std::vector<std::pair<const void*, size_t>> code_objs;
 
@@ -335,9 +344,12 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
   for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
     device_names.push_back(devices[dev_idx]->devices()[0]->isa().isaName());
   }
-
-  // We are given file name, get the file desc and file size
-  if (fname_.size() > 0) {
+  if (image_ != nullptr) {
+      // We are directly given image pointer directly, try to extract file desc & file Size
+      hip_error = CodeObject::ExtractCodeObjectFromMemory(image_,
+                  device_names, code_objs, uri_);
+  } else if (fname_.size() > 0) {
+    // We are given file name, get the file desc and file size
     // Get File Handle & size of the file.
     if (!amd::Os::GetFileHandle(fname_.c_str(), &fdesc_, &fsize_)) {
       return hipErrorFileNotFound;
@@ -348,12 +360,7 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
 
     // Extract the code object from file
     hip_error = CodeObject::ExtractCodeObjectFromFile(fdesc_, fsize_, &image_,
-                device_names, code_objs);
-
-  } else if (image_ != nullptr) {
-    // We are directly given image pointer directly, try to extract file desc & file Size
-    hip_error = CodeObject::ExtractCodeObjectFromMemory(image_,
-                device_names, code_objs, uri_);
+                device_names, code_objs, foffset_);
   } else {
     return hipErrorInvalidValue;
   }

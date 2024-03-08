@@ -64,7 +64,8 @@ public:
   ~FatBinaryInfo();
 
   // Loads Fat binary from file or image, unbundles COs for devices.
-  hipError_t ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices);
+  hipError_t ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices,
+      bool &containGenericTarget);
 
   /**
      *  @brief Extract code object from fatbin using comgr unbundling action via calling

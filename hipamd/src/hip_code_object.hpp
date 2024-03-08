@@ -52,7 +52,7 @@ class CodeObject {
   // return code_objs{binary_ptr, binary_size}, which could be used to determine foffset
   static hipError_t ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t fsize,
                     const void ** image, const std::vector<std::string>& device_names,
-                    std::vector<std::pair<const void*, size_t>>& code_objs);
+                    std::vector<std::pair<const void*, size_t>>& code_objs, size_t foffset);
 
   // Given an ptr to memory, extracts to code object for corresponding devices,
   // returns code_objs{binary_ptr, binary_size} and uniform resource indicator
@@ -64,6 +64,12 @@ class CodeObject {
   static uint64_t ElfSize(const void* emi);
 
   static bool IsClangOffloadMagicBundle(const void* data, bool& isCompressed);
+
+  static  unsigned int getGenericVersion(const void* image);
+
+  static bool isGenericTarget(const void* image);
+
+  static bool containGenericTarget(const void *data);
 
   // Return size of fat bin
   static size_t getFatbinSize(const void* data, const bool isCompressed = false);
