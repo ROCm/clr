@@ -171,6 +171,8 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
         // The current implementation has unconditional waits
         return ihipFree(dev_ptr);
       }
+    } else {
+      HIP_RETURN(hipErrorInvalidValue);
     }
   } else {
     if (!AMD_DIRECT_DISPATCH) {
