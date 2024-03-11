@@ -496,6 +496,13 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
       g_captureStreams.erase(g_it);
     }
   }
+  {
+    amd::ScopedLock lock(g_streamSetLock);
+    const auto& g_it = std::find(g_allCapturingStreams.begin(), g_allCapturingStreams.end(), s);
+    if (g_it != g_allCapturingStreams.end()) {
+      g_allCapturingStreams.erase(g_it);
+    }
+  }
   const auto& l_it = std::find(hip::tls.capture_streams_.begin(),
                       hip::tls.capture_streams_.end(), s);
   if (l_it != hip::tls.capture_streams_.end()) {
