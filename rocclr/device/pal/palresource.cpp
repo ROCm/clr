@@ -1512,20 +1512,20 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
        (size[0] < dev().settings().cpDmaCopySizeMax_));
   if (cp_dma) {
     // Make sure compute is done before CP DMA start
-    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::KernelToCopy);
   } else {
     gpu.releaseGpuMemoryFence();
     gpu.engineID_ = SdmaEngine;
+
+    if (gpu.validateSdmaOverlap(*this, dstResource)) {
+      // Note: PAL should insert a NOP into the command buffer for synchronization
+      gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::CopyToCopy);
+    }
   }
 
   // Wait for the resources, since runtime may use async transfers
   wait(gpu, waitOnBusyEngine);
   dstResource.wait(gpu, waitOnBusyEngine);
-
-  if (gpu.validateSdmaOverlap(*this, dstResource)) {
-    // Note: PAL should insert a NOP into the command buffer for synchronization
-    gpu.addBarrier();
-  }
 
   Pal::ImageLayout imgLayout = {};
   gpu.eventBegin(gpu.engineID_);
@@ -1626,7 +1626,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   if (cp_dma) {
     // Make sure CP dma is done
-    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::CopyToKernel);
   }
 
   gpu.eventEnd(gpu.engineID_, event);

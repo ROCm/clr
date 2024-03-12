@@ -2404,8 +2404,7 @@ void VirtualGPU::PostDeviceEnqueue(const amd::Kernel& kernel, const HSAILKernel&
   static_cast<KernelBlitManager&>(gpuDefQueue->blitMgr())
       .runScheduler(*gpuDefQueue->virtualQueue_, *gpuDefQueue->schedParams_, 0,
                     gpuDefQueue->vqHeader_->aql_slot_num / (DeviceQueueMaskSize * maskGroups_));
-  const static bool FlushL2 = true;
-  gpuDefQueue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue, FlushL2);
+  gpuDefQueue->addBarrier(RgpSqqtBarrierReason::PostDeviceEnqueue, BarrierType::FlushL2);
 
   // Get the address of PM4 template and add write it to params
   //! @note DMA flush must not occur between patch and the scheduler
@@ -3020,8 +3019,7 @@ void VirtualGPU::submitSignal(amd::SignalCommand& vcmd) {
     engineID_ = static_cast<EngineType>(pGpuMemory->getGpuEvent(*this)->engineId_);
 
     // Make sure GPU finished operation and data reached memory before the marker write
-    static constexpr bool FlushL2 = true;
-    addBarrier(RgpSqqtBarrierReason::SignalSubmit, FlushL2);
+    addBarrier(RgpSqqtBarrierReason::SignalSubmit, BarrierType::FlushL2);
     // Workarounds: We had systems where an extra delay was necessary.
     {
       // Flush CB associated with the DGMA buffer

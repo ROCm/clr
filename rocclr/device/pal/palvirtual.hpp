@@ -66,6 +66,14 @@ struct AqlPacketMgmt : public amd::EmbeddedObject {
   std::atomic<uint64_t> packet_index_;          //!< The active packet slot index
 };
 
+ enum class BarrierType : uint8_t {
+   KernelToKernel = 0,
+   KernelToCopy,
+   CopyToKernel,
+   CopyToCopy,
+   FlushL2
+};
+
 //! Virtual GPU
 class VirtualGPU : public device::VirtualDevice {
  public:
@@ -478,18 +486,29 @@ class VirtualGPU : public device::VirtualDevice {
   //! Returns queue, associated with VirtualGPU
   Queue& queue(EngineType id) const { return *queues_[id]; }
 
-  void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::Unknown,
-                  bool flushL2 = false) const {
+  void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::MemDependency,
+                  BarrierType type = BarrierType::KernelToKernel) const {
     Pal::BarrierInfo barrier = {};
     barrier.pipePointWaitCount = 1;
     Pal::HwPipePoint point = Pal::HwPipePostCs;
     barrier.pPipePoints = &point;
     barrier.transitionCount = 1;
-    uint32_t cacheMask = (flushL2) ? Pal::CoherCopy : Pal::CoherShader;
-    Pal::BarrierTransition trans = {
-        cacheMask,
-        cacheMask,
-        {nullptr, {{0, 0, 0}, 0, 0, 0}, Pal::LayoutShaderRead, Pal::LayoutShaderRead}};
+    Pal::BarrierTransition trans = {};
+    trans.srcCacheMask = Pal::CoherShader;
+    trans.dstCacheMask = Pal::CoherShader;
+    trans.imageInfo.oldLayout.usages = Pal::LayoutShaderRead;
+    trans.imageInfo.oldLayout.engines = Pal::LayoutComputeEngine;
+    trans.imageInfo.newLayout.usages = Pal::LayoutShaderRead;
+    trans.imageInfo.newLayout.engines = Pal::LayoutComputeEngine;
+    if (type == BarrierType::KernelToCopy) {
+      trans.dstCacheMask = Pal::CoherCopy;
+    } else if (type == BarrierType::CopyToKernel) {
+      trans.srcCacheMask = Pal::CoherCopy;
+    } else if (type == BarrierType::CopyToCopy) {
+      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy;
+    } else if (type == BarrierType::FlushL2) {
+      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy | Pal::CoherCpu;
+    }
     barrier.pTransitions = &trans;
     barrier.waitPoint = Pal::HwPipePreCs;
     barrier.reason = static_cast<uint32_t>(reason);
