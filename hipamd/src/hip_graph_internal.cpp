@@ -396,9 +396,17 @@ hipError_t GraphExec::CaptureAQLPackets() {
     }
 
     if (device_kernarg_pool_ && !device->isXgmi()) {
-      *device->info().hdpMemFlushCntl = 1u;
-      if (*device->info().hdpMemFlushCntl != UINT32_MAX) {
-        LogError("Unexpected HDP Register readback value!");
+      if (device->info().hdpMemFlushCntl != nullptr) {
+        *device->info().hdpMemFlushCntl = 1u;
+        if (*device->info().hdpMemFlushCntl != UINT32_MAX) {
+          LogError("Unexpected HDP Register readback value!");
+        }
+      } else {
+        amd::Command* command = new amd::Marker(*capture_stream_, true);
+        if (command != nullptr) {
+          command->enqueue();
+          command->release();
+        }
       }
     }
 
