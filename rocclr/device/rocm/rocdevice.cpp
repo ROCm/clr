@@ -704,6 +704,27 @@ bool Device::create() {
     return false;
   }
 
+  setupCpuAgent();
+
+  // Get Agent HDP Flush Register Memory
+  hsa_amd_hdp_flush_t hdpInfo;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(bkendDevice_,
+        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_HDP_FLUSH), &hdpInfo)) {
+    LogPrintfError("Unable to determine HDP flush info for HSA device %s", agent_name);
+    return false;
+  }
+
+  info_.hdpMemFlushCntl = hdpInfo.HDP_MEM_FLUSH_CNTL;
+  info_.hdpRegFlushCntl = hdpInfo.HDP_REG_FLUSH_CNTL;
+
+  bool device_kernel_args = true;
+  if (!isXgmi_ && ((info_.hdpMemFlushCntl == nullptr) || (info_.hdpRegFlushCntl == nullptr))) {
+    LogWarning("Unable to determine HDP flush register address. "
+      "Device kernel arguments are not supported");
+    device_kernel_args = false;
+  }
+
   // Create HSA settings
   assert(!settings_);
   roc::Settings* hsaSettings = new roc::Settings();
@@ -712,7 +733,7 @@ bool Device::create() {
       !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), isa->versionMajor(),
                            isa->versionMinor(), isa->versionStepping(),
                            isa->xnack() == amd::Isa::Feature::Enabled,
-                           coop_groups)) {
+                           coop_groups, device_kernel_args)) {
     LogPrintfError("Unable to create settings for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
     return false;
@@ -752,17 +773,6 @@ bool Device::create() {
     return false;
   }
   info_.pciDomainID = pci_domain_id;
-
-  // Get Agent HDP Flush Register Memory
-  hsa_amd_hdp_flush_t hdpInfo;
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(bkendDevice_,
-        static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_HDP_FLUSH), &hdpInfo)) {
-    LogPrintfError("Unable to determine HDP flush info for HSA device %s", agent_name);
-    return false;
-  }
-  info_.hdpMemFlushCntl = hdpInfo.HDP_MEM_FLUSH_CNTL;
-  info_.hdpRegFlushCntl = hdpInfo.HDP_REG_FLUSH_CNTL;
 
   if (populateOCLDeviceConstants() == false) {
     LogPrintfError("populateOCLDeviceConstants failed for HSA device %s (PCI ID %x)", agent_name,
@@ -1256,7 +1266,6 @@ bool Device::populateOCLDeviceConstants() {
     engineAssignMap_[1 << i] = 0;
   }
 
-  setupCpuAgent();
 
   checkAtomicSupport();
 
