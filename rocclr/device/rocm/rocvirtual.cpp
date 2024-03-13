@@ -3210,7 +3210,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    const auto pcieKernargs = !dev().isXgmi() && dev().settings().device_kernel_args_;
+    const auto pcieKernargs = !dev().isXgmi() &&
+                              dev().settings().device_kernel_args_ &&
+                              roc_device_.info().largeBar_;
     address argBuffer = hidden_arguments;
     bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
 
