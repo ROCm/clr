@@ -663,12 +663,16 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     // Enable StreamWrite and StreamWait for all devices
     info_.aqlBarrierValue_ = true;
 
+#if defined(_WIN64)
     if (amd::IS_HIP) {
       info_.largeBar_ = false;
     } else if (heaps[Pal::GpuHeapInvisible].logicalSize == 0) {
       info_.largeBar_ = true;
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Resizable bar enabled");
     }
+#else   // !_WIN64
+    info_.largeBar_ = false;
+#endif  // _WIN64
   }
   info_.virtualMemoryManagement_ = true;
   info_.virtualMemAllocGranularity_ =
