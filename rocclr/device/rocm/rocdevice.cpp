@@ -2434,21 +2434,11 @@ void* Device::virtualAlloc(void* req_addr, size_t size, size_t alignment) {
     return nullptr;
   }
 
-  // This mem->create() does not create an actual memory but stores the memory info with given vptr.
-  auto mem = new (context()) amd::Buffer(context(), CL_MEM_VA_RANGE_AMD, size, vptr);
+  constexpr bool kParent = true;
+  amd::Memory* mem = CreateVirtualBuffer(context(), vptr, size, -1, kParent);
   if (mem == nullptr) {
-    LogError("failed to new a va range mem object!");
-    return nullptr;
+    LogPrintfError("Cannot create Virtual Buffer for vptr: %p of size: %u", vptr, size);
   }
-
-  if (!mem->create(nullptr, false)) {
-    LogError("failed to create a va range mem object");
-    mem->release();
-    return nullptr;
-  }
-
-  // Assert to make sure that amd::Memory object has set the right ptr.
-  guarantee(vptr == mem->getSvmPtr(), "amd::Memory object does not have the right ptr");
 
   return mem->getSvmPtr();
 }
@@ -2458,6 +2448,8 @@ void Device::virtualFree(void* addr) {
   if (memObj == nullptr) {
     LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", addr);
   }
+
+  memObj->getContext().devices()[0]->DestroyVirtualBuffer(memObj);
 
   hsa_status_t hsa_status = hsa_amd_vmem_address_free(memObj->getSvmPtr(), memObj->getSize());
   if (hsa_status != HSA_STATUS_SUCCESS) {
