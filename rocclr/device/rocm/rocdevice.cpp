@@ -141,7 +141,7 @@ bool NullDevice::create(const amd::Isa &isa) {
   roc::Settings* hsaSettings = new roc::Settings();
   settings_ = hsaSettings;
   if (!hsaSettings ||
-      !hsaSettings->create(false, isa.versionMajor(), isa.versionMinor(), isa.versionStepping(),
+      !hsaSettings->create(false, isa,
                            isa.xnack() == amd::Isa::Feature::Enabled)) {
     LogPrintfError("Error creating settings for offline HSA device %s", isa.targetId());
     return false;
@@ -734,23 +734,17 @@ bool Device::create() {
 
   info_.hdpMemFlushCntl = hdpInfo.HDP_MEM_FLUSH_CNTL;
   info_.hdpRegFlushCntl = hdpInfo.HDP_REG_FLUSH_CNTL;
-
-  bool device_kernel_args = true;
-  if (!isXgmi_ && ((info_.hdpMemFlushCntl == nullptr) || (info_.hdpRegFlushCntl == nullptr))) {
-    LogWarning("Unable to determine HDP flush register address. "
-      "Device kernel arguments are not supported");
-    device_kernel_args = false;
-  }
+  bool hasValidHDPFlush =
+      (info_.hdpMemFlushCntl != nullptr) && (info_.hdpRegFlushCntl != nullptr);
 
   // Create HSA settings
   assert(!settings_);
   roc::Settings* hsaSettings = new roc::Settings();
   settings_ = hsaSettings;
   if (!hsaSettings ||
-      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), isa->versionMajor(),
-                           isa->versionMinor(), isa->versionStepping(),
+      !hsaSettings->create((agent_profile_ == HSA_PROFILE_FULL), *isa,
                            isa->xnack() == amd::Isa::Feature::Enabled,
-                           coop_groups, device_kernel_args)) {
+                           coop_groups, isXgmi_, hasValidHDPFlush)) {
     LogPrintfError("Unable to create settings for HSA device %s (PCI ID %x)", agent_name,
                    pciDeviceId_);
     return false;

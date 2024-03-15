@@ -79,8 +79,7 @@ class Settings : public device::Settings {
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint disableSdma_ : 1;            //!< Disable SDMA support
       uint alwaysResident_ : 1;         //!< Make resources resident at allocation time
-      uint useDeviceKernelArg_ : 1;     //!< Use persistent memory for kernel arguments
-      uint reserved_ : 9;
+      uint reserved_ : 10;
     };
     uint value_;
   };
@@ -139,6 +138,8 @@ class Settings : public device::Settings {
 
   //! Overrides current settings based on registry/environment
   void override();
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
 /*@}*/  // namespace pal

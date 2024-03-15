@@ -1363,7 +1363,8 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
   kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
   active_chunk_ = 0;
-  if (dev().settings().device_kernel_args_ && roc_device_.info().largeBar_) {
+  if ((dev().settings().kernel_arg_impl_ != KernelArgImpl::HostKernelArgs) &&
+      roc_device_.info().largeBar_) {
     kernarg_pool_base_ =
       reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
   } else {
@@ -3201,11 +3202,15 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    const auto pcieKernargs = !dev().isXgmi() &&
-                              dev().settings().device_kernel_args_ &&
-                              roc_device_.info().largeBar_;
     address argBuffer = hidden_arguments;
     bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
+    size_t argSize = std::min(gpuKernel.KernargSegmentByteSize(), signature.paramsSize());
+
+    const auto kernArgImpl = dev().settings().kernel_arg_impl_;
+    const auto applyMemOrderingWA =
+        ((kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback) ||
+         (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP)) &&
+        roc_device_.info().largeBar_ && argSize > 0 && !isGraphCapture;
 
     // Find all parameters for the current kernel
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
@@ -3213,16 +3218,23 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       if (isGraphCapture) {
         argBuffer = vcmd->getKernArgOffset();
       } else {
-        const auto kernargSize = gpuKernel.KernargSegmentByteSize();
-        argBuffer = reinterpret_cast<address>(allocKernArg(kernargSize,
-                                              gpuKernel.KernargSegmentAlignment()));
+
+        argBuffer = reinterpret_cast<address>(
+            allocKernArg(gpuKernel.KernargSegmentByteSize(),
+                         gpuKernel.KernargSegmentAlignment()));
       }
-      // Load all kernel arguments
-      nontemporalMemcpy(argBuffer, parameters,
-                        std::min(gpuKernel.KernargSegmentByteSize(),
-                                 signature.paramsSize()));
-      if (pcieKernargs && !isGraphCapture) {
-        *dev().info().hdpMemFlushCntl = 1u;
+
+      nontemporalMemcpy(argBuffer, parameters, argSize);
+
+      if (applyMemOrderingWA) {
+        // Memory ordering workaround for pcie: execute sfence followed by
+        // write the last byte of kernarg
+        _mm_sfence();
+        *(argBuffer + argSize - 1) = *(parameters + argSize - 1);
+         // HDP flush is required to guarantee ordering in Navi and MI100
+         if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
+            *dev().info().hdpMemFlushCntl = 1u;
+         }
       }
     }
 
@@ -3284,10 +3296,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
-    if (pcieKernargs && !isGraphCapture) {
-      if (*dev().info().hdpMemFlushCntl != UINT32_MAX) {
-        LogError("Unexpected HDP Register readback value!");
-      }
+    if (applyMemOrderingWA) {
+      // Memory ordering workaround for pcie: execute mfence followed by
+      // read of the last byte of kernarg
+      _mm_mfence();
+      volatile char kSentinel = *(argBuffer + argSize - 1);
     }
     if (vcmd == nullptr) {
       // Dispatch the packet

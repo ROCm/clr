@@ -721,6 +721,8 @@ class VirtualGPU : public device::VirtualDevice {
   MemoryRange sdmaRange_;                   //!< SDMA memory range for write access
 
   void* hostcallBuffer_;  //!< Hostcall buffer
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
 inline void VirtualGPU::logVmMemory(const std::string name, const Memory* memory) {

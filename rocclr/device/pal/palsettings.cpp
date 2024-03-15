@@ -143,7 +143,9 @@ Settings::Settings() {
   alwaysResident_ = amd::IS_HIP ? true : false;
   prepinnedMinSize_ = 0;
   cpDmaCopySizeMax_ = GPU_CP_DMA_COPY_SIZE * Ki;
-  useDeviceKernelArg_ = flagIsDefault(HIP_FORCE_DEV_KERNARG) ? true : HIP_FORCE_DEV_KERNARG;
+  kernel_arg_impl_ = flagIsDefault(HIP_FORCE_DEV_KERNARG)
+                         ? KernelArgImpl::DeviceKernelArgs
+                         : HIP_FORCE_DEV_KERNARG;
 
   limit_blit_wg_ = 16;
   DEBUG_CLR_GRAPH_PACKET_CAPTURE = false; // disable graph performance optimizations for PAL
