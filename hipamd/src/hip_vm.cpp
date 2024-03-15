@@ -314,12 +314,12 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(ptr);
-  if (vaddr_mem_obj == nullptr && vaddr_mem_obj->getSize() != size) {
+  amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(ptr);
+  if (vaddr_sub_obj == nullptr && vaddr_sub_obj->getSize() != size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd::Memory* phys_mem_obj = vaddr_mem_obj->getUserData().phys_mem_obj;
+  amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
   if (phys_mem_obj == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }

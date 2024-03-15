@@ -320,10 +320,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
       }
     }
   }
-  // Add a VA range into VA range map
-  if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
-    amd::MemObjMap::AddVirtualMemObj(getSvmPtr(), this);
-  }
+
   // Store the unique id for each memory allocation
   uniqueId_ = ++numAllocs;
   return true;

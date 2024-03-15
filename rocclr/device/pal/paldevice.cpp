@@ -2443,31 +2443,21 @@ void Device::svmFree(void* ptr) const {
 
 // ================================================================================================
 void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
-  // create a hidden buffer, which will allocated on the device later
-  auto mem = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_VA_RANGE_AMD, size, addr);
-  if (mem == nullptr) {
-    LogError("failed to new a va range mem object!");
-    return nullptr;
-  }
-
-  constexpr bool kSysMemAlloc = false;
-  constexpr bool kSkipAlloc = false;
-  constexpr bool kForceAlloc = true;
-  // Force the alloc now for VA_Range reservation.
-  if (!mem->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
-    LogError("failed to create a va range mem object");
-    mem->release();
-    return nullptr;
-  }
-
+  amd::Memory* mem = CreateVirtualBuffer(context(), addr, size, -1, true, true);
+  assert(mem != nullptr);
   return mem->getSvmPtr();
 }
 
 // ================================================================================================
 void Device::virtualFree(void* addr) {
-  auto va = amd::MemObjMap::FindVirtualMemObj(addr);
-  if (nullptr != va) {
-    va->release();
+  auto vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (vaddr_mem_obj == nullptr) {
+    LogPrintfError("Cannot find any mem_obj for addr: 0x%x \n", addr);
+    return;
+  }
+
+  if (!vaddr_mem_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_mem_obj)) {
+    LogPrintfError("Cannot destroy mem_obj:0x%x for addr: 0x%x \n", vaddr_mem_obj, addr);
   }
 }
 

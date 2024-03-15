@@ -2573,8 +2573,8 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   profilingBegin(vcmd);
 
   // Find the amd::Memory object for virtual ptr. vcmd.ptr() is vaddr.
-  amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
-  if (vaddr_mem_obj == nullptr || !(vaddr_mem_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  amd::Memory* vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
+  if (vaddr_base_obj == nullptr || !(vaddr_base_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     profilingEnd(vcmd);
     return;
   }
@@ -2585,15 +2585,18 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
 
   // If Physical address is not set, then it is map command. If set, it is unmap command.
   if (phys_mem_obj != nullptr) {
+    constexpr bool kParent = false;
+    amd::Memory* vaddr_sub_obj = phys_mem_obj->getContext().devices()[0]->CreateVirtualBuffer(
+                                 phys_mem_obj->getContext(), const_cast<void*>(vcmd.ptr()),
+                                 vcmd.size(), phys_mem_obj->getUserData().deviceId, kParent);
     // Map the physical to virtual address the hsa api
     hsa_amd_vmem_alloc_handle_t opaque_hsa_handle;
     opaque_hsa_handle.handle = phys_mem_obj->getUserData().hsa_handle;
-    if ((hsa_status = hsa_amd_vmem_map(vaddr_mem_obj->getSvmPtr(), vcmd.size(),
-                        vaddr_mem_obj->getOffset(), opaque_hsa_handle, 0)) == HSA_STATUS_SUCCESS) {
+    if ((hsa_status = hsa_amd_vmem_map(vaddr_sub_obj->getSvmPtr(), vcmd.size(),
+                        vaddr_sub_obj->getOffset(), opaque_hsa_handle, 0)) == HSA_STATUS_SUCCESS) {
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
-      // Now that we have mapped physical addr to virtual addr, make an entry in the MemObjMap.
-      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
-      vaddr_mem_obj->getUserData().phys_mem_obj = phys_mem_obj;
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_sub_obj);
+      vaddr_sub_obj->getUserData().phys_mem_obj = phys_mem_obj;
     } else {
       LogError("HSA Command: hsa_amd_vmem_map failed!");
     }
@@ -2602,12 +2605,14 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     Barriers().WaitCurrent();
 
     // Unmap the object, since the physical addr is set.
-    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_mem_obj->getSvmPtr(), vcmd.size()))
+    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_base_obj->getSvmPtr(), vcmd.size()))
                         == HSA_STATUS_SUCCESS) {
       // assert the va is mapped and needs to be removed
-      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
+      amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(vcmd.ptr());
+      assert(vaddr_sub_obj != nullptr);
+      vaddr_sub_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_sub_obj);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
     } else {
       LogError("HSA Command: hsa_amd_vmem_unmap failed");
     }

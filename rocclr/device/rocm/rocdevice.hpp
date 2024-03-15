@@ -221,6 +221,7 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return;
   }
+
   void* virtualAlloc(void* req_addr, size_t size, size_t alignment) override {
     ShouldNotReachHere();
     return nullptr;

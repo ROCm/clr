@@ -1798,6 +1798,34 @@ class Device : public RuntimeObject {
   virtual void svmFree(void* ptr) const = 0;
 
   /**
+   * Validatates Virtual Address range between parent and sub-buffer.
+   *
+   * @param vaddr_base_obj Parent/base object of the virtual address.
+   * @param vaddr_sub_obj Sub Buffer object of the virtual address.
+   */
+  static bool ValidateVirtualAddressRange(amd::Memory* vaddr_base_obj, amd::Memory* vaddr_sub_obj);
+
+  /**
+   * Abstracts the Virtual Buffer creation and memobj/virtual memobj add/delete logic.
+   *
+   * @param device_context Context the virtual buffer should be created.
+   * @param vptr virtual ptr to store in the buffer object.
+   * @param size Size of the buffer
+   * @param deviceId deviceId
+   * @param parent base_obj or sub_obj
+   * @param ForceAlloc force_alloc
+   */
+  amd::Memory* CreateVirtualBuffer(Context& device_context, void* vptr, size_t size,
+                                           int deviceId, bool parent, bool kForceAlloc = false);
+
+  /**
+   * Deletes Virtual Buffer and creates memob
+   *
+   * @param vaddr_mem_obj amd::Memory object of parent/sub buffer.
+   */
+  bool DestroyVirtualBuffer(amd::Memory* vaddr_mem_obj);
+
+  /**
    * Reserve a VA range with no backing store
    *
    * @param addr Start address requested
