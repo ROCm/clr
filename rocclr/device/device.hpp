@@ -651,6 +651,19 @@ struct Info : public amd::EmbeddedObject {
 //! Device settings
 class Settings : public amd::HeapObject {
  public:
+
+  enum KernelArgImpl {
+    HostKernelArgs = 0,       //!< Kernel Arguments are put into host memory
+    DeviceKernelArgs,         //!< Device memory kernel arguments with no memory
+                              //!< ordering workaround (e.g. XGMI)
+    DeviceKernelArgsReadback, //!< Device memory kernel arguments with kernel
+                              //!< argument readback workaround (works only in
+                              //!< ASICS >= MI200)
+    DeviceKernelArgsHDP       //!< Device memory kernel arguments with kernel
+                              //!< argument readback plus HDP flush workaround.
+                              //!< Works in all ASICS. Requires a valid hdp flush register
+  };
+
   uint64_t extensions_;  //!< Supported OCL extensions
   union {
     struct {
@@ -675,7 +688,8 @@ class Settings : public amd::HeapObject {
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
       uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
-      uint reserved_ : 9;
+      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation 
+      uint reserved_ : 7;
     };
     uint value_;
   };

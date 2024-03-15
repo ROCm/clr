@@ -570,5 +570,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool fence_dirty_;                    //!< Fence modified flag
 
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 }

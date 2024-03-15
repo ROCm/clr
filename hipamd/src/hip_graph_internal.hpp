@@ -647,6 +647,8 @@ struct GraphExec {
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
 struct ChildGraphNode : public GraphNode {

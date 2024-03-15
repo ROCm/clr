@@ -408,7 +408,7 @@ bool VirtualGPU::Queue::flush() {
   submitInfo.ppFences             = &iCmdFences_[cmdBufIdSlot_];
 
   if (iQueue_->Type() == Pal::QueueTypeCompute) {
-    if (settings.useDeviceKernelArg_) {
+    if (gpu_.dev().settings().kernel_arg_impl_ == KernelArgImpl::DeviceKernelArgs) {
       // If runtime uses device memory for kernel arguments, then perform a CPU read back on
       // submission. That will make sure NBIO puches all previous CPU write requests through PCIE
       gpu_.managedBuffer().CpuReadBack();
@@ -955,10 +955,12 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   }
 
   // Create buffers for kernel arg management
-  if (!managedBuffer_.create(
-      dev().settings().useDeviceKernelArg_ ? Resource::Persistent : Resource::RemoteUSWC)) {
+  if (!managedBuffer_.create(dev().settings().kernel_arg_impl_ ==
+                                     KernelArgImpl::DeviceKernelArgs
+                                 ? Resource::Persistent
+                                 : Resource::RemoteUSWC)) {
     // Try just USWC if persistent memory failed
-    if (dev().settings().useDeviceKernelArg_) {
+    if (dev().settings().kernel_arg_impl_ == KernelArgImpl::DeviceKernelArgs) {
       if (!managedBuffer_.create(Resource::RemoteUSWC)) {
         return false;
       }
