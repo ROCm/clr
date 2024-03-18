@@ -15,7 +15,7 @@ set(CMAKE_INSTALL_LIBDIR "lib" CACHE STRING "Library install directory")
 include(GNUInstallDirs)
 
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
-option(BUILD_ICD "Enable building OpenCL ICD Loader" OFF)
+option(BUILD_ICD "Enable building OpenCL ICD Loader" ON)
 option(EMU_ENV "Enable building for emulation environment" OFF)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" OFF)
 
@@ -26,10 +26,6 @@ if(MSVC)
 endif()
 
 set(OPENCL_ICD_LOADER_HEADERS_DIR "${CMAKE_CURRENT_LIST_DIR}/khronos/headers/opencl2.2" CACHE PATH "")
-
-###--- Packaging ------------------------------------------------------------###
-
-# DEV package
 if(BUILD_ICD)
   add_subdirectory(khronos/icd)
 else()
@@ -41,6 +37,19 @@ add_subdirectory(tools/cltrace)
 if(BUILD_TESTS)
   add_subdirectory(tests/ocltst)
 endif()
+
+###--- Packaging ------------------------------------------------------------###
+
+# DEV package
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/khronos/headers/opencl2.2/CL"
+        DESTINATION include
+        COMPONENT DEV
+        PATTERN cl_d3d10.h EXCLUDE
+        PATTERN cl_d3d11.h EXCLUDE
+        PATTERN cl_dx9_media_sharing.h EXCLUDE
+        PATTERN cl_egl.h EXCLUDE
+        PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        )
 
 #############################
 # Packaging steps
