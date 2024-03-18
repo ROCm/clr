@@ -2615,6 +2615,9 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
       LogError("HSA Command: hsa_amd_vmem_map failed!");
     }
   } else {
+    dispatchBarrierPacket(kBarrierPacketHeader, false);
+    Barriers().WaitCurrent();
+
     // Unmap the object, since the physical addr is set.
     if ((hsa_status = hsa_amd_vmem_unmap(vaddr_mem_obj->getSvmPtr(), vcmd.size()))
                         == HSA_STATUS_SUCCESS) {

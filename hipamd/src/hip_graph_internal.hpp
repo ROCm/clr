@@ -1071,7 +1071,7 @@ class GraphKernelNode : public GraphNode {
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
     hipDeviceProp_t prop = {0};
-    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice()); 
+    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice());
     if (hipSuccess != status){
       return status;
     }
@@ -2106,9 +2106,10 @@ class GraphMemAllocNode final : public GraphNode {
       size_ = aligned_size;
       // Execute the original mapping command
       VirtualMapCommand::submit(device);
+      queue()->device().SetMemAccess(va_->getSvmPtr(), aligned_size, amd::Device::VmmAccess::kReadWrite);
       va_->retain();
-      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc execute: %p, %p",
-          va_->getSvmPtr(), memory());
+      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc execute [%p-%p], %p",
+          va_->getSvmPtr(), reinterpret_cast<char*>(va_->getSvmPtr()) + aligned_size, memory());
     }
 
    private:
