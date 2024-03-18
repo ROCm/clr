@@ -196,7 +196,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
     SharedAccess access_[kMaxMgpuAccess]; //!< The list of devices for access
   };
 
-  MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr)
+  MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr, bool phys_mem = false)
       : busy_heap_(device),
         free_heap_(device),
         lock_pool_ops_("Pool operations", true),
@@ -208,6 +208,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
     state_.event_dependencies_ = 1;
     state_.opportunistic_ = 1;
     state_.internal_dependencies_ = 1;
+    state_.phys_mem_ = HIP_MEM_POOL_USE_VM && phys_mem;
     if (props != nullptr) {
       properties_ = *props;
     } else {
@@ -317,6 +318,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
                                             //!< dependencies
       uint32_t interprocess_ : 1;   //!< Memory pool can be used in interprocess communications
       uint32_t graph_in_use_ : 1;   //!< Memory pool was used in a graph execution
+      uint32_t phys_mem_ : 1;       //!< Mempool is used for graphs and will have physical allocations
     };
     uint32_t value_;
   } state_;

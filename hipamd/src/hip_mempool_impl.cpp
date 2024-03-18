@@ -180,6 +180,7 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
       return nullptr;
     }
     cl_svm_mem_flags flags = (state_.interprocess_) ? ROCCLR_MEM_INTERPROCESS : 0;
+    flags |= (state_.phys_mem_) ? ROCCLR_MEM_PHYMEM : 0;
     dev_ptr = amd::SvmBuffer::malloc(*context, flags, size, dev_info.memBaseAddrAlign_, nullptr);
     if (dev_ptr == nullptr) {
       size_t free = 0, total =0;
@@ -291,7 +292,7 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
 
   // Decrement the reference counter on the pool.
   // Note: It may delete memory pool for the last allocation. Thus, the scope lock can't include
-  // this call. 
+  // this call.
   release();
 
   return true;

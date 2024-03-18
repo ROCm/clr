@@ -57,7 +57,7 @@ bool Device::Create() {
   }
 
   // Create graph memory pool
-  graph_mem_pool_ = new MemoryPool(this);
+  graph_mem_pool_ = new MemoryPool(this, nullptr, true);
   if (graph_mem_pool_ == nullptr) {
     return false;
   }
