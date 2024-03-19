@@ -510,7 +510,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.errorCorrectionSupport_ = false;
 
   if (settings().apuSystem_) {
-    info_.hostUnifiedMemory_ = true;
+    info_.hostUnifiedMemory_ = 1;
   }
 
   info_.profilingTimerResolution_ = 1;

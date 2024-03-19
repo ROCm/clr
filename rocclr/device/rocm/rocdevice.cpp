@@ -1331,6 +1331,19 @@ bool Device::populateOCLDeviceConstants() {
 
   info_.maxWorkItemDimensions_ = 3;
 
+  uint8_t memory_properties[8];
+  // Get the memory property from ROCr.
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_,
+                              (hsa_agent_info_t) HSA_AMD_AGENT_INFO_MEMORY_PROPERTIES,
+                              memory_properties)) {
+    LogError("HSA_AGENT_INFO_AMD_MEMORY_PROPERTIES query failed");
+  }
+
+  // Check if the device is APU
+  if (hsa_flag_isset64(memory_properties, HSA_AMD_MEMORY_PROPERTY_AGENT_IS_APU)) {
+    info_.hostUnifiedMemory_ = 1;
+  }
+
   if (settings().enableLocalMemory_ && gpuvm_segment_.handle != 0) {
     size_t global_segment_size = 0;
     if (HSA_STATUS_SUCCESS != hsa_amd_memory_pool_get_info(gpuvm_segment_,
@@ -1349,8 +1362,9 @@ bool Device::populateOCLDeviceConstants() {
         GPU_SINGLE_ALLOC_PERCENT = 75;
       }
     }
-    // Limit gpu single allocation percentage on MI300
-    if ((isa().versionMajor() == 9) && (isa().versionMinor() == 4)) {
+    // Limit gpu single allocation percentage for gfx940
+    if ((isa().versionMajor() == 9) && (isa().versionMinor() == 4) &&
+        (isa().versionStepping() == 0) && (info_.hostUnifiedMemory_ == 1)) {
       if (gpu_agents_.size() == 1 || p2p_agents_.size() == 0) {
         if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {
             GPU_SINGLE_ALLOC_PERCENT = 60;
@@ -1432,7 +1446,7 @@ bool Device::populateOCLDeviceConstants() {
 
   if (agent_profile_ == HSA_PROFILE_FULL) {  // full-profile = participating in coherent memory,
                                              // base-profile = NUMA based non-coherent memory
-    info_.hostUnifiedMemory_ = true;
+    info_.hostUnifiedMemory_ = 1;
   }
   info_.memBaseAddrAlign_ =
       8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
