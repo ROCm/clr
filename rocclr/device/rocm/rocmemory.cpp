@@ -775,7 +775,6 @@ bool Buffer::create(bool alloc_local) {
       LogError("HSA Opaque Handle returned was null");
       return false;
     }
-    deviceMemory_ = reinterpret_cast<void*>(amd::Memory::MemoryType::kPhyMemHandlePtr);
     return true;
   }
 
