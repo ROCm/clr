@@ -1942,8 +1942,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap() && !setup_.disableHostCopyBuffer_) {
+  if ((setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
