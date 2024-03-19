@@ -2400,8 +2400,11 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
       return nullptr;
     }
 
-    if (mem->getSvmPtr() != nullptr || mem->getMemFlags() & ROCCLR_MEM_PHYMEM) {
-      // add the information to context so that we can use it later.
+    // add the information to context so that we can use it later.
+    if (mem->getMemFlags() & ROCCLR_MEM_PHYMEM) {
+      mem->setSvmPtr(reinterpret_cast<void*>(mem->getUserData().hsa_handle));
+      amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+    } else if (mem->getSvmPtr() != nullptr) {
       amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     }
     svmPtr = mem->getSvmPtr();

@@ -143,7 +143,6 @@ class Memory : public amd::RuntimeObject {
   enum MemoryType {
     kSvmMemoryPtr = 0x1,
     kArenaMemoryPtr = 0x100,
-    kPhyMemHandlePtr = 0x101
   };
 
   struct UserData
