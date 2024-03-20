@@ -273,12 +273,31 @@ HostcallListener* hostcallListener = nullptr;
 amd::Monitor listenerLock("Hostcall listener lock");
 constexpr static uint64_t kTimeoutFloor = K * K * 4;
 constexpr static uint64_t kTimeoutCeil = K * K * 16;
-
+static struct Init {
+  enum class State {
+    kDefault = 0,
+    kInit,
+    kDestroy,
+    kExit
+  };
+  volatile State state = State::kDefault;
+  ~Init() {
+    if (state == State::kInit) {
+      state = State::kDestroy;
+      while (state == State::kDestroy) {}
+    }
+  }
+} kHostThreadActive;
 void HostcallListener::consumePackets() {
   uint64_t timeout = kTimeoutFloor;
   uint64_t signal_value = SIGNAL_INIT;
+  kHostThreadActive.state = Init::State::kInit;
   while (true) {
     while (true) {
+      if (kHostThreadActive.state == Init::State::kDestroy) {
+        kHostThreadActive.state = Init::State::kExit;
+        return;
+      }
       uint64_t new_value = doorbell_->Wait(signal_value, device::Signal::Condition::Ne, timeout);
       if (new_value != signal_value) {
         signal_value = new_value;
