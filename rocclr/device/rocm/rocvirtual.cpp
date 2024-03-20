@@ -3326,8 +3326,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   if (gpuKernel.dynamicParallelism()) {
     dispatchBarrierPacket(kBarrierPacketHeader, true);
-    static_cast<KernelBlitManager&>(blitMgr()).runScheduler(
-        getVQVirtualAddress(), schedulerParam_, schedulerQueue_, schedulerSignal_, schedulerThreads_);
+    if (virtualQueue_ != nullptr) {
+      static_cast<KernelBlitManager&>(blitMgr()).runScheduler(
+          getVQVirtualAddress(), schedulerParam_, schedulerQueue_,
+          schedulerSignal_, schedulerThreads_);
+    }
   }
 
   // Check if image buffer write back is required
