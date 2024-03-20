@@ -175,7 +175,13 @@ void __hipRegisterTexture(
 }
 
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
-  hipError_t err = PlatformState::instance().removeFatBinary(modules);
+  // By calling hipDeviceSynchronize ensure that all HSA signal handlers
+  // complete before removeFatBinary
+  hipError_t err = hipDeviceSynchronize();
+  if (err != hipSuccess) {
+    LogPrintfError("Error during hipDeviceSynchronize, error: %d", err);
+  }
+  err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }
 
