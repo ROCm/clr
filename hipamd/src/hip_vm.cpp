@@ -86,8 +86,8 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  // Currently only support non-IPC allocations
-  if (prop->requestedHandleType != hipMemHandleTypeNone) {
+  if (prop->requestedHandleType != hipMemHandleTypeNone
+      && prop->requestedHandleType != hipMemHandleTypePosixFileDescriptor) {
     HIP_RETURN(hipErrorNotSupported);
   }
 
@@ -139,11 +139,29 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle,
                                          unsigned long long flags) {
   HIP_INIT_API(hipMemExportToShareableHandle, shareableHandle, handle, handleType, flags);
 
-  if (flags != 0 || handle == nullptr || shareableHandle == nullptr) {
+  if (flags != 0 || handle == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  HIP_RETURN(hipErrorNotSupported);
+  hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(handle);
+  if (ga == nullptr) {
+    LogError("Generic Allocation is nullptr");
+    HIP_RETURN(hipErrorNotInitialized);
+  }
+
+  if (ga->GetProperties().requestedHandleType != handleType) {
+    LogPrintfError("HandleType mismatch memoryHandleType: %d, requestedHandleType: %d",
+                    ga->GetProperties().requestedHandleType, handleType);
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!ga->asAmdMemory().getContext().devices()[0]->ExportShareableVMMHandle(
+        ga->asAmdMemory().getUserData().hsa_handle, flags, shareableHandle)) {
+    LogPrintfError("Exporting Handle failed with flags: %d", flags);
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipMemGetAccess(unsigned long long* flags, const hipMemLocation* location, void* ptr) {
@@ -205,7 +223,33 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  HIP_RETURN(hipErrorNotSupported);
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  amd::Memory* phys_mem_obj = new (device->context()) amd::Buffer(device->context(),
+                                ROCCLR_MEM_PHYMEM | ROCCLR_MEM_INTERPROCESS, 0, osHandle);
+
+  if (phys_mem_obj == nullptr) {
+    LogError("failed to new a va range curr_mem_obj object!");
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!phys_mem_obj->create(nullptr, false)) {
+    LogError("failed to create a va range mem object");
+    phys_mem_obj->release();
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hipMemAllocationProp prop {};
+  prop.type = hipMemAllocationTypePinned;
+  prop.location.type = hipMemLocationTypeDevice;
+  prop.location.id = hip::getCurrentDevice()->deviceId();
+
+  phys_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
+  phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, 0, prop);
+  *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(phys_mem_obj->getUserData().data);
+
+  amd::MemObjMap::RemoveMemObj(phys_mem_obj->getSvmPtr());
+
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocationHandle_t handle,

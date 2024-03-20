@@ -1860,6 +1860,29 @@ class Device : public RuntimeObject {
   virtual void virtualFree(void* addr) = 0;
 
   /**
+   * Export Shareable VMM Handle to FD
+   *
+   * @param hsa_handle hsa_handle which has the phys_mem info.
+   * @param flags any flags to be passed
+   * @param shareableHandle exported handle, points to fdesc.
+   */
+  virtual bool ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle) {
+    ShouldNotCallThis();
+    return false;
+  }
+
+  /**
+   * Import FD from Shareable VMM Handle
+   *
+   * @param osHandle os handle/fdesc
+   * @param hsa_handle_ptr hsa_handle which has the phys_mem info.
+   */
+  virtual bool ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
+    ShouldNotCallThis();
+    return false;
+  }
+
+  /**
    * @return True if the device successfully applied the SVM attributes in HMM for device memory
    */
   virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,

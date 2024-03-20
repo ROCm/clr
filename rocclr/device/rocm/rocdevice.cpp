@@ -2418,10 +2418,7 @@ void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_
     }
 
     // add the information to context so that we can use it later.
-    if (mem->getMemFlags() & ROCCLR_MEM_PHYMEM) {
-      mem->setSvmPtr(reinterpret_cast<void*>(mem->getUserData().hsa_handle));
-      amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
-    } else if (mem->getSvmPtr() != nullptr) {
+    if (mem->getSvmPtr() != nullptr) {
       amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
     }
     svmPtr = mem->getSvmPtr();
@@ -2507,6 +2504,50 @@ bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
 
   *access_flags_ptr = static_cast<VmmAccess>(perms);
 
+  return true;
+}
+
+// ================================================================================================
+bool Device::ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle) {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+
+  if (hsa_handle == 0) {
+    LogError("HSA Handle is not valid");
+    return false;
+  }
+
+  int dmabuf_fd = 0;
+  hsa_vmem_handle.handle = hsa_handle;
+  if ((hsa_status = hsa_amd_vmem_export_shareable_handle(&dmabuf_fd,
+                      hsa_vmem_handle, flags)) != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_vmem_export_shareable_handle with status: %d \n", hsa_status);
+    return false;
+  }
+
+  *(reinterpret_cast<int*>(shareableHandle)) = dmabuf_fd;
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
+  hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
+  hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+
+  if (hsa_handle_ptr == nullptr) {
+    LogError("HSA Handle ptr is null");
+    return false;
+  }
+
+  int dmabuf_fd = *(reinterpret_cast<int*>(osHandle));
+  if ((hsa_status = hsa_amd_vmem_import_shareable_handle(dmabuf_fd, &hsa_vmem_handle))
+                      != HSA_STATUS_SUCCESS) {
+    LogPrintfError("Failed hsa_amd_vmem_import_shareable_handle with status: %d \n", hsa_status);
+    return false;
+  }
+
+  *hsa_handle_ptr = hsa_vmem_handle.handle;
   return true;
 }
 
