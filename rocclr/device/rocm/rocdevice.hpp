@@ -473,6 +473,10 @@ class Device : public NullDevice {
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
   virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
 
+  virtual bool ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle);
+
+  virtual bool ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const;
+
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 

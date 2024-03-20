@@ -769,12 +769,28 @@ bool Buffer::create(bool alloc_local) {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (memFlags & ROCCLR_MEM_PHYMEM) {
-    // If this is physical memory request, then get an handle and store it in user data
-    owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    if (memFlags & ROCCLR_MEM_INTERPROCESS) {
+      int dmabuf_fd = *(reinterpret_cast<int*>(owner()->getSvmPtr()));
+      // if interprocess flag is set, then the memory is importable.
+      if (!dev().ImportShareableVMMHandle(owner()->getSvmPtr(),
+            &owner()->getUserData().hsa_handle)) {
+        LogPrintfError("Importing Shareable Memory failed with os_handle: 0x%x \n",
+                        owner()->getSvmPtr());
+        return false;
+      }
+    } else {
+      // If this is physical memory request, then get an handle and store it in user data
+      owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    }
+
     if (owner()->getUserData().hsa_handle == 0) {
       LogError("HSA Opaque Handle returned was null");
       return false;
     }
+
+    owner()->setSvmPtr(reinterpret_cast<void*>(owner()->getUserData().hsa_handle));
+    amd::MemObjMap::AddMemObj(owner()->getSvmPtr(), owner());
+
     return true;
   }
 
