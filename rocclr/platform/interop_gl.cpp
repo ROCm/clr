@@ -51,7 +51,8 @@
 bool amd::ClGlEvent::waitForFence() {
   GLenum ret;
   // get fence id associated with fence event
-  GLsync gs = reinterpret_cast<GLsync>(command().data());
+  GLsync gs = !command().data().empty() ? reinterpret_cast<GLsync>(command().data().back())
+                                          : nullptr;
   if (!gs) return false;
 
 // Try to use DC and GLRC of current thread, if it doesn't exist

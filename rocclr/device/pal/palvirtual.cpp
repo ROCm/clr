@@ -3317,7 +3317,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
       return;
     }
     // Save the TimeStamp object in the current OCL event
-    command.setData(ts);
+    command.data().emplace_back(ts);
     profileTs_ = ts;
     state_.profileEnabled_ = true;
   }
@@ -3325,7 +3325,8 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
 
 void VirtualGPU::profilingEnd(amd::Command& command) {
   // Get the TimeStamp object associated witht the current command
-  TimeStamp* ts = reinterpret_cast<TimeStamp*>(command.data());
+  TimeStamp* ts = !command.data().empty() ? reinterpret_cast<TimeStamp*>(command.data().back())
+                                            : nullptr;
   if (ts != nullptr) {
     // Check if the command actually did any GPU submission
     if (ts->isValid()) {
@@ -3333,7 +3334,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
     } else {
       // Destroy the TimeStamp object
       tsCache_->freeTimeStamp(ts);
-      command.setData(nullptr);
+      command.data().clear();
     }
   }
 }
@@ -3362,7 +3363,8 @@ bool VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* wai
   first = cb->head_;
   while (nullptr != first) {
     // Get the TimeStamp object associated witht the current command
-    TimeStamp* ts = reinterpret_cast<TimeStamp*>(first->data());
+    TimeStamp* ts = !first->data().empty() ? reinterpret_cast<TimeStamp*>(first->data().back())
+                                            : nullptr;
 
     if (ts != nullptr) {
       ts->value(&startTimeStamp, &endTimeStamp);
@@ -3379,7 +3381,8 @@ bool VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* wai
   first = cb->head_;
   while (nullptr != first) {
     // Get the TimeStamp object associated witht the current command
-    TimeStamp* ts = reinterpret_cast<TimeStamp*>(first->data());
+    TimeStamp* ts = !first->data().empty() ? reinterpret_cast<TimeStamp*>(first->data().back())
+                                            : nullptr;
 
     current = first->getNext();
 
@@ -3389,7 +3392,7 @@ bool VirtualGPU::profilingCollectResults(CommandBatch* cb, const amd::Event* wai
       startTimeStamp -= readjustTimeGPU_;
       // Destroy the TimeStamp object
       tsCache_->freeTimeStamp(ts);
-      first->setData(nullptr);
+      first->data().clear();
     } else {
       // For empty commands start/end is equal to
       // the end of the last valid command

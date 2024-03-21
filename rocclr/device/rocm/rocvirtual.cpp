@@ -194,23 +194,25 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
       head = ts->command().GetBatchHead();
     }
     while (head != nullptr) {
-      if (head->data() != nullptr) {
-        Timestamp* headTs  = reinterpret_cast<Timestamp*>(head->data());
-        ts->setParsedCommand(head);
-        for (auto it : headTs->Signals()) {
-          hsa_signal_value_t complete_val = (headTs->GetCallbackSignal().handle != 0) ? 1 : 0;
-          if (int64_t val = hsa_signal_load_relaxed(it->signal_) > complete_val) {
-            hsa_status_t result = hsa_amd_signal_async_handler(headTs->Signals()[0]->signal_,
-                                 HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                 &HsaAmdSignalHandler, ts);
-            if (HSA_STATUS_SUCCESS != result) {
-              LogError("hsa_amd_signal_async_handler() failed to requeue the handler!");
-            } else {
-              ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Requeue handler : value(%d), timestamp(%p),"
-                      "handle(0x%lx)", static_cast<uint32_t>(val), headTs,
-                      headTs->HwProfiling() ? headTs->Signals()[0]->signal_.handle : 0);
+      if (!head->data().empty()) {
+        for (auto i = 0; i < head->data().size(); i++) {
+          Timestamp* headTs  = reinterpret_cast<Timestamp*>(head->data()[i]);
+          ts->setParsedCommand(head);
+          for (auto it : headTs->Signals()) {
+            hsa_signal_value_t complete_val = (headTs->GetCallbackSignal().handle != 0) ? 1 : 0;
+            if (int64_t val = hsa_signal_load_relaxed(it->signal_) > complete_val) {
+              hsa_status_t result = hsa_amd_signal_async_handler(headTs->Signals()[0]->signal_,
+                                  HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                  &HsaAmdSignalHandler, ts);
+              if (HSA_STATUS_SUCCESS != result) {
+                LogError("hsa_amd_signal_async_handler() failed to requeue the handler!");
+              } else {
+                ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Requeue handler : value(%d), timestamp(%p),"
+                        "handle(0x%lx)", static_cast<uint32_t>(val), headTs,
+                        headTs->HwProfiling() ? headTs->Signals()[0]->signal_.handle : 0);
+              }
+              return false;
             }
-            return false;
           }
         }
       }
@@ -356,9 +358,7 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::Create() {
   uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
-  if (activity_prof::IsEnabled(OP_ID_DISPATCH) || gpu_.profiling_) {
-    kSignalListSize = !flagIsDefault(ROC_SIGNAL_POOL_SIZE) ? ROC_SIGNAL_POOL_SIZE : 4 * Ki;
-  }
+
   signal_list_.resize(kSignalListSize);
 
   hsa_agent_t agent = gpu_.gpu_device();
@@ -981,14 +981,14 @@ bool VirtualGPU::dispatchAqlPacket(
 inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd) {
   amd::ScopedLock lock(execution());
   if (vcmd != nullptr) {
-    profilingBegin(*vcmd, true, true);
+    profilingBegin(*vcmd, true);
   }
   dispatchBlockingWait();
   constexpr size_t kPacketSize = 1;
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
   dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
   if (vcmd != nullptr) {
-    profilingEnd(*vcmd, true);
+    profilingEnd(*vcmd);
   }
   return true;
 }
@@ -1455,23 +1455,18 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
 * and then calls start() to get the current host timestamp.
 */
-void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling, bool useCommandTs) {
+void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
   if (command.profilingInfo().enabled_) {
     if (timestamp_ != nullptr) {
       LogWarning("Trying to create a second timestamp in VirtualGPU. \
                   This could have unintended consequences.");
       return;
     }
-    Timestamp* ts = useCommandTs ? reinterpret_cast<Timestamp*>(command.data()) : timestamp_;
 
-    if (ts == nullptr) {
-      // Without barrier profiling will wait for each individual signal
-      timestamp_ = new Timestamp(this, command);
-      command.setData(timestamp_);
-      timestamp_->start();
-    } else {
-      timestamp_ = ts;
-    }
+    // Without barrier profiling will wait for each individual signal
+    timestamp_ = new Timestamp(this, command);
+    command.data().emplace_back(timestamp_);
+    timestamp_->start();
 
     // Enable SDMA profiling on the first access if profiling is set
     // Its not per command basis
@@ -1504,11 +1499,10 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling, bool 
 * created for whatever command we are running and calls end() to get the
 * current host timestamp if no signal is available.
 */
-void VirtualGPU::profilingEnd(amd::Command& command, bool useCommandTs) {
+void VirtualGPU::profilingEnd(amd::Command& command) {
   if (command.profilingInfo().enabled_) {
-    Timestamp* ts = useCommandTs ? reinterpret_cast<Timestamp*>(command.data()) : timestamp_;
-    if (ts->HwProfiling() == false) {
-      ts->end();
+    if (timestamp_->HwProfiling() == false) {
+      timestamp_->end();
     }
     timestamp_ = nullptr;
   }
@@ -1541,8 +1535,8 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
     // came before it to start and end with this first valid start time.
     current = list;
     while (current != nullptr) {
-      if (current->data() != nullptr) {
-        ts = reinterpret_cast<Timestamp*>(current->data());
+      if (!current->data().empty()) {
+        ts = reinterpret_cast<Timestamp*>(current->data().back());
         ts->getTime(&startTimeStamp, &endTimeStamp);
         break;
       }
@@ -1564,13 +1558,15 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
   current = list;
   while (current != nullptr) {
     if (current->profilingInfo().enabled_) {
-      if (current->data() != nullptr) {
-        // Since this is a valid command to get a timestamp, we use the
-        // timestamp provided by the runtime (saved in the data())
-        ts = reinterpret_cast<Timestamp*>(current->data());
-        ts->getTime(&startTimeStamp, &endTimeStamp);
-        ts->release();
-        current->setData(nullptr);
+      if (!current->data().empty()) {
+        for (auto i = 0; i < current->data().size(); i++) {
+          // Since this is a valid command to get a timestamp, we use the
+          // timestamp provided by the runtime (saved in the data())
+          ts = reinterpret_cast<Timestamp*>(current->data()[i]);
+          ts->getTime(&startTimeStamp, &endTimeStamp);
+          ts->release();
+        }
+        current->data().clear();
       } else {
         // If we don't have a command that contains a valid timestamp,
         // we simply use the end timestamp of the previous command.
@@ -3467,7 +3463,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
 void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-  profilingBegin(vcmd, true, true);
+  profilingBegin(vcmd, true);
 
   uint8_t* aqlPacket = vcmd.getLastPacket();
   if (aqlPacket != nullptr) {
@@ -3489,7 +3485,7 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
     }
   }
 
-  profilingEnd(vcmd, true);
+  profilingEnd(vcmd);
 }
 
 // ================================================================================================
