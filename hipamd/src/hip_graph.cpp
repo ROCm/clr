@@ -484,7 +484,7 @@ hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*
   }
   p.dstArray = pCopy->dstArray;
   p.dstPos = {pCopy->dstXInBytes, pCopy->dstY, 0};
-  p.dstPtr.pitch = pCopy->srcPitch;
+  p.dstPtr.pitch = pCopy->dstPitch;
   if (pCopy->dstDevice != nullptr) {
     p.dstPtr.ptr = pCopy->dstDevice;
   }
@@ -719,6 +719,7 @@ hipError_t capturehipMemset2DAsync(hipStream_t& stream, void*& dst, size_t& pitc
   memsetParams.width = width;
   memsetParams.height = height;
   memsetParams.pitch = pitch;
+  memsetParams.elementSize = 1;
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::GraphNode* pGraphNode;
   hipError_t status =
