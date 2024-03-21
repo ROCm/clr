@@ -769,7 +769,7 @@ RUNTIME_ENTRY_RET(cl_event, clCreateEventFromGLsyncKHR,
   // initially set the status of fence as queued
   clglEvent->setStatus(CL_SUBMITTED);
   // store GLsync id of the fence in event in order to associate them together
-  clglEvent->setData(clGLsync);
+  clglEvent->data().emplace_back(clGLsync);
   amd::Event* evt = clglEvent;
   evt->retain();
   *not_null(errcode_ret) = CL_SUCCESS;

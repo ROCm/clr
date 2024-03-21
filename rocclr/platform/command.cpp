@@ -317,7 +317,6 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
       queue_(&queue),
       next_(nullptr),
       type_(type),
-      data_(nullptr),
       waitingEvent_(waitingEvent),
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {

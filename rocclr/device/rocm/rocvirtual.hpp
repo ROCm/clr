@@ -306,8 +306,8 @@ class VirtualGPU : public device::VirtualDevice {
   bool create();
   const Device& dev() const { return roc_device_; }
 
-  void profilingBegin(amd::Command& command, bool sdmaProfiling = false, bool useCommandTs = false);
-  void profilingEnd(amd::Command& command, bool useCommandTs = false);
+  void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
+  void profilingEnd(amd::Command& command);
 
   void updateCommandsState(amd::Command* list) const;
 

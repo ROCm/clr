@@ -258,7 +258,7 @@ class Command : public Event {
   Command* next_;                  //!< Next GPU command in the queue list
   Command* batch_head_ = nullptr;  //!< The head of the batch commands
   cl_command_type type_;           //!< This command's OpenCL type.
-  void* data_;
+  std::vector<void*> data_;
   const Event* waitingEvent_;  //!< Waiting event associated with the marker
 
  protected:
@@ -282,7 +282,6 @@ class Command : public Event {
         queue_(nullptr),
         next_(nullptr),
         type_(type),
-        data_(nullptr),
         waitingEvent_(nullptr),
         eventWaitList_(nullWaitList),
         commandWaitBits_(0) {}
@@ -322,11 +321,9 @@ class Command : public Event {
   //! Return this command's OpenCL type.
   cl_command_type type() const { return type_; }
 
-  //! Return the opaque, device specific data for this command.
-  void* data() const { return data_; }
+  //! Return the opaque, device specific data vector for this command.
+  std::vector<void*>& data() { return data_; }
 
-  //! Set the opaque, device specific data for this command.
-  void setData(void* data) { data_ = data; }
 
   /*! \brief The execution engine for this command.
    *
@@ -1273,17 +1270,13 @@ class AccumulateCommand : public Command {
 
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) {
-    if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      // "^" is to indicate kernel is captured at instantiate
-      kernelNames_.push_back("^  " + kernelName);
-    }
+    // "^" is to indicate kernel is captured at instantiate
+    kernelNames_.push_back("^  " + kernelName);
   }
 
   //! Add kernel timestamp to the list if available
   void addTimestamps(uint64_t startTs, uint64_t endTs) {
-    if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      tsList_.push_back(std::make_pair(startTs, endTs));
-    }
+    tsList_.push_back(std::make_pair(startTs, endTs));
   }
 
   //! Return the kernel names
