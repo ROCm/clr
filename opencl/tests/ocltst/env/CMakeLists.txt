@@ -34,11 +34,10 @@ target_include_directories(ocltst
     PRIVATE
         $<TARGET_PROPERTY:Common,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(ocltst PRIVATE OpenCL::OpenCL ${CMAKE_DL_LIBS})
-
-if(NOT WIN32)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif()
+target_link_libraries(ocltst
+    PRIVATE
+        OpenCL
+        )
 
 set_target_properties(ocltst PROPERTIES INSTALL_RPATH "$ORIGIN")
 
