@@ -68,10 +68,9 @@ target_include_directories(oclruntime
     PRIVATE
         $<TARGET_PROPERTY:Common,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(oclruntime PRIVATE OpenCL::OpenCL ${CMAKE_DL_LIBS})
-if(NOT WIN32)
-  SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
-endif()
+target_link_libraries(oclruntime
+    PRIVATE
+        OpenCL)
 
 add_custom_command(
     TARGET oclruntime POST_BUILD
