@@ -2263,7 +2263,7 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
                     hipMemoryTypeHost;
 
     if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstDevice);
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
     }
   }
   srcMemType = srcMemoryType;
