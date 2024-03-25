@@ -433,8 +433,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
                         uint16_t rest, bool blocking = true);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
-                                                              uint16_t rest, bool blocking,
-                                                              size_t size = 1);
+                                                              uint16_t rest, bool blocking);
 
   void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
                              hsa_signal_t signal = hsa_signal_t{0});

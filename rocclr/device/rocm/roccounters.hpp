@@ -36,7 +36,6 @@ class PerfCounter : public device::PerfCounter {
  public:
   enum {
     ROC_UNSUPPORTED = 0,
-    ROC_GFX8,
     ROC_GFX9,
     ROC_GFX10
   };
