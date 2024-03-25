@@ -221,6 +221,8 @@ release(uint, ROC_AQL_QUEUE_SIZE, 16384,                                      \
         "AQL queue size in AQL packets")                                      \
 release(uint, ROC_SIGNAL_POOL_SIZE, 4096,                                     \
         "Initial size of HSA signal pool")                                    \
+release(uint, ROC_SIGNAL_POOL_SIZE_PROFILE, 1000,                             \
+        "Initial size of HSA signal pool")                                    \
 release(uint, DEBUG_CLR_LIMIT_BLIT_WG, 16,                                    \
         "Limit the number of workgroups in blit operations")                  \
 release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \

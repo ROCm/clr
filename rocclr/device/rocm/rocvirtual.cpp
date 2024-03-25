@@ -355,10 +355,9 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::Create() {
-  uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
-  if (activity_prof::IsEnabled(OP_ID_DISPATCH) || gpu_.profiling_) {
-    kSignalListSize = !flagIsDefault(ROC_SIGNAL_POOL_SIZE) ? ROC_SIGNAL_POOL_SIZE : 4 * Ki;
-  }
+  bool isProfile = activity_prof::IsEnabled(OP_ID_DISPATCH) || gpu_.profiling_;
+  uint kSignalListSize = isProfile ? ROC_SIGNAL_POOL_SIZE_PROFILE : ROC_SIGNAL_POOL_SIZE;
+
   signal_list_.resize(kSignalListSize);
 
   hsa_agent_t agent = gpu_.gpu_device();
