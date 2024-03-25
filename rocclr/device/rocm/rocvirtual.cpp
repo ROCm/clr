@@ -832,13 +832,13 @@ static inline void packet_store_release(uint32_t* packet, uint16_t header, uint1
 // ================================================================================================
 template <typename AqlPacket>
 bool VirtualGPU::dispatchGenericAqlPacket(
-  AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking, size_t size) {
+  AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking) {
   const uint32_t queueSize = gpu_queue_->size;
   const uint32_t queueMask = queueSize - 1;
   const uint32_t sw_queue_size = queueMask;
 
   // Check for queue full and wait if needed.
-  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, size);
+  uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
   if (addSystemScope_) {
     header &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE |
@@ -887,43 +887,38 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     blocking = true;
   }
 
-  // Insert packet(s)
-  // NOTE: need multiple packets to dispatch the performance counter
-  //       packet blob of the legacy devices (gfx8)
-  for (uint i = 0; i < size; i++, index++, packet++) {
-    AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
-    *aql_loc = *packet;
-    if (header != 0) {
-      packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
-    }
-    ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-            "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
-            "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
-            "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
-            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx "
-            "rptr=%u, wptr=%u",
-            gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, header,
-            extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
-            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
-            extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
-                           HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
-            extractAqlBits(header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
-                           HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
-            rest, reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_x,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_y,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_z,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_x,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_y,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_z,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->private_segment_size,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal, read,
-            index);
+  AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
+  *aql_loc = *packet;
+  if (header != 0) {
+    packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
   }
+  ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
+          "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
+          "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+          "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
+          "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx "
+          "rptr=%u, wptr=%u",
+          gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, header,
+          extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
+          extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
+          extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+          extractAqlBits(header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+          rest, reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_x,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_y,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_z,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_x,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_y,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_z,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->private_segment_size,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal, read,
+          index);
 
-  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index - 1);
+  hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
 
   // Mark the flag indicating if a dispatch is outstanding.
   // We are not waiting after every dispatch.
@@ -984,9 +979,8 @@ inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCom
     profilingBegin(*vcmd, true);
   }
   dispatchBlockingWait();
-  constexpr size_t kPacketSize = 1;
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
-  dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
+  dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
   if (vcmd != nullptr) {
     profilingEnd(*vcmd);
   }
@@ -1003,13 +997,6 @@ bool VirtualGPU::dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet,
   //  In GFX8 the PM4 IB packet blob is writing directly to AQL queue
   //  In GFX9 the PM4 IB is submitting by AQL Vendor Specific packet and
   switch (gfxVersion) {
-    case PerfCounter::ROC_GFX8:
-      { // Create legacy devices PM4 data
-        hsa_ext_amd_aql_pm4_packet_t pm4Packet[SLOT_PM4_SIZE_AQLP];
-        extApi->hsa_ven_amd_aqlprofile_legacy_get_pm4(packet, static_cast<void*>(&pm4Packet[0]));
-        return dispatchGenericAqlPacket(&pm4Packet[0], 0, 0, blocking, SLOT_PM4_SIZE_AQLP);
-      }
-      break;
     case PerfCounter::ROC_GFX9:
     case PerfCounter::ROC_GFX10:
       {
@@ -3468,9 +3455,8 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
   uint8_t* aqlPacket = vcmd.getLastPacket();
   if (aqlPacket != nullptr) {
     dispatchBlockingWait();
-    constexpr size_t kPacketSize = 1;
     auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlPacket);
-    dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
+    dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
     // We need to set fence_dirty_ flag as we would use a dispatch packet with  a completion signal
     // to track graph finish for the last. The sync logic assumes HW event to a barrier packet that
     // has a system scope release. This would cause isFenceDirty() check at top level to insert
