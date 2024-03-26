@@ -56,6 +56,8 @@ if(HIP_PLATFORM STREQUAL "amd" )
                                                  PATTERN ".hipInfo" EXCLUDE)
    else()
       install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
+      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
    endif()#End BUILD_SHARED_LIBS
 
 #TODO:This do not belong in BINARY package.
@@ -277,5 +279,21 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
 endif()
-
+# package name and dependencies for static package
+if(NOT BUILD_SHARED_LIBS)
+   set(CPACK_RPM_STATIC_PACKAGE_NAME "hip-static-devel")
+   set(CPACK_DEBIAN_STATIC_PACKAGE_NAME "hip-static-dev")
+   set(CPACK_COMPONENT_STATIC_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [Static Libraries - AMD]")
+   set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}")
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel >= 1.3, rocminfo-static-devel,  comgr-static-devel >= 2.0, rocm-llvm, hipcc-static-devel")
+   set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}")
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev (>= 1.3), rocminfo-static-dev,  comgr-static-dev (>= 3.0), rocm-llvm, hipcc-static-dev")
+endif()
 include(CPack)
+#static package generation
+# Group binary and dev component to single package
+if(NOT BUILD_SHARED_LIBS)
+    cpack_add_component_group("static")
+    cpack_add_component( binary  GROUP static )
+    cpack_add_component( dev GROUP static )
+endif()
