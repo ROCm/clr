@@ -46,6 +46,7 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" ON)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
+option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
 if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi")
