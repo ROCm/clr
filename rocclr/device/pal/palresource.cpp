@@ -1385,13 +1385,12 @@ void Resource::free() {
   // and resource can be reused on another async queue without a wait on a busy operation
   if (wait) {
     if (memRef_->gpu_ == nullptr) {
-      Device::ScopedLockVgpus lock(dev());
+      amd::ScopedLock l(dev().vgpusAccess());
       // Release all memory objects on all virtual GPUs
       for (uint idx = 1; idx < dev().vgpus().size(); ++idx) {
         dev().vgpus()[idx]->waitForEvent(&events_[idx]);
       }
     } else {
-      amd::ScopedLock l(memRef_->gpu_->execution());
       memRef_->gpu_->waitForEvent(&events_[memRef_->gpu_->index()]);
     }
   } else {
