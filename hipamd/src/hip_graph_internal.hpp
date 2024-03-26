@@ -1678,9 +1678,16 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
     }
     size_t dOffset = 0;
     amd::Memory* srcMemory = getMemoryObject(src, dOffset);
+    cl_mem_flags srcFlag = 0;
+    if (srcMemory != nullptr) {
+      srcFlag = srcMemory->getMemFlags();
+      if (!IS_LINUX) {
+        srcFlag &= ~ROCCLR_MEM_INTERPROCESS;
+      }
+    }
     if (srcMemory == nullptr && kind != hipMemcpyHostToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
-    } else if (srcMemory != nullptr && srcMemory->getMemFlags() == 0 &&
+    } else if (srcMemory != nullptr && srcFlag == 0 &&
                kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
                && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
