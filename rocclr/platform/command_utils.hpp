@@ -24,6 +24,7 @@
 // Dummy command types for Stream Wait and Write commands.
 #define ROCCLR_COMMAND_STREAM_WAIT_VALUE 0x4501
 #define ROCCLR_COMMAND_STREAM_WRITE_VALUE 0x4502
+#define ROCCLR_COMMAND_BATCH_STREAM 0x4503
 
 // Stream Wait Value Conidtions
 #define ROCCLR_STREAM_WAIT_VALUE_GTE 0x0

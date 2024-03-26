@@ -845,7 +845,7 @@ class FillMemoryCommand : public OneMemoryArgCommand {
 
 class StreamOperationCommand : public OneMemoryArgCommand {
  private:
-  uint64_t value_;       // !< Value to Wait on or to Write.
+  uint64_t value_;      // !< Value to Wait on or to Write.
   uint64_t mask_;       // !< Mask to be applied on signal value for Wait operation.
   unsigned int flags_;  // !< Flags defining the Wait condition.
   size_t offset_;       // !< Offset into memory for Write
@@ -886,6 +886,46 @@ class StreamOperationCommand : public OneMemoryArgCommand {
   const size_t offset() const { return offset_; }
   //! Return the write size.
   const size_t sizeBytes() const { return sizeBytes_; }
+};
+
+/*! \brief      A batch memory operation command.
+ *
+ *  \details    Batch operations to synchronize the stream via memory operations
+ *              Operations are either 32-bit stream wait or write.
+ *              Wait: All the commands issued after stream wait are not executed
+ *              until the wait condition is true.
+ *              Write: Writes a 32 or 64 bit vaue to the memory using a GPU Blit.
+ *              The operations are enqueued in the order they appear in the array.
+ */
+
+class BatchMemoryOperationCommand : public Command {
+ public:
+  BatchMemoryOperationCommand(HostQueue& queue, cl_command_type cmdType, uint32_t count,
+                              uint32_t flags, EventWaitList& eventWaitList, const void* paramArray,
+                              size_t paramSize)
+      : Command(queue, cmdType, eventWaitList),
+        count_(count),
+        paramArray_(paramArray),
+        flags_(flags),
+        paramSize_(paramSize) {
+    // Sanity check
+    assert(((cmdType == ROCCLR_COMMAND_BATCH_STREAM)) && "Invalid batch memory operation");
+  }
+
+  virtual void submit(device::VirtualDevice& device) { device.submitBatchMemoryOperation(*this); }
+
+  //! Returns the value
+  const uint64_t count() const { return count_; }
+  //! Return the pointer to the paramList
+  const void* getParamPtr() { return paramArray_; }
+  //! Return the size of a single mem op param in bytes
+  const size_t paramSize() const { return paramSize_; }
+
+ private:
+  uint32_t count_;          // !< The number of operations in the array.
+  uint32_t flags_;          // !< Reserved for future expansion. Must be 0.
+  const void* paramArray_;  // !< Pointer to the array of individual operations
+  size_t paramSize_;        // !< size in bytes of the param array passed
 };
 
 /*! \brief      A generic copy memory command
@@ -1858,6 +1898,7 @@ union ComputeCommand {
   CopyMemoryP2PCommand          cmd25;
   SvmPrefetchAsyncCommand       cmd26;
   VirtualMapCommand             cmd27;
+  BatchMemoryOperationCommand   cmd28;
   ComputeCommand() {}
   ~ComputeCommand() {}
 };

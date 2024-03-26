@@ -285,6 +285,7 @@ class KernelBlitManager : public DmaBlitManager {
     BlitCopyImage1DA,
     BlitCopyImageToBuffer,
     BlitCopyBufferToImage,
+    BatchMemOp,
     BlitTotal
   };
 
@@ -503,6 +504,9 @@ class KernelBlitManager : public DmaBlitManager {
                              uint64_t mask
   ) const;
 
+  //! Batch memory ops- Submits batch of streamWaits and streamWrite operations.
+  virtual bool batchMemOps(const void* paramArray, size_t paramSize, uint32_t count) const;
+
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
   virtual bool initHeap(device::Memory* heap_to_initialize,
@@ -586,13 +590,15 @@ class KernelBlitManager : public DmaBlitManager {
 };
 
 static const char* BlitName[KernelBlitManager::BlitTotal] = {
-  "__amd_rocclr_fillBufferAligned", "__amd_rocclr_fillBufferAligned2D", "__amd_rocclr_copyBuffer",
-  "__amd_rocclr_copyBufferAligned", "__amd_rocclr_copyBufferRect",
-  "__amd_rocclr_copyBufferRectAligned", "__amd_rocclr_streamOpsWrite", "__amd_rocclr_streamOpsWait",
-  "__amd_rocclr_scheduler", "__amd_rocclr_gwsInit", "__amd_rocclr_initHeap",
-  "__amd_rocclr_fillImage", "__amd_rocclr_copyImage", "__amd_rocclr_copyImage1DA",
-  "__amd_rocclr_copyImageToBuffer", "__amd_rocclr_copyBufferToImage"
-};
+    "__amd_rocclr_fillBufferAligned", "__amd_rocclr_fillBufferAligned2D",
+    "__amd_rocclr_copyBuffer",        "__amd_rocclr_copyBufferAligned",
+    "__amd_rocclr_copyBufferRect",    "__amd_rocclr_copyBufferRectAligned",
+    "__amd_rocclr_streamOpsWrite",    "__amd_rocclr_streamOpsWait",
+    "__amd_rocclr_scheduler",         "__amd_rocclr_gwsInit",
+    "__amd_rocclr_initHeap",          "__amd_rocclr_fillImage",
+    "__amd_rocclr_copyImage",         "__amd_rocclr_copyImage1DA",
+    "__amd_rocclr_copyImageToBuffer", "__amd_rocclr_copyBufferToImage",
+    "__amd_rocclr_batchMemOp"};
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
                                            size_t size, const void* value, size_t offset,

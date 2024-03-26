@@ -92,6 +92,7 @@ class SvmMapMemoryCommand;
 class SvmUnmapMemoryCommand;
 class SvmPrefetchAsyncCommand;
 class StreamOperationCommand;
+class BatchMemoryOperationCommand;
 class VirtualMapCommand;
 class ExternalSemaphoreCmd;
 class Isa;
@@ -1308,6 +1309,9 @@ class VirtualDevice : public amd::HeapObject {
     ShouldNotReachHere();
   }
   virtual void submitStreamOperation(amd::StreamOperationCommand& cmd) { ShouldNotReachHere(); }
+  virtual void submitBatchMemoryOperation(amd::BatchMemoryOperationCommand& cmd) {
+    ShouldNotReachHere();
+  }
   virtual void submitVirtualMap(amd::VirtualMapCommand& cmd) { ShouldNotReachHere(); }
 
   virtual address allocKernelArguments(size_t size, size_t alignment) { return nullptr; }

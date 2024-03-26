@@ -23,8 +23,34 @@
 #include "platform/command_utils.hpp"
 
 namespace hip {
+hipError_t ihipBatchMemOperation(hipStream_t stream, cl_command_type cmdType, unsigned int count,
+                                 hipStreamBatchMemOpParams* paramArray, unsigned int flags) {
+  if (paramArray == nullptr || flags != 0 || count > 256) {
+    return hipErrorInvalidValue;
+  }
+
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+
+  hip::Stream* hip_stream = hip::getStream(stream);
+  amd::Command::EventWaitList waitList;
+
+  amd::BatchMemoryOperationCommand* command = new amd::BatchMemoryOperationCommand(
+      *hip_stream, cmdType, count, flags, waitList, paramArray, sizeof(hipStreamBatchMemOpParams));
+
+  if (command == nullptr) {
+    return hipErrorOutOfMemory;
+  }
+  command->enqueue();
+  command->release();
+  HIP_RETURN(hipSuccess);
+}
+
+
 hipError_t ihipStreamOperation(hipStream_t stream, cl_command_type cmdType, void* ptr,
-                               uint64_t value, uint64_t mask, unsigned int flags, size_t sizeBytes) {
+                               uint64_t value, uint64_t mask, unsigned int flags,
+                               size_t sizeBytes) {
   size_t offset = 0;
   unsigned int outFlags = 0;
 
@@ -136,4 +162,15 @@ hipError_t hipStreamWriteValue64(hipStream_t stream, void* ptr, uint64_t value, 
       0,  // flags un-used for now set it to 0
       sizeof(uint64_t)));
 }
+
+hipError_t hipStreamBatchMemOp(hipStream_t stream, unsigned int count,
+                               hipStreamBatchMemOpParams* paramArray, unsigned int flags) {
+  HIP_INIT_API(hipStreamBatchMemOp, count, paramArray, flags);
+  HIP_RETURN_DURATION(ihipBatchMemOperation(
+                      stream,
+                      ROCCLR_COMMAND_BATCH_STREAM,
+                      count,
+                      paramArray,
+                      flags));
+  }
 }  // namespace hip
