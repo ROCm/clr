@@ -68,9 +68,17 @@ target_include_directories(oclruntime
     PRIVATE
         $<TARGET_PROPERTY:Common,INTERFACE_INCLUDE_DIRECTORIES>)
 
-target_link_libraries(oclruntime
-    PRIVATE
-        OpenCL)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cmake")
+find_package(AMD_ICD)
+find_library(AMD_ICD_LIBRARY OpenCL HINTS "${AMD_ICD_LIBRARY_DIR}")
+target_link_libraries(oclruntime PRIVATE ${AMD_ICD_LIBRARY})
+
+if (NOT WIN32)
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+  target_link_libraries(oclruntime PRIVATE Threads::Threads)
+endif()
 
 add_custom_command(
     TARGET oclruntime POST_BUILD

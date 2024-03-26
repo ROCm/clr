@@ -47,9 +47,19 @@ target_include_directories(oclgl
 
 target_link_libraries(oclgl
     PRIVATE
-        OpenCL
         ${GLEW_LIBRARIES}
         ${OPENGL_LIBRARIES})
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cmake")
+find_package(AMD_ICD)
+find_library(AMD_ICD_LIBRARY OpenCL HINTS "${AMD_ICD_LIBRARY_DIR}")
+target_link_libraries(oclgl PRIVATE ${AMD_ICD_LIBRARY})
+
+if (NOT WIN32)
+  set(THREADS_PREFER_PTHREAD_FLAG ON)
+  find_package(Threads REQUIRED)
+  target_link_libraries(oclgl PRIVATE Threads::Threads)
+endif()
 
 add_custom_command(
     TARGET oclgl POST_BUILD
