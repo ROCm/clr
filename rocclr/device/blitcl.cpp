@@ -43,6 +43,8 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
 
   extern void __amd_streamOpsWait(__global uint*, __global ulong*, ulong, ulong, ulong);
 
+  extern void __amd_batchMemOp(__global void*, uint count);
+
   extern void __ockl_dm_init_v1(ulong, ulong, uint, uint);
 
   extern void __ockl_gws_init(uint nwm1, uint rid);
@@ -162,6 +164,10 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
                                                    ulong4 srcRect, ulong4 dstRect, ulong4 size) {
     __amd_copyBufferRectAligned(src, dst, srcRect, dstRect, size);
   }
+
+  __kernel void __amd_rocclr_batchMemOp(__global void* params, uint count) {
+    __amd_batchMemOp(params, count);
+  }
 );
 
 const char* HipExtraSourceCode = BLIT_KERNELS(
@@ -254,7 +260,6 @@ const char* BlitImageSourceCode = BLIT_KERNELS(
     __amd_copyImageToBuffer(src, dstUInt, dstUShort, dstUChar, srcOrigin, dstOrigin, size, format,
                             pitch);
   }
-
 );
 
 }  // namespace amd::device

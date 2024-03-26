@@ -1413,6 +1413,10 @@ hipError_t hipStreamWriteValue64(hipStream_t stream, void* ptr, uint64_t value,
                                  unsigned int flags) {
   return hip::GetHipDispatchTable()->hipStreamWriteValue64_fn(stream, ptr, value, flags);
 }
+hipError_t hipStreamBatchMemOp(hipStream_t stream, unsigned int count,
+                               hipStreamBatchMemOpParams* paramArray, unsigned int flags) {
+  return hip::GetHipDispatchTable()->hipStreamBatchMemOp_fn(stream, count, paramArray, flags);
+}
 hipError_t hipTexObjectCreate(hipTextureObject_t* pTexObject, const HIP_RESOURCE_DESC* pResDesc,
                               const HIP_TEXTURE_DESC* pTexDesc,
                               const HIP_RESOURCE_VIEW_DESC* pResViewDesc) {

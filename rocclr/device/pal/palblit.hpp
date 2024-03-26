@@ -475,6 +475,13 @@ class KernelBlitManager : public DmaBlitManager {
                         uint number_of_initial_blocks
                         ) const;
 
+  //! Batch memory ops- Submits batch of streamWaits and streamWrite operations.
+  virtual bool batchMemOps(const void* paramArray,
+                           size_t paramSize,
+                           uint32_t count) const {
+    assert(!"Unimplemented");
+    return false;
+  }
  private:
   static constexpr size_t MaxXferBuffers = 2;
   static constexpr uint TransferSplitSize = 3;

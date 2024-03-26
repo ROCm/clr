@@ -353,6 +353,7 @@ class VirtualGPU : public device::VirtualDevice {
   void flush(amd::Command* list = nullptr, bool wait = false);
   void submitFillMemory(amd::FillMemoryCommand& cmd);
   void submitStreamOperation(amd::StreamOperationCommand& cmd);
+  void submitBatchMemoryOperation(amd::BatchMemoryOperationCommand& cmd);
   void submitVirtualMap(amd::VirtualMapCommand& cmd);
   void submitMigrateMemObjects(amd::MigrateMemObjectsCommand& cmd);
 

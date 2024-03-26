@@ -299,7 +299,7 @@ if(WIN32 OR NOT BUILD_SHARED_LIBS)
     # rocprofiler-register is not support on Windows
     set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
 else()
-    option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
+  option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
 endif()
 
 if(HIP_ENABLE_ROCPROFILER_REGISTER)
