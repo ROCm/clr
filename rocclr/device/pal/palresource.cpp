@@ -255,23 +255,26 @@ GpuMemoryReference::~GpuMemoryReference() {
   if (nullptr == iMem()) {
     return;
   }
-  if (gpu_ == nullptr) {
-    Device::ScopedLockVgpus lock(device_);
-    // Release all memory objects on all virtual GPUs
-    for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
-      device_.vgpus()[idx]->releaseMemory(this);
+  // Memory tracking per queue is disabled if alwaysResident is enabled. Thus, runtime can skip
+  // updating residency state per every queue
+  if (!device_.settings().alwaysResident_) {
+    if (gpu_ == nullptr) {
+      Device::ScopedLockVgpus lock(device_);
+      // Release all memory objects on all virtual GPUs
+      for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
+        device_.vgpus()[idx]->releaseMemory(this);
+      }
+    } else {
+      amd::ScopedLock l(gpu_->execution());
+      gpu_->releaseMemory(this);
     }
-  } else {
-    amd::ScopedLock l(gpu_->execution());
-    gpu_->releaseMemory(this);
+    if (device_.vgpus().size() != 0) {
+      assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
+      // Lock the transfer queue, since it's not handled by ScopedLockVgpus
+      amd::ScopedLock k(device_.xferMgr().lockXfer());
+      device_.vgpus()[0]->releaseMemory(this);
+    }
   }
-  if (device_.vgpus().size() != 0) {
-    assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
-    // Lock the transfer queue, since it's not handled by ScopedLockVgpus
-    amd::ScopedLock k(device_.xferMgr().lockXfer());
-    device_.vgpus()[0]->releaseMemory(this);
-  }
-
   // Destroy PAL object if it's not a suballocation
   if (cpuAddress_ != nullptr) {
     iMem()->Unmap();
