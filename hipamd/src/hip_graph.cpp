@@ -137,7 +137,7 @@ hipError_t ihipDrvGraphAddMemcpyNode(hip::GraphNode** pGraphNode, hip::Graph* gr
       (numDependencies > 0 && pDependencies == nullptr) || pCopyParams == nullptr) {
     return hipErrorInvalidValue;
   }
-  hipError_t status = ihipDrvMemcpy3DParamValidate(pCopyParams);
+  hipError_t status = ihipDrvMemcpy3D_validate(pCopyParams);
   if (status != hipSuccess) {
     return status;
   }
