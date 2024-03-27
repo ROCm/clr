@@ -2882,53 +2882,6 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   return hipSuccess;
 }
 
-hipError_t ihipDrvMemcpy3DParamValidate(const HIP_MEMCPY3D* p) {
-  // Passing more than one non-zero source or destination will cause hipMemcpy3D() to
-  // return an error.
-  if (p == nullptr || ((p->srcArray != nullptr) && (p->srcHost != nullptr)) ||
-      ((p->dstArray != nullptr) && (p->dstHost != nullptr))) {
-    return hipErrorInvalidValue;
-  }
-  // The struct passed to hipMemcpy3D() must specify one of srcArray or srcPtr and one of dstArray
-  // or dstPtr.
-  if (((p->srcArray == nullptr) && (p->srcHost == nullptr)) ||
-      ((p->dstArray == nullptr) && (p->dstHost == nullptr))) {
-    return hipErrorInvalidValue;
-  }
-
-  // If the source and destination are both arrays, hipMemcpy3D() will return an error if they do
-  // not have the same element size.
-  if (((p->srcArray != nullptr) && (p->dstArray != nullptr)) &&
-      (hip::getElementSize(p->srcArray) != hip::getElementSize(p->dstArray))) {
-    return hipErrorInvalidValue;
-  }
-
-  // dst/src pitch must be less than max pitch
-  auto* deviceHandle = g_devices[hip::getCurrentDevice()->deviceId()]->devices()[0];
-  const auto& info = deviceHandle->info();
-  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
-  auto maxPitch = std::min(info.maxMemAllocSize_, int32_max);
-
-  // negative pitch cases
-  if (p->srcPitch >= maxPitch || p->dstPitch >= maxPitch) {
-    return hipErrorInvalidValue;
-  }
-
-  if (p->dstArray == nullptr && p->srcArray == nullptr) {
-    if ((p->WidthInBytes + p->srcXInBytes > p->srcPitch) ||
-        (p->WidthInBytes + p->dstXInBytes > p->dstPitch)) {
-      return hipErrorInvalidValue;
-    }
-  }
-  if (p->srcMemoryType < hipMemoryTypeHost || p->srcMemoryType > hipMemoryTypeManaged) {
-    return hipErrorInvalidMemcpyDirection;
-  }
-  if (p->dstMemoryType < hipMemoryTypeHost || p->dstMemoryType > hipMemoryTypeManaged) {
-    return hipErrorInvalidMemcpyDirection;
-  }
-  return hipSuccess;
-}
-
 hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy) {
   hipError_t status;
   if (pCopy->WidthInBytes == 0 || pCopy->Height == 0 || pCopy->Depth == 0) {
