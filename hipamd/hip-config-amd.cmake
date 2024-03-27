@@ -63,7 +63,7 @@ if(NOT HIP_CXX_COMPILER)
 endif()
 
 if(NOT WIN32)
-  find_dependency(AMDDeviceLibs)
+  find_dependency(AMDDeviceLibs HINTS ${ROCM_PATH} PATHS "/opt/rocm")
 endif()
 
 # If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
@@ -100,9 +100,8 @@ if(NOT AMDGPU_TARGETS)
 endif()
 
 set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU targets to compile for")
-
 if(NOT WIN32)
-  find_dependency(amd_comgr)
+  find_dependency(amd_comgr HINTS ${ROCM_PATH} PATHS "/opt/rocm")
 endif()
 
 include( "${CMAKE_CURRENT_LIST_DIR}/hip-targets.cmake" )
@@ -111,7 +110,7 @@ include( "${CMAKE_CURRENT_LIST_DIR}/hip-targets.cmake" )
 #This makes the cmake generated file xxxx-targets to supply the linker libraries
 # without worrying other transitive dependencies
 if(NOT WIN32)
-  find_dependency(hsa-runtime64)
+  find_dependency(hsa-runtime64 HINTS ${ROCM_PATH} PATHS "/opt/rocm")
   find_dependency(Threads)
 endif()
 
