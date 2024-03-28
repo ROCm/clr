@@ -543,7 +543,7 @@ struct Graph {
   }
 };
 struct GraphKernelNode;
-struct GraphExec {
+struct GraphExec : public amd::ReferenceCountedObject {
   std::vector<std::vector<Node>> parallelLists_;
   // Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
@@ -572,7 +572,8 @@ struct GraphExec {
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
             std::unordered_map<Node, std::vector<Node>>& nodeWaitLists, struct Graph*& clonedGraph,
             std::unordered_map<Node, Node>& clonedNodes, uint64_t flags = 0)
-      : parallelLists_(lists),
+      : ReferenceCountedObject(),
+        parallelLists_(lists),
         topoOrder_(topoOrder),
         nodeWaitLists_(nodeWaitLists),
         clonedGraph_(clonedGraph),
@@ -647,7 +648,6 @@ struct GraphExec {
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
-
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
