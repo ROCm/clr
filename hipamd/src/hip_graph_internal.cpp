@@ -49,6 +49,9 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 };
 
 namespace hip {
+std::unordered_map<GraphExec*, std::pair<hip::Stream*, bool>> GraphExecStatus_;
+amd::Monitor GraphExecStatusLock_{"Guards graph execution state"};
+
 int GraphNode::nextID = 0;
 int Graph::nextID = 0;
 std::unordered_set<GraphNode*> GraphNode::nodeSet_;
@@ -586,7 +589,6 @@ hipError_t GraphExec::Run(hipStream_t stream) {
         accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
       }
     }
-
     for (int i = 0; i < topoOrder_.size() - 1; i++) {
       if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
           !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_[i])->HasHiddenHeap()) {
@@ -646,7 +648,41 @@ hipError_t GraphExec::Run(hipStream_t stream) {
       endCommand->release();
     }
   }
+  amd::ScopedLock lock(GraphExecStatusLock_);
+  GraphExecStatus_[this] = std::make_pair(hip_stream, false);
   ResetQueueIndex();
   return status;
+}
+void ReleaseGraphExec(int deviceId) {
+  // Release all graph exec objects destroyed by user.
+  amd::ScopedLock lock(GraphExecStatusLock_);
+  for (auto itr = GraphExecStatus_.begin(); itr != GraphExecStatus_.end();) {
+    auto pair = itr->second;
+    if (pair.first->DeviceId() == deviceId) {
+      if (pair.second == true) {
+        ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Release GraphExec");
+        (itr->first)->release();
+      }
+      GraphExecStatus_.erase(itr++);
+    } else {
+      itr++;
+    }
+  }
+}
+void ReleaseGraphExec(hip::Stream* stream) {
+  amd::ScopedLock lock(GraphExecStatusLock_);
+  for (auto itr = GraphExecStatus_.begin(); itr != GraphExecStatus_.end();) {
+    auto pair = itr->second;
+    if (pair.first == stream) {
+      if (pair.second == true) {
+        ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Release GraphExec");
+        (itr->first)->release();
+      }
+      GraphExecStatus_.erase(itr++);
+      break;
+    } else {
+      ++itr;
+    }
+  }
 }
 }  // namespace hip
