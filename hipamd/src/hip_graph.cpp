@@ -165,7 +165,8 @@ hipError_t ihipGraphAddMemcpyNode1D(hip::GraphNode** pGraphNode, hip::Graph* gra
 
 hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph,
                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
-                                  const hipMemsetParams* pMemsetParams, bool capture = true) {
+                                  const hipMemsetParams* pMemsetParams,
+                                  bool capture = true, size_t depth = 1) {
   if (pGraphNode == nullptr || graph == nullptr || pMemsetParams == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pMemsetParams->height == 0) {
     return hipErrorInvalidValue;
@@ -181,6 +182,9 @@ hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   if (status != hipSuccess) {
     return status;
   }
+  if (depth == 0) {
+    return hipErrorInvalidValue;
+  }
   if (pMemsetParams->height == 1) {
     status =
         ihipMemset_validate(pMemsetParams->dst, pMemsetParams->value, pMemsetParams->elementSize,
@@ -189,15 +193,16 @@ hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph
     if (pMemsetParams->pitch < (pMemsetParams->width * pMemsetParams->elementSize)) {
       return hipErrorInvalidValue;
     }
-    auto sizeBytes = pMemsetParams->width * pMemsetParams->height * pMemsetParams->elementSize * 1;
+    auto sizeBytes = pMemsetParams->width * pMemsetParams->height *
+                     depth * pMemsetParams->elementSize;
     status = ihipMemset3D_validate(
         {pMemsetParams->dst, pMemsetParams->pitch, pMemsetParams->width, pMemsetParams->height},
-        pMemsetParams->value, {pMemsetParams->width, pMemsetParams->height, 1}, sizeBytes);
+        pMemsetParams->value, {pMemsetParams->width, pMemsetParams->height, depth}, sizeBytes);
   }
   if (status != hipSuccess) {
     return status;
   }
-  *pGraphNode = new hip::GraphMemsetNode(pMemsetParams);
+  *pGraphNode = new hip::GraphMemsetNode(pMemsetParams, depth);
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
   return status;
 }
@@ -736,9 +741,25 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
                                    hipExtent& extent) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Current capture node Memset3D on stream : %p",
           stream);
+  hipMemsetParams memsetParams = {0};
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
+  memsetParams.dst = pitchedDevPtr.ptr;
+  memsetParams.value = value;
+  memsetParams.width = extent.width;
+  memsetParams.height = extent.height;
+  memsetParams.pitch = pitchedDevPtr.pitch;
+  memsetParams.elementSize = 1;
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hip::GraphNode* pGraphNode;
+  hipError_t status =
+      ihipGraphAddMemsetNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &memsetParams, true, extent.depth);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
   return hipSuccess;
 }
 
