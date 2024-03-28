@@ -269,6 +269,8 @@ void Device::SyncAllStreams( bool cpu_wait) {
   }
   // Release freed memory for all memory pools on the device
   ReleaseFreedMemory();
+  // Release all graph exec objects destroyed by user.
+  ReleaseGraphExec(hip::getCurrentDevice()->deviceId());
 }
 
 // ================================================================================================
