@@ -56,7 +56,7 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
 
   const auto& dev_info = g_devices[0]->devices()[0]->info();
   if (size == 0 || ((size % dev_info.virtualMemAllocGranularity_) != 0)
-      || ((alignment % dev_info.virtualMemAllocGranularity_) != 0)) {
+      || ((alignment & (alignment - 1)) != 0)) {
     HIP_RETURN(hipErrorMemoryAllocation);
   }
 
