@@ -238,10 +238,9 @@ template <typename lambda> class ScopeGuard {
 #define MAKE_SCOPE_GUARD(name, ...)                                                                \
   MAKE_SCOPE_GUARD_HELPER(XCONCAT(scopeGuardLambda, __COUNTER__), name, __VA_ARGS__)
 
-
 // utility function to convert half precision to float to a
 // single precision value.
-inline void half2float(uint16_t Val, uint32_t *Res) {
+inline float half2float(const uint16_t Val) {
   constexpr uint32_t halfExpoentMask = 0x7c00;
   constexpr uint32_t halfFractionMask = 0x03ff;
   constexpr uint32_t floatExponentBias = 127;
@@ -252,17 +251,21 @@ inline void half2float(uint16_t Val, uint32_t *Res) {
   uint32_t exponent = (Val & halfExpoentMask) >> 10;
   uint32_t fraction = ((uint32_t)(Val & halfFractionMask))
                       << 13; // Aligning half fraction to float
+  union {
+    uint32_t u32Arg;
+    float fArg;
+  };
   // Handling special cases
   if (exponent == 0x1f) { // NaN or Infinity
     // When all exponent bits are 1, the value is either Infinity or NaN
     // For NaN, the fraction part should also be non-zero.
-    *Res = signBit | 0x7f800000 |
+    u32Arg = signBit | 0x7f800000 |
            fraction; // setting exponent to all 1's and keeping the fraction
-    return;
+    return fArg;
   } else if (exponent == 0) { // Subnormal numbers or zero
     if (fraction == 0) {
-      *Res = signBit; // Plus or minus zero
-      return;
+      u32Arg = signBit; // Plus or minus zero
+      return fArg;
     } else {
       // Normalize subnormal number
       while ((fraction & (1 << 23)) == 0) {
@@ -277,7 +280,8 @@ inline void half2float(uint16_t Val, uint32_t *Res) {
   uint32_t floatExponent =
       ((exponent + floatExponentBias - halfExponentBias) & 0xff)
       << floatExponentShift;
-  *Res = signBit | floatExponent | fraction;
+  u32Arg = signBit | floatExponent | fraction;
+  return fArg;
 }
 
 /*@}*/} // namespace amd
