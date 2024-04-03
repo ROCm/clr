@@ -541,7 +541,12 @@ hipError_t hipDeviceGetPCIBusId(char* pciBusId, int len, int device) {
 
   hipDeviceProp_tR0600 prop;
   HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
-  snprintf(pciBusId, len, "%04x:%02x:%02x.0", prop.pciDomainID, prop.pciBusID, prop.pciDeviceID);
+  auto* deviceHandle = g_devices[device]->devices()[0];
+  snprintf (pciBusId, len, "%04x:%02x:%02x.%01x",
+                    prop.pciDomainID,
+                    prop.pciBusID,
+                    prop.pciDeviceID,
+                    deviceHandle->info().deviceTopology_.pcie.function);
 
   HIP_RETURN(len <= 12 ? hipErrorInvalidValue : hipSuccess);
 }
