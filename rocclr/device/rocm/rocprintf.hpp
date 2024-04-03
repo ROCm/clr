@@ -103,7 +103,7 @@ class PrintfDbg : public amd::HeapObject {
   size_t outputArgument(const std::string& fmt,   //!< Format strint
                         bool printFloat,          //!< Argument is a float value
                         size_t size,              //!< Argument's size
-                        const uint32_t* argument  //!< Argument's location
+                        const void* argument      //!< Argument's location
                         ) const;
 
   //! Displays the PrintfDbg
