@@ -1,6 +1,6 @@
 # Change Log for HIP
 
-Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
+Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
 ## HIP 6.2 (For ROCm 6.2)
 
@@ -9,6 +9,19 @@ Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
   and `__any_sync()`. These take a 64-bit integer as an explicit mask argument.
   - In HIP 6.2, these are hidden behind the preprocessor macro
     `HIP_ENABLE_WARP_SYNC_BUILTINS`, and will be enabled unconditionally in HIP 6.3.
+- Added new HIP APIs
+    - `hipGetProcAddress` returns the pointer to driver function, corresponding to the defined driver function symbol.
+    - `hipGetFuncBySymbol` returns the pointer to device entry function that matches entry function symbolPtr.
+- Added a new flag `integrated` support in device property
+
+    The `integrated` flag is added in the struct `hipDeviceProp_t`.
+    On the integrated `APU` system, the runtime driver detects and sets this flag to `1`, in which case the API `hipDeviceGetAttribute` returns enum `hipDeviceAttribute_t` for hipDeviceAttributeIntegrated as value `1`, for integrated GPU device.
+
+    The enum value `hipDeviceAttributeIntegrated` corresponds to `cudaDevAttrIntegrated` on CUDA platform.
+
+### Fixed
+- Stream capture support in HIP graph.
+Prohibited and unhandled operations are fixed during stream capture in HIP runtime.
 
 ## HIP 6.1 (For ROCm 6.1)
 ### Optimizations
