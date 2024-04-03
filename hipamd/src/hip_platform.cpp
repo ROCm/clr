@@ -420,8 +420,14 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
   // If the best block size is smaller than the block size used to fit the maximum,
   // then we need to make the grid bigger for full occupancy.
   const int bestBlocksPerCU = alu_limited_threads / (*bestBlockSize);
+  uint32_t maxCUs = device.info().maxComputeUnits_;
+  if (wrkGrpInfo->isWGPMode_ == false && device.settings().enableWgpMode_ == true) {
+    maxCUs *= 2;
+  } else if ((wrkGrpInfo->isWGPMode_ == true && device.settings().enableWgpMode_ == false)) {
+    maxCUs /= 2;
+  }
   // Unless those blocks are further constrained by LDS size.
-  *numBlocksPerGrid = device.info().maxComputeUnits_ * std::min(bestBlocksPerCU, lds_occupancy_wgs);
+  *numBlocksPerGrid = (maxCUs * std::min(bestBlocksPerCU, lds_occupancy_wgs));
 
   return hipSuccess;
 }
