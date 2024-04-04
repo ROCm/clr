@@ -81,6 +81,7 @@ Settings::Settings() {
   lcWavefrontSize64_ = true;
   imageBufferWar_ = false;
 
+  sdma_p2p_threshold_ = ROC_P2P_SDMA_SIZE * Ki;
   hmmFlags_ = (!flagIsDefault(ROC_HMM_FLAGS)) ? ROC_HMM_FLAGS : 0;
 
   rocr_backend_ = true;
@@ -94,7 +95,7 @@ Settings::Settings() {
   fgs_kernel_arg_ = false;
   barrier_value_packet_ = false;
 
-  host_hdp_flush_ = true;
+  device_kernel_args_ = false;
   gwsInitSupported_ = true;
   limit_blit_wg_ = 16;
 }
@@ -162,8 +163,12 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)))) {
     // Enable Barrier Value packet is only for MI2XX/300
     barrier_value_packet_ = true;
-    // On MI200 and MI300, the HDP will not cache RO=0 writes, so no flush is needed
-    host_hdp_flush_ = false;
+  }
+
+  // Enable device kernel args for MI300* for now
+  if (gfxipMajor == 9 && gfxipMinor == 4 &&
+      (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)) {
+    device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
   }
 
   if (gfxipMajor >= 10) {
@@ -175,6 +180,7 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
        imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
      }
   }
+
   if (!flagIsDefault(GPU_ENABLE_WAVE32_MODE)) {
     enableWave32Mode_ = GPU_ENABLE_WAVE32_MODE;
   }
@@ -225,6 +231,10 @@ void Settings::override() {
 
   if (!flagIsDefault(ROC_USE_FGS_KERNARG)) {
     fgs_kernel_arg_ = ROC_USE_FGS_KERNARG;
+  }
+
+  if (!flagIsDefault(HIP_FORCE_DEV_KERNARG)) {
+    device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
   }
 }
 }  // namespace roc

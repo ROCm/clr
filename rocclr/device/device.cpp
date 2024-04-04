@@ -446,7 +446,7 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   // Build all kernels
   std::string opt = "-cl-internal-kernel ";
   if (!device->settings().useLightning_) {
-    opt += "-Wf,--force_disable_spir -fno-lib-no-inline -fno-sc-keep-calls ";
+    opt += "-Wf,--force_disable_spir ";
   }
 
   if (!extraOptions.empty()) {
@@ -855,7 +855,7 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
   auto dev_mem = static_cast<device::Memory*>(amd_mem_obj->getDeviceMemory(*this));
   auto result = dev_mem->ExportHandle(handle);
 
-  return true;
+  return result;
 }
 
 // ================================================================================================

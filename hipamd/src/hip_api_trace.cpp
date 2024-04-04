@@ -24,6 +24,22 @@
 #include <hip/amd_detail/hip_api_trace.hpp>
 
 #include "hip_internal.hpp"
+
+#include <cstdint>
+
+#if defined(HIP_ROCPROFILER_REGISTER) && HIP_ROCPROFILER_REGISTER > 0
+#include <rocprofiler-register/rocprofiler-register.h>
+
+#define HIP_ROCP_REG_VERSION                                                                       \
+  ROCPROFILER_REGISTER_COMPUTE_VERSION_3(HIP_ROCP_REG_VERSION_MAJOR, HIP_ROCP_REG_VERSION_MINOR,   \
+                                         HIP_ROCP_REG_VERSION_PATCH)
+
+ROCPROFILER_REGISTER_DEFINE_IMPORT(hip, HIP_ROCP_REG_VERSION)
+ROCPROFILER_REGISTER_DEFINE_IMPORT(hip_compiler, HIP_ROCP_REG_VERSION)
+#elif !defined(HIP_ROCPROFILER_REGISTER)
+#define HIP_ROCPROFILER_REGISTER 0
+#endif
+
 namespace hip {
 // HIP Internal APIs
 hipError_t __hipPopCallConfiguration(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
@@ -223,6 +239,9 @@ hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t 
 hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                  const hipGraphNode_t* pDependencies, size_t numDependencies,
                                  const hipMemsetParams* pMemsetParams);
+hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                           const hipGraphNode_t *pDependencies, size_t numDependencies,
+                           hipGraphNodeParams *nodeParams);
 hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGraph);
 hipError_t hipGraphClone(hipGraph_t* pGraphClone, hipGraph_t originalGraph);
 hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags);
@@ -271,6 +290,8 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                hipGraphNode_t* pErrorNode, char* pLogBuffer, size_t bufferSize);
 hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                         unsigned long long flags);
+hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                         hipGraphInstantiateParams* instantiateParams);
 hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t hDst);
 hipError_t hipGraphKernelNodeGetAttribute(hipGraphNode_t hNode, hipKernelNodeAttrID attr,
                                           hipKernelNodeAttrValue* value);
@@ -737,9 +758,16 @@ hipError_t hipGraphExternalSemaphoresWaitNodeSetParams(
     hipGraphNode_t hNode, const hipExternalSemaphoreWaitNodeParams* nodeParams);
 hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* launchParamsList,
                                                        unsigned int numDevices, unsigned int flags);
+hipError_t hipExtGetLastError();
+hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef);
+hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef);
+hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
+                             hipDriverProcAddressQueryResult* symbolStatus = NULL);
 }  // namespace hip
 
-void UpdateHipCompilerDispatchTable(HipCompilerDispatchTable* ptrCompilerDispatchTable) {
+namespace hip {
+namespace {
+void UpdateDispatchTable(HipCompilerDispatchTable* ptrCompilerDispatchTable) {
   ptrCompilerDispatchTable->size = sizeof(HipCompilerDispatchTable);
   ptrCompilerDispatchTable->__hipPopCallConfiguration_fn = hip::__hipPopCallConfiguration;
   ptrCompilerDispatchTable->__hipPushCallConfiguration_fn = hip::__hipPushCallConfiguration;
@@ -752,7 +780,7 @@ void UpdateHipCompilerDispatchTable(HipCompilerDispatchTable* ptrCompilerDispatc
   ptrCompilerDispatchTable->__hipUnregisterFatBinary_fn = hip::__hipUnregisterFatBinary;
 }
 
-void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
+void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->size = sizeof(HipDispatchTable);
   ptrDispatchTable->hipApiName_fn = hip::hipApiName;
   ptrDispatchTable->hipArray3DCreate_fn = hip::hipArray3DCreate;
@@ -787,6 +815,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipCtxSetSharedMemConfig_fn = hip::hipCtxSetSharedMemConfig;
   ptrDispatchTable->hipCtxSynchronize_fn = hip::hipCtxSynchronize;
   ptrDispatchTable->hipDestroyExternalMemory_fn = hip::hipDestroyExternalMemory;
+  ptrDispatchTable->hipDestroyExternalSemaphore_fn = hip::hipDestroyExternalSemaphore;
   ptrDispatchTable->hipDestroySurfaceObject_fn = hip::hipDestroySurfaceObject;
   ptrDispatchTable->hipDestroyTextureObject_fn = hip::hipDestroyTextureObject;
   ptrDispatchTable->hipDeviceCanAccessPeer_fn = hip::hipDeviceCanAccessPeer;
@@ -885,6 +914,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphAddMemcpyNodeFromSymbol_fn = hip::hipGraphAddMemcpyNodeFromSymbol;
   ptrDispatchTable->hipGraphAddMemcpyNodeToSymbol_fn = hip::hipGraphAddMemcpyNodeToSymbol;
   ptrDispatchTable->hipGraphAddMemsetNode_fn = hip::hipGraphAddMemsetNode;
+  ptrDispatchTable->hipGraphAddNode_fn = hip::hipGraphAddNode;
   ptrDispatchTable->hipGraphChildGraphNodeGetGraph_fn = hip::hipGraphChildGraphNodeGetGraph;
   ptrDispatchTable->hipGraphClone_fn = hip::hipGraphClone;
   ptrDispatchTable->hipGraphCreate_fn = hip::hipGraphCreate;
@@ -918,6 +948,7 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphHostNodeSetParams_fn = hip::hipGraphHostNodeSetParams;
   ptrDispatchTable->hipGraphInstantiate_fn = hip::hipGraphInstantiate;
   ptrDispatchTable->hipGraphInstantiateWithFlags_fn = hip::hipGraphInstantiateWithFlags;
+  ptrDispatchTable->hipGraphInstantiateWithParams_fn = hip::hipGraphInstantiateWithParams;
   ptrDispatchTable->hipGraphKernelNodeCopyAttributes_fn = hip::hipGraphKernelNodeCopyAttributes;
   ptrDispatchTable->hipGraphKernelNodeGetAttribute_fn = hip::hipGraphKernelNodeGetAttribute;
   ptrDispatchTable->hipGraphKernelNodeGetParams_fn = hip::hipGraphKernelNodeGetParams;
@@ -1202,66 +1233,580 @@ void UpdateHipDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
   ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
+  ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
+  ptrDispatchTable->hipTexRefGetBorderColor_fn =  hip::hipTexRefGetBorderColor;
+  ptrDispatchTable->hipTexRefGetArray_fn = hip::hipTexRefGetArray;
+  ptrDispatchTable->hipGetProcAddress_fn = hip::hipGetProcAddress;
 }
 
-namespace hip {
-namespace {
+#if HIP_ROCPROFILER_REGISTER > 0
+template <typename Tp> struct dispatch_table_info;
 
-void ToolCompilerInitImpl(std::string name, HipCompilerDispatchTable* ptr) {
-  // implementation of tool init
+#define HIP_DEFINE_DISPATCH_TABLE_INFO(TYPE, NAME)                                                 \
+  template <> struct dispatch_table_info<TYPE> {                                                   \
+    static constexpr auto name = #NAME;                                                            \
+    static constexpr auto version = HIP_ROCP_REG_VERSION;                                          \
+    static constexpr auto import_func = &ROCPROFILER_REGISTER_IMPORT_FUNC(NAME);                   \
+  };
+
+constexpr auto ComputeTableSize(size_t num_funcs) {
+  return (num_funcs * sizeof(void*)) + sizeof(uint64_t);
 }
-void ToolInit(std::string name, HipCompilerDispatchTable* ptr) {
-  static auto _once = std::once_flag{};
-  std::call_once(_once, ToolCompilerInitImpl, name, ptr);
+
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip)
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipCompilerDispatchTable, hip_compiler)
+#endif
+
+template <typename Tp> void ToolInit(Tp* table) {
+#if HIP_ROCPROFILER_REGISTER > 0
+  auto table_array = std::array<void*, 1>{static_cast<void*>(table)};
+  auto lib_id = rocprofiler_register_library_indentifier_t{};
+  auto rocp_reg_status = rocprofiler_register_library_api_table(
+      dispatch_table_info<Tp>::name, dispatch_table_info<Tp>::import_func,
+      dispatch_table_info<Tp>::version, table_array.data(), table_array.size(), &lib_id);
+
+  // TODO(jrmadsen): check environment variable? Does this need to compile on Windows?
+  bool report_register_errors = false;
+  if (report_register_errors && rocp_reg_status != ROCP_REG_SUCCESS)
+    fprintf(stderr, "rocprofiler-register failed for %s with error code %i: %s\n",
+            dispatch_table_info<Tp>::name, rocp_reg_status,
+            rocprofiler_register_error_string(rocp_reg_status));
+#else
+  (void)table;
+#endif
 }
-HipCompilerDispatchTable& GetHipCompilerDispatchTableImpl() {
+
+template <typename Tp> Tp& GetDispatchTableImpl() {
   // using a static inside a function prevents static initialization fiascos
-  static auto _v = HipCompilerDispatchTable{};
-  _v.size = sizeof(HipCompilerDispatchTable);
-  return _v;
-}
-HipCompilerDispatchTable* LoadInitialHipCompilerDispatchTable() {
-  auto& hip_Compiler_Dispatch_table_ = hip::GetHipCompilerDispatchTableImpl();
+  static auto dispatch_table = Tp{};
 
-  // 2. Change all the function pointers to point to the HIP runtime implementation functions
-  UpdateHipCompilerDispatchTable(&hip_Compiler_Dispatch_table_);
+  // Change all the function pointers to point to the HIP runtime implementation functions
+  UpdateDispatchTable(&dispatch_table);
 
-  // 3. Profiler Registration
-  ToolInit("HipCompilerDispatchTable", &hip_Compiler_Dispatch_table_);
-  return &hip_Compiler_Dispatch_table_;
-}
+  // Profiler Registration, may wrap the function pointers
+  ToolInit(&dispatch_table);
 
-void ToolInitImpl(std::string name, HipDispatchTable* ptr) {
-  // implementation of tool init
-}
-void ToolInit(std::string name, HipDispatchTable* ptr) {
-  static auto _once = std::once_flag{};
-  std::call_once(_once, ToolInitImpl, name, ptr);
-}
-HipDispatchTable& GetHipDispatchTableImpl() {
-  // using a static inside a function prevents static initialization fiascos
-  static auto _v = HipDispatchTable{};
-  _v.size = sizeof(HipDispatchTable);
-  return _v;
-}
-HipDispatchTable* LoadInitialHipDispatchTable() {
-  //   1. Initialize the HIP runtime optimize later
-  auto& hip_dispatch_table_ = hip::GetHipDispatchTableImpl();
-
-  // 2. Change all the function pointers to point to the HIP runtime implementation functions
-  UpdateHipDispatchTable(&hip_dispatch_table_);
-
-  // 3. Profiler Registration
-  ToolInit("HipDispatchTable", &hip_dispatch_table_);
-  return &hip_dispatch_table_;
+  return dispatch_table;
 }
 }  // namespace
+
 const HipDispatchTable* GetHipDispatchTable() {
-  static auto _v = LoadInitialHipDispatchTable();
+  static auto* _v = &GetDispatchTableImpl<HipDispatchTable>();
   return _v;
 }
 const HipCompilerDispatchTable* GetHipCompilerDispatchTable() {
-  static auto _v = LoadInitialHipCompilerDispatchTable();
+  static auto* _v = &GetDispatchTableImpl<HipCompilerDispatchTable>();
   return _v;
 }
 }  // namespace hip
+
+#if !defined(_WIN32)
+constexpr auto ComputeTableOffset(size_t num_funcs) {
+  return (num_funcs * sizeof(void*)) + sizeof(size_t);
+}
+
+// HIP_ENFORCE_ABI_VERSIONING will cause a compiler error if the size of the API table changed (most
+// likely due to addition of new dispatch table entry) to make sure the developer is reminded to
+// update the table versioning value before changing the value in HIP_ENFORCE_ABI_VERSIONING to make
+// this static assert pass.
+//
+// HIP_ENFORCE_ABI will cause a compiler error if the order of the members in the API table change. Do not reorder member variables and change existing HIP_ENFORCE_ABI values -- always
+//
+// Please note: rocprofiler will do very strict compile time checks to make
+// sure these versioning values are appropriately updated -- so commenting out this check, only
+// updating the size field in HIP_ENFORCE_ABI_VERSIONING, etc. will result in the
+// rocprofiler-sdk failing to build and you will be forced to do the work anyway.
+#define HIP_ENFORCE_ABI_VERSIONING(TABLE, NUM)                                                     \
+  static_assert(                                                                                   \
+      sizeof(TABLE) == ComputeTableOffset(NUM),                                                    \
+      "size of the API table struct has changed. Update the STEP_VERSION number (or in rare "      \
+      "cases, the MAJOR_VERSION number) in <hipamd/include/hip/amd_detail/hip_api_trace.hpp> for " \
+      "the failing API struct before changing the SIZE field passed to "                           \
+      "HIP_DEFINE_DISPATCH_TABLE_INFO");
+
+#define HIP_ENFORCE_ABI(TABLE, ENTRY, NUM)                                                         \
+  static_assert(offsetof(TABLE, ENTRY) == ComputeTableOffset(NUM),                                 \
+                "ABI break for " #TABLE "." #ENTRY                                                 \
+                ". Only add new function pointers to end of struct and do not rearrange them " );
+
+// These ensure that function pointers are not re-ordered
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipPopCallConfiguration_fn, 0)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipPushCallConfiguration_fn, 1)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterFatBinary_fn, 2)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterFunction_fn, 3)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterManagedVar_fn, 4)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterSurface_fn, 5)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterTexture_fn, 6)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterVar_fn, 7)
+HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipUnregisterFatBinary_fn, 8)
+
+// if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
+// will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
+//
+//  HIP_ENFORCE_ABI(<table>, <functor>, 8)
+//
+//  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
+HIP_ENFORCE_ABI_VERSIONING(HipCompilerDispatchTable, 9)
+
+static_assert(HIP_COMPILER_API_TABLE_MAJOR_VERSION == 0 && HIP_COMPILER_API_TABLE_STEP_VERSION == 0,
+              "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
+              "pointers and then update this check so it is true");
+
+// These ensure that function pointers are not re-ordered
+HIP_ENFORCE_ABI(HipDispatchTable, hipApiName_fn, 0)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArray3DCreate_fn, 1)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArray3DGetDescriptor_fn, 2)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArrayCreate_fn, 3)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArrayDestroy_fn, 4)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArrayGetDescriptor_fn, 5)
+HIP_ENFORCE_ABI(HipDispatchTable, hipArrayGetInfo_fn, 6)
+HIP_ENFORCE_ABI(HipDispatchTable, hipBindTexture_fn, 7)
+HIP_ENFORCE_ABI(HipDispatchTable, hipBindTexture2D_fn, 8)
+HIP_ENFORCE_ABI(HipDispatchTable, hipBindTextureToArray_fn, 9)
+HIP_ENFORCE_ABI(HipDispatchTable, hipBindTextureToMipmappedArray_fn, 10)
+HIP_ENFORCE_ABI(HipDispatchTable, hipChooseDevice_fn, 11)
+HIP_ENFORCE_ABI(HipDispatchTable, hipChooseDeviceR0000_fn, 12)
+HIP_ENFORCE_ABI(HipDispatchTable, hipConfigureCall_fn, 13)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCreateSurfaceObject_fn, 14)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCreateTextureObject_fn, 15)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxCreate_fn, 16)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxDestroy_fn, 17)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxDisablePeerAccess_fn, 18)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxEnablePeerAccess_fn, 19)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetApiVersion_fn, 20)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetCacheConfig_fn, 21)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetCurrent_fn, 22)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetDevice_fn, 23)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetFlags_fn, 24)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxGetSharedMemConfig_fn, 25)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxPopCurrent_fn, 26)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxPushCurrent_fn, 27)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxSetCacheConfig_fn, 28)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxSetCurrent_fn, 29)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxSetSharedMemConfig_fn, 30)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCtxSynchronize_fn, 31)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDestroyExternalMemory_fn, 32)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDestroyExternalSemaphore_fn, 33)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDestroySurfaceObject_fn, 34)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDestroyTextureObject_fn, 35)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceCanAccessPeer_fn, 36)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceComputeCapability_fn, 37)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceDisablePeerAccess_fn, 38)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceEnablePeerAccess_fn, 39)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGet_fn, 40)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetAttribute_fn, 41)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetByPCIBusId_fn, 42)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetCacheConfig_fn, 43)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetDefaultMemPool_fn, 44)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetGraphMemAttribute_fn, 45)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetLimit_fn, 46)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetMemPool_fn, 47)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetName_fn, 48)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetP2PAttribute_fn, 49)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetPCIBusId_fn, 50)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetSharedMemConfig_fn, 51)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetStreamPriorityRange_fn, 52)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetUuid_fn, 53)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGraphMemTrim_fn, 54)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDevicePrimaryCtxGetState_fn, 55)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDevicePrimaryCtxRelease_fn, 56)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDevicePrimaryCtxReset_fn, 57)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDevicePrimaryCtxRetain_fn, 58)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDevicePrimaryCtxSetFlags_fn, 59)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceReset_fn, 60)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSetCacheConfig_fn, 61)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSetGraphMemAttribute_fn, 62)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSetLimit_fn, 63)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSetMemPool_fn, 64)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSetSharedMemConfig_fn, 65)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceSynchronize_fn, 66)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceTotalMem_fn, 67)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDriverGetVersion_fn, 68)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGetErrorName_fn, 69)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGetErrorString_fn, 70)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemcpyNode_fn, 71)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvMemcpy2DUnaligned_fn, 72)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvMemcpy3D_fn, 73)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvMemcpy3DAsync_fn, 74)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvPointerGetAttributes_fn, 75)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventCreate_fn, 76)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventCreateWithFlags_fn, 77)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventDestroy_fn, 78)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventElapsedTime_fn, 79)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventQuery_fn, 80)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecord_fn, 81)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventSynchronize_fn, 82)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtGetLinkTypeAndHopCount_fn, 83)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtLaunchKernel_fn, 84)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtLaunchMultiKernelMultiDevice_fn, 85)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtMallocWithFlags_fn, 86)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtStreamCreateWithCUMask_fn, 87)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtStreamGetCUMask_fn, 88)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedBuffer_fn, 89)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFree_fn, 90)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFreeArray_fn, 91)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFreeAsync_fn, 92)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFreeHost_fn, 93)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFreeMipmappedArray_fn, 94)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFuncGetAttribute_fn, 95)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFuncGetAttributes_fn, 96)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFuncSetAttribute_fn, 97)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFuncSetCacheConfig_fn, 98)
+HIP_ENFORCE_ABI(HipDispatchTable, hipFuncSetSharedMemConfig_fn, 99)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGLGetDevices_fn, 100)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetChannelDesc_fn, 101)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDevice_fn, 102)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDeviceCount_fn, 103)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDeviceFlags_fn, 104)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDevicePropertiesR0600_fn, 105)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDevicePropertiesR0000_fn, 106)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetErrorName_fn, 107)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetErrorString_fn, 108)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetLastError_fn, 109)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetMipmappedArrayLevel_fn, 110)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetSymbolAddress_fn, 111)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetSymbolSize_fn, 112)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetTextureAlignmentOffset_fn, 113)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetTextureObjectResourceDesc_fn, 114)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetTextureObjectResourceViewDesc_fn, 115)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetTextureObjectTextureDesc_fn, 116)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetTextureReference_fn, 117)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddChildGraphNode_fn, 118)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddDependencies_fn, 119)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddEmptyNode_fn, 120)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddEventRecordNode_fn, 121)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddEventWaitNode_fn, 122)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddHostNode_fn, 123)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddKernelNode_fn, 124)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemAllocNode_fn, 125)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemFreeNode_fn, 126)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemcpyNode_fn, 127)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemcpyNode1D_fn, 128)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemcpyNodeFromSymbol_fn, 129)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemcpyNodeToSymbol_fn, 130)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddMemsetNode_fn, 131)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphChildGraphNodeGetGraph_fn, 132)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphClone_fn, 133)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphCreate_fn, 134)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphDebugDotPrint_fn, 135)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphDestroy_fn, 136)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphDestroyNode_fn, 137)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphEventRecordNodeGetEvent_fn, 138)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphEventRecordNodeSetEvent_fn, 139)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphEventWaitNodeGetEvent_fn, 140)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphEventWaitNodeSetEvent_fn, 141)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecChildGraphNodeSetParams_fn, 142)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecDestroy_fn, 143)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecEventRecordNodeSetEvent_fn, 144)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecEventWaitNodeSetEvent_fn, 145)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecHostNodeSetParams_fn, 146)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecKernelNodeSetParams_fn, 147)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecMemcpyNodeSetParams_fn, 148)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecMemcpyNodeSetParams1D_fn, 149)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecMemcpyNodeSetParamsFromSymbol_fn, 150)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecMemcpyNodeSetParamsToSymbol_fn, 151)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecMemsetNodeSetParams_fn, 152)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecUpdate_fn, 153)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphGetEdges_fn, 154)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphGetNodes_fn, 155)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphGetRootNodes_fn, 156)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphHostNodeGetParams_fn, 157)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphHostNodeSetParams_fn, 158)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiate_fn, 159)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithFlags_fn, 160)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphKernelNodeCopyAttributes_fn, 161)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphKernelNodeGetAttribute_fn, 162)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphKernelNodeGetParams_fn, 163)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphKernelNodeSetAttribute_fn, 164)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphKernelNodeSetParams_fn, 165)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphLaunch_fn, 166)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemAllocNodeGetParams_fn, 167)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemFreeNodeGetParams_fn, 168)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemcpyNodeGetParams_fn, 169)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemcpyNodeSetParams_fn, 170)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemcpyNodeSetParams1D_fn, 171)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemcpyNodeSetParamsFromSymbol_fn, 172)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemcpyNodeSetParamsToSymbol_fn, 173)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemsetNodeGetParams_fn, 174)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphMemsetNodeSetParams_fn, 175)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeFindInClone_fn, 176)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeGetDependencies_fn, 177)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeGetDependentNodes_fn, 178)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeGetEnabled_fn, 179)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeGetType_fn, 180)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeSetEnabled_fn, 181)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphReleaseUserObject_fn, 182)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphRemoveDependencies_fn, 183)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphRetainUserObject_fn, 184)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphUpload_fn, 185)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsGLRegisterBuffer_fn, 186)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsGLRegisterImage_fn, 187)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsMapResources_fn, 188)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsResourceGetMappedPointer_fn, 189)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsSubResourceGetMappedArray_fn, 190)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsUnmapResources_fn, 191)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphicsUnregisterResource_fn, 192)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostAlloc_fn, 193)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostFree_fn, 194)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostGetDevicePointer_fn, 195)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostGetFlags_fn, 196)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostMalloc_fn, 197)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostRegister_fn, 198)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHostUnregister_fn, 199)
+HIP_ENFORCE_ABI(HipDispatchTable, hipImportExternalMemory_fn, 200)
+HIP_ENFORCE_ABI(HipDispatchTable, hipImportExternalSemaphore_fn, 201)
+HIP_ENFORCE_ABI(HipDispatchTable, hipInit_fn, 202)
+HIP_ENFORCE_ABI(HipDispatchTable, hipIpcCloseMemHandle_fn, 203)
+HIP_ENFORCE_ABI(HipDispatchTable, hipIpcGetEventHandle_fn, 204)
+HIP_ENFORCE_ABI(HipDispatchTable, hipIpcGetMemHandle_fn, 205)
+HIP_ENFORCE_ABI(HipDispatchTable, hipIpcOpenEventHandle_fn, 206)
+HIP_ENFORCE_ABI(HipDispatchTable, hipIpcOpenMemHandle_fn, 207)
+HIP_ENFORCE_ABI(HipDispatchTable, hipKernelNameRef_fn, 208)
+HIP_ENFORCE_ABI(HipDispatchTable, hipKernelNameRefByPtr_fn, 209)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchByPtr_fn, 210)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchCooperativeKernel_fn, 211)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchCooperativeKernelMultiDevice_fn, 212)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchHostFunc_fn, 213)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchKernel_fn, 214)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMalloc_fn, 215)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMalloc3D_fn, 216)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMalloc3DArray_fn, 217)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocArray_fn, 218)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocAsync_fn, 219)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocFromPoolAsync_fn, 220)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocHost_fn, 221)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocManaged_fn, 222)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocMipmappedArray_fn, 223)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMallocPitch_fn, 224)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAddressFree_fn, 225)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAddressReserve_fn, 226)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAdvise_fn, 227)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAllocHost_fn, 228)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAllocPitch_fn, 229)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemCreate_fn, 230)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemExportToShareableHandle_fn, 231)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetAccess_fn, 232)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetAddressRange_fn, 233)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetAllocationGranularity_fn, 234)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetAllocationPropertiesFromHandle_fn, 235)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetInfo_fn, 236)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemImportFromShareableHandle_fn, 237)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemMap_fn, 238)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemMapArrayAsync_fn, 239)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolCreate_fn, 240)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolDestroy_fn, 241)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolExportPointer_fn, 242)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolExportToShareableHandle_fn, 243)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolGetAccess_fn, 244)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolGetAttribute_fn, 245)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolImportFromShareableHandle_fn, 246)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolImportPointer_fn, 247)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolSetAccess_fn, 248)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolSetAttribute_fn, 249)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPoolTrimTo_fn, 250)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPrefetchAsync_fn, 251)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPtrGetInfo_fn, 252)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemRangeGetAttribute_fn, 253)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemRangeGetAttributes_fn, 254)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemRelease_fn, 255)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemRetainAllocationHandle_fn, 256)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemSetAccess_fn, 257)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemUnmap_fn, 258)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy_fn, 259)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2D_fn, 260)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DAsync_fn, 261)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DFromArray_fn, 262)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DFromArrayAsync_fn, 263)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DToArray_fn, 264)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DToArrayAsync_fn, 265)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3D_fn, 266)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DAsync_fn, 267)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAsync_fn, 268)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoH_fn, 269)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoD_fn, 270)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoDAsync_fn, 271)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoH_fn, 272)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoHAsync_fn, 273)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromArray_fn, 274)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromSymbol_fn, 275)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromSymbolAsync_fn, 276)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoA_fn, 277)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoD_fn, 278)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoDAsync_fn, 279)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyParam2D_fn, 280)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyParam2DAsync_fn, 281)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyPeer_fn, 282)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyPeerAsync_fn, 283)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyToArray_fn, 284)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyToSymbol_fn, 285)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyToSymbolAsync_fn, 286)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyWithStream_fn, 287)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset_fn, 288)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset2D_fn, 289)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset2DAsync_fn, 290)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset3D_fn, 291)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset3DAsync_fn, 292)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetAsync_fn, 293)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD16_fn, 294)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD16Async_fn, 295)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD32_fn, 296)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD32Async_fn, 297)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD8_fn, 298)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD8Async_fn, 299)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMipmappedArrayCreate_fn, 300)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMipmappedArrayDestroy_fn, 301)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMipmappedArrayGetLevel_fn, 302)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleGetFunction_fn, 303)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleGetGlobal_fn, 304)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleGetTexRef_fn, 305)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLaunchCooperativeKernel_fn, 306)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLaunchCooperativeKernelMultiDevice_fn, 307)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLaunchKernel_fn, 308)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLoad_fn, 309)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLoadData_fn, 310)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLoadDataEx_fn, 311)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleOccupancyMaxActiveBlocksPerMultiprocessor_fn, 312)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_fn,
+                313)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleOccupancyMaxPotentialBlockSize_fn, 314)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleOccupancyMaxPotentialBlockSizeWithFlags_fn, 315)
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleUnload_fn, 316)
+HIP_ENFORCE_ABI(HipDispatchTable, hipOccupancyMaxActiveBlocksPerMultiprocessor_fn, 317)
+HIP_ENFORCE_ABI(HipDispatchTable, hipOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_fn, 318)
+HIP_ENFORCE_ABI(HipDispatchTable, hipOccupancyMaxPotentialBlockSize_fn, 319)
+HIP_ENFORCE_ABI(HipDispatchTable, hipPeekAtLastError_fn, 320)
+HIP_ENFORCE_ABI(HipDispatchTable, hipPointerGetAttribute_fn, 321)
+HIP_ENFORCE_ABI(HipDispatchTable, hipPointerGetAttributes_fn, 322)
+HIP_ENFORCE_ABI(HipDispatchTable, hipPointerSetAttribute_fn, 323)
+HIP_ENFORCE_ABI(HipDispatchTable, hipProfilerStart_fn, 324)
+HIP_ENFORCE_ABI(HipDispatchTable, hipProfilerStop_fn, 325)
+HIP_ENFORCE_ABI(HipDispatchTable, hipRuntimeGetVersion_fn, 326)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetDevice_fn, 327)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetDeviceFlags_fn, 328)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetupArgument_fn, 329)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSignalExternalSemaphoresAsync_fn, 330)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamAddCallback_fn, 331)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamAttachMemAsync_fn, 332)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCapture_fn, 333)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamCreate_fn, 334)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamCreateWithFlags_fn, 335)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamCreateWithPriority_fn, 336)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamDestroy_fn, 337)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamEndCapture_fn, 338)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_fn, 339)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_v2_fn, 340)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetDevice_fn, 341)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetFlags_fn, 342)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetPriority_fn, 343)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamIsCapturing_fn, 344)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamQuery_fn, 345)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamSynchronize_fn, 346)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamUpdateCaptureDependencies_fn, 347)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWaitEvent_fn, 348)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWaitValue32_fn, 349)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWaitValue64_fn, 350)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWriteValue32_fn, 351)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWriteValue64_fn, 352)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexObjectCreate_fn, 353)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexObjectDestroy_fn, 354)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexObjectGetResourceDesc_fn, 355)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexObjectGetResourceViewDesc_fn, 356)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexObjectGetTextureDesc_fn, 357)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetAddress_fn, 358)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetAddressMode_fn, 359)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetFilterMode_fn, 360)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetFlags_fn, 361)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetFormat_fn, 362)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetMaxAnisotropy_fn, 363)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetMipMappedArray_fn, 364)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetMipmapFilterMode_fn, 365)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetMipmapLevelBias_fn, 366)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetMipmapLevelClamp_fn, 367)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetAddress_fn, 368)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetAddress2D_fn, 369)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetAddressMode_fn, 370)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetArray_fn, 371)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetBorderColor_fn, 372)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetFilterMode_fn, 373)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetFlags_fn, 374)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetFormat_fn, 375)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetMaxAnisotropy_fn, 376)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetMipmapFilterMode_fn, 377)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetMipmapLevelBias_fn, 378)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetMipmapLevelClamp_fn, 379)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefSetMipmappedArray_fn, 380)
+HIP_ENFORCE_ABI(HipDispatchTable, hipThreadExchangeStreamCaptureMode_fn, 381)
+HIP_ENFORCE_ABI(HipDispatchTable, hipUnbindTexture_fn, 382)
+HIP_ENFORCE_ABI(HipDispatchTable, hipUserObjectCreate_fn, 383)
+HIP_ENFORCE_ABI(HipDispatchTable, hipUserObjectRelease_fn, 384)
+HIP_ENFORCE_ABI(HipDispatchTable, hipUserObjectRetain_fn, 385)
+HIP_ENFORCE_ABI(HipDispatchTable, hipWaitExternalSemaphoresAsync_fn, 386)
+HIP_ENFORCE_ABI(HipDispatchTable, hipCreateChannelDesc_fn, 387)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtModuleLaunchKernel_fn, 388)
+HIP_ENFORCE_ABI(HipDispatchTable, hipHccModuleLaunchKernel_fn, 389)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy_spt_fn, 390)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyToSymbol_spt_fn, 391)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromSymbol_spt_fn, 392)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2D_spt_fn, 393)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DFromArray_spt_fn, 394)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3D_spt_fn, 395)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset_spt_fn, 396)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetAsync_spt_fn, 397)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset2D_spt_fn, 398)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset2DAsync_spt_fn, 399)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset3DAsync_spt_fn, 400)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemset3D_spt_fn, 401)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAsync_spt_fn, 402)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DAsync_spt_fn, 403)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DAsync_spt_fn, 404)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromSymbolAsync_spt_fn, 405)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyToSymbolAsync_spt_fn, 406)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyFromArray_spt_fn, 407)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DToArray_spt_fn, 408)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DFromArrayAsync_spt_fn, 409)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DToArrayAsync_spt_fn, 410)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamQuery_spt_fn, 411)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamSynchronize_spt_fn, 412)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetPriority_spt_fn, 413)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamWaitEvent_spt_fn, 414)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetFlags_spt_fn, 415)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamAddCallback_spt_fn, 416)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecord_spt_fn, 417)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchCooperativeKernel_spt_fn, 418)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchKernel_spt_fn, 419)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphLaunch_spt_fn, 420)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCapture_spt_fn, 421)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamEndCapture_spt_fn, 422)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamIsCapturing_spt_fn, 423)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_spt_fn, 424)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_v2_spt_fn, 425)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchHostFunc_spt_fn, 426)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetStreamDeviceId_fn, 427)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemsetNode_fn, 428)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438)
+HIP_ENFORCE_ABI(HipDispatchTable, hipExtGetLastError_fn, 439)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetBorderColor_fn, 440)
+HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetArray_fn, 441)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
+
+// if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
+// will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
+//
+//  HIP_ENFORCE_ABI(<table>, <functor>, 8)
+//
+//  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 443)
+
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 1,
+              "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
+              "pointers and then update this check so it is true");
+#endif

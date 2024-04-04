@@ -1061,14 +1061,17 @@ VirtualGPU::~VirtualGPU() {
   amd::ScopedLock k(dev().lockAsyncOps());
   amd::ScopedLock lock(dev().vgpusAccess());
 
-  // Clear all timestamps, associated with this virtual GPU
-  auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
-  for (uint32_t i = 0; i < AqlPacketMgmt::kAqlPacketsListSize; ++i) {
-    if (mgmt.aql_vgpus_[i] == this) {
-      mgmt.aql_vgpus_[i] = nullptr;
-      mgmt.aql_events_[i].invalidate();
+  if (queues_[MainEngine] != nullptr) {
+    // Clear all timestamps, associated with this virtual GPU
+    auto& mgmt = *queues_[MainEngine]->aql_mgmt_;
+    for (uint32_t i = 0; i < AqlPacketMgmt::kAqlPacketsListSize; ++i) {
+      if (mgmt.aql_vgpus_[i] == this) {
+        mgmt.aql_vgpus_[i] = nullptr;
+        mgmt.aql_events_[i].invalidate();
+      }
     }
   }
+
   // Destroy RGP trace
   if (rgpCaptureEna()) {
     dev().rgpCaptureMgr()->FinishRGPTrace(this, true);
@@ -2487,7 +2490,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!queue->submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
-                                     vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+                                     vcmd.sharedMemBytes())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -2503,7 +2506,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     // Submit kernel to HW
     if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(), false,
-                              vcmd.sharedMemBytes(), vcmd.cooperativeGroups())) {
+                              vcmd.sharedMemBytes(), vcmd.getAnyOrderLaunchFlag())) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
@@ -2515,9 +2518,10 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                       const amd::Kernel& kernel, const_address parameters,
                                       bool nativeMem, uint32_t sharedMemBytes,
-                                      bool cooperativeGroup) {
+                                      bool anyOrder) {
   size_t newOffset[3] = {0, 0, 0};
   size_t newGlobalSize[3] = {0, 0, 0};
+  state_.anyOrder_ = anyOrder;
 
   int dim = -1;
   int iteration = 1;

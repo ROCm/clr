@@ -213,18 +213,18 @@ RUNTIME_EXIT
 RUNTIME_ENTRY(cl_int, clEnqueueAcquireDX9MediaSurfacesKHR,
               (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
                cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
-  return amd::clEnqueueAcquireExtObjectsAMD(command_queue, num_objects, mem_objects,
-                                            num_events_in_wait_list, event_wait_list, event,
-                                            CL_COMMAND_ACQUIRE_DX9_MEDIA_SURFACES_KHR);
+  return amd::clDXTranslateErrorCode(amd::clEnqueueAcquireExtObjectsAMD(
+      command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event,
+      CL_COMMAND_ACQUIRE_DX9_MEDIA_SURFACES_KHR));
 }
 RUNTIME_EXIT
 
 RUNTIME_ENTRY(cl_int, clEnqueueReleaseDX9MediaSurfacesKHR,
               (cl_command_queue command_queue, cl_uint num_objects, const cl_mem* mem_objects,
                cl_uint num_events_in_wait_list, const cl_event* event_wait_list, cl_event* event)) {
-  return amd::clEnqueueReleaseExtObjectsAMD(command_queue, num_objects, mem_objects,
-                                            num_events_in_wait_list, event_wait_list, event,
-                                            CL_COMMAND_RELEASE_DX9_MEDIA_SURFACES_KHR);
+  return amd::clDXTranslateErrorCode(amd::clEnqueueReleaseExtObjectsAMD(
+      command_queue, num_objects, mem_objects, num_events_in_wait_list, event_wait_list, event,
+      CL_COMMAND_RELEASE_DX9_MEDIA_SURFACES_KHR));
 }
 RUNTIME_EXIT
 

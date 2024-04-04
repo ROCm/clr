@@ -20,6 +20,10 @@
 
 cmake_minimum_required(VERSION 3.5)
 
+if (POLICY CMP0072)
+        cmake_policy(SET CMP0072 NEW)
+endif()
+
 # ROCclr abstracts the usage of multiple AMD compilers and runtimes.
 # It is possible to support multiple backends concurrently in the same binary.
 option(ROCCLR_ENABLE_HSAIL "Enable support for HSAIL compiler" OFF)

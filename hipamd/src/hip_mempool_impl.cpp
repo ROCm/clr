@@ -25,9 +25,9 @@
 namespace hip {
 
 // ================================================================================================
-void Heap::AddMemory(amd::Memory* memory, hip::Stream* stream) {
+void Heap::AddMemory(amd::Memory* memory, Stream* stream) {
   auto mem_size = memory->getSize();
-  allocations_.insert({{mem_size, memory}, {stream, nullptr}});
+  allocations_.insert({{mem_size, memory}, {stream}});
   total_size_ += mem_size;
   max_total_size_ = std::max(max_total_size_, total_size_);
 }
@@ -41,21 +41,24 @@ void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
 }
 
 // ================================================================================================
-amd::Memory* Heap::FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr) {
+amd::Memory* Heap::FindMemory(size_t size, Stream* stream, bool opportunistic, void* dptr) {
   amd::Memory* memory = nullptr;
   auto start = allocations_.lower_bound({size, nullptr});
-  // Runtime can accept an allocation with 12.5% on the size threshold
-  uint32_t i = 0;
-  for (auto it = start; (it != allocations_.end()) && (it->first.first <= (size / 8.0) * 9);) {
-    i++;
+  for (auto it = start; it != allocations_.end();) {
     bool check_address = (dptr == nullptr);
     if (it->first.second->getSvmPtr() == dptr) {
       // If the search is done for the specified address then runtime must wait
       it->second.Wait();
       check_address = true;
     }
+    // Runtime can accept an allocation with 12.5% on the size threshold
+    bool opp_mode = opportunistic;
+    if (it->first.first > (size / 8.0) * 9) {
+      // Disable opportunistic mode for more aggressive search
+      opp_mode = false;
+    }
     // Check if size can match and it's safe to use this resource.
-    if (check_address && (it->second.IsSafeFind(stream, opportunistic))) {
+    if (check_address && (it->second.IsSafeFind(stream, opp_mode))) {
       memory = it->first.second;
       total_size_ -= memory->getSize();
       // Remove found allocation from the map
@@ -136,7 +139,7 @@ bool Heap::ReleaseAllMemory() {
 }
 
 // ================================================================================================
-void Heap::RemoveStream(hip::Stream* stream) {
+void Heap::RemoveStream(Stream* stream) {
   for (auto it : allocations_) {
     it.second.safe_streams_.erase(stream);
   }
@@ -162,7 +165,7 @@ void Heap::SetAccess(hip::Device* device, bool enable) {
 }
 
 // ================================================================================================
-void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
+void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   void* dev_ptr = nullptr;
@@ -207,6 +210,8 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
   // Place the allocated memory into the busy heap
   busy_heap_.AddMemory(memory, stream);
 
+  max_total_size_ = std::max(max_total_size_, busy_heap_.GetTotalSize() +
+                                                  free_heap_.GetTotalSize());
   // Increment the reference counter on the pool
   retain();
 
@@ -216,52 +221,78 @@ void* MemoryPool::AllocateMemory(size_t size, hip::Stream* stream, void* dptr) {
 }
 
 // ================================================================================================
-bool MemoryPool::FreeMemory(amd::Memory* memory, hip::Stream* stream) {
-  amd::ScopedLock lock(lock_pool_ops_);
+bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
+  {
+    amd::ScopedLock lock(lock_pool_ops_);
 
-  MemoryTimestamp ts;
-  // Remove memory object from the busy pool
-  if (!busy_heap_.RemoveMemory(memory, &ts)) {
-    // This pool doesn't contain memory
-    return false;
-  }
-  ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool FreeMem: %p, %p", memory->getSvmPtr(), memory);
+    // If the free heap grows over the busy heap, then force release
+    if (AMD_DIRECT_DISPATCH && (free_heap_.GetTotalSize() > busy_heap_.GetTotalSize())) {
+      // Use event base release to reduce memory pressure
+      constexpr size_t kBytesToHold = 0;
+      free_heap_.ReleaseAllMemory(kBytesToHold);
 
-  auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(memory->getUserData().data);
-  if (ga != nullptr) {
-    if (stream == nullptr) {
-      stream = g_devices[memory->getUserData().deviceId]->NullStream();
-    }
-    // Unmap virtual address from memory
-    auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
-                                          memory->getSvmPtr(), ga->size_, nullptr);
-    cmd->enqueue();
-    cmd->release();
-    memory->setSvmPtr(ga->ptr_);
-    // Free virtual address and destroy generic allocation object
-    ga->va_->release();
-    delete ga;
-    memory->getUserData().data = nullptr;
-  }
-
-  if (stream != nullptr) {
-    // The stream of destruction is a safe stream, because the app must handle sync
-    ts.AddSafeStream(stream);
-
-    // Add a marker to the stream to trace availability of this memory
-    Event* e = new hip::Event(0);
-    if (e != nullptr) {
-      if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
-        ts.SetEvent(e);
+      // If free mmeory is less than 12.5% of total, then force wait release
+      size_t free = 0;
+      size_t total = 0;
+      hipError_t err = hipMemGetInfo(&free, &total);
+      if ((err == hipSuccess) && (free < (total >> 3))) {
+        constexpr bool kSafeRelease = true;
+        free_heap_.ReleaseAllMemory(free_heap_.GetTotalSize() >> 1, kSafeRelease);
       }
     }
-  } else {
-    // Assume a safe release from hipFree() if stream is nullptr
-    ts.SetEvent(nullptr);
-  }
-  free_heap_.AddMemory(memory, ts);
 
-  // Decrement the reference counter on the pool
+    MemoryTimestamp ts;
+    // Remove memory object from the busy pool
+    if (!busy_heap_.RemoveMemory(memory, &ts)) {
+      // This pool doesn't contain memory
+      return false;
+    }
+    ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool FreeMem: %p, %p", memory->getSvmPtr(), memory);
+
+    auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(memory->getUserData().data);
+    if (ga != nullptr) {
+      if (stream == nullptr) {
+        stream = g_devices[memory->getUserData().deviceId]->NullStream();
+      }
+      // Unmap virtual address from memory
+      auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
+                                            memory->getSvmPtr(), ga->size_, nullptr);
+      cmd->enqueue();
+      cmd->release();
+      memory->setSvmPtr(ga->ptr_);
+      // Free virtual address and destroy generic allocation object
+      ga->va_->release();
+      delete ga;
+      memory->getUserData().data = nullptr;
+    }
+
+    if (stream != nullptr) {
+      // The stream of destruction is a safe stream, because the app must handle sync
+      ts.AddSafeStream(stream);
+
+      if (event == nullptr) {
+        // Add a marker to the stream to trace availability of this memory
+        Event* e = new hip::Event(0);
+        if (e != nullptr) {
+          if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
+            ts.SetEvent(e);
+            // Make sure runtime sends a notification
+            auto result = e->ready(Query);
+          }
+        }
+      } else {
+        ts.SetEvent(event);
+      }
+    } else {
+      // Assume a safe release from hipFree() if stream is nullptr
+      ts.SetEvent(nullptr);
+    }
+    free_heap_.AddMemory(memory, ts);
+  }
+
+  // Decrement the reference counter on the pool.
+  // Note: It may delete memory pool for the last allocation. Thus, the scope lock can't include
+  // this call. 
   release();
 
   return true;
@@ -282,7 +313,7 @@ void MemoryPool::ReleaseFreedMemory() {
 }
 
 // ================================================================================================
-void MemoryPool::RemoveStream(hip::Stream* stream) {
+void MemoryPool::RemoveStream(Stream* stream) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   free_heap_.RemoveStream(stream);
@@ -326,7 +357,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
       if (reset != 0) {
         return hipErrorInvalidValue;
       }
-      free_heap_.SetMaxTotalSize(reset);
+      max_total_size_ = reset;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
@@ -372,7 +403,7 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       break;
     case hipMemPoolAttrReservedMemHigh:
       // High watermark of all allocated memory in OS, since the last reset
-      *reinterpret_cast<uint64_t*>(value) = busy_heap_.GetTotalSize() + free_heap_.GetMaxTotalSize();
+      *reinterpret_cast<uint64_t*>(value) = max_total_size_;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Total currently used memory by the pool
@@ -432,7 +463,7 @@ void MemoryPool::GetAccess(hip::Device* device, hipMemAccessFlags* flags) {
 }
 
 // ================================================================================================
-void MemoryPool::FreeAllMemory(hip::Stream* stream) {
+void MemoryPool::FreeAllMemory(Stream* stream) {
   while (!busy_heap_.Allocations().empty()) {
     FreeMemory(busy_heap_.Allocations().begin()->first.second, stream);
   }

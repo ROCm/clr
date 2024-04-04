@@ -44,6 +44,8 @@ set(PAL_BUILD_NAVI32        ON)
 set(PAL_BUILD_NAVI33        ON)
 set(PAL_BUILD_PHOENIX1      ON)
 
+set(PAL_BRANCHDEFS          ON)
+
 find_package(AMD_PAL)
 find_package(AMD_HSA_LOADER)
 

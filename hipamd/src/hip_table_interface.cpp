@@ -131,10 +131,12 @@ hipError_t hipCreateTextureObject(hipTextureObject_t* pTexObject, const hipResou
   return hip::GetHipDispatchTable()->hipCreateTextureObject_fn(pTexObject, pResDesc, pTexDesc,
                                                                pResViewDesc);
 }
-hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
+extern "C" hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
   return hip::GetHipDispatchTable()->hipCtxCreate_fn(ctx, flags, device);
 }
-hipError_t hipCtxDestroy(hipCtx_t ctx) { return hip::GetHipDispatchTable()->hipCtxDestroy_fn(ctx); }
+extern "C" hipError_t hipCtxDestroy(hipCtx_t ctx) {
+  return hip::GetHipDispatchTable()->hipCtxDestroy_fn(ctx);
+}
 hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx) {
   return hip::GetHipDispatchTable()->hipCtxDisablePeerAccess_fn(peerCtx);
 }
@@ -537,6 +539,12 @@ hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   return hip::GetHipDispatchTable()->hipGraphAddMemsetNode_fn(pGraphNode, graph, pDependencies,
                                                               numDependencies, pMemsetParams);
 }
+hipError_t hipGraphAddNode(hipGraphNode_t *pGraphNode, hipGraph_t graph,
+                           const hipGraphNode_t *pDependencies, size_t numDependencies,
+                           hipGraphNodeParams *nodeParams) {
+  return hip::GetHipDispatchTable()->hipGraphAddNode_fn(pGraphNode, graph,
+                                            pDependencies, numDependencies, nodeParams);
+}
 hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGraph) {
   return hip::GetHipDispatchTable()->hipGraphChildGraphNodeGetGraph_fn(node, pGraph);
 }
@@ -654,6 +662,11 @@ hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
 hipError_t hipGraphInstantiateWithFlags(hipGraphExec_t* pGraphExec, hipGraph_t graph,
                                         unsigned long long flags) {
   return hip::GetHipDispatchTable()->hipGraphInstantiateWithFlags_fn(pGraphExec, graph, flags);
+}
+hipError_t hipGraphInstantiateWithParams(hipGraphExec_t* pGraphExec, hipGraph_t graph,
+                                              hipGraphInstantiateParams* instantiateParams) {
+  return hip::GetHipDispatchTable()->hipGraphInstantiateWithParams_fn(pGraphExec, graph,
+                                                                            instantiateParams);
 }
 hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t hDst) {
   return hip::GetHipDispatchTable()->hipGraphKernelNodeCopyAttributes_fn(hSrc, hDst);
@@ -1704,4 +1717,19 @@ hipError_t hipLaunchHostFunc_spt(hipStream_t stream, hipHostFn_t fn, void* userD
 }
 extern "C" int hipGetStreamDeviceId(hipStream_t stream) {
   return hip::GetHipDispatchTable()->hipGetStreamDeviceId_fn(stream);
+}
+hipError_t hipExtGetLastError() {
+  return hip::GetHipDispatchTable()->hipExtGetLastError_fn();
+}
+hipError_t hipTexRefGetBorderColor(float* pBorderColor, const textureReference* texRef) {
+  return hip::GetHipDispatchTable()->hipTexRefGetBorderColor_fn(pBorderColor, texRef);
+}
+hipError_t hipTexRefGetArray(hipArray_t* pArray, const textureReference* texRef) {
+  return hip::GetHipDispatchTable()->hipTexRefGetArray_fn(pArray, texRef);
+}
+extern "C" hipError_t hipGetProcAddress(const char* symbol, void** pfn, int  hipVersion,
+                                        uint64_t flags,
+                                        hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+  return hip::GetHipDispatchTable()->hipGetProcAddress_fn(symbol, pfn, hipVersion, flags,
+                                                          symbolStatus);
 }

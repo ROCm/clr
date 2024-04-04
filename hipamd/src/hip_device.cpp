@@ -23,6 +23,7 @@
 
 #include "hip_internal.hpp"
 #include "hip_mempool_impl.hpp"
+#include "hip_platform.hpp"
 
 #undef hipGetDeviceProperties
 #undef hipDeviceProp_t
@@ -30,16 +31,20 @@
 namespace hip {
 
 // ================================================================================================
-hip::Stream* Device::NullStream() {
+hip::Stream* Device::NullStream(bool wait) {
   if (null_stream_ == nullptr) {
-    null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+    amd::ScopedLock lock(lock_);
+    if (null_stream_ == nullptr) {
+      null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+    }
   }
-
   if (null_stream_ == nullptr) {
     return nullptr;
   }
-  // Wait for all active streams before executing commands on the default
-  iHipWaitActiveStreams(null_stream_);
+  if (wait == true) {
+    // Wait for all active streams before executing commands on the default
+    iHipWaitActiveStreams(null_stream_);
+  }
   return null_stream_;
 }
 
@@ -70,6 +75,13 @@ bool Device::Create() {
 }
 
 // ================================================================================================
+bool Device::IsMemoryPoolValid(MemoryPool* pool) {
+  amd::ScopedLock lock(lock_);
+  bool result = (mem_pools_.find(pool) != mem_pools_.end()) ? true : false;
+  return result;
+}
+
+// ================================================================================================
 void Device::AddMemoryPool(MemoryPool* pool) {
   amd::ScopedLock lock(lock_);
   if (auto it = mem_pools_.find(pool); it == mem_pools_.end()) {
@@ -86,11 +98,11 @@ void Device::RemoveMemoryPool(MemoryPool* pool) {
 }
 
 // ================================================================================================
-bool Device::FreeMemory(amd::Memory* memory, Stream* stream) {
+bool Device::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
   amd::ScopedLock lock(lock_);
   // Search for memory in the entire list of pools
   for (auto it : mem_pools_) {
-    if (it->FreeMemory(memory, stream)) {
+    if (it->FreeMemory(memory, stream, event)) {
       return true;
     }
   }
@@ -397,8 +409,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.directManagedMemAccessFromHost = info.hmmDirectHostAccess_;
   deviceProps.canUseHostPointerForRegisteredMem = info.hostUnifiedMemory_;
   deviceProps.pageableMemoryAccess = info.hmmCpuMemoryAccessible_;
-  deviceProps.hostRegisterSupported = info.hostUnifiedMemory_;
-  deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
+  deviceProps.hostRegisterSupported = true;
+  deviceProps.pageableMemoryAccessUsesHostPageTables = info.iommuv2_;
 
   // Mem pool
   deviceProps.memoryPoolsSupported = HIP_MEM_POOL_SUPPORT;
@@ -462,6 +474,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.sparseHipArraySupported = 0;
   deviceProps.timelineSemaphoreInteropSupported = 0;
   deviceProps.unifiedFunctionPointers = 0;
+
+  deviceProps.integrated = info.hostUnifiedMemory_;
 
   *props = deviceProps;
   return hipSuccess;
@@ -575,6 +589,44 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   deviceProps.pageableMemoryAccessUsesHostPageTables = info.hostUnifiedMemory_;
 
   *prop = deviceProps;
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uint64_t flags,
+                             hipDriverProcAddressQueryResult* symbolStatus = nullptr) {
+  HIP_INIT_API(hipGetProcAddress, symbol, pfn, hipVersion, flags, symbolStatus);
+
+  std::string symbolString = symbol;
+  if(symbol == nullptr || symbolString == "" || *pfn == nullptr){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (symbolString == "hipGetDeviceProperties"){
+    if (hipVersion >= 600){
+      symbolString = "hipGetDevicePropertiesR0600";
+    }
+  } else if (symbolString == "hipChooseDevice") {
+    if (hipVersion >= 600){
+      symbolString = "hipChooseDeviceR0600";
+    }
+  }
+
+  void* handle = hip::PlatformState::instance().getDynamicLibraryHandle();
+  if (handle == nullptr){
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  *pfn = amd::Os::getSymbol(handle, symbolString.c_str());
+  if (!(*pfn)) {
+    if (symbolStatus != nullptr) {
+      *symbolStatus = HIP_GET_PROC_ADDRESS_SYMBOL_NOT_FOUND;
+    }
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (symbolStatus != nullptr) {
+    *symbolStatus = HIP_GET_PROC_ADDRESS_SUCCESS;
+  }
   HIP_RETURN(hipSuccess);
 }
 

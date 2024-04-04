@@ -147,7 +147,7 @@ class NullDevice : public amd::Device {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) { return nullptr; };
   virtual void virtualFree(void* addr) { };
 
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
     return true;
   }
 
@@ -549,7 +549,7 @@ class Device : public NullDevice {
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
 
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags, size_t count) {
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
     return true;
   }
 

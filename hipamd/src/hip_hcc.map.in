@@ -486,7 +486,6 @@ global:
     hipMemcpyFromSymbolAsync_spt;
     hipMemcpyToSymbolAsync_spt;
     hipMemcpyFromArray_spt;
-    hipMemcpy2DToArray_spt;
     hipMemcpy2DFromArrayAsync_spt;
     hipMemcpy2DToArrayAsync_spt;
     hipDrvGetErrorName;
@@ -524,6 +523,7 @@ global:
     hipGraphMemAllocNodeGetParams;
     hipGraphAddMemFreeNode;
     hipGraphMemFreeNodeGetParams;
+    hipGraphAddNode;
 local:
     *;
 } hip_5.3;
@@ -547,3 +547,11 @@ global:
 local:
     *;
 } hip_5.6;
+
+hip_6.1 {
+global:
+    hipGraphInstantiateWithParams;
+    hipGetProcAddress;
+local:
+    *;
+} hip_6.0;

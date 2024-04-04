@@ -76,8 +76,9 @@ static amd::Monitor g_hiprtcInitlock{"hiprtcInit lock"};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
   amd::Thread* thread = amd::Thread::current();                                                    \
   if (!VDI_CHECK_THREAD(thread)) {                                                                 \
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS, "An internal error has occurred."                      \
-      " This may be due to insufficient memory.");                                                 \
+    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,                                                        \
+            "An internal error has occurred."                                                      \
+            " This may be due to insufficient memory.");                                           \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
   }                                                                                                \
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
@@ -107,7 +108,6 @@ static void crashWithMessage(std::string message) {
 }
 
 struct Settings {
-  bool dumpISA{false};
   bool offloadArchProvided{false};
 };
 
@@ -131,7 +131,6 @@ class RTCProgram {
   std::vector<char> executable_;
 
   amd_comgr_data_set_t exec_input_;
-  std::vector<std::string> exe_options_;
 };
 
 class RTCCompileProgram : public RTCProgram {
@@ -156,10 +155,8 @@ class RTCCompileProgram : public RTCProgram {
   bool addBuiltinHeader();
   bool transformOptions(std::vector<std::string>& compile_options);
   bool findExeOptions(const std::vector<std::string>& options,
-                       std::vector<std::string>& exe_options);
-  void AppendCompileOptions() {
-    AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_);
-  }
+                      std::vector<std::string>& exe_options);
+  void AppendCompileOptions() { AppendOptions(HIPRTC_COMPILE_OPTIONS_APPEND, &compile_options_); }
 
   RTCCompileProgram() = delete;
   RTCCompileProgram(RTCCompileProgram&) = delete;
@@ -250,14 +247,11 @@ struct LinkArguments {
         global_symbol_count_{0},
         lto_{0},
         ftz_{0},
-        prec_div_{0},
-        prec_sqrt_{0},
-        fma_{0},
+        prec_div_{1},
+        prec_sqrt_{1},
+        fma_{1},
         linker_ir2isa_args_{nullptr},
         linker_ir2isa_args_count_{0} {}
-
-  size_t linkerIRArgCount() const { return linker_ir2isa_args_count_; }
-  const char** linkerIRArg() const { return linker_ir2isa_args_; }
 };
 
 class RTCLinkProgram : public RTCProgram {
@@ -274,13 +268,18 @@ class RTCLinkProgram : public RTCProgram {
   // Private Data Members
   amd_comgr_data_set_t link_input_;
   std::vector<std::string> link_options_;
+  static std::unordered_set<RTCLinkProgram*> linker_set_;
 
   bool AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITInputType input_type,
                          std::string& link_file_name);
 
  public:
   RTCLinkProgram(std::string name);
-  ~RTCLinkProgram() { amd::Comgr::destroy_data_set(link_input_); }
+  ~RTCLinkProgram() {
+    amd::ScopedLock lock(lock_);
+    linker_set_.erase(this);
+    amd::Comgr::destroy_data_set(link_input_);
+  }
   // Public Member Functions
   bool AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                         void** options_vals_ptr);
@@ -288,9 +287,8 @@ class RTCLinkProgram : public RTCProgram {
   bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
                      hiprtcJITInputType input_type);
   bool LinkComplete(void** bin_out, size_t* size_out);
-  void AppendLinkerOptions() {
-    AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_);
-  }
+  void AppendLinkerOptions() { AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_); }
+  static bool isLinkerValid(RTCLinkProgram* link_program);
 };
 
 // Thread Local Storage Variables Aggregator Class

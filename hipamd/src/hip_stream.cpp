@@ -254,15 +254,6 @@ void iHipWaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stream) 
       command->enqueue();
       command->release();
     }
-
-    //Reset the dirty flag for all streams now that the marker is submitted
-    amd::ScopedLock lock(streamSetLock);
-    for (const auto& stream : streamSet) {
-      amd::HostQueue* active_queue = stream->asHostQueue();
-      if (active_queue->vdev()->isFenceDirty()) {
-        active_queue->vdev()->resetFenceDirty();
-      }
-    }
   }
 
   // Release all active commands. It's safe after the marker was enqueued
@@ -534,8 +525,15 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   }
   hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
+  auto eventStreamHandle = reinterpret_cast<hipStream_t>(e->GetCaptureStream());
+  // the stream associated with the device might have been destroyed
+  if (!hip::isValid(eventStreamHandle)) {
+    // Stream associated with the event has been released
+    // meaning the event has been completed and we can resume the current stream
+    return hipSuccess;
+  }
 
+  hip::Stream* eventStream = reinterpret_cast<hip::Stream*>(eventStreamHandle);
   if (eventStream != nullptr && eventStream->IsEventCaptured(event) == true) {
     ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node StreamWaitEvent on stream : %p, Event %p", stream,
@@ -592,6 +590,14 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   bool wait = (stream == nullptr) ? true : false;
   hip::Stream* hip_stream = hip::getStream(stream, wait);
 
+  if (hip_stream->vdev()->isFenceDirty()) {
+    amd::Command* command = new amd::Marker(*hip_stream, kMarkerDisableFlush);
+    if (command != nullptr) {
+      command->enqueue();
+      command->release();
+    }
+  }
+
   amd::Command* command = hip_stream->getLastQueuedCommand(true);
   if (command == nullptr) {
     // Nothing was submitted to the queue
@@ -602,6 +608,7 @@ hipError_t hipStreamQuery_common(hipStream_t stream) {
   if (command->type() != 0) {
     event.notifyCmdQueue();
   }
+
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   bool ready = command->queue()->device().IsHwEventReady(event);
   if (!ready) {

@@ -146,7 +146,7 @@ foreach(GPU_TARGET ${GPU_TARGETS})
     hip_add_interface_link_flags(hip::device --offload-arch=${GPU_TARGET})
 endforeach()
 #Add support for parallel build and link
-if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
   check_cxx_compiler_flag("-parallel-jobs=1" HIP_CLANG_SUPPORTS_PARALLEL_JOBS)
 endif()
 if(HIP_CLANG_NUM_PARALLEL_JOBS GREATER 1)
@@ -178,6 +178,12 @@ if( CLANGRT_Error )
 else()
   # Add support for __fp16 and _Float16, explicitly link with compiler-rt
   if( "${CLANGRT_BUILTINS_FETCH_EXIT_CODE}" STREQUAL "0" )
+    # The HIP_CXX_COMPILER by default prefers backward slashes for path seperators on windows.
+    # Prefer forward slashes here to avoid escaping issues on certain build systems.
+    if(WIN32)
+      string(REPLACE "\\" "/" CLANGRT_BUILTINS ${CLANGRT_BUILTINS})
+    endif()
+
     # CLANG_RT Builtins found Successfully Set interface link libraries property
     set_property(TARGET hip::host APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")
     set_property(TARGET hip::device APPEND PROPERTY INTERFACE_LINK_LIBRARIES "${CLANGRT_BUILTINS}")

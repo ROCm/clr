@@ -427,7 +427,6 @@ hipMemcpy2DAsync_spt
 hipMemcpyFromSymbolAsync_spt
 hipMemcpyToSymbolAsync_spt
 hipMemcpyFromArray_spt
-hipMemcpy2DToArray_spt
 hipMemcpy2DFromArrayAsync_spt
 hipMemcpy2DToArrayAsync_spt
 hipDrvGetErrorName
@@ -450,6 +449,7 @@ hipGraphAddMemFreeNode
 hipGraphMemFreeNodeGetParams
 hipDrvGraphAddMemcpyNode
 hipDrvGraphAddMemsetNode
+hipGetProcAddress
 hipExtGetLastError
 hipGraphAddExternalSemaphoresSignalNode
 hipGraphAddExternalSemaphoresWaitNode
@@ -459,3 +459,5 @@ hipGraphExternalSemaphoresWaitNodeSetParams
 hipGraphExternalSemaphoresWaitNodeGetParams
 hipGraphExecExternalSemaphoresSignalNodeSetParams
 hipGraphExecExternalSemaphoresWaitNodeSetParams
+hipGraphAddNode
+hipGraphInstantiateWithParams

@@ -859,17 +859,14 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
 
-  if (expected_fence_state != amd::Device::kCacheStateSystem) {
-    fence_dirty_ = true;
-  }
-
   if (timestamp_ != nullptr) {
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
 
     // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
     // retrieve this correlation ID to attribute waves to specific dispatch locations.
-    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value) {
+    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value &&
+        activity_prof::IsEnabled(OP_ID_DISPATCH)) {
       auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
       dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
     }
@@ -900,14 +897,14 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
     }
     ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-            "HWq=0x%zx, Dispatch Header = "
+            "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
             "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
             "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
-            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx",
-            gpu_queue_->base_address, header,
+            "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx "
+            "rptr=%u, wptr=%u",
+            gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, header,
             extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
-            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER,
-                           HSA_PACKET_HEADER_WIDTH_BARRIER),
+            extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
             extractAqlBits(header, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
                            HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
             extractAqlBits(header, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
@@ -922,7 +919,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
             reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
-            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal);
+            reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal, read,
+            index);
   }
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index - 1);
@@ -1073,10 +1071,10 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-          "HWq=0x%zx, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
+          "SWq=0x%zx, HWq=0x%zx, id=%d, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
           " release=%d), "
           "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
-          gpu_queue_->base_address, packetHeader,
+          gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, packetHeader,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
                          HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER,
@@ -1152,10 +1150,10 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
 
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
-          "HWq=0x%zx, BarrierValue Header = 0x%x AmdFormat = 0x%x "
+          "SWq=0x%zx, HWq=0x%zx, id=%d, BarrierValue Header = 0x%x AmdFormat = 0x%x "
           "(type=%d, barrier=%d, acquire=%d, release=%d), "
           "signal=0x%zx, value = 0x%llx mask = 0x%llx cond: %s, completion_signal=0x%zx",
-          gpu_queue_, packetHeader, rest,
+          gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, packetHeader, rest,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
@@ -1378,8 +1376,9 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
   kernarg_pool_size_ = kernarg_pool_size;
   kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
   active_chunk_ = 0;
-  if (HIP_FORCE_DEV_KERNARG && roc_device_.info().largeBar_) {
-    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
+  if (dev().settings().device_kernel_args_ && roc_device_.info().largeBar_) {
+    kernarg_pool_base_ =
+      reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
   } else {
     kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
                                                    Device::MemorySegment::kKernArg));
@@ -1861,7 +1860,10 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
                             amd::CopyMetadata copyMetadata) {
   Memory* srcDevMem = dev().getRocMemory(&srcMem);
   Memory* dstDevMem = dev().getRocMemory(&dstMem);
-
+  if (srcDevMem == nullptr || dstDevMem == nullptr) {
+    LogError("submitCopyMemory failed!");
+    return false;
+  }
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;
   syncFlags.skipEntire_ = entire;
@@ -2858,48 +2860,41 @@ bool VirtualGPU::createVirtualQueue(uint deviceQueueSize)
   }
 
   uint64_t vqVA = reinterpret_cast<uint64_t>(vqMem->getDeviceMemory());
-  uint64_t pattern = 0;
-  amd::Coord3D origin(0, 0, 0);
-  amd::Coord3D region(virtualQueue_->getSize(), 1, 1);
 
-  if (!dev().xferMgr().fillBuffer(*vqMem, &pattern, sizeof(pattern), region, origin, region)) {
-    return false;
-  }
+  // Use shadow to prepare the data structure in host.
+  auto shadow = std::make_unique<uint8_t[]>(allocSize);
 
-  AmdVQueueHeader header = {};
+  std::memset(&shadow[0], 0, allocSize);
+
+  AmdVQueueHeader* header = reinterpret_cast<AmdVQueueHeader*>(&shadow[0]);
   // Initialize the virtual queue header
-  header.aql_slot_num = numSlots;
-  header.event_slot_num = dev().settings().numDeviceEvents_;
-  header.event_slot_mask = vqVA + eventMaskOffs;
-  header.event_slots = vqVA + eventsOffs;
-  header.aql_slot_mask = vqVA + slotMaskOffs;
-  header.wait_size = dev().settings().numWaitEvents_;
-  header.arg_size = dev().info().maxParameterSize_ + 64;
-  header.mask_groups = maskGroups_;
-
-  amd::Coord3D origin_header(0);
-  amd::Coord3D region_header(sizeof(AmdVQueueHeader));
-
-  if (!dev().xferMgr().writeBuffer(&header, *vqMem, origin_header, region_header)) {
-    return false;
-  }
+  header->aql_slot_num = numSlots;
+  header->event_slot_num = dev().settings().numDeviceEvents_;
+  header->event_slot_mask = vqVA + eventMaskOffs;
+  header->event_slots = vqVA + eventsOffs;
+  header->aql_slot_mask = vqVA + slotMaskOffs;
+  header->wait_size = dev().settings().numWaitEvents_;
+  header->arg_size = dev().info().maxParameterSize_ + 64;
+  header->mask_groups = maskGroups_;
 
   // Go over all slots and perform initialization
-  AmdAqlWrap slot = {};
   size_t offset = sizeof(AmdVQueueHeader);
   for (uint i = 0; i < numSlots; ++i) {
+    AmdAqlWrap * slot = reinterpret_cast<AmdAqlWrap*>(&shadow[0] + offset);
     uint64_t argStart = vqVA + argOffs + i * singleArgSize;
-    amd::Coord3D origin_slot(offset);
-    amd::Coord3D region_slot(sizeof(AmdAqlWrap));
 
-    slot.aql.kernarg_address = reinterpret_cast<void*>(argStart);
-    slot.wait_list = argStart + dev().info().maxParameterSize_ + 64;
-
-    if (!dev().xferMgr().writeBuffer(&slot, *vqMem, origin_slot, region_slot)) {
-      return false;
-    }
+    slot->aql.kernarg_address = reinterpret_cast<void*>(argStart);
+    slot->wait_list = argStart + dev().info().maxParameterSize_ + 64;
 
     offset += sizeof(AmdAqlWrap);
+  }
+
+  amd::Coord3D origin (0, 0, 0);
+  amd::Coord3D region (allocSize, 1, 1);
+
+  // copy the data structure from host to GPU
+  if (!dev().xferMgr().writeBuffer(&shadow[0], *vqMem, origin, region)) {
+    return false;
   }
 
   deviceQueueSize_ = deviceQueueSize;
@@ -3214,18 +3209,17 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    constexpr uint64_t kSentinel = 0xdeadbeefdeadbeefull;
-    const auto pcieKernargs = !dev().isXgmi() && HIP_FORCE_DEV_KERNARG;
-
+    const auto pcieKernargs = !dev().isXgmi() && dev().settings().device_kernel_args_;
     address argBuffer = hidden_arguments;
+    bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
+
     // Find all parameters for the current kernel
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
       // Allocate buffer to hold kernel arguments
-      if(vcmd != nullptr && vcmd->getCapturingState()) {
+      if (isGraphCapture) {
         argBuffer = vcmd->getKernArgOffset();
       } else {
-        const auto kernargSize = gpuKernel.KernargSegmentByteSize() +
-                                  sizeof(kSentinel) * pcieKernargs;
+        const auto kernargSize = gpuKernel.KernargSegmentByteSize();
         argBuffer = reinterpret_cast<address>(allocKernArg(kernargSize,
                                               gpuKernel.KernargSegmentAlignment()));
       }
@@ -3233,12 +3227,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       nontemporalMemcpy(argBuffer, parameters,
                         std::min(gpuKernel.KernargSegmentByteSize(),
                                  signature.paramsSize()));
-      if (pcieKernargs) {
-        nontemporalMemcpy(argBuffer + gpuKernel.KernargSegmentByteSize(),
-                          &kSentinel, sizeof(kSentinel));
-        if (dev().settings().host_hdp_flush_) {
-          *dev().info().hdpMemFlushCntl = 1u;
-        }
+      if (pcieKernargs && !isGraphCapture) {
+        *dev().info().hdpMemFlushCntl = 1u;
       }
     }
 
@@ -3300,10 +3290,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
-    if (pcieKernargs) {
-      __builtin_ia32_mfence();
-      while (*reinterpret_cast<volatile decltype(kSentinel)*>(
-        argBuffer + gpuKernel.KernargSegmentByteSize()) != kSentinel);
+    if (pcieKernargs && !isGraphCapture) {
+      if (*dev().info().hdpMemFlushCntl != UINT32_MAX) {
+        LogError("Unexpected HDP Register readback value!");
+      }
     }
     if (vcmd == nullptr) {
       // Dispatch the packet
@@ -3476,6 +3466,11 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
     constexpr size_t kPacketSize = 1;
     auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlPacket);
     dispatchGenericAqlPacket(packet, packet->header, packet->setup, false, kPacketSize);
+    // We need to set fence_dirty_ flag as we would use a dispatch packet with  a completion signal
+    // to track graph finish for the last. The sync logic assumes HW event to a barrier packet that
+    // has a system scope release. This would cause isFenceDirty() check at top level to insert
+    // barrier packet wherever needed
+    fence_dirty_ = true;
   } else {
     const Settings& settings = dev().settings();
     if (settings.barrier_value_packet_) {
@@ -3639,6 +3634,11 @@ void VirtualGPU::submitPerfCounter(amd::PerfCounterCommand& vcmd) {
     // one to get the profile object
     amd::PerfCounter* amdCounter = static_cast<amd::PerfCounter*>(counters[0]);
     PerfCounter* counter = static_cast<PerfCounter*>(amdCounter->getDeviceCounter());
+    if (counter == nullptr) {
+      LogError("Invalid Performance Counter");
+      vcmd.setStatus(CL_INVALID_OPERATION);
+      return;
+    }
     PerfCounterProfile* profileRef =  counter->profileRef();
 
     // create the AQL packet for stop profiling

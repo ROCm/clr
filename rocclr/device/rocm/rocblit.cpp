@@ -2270,8 +2270,18 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
                                    amd::CopyMetadata copyMetadata) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
-  bool p2p = (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev()) &&
-             ((sizeIn[0] > ROC_P2P_SDMA_SIZE * Ki) || !gpu().IsPendingDispatch());
+  bool p2p = false;
+  uint32_t blit_wg_ = dev().settings().limit_blit_wg_;
+
+  if (&gpuMem(srcMemory).dev() != &gpuMem(dstMemory).dev()) {
+    if (sizeIn[0] > dev().settings().sdma_p2p_threshold_) {
+      p2p = true;
+    } else {
+      constexpr uint32_t kLimitWgForKernelP2p = 16;
+      blit_wg_ = kLimitWgForKernelP2p;
+    }
+  }
+
   bool asan = false;
   bool ipcShared = srcMemory.owner()->ipcShared() || dstMemory.owner()->ipcShared();
 #if defined(__clang__)
@@ -2317,7 +2327,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 
     // Program the dispatch dimensions
     const size_t localWorkSize = (aligned) ? 512 : 1024;
-    size_t globalWorkSize = std::min(dev().settings().limit_blit_wg_ * localWorkSize, size[0]);
+    size_t globalWorkSize = std::min(blit_wg_ * localWorkSize, size[0]);
     globalWorkSize = amd::alignUp(globalWorkSize, localWorkSize);
 
     // Program kernels arguments for the blit operation
@@ -2557,7 +2567,6 @@ bool KernelBlitManager::streamOpsWrite(device::Memory& memory, uint64_t value,
     setArgument(kernels_[blitType], 1, sizeof(cl_mem), &mem, offset);
     setArgument(kernels_[blitType], 2, sizeof(uint64_t), &value);
   }
-  setArgument(kernels_[blitType], 3, sizeof(size_t), &sizeBytes);
   // Create ND range object for the kernel's execution
   amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
   // Execute the blit

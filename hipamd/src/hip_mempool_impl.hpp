@@ -38,7 +38,7 @@ struct SharedMemPointer {
 };
 
 struct MemoryTimestamp {
-  MemoryTimestamp(hip::Stream* stream, hip::Event* event = nullptr): event_(event) {
+  MemoryTimestamp(hip::Stream* stream): event_(nullptr) {
     if (stream != nullptr) {
       safe_streams_.insert(stream);
     }
@@ -100,13 +100,13 @@ public:
   ~Heap() {}
 
   /// Adds allocation into the heap on a specific stream
-  void AddMemory(amd::Memory* memory, hip::Stream* stream);
+  void AddMemory(amd::Memory* memory, Stream* stream);
 
   /// Adds allocation into the heap with specific TS
   void AddMemory(amd::Memory* memory, const MemoryTimestamp& ts);
 
   /// Finds memory object with the specified size
-  amd::Memory* FindMemory(size_t size, hip::Stream* stream, bool opportunistic, void* dptr = nullptr);
+  amd::Memory* FindMemory(size_t size, Stream* stream, bool opportunistic, void* dptr = nullptr);
 
   /// Removes allocation from the map
   bool RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts = nullptr);
@@ -118,7 +118,7 @@ public:
   bool ReleaseAllMemory();
 
   /// Remove the provided stream from the safe list
-  void RemoveStream(hip::Stream* stream);
+  void RemoveStream(Stream* stream);
 
   /// Enables P2P access to the provided device
   void SetAccess(hip::Device* device, bool enable);
@@ -187,7 +187,8 @@ class MemoryPool : public amd::ReferenceCountedObject {
         free_heap_(device),
         lock_pool_ops_("Pool operations", true),
         device_(device),
-        shared_(nullptr) {
+        shared_(nullptr),
+        max_total_size_(0) {
     device_->AddMemoryPool(this);
     state_.value_ = 0;
     state_.event_dependencies_ = 1;
@@ -210,10 +211,10 @@ class MemoryPool : public amd::ReferenceCountedObject {
   }
 
   /// The same stream can reuse memory without HIP event validation
-  void* AllocateMemory(size_t size, hip::Stream* stream, void* dptr = nullptr);
+  void* AllocateMemory(size_t size, Stream* stream, void* dptr = nullptr);
 
   /// Frees memory by placing memory object with HIP event into free_heap_
-  bool FreeMemory(amd::Memory* memory, hip::Stream* stream);
+  bool FreeMemory(amd::Memory* memory, Stream* stream, Event* event = nullptr);
 
   /// Check if memory is active and belongs to the busy heap
   bool IsBusyMemory(amd::Memory* memory) const { return busy_heap_.IsActiveMemory(memory); }
@@ -263,8 +264,10 @@ class MemoryPool : public amd::ReferenceCountedObject {
   bool EventDependencies() const { return (state_.event_dependencies_) ? true : false; }
   bool Opportunistic() const { return (state_.opportunistic_) ? true : false; }
   bool InternalDependencies() const { return (state_.internal_dependencies_) ? true : false; }
+  bool GraphInUse() const { return (state_.graph_in_use_) ? true : false; }
+  void SetGraphInUse() { state_.graph_in_use_ = true; }
 
-private:
+ private:
   MemoryPool() = delete;
   MemoryPool(const MemoryPool&) = delete;
   MemoryPool& operator=(const MemoryPool&) = delete;
@@ -277,7 +280,8 @@ private:
       uint32_t opportunistic_ : 1;          //!< HIP event check is enabled
       uint32_t internal_dependencies_ : 1;  //!< Runtime adds internal events to handle memory
                                             //!< dependencies
-      uint32_t interprocess_ : 1;  //!< Memory pool can be used in interprocess communications
+      uint32_t interprocess_ : 1;   //!< Memory pool can be used in interprocess communications
+      uint32_t graph_in_use_ : 1;   //!< Memory pool was used in a graph execution
     };
     uint32_t value_;
   } state_;
@@ -286,6 +290,7 @@ private:
   std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
   hip::Device*  device_;    //!< Hip device the heap will reside
   SharedMemPool* shared_;   //!< Pointer to shared memory for IPC
+  uint64_t max_total_size_; //!< Max of total reserved memory in the pool since last reset
 };
 
 

@@ -412,9 +412,12 @@ struct Info : public amd::EmbeddedObject {
   //  the device implement error correction.
   uint32_t errorCorrectionSupport_;
 
-  //! true if the device and the host have a unified memory subsystem and
-  //  is false otherwise.
+  //! true if the device and the host have a unified memory and is false otherwise.
   uint32_t hostUnifiedMemory_;
+
+  //! true if the device and the host have a unified memory management subsystem and
+  //  is false otherwise.
+  uint32_t iommuv2_;
 
   //! Describes the resolution of device timer.
   size_t profilingTimerResolution_;
@@ -1296,9 +1299,6 @@ class VirtualDevice : public amd::HeapObject {
   //! Dispatch captured AQL packet
   virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
 
-  //! Resets fence state of the VirtualGPU
-  virtual void resetFenceDirty() = 0;
-
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
@@ -1813,8 +1813,7 @@ class Device : public RuntimeObject {
    * @param access_flags Access permissions
    * @param count Number of access permissions
    */
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags,
-                            size_t count) = 0;
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) = 0;
 
   /**
    * Get Access permisions for a virtual memory object.

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2023 - 2024 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -115,10 +115,9 @@ void ListAllDeviceWithNoCOFromBundle(const std::unordered_map<std::string,
 }
 
 hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices) {
-  amd_comgr_data_t data_object;
+  amd_comgr_data_t data_object {0};
   amd_comgr_status_t comgr_status = AMD_COMGR_STATUS_SUCCESS;
   hipError_t hip_status = hipSuccess;
-  amd_comgr_code_object_info_t* query_list_array = nullptr;
 
   // If image was passed as a pointer to our hipMod* api, we can try to extract the file name
   // if it was mapped by the app. Otherwise use the COMGR data API.
@@ -266,12 +265,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       fatbin_dev_info_[device->deviceId()]->program_
         = new amd::Program(*(device->asContext()));
     }
-
-    if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
-      LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
-      return hipErrorInvalidValue;
-    }
-
   } while(0);
 
   // Clean up file and memory resouces if hip_status failed for some reason.
@@ -292,7 +285,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       fdesc_ = 0;
       fsize_ = 0;
     }
+  }
 
+  if (data_object.handle) {
     if ((comgr_status = amd_comgr_release_data(data_object)) != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Releasing COMGR data failed with status %d ", comgr_status);
       return hipErrorInvalidValue;
@@ -345,6 +340,29 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
     } else {
       LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for ptr: 0x%x", image_);
     }
+
+    // For the condition: unable to find code object for all devices,
+    // still extract available images to those devices owning them.
+    // This helps users to work with ROCm if there is any supported
+    // GFX on system.
+    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
+      if (code_objs[dev_idx].first) {
+        // Calculate the offset wrt binary_image and the original image
+        size_t offset_l
+          = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first))
+              - reinterpret_cast<address>(const_cast<void*>(image_)));
+
+        fatbin_dev_info_[devices[dev_idx]->deviceId()]
+          = new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
+
+        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_
+          = new amd::Program(*devices[dev_idx]->asContext());
+        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
+          break;
+        }
+      }
+    }
+
     return hip_error;
   }
 

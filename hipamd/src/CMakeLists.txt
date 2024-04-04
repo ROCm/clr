@@ -20,6 +20,10 @@
 
 cmake_minimum_required(VERSION 3.5.1)
 
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 include(GNUInstallDirs)
 
 set(VERSION_MAJOR_AMDHIP ${HIP_VERSION_MAJOR})
@@ -59,6 +63,9 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 if(BUILD_SHARED_LIBS)
   add_library(amdhip64 SHARED)
+  if(WIN32)
+    set_target_properties(amdhip64 PROPERTIES RUNTIME_OUTPUT_NAME "amdhip64_${HIP_VERSION_MAJOR}")
+  endif()
   # Windows doesn't have a strip utility, so CMAKE_STRIP won't be set.
   if((CMAKE_BUILD_TYPE STREQUAL "Release") AND NOT ("${CMAKE_STRIP}" STREQUAL ""))
     add_custom_command(TARGET amdhip64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdhip64>)
@@ -246,7 +253,7 @@ if(USE_PROF_API)
         -E ${PROF_API_NEWHDR} -o ${PROF_API_NEWHDR}.i
     COMMAND_EXPAND_LISTS VERBATIM
     IMPLICIT_DEPENDS C ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED}
-    DEPENDS ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED} 
+    DEPENDS ${PROF_API_HDR} ${PROF_GL_HDR} ${PROF_API_DEPRECATED}
     COMMENT "Generating new header from hip_runtime_api.h")
 
   add_custom_command(OUTPUT ${PROF_API_STR}
@@ -279,6 +286,27 @@ if(USE_PROF_API)
 endif()
 
 target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
+
+if(WIN32)
+    # rocprofiler-register is not support on Windows
+    set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
+else()
+    option(HIP_ENABLE_ROCPROFILER_REGISTER "Enable rocprofiler-register support" ON)
+endif()
+
+if(HIP_ENABLE_ROCPROFILER_REGISTER)
+    find_package(rocprofiler-register REQUIRED
+        HINTS $ENV{rocprofiler_register_ROOT} $ENV{ROCPROFILER_REGISTER_ROOT} ${CMAKE_INSTALL_PREFIX}
+        PATHS /opt/rocm)
+
+    # don't use HIP_VERSION_PATCH because it is too large (> 100) for rocprofiler register
+    target_compile_definitions(amdhip64 PRIVATE HIP_ROCPROFILER_REGISTER=1
+        HIP_ROCP_REG_VERSION_MAJOR=${HIP_VERSION_MAJOR}
+        HIP_ROCP_REG_VERSION_MINOR=${HIP_VERSION_MINOR}
+        HIP_ROCP_REG_VERSION_PATCH=0)
+    target_link_libraries(amdhip64 PRIVATE rocprofiler-register::rocprofiler-register)
+    set_target_properties(amdhip64 PROPERTIES INSTALL_RPATH "\$ORIGIN")
+endif()
 
 add_custom_command(TARGET amdhip64 POST_BUILD COMMAND
   ${CMAKE_COMMAND} -E copy ${PROJECT_BINARY_DIR}/share/hip/.hipInfo ${PROJECT_BINARY_DIR}/lib/.hipInfo)
@@ -335,4 +363,3 @@ install(
     DESTINATION
     ${CONFIG_LANG_PACKAGE_INSTALL_DIR}/
     )
-

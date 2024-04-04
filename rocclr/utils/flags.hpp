@@ -198,7 +198,7 @@ release(bool, HIP_MEM_POOL_SUPPORT, false,                                    \
         "Enables memory pool support in HIP")                                 \
 release(bool, HIP_MEM_POOL_USE_VM, IS_WINDOWS,                                \
         "Enables memory pool support in HIP")                                 \
-release(bool, PAL_HIP_IPC_FLAG, false,                                        \
+release(bool, PAL_HIP_IPC_FLAG, true,                                        \
         "Enable interprocess flag for device allocation in PAL HIP")          \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
         "Force a specific asic revision for all devices")                     \
@@ -219,7 +219,7 @@ release(uint, ROC_P2P_SDMA_SIZE, 1024,                                        \
         "The minimum size in KB for P2P transfer with SDMA")                  \
 release(uint, ROC_AQL_QUEUE_SIZE, 16384,                                      \
         "AQL queue size in AQL packets")                                      \
-release(uint, ROC_SIGNAL_POOL_SIZE, 32,                                       \
+release(uint, ROC_SIGNAL_POOL_SIZE, 4096,                                     \
         "Initial size of HSA signal pool")                                    \
 release(uint, DEBUG_CLR_LIMIT_BLIT_WG, 16,                                    \
         "Limit the number of workgroups in blit operations")                  \
@@ -233,9 +233,9 @@ release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
         "Set this to true to force runtime unbundler in hiprtc.")             \
 release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
         "Set initial heap size for device malloc.")                           \
-release(bool, HIP_FORCE_DEV_KERNARG, 0,                                       \
+release(bool, HIP_FORCE_DEV_KERNARG, true,                                    \
          "Force device mem for kernel args.")                                 \
-release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, false,                          \
+release(bool, DEBUG_CLR_GRAPH_PACKET_CAPTURE, true,                           \
          "Enable/Disable graph packet capturing")                             \
 release(bool, GPU_DEBUG_ENABLE, false,                                        \
         "Enables collection of extra info for debugger at some perf cost")    \
@@ -245,6 +245,8 @@ release(cstring, HIPRTC_LINK_OPTIONS_APPEND, "",                              \
         "Set link options needed for hiprtc compilation")                     \
 release(bool, HIP_VMEM_MANAGE_SUPPORT, true,                                  \
         "Virtual Memory Management Support")                                  \
+release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
+         "Enable/Disable graph debug dot print dump")                         \
 
 namespace amd {
 

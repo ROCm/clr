@@ -27,6 +27,10 @@
 cmake_minimum_required(VERSION 3.16.1)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW)
+endif()
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 if(BUILD_SHARED_LIBS)
@@ -146,8 +150,9 @@ ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_surface_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_complex.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_math_constants.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/math_fwd.h
-${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_device_functions.h
+${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_warp_sync_functions.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/hip_cooperative_groups_helper.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_cooperative_groups.h
 ${PROJECT_SOURCE_DIR}/include/hip/amd_detail/amd_hip_unsafe_atomics.h
@@ -167,7 +172,7 @@ generate_hiprtc_mcin("${HIPRTC_GEN_MCIN}" "${HIPRTC_GEN_PREPROCESSED}")
 # Note: second command appends define macros at build time.
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_PREPROCESSED}
-  COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR} -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -DHIP_VERSION_MAJOR=${HIP_LIB_VERSION_MAJOR} -DHIP_VERSION_MINOR=${HIP_LIB_VERSION_MINOR} -x hip ${HIPRTC_GEN_HEADER} -E -o ${HIPRTC_GEN_PREPROCESSED}
+  COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR} -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -DHIP_VERSION_MAJOR=${HIP_LIB_VERSION_MAJOR} -DHIP_VERSION_MINOR=${HIP_LIB_VERSION_MINOR} -x hip ${HIPRTC_GEN_HEADER} -E -P -o ${HIPRTC_GEN_PREPROCESSED}
   COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_HEADERS="${HIPRTC_HEADERS}" -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
   DEPENDS clang ${HIPRTC_GEN_HEADER})
 add_custom_command(

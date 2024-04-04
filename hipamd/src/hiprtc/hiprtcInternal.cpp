@@ -33,13 +33,21 @@ THE SOFTWARE.
 
 namespace hiprtc {
 using namespace helpers;
+std::unordered_set<RTCLinkProgram*>RTCLinkProgram::linker_set_;
 
 std::vector<std::string> getLinkOptions(const LinkArguments& args) {
   std::vector<std::string> res;
-  auto irArgCount = args.linkerIRArgCount();
+
+  {  // process optimization level
+    std::string opt("-O");
+    opt += std::to_string(args.optimization_level_);
+    res.push_back(opt);
+  }
+
+  const auto irArgCount = args.linker_ir2isa_args_count_;
   if (irArgCount > 0) {
     res.reserve(irArgCount);
-    auto irArg = args.linkerIRArg();
+    const auto irArg = args.linker_ir2isa_args_;
     for (size_t i = 0; i < irArgCount; i++) {
       res.emplace_back(std::string(irArg[i]));
     }
@@ -59,7 +67,8 @@ RTCProgram::RTCProgram(std::string name) : name_(name) {
 bool RTCProgram::findIsa() {
   const char* libName;
 #ifdef _WIN32
-  libName = "amdhip64.dll";
+  std::string dll_name = std::string("amdhip64_" + std::to_string(HIP_VERSION_MAJOR) + ".dll");
+  libName = dll_name.c_str();
 #else
   libName = "libamdhip64.so";
 #endif
@@ -116,7 +125,6 @@ bool RTCProgram::findIsa() {
 
 // RTC Compile Program Member Functions
 void RTCProgram::AppendOptions(const std::string app_env_var, std::vector<std::string>* options) {
-
   if (options == nullptr) {
     LogError("Append options passed is nullptr.");
     return;
@@ -171,8 +179,6 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back("-fms-compatibility");
 #endif
   AppendCompileOptions();
-
-  exe_options_.push_back("-O3");
 }
 
 bool RTCCompileProgram::addSource(const std::string& source, const std::string& name) {
@@ -261,10 +267,6 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
       i = "--offload-arch=" + val;
       continue;
     }
-    if (i == "--save-temps") {
-      settings_.dumpISA = true;
-      continue;
-    }
   }
 
   // Removed consumed options
@@ -300,78 +302,28 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
   compileOpts.reserve(compile_options_.size() + options.size() + 2);
   compileOpts.insert(compileOpts.end(), options.begin(), options.end());
 
-  if (!fgpu_rdc_) {
-    compileOpts.push_back("-Xclang");
-    compileOpts.push_back("-disable-llvm-passes");
-  }
-
   if (!transformOptions(compileOpts)) {
     LogError("Error in hiprtc: unable to transform options");
     return false;
   }
 
-  if (!compileToBitCode(compile_input_, isa_, compileOpts, build_log_, LLVMBitcode_)) {
-    LogError("Error in hiprtc: unable to compile source to bitcode");
-    return false;
-  }
-
-  if (fgpu_rdc_ && !mangled_names_.empty()) {
-    if (!fillMangledNames(LLVMBitcode_, mangled_names_, true)) {
-      LogError("Error in hiprtc: unable to fill mangled names");
+  if (fgpu_rdc_) {
+    if (!compileToBitCode(compile_input_, isa_, compileOpts, build_log_, LLVMBitcode_)) {
+      LogError("Error in hiprtc: unable to compile source to bitcode");
       return false;
     }
-
-    return true;
-  }
-
-  std::string linkFileName = "linked";
-  if (!addCodeObjData(link_input_, LLVMBitcode_, linkFileName, AMD_COMGR_DATA_KIND_BC)) {
-    LogError("Error in hiprtc: unable to add linked code object");
-    return false;
-  }
-
-  std::vector<char> LinkedLLVMBitcode;
-  if (!linkLLVMBitcode(link_input_, isa_, link_options_, build_log_, LinkedLLVMBitcode)) {
-    LogError("Error in hiprtc: unable to add device libs to linked bitcode");
-    return false;
-  }
-
-  std::string linkedFileName = "LLVMBitcode.bc";
-  if (!addCodeObjData(exec_input_, LinkedLLVMBitcode, linkedFileName, AMD_COMGR_DATA_KIND_BC)) {
-    LogError("Error in hiprtc: unable to add device libs linked code object");
-    return false;
-  }
-
-  std::vector<std::string> exe_options;
-  // Find the options passed by the app which can be used during BC to Relocatable phase.
-  if (!findExeOptions(options, exe_options)) {
-    LogError("Error in hiprtc: unable to find executable options");
-    return false;
-  }
-
-  std::vector<std::string> exeOpts(exe_options_);
-  exeOpts.reserve(exeOpts.size() + exe_options.size() + 2);
-  // Add these below options by default for optimizations during BC to Relocatable phase.
-  exeOpts.push_back("-mllvm");
-  exeOpts.push_back("-amdgpu-internalize-symbols");
-  // User provided options are appended at the end since they can override the above
-  // default options if necessary
-  exeOpts.insert(exeOpts.end(), exe_options.begin(), exe_options.end());
-
-  if (settings_.dumpISA) {
-    if (!dumpIsaFromBC(exec_input_, isa_, exeOpts, name_, build_log_)) {
-      LogError("Error in hiprtc: unable to dump isa code");
+  } else {
+    LogInfo("Using the new path of comgr");
+    if (!compileToExecutable(compile_input_, isa_, compileOpts, link_options_, build_log_,
+                             executable_)) {
+      LogError("Failing to compile to realloc");
       return false;
     }
-  }
-
-  if (!createExecutable(exec_input_, isa_, exeOpts, build_log_, executable_)) {
-    LogError("Error in hiprtc: unable to create executable");
-    return false;
   }
 
   if (!mangled_names_.empty()) {
-    if (!fillMangledNames(executable_, mangled_names_, false)) {
+    auto& compile_step_output = fgpu_rdc_ ? LLVMBitcode_ : executable_;
+    if (!fillMangledNames(compile_step_output, mangled_names_, fgpu_rdc_)) {
       LogError("Error in hiprtc: unable to fill mangled names");
       return false;
     }
@@ -379,6 +331,7 @@ bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fg
 
   return true;
 }
+
 
 void RTCCompileProgram::stripNamedExpression(std::string& strippedName) {
   if (strippedName.back() == ')') {
@@ -448,12 +401,21 @@ RTCLinkProgram::RTCLinkProgram(std::string name) : RTCProgram(name) {
   if (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS) {
     crashWithMessage("Failed to allocate internal hiprtc structure");
   }
+  amd::ScopedLock lock(lock_);
+  linker_set_.insert(this);
+}
+
+bool RTCLinkProgram::isLinkerValid(RTCLinkProgram* link_program) {
+  amd::ScopedLock lock(lock_);
+  if (linker_set_.find(link_program) == linker_set_.end()) {
+    return false;
+  }
+  return true;
 }
 
 bool RTCLinkProgram::AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
                                       void** options_vals_ptr) {
   for (size_t opt_idx = 0; opt_idx < num_options; ++opt_idx) {
-
     switch (options_ptr[opt_idx]) {
       case HIPRTC_JIT_MAX_REGISTERS:
         link_args_.max_registers_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
@@ -681,7 +643,6 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
   }
 
   std::vector<std::string> exe_options = getLinkOptions(link_args_);
-  exe_options.push_back("-O3");
   LogPrintfInfo("Exe options forwarded to compiler: %s",
                 [&]() {
                   std::string ret;
@@ -693,7 +654,7 @@ bool RTCLinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
                 }()
                     .c_str());
   if (!createExecutable(exec_input_, isa_, exe_options, build_log_, executable_)) {
-    LogError("Error in hiprtc: unable to create exectuable");
+    LogPrintfInfo("Error in hiprtc: unable to create exectuable: %s", build_log_.c_str());
     return false;
   }
 

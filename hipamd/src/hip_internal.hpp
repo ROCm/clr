@@ -241,6 +241,7 @@ public:
 
   class Device;
   class MemoryPool;
+  class Event;
   class Stream : public amd::HostQueue {
   public:
     enum Priority : int { High = -1, Normal = 0, Low = 1 };
@@ -487,7 +488,7 @@ public:
     void setFlags(unsigned int flags) { flags_ = flags; }
     void Reset();
 
-    hip::Stream* NullStream();
+    hip::Stream* NullStream(bool wait = true);
     Stream* GetNullStream() const {return null_stream_;};
 
     void SetActiveStatus() {
@@ -526,7 +527,7 @@ public:
     void RemoveMemoryPool(MemoryPool* pool);
 
     /// Free memory from the device
-    bool FreeMemory(amd::Memory* memory, Stream* stream);
+    bool FreeMemory(amd::Memory* memory, Stream* stream, Event* event = nullptr);
 
     /// Release freed memory from all pools on the current device
     void ReleaseFreedMemory();
@@ -534,6 +535,8 @@ public:
     /// Removes a destroyed stream from the safe list of memory pools
     void RemoveStreamFromPools(Stream* stream);
 
+    /// Returns true if memory pool is valid on this device
+    bool IsMemoryPoolValid(MemoryPool* pool);
   };
 
   /// Thread Local Storage Variables Aggregator Class
@@ -572,7 +575,7 @@ public:
   /// Get default stream associated with the ROCclr context
   extern hip::Stream* getNullStream(amd::Context&);
   /// Get default stream of the thread
-  extern hip::Stream* getNullStream();
+  extern hip::Stream* getNullStream(bool wait = true);
   /// Get device ID associated with the ROCclr context
   int getDeviceID(amd::Context& ctx);
   /// Check if stream is valid

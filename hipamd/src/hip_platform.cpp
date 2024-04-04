@@ -958,4 +958,27 @@ bool PlatformState::CloseUniqueFileHandle(const std::shared_ptr<UniqueFD>& ufd) 
   }
   return true;
 }
+
+void* PlatformState::getDynamicLibraryHandle() {
+  amd::ScopedLock lock(lock_);
+
+  if (dynamicLibraryHandle_ != nullptr) {
+    return dynamicLibraryHandle_;
+  }
+
+#ifdef _WIN32
+  const char* libName = "amdhip64.dll";
+#else
+  const char* libName = "libamdhip64.so";
+#endif
+
+  dynamicLibraryHandle_ = amd::Os::loadLibrary(libName);
+  return dynamicLibraryHandle_;
+}
+
+void PlatformState::setDynamicLibraryHandle(void* handle){
+  amd::ScopedLock lock(lock_);
+  dynamicLibraryHandle_ = handle;
+}
+
 } //namespace hip
