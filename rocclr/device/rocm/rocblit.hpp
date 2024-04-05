@@ -238,6 +238,8 @@ class DmaBlitManager : public device::HostBlitManager {
   amd::Context* context_;                     //!< A dummy context
   mutable size_t sdmaEngineRetainCount_;      //!< Keeps track of memcopies to either get the last
                                               //!< used SDMA engine or fetch the new mask
+  uint32_t sdmaEngineReadMask_;               //!< SDMA Engine Read Mask
+  uint32_t sdmaEngineWriteMask_;              //!< SDMA Engine Write Mask
 
  private:
   //! Disable copy constructor

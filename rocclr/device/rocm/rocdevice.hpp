@@ -583,7 +583,8 @@ class Device : public NullDevice {
   void HiddenHeapAlloc(const VirtualGPU& gpu);
 
   uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
-  void resetSDMAMask(const device::BlitManager* handle) const ;
+  void resetSDMAMask(const device::BlitManager* handle) const;
+  void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;
   bool isXgmi() const { return isXgmi_; }
 
  private:
