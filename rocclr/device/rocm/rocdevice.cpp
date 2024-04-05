@@ -3474,6 +3474,12 @@ uint32_t Device::fetchSDMAMask(const device::BlitManager* handle, bool readEngin
 }
 
 // ================================================================================================
+void Device::getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const {
+  *readMask = maxSdmaReadMask_;
+  *writeMask = maxSdmaWriteMask_;
+}
+
+// ================================================================================================
 void Device::resetSDMAMask(const device::BlitManager* handle) const {
   amd::ScopedLock lock(vgpusAccess());
 

@@ -33,7 +33,9 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
       context_(nullptr),
-      sdmaEngineRetainCount_(0) {}
+      sdmaEngineRetainCount_(0) {
+        dev().getSdmaRWMasks(&sdmaEngineReadMask_, &sdmaEngineWriteMask_);
+      }
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -731,6 +733,8 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
         // Check if there a recently used SDMA engine for the stream
         copyMask = gpu().getLastUsedSdmaEngine();
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+        copyMask &= (engine == HwQueueEngine::SdmaRead ?
+                    sdmaEngineReadMask_ : sdmaEngineWriteMask_);
       }
       if (copyMask == 0) {
         // Check SDMA engine status
