@@ -503,11 +503,28 @@ bool Device::init() {
       if (end == std::string::npos) {
         end = ordinals.size();
       }
-      std::string strIndex = ordinals.substr(pos, end - pos);
-      int index = atoi(strIndex.c_str());
+      std::string str_id = ordinals.substr(pos, end - pos);
+      // If Uuid is specified, then convert it to index
+      // Uuid is an Ascii string with a maximum of 21 chars including NULL
+      // The string value is in the format GPU-<body>, <body> encodes UUID as a 16 chars hex
+      if (str_id.find("GPU-") != std::string::npos) {
+        for (int i = 0; i < gpu_agents_.size(); i++) {
+          auto agent = gpu_agents_[i];
+          char unique_id[32] = {0};
+          if (HSA_STATUS_SUCCESS ==
+            hsa_agent_get_info(agent, static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_UUID),
+                              unique_id)) {
+            if (std::string(unique_id).find(str_id) != std::string::npos) {
+              str_id = std::to_string(i);
+              break;
+            }
+          }
+        }
+      }
+      int index = atoi(str_id.c_str());
       if (index < 0 ||
           static_cast<size_t>(index) >= gpu_agents_.size() ||
-          strIndex != std::to_string(index)) {
+          str_id != std::to_string(index)) {
         deviceIdValid = false;
       }
 
