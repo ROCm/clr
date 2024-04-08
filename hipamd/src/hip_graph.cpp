@@ -1228,7 +1228,7 @@ hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGra
   HIP_INIT_API(hipDrvGraphAddMemsetNode, phGraphNode, hGraph, dependencies, numDependencies,
                memsetParams, ctx);
   if (phGraphNode == nullptr || hGraph == nullptr ||
-      (numDependencies > 0 && dependencies == nullptr)) {
+      (numDependencies > 0 && dependencies == nullptr) || memsetParams == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::GraphNode* node;
