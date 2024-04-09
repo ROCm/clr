@@ -1190,6 +1190,10 @@ hipError_t hipGraphExecMemcpyNodeSetParams1D(hipGraphExec_t hGraphExec, hipGraph
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  hipMemcpyKind oldkind =  reinterpret_cast<hip::GraphMemcpyNode1D*>(clonedNode)->GetMemcpyKind();
+  if (oldkind != kind) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNode1D*>(clonedNode)->SetParams(dst, src,
                                                                               count, kind));
 }
@@ -1577,6 +1581,12 @@ hipError_t hipGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
   }
   hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
   if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hipMemcpyKind oldkind =  reinterpret_cast<hip::GraphMemcpyNode*>(clonedNode)->GetMemcpyKind();
+  hipMemcpyKind newkind =  pNodeParams->kind;
+  if (oldkind != newkind) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNode*>(clonedNode)->SetParams(pNodeParams));
@@ -2112,6 +2122,11 @@ hipError_t hipGraphExecMemcpyNodeSetParamsFromSymbol(hipGraphExec_t hGraphExec, 
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  hipMemcpyKind oldkind =  reinterpret_cast<hip::GraphMemcpyNodeFromSymbol*>(clonedNode)->GetMemcpyKind();
+  if (oldkind != kind) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   constexpr bool kCheckDeviceIsSame = true;
   HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNodeFromSymbol*>(clonedNode)
                  ->SetParams(dst, symbol, count, offset, kind, kCheckDeviceIsSame));
@@ -2180,6 +2195,10 @@ hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hi
 
   hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
   if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hipMemcpyKind oldkind =  reinterpret_cast<hip::GraphMemcpyNodeToSymbol*>(clonedNode)->GetMemcpyKind();
+  if (oldkind != kind) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   constexpr bool kCheckDeviceIsSame = true;
