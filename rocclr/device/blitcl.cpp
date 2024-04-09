@@ -48,12 +48,12 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
   extern void __ockl_gws_init(uint nwm1, uint rid);
 
   __kernel void __amd_rocclr_fillBufferAligned(
-      __global uchar* bufUChar, __global ushort* bufUShort, __global uint* bufUInt,
-      __global ulong* bufULong, __global ulong2* bufULong2, __constant uchar* pattern,
-      uint pattern_size, ulong offset, ulong end_ptr, uint next_chunk) {
+    __global void* buf, __constant uchar* pattern,
+    uint pattern_size, uint alignment, ulong end_ptr, uint next_chunk) {
     int id = get_global_id(0);
-    long cur_id = offset + id * pattern_size;
-    if (bufULong2) {
+    long cur_id = id * pattern_size;
+    if (alignment == sizeof(ulong2)) {
+      __global ulong2* bufULong2 = (__global ulong2*)buf;
       __global ulong2* element = &bufULong2[cur_id];
       __constant ulong2* pt = (__constant ulong2*)pattern;
       while ((ulong)element < end_ptr) {
@@ -62,7 +62,8 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
         }
         element += next_chunk;
       }
-    } else if (bufULong) {
+    } else if (alignment == sizeof(ulong)) {
+      __global ulong* bufULong = (__global ulong*)buf;
       __global ulong* element = &bufULong[cur_id];
       __constant ulong* pt = (__constant ulong*)pattern;
       while ((ulong)element < end_ptr) {
@@ -71,7 +72,8 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
         }
         element += next_chunk;
       }
-    } else if (bufUInt) {
+    } else if (alignment == sizeof(uint)) {
+      __global uint* bufUInt = (__global uint*)buf;
       __global uint* element = &bufUInt[cur_id];
       __constant uint* pt = (__constant uint*)pattern;
       while ((ulong)element < end_ptr) {
@@ -80,7 +82,8 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
         }
         element += next_chunk;
       }
-    } else if (bufUShort) {
+    } else if (alignment == sizeof(ushort)) {
+      __global ushort* bufUShort = (__global ushort*)buf;
       __global ushort* element = &bufUShort[cur_id];
       __constant ushort* pt = (__constant ushort*)pattern;
       while ((ulong)element < end_ptr) {
@@ -90,6 +93,7 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
         element += next_chunk;
       }
     } else {
+      __global uchar* bufUChar = (__global uchar*)buf;
       __global uchar* element = &bufUChar[cur_id];
       while ((ulong)element < end_ptr) {
         for (uint i = 0; i < pattern_size; ++i) {
@@ -115,14 +119,11 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
                               pitch);
   }
 
-  __kernel void __amd_rocclr_copyBuffer(__global uchar* srcI, __global uchar* dstI,
-                                          ulong srcOrigin, ulong dstOrigin, ulong size, uint remainder,
+  __kernel void __amd_rocclr_copyBuffer(__global uchar* src, __global uchar* dst,
+                                          ulong size, uint remainder,
                                           uint aligned_size, ulong end_ptr, uint next_chunk) {
     ulong id = get_global_id(0);
     ulong id_remainder = id;
-
-    __global uchar* src = srcI + srcOrigin;
-    __global uchar* dst = dstI + dstOrigin;
 
     if (aligned_size == sizeof(ulong2)) {
       __global ulong2* srcD = (__global ulong2*)(src);

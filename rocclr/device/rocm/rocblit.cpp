@@ -2108,37 +2108,7 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
                            (kpattern_size & 0x1) == 0 ? sizeof(uint16_t) : sizeof(uint8_t);
       // Program kernels arguments for the fill operation
       cl_mem mem = as_cl<amd::Memory>(memory.owner());
-      if (alignment == 2 * sizeof(uint64_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), &mem);
-      } else if (alignment == sizeof(uint64_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else if (alignment == sizeof(uint32_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else if (alignment == sizeof(uint16_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      }
+      setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem, koffset);
       const size_t localWorkSize = 256;
       size_t globalWorkSize =
           std::min(dev().settings().limit_blit_wg_ * localWorkSize, kfill_size);
@@ -2153,18 +2123,18 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
         memcpy(constBuf, pattern, kpattern_size);
       }
       constexpr bool kDirectVa = true;
-      setArgument(kernels_[kFillType], 5, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
+      setArgument(kernels_[kFillType], 1, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
 
       // Adjust the pattern size in the copy type size
       kpattern_size /= alignment;
-      setArgument(kernels_[kFillType], 6, sizeof(uint32_t), &kpattern_size);
-      koffset /= alignment;
-      setArgument(kernels_[kFillType], 7, sizeof(koffset), &koffset);
+      setArgument(kernels_[kFillType], 2, sizeof(uint32_t), &kpattern_size);
+      setArgument(kernels_[kFillType], 3, sizeof(alignment), &alignment);
+
       // Calculate max id
-      kfill_size = memory.virtualAddress() + (koffset + kfill_size * kpattern_size) * alignment;
-      setArgument(kernels_[kFillType], 8, sizeof(kfill_size), &kfill_size);
+      kfill_size = memory.virtualAddress() + koffset + kfill_size * kpattern_size * alignment;
+      setArgument(kernels_[kFillType], 4, sizeof(kfill_size), &kfill_size);
       uint32_t next_chunk = globalWorkSize * kpattern_size;
-      setArgument(kernels_[kFillType], 9, sizeof(uint32_t), &next_chunk);
+      setArgument(kernels_[kFillType], 5, sizeof(uint32_t), &next_chunk);
 
       // Create ND range object for the kernel's execution
       amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
@@ -2351,31 +2321,27 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 
     // Program kernels arguments for the blit operation
     cl_mem mem = as_cl<amd::Memory>(srcMemory.owner());
-    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
-    mem = as_cl<amd::Memory>(dstMemory.owner());
-    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
-
     // Program source origin
     uint64_t srcOffset = srcOrigin[0];
-    setArgument(kernels_[kBlitType], 2, sizeof(srcOffset), &srcOffset);
-
+    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, srcOffset, &srcMemory);
+    mem = as_cl<amd::Memory>(dstMemory.owner());
     // Program destinaiton origin
     uint64_t dstOffset = dstOrigin[0];
-    setArgument(kernels_[kBlitType], 3, sizeof(dstOffset), &dstOffset);
+    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, dstOffset, &dstMemory);
 
     uint64_t copySize = sizeIn[0];
-    setArgument(kernels_[kBlitType], 4, sizeof(copySize), &copySize);
+    setArgument(kernels_[kBlitType], 2, sizeof(copySize), &copySize);
 
-    setArgument(kernels_[kBlitType], 5, sizeof(remainder), &remainder);
-    setArgument(kernels_[kBlitType], 6, sizeof(aligned_size), &aligned_size);
+    setArgument(kernels_[kBlitType], 3, sizeof(remainder), &remainder);
+    setArgument(kernels_[kBlitType], 4, sizeof(aligned_size), &aligned_size);
 
     // End pointer is the aligned copy size and destination offset
     uint64_t end_ptr = dstMemory.virtualAddress() + dstOffset + sizeIn[0] - remainder;
 
-    setArgument(kernels_[kBlitType], 7, sizeof(end_ptr), &end_ptr);
+    setArgument(kernels_[kBlitType], 5, sizeof(end_ptr), &end_ptr);
 
     uint32_t next_chunk = globalWorkSize;
-    setArgument(kernels_[kBlitType], 8, sizeof(next_chunk), &next_chunk);
+    setArgument(kernels_[kBlitType], 6, sizeof(next_chunk), &next_chunk);
 
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(1, nullptr, &globalWorkSize, &localWorkSize);
