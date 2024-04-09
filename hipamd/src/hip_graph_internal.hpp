@@ -1268,7 +1268,7 @@ class GraphMemcpyNode : public GraphNode {
     std::memcpy(params, &copyParams_, sizeof(hipMemcpy3DParms));
   }
 
-  virtual hipMemcpyKind GetMemcpyKind() const { return hipMemcpyDefault; };
+  virtual hipMemcpyKind GetMemcpyKind() const { return copyParams_.kind; };
 
   hipError_t SetParams(const hipMemcpy3DParms* params) {
     hipError_t status = ValidateParams(params);
