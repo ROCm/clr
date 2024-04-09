@@ -674,7 +674,8 @@ class Settings : public amd::HeapObject {
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
-      uint reserved_ : 10;
+      uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
+      uint reserved_ : 9;
     };
     uint value_;
   };
