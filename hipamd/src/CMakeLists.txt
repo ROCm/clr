@@ -162,6 +162,14 @@ target_include_directories(amdhip64
 target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
 target_link_libraries(amdhip64 PRIVATE ${OPENGL_LIBRARIES})
 target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
+# Add link to comgr, hsa-runtime and other required libraries in target files
+# This is required for static libraries
+if(NOT BUILD_SHARED_LIBS)
+  find_package(hsa-runtime64)
+  find_package(amd_comgr)
+  target_link_libraries(amdhip64 PRIVATE
+    pthread numa rt c amd_comgr hsa-runtime64::hsa-runtime64)
+endif()
 
 # Note in static case we cannot link against rocclr.
 # If we would, we'd also have to export rocclr and have hipcc pass it to the linker.

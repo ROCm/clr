@@ -102,6 +102,14 @@ if(WIN32)
 endif()
 
 target_link_libraries(hiprtc PUBLIC ${CMAKE_DL_LIBS})
+# Add link to comgr, hsa-runtime and other required libraries in target files
+# This is required for static libraries
+if(NOT BUILD_SHARED_LIBS)
+  find_package(hsa-runtime64)
+  find_package(amd_comgr)
+  target_link_libraries(hiprtc PRIVATE
+    pthread numa rt c amd_comgr hsa-runtime64::hsa-runtime64)
+endif()
 
 if(BUILD_SHARED_LIBS)
   target_link_libraries(hiprtc PRIVATE rocclr)
