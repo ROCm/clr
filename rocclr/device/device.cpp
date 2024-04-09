@@ -455,6 +455,9 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   if (!GPU_DUMP_BLIT_KERNELS) {
     opt += " -fno-enable-dump";
   }
+  if (device->settings().kernel_arg_opt_) {
+    opt += " -Wb,-amdgpu-kernarg-preload-count=8 ";
+  }
   if ((retval = program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS))
       != CL_SUCCESS) {
     DevLogPrintfError("Build failed for Kernel: %s with error code %d\n",
@@ -775,11 +778,11 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  // Amount of space used by each wave is in units of 256 dwords. 
+  // Amount of space used by each wave is in units of 256 dwords.
   // As per COMPUTE_TMPRING_SIZE.WAVE_SIZE 24:12
-  // The field size supports a range of 0->(2M-256) dwords per wave64. 
+  // The field size supports a range of 0->(2M-256) dwords per wave64.
   // Per lane this works out to 131056 bytes or 128K - 16
-  uint64_t kStackSize = ((128 * Ki) - 16); 
+  uint64_t kStackSize = ((128 * Ki) - 16);
   if (stackSize > kStackSize) {
     return false;
   }

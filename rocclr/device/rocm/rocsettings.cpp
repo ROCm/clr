@@ -170,6 +170,7 @@ bool Settings::create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor
   if (gfxipMajor == 9 && gfxipMinor == 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)) {
     device_kernel_args_ = HIP_FORCE_DEV_KERNARG && device_kernel_args;
+    kernel_arg_opt_ = true;
   }
 
   if (gfxipMajor >= 10) {
@@ -236,6 +237,10 @@ void Settings::override() {
 
   if (!flagIsDefault(HIP_FORCE_DEV_KERNARG)) {
     device_kernel_args_ = HIP_FORCE_DEV_KERNARG;
+  }
+
+  if (!flagIsDefault(DEBUG_CLR_BLIT_KERNARG_OPT)) {
+    kernel_arg_opt_ = DEBUG_CLR_BLIT_KERNARG_OPT;
   }
 }
 }  // namespace roc
