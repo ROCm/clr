@@ -42,6 +42,7 @@ extern void __amd_scheduler_pal(__global void*, __global void*, uint);
 \n);
 
 const char* TrapHandlerCode = RUNTIME_KERNEL(
+\n.if .amdgcn.gfx_generation_number < 12
 \n.set SQ_WAVE_PC_HI_ADDRESS_MASK              , 0xFFFF
 \n.set SQ_WAVE_PC_HI_HT_SHIFT                  , 24
 \n.set SQ_WAVE_PC_HI_TRAP_ID_SHIFT             , 16
@@ -259,5 +260,187 @@ const char* TrapHandlerCode = RUNTIME_KERNEL(
 \n.parked:
 \n  s_trap               0x2
 \n  s_branch             .parked
+\n.else
+\n.set DOORBELL_ID_SIZE                          , 10
+\n.set DOORBELL_ID_MASK                          , ((1 << DOORBELL_ID_SIZE) - 1)
+\n.set EC_QUEUE_WAVE_ABORT_M0                    , (1 << (DOORBELL_ID_SIZE + 0))
+\n.set EC_QUEUE_WAVE_TRAP_M0                     , (1 << (DOORBELL_ID_SIZE + 1))
+\n.set EC_QUEUE_WAVE_MATH_ERROR_M0               , (1 << (DOORBELL_ID_SIZE + 2))
+\n.set EC_QUEUE_WAVE_ILLEGAL_INSTRUCTION_M0      , (1 << (DOORBELL_ID_SIZE + 3))
+\n.set EC_QUEUE_WAVE_MEMORY_VIOLATION_M0         , (1 << (DOORBELL_ID_SIZE + 4))
+\n.set EC_QUEUE_WAVE_APERTURE_VIOLATION_M0       , (1 << (DOORBELL_ID_SIZE + 5))
+\n.set SQ_WAVE_EXCP_FLAG_PRIV_MEMVIOL_SHIFT      , 4
+\n.set SQ_WAVE_EXCP_FLAG_PRIV_HT_SHIFT           , 7
+\n.set SQ_WAVE_EXCP_FLAG_PRIV_ILLEGAL_INST_SHIFT , 6
+\n.set SQ_WAVE_EXCP_FLAG_PRIV_XNACK_ERROR_SHIFT  , 8
+\n.set SQ_WAVE_EXCP_FLAG_USER_MATH_EXCP_SHIFT    , 0
+\n.set SQ_WAVE_EXCP_FLAG_USER_MATH_EXCP_SIZE     , 6
+\n.set SQ_WAVE_TRAP_CTRL_MATH_EXCP_SHIFT         , 0
+\n.set SQ_WAVE_TRAP_CTRL_MATH_EXCP_SIZE          , 6
+\n.set SQ_WAVE_PC_HI_ADDRESS_MASK                , 0xFFFF
+\n.set SQ_WAVE_PC_HI_TRAP_ID_BFE                 , (SQ_WAVE_PC_HI_TRAP_ID_SHIFT | (SQ_WAVE_PC_HI_TRAP_ID_SIZE << 16))
+\n.set SQ_WAVE_PC_HI_TRAP_ID_SHIFT               , 28
+\n.set SQ_WAVE_PC_HI_TRAP_ID_SIZE                , 4
+\n.set SQ_WAVE_STATE_PRIV_HALT_BFE               , (SQ_WAVE_STATE_PRIV_HALT_SHIFT | (1 << 16))
+\n.set SQ_WAVE_STATE_PRIV_HALT_SHIFT             , 14
+\n.set TRAP_ID_ABORT                             , 2
+\n.set TRAP_ID_DEBUGTRAP                         , 3
+\n.set TTMP6_SAVED_STATUS_HALT_MASK              , (1 << TTMP6_SAVED_STATUS_HALT_SHIFT)
+\n.set TTMP6_SAVED_STATUS_HALT_SHIFT             , 29
+\n.set TTMP6_SAVED_TRAP_ID_BFE                   , (TTMP6_SAVED_TRAP_ID_SHIFT | (TTMP6_SAVED_TRAP_ID_SIZE << 16))
+\n.set TTMP6_SAVED_TRAP_ID_MASK                  , (((1 << TTMP6_SAVED_TRAP_ID_SIZE) - 1) << TTMP6_SAVED_TRAP_ID_SHIFT)
+\n.set TTMP6_SAVED_TRAP_ID_SHIFT                 , 25
+\n.set TTMP6_SAVED_TRAP_ID_SIZE                  , 4
+\n.set TTMP6_WAVE_STOPPED_SHIFT                  , 30
+\n.set TTMP8_DEBUG_FLAG_SHIFT                    , 31
+\n.set TTMP11_DEBUG_ENABLED_SHIFT                , 23
+\n.set TTMP_PC_HI_SHIFT                          , 7
+\n
+\n// ABI between first and second level trap handler:
+\n//   { ttmp1, ttmp0 } = TrapID[3:0], zeros, PC[47:0]
+\n//   ttmp11 = 0[7:0], DebugEnabled[0], 0[15:0], NoScratch[0], 0[5:0]
+\n//   ttmp12 = SQ_WAVE_STATE_PRIV
+\n//   ttmp14 = TMA[31:0]
+\n//   ttmp15 = TMA[63:32]
+\n
+\ntrap_entry:
+\n  // Branch if not a trap (an exception instead).
+\n  s_bfe_u32            ttmp2, ttmp1, SQ_WAVE_PC_HI_TRAP_ID_BFE
+\n  s_cbranch_scc0       .no_skip_debugtrap
+\n
+\n  // If caused by s_trap then advance PC.
+\n  s_add_u32            ttmp0, ttmp0, 0x4
+\n  s_addc_u32           ttmp1, ttmp1, 0x0
+\n
+\n.not_s_trap:
+\n  // If llvm.debugtrap and debugger is not attached.
+\n  s_cmp_eq_u32         ttmp2, TRAP_ID_DEBUGTRAP
+\n  s_cbranch_scc0       .no_skip_debugtrap
+\n
+\n  s_bitcmp0_b32        ttmp11, TTMP11_DEBUG_ENABLED_SHIFT
+\n  s_cbranch_scc0       .no_skip_debugtrap
+\n
+\n  // Ignore llvm.debugtrap.
+\n  s_branch             .exit_trap
+\n
+\n.no_skip_debugtrap:
+\n  // Save trap id and halt status in ttmp6.
+\n  s_andn2_b32          ttmp6, ttmp6, (TTMP6_SAVED_TRAP_ID_MASK | TTMP6_SAVED_STATUS_HALT_MASK)
+\n  s_min_u32            ttmp2, ttmp2, 0xF
+\n  s_lshl_b32           ttmp2, ttmp2, TTMP6_SAVED_TRAP_ID_SHIFT
+\n  s_or_b32             ttmp6, ttmp6, ttmp2
+\n  s_bfe_u32            ttmp2, ttmp12, SQ_WAVE_STATE_PRIV_HALT_BFE
+\n  s_lshl_b32           ttmp2, ttmp2, TTMP6_SAVED_STATUS_HALT_SHIFT
+\n  s_or_b32             ttmp6, ttmp6, ttmp2
+\n
+\n  // Fetch doorbell id for our queue.
+\n  s_sendmsg_rtn_b32    ttmp3, sendmsg(MSG_RTN_GET_DOORBELL)
+\n  s_wait_kmcnt         0
+\n  s_and_b32            ttmp3, ttmp3, DOORBELL_ID_MASK
+\n
+\n  s_getreg_b32         ttmp2, hwreg(HW_REG_EXCP_FLAG_PRIV)
+\n
+\n  s_bitcmp1_b32        ttmp2, SQ_WAVE_EXCP_FLAG_PRIV_XNACK_ERROR_SHIFT
+\n  s_cbranch_scc0       .not_memory_violation
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_MEMORY_VIOLATION_M0
+\n
+\n  // Aperture violation requires XNACK_ERROR == 0.
+\n  s_branch             .not_aperture_violation
+\n
+\n.not_memory_violation:
+\n  s_bitcmp1_b32        ttmp2, SQ_WAVE_EXCP_FLAG_PRIV_MEMVIOL_SHIFT
+\n  s_cbranch_scc0       .not_aperture_violation
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_APERTURE_VIOLATION_M0
+\n
+\n.not_aperture_violation:
+\n  s_bitcmp1_b32        ttmp2, SQ_WAVE_EXCP_FLAG_PRIV_ILLEGAL_INST_SHIFT
+\n  s_cbranch_scc0       .not_illegal_instruction
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_ILLEGAL_INSTRUCTION_M0
+\n
+\n.not_illegal_instruction:
+\n  s_getreg_b32         ttmp2, hwreg(HW_REG_EXCP_FLAG_USER, SQ_WAVE_EXCP_FLAG_USER_MATH_EXCP_SHIFT, SQ_WAVE_EXCP_FLAG_USER_MATH_EXCP_SIZE)
+\n  s_cbranch_scc0       .not_math_exception
+\n  s_getreg_b32         ttmp10, hwreg(HW_REG_TRAP_CTRL, SQ_WAVE_TRAP_CTRL_MATH_EXCP_SHIFT, SQ_WAVE_TRAP_CTRL_MATH_EXCP_SIZE)
+\n  s_and_b32            ttmp2, ttmp2, ttmp10
+\n
+\n  s_cbranch_scc0       .not_math_exception
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_MATH_ERROR_M0
+\n
+\n.not_math_exception:
+\n  s_bfe_u32            ttmp2, ttmp6, TTMP6_SAVED_TRAP_ID_BFE
+\n  s_cmp_eq_u32         ttmp2, TRAP_ID_ABORT
+\n  s_cbranch_scc0       .not_abort_trap
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_ABORT_M0
+\n
+\n.not_abort_trap:
+\n  // If no other exception was flagged then report a generic error.
+\n  s_andn2_b32          ttmp2, ttmp3, DOORBELL_ID_MASK
+\n  s_cbranch_scc1       .send_interrupt
+\n  s_or_b32             ttmp3, ttmp3, EC_QUEUE_WAVE_TRAP_M0
+\n
+\n.send_interrupt:
+\n  // m0 = interrupt data = (exception_code << DOORBELL_ID_SIZE) | doorbell_id
+\n  s_mov_b32            ttmp2, m0
+\n  s_mov_b32            m0, ttmp3
+\n  s_nop                0x0 // Manually inserted wait states
+\n  s_sendmsg            sendmsg(MSG_INTERRUPT)
+\n  // Wait for the message to go out.
+\n  s_wait_kmcnt         0
+\n  s_mov_b32            m0, ttmp2
+\n
+\n  // Parking the wave requires saving the original pc in the preserved ttmps.
+\n  // Register layout before parking the wave:
+\n  //
+\n  // ttmp10: ?[31:0]
+\n  // ttmp11: 1st_level_ttmp11[31:23] 0[15:0] 1st_level_ttmp11[6:0]
+\n  //
+\n  // After parking the wave:
+\n  //
+\n  // ttmp10: pc_lo[31:0]
+\n  // ttmp11: 1st_level_ttmp11[31:23] pc_hi[15:0] 1st_level_ttmp11[6:0]
+\n  //
+\n  // Save the PC
+\n  s_mov_b32            ttmp10, ttmp0
+\n  s_and_b32            ttmp1, ttmp1, SQ_WAVE_PC_HI_ADDRESS_MASK
+\n  s_lshl_b32           ttmp1, ttmp1, TTMP_PC_HI_SHIFT
+\n  s_andn2_b32          ttmp11, ttmp11, (SQ_WAVE_PC_HI_ADDRESS_MASK << TTMP_PC_HI_SHIFT)
+\n  s_or_b32             ttmp11, ttmp11, ttmp1
+\n
+\n  // Park the wave
+\n  s_getpc_b64          [ttmp0, ttmp1]
+\n  s_add_u32            ttmp0, ttmp0, .parked - .
+\n  s_addc_u32           ttmp1, ttmp1, 0x0
+\n
+\n.halt_wave:
+\n  // Halt the wavefront upon restoring STATUS below.
+\n  s_bitset1_b32        ttmp6, TTMP6_WAVE_STOPPED_SHIFT
+\n  s_bitset1_b32        ttmp12, SQ_WAVE_STATE_PRIV_HALT_SHIFT
+\n
+\n  // Initialize TTMP registers
+\n  s_bitcmp1_b32        ttmp8, TTMP8_DEBUG_FLAG_SHIFT
+\n  s_cbranch_scc1       .ttmps_initialized
+\n  s_mov_b32            ttmp4, 0
+\n  s_mov_b32            ttmp5, 0
+\n  s_bitset1_b32        ttmp8, TTMP8_DEBUG_FLAG_SHIFT
+\n.ttmps_initialized:
+\n
+\n.exit_trap:
+\n  // Restore SQ_WAVE_STATUS.
+\n  s_and_b64            exec, exec, exec // Restore STATUS.EXECZ, not writable by s_setreg_b32
+\n  s_and_b64            vcc, vcc, vcc    // Restore STATUS.VCCZ, not writable by s_setreg_b32
+\n  s_setreg_b32         hwreg(HW_REG_STATE_PRIV), ttmp12
+\n
+\n  // Return to original (possibly modified) PC.
+\n  s_rfe_b64            [ttmp0, ttmp1]
+\n
+\n.parked:
+\n  s_trap               0x2
+\n  s_branch             .parked
+\n
+\n// Add s_code_end padding so instruction prefetch always has something to read.
+\n//.rept (256 - ((. - trap_entry) % 64)) / 4
+\n 64 s_code_end
+\n//.endr
+\n.endif
 \n);
 }  // namespace pal
