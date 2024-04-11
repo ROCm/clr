@@ -48,31 +48,22 @@ class CodeObject {
                                 size_t binary_size);
   static hipError_t build_module(hipModule_t hmod, const std::vector<amd::Device*>& devices);
 
-  // Given an file desc and file size, extracts to code object for corresponding devices,
-  // return code_objs{binary_ptr, binary_size}, which could be used to determine foffset
-  static hipError_t ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t fsize,
-                    const void ** image, const std::vector<std::string>& device_names,
-                    std::vector<std::pair<const void*, size_t>>& code_objs);
-
-  // Given an ptr to memory, extracts to code object for corresponding devices,
-  // returns code_objs{binary_ptr, binary_size} and uniform resource indicator
-  static hipError_t ExtractCodeObjectFromMemory(const void* data,
-                    const std::vector<std::string>& device_names,
-                    std::vector<std::pair<const void*, size_t>>& code_objs,
-                    std::string& uri);
-
   static uint64_t ElfSize(const void* emi);
 
-  static bool IsClangOffloadMagicBundle(const void* data);
+  static bool IsClangOffloadMagicBundle(const void* data, bool& isCompressed);
+
+  // Given an ptr to image or file, extracts to code object
+  // for corresponding devices
+  static hipError_t extractCodeObjectFromFatBinary(
+      const void*, size_t, const std::vector<std::string>&,
+      std::vector<std::pair<const void*, size_t>>&);
+
+  // Return size of fat bin
+  static size_t getFatbinSize(const void* data, const bool isCompressed = false);
 
 protected:
-  //Given an ptr to image or file, extracts to code object
-  //for corresponding devices
-  static hipError_t extractCodeObjectFromFatBinary(const void*,
-                    const std::vector<std::string>&,
-                    std::vector<std::pair<const void*, size_t>>&);
-
   CodeObject() {}
+
 private:
   friend const std::vector<hipModule_t>& modules();
 };

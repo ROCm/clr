@@ -30,21 +30,34 @@ THE SOFTWARE.
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 #include <elf/elf.hpp>
+#include "comgrctx.hpp"
+
 namespace hip {
 hipError_t ihipFree(void* ptr);
 // forward declaration of methods required for managed variables
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 namespace {
-constexpr char kOffloadBundleMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
+// In uncompressed mode
+constexpr char kOffloadBundleUncompressedMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
+static constexpr size_t kOffloadBundleUncompressedMagicStrSize =
+    sizeof(kOffloadBundleUncompressedMagicStr);
+
+//In compressed mode
+constexpr char kOffloadBundleCompressedMagicStr[] = "CCOB";
+static constexpr size_t kOffloadBundleCompressedMagicStrSize =
+    sizeof(kOffloadBundleCompressedMagicStr);
+
 constexpr char kOffloadKindHip[] = "hip";
 constexpr char kOffloadKindHipv4[] = "hipv4";
 constexpr char kOffloadKindHcc[] = "hcc";
 constexpr char kAmdgcnTargetTriple[] = "amdgcn-amd-amdhsa-";
-
+constexpr char kHipFatBinName[] = "hipfatbin";
+constexpr char kHipFatBinName_[] = "hipfatbin-";
+constexpr char kOffloadKindHipv4_[] = "hipv4-";  // bundled code objects need the prefix
+constexpr char kOffloadHipV4FatBinName_[] = "hipfatbin-hipv4-";
 // ClangOFFLOADBundle info.
-static constexpr size_t kOffloadBundleMagicStrSize = sizeof(kOffloadBundleMagicStr);
 
-// Clang Offload bundler description & Header.
+// Clang Offload bundler description & Header in uncompressed mode.
 struct __ClangOffloadBundleInfo {
   uint64_t offset;
   uint64_t size;
@@ -52,16 +65,37 @@ struct __ClangOffloadBundleInfo {
   const char bundleEntryId[1];
 };
 
-struct __ClangOffloadBundleHeader {
-  const char magic[kOffloadBundleMagicStrSize - 1];
+struct __ClangOffloadBundleUncompressedHeader {
+  const char magic[kOffloadBundleUncompressedMagicStrSize - 1];
   uint64_t numOfCodeObjects;
   __ClangOffloadBundleInfo desc[1];
 };
+
+struct __ClangOffloadBundleCompressedHeader {
+  const char magic[kOffloadBundleCompressedMagicStrSize - 1];
+  uint16_t versionNumber;
+  uint16_t compressionMethod;
+  uint32_t totalSize;
+  uint32_t uncompressedBinarySize;
+  uint64_t Hash;
+  const char compressedBinarydesc[1];
+};
 }  // namespace
 
-bool CodeObject::IsClangOffloadMagicBundle(const void* data) {
-  std::string magic(reinterpret_cast<const char*>(data), kOffloadBundleMagicStrSize - 1);
-  return magic.compare(kOffloadBundleMagicStr) ? false : true;
+bool CodeObject::IsClangOffloadMagicBundle(const void* data, bool &isCompressed) {
+  std::string magic(reinterpret_cast<const char*>(data),
+    kOffloadBundleUncompressedMagicStrSize - 1);
+  if (!magic.compare(kOffloadBundleUncompressedMagicStr)) {
+    isCompressed = false;
+    return true;
+  }
+  std::string magic1(reinterpret_cast<const char*>(data),
+                      kOffloadBundleCompressedMagicStrSize - 1);
+  if (!magic1.compare(kOffloadBundleCompressedMagicStr)) {
+    isCompressed = true;
+    return true;
+  }
+  return false;
 }
 
 uint64_t CodeObject::ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
@@ -356,7 +390,7 @@ static bool consume(std::string& input, std::string consume_) {
 
 // Trim String till character, will be used to get gpuname
 // example: input is gfx908:sram-ecc+ and trim char is :
-// input will become sram-ecc+.
+// input will become :sram-ecc+
 static std::string trimName(std::string& input, char trim) {
   auto pos_ = input.find(trim);
   auto res = input;
@@ -367,6 +401,18 @@ static std::string trimName(std::string& input, char trim) {
     input = input.substr(pos_);
   }
   return res;
+}
+
+// Trim String till character, will be used to get bundle entry ID.
+// example: input is amdgcn-amd-amdhsa--gfx1035.bc and trim char is .
+// input will become amdgcn-amd-amdhsa--gfx1035
+static bool trimNameTail(std::string& input, char trim) {
+  auto pos_ = input.rfind(trim);
+  if (pos_ == std::string::npos) {
+    return false;
+  }
+  input = input.substr(0, pos_);
+  return true;
 }
 
 static char getFeatureValue(std::string& input, std::string feature) {
@@ -447,111 +493,353 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   return true;
 }
 
-// This will be moved to COMGR eventually
-hipError_t CodeObject::ExtractCodeObjectFromFile(
-    amd::Os::FileDesc fdesc, size_t fsize, const void** image,
-    const std::vector<std::string>& device_names,
-    std::vector<std::pair<const void*, size_t>>& code_objs) {
-  if (!amd::Os::isValidFileDesc(fdesc)) {
-    return hipErrorFileNotFound;
+size_t CodeObject::getFatbinSize(const void* data, const bool isCompressed) {
+  if (isCompressed) {
+    const auto obheader = reinterpret_cast<const __ClangOffloadBundleCompressedHeader*>(data);
+    return obheader->totalSize;
+  } else {
+    const auto obheader = reinterpret_cast<const __ClangOffloadBundleUncompressedHeader*>(data);
+    const __ClangOffloadBundleInfo* desc = &obheader->desc[0];
+    uint64_t i = 0;
+    while (++i < obheader->numOfCodeObjects) {
+      desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
+          reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) + desc->bundleEntryIdSize);
+    }
+    return desc->offset + desc->size;
   }
-
-  // Map the file to memory, with offset 0.
-  // file will be unmapped in ModuleUnload
-  // const void* image = nullptr;
-  if (!amd::Os::MemoryMapFileDesc(fdesc, fsize, 0, image)) {
-    return hipErrorInvalidValue;
-  }
-
-  // retrieve code_objs{binary_image, binary_size} for devices
-  return extractCodeObjectFromFatBinary(*image, device_names, code_objs);
 }
 
-// This will be moved to COMGR eventually
-hipError_t CodeObject::ExtractCodeObjectFromMemory(
-    const void* data, const std::vector<std::string>& device_names,
-    std::vector<std::pair<const void*, size_t>>& code_objs, std::string& uri) {
-  // Get the URI from memory
-  if (!amd::Os::GetURIFromMemory(data, 0, uri)) {
-    return hipErrorInvalidValue;
-  }
-
-  return extractCodeObjectFromFatBinary(data, device_names, code_objs);
-}
-
-// This will be moved to COMGR eventually
+/**
+ *  @brief Extract code object from fatbin using comgr
+ *
+ *  @param[in]  data the bundle data(fatbin or loaded module data)
+ *  @param[in]  size the size of the bundle data
+ *  @param[in]  agent_triple_target_ids isa names of concerned devices
+ *  @param[out] code_objs the buffer address and size pairs of extracted code objects of
+ *              concerned devices
+ *  Returned error code
+ *
+ *  @return #hipSuccess, #hipErrorInvalidKernelFile, #hipErrorInvalidValue, #hipErrorNoBinaryForGpu
+ *
+ *  @see FatBinaryInfo::ExtractFatBinaryUsingCOMGR
+ */
 hipError_t CodeObject::extractCodeObjectFromFatBinary(
-    const void* data, const std::vector<std::string>& agent_triple_target_ids,
+    const void* data, size_t size, const std::vector<std::string>& agent_triple_target_ids,
     std::vector<std::pair<const void*, size_t>>& code_objs) {
-  std::string magic((const char*)data, kOffloadBundleMagicStrSize);
-  if (magic.compare(kOffloadBundleMagicStr)) {
+  hipError_t hipStatus = hipSuccess;
+  amd_comgr_status_t comgrStatus = AMD_COMGR_STATUS_SUCCESS;
+
+  const size_t num_devices = agent_triple_target_ids.size();
+  size_t num_code_objs = num_devices;
+  bool isCompressed = false;
+  if (!IsClangOffloadMagicBundle(data, isCompressed)) {
+    LogPrintfInfo("IsClangOffloadMagicBundle(%p) return false", data);
+    // hipModuleLoadData() will possibly call here
     return hipErrorInvalidKernelFile;
   }
 
-  // Initialize Code objects
-  code_objs.reserve(agent_triple_target_ids.size());
-  for (size_t i = 0; i < agent_triple_target_ids.size(); i++) {
-    code_objs.push_back(std::make_pair(nullptr, 0));
+  if (size == 0) size = getFatbinSize(data, isCompressed);
+
+  amd_comgr_data_t dataCodeObj{0};
+  amd_comgr_data_set_t dataSetBundled{0};
+  amd_comgr_data_set_t dataSetUnbundled{0};
+  amd_comgr_action_info_t actionInfoUnbundle{0};
+  amd_comgr_data_t item{0};
+
+
+  std::set<std::string> devicesSet{};  // To make sure device is unique
+  std::vector<const char*> bundleEntryIDs{};
+  static const std::string hipv4 = kOffloadKindHipv4_;  // bundled code objects need the prefix
+  for (size_t i = 0; i < num_devices; i++) {
+    devicesSet.insert(hipv4 + agent_triple_target_ids[i]);
   }
 
-  const auto obheader = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
-  const auto* desc = &obheader->desc[0];
-  size_t num_code_objs = code_objs.size();
-  for (uint64_t i = 0; i < obheader->numOfCodeObjects; ++i,
-                desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
-                    reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
-                    desc->bundleEntryIdSize)) {
-    const void* image =
-        reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
-    const size_t image_size = desc->size;
+  for (auto& device : devicesSet) {
+    bundleEntryIDs.push_back(device.c_str());
+  }
 
-    if (num_code_objs == 0) break;
-    std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
+  do {
+    // Create Bundled dataset
+    comgrStatus = amd::Comgr::create_data_set(&dataSetBundled);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::create_data_set() failed with status 0x%xh", comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
 
-    std::string co_triple_target_id;
-    if (!getTripleTargetID(bundleEntryId, image, co_triple_target_id)) continue;
+    // CodeObject
+    comgrStatus = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_OBJ_BUNDLE, &dataCodeObj);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError(
+          "amd::Comgr::create_data(AMD_COMGR_DATA_KIND_OBJ_BUNDLE) failed with status 0x%xh",
+          comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
 
-    for (size_t dev = 0; dev < agent_triple_target_ids.size(); ++dev) {
-      if (code_objs[dev].first) continue;
-      if (isCodeObjectCompatibleWithDevice(co_triple_target_id, agent_triple_target_ids[dev])) {
-        code_objs[dev] = std::make_pair(image, image_size);
-        --num_code_objs;
+    comgrStatus = amd::Comgr::set_data(dataCodeObj, size, static_cast<const char *>(data));
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::set_data(size=%zu, data=%p) failed with status 0x%xh", size, data,
+                     comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    comgrStatus = amd::Comgr::set_data_name(dataCodeObj, kHipFatBinName);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError(
+          "amd::Comgr::set_data_name("") failed with status 0x%xh", comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+    comgrStatus = amd::Comgr::data_set_add(dataSetBundled, dataCodeObj);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::data_set_add() failed with status 0x%xh", comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+    // Set up ActionInfo
+    comgrStatus = amd::Comgr::create_action_info(&actionInfoUnbundle);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::create_action_info() failed with status 0x%xh", comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    comgrStatus = amd::Comgr::action_info_set_language(actionInfoUnbundle, AMD_COMGR_LANGUAGE_HIP);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::action_info_set_language(HIP) failed with status 0x%xh",
+                     comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    comgrStatus = amd::Comgr::action_info_set_bundle_entry_ids(
+        actionInfoUnbundle, bundleEntryIDs.data(), bundleEntryIDs.size());
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::action_info_set_bundle_entry_ids(%p, %zu) failed with status 0x%xh",
+                     bundleEntryIDs.data(), bundleEntryIDs.size(), comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    // Unbundle
+    comgrStatus = amd::Comgr::create_data_set(&dataSetUnbundled);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::create_data_set(&dataSetUnbundled) failed with status 0x%xh",
+                     comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+    comgrStatus = amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE, actionInfoUnbundle, dataSetBundled,
+                                      dataSetUnbundled);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE) failed with status 0x%xh",
+                     comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    // Check CodeObject count
+    size_t count = 0;
+    comgrStatus =
+        amd::Comgr::action_data_count(dataSetUnbundled, AMD_COMGR_DATA_KIND_EXECUTABLE, &count);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::action_data_count() failed with status 0x%xh", comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+      break;
+    }
+
+    // Initialize Code objects
+    code_objs.reserve(num_code_objs);
+    for (size_t i = 0; i < num_code_objs; i++) {
+      code_objs.push_back(std::make_pair(nullptr, 0));
+    }
+
+    for (size_t i = 0; i < count; i++) {
+      if (num_code_objs == 0) break;
+
+      size_t itemSize = 0;
+      comgrStatus = amd::Comgr::action_data_get_data(dataSetUnbundled,
+                                                AMD_COMGR_DATA_KIND_EXECUTABLE, i, &item);
+      if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+        LogPrintfError("amd::Comgr::action_data_get_data(%zu/%zu) failed with 0x%xh", i, count,
+                       comgrStatus);
+        hipStatus = hipErrorInvalidValue;
+        break;
+      }
+
+      comgrStatus = amd::Comgr::get_data_name(item, &itemSize, nullptr);
+      if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+        LogPrintfError("amd::Comgr::get_data_name(%zu/%zu) failed with 0x%xh", i, count,
+                       comgrStatus);
+        hipStatus = hipErrorInvalidValue;
+        break;
+      }
+      std::string bundleEntryId(itemSize, 0);
+      comgrStatus = amd::Comgr::get_data_name(item, &itemSize, bundleEntryId.data());
+      if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+        LogPrintfError("amd::Comgr::get_data_name(%zu/%zu, %d) failed with 0x%xh", i, count,
+                       itemSize, comgrStatus);
+        hipStatus = hipErrorInvalidValue;
+        break;
+      }
+      // Remove bundleEntryId_
+      if (!consume(bundleEntryId, kOffloadHipV4FatBinName_)) {
+        // This is behavour in comgr unbundling which is subject to change.
+        // So just give info.
+        LogPrintfInfo("bundleEntryId=%s isn't prefixed with %s", bundleEntryId.c_str(),
+                      kOffloadHipV4FatBinName_);
+      }
+      trimNameTail(bundleEntryId, '.'); // Remove .fileExtention
+
+      char* itemData = nullptr;
+      for (size_t dev = 0; dev < num_devices; ++dev) {
+        if (code_objs[dev].first) continue;
+        //LogPrintfError("agent_triple_target_ids[%zu]=%s, bundleEntryId=%s", dev,
+        //               agent_triple_target_ids[dev].c_str(), bundleEntryId.c_str());
+
+        if (bundleEntryId == agent_triple_target_ids[dev]) {
+          if (itemData == nullptr) {
+            itemSize = 0;
+            comgrStatus = amd::Comgr::get_data(item, &itemSize, nullptr);
+            if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+              LogPrintfError("amd::Comgr::get_data(%zu/%zu) failed with 0x%xh", i, count,
+                             comgrStatus);
+              hipStatus = hipErrorInvalidValue;
+              break;
+            }
+
+            if (itemSize == 0) {
+              // If there isn't a code object for this device,
+              // amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE) still returns item with
+              // valid name but no data. We need continue searching for other devices
+              LogPrintfInfo(
+                "amd::Comgr::get_data() return 0 size for agent_triple_target_ids[%zu]=%s",
+                dev, agent_triple_target_ids[dev].c_str());
+              continue;
+            }
+
+            // itemData should be deleted in fatbin's destructor
+            itemData = new char[itemSize];
+            if (itemData == nullptr) {
+              LogError("no enough memory");
+              hipStatus = hipErrorOutOfMemory;
+              break;
+            }
+            comgrStatus = amd::Comgr::get_data(item, &itemSize, itemData);
+            if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+              LogPrintfError("amd::Comgr::get_data(%zu/%zu, %d) failed with 0x%xh", i, count,
+                             itemSize, comgrStatus);
+              hipStatus = hipErrorInvalidValue;
+              delete []itemData;
+              itemData = nullptr;
+              break;
+            }
+
+          }
+          code_objs[dev] = std::make_pair(reinterpret_cast<const void*>(itemData), itemSize);
+          --num_code_objs;
+          LogPrintfInfo(
+              "Found agent_triple_target_ids[%zu]=%s: item: Data=%p(%s), "
+              "Size=%zu, num_code_objs=%zu",
+              dev, agent_triple_target_ids[dev].c_str(), itemData,
+              isCompressed ? "compressed" : "uncompressed", itemSize, num_code_objs);
+        }
+      }
+
+      comgrStatus = amd::Comgr::release_data(item);
+      item.handle = 0;
+      if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+        LogPrintfError("amd::Comgr::release_data(item) failed with status 0x%xh", comgrStatus);
+        hipStatus = hipErrorInvalidValue;
+      }
+      if (hipStatus != hipSuccess) break;
+    }
+  } while(0);
+
+  if (hipStatus == hipSuccess && num_code_objs != 0) {
+    hipStatus = hipErrorNoBinaryForGpu;
+
+    // Leave it for debug purpose in uncompressed mode.
+    if (!isCompressed) {
+      LogPrintfError("%s",
+                     "hipErrorNoBinaryForGpu: Unable to find code object for all current devices!");
+      LogPrintfError("%s", "  Devices:");
+      for (size_t i = 0; i < agent_triple_target_ids.size(); i++) {
+        LogPrintfError("    %s - [%s]", agent_triple_target_ids[i].c_str(),
+                       ((code_objs[i].first) ? "Found" : "Not Found"));
+      }
+      const auto obheader = reinterpret_cast<const __ClangOffloadBundleUncompressedHeader*>(data);
+      const auto* desc = &obheader->desc[0];
+      LogPrintfError("%s", "  Bundled Code Objects:");
+      for (uint64_t i = 0; i < obheader->numOfCodeObjects; ++i,
+                    desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
+                        reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
+                        desc->bundleEntryIdSize)) {
+        std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
+        const void* image =
+            reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
+
+        std::string co_triple_target_id;
+        bool valid_co = getTripleTargetID(bundleEntryId, image, co_triple_target_id);
+
+        if (valid_co) {
+          LogPrintfError("    %s - [Code object targetID is %s]", bundleEntryId.c_str(),
+                         co_triple_target_id.c_str());
+        } else {
+          LogPrintfError("    %s - [Unsupported]", bundleEntryId.c_str());
+        }
       }
     }
   }
-  if (num_code_objs == 0) {
-    return hipSuccess;
-  } else {
-    LogPrintfError("%s",
-                   "hipErrorNoBinaryForGpu: Unable to find code object for all current devices!");
-    LogPrintfError("%s", "  Devices:");
-    for (size_t i = 0; i < agent_triple_target_ids.size(); i++) {
-      LogPrintfError("    %s - [%s]", agent_triple_target_ids[i].c_str(),
-                     ((code_objs[i].first) ? "Found" : "Not Found"));
-    }
-    const auto obheader = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
-    const auto* desc = &obheader->desc[0];
-    LogPrintfError("%s", "  Bundled Code Objects:");
-    for (uint64_t i = 0; i < obheader->numOfCodeObjects; ++i,
-                  desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
-                      reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
-                      desc->bundleEntryIdSize)) {
-      std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
-      const void* image =
-          reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
 
-      std::string co_triple_target_id;
-      bool valid_co = getTripleTargetID(bundleEntryId, image, co_triple_target_id);
-
-      if (valid_co) {
-        LogPrintfError("    %s - [Code object targetID is %s]", bundleEntryId.c_str(),
-                       co_triple_target_id.c_str());
-      } else {
-        LogPrintfError("    %s - [Unsupported]", bundleEntryId.c_str());
-      }
+  // Cleanup
+  if (actionInfoUnbundle.handle) {
+    comgrStatus = amd::Comgr::destroy_action_info(actionInfoUnbundle);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::destroy_action_info(actionInfoUnbundle) failed with status 0x%xh",
+        comgrStatus);
+      hipStatus = hipErrorInvalidValue;
     }
-    return hipErrorNoBinaryForGpu;
   }
+  if (dataSetBundled.handle) {
+    comgrStatus = amd::Comgr::destroy_data_set(dataSetBundled);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::destroy_data_set(dataSetBundled) failed with status 0x%xh",
+        comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+    }
+  }
+
+  if (dataSetUnbundled.handle) {
+    comgrStatus = amd::Comgr::destroy_data_set(dataSetUnbundled);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::destroy_data_set(dataSetUnbundled) failed with status 0x%xh",
+        comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+    }
+  }
+
+  if (dataCodeObj.handle) {
+    comgrStatus = amd::Comgr::release_data(dataCodeObj);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::release_data(dataCodeObj) failed with status 0x%xh",
+        comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+    }
+  }
+
+  if (item.handle) {
+    comgrStatus = amd::Comgr::release_data(item);
+    if (comgrStatus != AMD_COMGR_STATUS_SUCCESS) {
+      LogPrintfError("amd::Comgr::release_data(item) failed with status 0x%xh",
+        comgrStatus);
+      hipStatus = hipErrorInvalidValue;
+    }
+  }
+
+  return hipStatus;
 }
 
 hipError_t DynCO::loadCodeObject(const char* fname, const void* image) {
