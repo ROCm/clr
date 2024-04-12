@@ -1772,7 +1772,7 @@ class Device : public RuntimeObject {
   }
 
   virtual void* deviceLocalAlloc(size_t size, bool atomics = false,
-                                 bool pseudo_fine_grain = false) const {
+                                 bool pseudo_fine_grain = false, bool contiguous = false) const {
     ShouldNotCallThis();
     return NULL;
   }
