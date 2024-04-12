@@ -44,6 +44,7 @@
 #define ROCCLR_MEM_HSA_UNCACHED         (1u << 27)
 #define ROCCLR_MEM_INTERPROCESS         (1u << 26)
 #define ROCCLR_MEM_PHYMEM               (1u << 25)
+#define ROCCLR_MEM_HSA_CONTIGUOUS       (1u << 24)
 
 namespace device {
 class Memory;
