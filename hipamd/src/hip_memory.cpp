@@ -589,6 +589,8 @@ hipError_t hipExtMallocWithFlags(void** ptr, size_t sizeBytes, unsigned int flag
     ihipFlags = CL_MEM_SVM_ATOMICS;
   } else if (flags == hipDeviceMallocUncached) {
     ihipFlags = CL_MEM_SVM_ATOMICS | ROCCLR_MEM_HSA_UNCACHED;
+  } else if (flags == hipDeviceMallocContiguous) {
+    ihipFlags = ROCCLR_MEM_HSA_CONTIGUOUS | ROCCLR_MEM_HSA_UNCACHED;
   } else if (flags == hipMallocSignalMemory) {
     ihipFlags = CL_MEM_SVM_ATOMICS | CL_MEM_SVM_FINE_GRAIN_BUFFER | ROCCLR_MEM_HSA_SIGNAL_MEMORY;
     if (sizeBytes != 8) {
