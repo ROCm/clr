@@ -475,6 +475,15 @@ bool Device::init() {
   }
 
   status = hsa_init();
+
+  // If there are no GPUs available, hsa_init will fail with HSA_STATUS_ERROR_OUT_OF_RESOURCES
+  // but for NoGpu tests to pass, true needs to be returned
+  constexpr bool kNoOfflineDevices = false;
+  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES && devices.size() == 0) {
+    return true;
+  }
+
   if (status != HSA_STATUS_SUCCESS) {
     LogPrintfError("hsa_init failed with %x", status);
     return false;
@@ -577,8 +586,7 @@ bool Device::init() {
   }
 
   // Query active devices only
-  constexpr bool kNoOfflineDevices = false;
-  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
   if (devices.size() > 0) {
     bool p2p_available = false;
     // Loop through all available devices
