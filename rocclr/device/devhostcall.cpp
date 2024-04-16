@@ -284,7 +284,10 @@ static struct Init {
   ~Init() {
     if (state == State::kInit) {
       state = State::kDestroy;
-      while (state == State::kDestroy) {}
+      // @note: Under Linux thread destruction can be delayed and
+      // ROCR may crash in a wait for event occasionally. Hence, runtime needs
+      // an early exit. The logic isn't required for Windows.
+      while (IS_LINUX && (state == State::kDestroy)) {}
     }
   }
 } kHostThreadActive;

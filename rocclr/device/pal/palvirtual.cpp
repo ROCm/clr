@@ -1154,7 +1154,7 @@ VirtualGPU::~VirtualGPU() {
             "deleting hostcall buffer %p for virtual queue %p",
             hostcallBuffer_, this);
     disableHostcalls(hostcallBuffer_);
-    dev().context().svmFree(hostcallBuffer_);
+    dev().svmFree(hostcallBuffer_);
   }
 }
 
@@ -3766,7 +3766,8 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   auto size = getHostcallBufferSize(numPackets);
   auto align = getHostcallBufferAlignment();
 
-  hostcallBuffer_ = dev().context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
+  hostcallBuffer_ = dev().svmAlloc(dev().context(), size, align,
+                                   CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS, nullptr);
   if (!hostcallBuffer_) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
             "Failed to create hostcall buffer");
