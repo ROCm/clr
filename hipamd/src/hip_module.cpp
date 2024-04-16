@@ -705,7 +705,11 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
                                              void** kernelParams, uint32_t sharedMemBytes,
                                              hipStream_t hStream) {
   if (!hip::isValid(hStream)) {
-    return hipErrorInvalidValue;
+    return hipErrorContextIsDestroyed;
+  }
+
+  if (f == nullptr) {
+    return hipErrorInvalidDeviceFunction;
   }
 
   hipFunction_t func = nullptr;
@@ -723,6 +727,10 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max() ||
       (blockDim.x * blockDim.y * blockDim.z > device->info().maxWorkGroupSize_)) {
     return hipErrorInvalidConfiguration;
+  }
+
+  if (sharedMemBytes > device->info().localMemSizePerCU_) {
+    return hipErrorCooperativeLaunchTooLarge;
   }
 
   return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
