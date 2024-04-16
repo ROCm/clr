@@ -705,10 +705,10 @@ struct __hip_fp8_e4m3_fnuz {
     return __hip_bfloat16(f);
   }
 
-  /*! convert fp8 e4m3 to bool, return false if value is +0 or -0, true otherwise */
+  /*! convert fp8 e4m3 to bool, return false if value is 0, true otherwise */
   __FP8_HOST_DEVICE__ operator bool() const {
-    // it can be 0x00 (+0.0) or 0x80 (-0.0)
-    return !((static_cast<unsigned char>(__x) | 0x80) == 0x80);
+    // it can be 0x00 (+0.0) since 0x80 will be nan
+    return !(static_cast<unsigned short>(__x) == 0);
   }
 
   /*! convert fp8 e4m3 to char, clamp number to CHAR_MIN/CHAR_MAX if its out of range */
@@ -1094,10 +1094,10 @@ struct __hip_fp8_e5m2_fnuz {
     return __hip_bfloat16(f);
   }
 
-  /*! convert fp8 e4m3 to bool, return false if value is +0 or -0, true otherwise */
+  /*! convert fp8 e4m3 to bool, return false if value is 0, true otherwise */
   __FP8_HOST_DEVICE__ operator bool() const {
-    // it can be 0x00 (+0.0) or 0x80 (-0.0)
-    return !((static_cast<unsigned char>(__x) | 0x80) == 0x80);
+    // it can be 0x00 (+0.0) since 0x80 will be nan
+    return !(static_cast<unsigned short>(__x) == 0);
   }
 
   /*! convert fp8 e5m2 to char, clamp out of bound values, return 0 if value is NaN */
