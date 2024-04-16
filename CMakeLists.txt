@@ -41,13 +41,21 @@ endif()
 # Build steps
 #############
 if(CLR_BUILD_HIP)
+  if (UNIX)
+    set(HIPCC_EXECUTABLE "hipcc")
+    set(HIPCONFIG_EXECUTABLE "hipconfig")
+  else()
+    set(HIPCC_EXECUTABLE "hipcc.exe")
+    set(HIPCONFIG_EXECUTABLE "hipconfig.exe")
+  endif()
+
     # Set default HIPCC_BIN_DIR to /opt/rocm/bin
     if(NOT DEFINED HIPCC_BIN_DIR AND UNIX)
         set(HIPCC_BIN_DIR "/opt/rocm/bin" CACHE STRING "Default hipcc directory on linux.")
     endif()
     message(STATUS "HIPCC Binary Directory: ${HIPCC_BIN_DIR}")
 
-    if(NOT EXISTS ${HIPCC_BIN_DIR}/hipconfig)
+    if(NOT EXISTS ${HIPCC_BIN_DIR}/${HIPCONFIG_EXECUTABLE})
         message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR.")
     endif()
 
@@ -56,10 +64,9 @@ if(CLR_BUILD_HIP)
         message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
     endif()
     # Determine HIP_PLATFORM
-    set(__HIPCONFIG_EXECUTABLE__ ${HIPCC_BIN_DIR}/hipconfig)
     if(NOT DEFINED HIP_PLATFORM)
         if(NOT DEFINED ENV{HIP_PLATFORM})
-            execute_process(COMMAND ${__HIPCONFIG_EXECUTABLE__} --platform
+            execute_process(COMMAND ${HIPCC_BIN_DIR}/${HIPCONFIG_EXECUTABLE} --platform
                 OUTPUT_VARIABLE HIP_PLATFORM
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
         else()
