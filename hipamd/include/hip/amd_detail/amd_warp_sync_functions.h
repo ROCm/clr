@@ -56,6 +56,12 @@ T __hip_readfirstlane(T val) {
   return u.d;
 }
 
+// When compiling for wave32 mode, ignore the upper half of the 64-bit mask.
+#define __hip_adjust_mask_for_wave32(MASK)            \
+  do {                                          \
+    if (warpSize == 32) MASK &= 0xFFFFFFFF;     \
+  } while (0)
+
 // We use a macro to expand each builtin into a waterfall that implements the
 // mask semantics:
 //
@@ -125,6 +131,7 @@ unsigned long long __ballot_sync(MaskT mask, int predicate) {
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __ballot(predicate) & mask;
 }
@@ -136,6 +143,7 @@ int __all_sync(MaskT mask, int predicate) {
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   return __ballot_sync(mask, predicate) == mask;
 }
 
@@ -146,6 +154,7 @@ int __any_sync(MaskT mask, int predicate) {
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   return __ballot_sync(mask, predicate) != 0;
 }
 
@@ -182,6 +191,7 @@ unsigned long long __match_any_sync(MaskT mask, T value) {
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __match_any(value) & mask;
 }
@@ -212,6 +222,7 @@ unsigned long long __match_all_sync(MaskT mask, T value, int* pred) {
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
   MaskT retval = 0;
+  __hip_adjust_mask_for_wave32(mask);
   __hip_do_sync(retval, __match_all, mask, value, pred);
   return retval;
 }
@@ -226,6 +237,7 @@ T __shfl_sync(MaskT mask, T var, int srcLane,
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __shfl(var, srcLane, width);
 }
@@ -238,6 +250,7 @@ T __shfl_up_sync(MaskT mask, T var, unsigned int delta,
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __shfl_up(var, delta, width);
 }
@@ -250,6 +263,7 @@ T __shfl_down_sync(MaskT mask, T var, unsigned int delta,
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __shfl_down(var, delta, width);
 }
@@ -262,11 +276,13 @@ T __shfl_xor_sync(MaskT mask, T var, int laneMask,
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
       "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_adjust_mask_for_wave32(mask);
   __hip_check_mask(mask);
   return __shfl_xor(var, laneMask, width);
 }
 
 #undef __hip_do_sync
 #undef __hip_check_mask
+#undef __hip_adjust_mask_for_wave32
 
 #endif // HIP_ENABLE_WARP_SYNC_BUILTINS
