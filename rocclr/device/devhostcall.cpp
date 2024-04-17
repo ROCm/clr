@@ -334,7 +334,7 @@ void HostcallListener::terminate() {
   if (!amd::Os::isThreadAlive(thread_)) {
     return;
   }
-
+  kHostThreadActive.state = Init::State::kExit;
   doorbell_->Reset(SIGNAL_DONE);
 
   // FIXME_lmoriche: fix termination handshake
