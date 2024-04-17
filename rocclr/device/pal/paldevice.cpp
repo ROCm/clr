@@ -1290,10 +1290,50 @@ typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
 static void parseRequestedDeviceList(const char* requestedDeviceList,
-                                     requestedDevices_t& requestedDevices, uint32_t numDevices) {
+                                     requestedDevices_t& requestedDevices, uint32_t numDevices,
+                                     Pal::IDevice* deviceList[Pal::MaxDevices]) {
   char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != nullptr) {
     bool deviceIdValid = true;
+    // UUID needs to be specified in the format GPU-<body>, <body> encodes UUID as a 16 chars
+    char* deviceUuid = strstr(pch, "GPU-");
+    // If Uuid is specified, then convert it to index
+    if (deviceUuid != nullptr) {
+      for (uint32_t i = 0; i < numDevices; i++) {
+        Pal::DeviceProperties properties;
+        // Retrieve device properties
+        Pal::Result result = deviceList[i]->GetProperties(&properties);
+        if (result != Pal::Result::Success) {
+          continue;
+        }
+
+        // Retrieve uuid
+        char uuid[17] = {0};
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.domainNumber))[j],
+                &uuid[j], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.busNumber))[j],
+                &uuid[j + 4], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.deviceNumber))[j],
+                &uuid[j + 8], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.functionNumber))[j],
+                &uuid[j + 12], 10);
+        }
+
+        // Convert it to index
+        if (strcmp(pch + 4, uuid) == 0) {
+          snprintf(pch, strlen(pch), "%d", i);
+          break;
+        }
+      }
+    }
+
     int currentDeviceIndex = atoi(pch);
     // Validate device index.
     for (size_t i = 0; i < strlen(pch); i++) {
@@ -1378,7 +1418,7 @@ bool Device::init() {
 
   if (requestedDeviceList[0] != '\0') {
     useDeviceList = true;
-    parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices);
+    parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices, &gDeviceList[0]);
   }
 
   bool foundDevice = false;
