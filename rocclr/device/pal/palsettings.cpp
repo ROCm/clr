@@ -203,11 +203,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10_A0:
       gfx10Plus_ = true;
       useLightning_ = GPU_ENABLE_LC;
-      // Force luxmark to use HSAIL for gfx10+ if GPU_ENABLE_LC isn't set in ENV
-      if (flagIsDefault(GPU_ENABLE_LC) &&
-          (appName == "luxmark.exe" || appName == "luxmark")) {
-        useLightning_ = false;
-      }
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
