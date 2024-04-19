@@ -38,13 +38,11 @@ struct SharedMemPointer {
 };
 
 struct MemoryTimestamp {
-  MemoryTimestamp(hip::Stream* stream): event_(nullptr) {
+  MemoryTimestamp(hip::Stream* stream = nullptr) {
     if (stream != nullptr) {
       safe_streams_.insert(stream);
     }
   }
-  MemoryTimestamp(): event_(nullptr) {}
-
   /// Adds a safe stream to the list of stream for possible reuse
   void AddSafeStream(Stream* event_stream, Stream* wait_stream = nullptr) {
     if (wait_stream == nullptr) {
@@ -59,6 +57,8 @@ struct MemoryTimestamp {
   }
   /// Changes last known valid event asociated with memory
   void SetEvent(hip::Event* event) {
+    // Runtime will delete the HIP event, hence make sure GPU is done with it
+    Wait();
     delete event_;
     event_ = event;
   }
@@ -94,7 +94,7 @@ struct MemoryTimestamp {
   }
 
   std::unordered_set<hip::Stream*>  safe_streams_;  //!< Safe streams for memory reuse
-  hip::Event*   event_;   //!< Last known HIP event, associated with the memory object
+  hip::Event*   event_ = nullptr;   //!< Last known HIP event, associated with the memory object
 };
 
 class Heap : public amd::EmbeddedObject {
@@ -112,7 +112,8 @@ public:
   void AddMemory(amd::Memory* memory, const MemoryTimestamp& ts);
 
   /// Finds memory object with the specified size
-  amd::Memory* FindMemory(size_t size, Stream* stream, bool opportunistic, void* dptr = nullptr);
+  amd::Memory* FindMemory(size_t size, Stream* stream, bool opportunistic,
+    void* dptr, MemoryTimestamp* ts);
 
   /// Removes allocation from the map
   bool RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts = nullptr);
@@ -156,7 +157,6 @@ public:
       it.second.AddSafeStream(event_stream, wait_stream);
     }
   }
-
 
   /// Checks if memory belongs to this heap
   bool IsActiveMemory(amd::Memory* memory) const {
