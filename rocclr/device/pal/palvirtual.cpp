@@ -1569,7 +1569,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd) {
     }
 
     if (nullptr == srcMem && nullptr == dstMem) {  // both not in svm space
-      amd::Os::fastMemcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
+      std::memcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
       result = true;
     } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
       Memory* memory = dev().getGpuMemory(dstMem);

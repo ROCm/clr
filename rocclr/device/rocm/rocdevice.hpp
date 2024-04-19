@@ -618,7 +618,7 @@ class Device : public NullDevice {
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
   hsa_agent_t bkendDevice_;
   uint32_t pciDeviceId_;
-  hsa_agent_t* p2p_agents_list_;
+  hsa_agent_t* p2p_agents_list_ = nullptr;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;
   hsa_amd_memory_pool_t system_segment_;

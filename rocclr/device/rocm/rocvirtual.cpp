@@ -959,8 +959,7 @@ bool VirtualGPU::dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_
   if (capturing == true) {
     packet->header = header;
     packet->setup = rest;
-    amd::Os::fastMemcpy(const_cast<uint8_t*>(aqlPacket), packet,
-                        sizeof(hsa_kernel_dispatch_packet_t));
+    std::memcpy(const_cast<uint8_t*>(aqlPacket), packet, sizeof(hsa_kernel_dispatch_packet_t));
     return true;
   } else {
     dispatchBlockingWait();
@@ -1995,7 +1994,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
 
       // If these are from different contexts, then one of them could be in the device memory
       // This is fine, since spec doesn't allow for copies with pointers from different contexts
-      amd::Os::fastMemcpy(cmd.dst(), cmd.src(), cmd.srcSize());
+      std::memcpy(cmd.dst(), cmd.src(), cmd.srcSize());
       result = true;
     } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
       Memory* memory = dev().getRocMemory(dstMem);
@@ -2158,7 +2157,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
         // Wait on a kernel if one is outstanding
         releaseGpuMemoryFence();
         const void* mappedPtr = hsaMapMemory->owner()->getHostMem();
-        amd::Os::fastMemcpy(cmd.svmPtr(), mappedPtr, cmd.size()[0]);
+        std::memcpy(cmd.svmPtr(), mappedPtr, cmd.size()[0]);
       }
     } else {
       LogError("Unhandled svm map!");
@@ -2189,7 +2188,7 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
         Memory* hsaMapMemory = dev().getRocMemory(memory->mapMemory());
 
         void* mappedPtr = hsaMapMemory->owner()->getHostMem();
-        amd::Os::fastMemcpy(mappedPtr, cmd.svmPtr(), writeMapInfo->region_[0]);
+        std::memcpy(mappedPtr, cmd.svmPtr(), writeMapInfo->region_[0]);
         // Target is a remote resource, so copy
         if (!blitMgr().copyBuffer(*hsaMapMemory, *memory, writeMapInfo->origin_,
                                   writeMapInfo->origin_, writeMapInfo->region_,
@@ -2277,7 +2276,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
         if ((svmPtr != nullptr) && (hostPtr != svmPtr)) {
           // Wait on a kernel if one is outstanding
           releaseGpuMemoryFence();
-          amd::Os::fastMemcpy(svmPtr, hostPtr, size[0]);
+          std::memcpy(svmPtr, hostPtr, size[0]);
         }
       } else {
         result = blitMgr().readBuffer(*hsaMemory, static_cast<char*>(hostPtr) + origin[0], origin,
@@ -2377,7 +2376,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
           if ((svmPtr != nullptr) && (hostPtr != svmPtr)) {
             // Wait on a kernel if one is outstanding
             releaseGpuMemoryFence();
-            amd::Os::fastMemcpy(hostPtr, svmPtr, size[0]);
+            std::memcpy(hostPtr, svmPtr, size[0]);
           }
           result = blitMgr().copyBuffer(*hsaMapMemory, *devMemory, mapInfo->origin_, mapInfo->origin_,
                                         mapInfo->region_, mapInfo->isEntire());
@@ -2937,7 +2936,7 @@ static inline void nontemporalMemcpy(
                     *reinterpret_cast<const int* __restrict&>(src)++);
   }
 #else
-  amd::Os::fastMemcpy(dst, src, size);
+  std::memcpy(dst, src, size);
 #endif
 }
 
