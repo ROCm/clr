@@ -59,11 +59,11 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 bool HostQueue::terminate() {
   if (AMD_DIRECT_DISPATCH) {
     if (vdev() != nullptr) {
-      Command* marker = new Marker(*this, true);
-      if (marker != nullptr) {
-        marker->enqueue();
-        marker->awaitCompletion();
-        marker->release();
+      // If the queue still has the last command, then wait and release it
+      if (lastEnqueueCommand_ != nullptr) {
+        lastEnqueueCommand_->awaitCompletion();
+        lastEnqueueCommand_->release();
+        lastEnqueueCommand_ = nullptr;
       }
     }
     thread_.Release();
