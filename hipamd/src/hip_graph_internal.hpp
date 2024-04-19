@@ -817,6 +817,29 @@ class GraphKernelNode : public GraphNode {
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
+  void EnqueueCommands(hipStream_t stream) override {
+    // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
+    // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
+    if (!isEnabled_) {
+      amd::Command::EventWaitList waitList;
+      if (!commands_.empty()) {
+        waitList = commands_[0]->eventWaitList();
+      }
+      hip::Stream* hip_stream = hip::getStream(stream);
+      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      command->enqueue();
+      command->release();
+      return;
+    }
+    for (auto& command : commands_) {
+      hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+      hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+      amd::Kernel* kernel = function->kernel();
+      amd::ScopedLock lock(function->dflock_);
+      command->enqueue();
+      command->release();
+    }
+  }
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
     out << "style";
@@ -1049,9 +1072,15 @@ class GraphKernelNode : public GraphNode {
   }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
-    hipFunction_t func = nullptr;
-    hipError_t status = validateKernelParams(&kernelParams_, &func,
-                                             stream ? hip::getDeviceID(stream->context()) : -1);
+    int devID = hip::getDeviceID(stream->context());
+    hipFunction_t func = getFunc(kernelParams_, devID);
+    if (!func) {
+      return hipErrorInvalidDeviceFunction;
+    }
+    hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+    amd::Kernel* kernel = function->kernel();
+    amd::ScopedLock lock(function->dflock_);
+    hipError_t status = validateKernelParams(&kernelParams_, func, devID);
     if (hipSuccess != status) {
       return status;
     }
@@ -1075,8 +1104,12 @@ class GraphKernelNode : public GraphNode {
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
+    hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+    if (!func) {
+      return hipErrorInvalidDeviceFunction;
+    }
     // updates kernel params
-    hipError_t status = validateKernelParams(params);
+    hipError_t status = validateKernelParams(params, func, ihipGetDevice());
     if (hipSuccess != status) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to validateKernelParams");
       return status;
@@ -1192,13 +1225,7 @@ class GraphKernelNode : public GraphNode {
   }
 
   static hipError_t validateKernelParams(const hipKernelNodeParams* pNodeParams,
-                                         hipFunction_t* ptrFunc = nullptr, int devId = -1) {
-    devId = devId == -1 ? ihipGetDevice() : devId;
-    hipFunction_t func = getFunc(*pNodeParams, devId);
-    if (!func) {
-      return hipErrorInvalidDeviceFunction;
-    }
-
+                                         hipFunction_t func, int devId) {
     size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
     size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
     size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
@@ -1211,8 +1238,6 @@ class GraphKernelNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-
-    if (ptrFunc) *ptrFunc = func;
     return hipSuccess;
   }
 };
