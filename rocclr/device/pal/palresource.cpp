@@ -1700,7 +1700,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
     dst = static_cast<void*>(static_cast<char*>(dst) + origin[0]);
 
     // Copy memory
-    amd::Os::fastMemcpy(dst, hostPtr, copySize);
+    std::memcpy(dst, hostPtr, copySize);
   } else {
     size_t dstOffsBase = origin[0] * elementSize_;
 
@@ -1728,7 +1728,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
         // Copy memory
-        amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
+        std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
                             (reinterpret_cast<const_address>(hostPtr) + srcOffs),
                             size[0] * elementSize_);
 
@@ -1770,7 +1770,7 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
     src = static_cast<void*>(static_cast<char*>(src) + origin[0]);
 
     // Copy memory
-    amd::Os::fastMemcpy(hostPtr, src, copySize);
+    std::memcpy(hostPtr, src, copySize);
   } else {
     size_t srcOffsBase = origin[0] * elementSize_;
 
@@ -1798,9 +1798,9 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
         // Copy memory
-        amd::Os::fastMemcpy((reinterpret_cast<address>(hostPtr) + dstOffs),
-                            (reinterpret_cast<const_address>(src) + srcOffs),
-                            size[0] * elementSize_);
+        std::memcpy((reinterpret_cast<address>(hostPtr) + dstOffs),
+                    (reinterpret_cast<const_address>(src) + srcOffs),
+                    size[0] * elementSize_);
 
         srcOffs += desc().pitch_ * elementSize_;
         dstOffs += rowPitch;
@@ -1939,7 +1939,7 @@ bool Resource::isPersistentDirectMap(bool writeMap) const {
   if (directMap && desc().tiled_) {
     // Latest HW does have tiling apertures
     directMap = false;
-  } 
+  }
   if (memoryType() == View) {
     directMap = viewOwner_->isPersistentDirectMap(writeMap);
   }
