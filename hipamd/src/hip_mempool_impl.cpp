@@ -41,7 +41,8 @@ void Heap::AddMemory(amd::Memory* memory, const MemoryTimestamp& ts) {
 }
 
 // ================================================================================================
-amd::Memory* Heap::FindMemory(size_t size, Stream* stream, bool opportunistic, void* dptr) {
+amd::Memory* Heap::FindMemory(size_t size, Stream* stream, bool opportunistic,
+    void* dptr, MemoryTimestamp* ts) {
   amd::Memory* memory = nullptr;
   auto start = allocations_.lower_bound({size, nullptr});
   for (auto it = start; it != allocations_.end();) {
@@ -61,6 +62,8 @@ amd::Memory* Heap::FindMemory(size_t size, Stream* stream, bool opportunistic, v
     if (check_address && (it->second.IsSafeFind(stream, opp_mode))) {
       memory = it->first.second;
       total_size_ -= memory->getSize();
+      // Preserve event, since the logic could skip GPU wait on reuse
+      ts->event_ = it->second.event_;
       // Remove found allocation from the map
       it = allocations_.erase(it);
       break;
@@ -79,8 +82,6 @@ bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
       // Preserve timestamp info for possible reuse later
       *ts = it->second;
     } else {
-      // Runtime will delete the timestamp object, hence make sure HIP event is released
-      it->second.Wait();
       it->second.SetEvent(nullptr);
     }
     total_size_ -= mem_size;
@@ -169,7 +170,8 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
   amd::ScopedLock lock(lock_pool_ops_);
 
   void* dev_ptr = nullptr;
-  amd::Memory* memory = free_heap_.FindMemory(size, stream, Opportunistic(), dptr);
+  MemoryTimestamp ts;
+  amd::Memory* memory = free_heap_.FindMemory(size, stream, Opportunistic(), dptr, &ts);
   if (memory == nullptr) {
     if (Properties().maxSize != 0 && (max_total_size_ + size) > Properties().maxSize) {
       return nullptr;
@@ -207,12 +209,12 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
       }
     }
   } else {
-    free_heap_.RemoveMemory(memory);
     const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
     dev_ptr = reinterpret_cast<void*>(dev_mem->virtualAddress());
   }
   // Place the allocated memory into the busy heap
-  busy_heap_.AddMemory(memory, stream);
+  ts.AddSafeStream(stream);
+  busy_heap_.AddMemory(memory, ts);
 
   max_total_size_ = std::max(max_total_size_, busy_heap_.GetTotalSize() +
                                                   free_heap_.GetTotalSize());
