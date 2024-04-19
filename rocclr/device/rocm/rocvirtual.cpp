@@ -351,6 +351,7 @@ void VirtualGPU::MemoryDependency::clear(bool all) {
 // ================================================================================================
 VirtualGPU::HwQueueTracker::~HwQueueTracker() {
   for (auto& signal: signal_list_) {
+    CpuWaitForSignal(signal);
     signal->release();
   }
 }
