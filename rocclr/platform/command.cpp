@@ -370,13 +370,11 @@ void Command::enqueue() {
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
 
-      setStatus(CL_SUBMITTED);
       submit(*queue_->vdev());
 
       // The batch will be tracked with the marker now
       queue_->ResetSubmissionBatch();
     } else {
-      setStatus(CL_SUBMITTED);
       submit(*queue_->vdev());
     }
   } else {
