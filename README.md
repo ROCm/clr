@@ -29,7 +29,7 @@ Building clr requires `rocm-hip-libraries` meta package, which provides the pre-
 
 Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=ON` to configure command.
 
-For detail instructions, please refer to [how to build HIP](https://rocm.docs.amd.com/projects/HIP/en/latest/developer_guide/build.html)
+For detail instructions, please refer to [how to build HIP](https://rocm.docs.amd.com/projects/HIP/en/latest/install/build.html)
 
 ## Tests
 
