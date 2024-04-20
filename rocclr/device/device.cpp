@@ -405,6 +405,8 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
 
   amd::Memory* vaddr_base_obj = nullptr;
   amd::Memory* vaddr_sub_obj = nullptr;
+  constexpr bool kSysMemAlloc = false;
+  constexpr bool kSkipAlloc = false;
 
   if (parent) {
     vaddr_base_obj = new (device_context) amd::Buffer(device_context, CL_MEM_VA_RANGE_AMD, size,
@@ -415,8 +417,6 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
     }
     // This curr_mem_obj->create() does not create an actual memory but stores the memory info
     // with given vptr on ROCr backend.
-    constexpr bool kSysMemAlloc = false;
-    constexpr bool kSkipAlloc = false;
     if (!vaddr_base_obj->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
       LogError("failed to create a va range mem object");
       vaddr_base_obj->release();
@@ -431,6 +431,7 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
       LogPrintfError("Cannot find entry in VirtualMemObjMap: 0x%x \n", vptr);
       return nullptr;
     }
+    assert(vaddr_base_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD);
 
     size_t offset = (reinterpret_cast<address>(vptr)
                      - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
@@ -439,8 +440,6 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
 
     // This curr_mem_obj->create() does not create an actual memory but stores the memory info
     // with given vptr on ROCr backend.
-    constexpr bool kSysMemAlloc = false;
-    constexpr bool kSkipAlloc = false;
     if (!vaddr_sub_obj->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
       LogError("failed to create a va range mem object");
       vaddr_sub_obj->release();
