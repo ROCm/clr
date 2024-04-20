@@ -789,7 +789,6 @@ bool Buffer::create(bool alloc_local) {
     }
 
     owner()->setSvmPtr(reinterpret_cast<void*>(owner()->getUserData().hsa_handle));
-    amd::MemObjMap::AddMemObj(owner()->getSvmPtr(), owner());
 
     return true;
   }

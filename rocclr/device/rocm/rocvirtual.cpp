@@ -2612,12 +2612,13 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     dispatchBarrierPacket(kBarrierPacketHeader, false);
     Barriers().WaitCurrent();
 
+    amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(vcmd.ptr());
+    assert(vaddr_sub_obj != nullptr);
+
     // Unmap the object, since the physical addr is set.
-    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_base_obj->getSvmPtr(), vcmd.size()))
+    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_sub_obj->getSvmPtr(), vcmd.size()))
                         == HSA_STATUS_SUCCESS) {
       // assert the va is mapped and needs to be removed
-      amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(vcmd.ptr());
-      assert(vaddr_sub_obj != nullptr);
       vaddr_sub_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_sub_obj);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
       vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
