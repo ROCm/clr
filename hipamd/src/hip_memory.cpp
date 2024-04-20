@@ -367,11 +367,25 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+
+  // If the mem object is a VMM sub buffer (subbuffer has parent set),
+  // then use parent's size for validation.
+  if (srcMemory && srcMemory->parent() && (srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+      srcMemory = srcMemory->parent();
+  }
+
+  // If the mem object is a VMM sub buffer (subbuffer has parent set),
+  // then use parent's size for validation.
+  if (dstMemory && dstMemory->parent() && (dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+      dstMemory = dstMemory->parent();
+  }
+
   // Return error if sizeBytes passed to memcpy is more than the actual size allocated
   if ((dstMemory && sizeBytes > (dstMemory->getSize() - dOffset)) ||
       (srcMemory && sizeBytes > (srcMemory->getSize() - sOffset))) {
     return hipErrorInvalidValue;
   }
+
   //If src and dst ptr are null then kind must be either h2h or def.
   if (!IsHtoHMemcpyValid(dst, src, kind)) {
     return hipErrorInvalidValue;
