@@ -466,3 +466,10 @@ hipGetFuncBySymbol
 hipDrvGraphAddMemFreeNode
 hipDrvGraphExecMemcpyNodeSetParams
 hipDrvGraphExecMemsetNodeSetParams
+hipSetValidDevices
+hipMemcpyAtoD
+hipMemcpyDtoA
+hipMemcpyAtoA
+hipMemcpyAtoHAsync
+hipMemcpyHtoAAsync
+hipMemcpy2DArrayToArray
