@@ -563,6 +563,13 @@ global:
     hipDrvGraphExecMemcpyNodeSetParams;
     hipDrvGraphExecMemsetNodeSetParams;
     hipDrvGraphAddMemFreeNode;
+    hipSetValidDevices;
+    hipMemcpyAtoD;
+    hipMemcpyDtoA;
+    hipMemcpyAtoA;
+    hipMemcpyAtoHAsync;
+    hipMemcpyHtoAAsync;
+    hipMemcpy2DArrayToArray;
 local:
     *;
 } hip_6.1;
