@@ -150,6 +150,7 @@ class Memory : public amd::RuntimeObject {
      int deviceId = 0;     //!< Device ID memory is allocated on
      void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
      amd::Memory* phys_mem_obj = nullptr; //<! Physical mem obj, only set on virtual mem
+     amd::Memory* vaddr_mem_obj = nullptr; //<! Virtual address mem obj, only set on virtual mem
      uint64_t hsa_handle = 0; //!<Opaque hsa handle saved for Virtual memories
      unsigned int flags = 0; //!< HIP memory flags
      //! hipMallocPitch allocates buffer using width & height and returns pitch & device pointer.
