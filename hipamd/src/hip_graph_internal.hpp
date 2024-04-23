@@ -496,6 +496,7 @@ struct Graph {
     void* ptr;
     const auto& dev_info = g_devices[0]->devices()[0]->info();
 
+    size = amd::alignUp(size, dev_info.virtualMemAllocGranularity_);
     // Single virtual alloc would reserve for all devices.
     ptr = g_devices[0]->devices()[0]->virtualAlloc(startAddress, size,
             dev_info.virtualMemAllocGranularity_);
