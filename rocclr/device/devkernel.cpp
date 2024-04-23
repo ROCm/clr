@@ -617,6 +617,7 @@ Kernel::Kernel(const amd::Device& dev, const std::string& name, const Program& p
   workGroupInfo_.compileSizeHint_[1] = 0;
   workGroupInfo_.compileSizeHint_[2] = 0;
   workGroupInfo_.compileVecTypeHint_ = "";
+  workGroupInfo_.isWGPMode_ = false;
   workGroupInfo_.uniformWorkGroupSize_ = false;
   workGroupInfo_.wavesPerSimdHint_ = 0;
   workGroupInfo_.constMemSize_ = 0;
