@@ -209,8 +209,7 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
       }
     }
   } else {
-    const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
-    dev_ptr = reinterpret_cast<void*>(dev_mem->virtualAddress());
+    dev_ptr = memory->getSvmPtr();
   }
   // Place the allocated memory into the busy heap
   ts.AddSafeStream(stream);
@@ -259,14 +258,17 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
     }
     ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Pool FreeMem: %p, %p", memory->getSvmPtr(), memory);
 
-    if (stream == nullptr) {
+    if (memory->getUserData().vaddr_mem_obj != nullptr) {
+      auto va_mem = memory->getUserData().vaddr_mem_obj;
+      if (stream == nullptr) {
         stream = g_devices[memory->getUserData().deviceId]->NullStream();
+      }
+      // Unmap virtual address from memory
+      auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
+                                            va_mem->getSvmPtr(), va_mem->getSize(), nullptr);
+      cmd->enqueue();
+      cmd->release();
     }
-    // Unmap virtual address from memory
-    auto cmd = new amd::VirtualMapCommand(*stream, amd::Command::EventWaitList{},
-                                          memory->getSvmPtr(), memory->getSize(), nullptr);
-    cmd->enqueue();
-    cmd->release();
 
     if (stream != nullptr) {
       // The stream of destruction is a safe stream, because the app must handle sync
