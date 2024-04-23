@@ -64,6 +64,7 @@ class CodeObject {
   static uint64_t ElfSize(const void* emi);
 
   static bool IsClangOffloadMagicBundle(const void* data);
+  static bool IsClangOffloadMagicCompressedBundle(const void* data);
 
 protected:
   //Given an ptr to image or file, extracts to code object

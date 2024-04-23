@@ -162,10 +162,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   guarantee(image_ != nullptr, "Image cannot be nullptr, file:%s did not map for some reason",
                                 fname_.c_str());
 
+  bool is_compressed_bundle = CodeObject::IsClangOffloadMagicCompressedBundle(image_);
+  bool is_offload_bundle = is_compressed_bundle || CodeObject::IsClangOffloadMagicBundle(image_);
+
   do {
 
-    // If the image ptr is not clang offload bundle then just directly point the image.
-    if (!CodeObject::IsClangOffloadMagicBundle(image_)) {
+    // If the image ptr is not (compressed) clang offload bundle then just directly point the image.
+    if (!is_offload_bundle) {
       for (size_t dev_idx=0; dev_idx < devices.size(); ++dev_idx) {
         fatbin_dev_info_[devices[dev_idx]->deviceId()]
           = new FatBinaryDeviceInfo(image_, CodeObject::ElfSize(image_), 0);
@@ -180,7 +183,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     }
 
     // Create a data object, if it fails return error
-    if ((comgr_status = amd_comgr_create_data(AMD_COMGR_DATA_KIND_FATBIN, &data_object))
+    auto comgr_data_kind = is_compressed_bundle ? AMD_COMGR_DATA_KIND_COMPRESSED_FATBIN 
+                                                : AMD_COMGR_DATA_KIND_FATBIN;
+    if ((comgr_status = amd_comgr_create_data(comgr_data_kind, &data_object))
                         != AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Creating data object failed with status %d ", comgr_status);
       hip_status = hipErrorInvalidValue;
@@ -201,12 +206,60 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     } else
 #endif
     if (image_ != nullptr) {
-      // Using the image ptr, map the data object.
-      if ((comgr_status = amd_comgr_set_data(data_object, 4096,
-                          reinterpret_cast<const char*>(image_))) != AMD_COMGR_STATUS_SUCCESS) {
-        LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
-        hip_status = hipErrorInvalidValue;
-        break;
+      if (is_compressed_bundle) {
+        uint16_t bundle_version;
+
+        // Only >=v2 compressed bundle contains info about the size of the bundle,
+        // which we require to decompress correctly.
+        // + 4 = skip 4 byte magic
+        bundle_version = *reinterpret_cast<const uint16_t*>(reinterpret_cast<const char*>(image_) + 4);
+        if (bundle_version < 1) {
+          LogPrintfError("Require compressed offload bundle v2, got %d", bundle_version);
+          hip_status = hipErrorInvalidImage;
+          break;
+        }
+
+        uint32_t image_size;
+        // 4 + 2 + 2 = 4 byte magic, 16-bit (2 byte) version number, and 16-bit (2 byte)
+        // compression method
+        image_size = *reinterpret_cast<const uint32_t*>(reinterpret_cast<const char*>(image_) + 4 + 2 + 2);
+
+        if ((comgr_status = amd_comgr_set_data(data_object, image_size,
+                            reinterpret_cast<const char*>(image_))) != AMD_COMGR_STATUS_SUCCESS) {
+          LogPrintfError("Setting data from compressed image failed with status %d ", comgr_status);
+          hip_status = hipErrorInvalidImage;
+          break;
+        }
+
+        // `image_` should now point to the decompressed image instead of the
+        // compressed bundle, so operations can be performed on `image_`
+        // directly.
+        size_t actual_image_size;
+        if ((comgr_status = (amd_comgr_get_data(data_object, &actual_image_size, nullptr)))
+            != AMD_COMGR_STATUS_SUCCESS) {
+          LogPrintfError("Obtaining size of compressed image failed with status %d ", comgr_status);
+          hip_status = hipErrorInvalidImage;
+          break;
+        }
+        // Ideally we don't want to copy, but this is the best we can do with
+        // existing COMGR APIs.
+        const void* decompressed_image = malloc(actual_image_size);
+        if ((comgr_status = amd_comgr_get_data(data_object, &actual_image_size, (char*)decompressed_image))
+            != AMD_COMGR_STATUS_SUCCESS) {
+          LogPrintfError("Obtaining decompressed image failed with status %d ", comgr_status);
+          hip_status = hipErrorInvalidImage;
+          break;
+        }
+        LogPrintfDebug("Decompressed binary image of size %d bytes ", actual_image_size);
+        image_ = decompressed_image;
+      } else {
+        // Using the image ptr, map the data object.
+        if ((comgr_status = amd_comgr_set_data(data_object, 4096,
+                            reinterpret_cast<const char*>(image_))) != AMD_COMGR_STATUS_SUCCESS) {
+          LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
+          hip_status = hipErrorInvalidValue;
+          break;
+        }
       }
     } else {
       guarantee(false, "Cannot have both fname_ and image_ as nullptr");

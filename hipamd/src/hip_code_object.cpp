@@ -36,6 +36,7 @@ hipError_t ihipFree(void* ptr);
 hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
 namespace {
 constexpr char kOffloadBundleMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
+constexpr char kOffloadCompressedBundleMagicStr[] = "CCOB";
 constexpr char kOffloadKindHip[] = "hip";
 constexpr char kOffloadKindHipv4[] = "hipv4";
 constexpr char kOffloadKindHcc[] = "hcc";
@@ -43,6 +44,9 @@ constexpr char kAmdgcnTargetTriple[] = "amdgcn-amd-amdhsa-";
 
 // ClangOFFLOADBundle info.
 static constexpr size_t kOffloadBundleMagicStrSize = sizeof(kOffloadBundleMagicStr);
+
+// Compressed ClangOFFLOADBundle info.
+static constexpr size_t kOffloadCompressedBundleMagicStrSize = sizeof(kOffloadCompressedBundleMagicStr);
 
 // Clang Offload bundler description & Header.
 struct __ClangOffloadBundleInfo {
@@ -62,6 +66,11 @@ struct __ClangOffloadBundleHeader {
 bool CodeObject::IsClangOffloadMagicBundle(const void* data) {
   std::string magic(reinterpret_cast<const char*>(data), kOffloadBundleMagicStrSize - 1);
   return magic.compare(kOffloadBundleMagicStr) ? false : true;
+}
+
+bool CodeObject::IsClangOffloadMagicCompressedBundle(const void* data) {
+  std::string magic(reinterpret_cast<const char*>(data), kOffloadCompressedBundleMagicStrSize - 1);
+  return magic.compare(kOffloadCompressedBundleMagicStr) ? false : true;
 }
 
 uint64_t CodeObject::ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
