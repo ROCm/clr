@@ -2230,11 +2230,15 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
       amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
       vaddr_mem_obj->getUserData().phys_mem_obj = vcmd.memory();
+      vcmd.memory()->getUserData().vaddr_mem_obj = vaddr_mem_obj;
     } else {
       // assert the vaddr_mem_obj is mapped and needs to be removed
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      if (vaddr_mem_obj->getUserData().phys_mem_obj != nullptr) {
+        vaddr_mem_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
+        vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      }
     }
   }
   profilingEnd(vcmd);

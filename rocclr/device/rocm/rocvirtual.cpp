@@ -2605,6 +2605,7 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
       amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_sub_obj);
       vaddr_sub_obj->getUserData().phys_mem_obj = phys_mem_obj;
+      phys_mem_obj->getUserData().vaddr_mem_obj = vaddr_sub_obj;
     } else {
       LogError("HSA Command: hsa_amd_vmem_map failed!");
     }
@@ -2621,7 +2622,10 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
       // assert the va is mapped and needs to be removed
       vaddr_sub_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_sub_obj);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
+      if (vaddr_sub_obj->getUserData().phys_mem_obj != nullptr) {
+        vaddr_sub_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
+        vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
+      }
     } else {
       LogError("HSA Command: hsa_amd_vmem_unmap failed");
     }
