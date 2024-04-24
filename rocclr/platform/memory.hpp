@@ -413,6 +413,9 @@ class Memory : public amd::RuntimeObject {
 
   //!find if memory object is Arena memory
   virtual bool isArena() { return false; }
+
+  //! get device by id when glb ctx is used.
+  Device* GetDeviceById();
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,

@@ -540,6 +540,11 @@ void Memory::uncommitSvmMemory() {
   }
 }
 
+Device* Memory::GetDeviceById() {
+  size_t device_idx = (userData_.deviceId < getContext().devices().size()) ? userData_.deviceId : 0;
+  return getContext().devices()[device_idx];
+}
+
 void Buffer::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Buffer));
   memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
