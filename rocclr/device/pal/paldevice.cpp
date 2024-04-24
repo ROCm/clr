@@ -2746,7 +2746,8 @@ bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& ha
       (sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreWin32 ||
        sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreFd);
   palOpenInfo.flags.sharedViaNtHandle =
-      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32);
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32 ||
+       sem_handle_type == amd::ExternalSemaphoreHandleType::D3D12Fence);
   Pal::Result result;
 
   size_t semaphoreSize = iDev()->GetExternalSharedQueueSemaphoreSize(
