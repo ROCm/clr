@@ -1,0 +1,56 @@
+resources:
+  repositories:
+  - repository: pipelines_repo
+    type: github
+    endpoint: ROCm
+    name: ROCm/ROCm
+  - repository: matching_repo
+    type: github
+    endpoint: ROCm
+    name: ROCm/HIP
+    ref: develop
+  pipelines:
+  - pipeline: hip_pipeline
+    source: HIP
+    trigger:
+      branches:
+        include:
+        - develop
+
+variables:
+- group: common
+- template: /.azuredevops/variables-global.yml@pipelines_repo
+
+trigger:
+  batch: true
+  branches:
+    include:
+    - develop
+  paths:
+    exclude:
+    - CODEOWNERS
+    - LICENCE
+    - '**/*.md'
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+    - develop
+  paths:
+    exclude:
+    - CODEOWNERS
+    - LICENCE
+    - '**/*.md'
+  drafts: false
+
+jobs:
+# if the build reason is a resource trigger, it means trigger is HIP repo build
+# HIP repo build would have just built runtime, just copy their build products
+# this is to ensure clr has latest good package for combined-packaging jobs
+# combined-packaging jobs only have to look at clr pipeline for latest runtime
+# to remove logic of comparing build products from both clr and hip triggers
+  - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
+    - template: ${{ variables.CI_COMPONENT_PATH }}/copyHIP.yml@pipelines_repo
+  - ${{ if ne(variables['Build.Reason'], 'ResourceTrigger') }}:
+    - template: ${{ variables.CI_COMPONENT_PATH }}/HIP.yml@pipelines_repo
