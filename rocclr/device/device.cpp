@@ -409,8 +409,7 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
   constexpr bool kSkipAlloc = false;
 
   if (parent) {
-    vaddr_base_obj = new (device_context) amd::Buffer(device_context, CL_MEM_VA_RANGE_AMD, size,
-                                                      vptr);
+    vaddr_base_obj = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_VA_RANGE_AMD, size, vptr);
     if (vaddr_base_obj == nullptr) {
       LogError("failed to new a va range curr_mem_obj object!");
       return nullptr;

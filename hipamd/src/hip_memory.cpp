@@ -405,8 +405,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
     hip::Stream* pStream = &stream;
-    if (queueDevice != dstMemory->getContext().devices()[0]) {
-      pStream = hip::getNullStream(dstMemory->getContext());
+    if (queueDevice != dstMemory->GetDeviceById()) {
+      pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
       amd::Command* cmd = stream.getLastQueuedCommand(true);
       if (cmd != nullptr) {
         waitList.push_back(cmd);
@@ -416,8 +416,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
               *dstMemory->asBuffer(), dOffset, sizeBytes, src, 0, 0, copyMetadata);
   } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
     hip::Stream* pStream = &stream;
-    if (queueDevice != srcMemory->getContext().devices()[0]) {
-      pStream = hip::getNullStream(srcMemory->getContext());
+    if (queueDevice != srcMemory->GetDeviceById()) {
+      pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
       amd::Command* cmd = stream.getLastQueuedCommand(true);
       if (cmd != nullptr) {
         waitList.push_back(cmd);
@@ -429,7 +429,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
     // Check if the queue device doesn't match the device on any memory object.
     // And any of them are not host allocation.
     // Hence it's a P2P transfer, because the app has requested access to another GPU
-    if ((srcMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) &&
+    if ((srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) &&
         ((srcMemory->getContext().devices().size() == 1) &&
          (dstMemory->getContext().devices().size() == 1))) {
       command = new amd::CopyMemoryP2PCommand(stream, CL_COMMAND_COPY_BUFFER, waitList,
@@ -445,26 +445,26 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
       }
     } else {
       hip::Stream* pStream = &stream;
-      if ((srcMemory->getContext().devices()[0] == dstMemory->getContext().devices()[0]) &&
+      if ((srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) &&
           (queueDevice != srcMemory->getContext().devices()[0])) {
-        pStream = hip::getNullStream(srcMemory->getContext());
+        pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
           waitList.push_back(cmd);
         }
-      } else if (srcMemory->getContext().devices()[0] != dstMemory->getContext().devices()[0]) {
+      } else if (srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) {
         // Scenarios such as DtoH where dst is pinned memory
         if ((queueDevice != srcMemory->getContext().devices()[0]) &&
             (dstMemory->getContext().devices().size() != 1)) {
-          pStream = hip::getNullStream(srcMemory->getContext());
+          pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
           amd::Command* cmd = stream.getLastQueuedCommand(true);
           if (cmd != nullptr) {
             waitList.push_back(cmd);
           }
         // Scenarios such as HtoD where src is pinned memory
-        } else if ((queueDevice != dstMemory->getContext().devices()[0]) &&
+        } else if ((queueDevice != dstMemory->GetDeviceById()) &&
                    (srcMemory->getContext().devices().size() != 1)) {
-          pStream = hip::getNullStream(dstMemory->getContext());
+          pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
           amd::Command* cmd = stream.getLastQueuedCommand(true);
           if (cmd != nullptr) {
             waitList.push_back(cmd);
@@ -530,7 +530,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
              ((srcMemory != nullptr) && (dstMemory == nullptr))) {
     isHostAsync = false;
-  } else if (srcMemory->getContext().devices()[0] == dstMemory->getContext().devices()[0]) {
+  } else if (srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) {
     hipMemoryType srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
         srcMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
     hipMemoryType dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
@@ -550,7 +550,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   if (!isHostAsync) {
     command->awaitCompletion();
   } else if (!isGPUAsync) {
-    hip::Stream* pStream = hip::getNullStream(dstMemory->getContext());
+    hip::Stream* pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
     amd::Command::EventWaitList waitList;
     waitList.push_back(command);
     amd::Command* depdentMarker = new amd::Marker(*pStream, false, waitList);
