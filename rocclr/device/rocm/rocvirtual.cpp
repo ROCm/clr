@@ -36,6 +36,7 @@
 #include "os/os.hpp"
 #include "hsa/amd_hsa_kernel_code.h"
 #include "hsa/amd_hsa_queue.h"
+#include "hsa/amd_hsa_signal.h"
 
 #include <fstream>
 #include <limits>
@@ -143,6 +144,8 @@ void Timestamp::checkGpuTime() {
       if (command().GetBatchHead() == nullptr || command().profilingInfo().marker_ts_
           || command().type() == CL_COMMAND_TASK) {
         hsa_amd_profiling_dispatch_time_t time = {};
+        amd_signal_t* amdSignal = reinterpret_cast<amd_signal_t*>(it->signal_.handle);
+
         if (it->engine_ == HwQueueEngine::Compute) {
           hsa_amd_profiling_get_dispatch_time(gpu()->gpu_device(), it->signal_, &time);
         } else {
@@ -159,9 +162,10 @@ void Timestamp::checkGpuTime() {
           static_cast<amd::AccumulateCommand&>(command()).addTimestamps(time.start, time.end);
         }
 
-        ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Signal = (0x%lx), start = %ld, "
-          "end = %ld time taken= %ld ns", it->signal_.handle, time.start, time.end,
-          time.end - time.start);
+        ClPrint(amd::LOG_INFO, amd::LOG_TS, "Signal = (0x%lx), Translated start/end = %ld / %ld, "
+          "Elapsed = %ld ns, ticks start/end = %ld / %ld, Ticks elapsed = %ld", it->signal_.handle,
+          time.start, time.end, time.end - time.start, amdSignal->start_ts, amdSignal->end_ts,
+          amdSignal->end_ts - amdSignal->start_ts);
       }
       it->flags_.done_ = true;
     }
