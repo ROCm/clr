@@ -82,6 +82,7 @@ public:
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
   amd::Monitor  lock_;    //!< Signal lock for update
+  bool isPacketDispatch_; //!< True if the packet associated with the signal is dispatch
 
   typedef union {
     struct {
@@ -98,6 +99,7 @@ public:
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
     , lock_("Signal Ops Lock", true)
+    , isPacketDispatch_(false)
     {
       signal_.handle = 0;
       flags_.done_ = true;

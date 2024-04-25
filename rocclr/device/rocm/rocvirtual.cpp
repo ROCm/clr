@@ -158,7 +158,7 @@ void Timestamp::checkGpuTime() {
         start = std::min(time.start, start);
         end = std::max(time.end, end);
 
-        if (command().type() == CL_COMMAND_TASK) {
+        if ((command().type() == CL_COMMAND_TASK) && (it->isPacketDispatch_ == true)) {
           static_cast<amd::AccumulateCommand&>(command()).addTimestamps(time.start, time.end);
         }
 
@@ -868,12 +868,17 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     // Get active signal for current dispatch if profiling is necessary
     packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
 
-    // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
-    // retrieve this correlation ID to attribute waves to specific dispatch locations.
-    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value &&
-        activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
-      dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
+    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value) {
+      // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
+      // retrieve this correlation ID to attribute waves to specific dispatch locations.
+      if (activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+        auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
+        dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
+      }
+
+      ProfilingSignal* current_signal = Barriers().GetLastSignal();
+      current_signal->isPacketDispatch_ = true;
+
     }
   }
 
