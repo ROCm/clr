@@ -233,7 +233,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   // Return gpu packet address to update with actual packet under capture.
   uint8_t* GetAqlPacket() { return gpuPacket_; }
-  void SetKernelName(std::string kernelName) { capturedKernelName_ = kernelName; }
+  void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
 
   hip::Stream* GetQueue() const { return stream_; }

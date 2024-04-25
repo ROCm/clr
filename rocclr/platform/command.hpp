@@ -1270,8 +1270,7 @@ class AccumulateCommand : public Command {
 
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) {
-    // "^" is to indicate kernel is captured at instantiate
-    kernelNames_.push_back("^  " + kernelName);
+    kernelNames_.push_back(kernelName);
   }
 
   //! Add kernel timestamp to the list if available
