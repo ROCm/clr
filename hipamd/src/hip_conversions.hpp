@@ -626,7 +626,8 @@ HIP_MEMCPY3D getDrvMemcpy3DDesc(const hip_Memcpy2D& desc2D) {
   desc3D.srcHost = desc2D.srcHost;
   desc3D.srcDevice = desc2D.srcDevice;
   desc3D.srcArray = desc2D.srcArray;
-  desc3D.srcPitch = desc2D.srcPitch;
+  desc3D.srcPitch = desc2D.srcPitch ? desc2D.srcPitch
+                                    : (desc2D.srcXInBytes + desc2D.WidthInBytes);
   desc3D.srcHeight = 0;
 
   desc3D.dstXInBytes = desc2D.dstXInBytes;
@@ -637,7 +638,8 @@ HIP_MEMCPY3D getDrvMemcpy3DDesc(const hip_Memcpy2D& desc2D) {
   desc3D.dstHost = desc2D.dstHost;
   desc3D.dstDevice = desc2D.dstDevice;
   desc3D.dstArray = desc2D.dstArray;
-  desc3D.dstPitch = desc2D.dstPitch;
+  desc3D.dstPitch = desc2D.dstPitch ? desc2D.dstPitch
+                                    : (desc2D.dstXInBytes + desc2D.WidthInBytes);
   desc3D.dstHeight = 0;
 
   desc3D.WidthInBytes = desc2D.WidthInBytes;
