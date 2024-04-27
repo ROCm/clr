@@ -2777,11 +2777,17 @@ void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
   if (cmd.semaphoreCmd() ==
       amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE) {
     flushDMA(MainEngine);
-    queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
-                                                       cmd.fence());
+    if (Pal::Result::Success !=
+        queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                           cmd.fence())) {
+      LogError("Failed to signal external semaphore");
+    }
   } else {
-    queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
-                                                       cmd.fence());
+    if (Pal::Result::Success !=
+        queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                         cmd.fence())) {
+      LogError("Failed to wait on external semaphore");
+    }
   }
 }
 
