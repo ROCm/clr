@@ -2,6 +2,14 @@
 
 Full documentation for HIP is available at [docs.amd.com](https://docs.amd.com/)
 
+## HIP 6.2 (For ROCm 6.2)
+
+### Added
+- Introduced the `_sync()` version of crosslane builtins such as `shfl_sync()`, `__all_sync()`
+  and `__any_sync()`. These take a 64-bit integer as an explicit mask argument.
+  - In HIP 6.2, these are hidden behind the preprocessor macro
+    `HIP_ENABLE_WARP_SYNC_BUILTINS`, and will be enabled unconditionally in HIP 6.3.
+
 ## HIP 6.1 (For ROCm 6.1)
 ### Optimizations
 

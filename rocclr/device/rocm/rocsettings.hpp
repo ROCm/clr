@@ -52,8 +52,7 @@ class Settings : public device::Settings {
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint device_kernel_args_ : 1;     //!< Allocate kernel args in device memory
-      uint reserved_ : 20;
+      uint reserved_ : 21;
     };
     uint value_;
   };
@@ -83,8 +82,9 @@ class Settings : public device::Settings {
   Settings();
 
   //! Creates settings
-  bool create(bool fullProfile, uint32_t gfxipMajor, uint32_t gfxipMinor, uint32_t gfxStepping,
-              bool enableXNACK, bool coop_groups = false);
+  bool create(bool fullProfile, const amd::Isa &isa, bool enableXNACK,
+              bool coop_groups = false, bool isXgmi = false,
+              bool hasValidHDPFlush = true);
 
  private:
   //! Disable copy constructor
@@ -95,6 +95,10 @@ class Settings : public device::Settings {
 
   //! Overrides current settings based on registry/environment
   void override();
+
+  //! Determine how kernel arguments should be implemented given ASIC (host
+  //! memory, device memory, device memory with memory ordering workaround)
+  void setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidHDPFlush);
 };
 
 /*@}*/} // namespace roc

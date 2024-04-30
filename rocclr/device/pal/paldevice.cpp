@@ -510,7 +510,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.errorCorrectionSupport_ = false;
 
   if (settings().apuSystem_) {
-    info_.hostUnifiedMemory_ = true;
+    info_.hostUnifiedMemory_ = 1;
   }
 
   info_.iommuv2_ = palProp.gpuMemoryProperties.flags.iommuv2Support;
@@ -663,12 +663,16 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     // Enable StreamWrite and StreamWait for all devices
     info_.aqlBarrierValue_ = true;
 
+#if defined(_WIN64)
     if (amd::IS_HIP) {
       info_.largeBar_ = false;
     } else if (heaps[Pal::GpuHeapInvisible].logicalSize == 0) {
       info_.largeBar_ = true;
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Resizable bar enabled");
     }
+#else   // !_WIN64
+    info_.largeBar_ = false;
+#endif  // _WIN64
   }
   info_.virtualMemoryManagement_ = true;
   info_.virtualMemAllocGranularity_ =
@@ -1286,10 +1290,50 @@ typedef std::unordered_map<int, bool> requestedDevices_t;
 
 //! Parses the requested list of devices to be exposed to the user.
 static void parseRequestedDeviceList(const char* requestedDeviceList,
-                                     requestedDevices_t& requestedDevices, uint32_t numDevices) {
+                                     requestedDevices_t& requestedDevices, uint32_t numDevices,
+                                     Pal::IDevice* deviceList[Pal::MaxDevices]) {
   char* pch = strtok(const_cast<char*>(requestedDeviceList), ",");
   while (pch != nullptr) {
     bool deviceIdValid = true;
+    // UUID needs to be specified in the format GPU-<body>, <body> encodes UUID as a 16 chars
+    char* deviceUuid = strstr(pch, "GPU-");
+    // If Uuid is specified, then convert it to index
+    if (deviceUuid != nullptr) {
+      for (uint32_t i = 0; i < numDevices; i++) {
+        Pal::DeviceProperties properties;
+        // Retrieve device properties
+        Pal::Result result = deviceList[i]->GetProperties(&properties);
+        if (result != Pal::Result::Success) {
+          continue;
+        }
+
+        // Retrieve uuid
+        char uuid[17] = {0};
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.domainNumber))[j],
+                &uuid[j], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.busNumber))[j],
+                &uuid[j + 4], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.deviceNumber))[j],
+                &uuid[j + 8], 10);
+        }
+        for (int j = 0; j < 4; j++) {
+          itoa((reinterpret_cast<char*>(&properties.pciProperties.functionNumber))[j],
+                &uuid[j + 12], 10);
+        }
+
+        // Convert it to index
+        if (strcmp(pch + 4, uuid) == 0) {
+          snprintf(pch, strlen(pch), "%d", i);
+          break;
+        }
+      }
+    }
+
     int currentDeviceIndex = atoi(pch);
     // Validate device index.
     for (size_t i = 0; i < strlen(pch); i++) {
@@ -1374,7 +1418,7 @@ bool Device::init() {
 
   if (requestedDeviceList[0] != '\0') {
     useDeviceList = true;
-    parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices);
+    parseRequestedDeviceList(requestedDeviceList, requestedDevices, gNumDevices, &gDeviceList[0]);
   }
 
   bool foundDevice = false;
@@ -2439,31 +2483,21 @@ void Device::svmFree(void* ptr) const {
 
 // ================================================================================================
 void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
-  // create a hidden buffer, which will allocated on the device later
-  auto mem = new (GlbCtx()) amd::Buffer(GlbCtx(), CL_MEM_VA_RANGE_AMD, size, addr);
-  if (mem == nullptr) {
-    LogError("failed to new a va range mem object!");
-    return nullptr;
-  }
-
-  constexpr bool kSysMemAlloc = false;
-  constexpr bool kSkipAlloc = false;
-  constexpr bool kForceAlloc = true;
-  // Force the alloc now for VA_Range reservation.
-  if (!mem->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
-    LogError("failed to create a va range mem object");
-    mem->release();
-    return nullptr;
-  }
-
+  amd::Memory* mem = CreateVirtualBuffer(context(), addr, size, -1, true, true);
+  assert(mem != nullptr);
   return mem->getSvmPtr();
 }
 
 // ================================================================================================
 void Device::virtualFree(void* addr) {
-  auto va = amd::MemObjMap::FindVirtualMemObj(addr);
-  if (nullptr != va) {
-    va->release();
+  auto vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(addr);
+  if (vaddr_mem_obj == nullptr) {
+    LogPrintfError("Cannot find any mem_obj for addr: 0x%x \n", addr);
+    return;
+  }
+
+  if (!vaddr_mem_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_mem_obj)) {
+    LogPrintfError("Cannot destroy mem_obj:0x%x for addr: 0x%x \n", vaddr_mem_obj, addr);
   }
 }
 

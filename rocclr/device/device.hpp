@@ -651,6 +651,19 @@ struct Info : public amd::EmbeddedObject {
 //! Device settings
 class Settings : public amd::HeapObject {
  public:
+
+  enum KernelArgImpl {
+    HostKernelArgs = 0,       //!< Kernel Arguments are put into host memory
+    DeviceKernelArgs,         //!< Device memory kernel arguments with no memory
+                              //!< ordering workaround (e.g. XGMI)
+    DeviceKernelArgsReadback, //!< Device memory kernel arguments with kernel
+                              //!< argument readback workaround (works only in
+                              //!< ASICS >= MI200)
+    DeviceKernelArgsHDP       //!< Device memory kernel arguments with kernel
+                              //!< argument readback plus HDP flush workaround.
+                              //!< Works in all ASICS. Requires a valid hdp flush register
+  };
+
   uint64_t extensions_;  //!< Supported OCL extensions
   union {
     struct {
@@ -674,7 +687,9 @@ class Settings : public amd::HeapObject {
       uint fenceScopeAgent_ : 1;      //!< Enable fence scope agent in AQL dispatch packet
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
-      uint reserved_ : 10;
+      uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
+      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation 
+      uint reserved_ : 7;
     };
     uint value_;
   };
@@ -1797,6 +1812,34 @@ class Device : public RuntimeObject {
   virtual void svmFree(void* ptr) const = 0;
 
   /**
+   * Validatates Virtual Address range between parent and sub-buffer.
+   *
+   * @param vaddr_base_obj Parent/base object of the virtual address.
+   * @param vaddr_sub_obj Sub Buffer object of the virtual address.
+   */
+  static bool ValidateVirtualAddressRange(amd::Memory* vaddr_base_obj, amd::Memory* vaddr_sub_obj);
+
+  /**
+   * Abstracts the Virtual Buffer creation and memobj/virtual memobj add/delete logic.
+   *
+   * @param device_context Context the virtual buffer should be created.
+   * @param vptr virtual ptr to store in the buffer object.
+   * @param size Size of the buffer
+   * @param deviceId deviceId
+   * @param parent base_obj or sub_obj
+   * @param ForceAlloc force_alloc
+   */
+  amd::Memory* CreateVirtualBuffer(Context& device_context, void* vptr, size_t size,
+                                           int deviceId, bool parent, bool kForceAlloc = false);
+
+  /**
+   * Deletes Virtual Buffer and creates memob
+   *
+   * @param vaddr_mem_obj amd::Memory object of parent/sub buffer.
+   */
+  bool DestroyVirtualBuffer(amd::Memory* vaddr_mem_obj);
+
+  /**
    * Reserve a VA range with no backing store
    *
    * @param addr Start address requested
@@ -1829,6 +1872,29 @@ class Device : public RuntimeObject {
    * @param addr Start address of the range
    */
   virtual void virtualFree(void* addr) = 0;
+
+  /**
+   * Export Shareable VMM Handle to FD
+   *
+   * @param hsa_handle hsa_handle which has the phys_mem info.
+   * @param flags any flags to be passed
+   * @param shareableHandle exported handle, points to fdesc.
+   */
+  virtual bool ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle) {
+    ShouldNotCallThis();
+    return false;
+  }
+
+  /**
+   * Import FD from Shareable VMM Handle
+   *
+   * @param osHandle os handle/fdesc
+   * @param hsa_handle_ptr hsa_handle which has the phys_mem info.
+   */
+  virtual bool ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
+    ShouldNotCallThis();
+    return false;
+  }
 
   /**
    * @return True if the device successfully applied the SVM attributes in HMM for device memory

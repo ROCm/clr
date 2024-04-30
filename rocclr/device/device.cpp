@@ -376,6 +376,120 @@ amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
   }
 }
 
+//==================================================================================================
+bool Device::ValidateVirtualAddressRange(amd::Memory* vaddr_base_obj, amd::Memory* vaddr_sub_obj) {
+
+  // Check if the start of the subbuffer is >= to base start.
+  if (vaddr_base_obj->getSvmPtr() > vaddr_sub_obj->getSvmPtr()) {
+    LogError("Sub buffer cannot start with addr lesser than base_start.");
+    return false;
+  }
+
+  // Check if the new size belongs to the vaddr_base_obj range.
+  address vaddr_base_end = reinterpret_cast<address>(vaddr_base_obj->getSvmPtr())
+                             + vaddr_base_obj->getSize();
+  address vaddr_sub_end = reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr())
+                            + vaddr_sub_obj->getSize();
+
+  if (vaddr_sub_end > vaddr_base_end) {
+    LogError("Sub buffer memory end cannot be greater than base_end. Return nullptr");
+    return false;
+  }
+
+  return true;
+}
+
+//==================================================================================================
+amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vptr, size_t size,
+                                         int deviceId, bool parent, bool kForceAlloc) {
+
+  amd::Memory* vaddr_base_obj = nullptr;
+  amd::Memory* vaddr_sub_obj = nullptr;
+
+  if (parent) {
+    vaddr_base_obj = new (device_context) amd::Buffer(device_context, CL_MEM_VA_RANGE_AMD, size,
+                                                      vptr);
+    if (vaddr_base_obj == nullptr) {
+      LogError("failed to new a va range curr_mem_obj object!");
+      return nullptr;
+    }
+    // This curr_mem_obj->create() does not create an actual memory but stores the memory info
+    // with given vptr on ROCr backend.
+    constexpr bool kSysMemAlloc = false;
+    constexpr bool kSkipAlloc = false;
+    if (!vaddr_base_obj->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
+      LogError("failed to create a va range mem object");
+      vaddr_base_obj->release();
+      return nullptr;
+    }
+
+    amd::MemObjMap::AddVirtualMemObj(vaddr_base_obj->getSvmPtr(), vaddr_base_obj);
+  } else {
+    // If not parent, but sub-buffer/child, then validate the address range
+    vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vptr);
+    if (vaddr_base_obj == nullptr) {
+      LogPrintfError("Cannot find entry in VirtualMemObjMap: 0x%x \n", vptr);
+      return nullptr;
+    }
+
+    size_t offset = (reinterpret_cast<address>(vptr)
+                     - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
+    vaddr_sub_obj = new (device_context) amd::Buffer(*vaddr_base_obj, CL_MEM_VA_RANGE_AMD, offset,
+                                                     size);
+
+    // This curr_mem_obj->create() does not create an actual memory but stores the memory info
+    // with given vptr on ROCr backend.
+    constexpr bool kSysMemAlloc = false;
+    constexpr bool kSkipAlloc = false;
+    if (!vaddr_sub_obj->create(nullptr, kSysMemAlloc, kSkipAlloc, kForceAlloc)) {
+      LogError("failed to create a va range mem object");
+      vaddr_sub_obj->release();
+      return nullptr;
+    }
+
+    vaddr_sub_obj->getUserData().deviceId = deviceId;
+
+    if (!ValidateVirtualAddressRange(vaddr_base_obj, vaddr_sub_obj)) {
+      LogError("Validation failed on address range, returning nullptr");
+      return nullptr;
+    }
+  }
+
+  if (vptr != nullptr) {
+    // Assert to make sure that amd::Memory object has set the right ptr.
+    guarantee(vptr == (parent ? vaddr_base_obj->getSvmPtr() : vaddr_sub_obj->getSvmPtr()),
+                                 "amd::Memory object does not have the right ptr");
+  }
+
+  return parent ? vaddr_base_obj : vaddr_sub_obj;
+}
+
+//==================================================================================================
+bool Device::DestroyVirtualBuffer(amd::Memory* vaddr_mem_obj) {
+
+  // Argument nullptr check.
+  if (vaddr_mem_obj == nullptr || vaddr_mem_obj->getSvmPtr() == nullptr) {
+    LogPrintfError("Mem obj passed is nullptr, vaddr_mem_obj: %p \n", vaddr_mem_obj);
+    return false;
+  }
+
+  if (vaddr_mem_obj->parent() == nullptr) {
+    // If parent is nullptr, then vaddr_mem_obj is the parent.
+    amd::MemObjMap::RemoveVirtualMemObj(vaddr_mem_obj->getSvmPtr());
+    return true;
+  } else {
+    // If parent is not nullptr, this is the sub-buffer object.
+    amd::Memory* vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vaddr_mem_obj->getSvmPtr());
+    if (vaddr_base_obj == nullptr) {
+      LogPrintfError("Cannot find mem obj for ptr: 0x%x", vaddr_mem_obj->getSvmPtr());
+      return false;
+    }
+    vaddr_base_obj->removeSubBuffer(vaddr_mem_obj);
+  }
+
+  return true;
+}
+
 void MemObjMap::UpdateAccess(amd::Device *peerDev) {
   if (peerDev == nullptr) {
     return;
@@ -454,6 +568,9 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   }
   if (!GPU_DUMP_BLIT_KERNELS) {
     opt += " -fno-enable-dump";
+  }
+  if (device->settings().kernel_arg_opt_) {
+    opt += " -Wb,-amdgpu-kernarg-preload-count=8 ";
   }
   if ((retval = program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS))
       != CL_SUCCESS) {
@@ -775,11 +892,11 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  // Amount of space used by each wave is in units of 256 dwords. 
+  // Amount of space used by each wave is in units of 256 dwords.
   // As per COMPUTE_TMPRING_SIZE.WAVE_SIZE 24:12
-  // The field size supports a range of 0->(2M-256) dwords per wave64. 
+  // The field size supports a range of 0->(2M-256) dwords per wave64.
   // Per lane this works out to 131056 bytes or 128K - 16
-  uint64_t kStackSize = ((128 * Ki) - 16); 
+  uint64_t kStackSize = ((128 * Ki) - 16);
   if (stackSize > kStackSize) {
     return false;
   }

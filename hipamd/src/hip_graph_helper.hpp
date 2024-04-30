@@ -27,8 +27,6 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 
 hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy);
 
-hipError_t ihipDrvMemcpy3DParamValidate(const HIP_MEMCPY3D* pCopy);
-
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
 
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,

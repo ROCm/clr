@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2015 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -92,10 +92,6 @@ hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t h
                               const char* name) {
   HIP_INIT_API(hipModuleGetGlobal, dptr, bytes, hmod, name);
 
-  if (dptr == nullptr || bytes == nullptr) {
-    // If either is nullptr, ignore it
-    HIP_RETURN(hipSuccess);
-  }
   if ((dptr == nullptr && bytes == nullptr) || name == nullptr || strlen(name) == 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -654,6 +650,18 @@ hipError_t hipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams* 
       (amd::NDRangeKernelCommand::CooperativeGroups |
       amd::NDRangeKernelCommand::CooperativeMultiDeviceGroups)));
 
+}
+
+hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr) {
+  HIP_INIT_API(hipGetFuncBySymbol, functionPtr, symbolPtr);
+
+  hipError_t hip_error = PlatformState::instance().getStatFunc(functionPtr,
+                         symbolPtr, ihipGetDevice());
+
+  if ((hip_error != hipSuccess) || (functionPtr == nullptr)) {
+    HIP_RETURN(hipErrorInvalidDeviceFunction);
+  }
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 blockDim,

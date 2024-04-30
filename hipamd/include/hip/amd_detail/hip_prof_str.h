@@ -408,7 +408,9 @@ enum hip_api_id_t {
   HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams = 388,
   HIP_API_ID_hipTexRefGetArray = 389,
   HIP_API_ID_hipTexRefGetBorderColor = 390,
-  HIP_API_ID_LAST = 390,
+  HIP_API_ID_hipStreamBeginCaptureToGraph = 391,
+  HIP_API_ID_hipGetFuncBySymbol = 392,
+  HIP_API_ID_LAST = 392,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -562,6 +564,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGetDevicePropertiesR0000: return "hipGetDevicePropertiesR0000";
     case HIP_API_ID_hipGetDevicePropertiesR0600: return "hipGetDevicePropertiesR0600";
     case HIP_API_ID_hipGetErrorString: return "hipGetErrorString";
+    case HIP_API_ID_hipGetFuncBySymbol: return "hipGetFuncBySymbol";
     case HIP_API_ID_hipGetLastError: return "hipGetLastError";
     case HIP_API_ID_hipGetMipmappedArrayLevel: return "hipGetMipmappedArrayLevel";
     case HIP_API_ID_hipGetProcAddress: return "hipGetProcAddress";
@@ -795,6 +798,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamAddCallback: return "hipStreamAddCallback";
     case HIP_API_ID_hipStreamAttachMemAsync: return "hipStreamAttachMemAsync";
     case HIP_API_ID_hipStreamBeginCapture: return "hipStreamBeginCapture";
+    case HIP_API_ID_hipStreamBeginCaptureToGraph: return "hipStreamBeginCaptureToGraph";
     case HIP_API_ID_hipStreamCreate: return "hipStreamCreate";
     case HIP_API_ID_hipStreamCreateWithFlags: return "hipStreamCreateWithFlags";
     case HIP_API_ID_hipStreamCreateWithPriority: return "hipStreamCreateWithPriority";
@@ -955,6 +959,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGetDevicePropertiesR0000", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0000;
   if (strcmp("hipGetDevicePropertiesR0600", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0600;
   if (strcmp("hipGetErrorString", name) == 0) return HIP_API_ID_hipGetErrorString;
+  if (strcmp("hipGetFuncBySymbol", name) == 0) return HIP_API_ID_hipGetFuncBySymbol;
   if (strcmp("hipGetLastError", name) == 0) return HIP_API_ID_hipGetLastError;
   if (strcmp("hipGetMipmappedArrayLevel", name) == 0) return HIP_API_ID_hipGetMipmappedArrayLevel;
   if (strcmp("hipGetProcAddress", name) == 0) return HIP_API_ID_hipGetProcAddress;
@@ -1188,6 +1193,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamAddCallback", name) == 0) return HIP_API_ID_hipStreamAddCallback;
   if (strcmp("hipStreamAttachMemAsync", name) == 0) return HIP_API_ID_hipStreamAttachMemAsync;
   if (strcmp("hipStreamBeginCapture", name) == 0) return HIP_API_ID_hipStreamBeginCapture;
+  if (strcmp("hipStreamBeginCaptureToGraph", name) == 0) return HIP_API_ID_hipStreamBeginCaptureToGraph;
   if (strcmp("hipStreamCreate", name) == 0) return HIP_API_ID_hipStreamCreate;
   if (strcmp("hipStreamCreateWithFlags", name) == 0) return HIP_API_ID_hipStreamCreateWithFlags;
   if (strcmp("hipStreamCreateWithPriority", name) == 0) return HIP_API_ID_hipStreamCreateWithPriority;
@@ -1783,6 +1789,11 @@ typedef struct hip_api_data_s {
       hipDeviceProp_tR0600 prop__val;
       int deviceId;
     } hipGetDevicePropertiesR0600;
+    struct {
+      hipFunction_t* functionPtr;
+      hipFunction_t functionPtr__val;
+      const void* symbolPtr;
+    } hipGetFuncBySymbol;
     struct {
       hipArray_t* levelArray;
       hipArray_t levelArray__val;
@@ -3268,6 +3279,16 @@ typedef struct hip_api_data_s {
       hipStreamCaptureMode mode;
     } hipStreamBeginCapture;
     struct {
+      hipStream_t stream;
+      hipGraph_t graph;
+      const hipGraphNode_t* dependencies;
+      hipGraphNode_t dependencies__val;
+      const hipGraphEdgeData* dependencyData;
+      hipGraphEdgeData dependencyData__val;
+      size_t numDependencies;
+      hipStreamCaptureMode mode;
+    } hipStreamBeginCaptureToGraph;
+    struct {
       hipStream_t* stream;
       hipStream_t stream__val;
     } hipStreamCreate;
@@ -4079,6 +4100,11 @@ typedef struct hip_api_data_s {
 };
 // hipGetErrorString[]
 #define INIT_hipGetErrorString_CB_ARGS_DATA(cb_data) { \
+};
+// hipGetFuncBySymbol[('hipFunction_t*', 'functionPtr'), ('const void*', 'symbolPtr')]
+#define INIT_hipGetFuncBySymbol_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetFuncBySymbol.functionPtr = (hipFunction_t*)functionPtr; \
+  cb_data.args.hipGetFuncBySymbol.symbolPtr = (const void*)symbolPtr; \
 };
 // hipGetLastError[]
 #define INIT_hipGetLastError_CB_ARGS_DATA(cb_data) { \
@@ -5582,6 +5608,15 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamBeginCapture.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamBeginCapture.mode = (hipStreamCaptureMode)mode; \
 };
+// hipStreamBeginCaptureToGraph[('hipStream_t', 'stream'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'dependencies'), ('const hipGraphEdgeData*', 'dependencyData'), ('size_t', 'numDependencies'), ('hipStreamCaptureMode', 'mode')]
+#define INIT_hipStreamBeginCaptureToGraph_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipStreamBeginCaptureToGraph.stream = (hipStream_t)stream; \
+  cb_data.args.hipStreamBeginCaptureToGraph.graph = (hipGraph_t)graph; \
+  cb_data.args.hipStreamBeginCaptureToGraph.dependencies = (const hipGraphNode_t*)dependencies; \
+  cb_data.args.hipStreamBeginCaptureToGraph.dependencyData = (const hipGraphEdgeData*)dependencyData; \
+  cb_data.args.hipStreamBeginCaptureToGraph.numDependencies = (size_t)numDependencies; \
+  cb_data.args.hipStreamBeginCaptureToGraph.mode = (hipStreamCaptureMode)mode; \
+};
 // hipStreamCreate[('hipStream_t*', 'stream')]
 #define INIT_hipStreamCreate_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamCreate.stream = (hipStream_t*)stream; \
@@ -6321,6 +6356,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipGetErrorString[]
     case HIP_API_ID_hipGetErrorString:
+      break;
+// hipGetFuncBySymbol[('hipFunction_t*', 'functionPtr'), ('const void*', 'symbolPtr')]
+    case HIP_API_ID_hipGetFuncBySymbol:
+      if (data->args.hipGetFuncBySymbol.functionPtr) data->args.hipGetFuncBySymbol.functionPtr__val = *(data->args.hipGetFuncBySymbol.functionPtr);
       break;
 // hipGetLastError[]
     case HIP_API_ID_hipGetLastError:
@@ -7230,6 +7269,11 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipStreamBeginCapture[('hipStream_t', 'stream'), ('hipStreamCaptureMode', 'mode')]
     case HIP_API_ID_hipStreamBeginCapture:
+      break;
+// hipStreamBeginCaptureToGraph[('hipStream_t', 'stream'), ('hipGraph_t', 'graph'), ('const hipGraphNode_t*', 'dependencies'), ('const hipGraphEdgeData*', 'dependencyData'), ('size_t', 'numDependencies'), ('hipStreamCaptureMode', 'mode')]
+    case HIP_API_ID_hipStreamBeginCaptureToGraph:
+      if (data->args.hipStreamBeginCaptureToGraph.dependencies) data->args.hipStreamBeginCaptureToGraph.dependencies__val = *(data->args.hipStreamBeginCaptureToGraph.dependencies);
+      if (data->args.hipStreamBeginCaptureToGraph.dependencyData) data->args.hipStreamBeginCaptureToGraph.dependencyData__val = *(data->args.hipStreamBeginCaptureToGraph.dependencyData);
       break;
 // hipStreamCreate[('hipStream_t*', 'stream')]
     case HIP_API_ID_hipStreamCreate:
@@ -8196,6 +8240,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     break;
     case HIP_API_ID_hipGetErrorString:
       oss << "hipGetErrorString(";
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGetFuncBySymbol:
+      oss << "hipGetFuncBySymbol(";
+      if (data->args.hipGetFuncBySymbol.functionPtr == NULL) oss << "functionPtr=NULL";
+      else { oss << "functionPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetFuncBySymbol.functionPtr__val); }
+      oss << ", symbolPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetFuncBySymbol.symbolPtr);
       oss << ")";
     break;
     case HIP_API_ID_hipGetLastError:
@@ -10154,6 +10205,18 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << "hipStreamBeginCapture(";
       oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.stream);
       oss << ", mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCapture.mode);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipStreamBeginCaptureToGraph:
+      oss << "hipStreamBeginCaptureToGraph(";
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.stream);
+      oss << ", graph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.graph);
+      if (data->args.hipStreamBeginCaptureToGraph.dependencies == NULL) oss << ", dependencies=NULL";
+      else { oss << ", dependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.dependencies__val); }
+      if (data->args.hipStreamBeginCaptureToGraph.dependencyData == NULL) oss << ", dependencyData=NULL";
+      else { oss << ", dependencyData="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.dependencyData__val); }
+      oss << ", numDependencies="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.numDependencies);
+      oss << ", mode="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBeginCaptureToGraph.mode);
       oss << ")";
     break;
     case HIP_API_ID_hipStreamCreate:

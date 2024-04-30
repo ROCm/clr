@@ -200,7 +200,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     }
     if (memRef() != nullptr) {
       ClPrint(amd::LOG_DEBUG, amd::LOG_RESOURCE,
-              "Alloc: %llx bytes, ptr[%p-%p], obj[%p-%p]",
+              "Alloc: %zx bytes, ptr[%llx-%llx], obj[%llx-%llx]",
               size(),
               vmAddress(),
               vmAddress() + size(),

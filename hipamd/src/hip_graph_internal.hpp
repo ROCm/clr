@@ -647,6 +647,8 @@ struct GraphExec {
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
 struct ChildGraphNode : public GraphNode {
@@ -1071,7 +1073,7 @@ class GraphKernelNode : public GraphNode {
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
     hipDeviceProp_t prop = {0};
-    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice()); 
+    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice());
     if (hipSuccess != status){
       return status;
     }
@@ -1678,9 +1680,16 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
     }
     size_t dOffset = 0;
     amd::Memory* srcMemory = getMemoryObject(src, dOffset);
+    cl_mem_flags srcFlag = 0;
+    if (srcMemory != nullptr) {
+      srcFlag = srcMemory->getMemFlags();
+      if (!IS_LINUX) {
+        srcFlag &= ~ROCCLR_MEM_INTERPROCESS;
+      }
+    }
     if (srcMemory == nullptr && kind != hipMemcpyHostToDevice && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
-    } else if (srcMemory != nullptr && srcMemory->getMemFlags() == 0 &&
+    } else if (srcMemory != nullptr && srcFlag == 0 &&
                kind != hipMemcpyDeviceToDevice && kind != hipMemcpyDeviceToDeviceNoCU
                && kind != hipMemcpyDefault) {
       return hipErrorInvalidValue;
@@ -1704,16 +1713,17 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
 };
 class GraphMemsetNode : public GraphNode {
   hipMemsetParams memsetParams_;
-
+  size_t depth_ = 1;
  public:
-  GraphMemsetNode(const hipMemsetParams* pMemsetParams)
+  GraphMemsetNode(const hipMemsetParams* pMemsetParams, size_t depth = 1)
       : GraphNode(hipGraphNodeTypeMemset, "solid", "invtrapezium", "MEMSET") {
     memsetParams_ = *pMemsetParams;
+    depth_ = depth;
     size_t sizeBytes = 0;
     if (memsetParams_.height == 1) {
       sizeBytes = memsetParams_.width * memsetParams_.elementSize;
     } else {
-      sizeBytes = memsetParams_.width * memsetParams_.height * memsetParams_.elementSize;
+      sizeBytes = memsetParams_.width * memsetParams_.height * depth_ * memsetParams_.elementSize;
     }
   }
 
@@ -1721,6 +1731,7 @@ class GraphMemsetNode : public GraphNode {
   // Copy constructor
   GraphMemsetNode(const GraphMemsetNode& memsetNode) : GraphNode(memsetNode) {
     memsetParams_ = memsetNode.memsetParams_;
+    depth_ = memsetNode.depth_;
   }
 
   GraphNode* clone() const override {
@@ -1733,17 +1744,17 @@ class GraphMemsetNode : public GraphNode {
       char buffer[500];
       sprintf(buffer,
               "{\n%s\n| {{ID | node handle | dptr | pitch | value | elementSize | width | "
-              "height} | {%u | %p | %p | %zu | %u | %u | %zu | %zu}}}",
+              "height | depth} | {%u | %p | %p | %zu | %u | %u | %zu | %zu | %zu}}}",
               label_.c_str(), GetID(), this, memsetParams_.dst, memsetParams_.pitch,
               memsetParams_.value, memsetParams_.elementSize, memsetParams_.width,
-              memsetParams_.height);
+              memsetParams_.height, depth_);
       label = buffer;
     } else {
       size_t sizeBytes;
       if (memsetParams_.height == 1) {
         sizeBytes = memsetParams_.width * memsetParams_.elementSize;
       } else {
-        sizeBytes = memsetParams_.width * memsetParams_.height * memsetParams_.elementSize;
+        sizeBytes = memsetParams_.width * memsetParams_.height * depth_ * memsetParams_.elementSize;
       }
       label = std::to_string(GetID()) + "\n" + label_ + "\n(" +
           std::to_string(memsetParams_.value) + "," + std::to_string(sizeBytes) + ")";
@@ -1774,7 +1785,7 @@ class GraphMemsetNode : public GraphNode {
           {memsetParams_.dst, memsetParams_.pitch, memsetParams_.width * memsetParams_.elementSize,
            memsetParams_.height},
           memsetParams_.value,
-          {memsetParams_.width * memsetParams_.elementSize, memsetParams_.height, 1}, stream,
+          {memsetParams_.width * memsetParams_.elementSize, memsetParams_.height, depth_}, stream,
           memsetParams_.elementSize);
     }
     return status;
@@ -1793,11 +1804,14 @@ class GraphMemsetNode : public GraphNode {
     params->width = memsetParams_.width;
   }
 
-  hipError_t SetParamsInternal(const hipMemsetParams* params, bool isExec) {
+  hipError_t SetParamsInternal(const hipMemsetParams* params, bool isExec, size_t depth = 1) {
     hipError_t hip_error = hipSuccess;
     hip_error = ihipGraphMemsetParams_validate(params);
     if (hip_error != hipSuccess) {
       return hip_error;
+    }
+    if (depth == 0) {
+      return hipErrorInvalidValue;
     }
     if (isExec) {
       size_t discardOffset = 0;
@@ -1829,7 +1843,7 @@ class GraphMemsetNode : public GraphNode {
         // 2D - hipGraphExecMemsetNodeSetParams returns invalid value if new width or new height is
         // not same as what memset node is added with.
         if (memsetParams_.width * memsetParams_.elementSize != params->width * params->elementSize
-         || memsetParams_.height != params->height) {
+         || memsetParams_.height != params->height || depth != depth_) {
           return hipErrorInvalidValue;
         }
       } else {
@@ -1839,26 +1853,30 @@ class GraphMemsetNode : public GraphNode {
         amd::Memory *memObj = getMemoryObject(params->dst, discardOffset);
         if (memObj != nullptr) {
           if (params->width * params->elementSize > memObj->getUserData().width_
-           || params->height > memObj->getUserData().height_) {
+           || params->height > memObj->getUserData().height_
+           || depth > memObj->getUserData().depth_) {
             return hipErrorInvalidValue;
            }
         }
        }
-      sizeBytes = params->width * params->elementSize * params->height * 1;
+      sizeBytes = params->width * params->elementSize * params->height * depth;
       hip_error = ihipMemset3D_validate(
           {params->dst, params->pitch, params->width * params->elementSize, params->height},
-          params->value, {params->width * params->elementSize, params->height, 1}, sizeBytes);
+          params->value, {params->width * params->elementSize, params->height, depth}, sizeBytes);
     }
     if (hip_error != hipSuccess) {
       return hip_error;
     }
     std::memcpy(&memsetParams_, params, sizeof(hipMemsetParams));
+    depth_ = depth;
     return hipSuccess;
   }
-  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false) {
-    return SetParamsInternal(params, isExec);
+
+  hipError_t SetParams(const hipMemsetParams* params, bool isExec = false, size_t depth = 1) {
+    return SetParamsInternal(params, isExec, depth);
   }
-  hipError_t SetParams(const HIP_MEMSET_NODE_PARAMS* params, bool isExec = false) {
+
+  hipError_t SetParams(const HIP_MEMSET_NODE_PARAMS* params, bool isExec = false, size_t depth = 1) {
     hipMemsetParams pmemsetParams;
     pmemsetParams.dst = params->dst;
     pmemsetParams.elementSize = params->elementSize;
@@ -1866,11 +1884,11 @@ class GraphMemsetNode : public GraphNode {
     pmemsetParams.pitch = params->pitch;
     pmemsetParams.value = params->value;
     pmemsetParams.width = params->width;
-    return SetParamsInternal(&pmemsetParams, isExec);
+    return SetParamsInternal(&pmemsetParams, isExec, depth);
   }
   hipError_t SetParams(GraphNode* node) override {
     const GraphMemsetNode* memsetNode = static_cast<GraphMemsetNode const*>(node);
-    return SetParams(&memsetNode->memsetParams_);
+    return SetParams(&memsetNode->memsetParams_, false, memsetNode->depth_);
   }
 };
 
@@ -2104,16 +2122,12 @@ class GraphMemAllocNode final : public GraphNode {
       // Retain memory object because command release will release it
       memory_->retain();
       size_ = aligned_size;
-      // Save geenric allocation info to match VM interfaces
-      memory_->getUserData().data = new hip::MemMapAllocUserData(dptr, aligned_size, va_);
       // Execute the original mapping command
       VirtualMapCommand::submit(device);
-      // Update the internal svm address to ptr
-      memory()->setSvmPtr(va_->getSvmPtr());
-      // Can't destroy VA, because it's used in mapping even if the node will be destroyed
+      queue()->device().SetMemAccess(va_->getSvmPtr(), aligned_size, amd::Device::VmmAccess::kReadWrite);
       va_->retain();
-      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc execute: %p, %p",
-          va_->getSvmPtr(), memory());
+      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc execute [%p-%p], %p",
+          va_->getSvmPtr(), reinterpret_cast<char*>(va_->getSvmPtr()) + aligned_size, memory());
     }
 
    private:
@@ -2234,24 +2248,21 @@ class GraphMemFreeNode : public GraphNode {
 
     virtual void submit(device::VirtualDevice& device) final {
       // Find memory object before unmap logic
-      auto alloc = amd::MemObjMap::FindMemObj(ptr());
+      auto vaddr_mem_obj = amd::MemObjMap::FindMemObj(ptr());
+      amd::Memory* phys_mem_obj = vaddr_mem_obj->getUserData().phys_mem_obj;
+      assert(phys_mem_obj != nullptr);
       VirtualMapCommand::submit(device);
-      // Restore the original address of the generic allocation
-      auto ga = reinterpret_cast<hip::MemMapAllocUserData*>(alloc->getUserData().data);
-      alloc->setSvmPtr(ga->ptr_);
       if (!AMD_DIRECT_DISPATCH) {
         // Update the current device, since hip event, used in mem pools, requires device
         hip::setCurrentDevice(device_id_);
       }
       // Free virtual address
-      ga->va_->release();
-      alloc->getUserData().data = nullptr;
+      vaddr_mem_obj->release();
       // Release the allocation back to graph's pool
-      graph_->FreeMemory(ga->ptr_, static_cast<hip::Stream*>(queue()));
-      amd::MemObjMap::AddMemObj(ptr(), ga->va_);
-      delete ga;
+      graph_->FreeMemory(phys_mem_obj->getSvmPtr(), static_cast<hip::Stream*>(queue()));
+      amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
-          ptr(), alloc);
+          ptr(), vaddr_mem_obj);
     }
 
    private:

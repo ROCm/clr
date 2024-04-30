@@ -615,7 +615,7 @@ Buffer::Buffer(const roc::Device& dev, size_t size) : roc::Memory(dev, size) {}
 
 Buffer::~Buffer() {
   if (owner() == nullptr) {
-    dev().hostFree(deviceMemory_, size());
+    dev().memFree(deviceMemory_, size());
   } else {
     destroy();
 
@@ -648,6 +648,12 @@ void Buffer::destroy() {
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
 
+    if (memFlags & ROCCLR_MEM_PHYMEM) {
+      // If this is physical memory, dont call hsa free function, since device mem was never created
+      dev().deviceVmemRelease(owner()->getUserData().hsa_handle);
+      return;
+    }
+
     if (kind_ != MEMORY_KIND_PTRGIVEN) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
@@ -657,7 +663,7 @@ void Buffer::destroy() {
               ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
             }
           } else {
-            dev().hostFree(deviceMemory_, size());
+            dev().memFree(deviceMemory_, size());
           }
         } else if (memFlags & ROCCLR_MEM_HSA_SIGNAL_MEMORY) {
           if (HSA_STATUS_SUCCESS != hsa_signal_destroy(signal_)) {
@@ -666,7 +672,7 @@ void Buffer::destroy() {
           }
           deviceMemory_ = nullptr;
         } else {
-          dev().hostFree(deviceMemory_, size());
+          dev().memFree(deviceMemory_, size());
         }
       } else {
         dev().memFree(deviceMemory_, size());
@@ -763,11 +769,29 @@ bool Buffer::create(bool alloc_local) {
   cl_mem_flags memFlags = owner()->getMemFlags();
 
   if (memFlags & ROCCLR_MEM_PHYMEM) {
-    // If this is physical memory request, then get an handle and store it in user data
-    owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    if (memFlags & ROCCLR_MEM_INTERPROCESS) {
+      int dmabuf_fd = *(reinterpret_cast<int*>(owner()->getSvmPtr()));
+      // if interprocess flag is set, then the memory is importable.
+      if (!dev().ImportShareableVMMHandle(owner()->getSvmPtr(),
+            &owner()->getUserData().hsa_handle)) {
+        LogPrintfError("Importing Shareable Memory failed with os_handle: 0x%x \n",
+                        owner()->getSvmPtr());
+        return false;
+      }
+    } else {
+      // If this is physical memory request, then get an handle and store it in user data
+      owner()->getUserData().hsa_handle = dev().deviceVmemAlloc(owner()->getSize(), 0);
+    }
+
     if (owner()->getUserData().hsa_handle == 0) {
       LogError("HSA Opaque Handle returned was null");
+      return false;
     }
+
+    owner()->setSvmPtr(reinterpret_cast<void*>(owner()->getUserData().hsa_handle));
+    amd::MemObjMap::AddMemObj(owner()->getSvmPtr(), owner());
+
+    return true;
   }
 
   if ((owner()->parent() == nullptr) &&

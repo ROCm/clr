@@ -306,8 +306,8 @@ class VirtualGPU : public device::VirtualDevice {
   bool create();
   const Device& dev() const { return roc_device_; }
 
-  void profilingBegin(amd::Command& command, bool sdmaProfiling = false, bool useCommandTs = false);
-  void profilingEnd(amd::Command& command, bool useCommandTs = false);
+  void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
+  void profilingEnd(amd::Command& command);
 
   void updateCommandsState(amd::Command* list) const;
 
@@ -433,8 +433,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
                         uint16_t rest, bool blocking = true);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
-                                                              uint16_t rest, bool blocking,
-                                                              size_t size = 1);
+                                                              uint16_t rest, bool blocking);
 
   void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
                              hsa_signal_t signal = hsa_signal_t{0});
@@ -571,5 +570,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool fence_dirty_;                    //!< Fence modified flag
 
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
+
+  using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 }

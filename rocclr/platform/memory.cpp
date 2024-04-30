@@ -320,10 +320,7 @@ bool Memory::create(void* initFrom, bool sysMemAlloc, bool skipAlloc, bool force
       }
     }
   }
-  // Add a VA range into VA range map
-  if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
-    amd::MemObjMap::AddVirtualMemObj(getSvmPtr(), this);
-  }
+
   // Store the unique id for each memory allocation
   uniqueId_ = ++numAllocs;
   return true;
@@ -1524,7 +1521,6 @@ bool SvmBuffer::Contains(uintptr_t ptr) {
 // The allocation flags are ignored for now.
 void* SvmBuffer::malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment,
                         const amd::Device* curDev) {
-  bool atomics = (flags & CL_MEM_SVM_ATOMICS) != 0;
   void* ret = context.svmAlloc(size, alignment, flags, curDev);
   if (ret == nullptr) {
     LogError("Unable to allocate aligned memory");

@@ -28,7 +28,7 @@
 namespace pal {
 
 Signal::~Signal() {
-  dev_->context().svmFree(amdSignal_);
+  dev_->GlbCtx().svmFree(amdSignal_);
 
   if (ws_ == device::Signal::WaitState::Blocked) {
 #if defined(_WIN32)
@@ -50,7 +50,7 @@ bool Signal::Init(const amd::Device& dev, uint64_t init, device::Signal::WaitSta
   dev_ = static_cast<const pal::Device*>(&dev);
   ws_ = ws;
 
-  void* buffer = dev_->context().svmAlloc(sizeof(amd_signal_t), alignof(amd_signal_t),
+  void* buffer = dev_->GlbCtx().svmAlloc(sizeof(amd_signal_t), alignof(amd_signal_t),
                                           CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
   if (!buffer) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,

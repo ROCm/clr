@@ -82,8 +82,11 @@ hipError_t hipDeviceGetMemPool(hipMemPool_t* mem_pool, int device) {
 // ================================================================================================
 hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   HIP_INIT_API(hipMallocAsync, dev_ptr, size, stream);
-  if ((dev_ptr == nullptr) || (!hip::isValid(stream))) {
+  if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   if (size == 0) {
     *dev_ptr = nullptr;
@@ -135,9 +138,13 @@ class FreeAsyncCommand : public amd::Command {
 // ================================================================================================
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   HIP_INIT_API(hipFreeAsync, dev_ptr, stream);
-  if ((dev_ptr == nullptr) || (!hip::isValid(stream))) {
+  if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
 
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
@@ -164,6 +171,8 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
         // The current implementation has unconditional waits
         return ihipFree(dev_ptr);
       }
+    } else {
+      HIP_RETURN(hipErrorInvalidValue);
     }
   } else {
     if (!AMD_DIRECT_DISPATCH) {
@@ -296,8 +305,13 @@ hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_
       (pool_props->location.id >= g_devices.size())) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (IS_WINDOWS && pool_props->handleTypes == hipMemHandleTypePosixFileDescriptor) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   auto device = g_devices[pool_props->location.id];
-  auto pool = new hip::MemoryPool(device, pool_props->handleTypes != hipMemHandleTypeNone);
+  auto pool = new hip::MemoryPool(device, pool_props);
   if (pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -340,8 +354,11 @@ hipError_t hipMallocFromPoolAsync(
     hipMemPool_t mem_pool,
     hipStream_t stream) {
   HIP_INIT_API(hipMallocFromPoolAsync, dev_ptr, size, mem_pool, stream);
-  if ((dev_ptr == nullptr) || (mem_pool == nullptr) || (!hip::isValid(stream))) {
+  if ((dev_ptr == nullptr) || (mem_pool == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidHandle);
   }
   if (size == 0) {
     *dev_ptr = nullptr;
@@ -353,6 +370,9 @@ hipError_t hipMallocFromPoolAsync(
   auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
     reinterpret_cast<hip::Stream*>(stream);
   *dev_ptr = mpool->AllocateMemory(size, hip_stream);
+  if (*dev_ptr == nullptr) {
+    HIP_RETURN(hipErrorOutOfMemory);
+  }
   HIP_RETURN(hipSuccess);
 }
 
@@ -363,11 +383,14 @@ hipError_t hipMemPoolExportToShareableHandle(
     hipMemAllocationHandleType handle_type,
     unsigned int               flags) {
   HIP_INIT_API(hipMemPoolExportToShareableHandle, shared_handle, mem_pool, handle_type, flags);
-  if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
+  if (mem_pool == nullptr || shared_handle == nullptr || flags != 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
+  if ((handle_type != mpool->Properties().handleTypes) || (handle_type == hipMemHandleTypeNone)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
   auto handle = mpool->Export();
   if (!handle) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -384,7 +407,11 @@ hipError_t hipMemPoolImportFromShareableHandle(
     hipMemAllocationHandleType handle_type,
     unsigned int               flags) {
   HIP_INIT_API(hipMemPoolImportFromShareableHandle, mem_pool, shared_handle, handle_type, flags);
-  if (mem_pool == nullptr || shared_handle == nullptr || flags == -1) {
+  if (mem_pool == nullptr || shared_handle == nullptr || flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (handle_type == hipMemHandleTypeNone) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 

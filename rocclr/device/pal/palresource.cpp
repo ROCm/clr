@@ -255,23 +255,26 @@ GpuMemoryReference::~GpuMemoryReference() {
   if (nullptr == iMem()) {
     return;
   }
-  if (gpu_ == nullptr) {
-    Device::ScopedLockVgpus lock(device_);
-    // Release all memory objects on all virtual GPUs
-    for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
-      device_.vgpus()[idx]->releaseMemory(this);
+  // Memory tracking per queue is disabled if alwaysResident is enabled. Thus, runtime can skip
+  // updating residency state per every queue
+  if (!device_.settings().alwaysResident_) {
+    if (gpu_ == nullptr) {
+      Device::ScopedLockVgpus lock(device_);
+      // Release all memory objects on all virtual GPUs
+      for (uint idx = 1; idx < device_.vgpus().size(); ++idx) {
+        device_.vgpus()[idx]->releaseMemory(this);
+      }
+    } else {
+      amd::ScopedLock l(gpu_->execution());
+      gpu_->releaseMemory(this);
     }
-  } else {
-    amd::ScopedLock l(gpu_->execution());
-    gpu_->releaseMemory(this);
+    if (device_.vgpus().size() != 0) {
+      assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
+      // Lock the transfer queue, since it's not handled by ScopedLockVgpus
+      amd::ScopedLock k(device_.xferMgr().lockXfer());
+      device_.vgpus()[0]->releaseMemory(this);
+    }
   }
-  if (device_.vgpus().size() != 0) {
-    assert(device_.vgpus()[0] == device_.xferQueue() && "Wrong transfer queue!");
-    // Lock the transfer queue, since it's not handled by ScopedLockVgpus
-    amd::ScopedLock k(device_.xferMgr().lockXfer());
-    device_.vgpus()[0]->releaseMemory(this);
-  }
-
   // Destroy PAL object if it's not a suballocation
   if (cpuAddress_ != nullptr) {
     iMem()->Unmap();
@@ -1338,8 +1341,10 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
   } else if (memoryType() == VaRange) {
     createInfo.flags.virtualAlloc = true;
     if (params->owner_->getSvmPtr() != nullptr) {
-      createInfo.flags.startVaHintFlag = true;
-      createInfo.startVaHint = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
+      createInfo.vaRange = Pal::VaRange::Svm;
+      createInfo.flags.useReservedGpuVa = true;
+      createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
+      desc_.SVMRes_ = true;
     }
   }
 
@@ -1380,13 +1385,12 @@ void Resource::free() {
   // and resource can be reused on another async queue without a wait on a busy operation
   if (wait) {
     if (memRef_->gpu_ == nullptr) {
-      Device::ScopedLockVgpus lock(dev());
+      amd::ScopedLock l(dev().vgpusAccess());
       // Release all memory objects on all virtual GPUs
       for (uint idx = 1; idx < dev().vgpus().size(); ++idx) {
         dev().vgpus()[idx]->waitForEvent(&events_[idx]);
       }
     } else {
-      amd::ScopedLock l(memRef_->gpu_->execution());
       memRef_->gpu_->waitForEvent(&events_[memRef_->gpu_->index()]);
     }
   } else {
@@ -1510,20 +1514,20 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
        (size[0] < dev().settings().cpDmaCopySizeMax_));
   if (cp_dma) {
     // Make sure compute is done before CP DMA start
-    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::KernelToCopy);
   } else {
     gpu.releaseGpuMemoryFence();
     gpu.engineID_ = SdmaEngine;
+
+    if (gpu.validateSdmaOverlap(*this, dstResource)) {
+      // Note: PAL should insert a NOP into the command buffer for synchronization
+      gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::CopyToCopy);
+    }
   }
 
   // Wait for the resources, since runtime may use async transfers
   wait(gpu, waitOnBusyEngine);
   dstResource.wait(gpu, waitOnBusyEngine);
-
-  if (gpu.validateSdmaOverlap(*this, dstResource)) {
-    // Note: PAL should insert a NOP into the command buffer for synchronization
-    gpu.addBarrier();
-  }
 
   Pal::ImageLayout imgLayout = {};
   gpu.eventBegin(gpu.engineID_);
@@ -1624,7 +1628,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
 
   if (cp_dma) {
     // Make sure CP dma is done
-    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency);
+    gpu.addBarrier(RgpSqqtBarrierReason::MemDependency, BarrierType::CopyToKernel);
   }
 
   gpu.eventEnd(gpu.engineID_, event);

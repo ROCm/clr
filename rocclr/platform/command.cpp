@@ -317,7 +317,6 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
       queue_(&queue),
       next_(nullptr),
       type_(type),
-      data_(nullptr),
       waitingEvent_(waitingEvent),
       eventWaitList_(eventWaitList),
       commandWaitBits_(commandWaitBits) {
@@ -371,13 +370,11 @@ void Command::enqueue() {
       // updated upon the marker completion
       SetBatchHead(queue_->GetSubmittionBatch());
 
-      setStatus(CL_SUBMITTED);
       submit(*queue_->vdev());
 
       // The batch will be tracked with the marker now
       queue_->ResetSubmissionBatch();
     } else {
-      setStatus(CL_SUBMITTED);
       submit(*queue_->vdev());
     }
   } else {

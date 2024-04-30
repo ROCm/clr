@@ -76,7 +76,7 @@ hipError_t ihipFree(void *ptr) {
   if (memory_object != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
     auto device_id = memory_object->getUserData().deviceId;
-    hip::Stream::SyncAllStreams(device_id);
+    g_devices[device_id]->SyncAllStreams();
 
     // Find out if memory belongs to any memory pool
     if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
@@ -743,7 +743,7 @@ hipError_t ihipArrayDestroy(hipArray_t array) {
 
   auto image = as_amd(memObj);
   // Wait on the device, associated with the current memory object during allocation
-  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  g_devices[image->getUserData().deviceId]->SyncAllStreams();
   image->release();
 
   delete array;
@@ -812,11 +812,6 @@ hipError_t ihipMallocPitch(void** ptr, size_t* pitch, size_t width, size_t heigh
   if ((width == 0) || (height == 0) || (depth == 0)) {
     *ptr = nullptr;
     return hipSuccess;
-  }
-
-  if (device && !device->info().imageSupport_) {
-    LogPrintfError("Image is not supported on device %p", device);
-    return hipErrorInvalidValue;
   }
 
   //avoid size_t overflow for pitch calculation
@@ -1257,7 +1252,7 @@ hipError_t ihipHostUnregister(void* hostPtr) {
 
   if (mem != nullptr) {
     // Wait on the device, associated with the current memory object during allocation
-    hip::Stream::SyncAllStreams(mem->getUserData().deviceId);
+    g_devices[mem->getUserData().deviceId]->SyncAllStreams();
 
     amd::MemObjMap::RemoveMemObj(hostPtr);
     for (const auto& device: g_devices) {
@@ -2268,7 +2263,7 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
                     hipMemoryTypeHost;
 
     if (dstMemoryType == hipMemoryTypeDevice) {
-      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstDevice);
+      const_cast<HIP_MEMCPY3D*>(pCopy)->dstDevice = const_cast<void*>(pCopy->dstHost);
     }
   }
   srcMemType = srcMemoryType;
@@ -2883,53 +2878,6 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   //If src and dst ptr are null then kind must be either h2h or def.
   if (!IsHtoHMemcpyValid(p->dstPtr.ptr, p->srcPtr.ptr, p->kind)) {
     return hipErrorInvalidValue;
-  }
-  return hipSuccess;
-}
-
-hipError_t ihipDrvMemcpy3DParamValidate(const HIP_MEMCPY3D* p) {
-  // Passing more than one non-zero source or destination will cause hipMemcpy3D() to
-  // return an error.
-  if (p == nullptr || ((p->srcArray != nullptr) && (p->srcHost != nullptr)) ||
-      ((p->dstArray != nullptr) && (p->dstHost != nullptr))) {
-    return hipErrorInvalidValue;
-  }
-  // The struct passed to hipMemcpy3D() must specify one of srcArray or srcPtr and one of dstArray
-  // or dstPtr.
-  if (((p->srcArray == nullptr) && (p->srcHost == nullptr)) ||
-      ((p->dstArray == nullptr) && (p->dstHost == nullptr))) {
-    return hipErrorInvalidValue;
-  }
-
-  // If the source and destination are both arrays, hipMemcpy3D() will return an error if they do
-  // not have the same element size.
-  if (((p->srcArray != nullptr) && (p->dstArray != nullptr)) &&
-      (hip::getElementSize(p->srcArray) != hip::getElementSize(p->dstArray))) {
-    return hipErrorInvalidValue;
-  }
-
-  // dst/src pitch must be less than max pitch
-  auto* deviceHandle = g_devices[hip::getCurrentDevice()->deviceId()]->devices()[0];
-  const auto& info = deviceHandle->info();
-  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
-  auto maxPitch = std::min(info.maxMemAllocSize_, int32_max);
-
-  // negative pitch cases
-  if (p->srcPitch >= maxPitch || p->dstPitch >= maxPitch) {
-    return hipErrorInvalidValue;
-  }
-
-  if (p->dstArray == nullptr && p->srcArray == nullptr) {
-    if ((p->WidthInBytes + p->srcXInBytes > p->srcPitch) ||
-        (p->WidthInBytes + p->dstXInBytes > p->dstPitch)) {
-      return hipErrorInvalidValue;
-    }
-  }
-  if (p->srcMemoryType < hipMemoryTypeHost || p->srcMemoryType > hipMemoryTypeManaged) {
-    return hipErrorInvalidMemcpyDirection;
-  }
-  if (p->dstMemoryType < hipMemoryTypeHost || p->dstMemoryType > hipMemoryTypeManaged) {
-    return hipErrorInvalidMemcpyDirection;
   }
   return hipSuccess;
 }
@@ -3791,8 +3739,12 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
         break;
       }
       case HIP_POINTER_ATTRIBUTE_SYNC_MEMOPS : {
-        // This attribute is ideally used in hipPointerSetAttribute, defaults to true
-        *reinterpret_cast<bool*>(data) = true;
+        if (memObj) {
+          *reinterpret_cast<bool*>(data) = memObj->getUserData().sync_mem_ops_;
+        } else {
+          *reinterpret_cast<bool*>(data) = false;
+          return hipErrorInvalidValue;
+        }
         break;
       }
       case HIP_POINTER_ATTRIBUTE_BUFFER_ID : {
@@ -4309,7 +4261,7 @@ hipError_t ihipMipmappedArrayDestroy(hipMipmappedArray_t mipmapped_array_ptr) {
 
   auto image = as_amd(mem_obj);
   // Wait on the device, associated with the current memory object during allocation
-  hip::Stream::SyncAllStreams(image->getUserData().deviceId);
+  g_devices[image->getUserData().deviceId]->SyncAllStreams();
   image->release();
 
   delete mipmapped_array_ptr;

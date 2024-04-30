@@ -32,7 +32,10 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr) {}
+      context_(nullptr),
+      sdmaEngineRetainCount_(0) {
+        dev().getSdmaRWMasks(&sdmaEngineReadMask_, &sdmaEngineWriteMask_);
+      }
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -684,6 +687,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
   bool kUseRegularCopyApi = 0;
+  constexpr size_t kRetainCountThreshold = 8;
   bool forceSDMA = (copyMetadata.copyEnginePreference_ ==
                       amd::CopyMetadata::CopyEnginePreference::SDMA);
   HwQueueEngine engine = HwQueueEngine::Unknown;
@@ -694,10 +698,21 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
+    if (copyMask == 0) {
+      // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
+      // and using it everytime can cause contention. When the count exceeds the threshold,
+      // reset it so as to check the engine status and fetch the new mask.
+      sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
+                               ? 0 : sdmaEngineRetainCount_++;
+    }
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
+    if (copyMask == 0 && sdmaEngineRetainCount_ > 0) {
+      // Track the DtoH copies and decrement the count.
+      sdmaEngineRetainCount_--;
+    }
   }
 
   if (engine == HwQueueEngine::Unknown && forceSDMA) {
@@ -714,9 +729,13 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
-      // Check if there a recently used SDMA engine for the stream
-      copyMask = gpu().getLastUsedSdmaEngine();
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      if (sdmaEngineRetainCount_) {
+        // Check if there a recently used SDMA engine for the stream
+        copyMask = gpu().getLastUsedSdmaEngine();
+        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+        copyMask &= (engine == HwQueueEngine::SdmaRead ?
+                    sdmaEngineReadMask_ : sdmaEngineWriteMask_);
+      }
       if (copyMask == 0) {
         // Check SDMA engine status
         status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
@@ -1927,8 +1946,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access
-  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap() && !setup_.disableHostCopyBuffer_) {
+  if ((setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
@@ -2089,37 +2108,7 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
                            (kpattern_size & 0x1) == 0 ? sizeof(uint16_t) : sizeof(uint8_t);
       // Program kernels arguments for the fill operation
       cl_mem mem = as_cl<amd::Memory>(memory.owner());
-      if (alignment == 2 * sizeof(uint64_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), &mem);
-      } else if (alignment == sizeof(uint64_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else if (alignment == sizeof(uint32_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else if (alignment == sizeof(uint16_t)) {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      } else {
-        setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem);
-        setArgument(kernels_[kFillType], 1, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 2, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 3, sizeof(cl_mem), nullptr);
-        setArgument(kernels_[kFillType], 4, sizeof(cl_mem), nullptr);
-      }
+      setArgument(kernels_[kFillType], 0, sizeof(cl_mem), &mem, koffset);
       const size_t localWorkSize = 256;
       size_t globalWorkSize =
           std::min(dev().settings().limit_blit_wg_ * localWorkSize, kfill_size);
@@ -2134,18 +2123,18 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
         memcpy(constBuf, pattern, kpattern_size);
       }
       constexpr bool kDirectVa = true;
-      setArgument(kernels_[kFillType], 5, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
+      setArgument(kernels_[kFillType], 1, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
 
       // Adjust the pattern size in the copy type size
       kpattern_size /= alignment;
-      setArgument(kernels_[kFillType], 6, sizeof(uint32_t), &kpattern_size);
-      koffset /= alignment;
-      setArgument(kernels_[kFillType], 7, sizeof(koffset), &koffset);
+      setArgument(kernels_[kFillType], 2, sizeof(uint32_t), &kpattern_size);
+      setArgument(kernels_[kFillType], 3, sizeof(alignment), &alignment);
+
       // Calculate max id
-      kfill_size = memory.virtualAddress() + (koffset + kfill_size * kpattern_size) * alignment;
-      setArgument(kernels_[kFillType], 8, sizeof(kfill_size), &kfill_size);
+      kfill_size = memory.virtualAddress() + koffset + kfill_size * kpattern_size * alignment;
+      setArgument(kernels_[kFillType], 4, sizeof(kfill_size), &kfill_size);
       uint32_t next_chunk = globalWorkSize * kpattern_size;
-      setArgument(kernels_[kFillType], 9, sizeof(uint32_t), &next_chunk);
+      setArgument(kernels_[kFillType], 5, sizeof(uint32_t), &next_chunk);
 
       // Create ND range object for the kernel's execution
       amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
@@ -2332,31 +2321,27 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 
     // Program kernels arguments for the blit operation
     cl_mem mem = as_cl<amd::Memory>(srcMemory.owner());
-    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, 0, &srcMemory);
-    mem = as_cl<amd::Memory>(dstMemory.owner());
-    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, 0, &dstMemory);
-
     // Program source origin
     uint64_t srcOffset = srcOrigin[0];
-    setArgument(kernels_[kBlitType], 2, sizeof(srcOffset), &srcOffset);
-
+    setArgument(kernels_[kBlitType], 0, sizeof(cl_mem), &mem, srcOffset, &srcMemory);
+    mem = as_cl<amd::Memory>(dstMemory.owner());
     // Program destinaiton origin
     uint64_t dstOffset = dstOrigin[0];
-    setArgument(kernels_[kBlitType], 3, sizeof(dstOffset), &dstOffset);
+    setArgument(kernels_[kBlitType], 1, sizeof(cl_mem), &mem, dstOffset, &dstMemory);
 
     uint64_t copySize = sizeIn[0];
-    setArgument(kernels_[kBlitType], 4, sizeof(copySize), &copySize);
+    setArgument(kernels_[kBlitType], 2, sizeof(copySize), &copySize);
 
-    setArgument(kernels_[kBlitType], 5, sizeof(remainder), &remainder);
-    setArgument(kernels_[kBlitType], 6, sizeof(aligned_size), &aligned_size);
+    setArgument(kernels_[kBlitType], 3, sizeof(remainder), &remainder);
+    setArgument(kernels_[kBlitType], 4, sizeof(aligned_size), &aligned_size);
 
     // End pointer is the aligned copy size and destination offset
     uint64_t end_ptr = dstMemory.virtualAddress() + dstOffset + sizeIn[0] - remainder;
 
-    setArgument(kernels_[kBlitType], 7, sizeof(end_ptr), &end_ptr);
+    setArgument(kernels_[kBlitType], 5, sizeof(end_ptr), &end_ptr);
 
     uint32_t next_chunk = globalWorkSize;
-    setArgument(kernels_[kBlitType], 8, sizeof(next_chunk), &next_chunk);
+    setArgument(kernels_[kBlitType], 6, sizeof(next_chunk), &next_chunk);
 
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(1, nullptr, &globalWorkSize, &localWorkSize);

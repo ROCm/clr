@@ -552,6 +552,14 @@ hip_6.1 {
 global:
     hipGraphInstantiateWithParams;
     hipGetProcAddress;
+    hipStreamBeginCaptureToGraph;
 local:
     *;
 } hip_6.0;
+
+hip_6.2 {
+global:
+    hipGetFuncBySymbol;
+local:
+    *;
+} hip_6.1;

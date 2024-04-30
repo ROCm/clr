@@ -135,17 +135,16 @@ static constexpr size_t ConstStr = 0xffffffff;
 static constexpr char Separator[] = ",\0";
 
 size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t size,
-                                 const uint32_t* argument) const {
+                                 const void* argument) const {
   // Serialize the output to the screen
   // amd::ScopedLock k(dev().lockAsyncOps());
-
   size_t copiedBytes = size;
   // Print the string argument, using standard PrintfDbg()
   if (checkString(fmt.c_str())) {
     // copiedBytes should be as number of printed chars
     copiedBytes = 0;
     //(null) should be printed
-    if (*argument == 0) {
+    if (*(reinterpret_cast<const unsigned char*>(argument)) == 0) {
       amd::Os::printf(fmt.data(), 0);
       // copiedBytes = strlen("(null)")
       copiedBytes = 6;
@@ -180,6 +179,9 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
       case 2:
       case 4:
         if (printFloat) {
+          const float fArg = size == 2 ?
+                          amd::half2float(*(reinterpret_cast<const uint16_t *>(argument))) :
+                          *(reinterpret_cast<const float *>(argument));
           static const char* fSpecifiers = "eEfgGa";
           std::string fmtF = fmt;
           size_t posS = fmtF.find_first_of("%");
@@ -187,7 +189,6 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
           if (posS != std::string::npos && posE != std::string::npos) {
             fmtF.replace(posS + 1, posE - posS, "s");
           }
-          float fArg = *(reinterpret_cast<const float*>(argument));
           float fSign = copysign(1.0, fArg);
           if (std::isinf(fArg) && !std::isnan(fArg)) {
             if (fSign < 0) {
@@ -218,9 +219,13 @@ size_t PrintfDbg::outputArgument(const std::string& fmt, bool printFloat, size_t
             hhFmt.erase(hhFmt.find_first_of("h"), 2);
             amd::Os::printf(hhFmt.data(), *(reinterpret_cast<const unsigned char*>(argument)));
           } else if (hlModifier) {
-            amd::Os::printf(hlFmt.data(), *argument);
+            amd::Os::printf(hlFmt.data(), size == 2 ?
+                *(reinterpret_cast<const uint16_t *>(argument)):
+                *(reinterpret_cast<const uint32_t *>(argument)));
           } else {
-            amd::Os::printf(fmt.data(), *argument);
+            amd::Os::printf(fmt.data(), size == 2 ?
+                *(reinterpret_cast<const uint16_t *>(argument)):
+                *(reinterpret_cast<const uint32_t *>(argument)));
           }
         }
         break;
@@ -290,13 +295,13 @@ void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* 
           fmt = str.substr(pos, posEnd - pos);
           fmt.erase(posStart - pos - 1, 1);
           pos = posStart = posEnd;
-          outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(fmt.data()));
+          outputArgument(sepStr, false, ConstStr, fmt.data());
           continue;
         }
         break;
       } else if (pos < str.length()) {
         outputArgument(sepStr, false, ConstStr,
-                       reinterpret_cast<const uint32_t*>((str.substr(pos)).data()));
+                       str.substr(pos).data());
       }
     } while (posStart != std::string::npos);
 
@@ -360,6 +365,7 @@ void PrintfDbg::outputDbgBuffer(const device::PrintfInfo& info, const uint32_t* 
         // Print other elemnts with separator if available
         for (int e = 1; e < vectorSize; ++e) {
           const char* t = reinterpret_cast<const char*>(s);
+
           // Output the vector separator
           outputArgument(sepStr, false, ConstStr, reinterpret_cast<const uint32_t*>(Separator));
 

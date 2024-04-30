@@ -337,8 +337,7 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         if (amd::IS_HIP) {
           uintptr_t buffer = reinterpret_cast<uintptr_t>(gpu.getOrCreateHostcallBuffer());
           if (!buffer) {
-            ClPrint(amd::LOG_ERROR, amd::LOG_KERN,
-                    "Kernel expects a hostcall buffer, but none found");
+            LogError("Kernel expects a hostcall buffer, but none found");
           }
           assert(it.size_ == sizeof(buffer) && "check the sizes");
           WriteAqlArgAt(hidden_arguments, buffer, it.size_, it.offset_);
