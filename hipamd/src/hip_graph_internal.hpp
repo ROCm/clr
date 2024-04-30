@@ -831,7 +831,7 @@ class GraphKernelNode : public GraphNode {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     std::string label;
-    char buffer[500];
+    char buffer[4096];
     if (flag == hipGraphDebugDotFlagsVerbose) {
       sprintf(buffer,
               "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
@@ -1315,7 +1315,7 @@ class GraphMemcpyNode : public GraphNode {
     }
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(
           buffer,
           "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
@@ -1493,7 +1493,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(
           buffer,
           "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
@@ -1742,7 +1742,7 @@ class GraphMemsetNode : public GraphNode {
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemsetNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(buffer,
               "{\n%s\n| {{ID | node handle | dptr | pitch | value | elementSize | width | "
               "height | depth} | {%u | %p | %p | %zu | %u | %u | %zu | %zu | %zu}}}",
