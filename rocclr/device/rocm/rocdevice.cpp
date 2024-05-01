@@ -259,7 +259,7 @@ Device::~Device() {
     p2p_stage_ = nullptr;
   }
   if (nullptr != mg_sync_) {
-    GlbCtx().svmFree(mg_sync_);
+    amd::SvmBuffer::free(GlbCtx(), mg_sync_);
     mg_sync_ = nullptr;
   }
   if (glb_ctx_ != nullptr) {
@@ -627,8 +627,9 @@ bool Device::init() {
 
     // Allocate mgpu sync buffer for cooperative launches
     if (amd::IS_HIP) {
-      mg_sync_ = reinterpret_cast<address>(glb_ctx_->svmAlloc(kMGInfoSizePerDevice * devices.size(),
-        kMGInfoSizePerDevice, (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS)));
+      mg_sync_ = reinterpret_cast<address>(amd::SvmBuffer::malloc(
+          *glb_ctx_, (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS),
+          kMGInfoSizePerDevice * devices.size(), kMGInfoSizePerDevice));
       if (mg_sync_ == nullptr) {
         LogError("mgpu sync buffer alloc failed");
         return false;

@@ -91,16 +91,6 @@ public:
 
 inline bool Runtime::initialized() { return initialized_; }
 
-class RuntimeTearDown : public HeapObject {
-  static std::vector<ReferenceCountedObject*> external_;
-
-public:
-  RuntimeTearDown() {}
-  ~RuntimeTearDown();
-
-  static void RegisterObject(ReferenceCountedObject* obj);
-};
-
 }  // namespace amd
 
 #endif /*RUNTIME_HPP_*/

@@ -448,7 +448,7 @@ public:
   };
 
   /// HIP Device class
-  class Device : public amd::ReferenceCountedObject {
+  class Device {
     amd::Monitor lock_{"Device lock", true};
     amd::Monitor streamSetLock{"Guards device stream set"};
     std::unordered_set<hip::Stream*> streamSet;
