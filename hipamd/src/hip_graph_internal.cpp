@@ -395,28 +395,21 @@ hipError_t GraphExec::CaptureAQLPackets() {
       }
     }
 
-    auto kernArgImpl = device->settings().kernel_arg_impl_;
+    if (device_kernarg_pool_) {
+      auto kernArgImpl = device->settings().kernel_arg_impl_;
 
-    const auto applyMemOrderingWA =
-        ((kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback) ||
-         (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP)) &&
-        kernarg_pool_size_graph_ > 0;
-
-    if (device_kernarg_pool_ && applyMemOrderingWA) {
-      address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_;
-      volatile char kSentinel = *(dev_ptr - 1);
-      // Memory ordering workaround for pcie: execute sfence followed by
-      // write the last byte of kernarg.
-      _mm_sfence();
-      *(dev_ptr - 1) = kSentinel;
-      // HDP flush is required to guarantee ordering in Navi and MI100
       if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
         *device->info().hdpMemFlushCntl = 1u;
+        volatile auto kSentinel = *device->info().hdpMemFlushCntl;
+      } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
+                 kernarg_pool_size_graph_ != 0) {
+        address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_;
+        volatile auto kSentinel = *(dev_ptr - 1);
+        _mm_sfence();
+        *(dev_ptr - 1) = kSentinel;
+        _mm_mfence();
+        kSentinel = *(dev_ptr - 1);
       }
-      // Memory ordering workaround for pcie: execute mfence followed by
-      // read of the last byte of kernarg.
-      _mm_mfence();
-      kSentinel = *(dev_ptr - 1);
     }
 
     ResetQueueIndex();
