@@ -548,7 +548,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   }
   command->enqueue();
   if (!isHostAsync) {
-    command->awaitCompletion();
+    stream.finish();
   } else if (!isGPUAsync) {
     hip::Stream* pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
     amd::Command::EventWaitList waitList;
@@ -2349,9 +2349,7 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
   }
   command->enqueue();
   if (!isAsync) {
-    if (!command->awaitCompletion()) {
-      status = hipErrorUnknown;
-    }
+    command->queue()->finish();
   }
   command->release();
   return status;
@@ -3217,7 +3215,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     for (auto command : commands) {
       command->enqueue();
       if (!isAsync) {
-        command->awaitCompletion();
+        hip_stream->finish();
       }
       command->release();
     }
@@ -3388,7 +3386,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   for (auto& command : commands) {
     command->enqueue();
     if (!isAsync) {
-      command->awaitCompletion();
+      hip_stream->finish();
     }
     command->release();
   }
