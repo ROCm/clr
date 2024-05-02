@@ -126,6 +126,7 @@ public:
   FatBinaryInfo** moduleInfo() { return modules_; };
   DeviceVarKind getVarKind() const { return dVarKind_; }
   size_t getSize() const { return size_; }
+  std::string getName() const { return name_; }
 
   void* getManagedVarPtr() { return managedVarPtr_; };
   void setManagedVarInfo(void* pointer, size_t size) {
