@@ -3215,12 +3215,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
     size_t argSize = std::min(gpuKernel.KernargSegmentByteSize(), signature.paramsSize());
 
-    const auto kernArgImpl = dev().settings().kernel_arg_impl_;
-    const auto applyMemOrderingWA =
-        ((kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback) ||
-         (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP)) &&
-        roc_device_.info().largeBar_ && argSize > 0 && !isGraphCapture;
-
     // Find all parameters for the current kernel
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
       // Allocate buffer to hold kernel arguments
@@ -3235,15 +3229,19 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
       nontemporalMemcpy(argBuffer, parameters, argSize);
 
-      if (applyMemOrderingWA) {
-        // Memory ordering workaround for pcie: execute sfence followed by
-        // write the last byte of kernarg
-        _mm_sfence();
-        *(argBuffer + argSize - 1) = *(parameters + argSize - 1);
-         // HDP flush is required to guarantee ordering in Navi and MI100
-         if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
-            *dev().info().hdpMemFlushCntl = 1u;
-         }
+      if (roc_device_.info().largeBar_ && !isGraphCapture) {
+        const auto kernArgImpl = dev().settings().kernel_arg_impl_;
+
+        if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
+          *dev().info().hdpMemFlushCntl = 1u;
+          volatile auto kSentinel = *dev().info().hdpMemFlushCntl;
+        } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
+                   argSize != 0) {
+          _mm_sfence();
+          *(argBuffer + argSize - 1) = *(parameters + argSize - 1);
+          _mm_mfence();
+          volatile auto kSentinel = *(argBuffer + argSize - 1);
+        }
       }
     }
 
@@ -3305,12 +3303,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                            (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
-    if (applyMemOrderingWA) {
-      // Memory ordering workaround for pcie: execute mfence followed by
-      // read of the last byte of kernarg
-      _mm_mfence();
-      volatile char kSentinel = *(argBuffer + argSize - 1);
-    }
+
     if (vcmd == nullptr) {
       // Dispatch the packet
       if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,

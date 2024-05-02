@@ -250,8 +250,6 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const bool isMI300 = gfxipMajor == 9 && gfxipMinor == 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isMI200 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
-  const bool isMI100 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 8);
-  const bool isNavi = (gfxipMajor >= 10);
 
   auto kernelArgImpl = KernelArgImpl::HostKernelArgs;
 
@@ -259,15 +257,15 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     // The XGMI-connected path does not require the manual memory ordering
     // workarounds that the PCIe connected path requires
     kernelArgImpl = KernelArgImpl::DeviceKernelArgs;
-  } else if (isMI300 || isMI200) {
-    // Implement the kernel argument readback workaround. It works only on
-    // MI200, MI300 because of the strict guarantee on ordering of
-    // stores in those ASICS
-    kernelArgImpl = KernelArgImpl::DeviceKernelArgsReadback;
-  } else if (hasValidHDPFlush && (isNavi || isMI100)) {
-    // For dev >= gfx10 and MI100 ASICS implement the HDP flush to MMIO if the
-    // HDP flush register is valid
+  } else if (hasValidHDPFlush) {
+    // If the HDP flush register is valid implement the HDP flush to MMIO
     kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
+  } else if (isMI300 || isMI200) {
+    // Implement the kernel argument readback workaround
+    // (write all args -> sfence -> write last byte -> mfence -> read last byte)
+    // It works only on MI200 and MI300 because of the strict guarantee on
+    // ordering of stores in those ASICS
+    kernelArgImpl = KernelArgImpl::DeviceKernelArgsReadback;
   }
 
   // Enable device kernel args for MI300* for now
