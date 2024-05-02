@@ -53,6 +53,12 @@
 #include "hsailctx.hpp"
 #endif
 
+#ifdef EARLY_INLINE
+#define AMDGPU_EARLY_INLINE_ALL_OPTION " -mllvm -amdgpu-early-inline-all"
+#else
+#define AMDGPU_EARLY_INLINE_ALL_OPTION
+#endif
+
 namespace device {
 
 // TODO: Can this be unified with the copies in:
@@ -657,6 +663,10 @@ bool Program::compileImplLC(const std::string& sourceCode,
   driverOptions.insert(driverOptions.end(), processedOptions.begin(), processedOptions.end());
 
   // Set whole program mode
+#ifdef EARLY_INLINE
+  driverOptions.push_back("-mllvm");
+  driverOptions.push_back("-amdgpu-early-inline-all");
+#endif
   driverOptions.push_back("-mllvm");
   driverOptions.push_back("-amdgpu-prelink");
 
@@ -1245,6 +1255,10 @@ bool Program::linkImplLC(amd::option::Options* options) {
   // Set whole program mode
   codegenOptions.push_back("-mllvm");
   codegenOptions.push_back("-amdgpu-internalize-symbols");
+#ifdef EARLY_INLINE
+  codegenOptions.push_back("-mllvm");
+  codegenOptions.push_back("-amdgpu-early-inline-all");
+#endif
 
   if (!device().settings().enableWgpMode_) {
     codegenOptions.push_back("-mcumode");
