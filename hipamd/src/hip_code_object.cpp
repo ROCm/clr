@@ -1159,7 +1159,8 @@ hipError_t StatCO::getStatFuncAttr(hipFuncAttributes* func_attr, const void* hos
 hipError_t StatCO::registerStatGlobalVar(const void* hostVar, Var* var) {
   amd::ScopedLock lock(sclock_);
 
-  if (vars_.find(hostVar) != vars_.end()) {
+  auto var_it = vars_.find(hostVar);
+  if ((var_it != vars_.end()) && (var_it->second->getName() != var->getName())) {
     return hipErrorInvalidSymbol;
   }
 
