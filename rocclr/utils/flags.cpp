@@ -84,12 +84,6 @@ namespace amd {
 
 bool IS_HIP = false;
 
-#if !defined(_WIN32) && defined(WITH_PAL_DEVICE)
-bool IS_LEGACY = true;
-#else
-bool IS_LEGACY = false;
-#endif
-
 // static
 char* Flag::envstr_;
 
