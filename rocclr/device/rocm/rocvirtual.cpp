@@ -3277,8 +3277,12 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     if ((devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
       dispatchPacket.private_segment_size =
               std::max<uint64_t>(dev().StackSize(), dispatchPacket.private_segment_size);
-      if (dispatchPacket.private_segment_size > 16 * Ki) {
-        dispatchPacket.private_segment_size = 16 * Ki;
+      // This is the per-wave scratch limit for every platform except GFX12.
+      // See MAX_WAVE_SCRATCH constant in ROCM-Runtime:src/core/runtime/amd_gpu_agent.cpp
+      uint32_t maxWaveScratch = ((1 << 13) - 1) * Ki;
+      if (dispatchPacket.private_segment_size * dev().info().wavefrontWidth_ > maxWaveScratch) {
+        LogWarning("Requested kernel launch exceeded maximum per-thread scratch size.");
+        dispatchPacket.private_segment_size = maxWaveScratch / dev().info().wavefrontWidth_;
       }
     }
 
