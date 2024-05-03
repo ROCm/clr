@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -17,14 +17,6 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
-
-/*!
- * \file command.cpp
- * \brief  Definitions for Event, Command and HostQueue objects.
- *
- * \author Laurent Morichetti
- * \date   October 2008
- */
 
 #include "platform/activity.hpp"
 #include "platform/command.hpp"
@@ -324,6 +316,18 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
   for (const auto &event: eventWaitList) {
     event->retain();
   }
+}
+
+SysmemPool<ComputeCommand> Command::command_pool_;
+
+// ================================================================================================
+void Command::operator delete(void* ptr) {
+  command_pool_.Free(ptr);
+}
+
+// ================================================================================================
+void* Command::operator new(size_t size) {
+  return command_pool_.Alloc(size);
 }
 
 // ================================================================================================

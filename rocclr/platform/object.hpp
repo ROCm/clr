@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -20,6 +20,8 @@
 
 #ifndef OBJECT_HPP_
 #define OBJECT_HPP_
+
+#include <set>
 
 #include "top.hpp"
 #include "os/alloc.hpp"
@@ -188,6 +190,80 @@ struct Coord3D {
   explicit operator size_t*() {
     return &c[0];
   }
+};
+
+template <class T>
+class SysmemPool {
+public:
+  SysmemPool(): chunk_access_("Sysmem Pool Lock", true) {}
+  ~SysmemPool() {
+    // Release current chunk
+    if (chunks_.size() == 1) {
+      auto it = chunks_.begin();
+      auto idx = kAllocChunkSize - (current_alloc_.load() % kAllocChunkSize);
+      // Make sure all allocations were released
+      if (idx  == (*it)->free_) {
+        delete [] (*it)->allocs_;
+        delete (*it);
+        chunks_.erase(it);
+      }
+    }
+  }
+  void* Alloc(size_t size) {
+    guarantee(size <= sizeof(T), "Bigger size than pool allows!");
+    size_t current = current_alloc_++;
+    auto idx = current / kAllocChunkSize;
+    while (idx >= max_chunk_idx_) {
+      ScopedLock lock(chunk_access_);
+      // Second check in a case of multiple waiters
+      if (idx == max_chunk_idx_) {
+        auto allocs = new T[kAllocChunkSize];
+        chunks_.emplace(new AllocChunk(allocs));
+        active_allocs_[idx % kActiveAllocSize] = allocs;
+        max_chunk_idx_++;
+      }
+    }
+    return &active_allocs_[idx % kActiveAllocSize][current % kAllocChunkSize];
+  }
+
+  void Free(void* ptr) {
+    ScopedLock lock(chunk_access_);
+    bool found = false;
+    // Search for the pointer in all valid chunks
+    for (auto it : chunks_) {
+      if (reinterpret_cast<uintptr_t>(ptr) >= reinterpret_cast<uintptr_t>(it->allocs_) &&
+          reinterpret_cast<uintptr_t>(ptr) <
+          (reinterpret_cast<uintptr_t>(it->allocs_) + sizeof(T) * kAllocChunkSize)) {
+        it->free_--;
+        found = true;
+        // Destory current chunk if all allocations are freed
+        if (it->free_ == 0) {
+          delete [] it->allocs_;
+          delete it;
+          chunks_.erase(it);
+        }
+        break;
+      }
+    }
+    if (!found) {
+      guarantee(true, "Mempool releases incorrect memory!\n");
+    }
+  }
+
+private:
+  static constexpr size_t kAllocChunkSize = 1024;  //!< The total number of allocations in a chunk
+  static constexpr size_t kActiveAllocSize = 32;   //!< The number of active chunks
+  struct AllocChunk {
+    T*        allocs_;  //! Array of allocations
+    uint32_t  free_;    //! The number of commands still available for usage
+    AllocChunk(T* alloc): allocs_(alloc), free_(kAllocChunkSize) {}
+  };
+
+  std::atomic<uint64_t> current_alloc_ = 0; //!< Current allocation, global index
+  size_t        max_chunk_idx_ = 0;         //!< Current max chunk index
+  amd::Monitor  chunk_access_;              //!< Lock for the chunk list access
+  std::set<AllocChunk*> chunks_;            //!< List of allocated memory chunks
+  T* active_allocs_[kActiveAllocSize] = {}; //!< Active chunks for fast access
 };
 
 }  // namespace amd
