@@ -621,7 +621,7 @@ Buffer::~Buffer() {
 
     if (owner()->ipcShared()) {
       // Detach the memory from HSA
-      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getHostMem());
+      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getSvmPtr());
       if (hsa_status != HSA_STATUS_SUCCESS) {
         LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
       }
