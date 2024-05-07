@@ -52,7 +52,8 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         amd::Command*& graphEnd, hip::Stream* stream);
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                   GraphExec* ptr);
-
+hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node> topoOrder, hip::Stream* hip_stream,
+                                      hip::GraphExec* graphExec = nullptr);
 struct UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
   static std::unordered_set<UserObject*> ObjectSet_;
@@ -661,18 +662,21 @@ struct ChildGraphNode : public GraphNode {
   amd::Command* lastEnqueuedCommand_;
   amd::Command* startCommand_;
   amd::Command* endCommand_;
+  bool graphCaptureStatus_;
  public:
   ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle") {
     childGraph_ = g->clone();
     lastEnqueuedCommand_ = nullptr;
     startCommand_ = nullptr;
     endCommand_ = nullptr;
+    graphCaptureStatus_ = false;
   }
 
   ~ChildGraphNode() { delete childGraph_; }
 
   ChildGraphNode(const ChildGraphNode& rhs) : GraphNode(rhs) {
     childGraph_ = rhs.childGraph_->clone();
+    graphCaptureStatus_ = rhs.graphCaptureStatus_;
   }
 
   GraphNode* clone() const override {
@@ -680,6 +684,19 @@ struct ChildGraphNode : public GraphNode {
   }
 
   Graph* GetChildGraph() override { return childGraph_; }
+
+  void SetGraphCaptureStatus(bool status) { graphCaptureStatus_ = status; }
+
+  bool GetGraphCaptureStatus() { return graphCaptureStatus_; }
+
+  std::vector<Node>& GetChildGraphNodeOrder() {
+    return childGraphNodeOrder_;
+  }
+
+  std::vector<std::vector<Node>>& GetParallelLists() {
+    return parallelLists_;
+  }
+
 
   hipError_t GetNumParallelStreams(size_t &num) override {
     if (false == TopologicalOrder(childGraphNodeOrder_)) {
@@ -715,8 +732,10 @@ struct ChildGraphNode : public GraphNode {
     }
     startCommand_ = nullptr;
     endCommand_ = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, childGraph_,
-                          startCommand_, endCommand_, stream);
+    if (!graphCaptureStatus_) {
+      status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, childGraph_,
+                            startCommand_, endCommand_, stream);
+    }
     return status;
   }
 
@@ -735,19 +754,24 @@ struct ChildGraphNode : public GraphNode {
     return childGraph_->TopologicalOrder(TopoOrder);
   }
   void EnqueueCommands(hipStream_t stream) override {
-    // enqueue child graph start command
-    if (startCommand_ != nullptr) {
-      startCommand_->enqueue();
-      startCommand_->release();
-    }
-    // enqueue nodes in child graph in level order
-    for (auto& node : childGraphNodeOrder_) {
-      node->EnqueueCommands(stream);
-    }
-    // enqueue child graph end command
-    if (endCommand_ != nullptr) {
-      endCommand_->enqueue();
-      endCommand_->release();
+    if (graphCaptureStatus_) {
+      hipError_t status =
+          EnqueueGraphWithSingleList(childGraphNodeOrder_, reinterpret_cast<hip::Stream*>(stream));
+    } else {
+      // enqueue child graph start command
+      if (startCommand_ != nullptr) {
+        startCommand_->enqueue();
+        startCommand_->release();
+      }
+      // enqueue nodes in child graph in level order
+      for (auto& node : childGraphNodeOrder_) {
+        node->EnqueueCommands(stream);
+      }
+      // enqueue child graph end command
+      if (endCommand_ != nullptr) {
+        endCommand_->enqueue();
+        endCommand_->release();
+      }
     }
   }
 
