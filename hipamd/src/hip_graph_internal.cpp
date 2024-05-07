@@ -350,20 +350,64 @@ hipError_t GraphExec::Init() {
   return status;
 }
 
+void GetKernelArgSizeForGraph(std::vector<std::vector<Node>>& parallelLists,
+                              size_t& kernArgSizeForGraph) {
+  // GPU packet capture is enabled for kernel nodes. Calculate the kernel
+  // arg size required for all graph kernel nodes to allocate
+  for (const auto& list : parallelLists) {
+    for (auto& node : list) {
+      if (node->GetType() == hipGraphNodeTypeKernel &&
+          !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
+        kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
+      } else if (node->GetType() == hipGraphNodeTypeGraph) {
+        auto& childParallelLists = reinterpret_cast<hip::ChildGraphNode*>(node)->GetParallelLists();
+        if (childParallelLists.size() == 1) {
+          GetKernelArgSizeForGraph(childParallelLists, kernArgSizeForGraph);
+        }
+      }
+    }
+  }
+}
+
+hipError_t AllocKernelArgForGraph(std::vector<hip::Node>& topoOrder, hip::Stream* capture_stream,
+                                  hip::GraphExec* graphExec) {
+  hipError_t status = hipSuccess;
+  for (auto& node : topoOrder) {
+    if (node->GetType() == hipGraphNodeTypeKernel &&
+        !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
+      auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
+      // From the kernel pool allocate the kern arg size required for the current kernel node.
+      address kernArgOffset = nullptr;
+      if (kernelNode->GetKernargSegmentByteSize()) {
+        kernArgOffset = graphExec->allocKernArg(kernelNode->GetKernargSegmentByteSize(),
+                                                kernelNode->GetKernargSegmentAlignment());
+        if (kernArgOffset == nullptr) {
+          return hipErrorMemoryAllocation;
+        }
+      }
+      // Form GPU packet capture for the kernel node.
+      kernelNode->CaptureAndFormPacket(capture_stream, kernArgOffset);
+    } else if (node->GetType() == hipGraphNodeTypeGraph) {
+      auto childNode = reinterpret_cast<hip::ChildGraphNode*>(node);
+      auto& childParallelLists = childNode->GetParallelLists();
+      if (childParallelLists.size() == 1) {
+        childNode->SetGraphCaptureStatus(true);
+        status =
+            AllocKernelArgForGraph(childNode->GetChildGraphNodeOrder(), capture_stream, graphExec);
+        if (status != hipSuccess) {
+          return status;
+        }
+      }
+    }
+  }
+  return status;
+}
+
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
   if (parallelLists_.size() == 1) {
     size_t kernArgSizeForGraph = 0;
-    // GPU packet capture is enabled for kernel nodes. Calculate the kernel
-    // arg size required for all graph kernel nodes to allocate
-    for (const auto& list : parallelLists_) {
-      for (auto& node : list) {
-        if (node->GetType() == hipGraphNodeTypeKernel &&
-            !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
-          kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
-        }
-      }
-    }
+    GetKernelArgSizeForGraph(parallelLists_, kernArgSizeForGraph);
     auto device = g_devices[ihipGetDevice()]->devices()[0];
     if (kernArgSizeForGraph != 0) {
       if (device->info().largeBar_) {
@@ -380,22 +424,9 @@ hipError_t GraphExec::CaptureAQLPackets() {
       }
       kernarg_pool_size_graph_ = kernArgSizeForGraph;
     }
-    for (auto& node : topoOrder_) {
-      if (node->GetType() == hipGraphNodeTypeKernel &&
-          !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
-        auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
-        // From the kernel pool allocate the kern arg size required for the current kernel node.
-        address kernArgOffset = nullptr;
-        if (kernelNode->GetKernargSegmentByteSize()) {
-          kernArgOffset = allocKernArg(kernelNode->GetKernargSegmentByteSize(),
-                                       kernelNode->GetKernargSegmentAlignment());
-          if (kernArgOffset == nullptr) {
-            return hipErrorMemoryAllocation;
-          }
-        }
-        // Form GPU packet capture for the kernel node.
-        kernelNode->CaptureAndFormPacket(capture_stream_, kernArgOffset);
-      }
+    status = AllocKernelArgForGraph(topoOrder_, capture_stream_, this);
+    if (status != hipSuccess) {
+      return status;
     }
 
     if (device_kernarg_pool_) {
@@ -414,8 +445,6 @@ hipError_t GraphExec::CaptureAQLPackets() {
         kSentinel = *reinterpret_cast<volatile int*>(dev_ptr - 1);
       }
     }
-
-    ResetQueueIndex();
   }
   return status;
 }
@@ -550,6 +579,36 @@ void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* st
   }
 }
 
+hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node> topoOrder, hip::Stream* hip_stream,
+                                      hip::GraphExec* graphExec) {
+  // Accumulate command tracks all the AQL packet batch that we submit to the HW. For now
+  // we track only kernel nodes.
+  amd::AccumulateCommand* accumulate = nullptr;
+  hipError_t status = hipSuccess;
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr);
+  }
+  for (int i = 0; i < topoOrder.size(); i++) {
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder[i]->GetType() == hipGraphNodeTypeKernel &&
+        !reinterpret_cast<hip::GraphKernelNode*>(topoOrder[i])->HasHiddenHeap()) {
+      if (topoOrder[i]->GetEnabled()) {
+        hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(), accumulate);
+        accumulate->addKernelName(topoOrder[i]->GetKernelName());
+      }
+    } else {
+      topoOrder[i]->SetStream(hip_stream, graphExec);
+      status = topoOrder[i]->CreateCommand(topoOrder[i]->GetQueue());
+      topoOrder[i]->EnqueueCommands(reinterpret_cast<hipStream_t>(hip_stream));
+    }
+  }
+
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    accumulate->enqueue();
+    accumulate->release();
+  }
+  return status;
+}
+
 hipError_t GraphExec::Run(hipStream_t stream) {
   hipError_t status = hipSuccess;
 
@@ -576,33 +635,9 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
 
-  if (parallelLists_.size() == 1 && instantiateDeviceId_ == hip_stream->DeviceId()) {
-    // Accumulate command tracks all the AQL packet batch that we submit to the HW. For now
-    // we track only kernel nodes.
-    amd::AccumulateCommand* accumulate = nullptr;
-
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr);
-    }
-    for (int i = 0; i < topoOrder_.size(); i++) {
-      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE &&
-          topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
-          !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_[i])->HasHiddenHeap()) {
-        if (topoOrder_[i]->GetEnabled()) {
-          accumulate->addKernelName(topoOrder_[i]->GetKernelName());
-          hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
-        }
-      } else {
-        topoOrder_[i]->SetStream(hip_stream, this);
-        status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
-        topoOrder_[i]->EnqueueCommands(stream);
-      }
-    }
-
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      accumulate->enqueue();
-      accumulate->release();
-    }
+  if (parallelLists_.size() == 1 &&
+      instantiateDeviceId_ == hip_stream->DeviceId()) {
+    status = EnqueueGraphWithSingleList(topoOrder_, hip_stream, this);
   } else if (parallelLists_.size() == 1 &&
              instantiateDeviceId_ != hip_stream->DeviceId()) {
     for (int i = 0; i < topoOrder_.size(); i++) {
