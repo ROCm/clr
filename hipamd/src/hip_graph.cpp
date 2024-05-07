@@ -1745,7 +1745,24 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->SetParams(cg));
+  hipError_t status = reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->SetParams(cg);
+  if (status != hipSuccess) {
+    return status;
+  }
+  if (reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->GetGraphCaptureStatus()) {
+    std::vector<hip::GraphNode*> childGraphNodes;
+    reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->TopologicalOrder(childGraphNodes);
+    for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes.size(); i++) {
+      if (childGraphNodes[i]->GetType() == hipGraphNodeTypeKernel) {
+        status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                     ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
+        if (status != hipSuccess) {
+          return status;
+        }
+      }
+    }
+  }
+  return status;
 }
 
 hipError_t hipStreamGetCaptureInfo_common(hipStream_t stream,
