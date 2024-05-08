@@ -218,7 +218,9 @@ target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
 if(NOT WIN32)
-  target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+  if (BUILD_SHARED_LIBS)
+    target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+  endif()
 endif()
 
 list(APPEND HIPRTC_OBJECTS ${HIPRTC_GEN_OBJ})
