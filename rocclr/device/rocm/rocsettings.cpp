@@ -250,6 +250,10 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const bool isMI300 = gfxipMajor == 9 && gfxipMinor == 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isMI200 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
+  const bool isPreMI100 =
+      (gfxipMajor < 9) || ((gfxipMajor == 9) && (gfxStepping < 8));
+  const bool isNavi10 =
+      (gfxipMajor == 10) && ((gfxipMinor == 0) || (gfxipMinor == 1));
 
   auto kernelArgImpl = KernelArgImpl::HostKernelArgs;
 
@@ -259,7 +263,11 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     kernelArgImpl = KernelArgImpl::DeviceKernelArgs;
   } else if (hasValidHDPFlush) {
     // If the HDP flush register is valid implement the HDP flush to MMIO
-    kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
+    // workaround. This does not work on gfx9 devices before MI100 or Navi10
+    // devices
+    if (!(isPreMI100 || isNavi10)) {
+      kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
+    }
   } else if (isMI300 || isMI200) {
     // Implement the kernel argument readback workaround
     // (write all args -> sfence -> write last byte -> mfence -> read last byte)
