@@ -3477,23 +3477,11 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd, true);
 
-  uint8_t* aqlPacket = vcmd.getLastPacket();
-  if (aqlPacket != nullptr) {
-    dispatchBlockingWait();
-    auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlPacket);
-    dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
-    // We need to set fence_dirty_ flag as we would use a dispatch packet with  a completion signal
-    // to track graph finish for the last. The sync logic assumes HW event to a barrier packet that
-    // has a system scope release. This would cause isFenceDirty() check at top level to insert
-    // barrier packet wherever needed
-    fence_dirty_ = true;
+  const Settings& settings = dev().settings();
+  if (settings.barrier_value_packet_) {
+    dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
   } else {
-    const Settings& settings = dev().settings();
-    if (settings.barrier_value_packet_) {
-      dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
-    } else {
-      dispatchBarrierPacket(kNopPacketHeader, false);
-    }
+    dispatchBarrierPacket(kNopPacketHeader, false);
   }
 
   profilingEnd(vcmd);
