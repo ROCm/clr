@@ -146,16 +146,19 @@ void HostQueue::finish(bool cpu_wait) {
   if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
     ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
-  }
-  if (IS_HIP) {
-    ScopedLock sl(vdev()->execution());
-    ScopedLock l(lastCmdLock_);
-    // Runtime can clear the last command only if no other submissions occured during finish()
-    if (command == lastEnqueueCommand_) {
-      lastEnqueueCommand_->release();
-      lastEnqueueCommand_ = nullptr;
+
+    if (IS_HIP) {
+      ScopedLock sl(vdev()->execution());
+      ScopedLock l(lastCmdLock_);
+      // Runtime can clear the last command only if no other submissions occured
+      // during finish()
+      if (command == lastEnqueueCommand_) {
+        lastEnqueueCommand_->release();
+        lastEnqueueCommand_ = nullptr;
+      }
     }
   }
+
   command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
