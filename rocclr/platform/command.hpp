@@ -1252,8 +1252,6 @@ class Marker : public Command {
 
 class AccumulateCommand : public Command {
  private:
-  uint8_t* lastPacket_;
-
   //! Kernel names and timestamps list for activity profiling
   std::vector<std::string> kernelNames_;
   std::vector<std::pair<uint64_t, uint64_t>> tsList_;
@@ -1261,12 +1259,9 @@ class AccumulateCommand : public Command {
  public:
   //! Create a new Marker
   AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
-         const Event* waitingEvent = nullptr, uint8_t* lastPacket = nullptr)
-      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent),
-        lastPacket_(lastPacket)
+         const Event* waitingEvent = nullptr)
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent)
       {}
-  //! Return last packet
-  uint8_t* getLastPacket() const { return lastPacket_; }
 
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) {
