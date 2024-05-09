@@ -576,21 +576,17 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     repeatLaunch_ = true;
   }
 
-  if (parallelLists_.size() == 1 &&
-      instantiateDeviceId_ == hip_stream->DeviceId()) {
+  if (parallelLists_.size() == 1 && instantiateDeviceId_ == hip_stream->DeviceId()) {
+    // Accumulate command tracks all the AQL packet batch that we submit to the HW. For now
+    // we track only kernel nodes.
     amd::AccumulateCommand* accumulate = nullptr;
-    bool isLastKernelWithoutHiddenHeap =
-        ((topoOrder_.back()->GetType() == hipGraphNodeTypeKernel) &&
-         !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_.back())->HasHiddenHeap());
+
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      uint8_t* lastCapturedPacket =
-          isLastKernelWithoutHiddenHeap ? topoOrder_.back()->GetAqlPacket() : nullptr;
-      if (topoOrder_.back()->GetEnabled()) {
-        accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr, lastCapturedPacket);
-      }
+      accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr);
     }
-    for (int i = 0; i < topoOrder_.size() - 1; i++) {
-      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
+    for (int i = 0; i < topoOrder_.size(); i++) {
+      if (DEBUG_CLR_GRAPH_PACKET_CAPTURE &&
+          topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
           !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_[i])->HasHiddenHeap()) {
         if (topoOrder_[i]->GetEnabled()) {
           hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
@@ -601,19 +597,6 @@ hipError_t GraphExec::Run(hipStream_t stream) {
         status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
         topoOrder_[i]->EnqueueCommands(stream);
       }
-    }
-
-    // If last captured packet is kernel, optimize to detect completion of last kernel
-    // This saves on extra packet submitted to determine end of graph
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && isLastKernelWithoutHiddenHeap) {
-      // Add the last kernel node name to the accumulate command
-      if (topoOrder_.back()->GetEnabled()) {
-        accumulate->addKernelName(topoOrder_.back()->GetKernelName());
-      }
-    } else {
-      topoOrder_.back()->SetStream(hip_stream, this);
-      status = topoOrder_.back()->CreateCommand(topoOrder_.back()->GetQueue());
-      topoOrder_.back()->EnqueueCommands(stream);
     }
 
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
