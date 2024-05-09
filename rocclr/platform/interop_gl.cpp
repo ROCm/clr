@@ -63,6 +63,7 @@ bool amd::ClGlEvent::waitForFence() {
   HGLRC tempGLRC_ = context().glenv()->wglGetCurrentContext_();
   // Set DC and GLRC
   if (tempDC_ && tempGLRC_) {
+    amd::GLFunctions::Lock lock(context().glenv());
     ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
                                                static_cast<GLuint64>(-1));
     if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
@@ -74,14 +75,12 @@ bool amd::ClGlEvent::waitForFence() {
       return false;
 
     // Make the newly created GL context current to this thread
-    context().glenv()->setIntEnv();
+    amd::GLFunctions::SetIntEnv ie(context().glenv());
+
     // If fence has not yet executed, wait till it finishes
     ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
                                                static_cast<GLuint64>(-1));
     if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-    // Since we're done making GL calls, restore whatever context was previously current to this
-    // thread
-    context().glenv()->restoreEnv();
   }
 #else  // Lnx
   Display* tempDpy_ = context().glenv()->glXGetCurrentDisplay_();
@@ -89,6 +88,7 @@ bool amd::ClGlEvent::waitForFence() {
   GLXContext tempCtx_ = context().glenv()->glXGetCurrentContext_();
   // Set internal Display and GLXContext
   if (tempDpy_ && tempCtx_) {
+    amd::GLFunctions::Lock lock(context().glenv());
     ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
                                                static_cast<GLuint64>(-1));
     if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
@@ -98,14 +98,12 @@ bool amd::ClGlEvent::waitForFence() {
       return false;
 
     // Make the newly created GL context current to this thread
-    context().glenv()->setIntEnv();
+    amd::GLFunctions::SetIntEnv ie(context().glenv());
+
     // If fence has not yet executed, wait till it finishes
     ret = context().glenv()->glClientWaitSync_(gs, GL_SYNC_FLUSH_COMMANDS_BIT,
                                                static_cast<GLuint64>(-1));
     if (!(ret == GL_ALREADY_SIGNALED || ret == GL_CONDITION_SATISFIED)) return false;
-    // Since we're done making GL calls, restore whatever context was previously current to this
-    // thread
-    context().glenv()->restoreEnv();
   }
 #endif
   // If we reach this point, fence should have completed
@@ -149,6 +147,14 @@ amd::GLFunctions::SetIntEnv::~SetIntEnv() {
   env_->restoreEnv();
 
   env_->getLock().unlock();
+}
+
+amd::GLFunctions::Lock::Lock(GLFunctions* env) : env_(env) {
+    env_->getLock().lock();
+}
+
+amd::GLFunctions::Lock::~Lock() {
+    env_->getLock().unlock();
 }
 
 amd::GLFunctions::GLFunctions(HMODULE h, bool isEGL)
