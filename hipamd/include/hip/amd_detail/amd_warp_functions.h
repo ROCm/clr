@@ -73,6 +73,7 @@ __device__ static inline int __hip_move_dpp_N(int src) {
                                     bound_ctrl);
 }
 
+__device__
 static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
 
 // warp vote function __all __any __ballot
