@@ -589,8 +589,8 @@ hipError_t GraphExec::Run(hipStream_t stream) {
           topoOrder_[i]->GetType() == hipGraphNodeTypeKernel &&
           !reinterpret_cast<hip::GraphKernelNode*>(topoOrder_[i])->HasHiddenHeap()) {
         if (topoOrder_[i]->GetEnabled()) {
-          hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
           accumulate->addKernelName(topoOrder_[i]->GetKernelName());
+          hip_stream->vdev()->dispatchAqlPacket(topoOrder_[i]->GetAqlPacket(), accumulate);
         }
       } else {
         topoOrder_[i]->SetStream(hip_stream, this);
