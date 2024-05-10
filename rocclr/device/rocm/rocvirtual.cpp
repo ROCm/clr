@@ -906,8 +906,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
           "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
           "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
           "setup=%d, grid=[%zu, %zu, %zu], workgroup=[%zu, %zu, %zu], private_seg_size=%zu, "
-          "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx "
-          "rptr=%u, wptr=%u",
+          "group_seg_size=%zu, kernel_obj=0x%zx, kernarg_address=0x%zx, completion_signal=0x%zx, "
+          "correlation_id=%zu, rptr=%u, wptr=%u",
           gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, header,
           extractAqlBits(header, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(header, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
@@ -925,7 +925,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
           reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
           reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
           reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
-          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal, read,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal,
+          reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->reserved2, read,
           index);
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
@@ -989,6 +990,8 @@ inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCom
   }
   dispatchBlockingWait();
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
+  ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Graph shader name : %s",
+          vcmd->getKernelNames().back().c_str());
   dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
   if (vcmd != nullptr) {
     profilingEnd(*vcmd);
