@@ -67,6 +67,8 @@ else()
   set_target_properties(amdocl PROPERTIES OUTPUT_NAME "amdocl32")
 endif()
 
+target_include_directories(amdocl PUBLIC $<TARGET_PROPERTY:rocclr,INCLUDE_DIRECTORIES>)
+
 target_sources(amdocl PRIVATE
   cl_command.cpp
   cl_context.cpp
