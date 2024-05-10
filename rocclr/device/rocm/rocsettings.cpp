@@ -101,7 +101,7 @@ Settings::Settings() {
 
 // ================================================================================================
 bool Settings::create(bool fullProfile, const amd::Isa& isa,
-                      bool enableXNACK, bool coop_groups, 
+                      bool enableXNACK, bool coop_groups,
                       bool isXgmi, bool hasValidHDPFlush) {
 
   uint32_t gfxipMajor = isa.versionMajor();
@@ -250,7 +250,7 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isMI200 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
   const bool isPreMI100 =
-      (gfxipMajor < 9) || ((gfxipMajor == 9) && (gfxStepping < 8));
+      (gfxipMajor < 9) || ((gfxipMajor == 9) && (gfxipMinor == 0) && (gfxStepping < 8));
   const bool isNavi10 =
       (gfxipMajor == 10) && ((gfxipMinor == 0) || (gfxipMinor == 1));
 
