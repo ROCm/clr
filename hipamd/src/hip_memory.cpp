@@ -446,7 +446,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
     } else {
       hip::Stream* pStream = &stream;
       if ((srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) &&
-          (queueDevice != srcMemory->getContext().devices()[0])) {
+          (queueDevice != srcMemory->GetDeviceById())) {
         pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -454,7 +454,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
         }
       } else if (srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) {
         // Scenarios such as DtoH where dst is pinned memory
-        if ((queueDevice != srcMemory->getContext().devices()[0]) &&
+        if ((queueDevice != srcMemory->GetDeviceById()) &&
             (dstMemory->getContext().devices().size() != 1)) {
           pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
           amd::Command* cmd = stream.getLastQueuedCommand(true);
