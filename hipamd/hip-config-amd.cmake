@@ -129,10 +129,6 @@ endif()
 
 get_property(compilePropIsSet TARGET hip::device PROPERTY INTERFACE_COMPILE_OPTIONS SET)
 
-if (NOT compilePropIsSet AND HIP_CXX_COMPILER MATCHES ".*clang\\+\\+")
-  hip_add_interface_compile_flags(hip::device -mllvm=-amdgpu-early-inline-all=true -mllvm=-amdgpu-function-calls=false)
-endif()
-
 if (NOT compilePropIsSet)
   hip_add_interface_compile_flags(hip::device -x hip)
 endif()
