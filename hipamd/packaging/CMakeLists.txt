@@ -41,24 +41,33 @@ install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 #Begin binary files install
 if(HIP_PLATFORM STREQUAL "amd" )
-   if(BUILD_SHARED_LIBS)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      # Add libraries to asan package
-      install(DIRECTORY ${PROJECT_BINARY_DIR}/lib/ DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan
-                                                 PATTERN ".hipInfo" EXCLUDE)
-   else()
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-   endif()#End BUILD_SHARED_LIBS
+   # Set component name and  library type
+   set(COMPONENT_NAME "binary")
+   set(CMAKE_LIB_TYPE "LIBRARY")
+
+   if(NOT BUILD_SHARED_LIBS)
+      # Change library type for static builds
+      set(CMAKE_LIB_TYPE "ARCHIVE")
+   endif()
+
+   if(ENABLE_ASAN_PACKAGING)
+      # Change component name for ASAN builds
+      set(COMPONENT_NAME "asan")
+   endif()
+
+   # Install libraries
+   install(TARGETS amdhip64
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
+   install(TARGETS hiprtc
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
+   install(TARGETS hiprtc-builtins
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
 
 #TODO:This do not belong in BINARY package.
 #Keeping it as is for now
