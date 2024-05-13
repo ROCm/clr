@@ -441,6 +441,39 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   return true;
 }
 
+bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::string& isa,
+                     size_t& co_offset, size_t& co_size) {
+  std::string magic(bundled_llvm_bitcode.begin(),
+                    bundled_llvm_bitcode.begin() + bundle_magic_string_size);
+  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR)) {
+    // Handle case where the whole file is unbundled
+    return true;
+  }
+
+  std::string bundled_llvm_bitcode_s(bundled_llvm_bitcode.begin(),
+                                     bundled_llvm_bitcode.begin() + bundled_llvm_bitcode.size());
+  const void* data = reinterpret_cast<const void*>(bundled_llvm_bitcode_s.c_str());
+  const auto obheader = reinterpret_cast<const __ClangOffloadBundleHeader*>(data);
+  const auto* desc = &obheader->desc[0];
+  for (uint64_t idx = 0; idx < obheader->numOfCodeObjects; ++idx,
+                desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
+                    reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
+                    desc->bundleEntryIdSize)) {
+    const void* image =
+        reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
+    const size_t image_size = desc->size;
+    std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
+
+    // Check if the device id and code object id are compatible
+    if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa)) {
+      co_offset = (reinterpret_cast<uintptr_t>(image) - reinterpret_cast<uintptr_t>(data));
+      co_size = image_size;
+      break;
+    }
+  }
+  return true;
+}
+
 bool addCodeObjData(amd_comgr_data_set_t& input, const std::vector<char>& source,
                     const std::string& name, const amd_comgr_data_kind_t type) {
   amd_comgr_data_t data;
