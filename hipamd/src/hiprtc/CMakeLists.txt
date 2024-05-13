@@ -72,9 +72,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-if(BUILD_SHARED_LIBS)
-  target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
-endif()
+target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
 
 set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
