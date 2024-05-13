@@ -545,7 +545,8 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
       data_kind = AMD_COMGR_DATA_KIND_BC;
       break;
     case HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE:
-      data_kind = AMD_COMGR_DATA_KIND_BC_BUNDLE;
+      data_kind =
+          HIPRTC_USE_RUNTIME_UNBUNDLER ? AMD_COMGR_DATA_KIND_BC : AMD_COMGR_DATA_KIND_BC_BUNDLE;
       break;
     case HIPRTC_JIT_INPUT_LLVM_ARCHIVES_OF_BUNDLED_BITCODE:
       data_kind = AMD_COMGR_DATA_KIND_AR_BUNDLE;
@@ -560,13 +561,32 @@ amd_comgr_data_kind_t RTCLinkProgram::GetCOMGRDataKind(hiprtcJITInputType input_
 
 bool RTCLinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITInputType input_type,
                                        std::string& link_file_name) {
+  std::vector<char> llvm_bitcode;
+  // If this is bundled bitcode then unbundle this.
+  if (HIPRTC_USE_RUNTIME_UNBUNDLER && input_type == HIPRTC_JIT_INPUT_LLVM_BUNDLED_BITCODE) {
+    if (!findIsa()) {
+      return false;
+    }
+
+    size_t co_offset = 0;
+    size_t co_size = 0;
+    if (!UnbundleBitCode(link_data, isa_, co_offset, co_size)) {
+      LogError("Error in hiprtc: unable to unbundle the llvm bitcode");
+      return false;
+    }
+
+    llvm_bitcode.assign(link_data.begin() + co_offset, link_data.begin() + co_offset + co_size);
+  } else {
+    llvm_bitcode.assign(link_data.begin(), link_data.end());
+  }
+
   amd_comgr_data_kind_t data_kind;
   if ((data_kind = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
     LogError("Cannot find the correct COMGR data kind");
     return false;
   }
 
-  if (!addCodeObjData(link_input_, link_data, link_file_name, data_kind)) {
+  if (!addCodeObjData(link_input_, llvm_bitcode, link_file_name, data_kind)) {
     LogError("Error in hiprtc: unable to add linked code object");
     return false;
   }
