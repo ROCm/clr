@@ -287,7 +287,7 @@ endif()
 
 target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
 
-if(WIN32)
+if(WIN32 OR NOT BUILD_SHARED_LIBS)
     # rocprofiler-register is not support on Windows
     set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
 else()
