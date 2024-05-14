@@ -576,8 +576,8 @@ class KernelBlitManager : public DmaBlitManager {
                           const device::Memory* dev_mem = nullptr,
                           bool writeVAImmediate = false) const;
 
-  static constexpr uint32_t kCBSize = 0x80;
-  static constexpr size_t   kCBAlignment = 0x80;
+  static constexpr uint32_t kCBSize = 0x100;
+  static constexpr size_t   kCBAlignment = 0x100;
 
   inline uint32_t NumBlitKernels() {
     return (dev().info().imageSupport_) ? BlitTotal : BlitLinearTotal;
