@@ -83,8 +83,14 @@ if(NOT AMDGPU_TARGETS)
     ERROR_STRIP_TRAILING_WHITESPACE)
 
   if(AMDGPU_ARCH_ERROR)
-    message(AUTHOR_WARNING "amdgpu-arch failed with error ${AMDGPU_ARCH_ERROR}")
-    message("and the output is ${AMDGPU_ARCH_OUTPUT}")
+    message(AUTHOR_WARNING
+        " AMDGPU_TARGETS was not set, and system GPU detection was unsuccsesful.\n \n"
+        " The amdgpu-arch tool failed:\n"
+        " Error: '${AMDGPU_ARCH_ERROR}'\n"
+        " Output: '${AMDGPU_ARCH_OUTPUT}'\n \n"
+
+        " As a result, --offload-arch will not be set for subsuqent\n"
+        " compilations, and the default architecture (gfx906) will be used\n")
   else()
     if (NOT AMDGPU_ARCH_OUTPUT STREQUAL "")
       string(REPLACE "\n" ";" AMDGPU_ARCH_OUTPUT ${AMDGPU_ARCH_OUTPUT})
