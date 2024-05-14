@@ -400,15 +400,15 @@ hipError_t GraphExec::CaptureAQLPackets() {
 
       if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
         *device->info().hdpMemFlushCntl = 1u;
-        volatile auto kSentinel = *device->info().hdpMemFlushCntl;
+        auto kSentinel = *reinterpret_cast<volatile int*>(device->info().hdpMemFlushCntl);
       } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
                  kernarg_pool_size_graph_ != 0) {
         address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_;
-        volatile auto kSentinel = *(dev_ptr - 1);
+        auto kSentinel = *reinterpret_cast<volatile int*>(dev_ptr);
         _mm_sfence();
         *(dev_ptr - 1) = kSentinel;
         _mm_mfence();
-        kSentinel = *(dev_ptr - 1);
+        kSentinel = *reinterpret_cast<volatile int*>(dev_ptr - 1);
       }
     }
 

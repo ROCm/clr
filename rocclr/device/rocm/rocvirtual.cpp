@@ -3226,13 +3226,13 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
         if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
           *dev().info().hdpMemFlushCntl = 1u;
-          volatile auto kSentinel = *dev().info().hdpMemFlushCntl;
+          auto kSentinel = *reinterpret_cast<volatile int*>(dev().info().hdpMemFlushCntl);
         } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
                    argSize != 0) {
           _mm_sfence();
           *(argBuffer + argSize - 1) = *(parameters + argSize - 1);
           _mm_mfence();
-          volatile auto kSentinel = *(argBuffer + argSize - 1);
+          auto kSentinel = *reinterpret_cast<volatile address*>(argBuffer + argSize - 1);
         }
       }
     }
