@@ -247,7 +247,9 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, 0, prop);
   *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(phys_mem_obj->getUserData().data);
 
-  amd::MemObjMap::RemoveMemObj(phys_mem_obj->getSvmPtr());
+  if (amd::MemObjMap::FindMemObj(phys_mem_obj->getSvmPtr())) {
+    amd::MemObjMap::RemoveMemObj(phys_mem_obj->getSvmPtr());
+  }
 
   HIP_RETURN(hipSuccess);
 }
