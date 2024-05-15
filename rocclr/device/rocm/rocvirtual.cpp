@@ -937,7 +937,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   // Wait on signal ?
   if (blocking) {
-    LogInfo("Runtime reachead the AQL queue limit. SW is much ahead of HW. Blocking AQL queue!");
+    LogInfo("Runtime reached the AQL queue limit. SW is much ahead of HW. Blocking AQL queue!");
     if (!Barriers().WaitCurrent()) {
       LogPrintfError("Failed blocking queue wait with signal [0x%lx]",
                      packet->completion_signal.handle);
