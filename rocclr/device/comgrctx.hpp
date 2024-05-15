@@ -76,6 +76,7 @@ typedef amd_comgr_status_t (*t_amd_comgr_populate_mangled_names)(amd_comgr_data_
 typedef amd_comgr_status_t (*t_amd_comgr_get_mangled_name)(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name);
 typedef amd_comgr_status_t (*t_amd_comgr_populate_name_expression_map)(amd_comgr_data_t data, size_t *count);
 typedef amd_comgr_status_t (*t_amd_comgr_map_name_expression_to_symbol_name)(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name);
+typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_bundle_entry_ids)(amd_comgr_action_info_t action_info, const char* bundle_entry_ids[], size_t count);
 
 struct ComgrEntryPoints {
   void* handle;
@@ -129,13 +130,16 @@ struct ComgrEntryPoints {
   t_amd_comgr_get_mangled_name          amd_comgr_get_mangled_name;
   t_amd_comgr_populate_name_expression_map  amd_comgr_populate_name_expression_map;
   t_amd_comgr_map_name_expression_to_symbol_name amd_comgr_map_name_expression_to_symbol_name;
+  t_amd_comgr_action_info_set_bundle_entry_ids   amd_comgr_action_info_set_bundle_entry_ids;
 };
 
 #ifdef COMGR_DYN_DLL
 #define COMGR_DYN(NAME) cep_.NAME
 #define GET_COMGR_SYMBOL(NAME) cep_.NAME = \
   reinterpret_cast<t_##NAME>(Os::getSymbol(cep_.handle, #NAME)); \
-  if (nullptr == cep_.NAME) { return false; }
+  if (nullptr == cep_.NAME) { \
+    ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "Failed to load COMGR function %s", #NAME); \
+              return false; }
 #define GET_COMGR_OPTIONAL_SYMBOL(NAME) cep_.NAME = \
   reinterpret_cast<t_##NAME>(Os::getSymbol(cep_.handle, #NAME));
 #else
@@ -289,13 +293,6 @@ public:
   }
   static amd_comgr_status_t demangle_symbol_name(amd_comgr_data_t MangledSymbolName,
                                                  amd_comgr_data_t* DemangledSymbolName) {
-#if defined(COMGR_DYN_DLL)
-    if (cep_.amd_comgr_demangle_symbol_name == nullptr) {
-      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-              "Failed to load COMGR function amd_comgr_demangle_symbol_name");
-      return AMD_COMGR_STATUS_ERROR;
-    }
-#endif
     return COMGR_DYN(amd_comgr_demangle_symbol_name)(MangledSymbolName, DemangledSymbolName);
   }
   static amd_comgr_status_t populate_mangled_names(amd_comgr_data_t data, size_t *count) {
@@ -310,8 +307,19 @@ public:
   static amd_comgr_status_t map_name_expression_to_symbol_name(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name) {
     return COMGR_DYN(amd_comgr_map_name_expression_to_symbol_name)(data, size, name_expression, symbol_name);
   }
-
-
+  static amd_comgr_status_t action_info_set_bundle_entry_ids(amd_comgr_action_info_t action_info,
+    const char* bundle_entry_ids[], size_t count) {
+#if defined(COMGR_DYN_DLL)
+    if (cep_.amd_comgr_action_info_set_bundle_entry_ids == nullptr) {
+      // comgr version 2.7 or less is loaded
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+              "Failed to load COMGR function amd_comgr_action_info_set_bundle_entry_ids");
+      return AMD_COMGR_STATUS_ERROR;
+    }
+#endif
+    return COMGR_DYN(amd_comgr_action_info_set_bundle_entry_ids)(action_info, bundle_entry_ids,
+                     count);
+  }
  private:
   static ComgrEntryPoints cep_;
   static bool is_ready_;

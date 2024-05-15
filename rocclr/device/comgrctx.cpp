@@ -114,12 +114,16 @@ bool Comgr::LoadLib(bool is_versioned) {
   GET_COMGR_SYMBOL(amd_comgr_iterate_symbols)
   GET_COMGR_SYMBOL(amd_comgr_symbol_lookup)
   GET_COMGR_SYMBOL(amd_comgr_symbol_get_info)
-  GET_COMGR_OPTIONAL_SYMBOL(amd_comgr_demangle_symbol_name)
+  GET_COMGR_SYMBOL(amd_comgr_demangle_symbol_name)
   GET_COMGR_SYMBOL(amd_comgr_populate_mangled_names)
   GET_COMGR_SYMBOL(amd_comgr_get_mangled_name)
   GET_COMGR_SYMBOL(amd_comgr_populate_name_expression_map)
   GET_COMGR_SYMBOL(amd_comgr_map_name_expression_to_symbol_name)
+  GET_COMGR_OPTIONAL_SYMBOL(amd_comgr_action_info_set_bundle_entry_ids)
   is_ready_ = true;
+  size_t major = 0, minor = 0;
+  get_version(&major, &minor);
+  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Loaded COMGR library version %zu.%zu.", major, minor);
   return true;
 }
 
