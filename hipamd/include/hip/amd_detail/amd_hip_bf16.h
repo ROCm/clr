@@ -102,6 +102,9 @@
 
 #include "amd_hip_vector_types.h"  // float2 etc
 #include "device_library_decls.h"  // ocml conversion functions
+#if defined(__clang__) && defined(__HIP__)
+#include "amd_hip_atomic.h"
+#endif // defined(__clang__) && defined(__HIP__)
 #include "math_fwd.h"              // ocml device functions
 
 #define __BF16_DEVICE__ __device__
@@ -1811,4 +1814,36 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 h2trunc(const __hip_bfloat162 h) {
   __hip_bfloat162_raw hr = h;
   return __hip_bfloat162(htrunc(__hip_bfloat16_raw{hr.x}), htrunc(__hip_bfloat16_raw{hr.y}));
 }
+
+#if defined(__clang__) && defined(__HIP__)
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT162_MATH
+ * \brief Atomic add bfloat162
+ */
+__BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
+                                                       __hip_bfloat162 value) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__) && __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2bf16)
+  typedef short __attribute__((ext_vector_type(2))) vec_short2;
+  __hip_bfloat162_raw bf2_v = value;
+  vec_short2 s2_in{bf2_v.x, bf2_v.y};
+  vec_short2 s2_ret = __builtin_amdgcn_flat_atomic_fadd_v2bf16((vec_short2*)address, s2_in);
+  return __hip_bfloat162_raw{s2_ret[0], s2_ret[1]};
+#else
+  static_assert(sizeof(unsigned int) == sizeof(__hip_bfloat162_raw));
+  union u_hold {
+    __hip_bfloat162_raw h2r;
+    unsigned int u32;
+  };
+  u_hold old_val, new_val;
+  old_val.u32 =
+      __hip_atomic_load((unsigned int*)address, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  do {
+    new_val.h2r = __hadd2(old_val.h2r, value);
+  } while (!__hip_atomic_compare_exchange_strong((unsigned int*)address, &old_val.u32, new_val.u32,
+                                                 __ATOMIC_RELAXED, __ATOMIC_RELAXED,
+                                                 __HIP_MEMORY_SCOPE_AGENT));
+  return old_val.h2r;
+#endif
+}
+#endif  // defined(__clang__) && defined(__HIP__)
 #endif
