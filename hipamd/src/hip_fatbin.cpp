@@ -25,6 +25,7 @@ THE SOFTWARE.
 #include <unordered_map>
 #include "hip_code_object.hpp"
 #include "hip_platform.hpp"
+#include "comgrctx.hpp"
 
 namespace hip {
 
@@ -50,14 +51,21 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image) : fdesc_(amd:
 }
 
 FatBinaryInfo::~FatBinaryInfo() {
-
+  // Different devices in the same model have the same binary_image_
+  std::set<const void*> toDelete;
   // Release per device fat bin info.
   for (auto* fbd: fatbin_dev_info_) {
     if (fbd != nullptr) {
+      if (fbd->binary_image_ && fbd->binary_offset_ == 0 && fbd->binary_image_ != image_) {
+        toDelete.insert(fbd->binary_image_);
+      }
       delete fbd;
     }
   }
-
+  for (auto itemData : toDelete) {
+    LogPrintfInfo("~FatBinaryInfo(%p) will delete binary_image_ %p", this, itemData);
+    delete[] reinterpret_cast<const char*>(itemData);
+  }
   if (!HIP_USE_RUNTIME_UNBUNDLER) {
     // Using COMGR Unbundler
     if (ufd_ && amd::Os::isValidFileDesc(ufd_->fdesc_)) {
@@ -163,9 +171,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                 fname_.c_str());
 
   do {
-
+    bool isCompressed = false;
     // If the image ptr is not clang offload bundle then just directly point the image.
-    if (!CodeObject::IsClangOffloadMagicBundle(image_)) {
+    if (!CodeObject::IsClangOffloadMagicBundle(image_, isCompressed)) {
       for (size_t dev_idx=0; dev_idx < devices.size(); ++dev_idx) {
         fatbin_dev_info_[devices[dev_idx]->deviceId()]
           = new FatBinaryDeviceInfo(image_, CodeObject::ElfSize(image_), 0);
@@ -178,7 +186,22 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       }
       break;
     }
-
+    if (isCompressed || HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
+      size_t major = 0, minor = 0;
+      amd::Comgr::get_version(&major, &minor);
+      if (major >= 2 && minor >= 8) {
+        hip_status = ExtractFatBinaryUsingCOMGR(image_, devices);
+        break;
+      } else if (isCompressed) {
+        LogPrintfError(
+          "comgr %zu.%zu cannot support commpressed mode which need comgr 2.8+", major, minor);
+        hip_status = hipErrorNotSupported;
+        break;
+      } else if (HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
+        HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION = false;
+        LogInfo("HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION = true only works on comgr 2.8+");
+      }
+    }
     // Create a data object, if it fails return error
     if ((comgr_status = amd_comgr_create_data(AMD_COMGR_DATA_KIND_FATBIN, &data_object))
                         != AMD_COMGR_STATUS_SUCCESS) {
@@ -440,6 +463,65 @@ hipError_t FatBinaryInfo::BuildProgram(const int device_id) {
     return hipErrorNoBinaryForGpu;
   }
   return hipSuccess;
+}
+
+// ================================================================================================
+hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void *data,
+    const std::vector<hip::Device*>& devices) {
+  hipError_t hip_status = hipSuccess;
+  // At this line, image should be a valid ptr.
+  guarantee(data != nullptr, "Image cannot be nullptr");
+
+  do {
+    std::vector<std::pair<const void*, size_t>> code_objs;
+    // Copy device names
+    std::vector<std::string> device_names;
+    device_names.reserve(devices.size());
+    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
+      device_names.push_back(devices[dev_idx]->devices()[0]->isa().isaName());
+    }
+
+    hip_status = CodeObject::extractCodeObjectFromFatBinaryUsingComgr(data, 0,
+      device_names, code_objs);
+    if (hip_status == hipErrorNoBinaryForGpu || hip_status == hipSuccess) {
+      for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
+        if (code_objs[dev_idx].first) {
+          fatbin_dev_info_[devices[dev_idx]->deviceId()] =
+              new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, 0);
+
+          fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
+              new amd::Program(*devices[dev_idx]->asContext());
+          if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
+            break;
+          }
+        } else {
+          // This is the case of hipErrorNoBinaryForGpu which will finally fail app on device
+          // without code object
+          LogPrintfError("Cannot find CO in the bundle %s for ISA: %s", fname_.c_str(),
+                         device_names[dev_idx].c_str());
+        }
+      }
+    } else if (hip_status == hipErrorInvalidKernelFile) {
+      hip_status = hipSuccess;
+      // If the image ptr is not clang offload bundle then just directly point the image.
+      for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
+        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
+            new FatBinaryDeviceInfo(data, CodeObject::ElfSize(data), 0);
+        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
+            new amd::Program(*devices[dev_idx]->asContext());
+        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
+          hip_status = hipErrorOutOfMemory;
+          break;
+        }
+      }
+    } else {
+      LogPrintfError(
+        "CodeObject::extractCodeObjectFromFatBinaryUsingComgr failed with status %d\n",
+                     hip_status);
+    }
+  } while (0);
+
+  return hip_status;
 }
 
 } //namespace : hip

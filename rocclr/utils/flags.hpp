@@ -249,6 +249,8 @@ release(bool, HIP_VMEM_MANAGE_SUPPORT, true,                                  \
         "Virtual Memory Management Support")                                  \
 release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
          "Enable/Disable graph debug dot print dump")                         \
+release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
+        "Force to always use new comgr unbundling action")                    \
 
 namespace amd {
 
