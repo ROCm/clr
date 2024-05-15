@@ -95,7 +95,8 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
           amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(payload[0]));
           mem->release();
         } else {
-          ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Unknown pointer in devmem service\n");
+          ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Unknown pointer %p in devmem service",
+                  payload[0]);
         }
       } else {
         amd::Context& ctx = dev.context();
