@@ -1473,8 +1473,8 @@ bool Device::populateOCLDeviceConstants() {
     info_.hostUnifiedMemory_ = 1;
     info_.iommuv2_ = true;
   }
-  info_.memBaseAddrAlign_ =
-      8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
+  info_.memBaseAddrAlign_ = 8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ?
+      sizeof(int64_t[16]) * 2 : MEMOBJ_BASE_ADDR_ALIGN);
   info_.minDataTypeAlignSize_ = sizeof(int64_t[16]);
 
   info_.maxConstantArgs_ = 8;
