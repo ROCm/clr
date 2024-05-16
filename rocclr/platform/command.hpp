@@ -1177,7 +1177,11 @@ class NDRangeKernelCommand : public Command {
     numWorkgroups_ = numWorkgroups;
   }
 
+  // Capture kernel parameters and validate
   int32_t captureAndValidate();
+
+  // Allocate, capture and set kernel parameters
+  int32_t AllocCaptureSetValidate(void** kernelParams, address kernArgs);
 };
 
 class NativeFnCommand : public Command {

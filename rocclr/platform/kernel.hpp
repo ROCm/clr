@@ -284,6 +284,12 @@ class KernelParameters : protected HeapObject {
 
   //! Returns true if arguemnts were allocated on device
   bool deviceKernelArgs() const { return (deviceKernelArgs_ == 1); }
+
+  //! Allocate memory for kernel arguments to be set.
+  address alloc(device::VirtualDevice& vDev);
+
+  //! Capture the arguments from signature and set.
+  bool captureAndSet(void** kernelParams, address kernArgs, address mem);
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values

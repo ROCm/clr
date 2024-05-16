@@ -274,31 +274,6 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
       return hipErrorLaunchFailure;
     }
   }
-  address kernargs = nullptr;
-  // 'extra' is a struct that contains the following info: {
-  //   HIP_LAUNCH_PARAM_BUFFER_POINTER, kernargs,
-  //   HIP_LAUNCH_PARAM_BUFFER_SIZE, &kernargs_size,
-  //   HIP_LAUNCH_PARAM_END }
-  if (extra != nullptr) {
-    if (extra[0] != HIP_LAUNCH_PARAM_BUFFER_POINTER || extra[2] != HIP_LAUNCH_PARAM_BUFFER_SIZE ||
-        extra[4] != HIP_LAUNCH_PARAM_END) {
-      return hipErrorInvalidValue;
-    }
-    kernargs = reinterpret_cast<address>(extra[1]);
-  }
-
-  for (size_t i = 0; i < signature.numParameters(); ++i) {
-    const amd::KernelParameterDescriptor& desc = signature.at(i);
-    if (kernelParams == nullptr) {
-      assert(kernargs != nullptr);
-      kernel->parameters().set(i, desc.size_, kernargs + desc.offset_,
-                               desc.type_ == T_POINTER /*svmBound*/);
-    } else {
-      assert(extra == nullptr);
-      kernel->parameters().set(i, desc.size_, kernelParams[i],
-                               desc.type_ == T_POINTER /*svmBound*/);
-    }
-  }
   return hipSuccess;
 }
 
@@ -319,7 +294,6 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
   size_t localWorkSize[3] = {blockDimX, blockDimY, blockDimZ};
   amd::NDRangeContainer ndrange(3, globalWorkOffset, globalWorkSize, localWorkSize);
   amd::Command::EventWaitList waitList;
-  address kernargs = nullptr;
 
   bool profileNDRange = (startEvent != nullptr || stopEvent != nullptr);
 
@@ -335,10 +309,44 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
     return hipErrorOutOfMemory;
   }
 
-  // Capture the kernel arguments
-  if (CL_SUCCESS != kernelCommand->captureAndValidate()) {
-    kernelCommand->release();
-    return hipErrorOutOfMemory;
+  address kernargs = nullptr;
+  // 'extra' is a struct that contains the following info: {
+  //   HIP_LAUNCH_PARAM_BUFFER_POINTER, kernargs,
+  //   HIP_LAUNCH_PARAM_BUFFER_SIZE, &kernargs_size,
+  //   HIP_LAUNCH_PARAM_END }
+  if (extra != nullptr) {
+    assert(kernelParams == nullptr);
+    if (extra[0] != HIP_LAUNCH_PARAM_BUFFER_POINTER || extra[2] != HIP_LAUNCH_PARAM_BUFFER_SIZE ||
+        extra[4] != HIP_LAUNCH_PARAM_END) {
+      return hipErrorInvalidValue;
+    }
+    kernargs = reinterpret_cast<address>(extra[1]);
+  }
+
+  if (DEBUG_HIP_KERNARG_COPY_OPT) {
+    if (CL_SUCCESS != kernelCommand->AllocCaptureSetValidate(kernelParams, kernargs)) {
+      kernelCommand->release();
+      return hipErrorOutOfMemory;
+    }
+    
+  } else {
+    for (size_t i = 0; i < kernel->signature().numParameters(); ++i) {
+      const amd::KernelParameterDescriptor& desc = kernel->signature().at(i);
+      if (kernelParams == nullptr) {
+        assert(kernargs != nullptr);
+        kernel->parameters().set(i, desc.size_, kernargs + desc.offset_,
+                                 desc.type_ == T_POINTER /*svmBound*/);
+      } else {
+        kernel->parameters().set(i, desc.size_, kernelParams[i],
+                                 desc.type_ == T_POINTER /*svmBound*/);
+      }
+    }
+
+    // Capture the kernel arguments
+    if (CL_SUCCESS != kernelCommand->captureAndValidate()) {
+      kernelCommand->release();
+      return hipErrorOutOfMemory;
+    }
   }
 
   command = kernelCommand;

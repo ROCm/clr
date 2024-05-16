@@ -643,6 +643,27 @@ bool MigrateMemObjectsCommand::validateMemory() {
   return true;
 }
 
+// =================================================================================================
+int32_t NDRangeKernelCommand::AllocCaptureSetValidate(void** kernelParams, address kernArgs) {
+  const amd::Device& device = queue()->device();
+   // Validate the kernel before submission
+  if (!queue()->device().validateKernel(kernel(), queue()->vdev(), cooperativeGroups())) {
+    return CL_OUT_OF_RESOURCES;
+  }
+
+  parameters_ = kernel().parameters().alloc(*queue()->vdev());
+  if (parameters_ == nullptr) {
+    LogError("Cannot allocate memory for parameters_");
+    return CL_OUT_OF_RESOURCES;
+  }
+
+  if (!kernel().parameters().captureAndSet(kernelParams, kernArgs, parameters_)) {
+    LogError("Cannot capture and set the kernel parameters");
+    return CL_OUT_OF_RESOURCES;
+  }
+  return CL_SUCCESS;
+}
+
 int32_t NDRangeKernelCommand::captureAndValidate() {
   const amd::Device& device = queue()->device();
   // Validate the kernel before submission
