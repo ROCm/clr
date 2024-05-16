@@ -419,7 +419,7 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
  * @{
  */
 struct __attribute__((aligned(4))) __hip_bfloat162 {
- protected:
+ public:
   __hip_bfloat16 x; /*! \brief raw representation of bfloat16 */
   __hip_bfloat16 y; /*! \brief raw representation of bfloat16 */
 
