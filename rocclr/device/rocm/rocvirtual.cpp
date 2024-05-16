@@ -1329,8 +1329,6 @@ bool VirtualGPU::create() {
   }
 
   device::BlitManager::Setup blitSetup;
-  // Disable HostBlit copy path for HIP
-  blitSetup.disableHostCopyBuffer_ = amd::IS_HIP;
   blitMgr_ = new KernelBlitManager(*this, blitSetup);
   if ((nullptr == blitMgr_) || !blitMgr_->create(roc_device_)) {
     LogError("Could not create BlitManager!");
