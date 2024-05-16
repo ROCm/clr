@@ -85,6 +85,91 @@ size_t KernelParameters::localMemSize(size_t minDataTypeAlignment) const {
   return memSize;
 }
 
+// =================================================================================================
+address KernelParameters::alloc(device::VirtualDevice& vDev) {
+
+  //! Information about which arguments are SVM pointers is stored after
+  // the actual parameters, but only if the device has any SVM capability
+  const size_t execInfoSize = getNumberOfSvmPtr() * sizeof(void*);
+
+  address mem = vDev.allocKernelArguments(totalSize_ + execInfoSize, 128);
+  if (mem == nullptr) {
+    mem = reinterpret_cast<address>(AlignedMemory::allocate(totalSize_ + execInfoSize,
+                                                            PARAMETERS_MIN_ALIGNMENT));
+  } else {
+    deviceKernelArgs_ = true;
+  }
+
+  return mem;
+}
+
+// =================================================================================================
+bool KernelParameters::captureAndSet(void** kernelParams, address kernArgs, address mem) {
+
+  for (size_t idx = 0; idx < signature_.numParameters(); ++idx) {
+    KernelParameterDescriptor& desc = signature_.params()[idx];
+    void* value = nullptr;
+    if (kernelParams != nullptr) {
+      value = kernelParams[idx];
+    } else {
+      value = kernArgs + desc.offset_;
+    }
+    void* param = mem + desc.offset_;
+    uint32_t uint32_value = 0;
+    uint64_t uint64_value = 0;
+    Memory* memArg = nullptr;
+    amd::Memory** memories = reinterpret_cast<amd::Memory**>(mem + memoryObjOffset());
+    if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
+      LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
+      memArg = amd::MemObjMap::FindMemObj(*reinterpret_cast<const void* const*>(value));
+      memories[desc.info_.arrayIndex_] = memArg;
+      if (memArg != nullptr) {
+        memArg->retain();
+      }
+      desc.info_.rawPointer_ = true;
+    } else if (desc.type_ == T_SAMPLER) {
+      LogError("Cannot handle Sampler now");
+      return false;
+    } else if (desc.type_ == T_QUEUE) {
+      LogError("Cannot handle Queue now");
+      return false;
+    } else {
+      switch (desc.size_) {
+        case 4:
+          if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+            uint32_value = desc.size_;
+          } else {
+            uint32_value = *(static_cast<const uint32_t*>(value));
+          }
+          break;
+        case 8:
+          if (desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_LOCAL) {
+            uint64_value = desc.size_;
+          } else {
+            uint64_value = *(static_cast<const uint64_t*>(value));
+          }
+          break;
+      }
+    }
+
+    switch (desc.size_) {
+      case sizeof(uint32_t):
+        *static_cast<uint32_t*>(param) = uint32_value;
+        break;
+      case sizeof(uint64_t):
+        *static_cast<uint64_t*>(param) = uint64_value;
+        break;
+      default:
+        ::memcpy(param, value, desc.size_);
+        break;
+    }
+    desc.info_.defined_ = true;
+  }
+
+  execInfoOffset_ = totalSize_;
+  return true;
+}
+
 void KernelParameters::set(size_t index, size_t size, const void* value, bool svmBound) {
   KernelParameterDescriptor& desc = signature_.params()[index];
 
