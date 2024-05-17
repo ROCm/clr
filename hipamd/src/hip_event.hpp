@@ -102,13 +102,13 @@ class Event {
     if (type == Query) {
       ready = g_devices[deviceId()]->devices()[0]->IsHwEventReadyForcedWait(*event_);
     } else {
-      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, flags);
+      ready = g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, false, flags_);
     }
     return ready;
   }
 
  public:
-  Event(unsigned int flags) : flags(flags), lock_("hipEvent_t", true),
+  Event(uint32_t flags) : flags_(flags), lock_("hipEvent_t", true),
                               event_(nullptr), unrecorded_(false), stream_(nullptr) {
     // No need to init event_ here as addMarker does that
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
@@ -119,7 +119,7 @@ class Event {
       event_->release();
     }
   }
-  unsigned int flags;
+  uint32_t flags_; //!< flags associated with the event
 
   virtual hipError_t query();
   virtual hipError_t synchronize();
