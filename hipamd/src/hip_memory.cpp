@@ -3552,6 +3552,12 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj != nullptr) {
+    auto device_id = amd_mem_obj->getUserData().deviceId;
+    g_devices[device_id]->SyncAllStreams();
+  }
+
   /* Call IPC Detach from Device class */
   device = hip::getCurrentDevice()->devices()[0];
   if (device == nullptr) {
@@ -3560,7 +3566,7 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
 
   /* detach the memory */
   if (!device->IpcDetach(dev_ptr)){
-     HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(hipSuccess);
