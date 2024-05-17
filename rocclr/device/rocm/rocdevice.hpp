@@ -288,7 +288,7 @@ class NullDevice : public amd::Device {
   }
 
   bool IsHwEventReady(const amd::Event& event, bool wait = false,
-                      int hip_event_flags = 0) const override {
+                      uint32_t hip_event_flags = 0) const override {
     return false;
   }
 
@@ -488,7 +488,7 @@ class Device : public NullDevice {
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false,
-                              int hip_event_flags = 0) const;
+                              uint32_t hip_event_flags = 0) const;
   virtual bool IsHwEventReadyForcedWait(const amd::Event& event) const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
   virtual void ReleaseGlobalSignal(void* signal) const;

@@ -2924,13 +2924,16 @@ bool Device::IsHwEventReadyForcedWait(const amd::Event& event) const {
 }
 
 // ================================================================================================
-bool Device::IsHwEventReady(const amd::Event& event, bool wait, int hip_event_flags) const {
+bool Device::IsHwEventReady(const amd::Event& event, bool wait, uint32_t hip_event_flags) const {
   void* hw_event =
       (event.NotifyEvent() != nullptr) ? event.NotifyEvent()->HwEvent() : event.HwEvent();
   if (hw_event == nullptr) {
     ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event");
     return false;
   } else if (wait) {
+    // hipEventBlockingSync
+    // when set the CPU gives up host thread for other work
+    // when not set the CPU enters a busy-wait on the event to occur
     constexpr int kHipEventBlockingSync = 0x1;
     bool active_wait = !(hip_event_flags & kHipEventBlockingSync) && ActiveWait();
     return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, active_wait);

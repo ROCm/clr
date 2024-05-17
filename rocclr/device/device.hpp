@@ -1930,7 +1930,8 @@ class Device : public RuntimeObject {
   virtual bool IsHwEventReady(
       const amd::Event& event,    //!< AMD event for HW status validation
       bool wait = false,          //!< If true then forces the event completion
-      int hip_event_flags = 0) const {
+      uint32_t hip_event_flags = 0 //!< flags associated with the event. 0 = hipEventDefault
+      ) const {
     return false;
   };
 
