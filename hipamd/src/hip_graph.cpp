@@ -2580,25 +2580,16 @@ hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::GraphNode* pNode;
-  bool AllocNodeFound = false;
-  hip::Graph* g = reinterpret_cast<hip::Graph*>(graph);
-  for (auto n : g->vertices_) {
-    if (n->GetType() == hipGraphNodeTypeMemAlloc) {
-      hipMemAllocNodeParams param = {};
-      reinterpret_cast<hip::GraphMemAllocNode*>(n)->GetParams(&param);
-      if (param.dptr == dev_ptr) {
-        AllocNodeFound = true;
-      }
-    } else if (n->GetType() == hipGraphNodeTypeMemFree) {
-      void* param;
-      reinterpret_cast<hip::GraphMemFreeNode*>(n)->GetParams(&param);
-      if (param == dev_ptr) {
-        HIP_RETURN(hipErrorInvalidValue);
+  for (auto it : hip::Graph::graphSet_) {
+    for (auto n : it->vertices_) {
+      if (n->GetType() == hipGraphNodeTypeMemFree) {
+        void* param;
+        reinterpret_cast<hip::GraphMemFreeNode*>(n)->GetParams(&param);
+        if (param == dev_ptr) {
+          HIP_RETURN(hipErrorInvalidValue);
+        }
       }
     }
-  }
-  if (!AllocNodeFound) {
-    HIP_RETURN(hipErrorInvalidValue);
   }
   auto status =
       ihipGraphAddMemFreeNode(&pNode,
