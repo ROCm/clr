@@ -179,7 +179,16 @@ if(FILE_REORG_BACKWARD_COMPATIBILITY)
    configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
    set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
 endif()
-set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr (>= 2.0), rocm-llvm, libc6, rocm-core, hipcc")
+# Set Runtime Package  dependencies
+set(HIP_RUNTIME_ROCM_PKG_DEPENDENCIES "hsa-rocr, rocminfo, comgr, rocm-core")
+# Add rocprofiler-register dependencies
+if(HIP_ENABLE_ROCPROFILER_REGISTER)
+   set(HIP_RUNTIME_ROCM_PKG_DEPENDENCIES "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, rocprofiler-register")
+endif()
+
+set(HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES "libnuma1, libstdc++6, libgcc-s1, libc6")
+set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES}")
+
 set(CPACK_DEBIAN_BINARY_PACKAGE_PROVIDES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 
@@ -189,7 +198,15 @@ if(FILE_REORG_BACKWARD_COMPATIBILITY)
    set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
 endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr >= 2.0, rocm-llvm, rocm-core, hipcc")
+if(EL7_DISTRO)
+  # centos: In centos using parenthesis is causing error. So set the specific dependencies
+  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, numactl-libs, libstdc++, libgcc")
+else()
+  # RHEL/SLES
+  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, (numactl-libs or libnuma1), (libstdc++ or libstdc++6), (libgcc or libgcc_s1)")
+endif()
+set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
+
 set(CPACK_RPM_BINARY_PACKAGE_PROVIDES "hip-rocclr = ${HIP_BASE_VERSION}")
 set(CPACK_RPM_BINARY_PACKAGE_OBSOLETES "hip-rocclr = ${HIP_BASE_VERSION}")
 #End Binary Packaging setting
@@ -206,14 +223,15 @@ set(CPACK_COMPONENT_DEV_DESCRIPTION "HIP: Heterogenous-computing Interface for P
 configure_file(hip-devel.postinst ${CMAKE_CURRENT_BINARY_DIR}/dev/postinst @ONLY)
 configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, liburi-perl, libc6, file, rocm-core")
+# Dev/devel package dependencies
+set(HIP_DEV_ROCM_PKG_DEPENDENCIES "hip-runtime-amd, rocm-llvm, rocm-core")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, liburi-perl, libc6, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-dev")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI, file, rocm-core")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-devel")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
@@ -226,11 +244,11 @@ set(CPACK_DEBIAN_DOC_PACKAGE_NAME "hip-doc")
 set(CPACK_RPM_DOC_PACKAGE_NAME "hip-doc")
 set(CPACK_COMPONENT_DOC_DESCRIPTION "HIP: Heterogenous-computing Interface for Portability [DOCUMENTATION]")
 
-set(CPACK_DEBIAN_DOC_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core, hipcc")
+set(CPACK_DEBIAN_DOC_PACKAGE_DEPENDS "hip-dev (= ${CPACK_PACKAGE_VERSION}-${CPACK_DEBIAN_PACKAGE_RELEASE}), rocm-core")
 set(CPACK_DEBIAN_DOC_PACKAGE_PROVIDES "hip-doc")
 
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
-set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core, hipcc")
+set(CPACK_RPM_DOC_PACKAGE_REQUIRES "hip-devel = ${HIP_BASE_VERSION}-${CPACK_RPM_PACKAGE_RELEASE}, rocm-core")
 
 #End doc Packaging setting
 
@@ -255,8 +273,9 @@ set(CPACK_ASAN_RPM "ON")
 set(CPACK_DEBIAN_ASAN_PACKAGE_NAME "hip-runtime-amd-asan")
 set(CPACK_RPM_ASAN_PACKAGE_NAME "hip-runtime-amd-asan")
 set(CPACK_COMPONENT_ASAN_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [AddressSanitizer libraries]")
-set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "hsa-rocr-dev (>= 1.3), rocminfo,  comgr-asan (>= 2.0), rocm-llvm, libc6, rocm-core-asan")
-set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "hsa-rocr-dev >= 1.3, rocminfo,  comgr-asan >= 2.0, rocm-llvm, rocm-core-asan")
+set(HIP_ASAN_ROCM_PKG_DEPENDENCIES "hsa-rocr-asan, rocminfo, comgr-asan, rocm-llvm, rocm-core-asan")
+set(CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS "${HIP_ASAN_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES}")
+set(CPACK_RPM_ASAN_PACKAGE_REQUIRES "${HIP_ASAN_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
 #End asan Packaging setting
 
 # Remove dependency on rocm-core if -DROCM_DEP_ROCMCORE=ON not given to cmake
@@ -278,10 +297,14 @@ if(NOT BUILD_SHARED_LIBS)
    set(CPACK_RPM_STATIC_PACKAGE_NAME "hip-static-devel")
    set(CPACK_DEBIAN_STATIC_PACKAGE_NAME "hip-static-dev")
    set(CPACK_COMPONENT_STATIC_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [Static Libraries - AMD]")
-   set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}")
-   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel >= 1.3, rocminfo-static-devel,  comgr-static-devel >= 2.0, rocm-llvm, hipcc-static-devel")
-   set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}")
-   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev (>= 1.3), rocminfo-static-dev,  comgr-static-dev (>= 3.0), rocm-llvm, hipcc-static-dev")
+
+   set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
+   string(REGEX REPLACE ",? ?hsa-rocr-devel" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, rocminfo-static-devel, comgr-static-devel")
+
+   set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
+   string(REGEX REPLACE ",? ?hsa-rocr-dev" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, rocminfo-static-dev, comgr-static-dev")
 endif()
 include(CPack)
 #static package generation
