@@ -9,9 +9,20 @@ resources:
     endpoint: ROCm
     name: ROCm/HIP
     ref: develop
+  - repository: hipother_repo
+    type: github
+    endpoint: ROCm
+    name: ROCm/hipother
+    ref: develop
   pipelines:
   - pipeline: hip_pipeline
-    source: HIP
+    source: \HIP
+    trigger:
+      branches:
+        include:
+        - develop
+  - pipeline: hipother_pipeline
+    source: \hipother
     trigger:
       branches:
         include:
@@ -45,11 +56,11 @@ pr:
   drafts: false
 
 jobs:
-# if the build reason is a resource trigger, it means trigger is HIP repo build
-# HIP repo build would have just built runtime, just copy their build products
+# if the build reason is a resource trigger, it means trigger is HIP or hipother repo build
+# HIP/hipother repo build would have just built runtime, just copy their build products
 # this is to ensure clr has latest good package for combined-packaging jobs
 # combined-packaging jobs only have to look at clr pipeline for latest runtime
-# to remove logic of comparing build products from both clr and hip triggers
+# to remove logic of comparing build products from both clr, hip, hipother triggers
   - ${{ if eq(variables['Build.Reason'], 'ResourceTrigger') }}:
     - template: ${{ variables.CI_COMPONENT_PATH }}/copyHIP.yml@pipelines_repo
   - ${{ if ne(variables['Build.Reason'], 'ResourceTrigger') }}:
