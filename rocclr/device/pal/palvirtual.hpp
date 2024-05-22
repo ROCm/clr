@@ -156,7 +156,8 @@ class VirtualGPU : public device::VirtualDevice {
           amd::Os::yield();
           continue;
         }
-        result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true, WaitTimeoutInNsec);
+        result = iDev_->WaitForFences(1, &iCmdFences_[cbId], true,
+                                      std::chrono::nanoseconds{WaitTimeoutInNsec});
         if (Pal::Result::Success == result) {
           break;
         } else if ((Pal::Result::NotReady == result) || (Pal::Result::Timeout == result)) {
