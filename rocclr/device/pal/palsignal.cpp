@@ -127,7 +127,7 @@ uint64_t Signal::Wait(uint64_t value, device::Signal::Condition c, uint64_t time
     Pal::Result result = Pal::Result::Success;
 
     float timeoutInSec = timeout / (1000 * 1000);
-    result = event_.Wait(timeoutInSec);
+    result = event_.Wait(Util::fseconds{timeoutInSec});
 
     if ((result != Pal::Result::Success) && (result != Pal::Result::Timeout)) {
       return -1;
