@@ -4109,9 +4109,17 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateImage,
         return (cl_mem)0;
       }
 
+      // Mip-mapped images can not be created for IMAGE1D_BUFFER
+      if (image_desc->num_mip_levels != 0) {
+        *not_null(errcode_ret) = CL_INVALID_MIP_LEVEL;
+        LogWarning("Invalid mip level");
+        return (cl_mem)0;
+      }
+
       image = new (amdContext) amd::Image(
           buffer, CL_MEM_OBJECT_IMAGE1D_BUFFER, (flags != 0) ? flags : buffer.getMemFlags(),
-          imageFormat, image_desc->image_width, 1, 1, imageRowPitch, imageSlicePitch);
+          imageFormat, image_desc->image_width, 1, 1, imageRowPitch, imageSlicePitch,
+          image_desc->num_mip_levels);
     } break;
     case CL_MEM_OBJECT_IMAGE1D_ARRAY:
       image =
