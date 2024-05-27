@@ -1842,6 +1842,20 @@ bool Device::populateOCLDeviceConstants() {
             info_.vgprsPerSimd_ = 1024;
             break;
         }
+      } else if (isa().versionMinor() == 5) {
+        switch (isa().versionStepping()) {
+          case (1):
+            info_.vgprAllocGranularity_ = 24;
+            info_.vgprsPerSimd_ = 1536;
+            break;
+          default:
+            info_.vgprAllocGranularity_ = 16;
+            info_.vgprsPerSimd_ = 1024;
+            break;
+        }
+      } else {
+          info_.vgprAllocGranularity_ = 16;
+          info_.vgprsPerSimd_ = 1024;
       }
       break;
     case (10):
