@@ -173,12 +173,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   amd::Os::getAppPathAndFileName(appName, appPathAndName);
 
   switch (palProp.revision) {
-#if PAL_BUILD_NAVI48
-    case Pal::AsicRevision::Navi48:
-#endif
-#if PAL_BUILD_NAVI44
-    case Pal::AsicRevision::Navi44:
-#endif
     // Fall through for Navi3x ...
     case Pal::AsicRevision::Navi33:
     case Pal::AsicRevision::Navi32:
