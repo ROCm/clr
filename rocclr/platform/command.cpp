@@ -421,6 +421,7 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
+    profilingInfo_.correlation_id_ = activity_prof::correlation_id;
     profilingInfo_.marker_ts_ = true;
   }
   kernel_.retain();
