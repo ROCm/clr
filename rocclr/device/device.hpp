@@ -1877,11 +1877,12 @@ class Device : public RuntimeObject {
   /**
    * Export Shareable VMM Handle to FD
    *
-   * @param hsa_handle hsa_handle which has the phys_mem info.
+   * @param amd_mem_obj amd::Memory obj which holds the hsa_handle.
    * @param flags any flags to be passed
    * @param shareableHandle exported handle, points to fdesc.
    */
-  virtual bool ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle) {
+  virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags,
+                                        void* shareableHandle) {
     ShouldNotCallThis();
     return false;
   }
@@ -1889,12 +1890,12 @@ class Device : public RuntimeObject {
   /**
    * Import FD from Shareable VMM Handle
    *
-   * @param osHandle os handle/fdesc
-   * @param hsa_handle_ptr hsa_handle which has the phys_mem info.
+   * @param osHandle os handle/fdesc/void*
+   * @param amd_mem_obj amd_mem_obj with hsa_handle/memory_obj.
    */
-  virtual bool ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
+  virtual amd::Memory* ImportShareableVMMHandle(void* osHandle) {
     ShouldNotCallThis();
-    return false;
+    return nullptr;
   }
 
   /**

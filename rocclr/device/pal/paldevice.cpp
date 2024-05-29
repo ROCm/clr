@@ -2780,4 +2780,33 @@ void Device::DestroyExtSemaphore(void* extSemaphore) {
   amd::Os::alignedFree(extSemaphore);
 }
 
+// ================================================================================================
+bool Device::ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle) {
+  device::Memory* dev_mem = static_cast<device::Memory*>(amd_mem_obj.getDeviceMemory(*this));
+  return dev_mem->ExportHandle(shareableHandle);
+}
+
+// ================================================================================================
+amd::Memory* Device::ImportShareableVMMHandle(void* osHandle) {
+
+  int flags = 0;
+  size_t mem_offset = 0;
+  size_t mem_size = 0;
+
+  amd::Memory* amd_mem_obj = new (context()) amd::IpcBuffer(context(), flags, mem_offset,
+                                  mem_size, osHandle);
+
+  if (amd_mem_obj == nullptr) {
+    LogError("failed to create a mem object!");
+    return nullptr;
+  }
+
+  if (!amd_mem_obj->create(nullptr)) {
+    LogError("failed to create a svm hidden buffer!");
+    amd_mem_obj->release();
+    return nullptr;
+  }
+  return amd_mem_obj;
+}
+
 }  // namespace amd::pal
