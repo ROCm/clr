@@ -155,6 +155,15 @@ class NullDevice : public amd::Device {
     return true;
   }
 
+  virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags,
+                                        void* shareableHandle) {
+    return false;
+  }
+
+  virtual amd::Memory* ImportShareableVMMHandle(void* osHandle) {
+    return nullptr;
+  }
+
   virtual bool importExtSemaphore(void** extSemaphore,const amd::Os::FileDesc& handle,
                                   amd::ExternalSemaphoreHandleType sem_handle_type) override {
     return false;
@@ -556,6 +565,10 @@ class Device : public NullDevice {
   virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
     return true;
   }
+
+  virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle);
+
+  virtual amd::Memory* ImportShareableVMMHandle(void* osHandle);
 
   //! Returns SRD manger object
   SrdManager& srds() const { return *srdManager_; }

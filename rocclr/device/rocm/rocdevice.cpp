@@ -2534,17 +2534,17 @@ bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
 }
 
 // ================================================================================================
-bool Device::ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shareableHandle) {
+bool Device::ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle) {
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
   hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
+  hsa_vmem_handle.handle = amd_mem_obj.getUserData().hsa_handle;
+  int dmabuf_fd = 0;
 
-  if (hsa_handle == 0) {
+  if (hsa_vmem_handle.handle == 0) {
     LogError("HSA Handle is not valid");
     return false;
   }
 
-  int dmabuf_fd = 0;
-  hsa_vmem_handle.handle = hsa_handle;
   if ((hsa_status = hsa_amd_vmem_export_shareable_handle(&dmabuf_fd,
                       hsa_vmem_handle, flags)) != HSA_STATUS_SUCCESS) {
     LogPrintfError("Failed hsa_vmem_export_shareable_handle with status: %d \n", hsa_status);
@@ -2557,7 +2557,7 @@ bool Device::ExportShareableVMMHandle(uint64_t hsa_handle, int flags, void* shar
 }
 
 // ================================================================================================
-bool Device::ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
+bool Device::ImportShareableHSAHandle(void* osHandle, uint64_t* hsa_handle_ptr) const {
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
   hsa_amd_vmem_alloc_handle_t hsa_vmem_handle {};
 
@@ -2575,6 +2575,24 @@ bool Device::ImportShareableVMMHandle(void* osHandle, uint64_t* hsa_handle_ptr) 
 
   *hsa_handle_ptr = hsa_vmem_handle.handle;
   return true;
+}
+
+// ================================================================================================
+amd::Memory* Device::ImportShareableVMMHandle(void* osHandle) {
+  amd::Memory* amd_mem_obj = new (context()) amd::Buffer(context(),
+                                  ROCCLR_MEM_PHYMEM | ROCCLR_MEM_INTERPROCESS, 0, osHandle);
+  if (amd_mem_obj == nullptr) {
+    LogError("Cannot create memory object");
+    return nullptr;
+  }
+
+  if (!amd_mem_obj->create(nullptr, false)) {
+    LogError("Failed to create mem_obj from imported fd");
+    amd_mem_obj->release();
+    return nullptr;
+  }
+
+  return amd_mem_obj;
 }
 
 // ================================================================================================

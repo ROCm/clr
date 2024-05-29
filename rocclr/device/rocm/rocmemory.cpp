@@ -772,7 +772,7 @@ bool Buffer::create(bool alloc_local) {
     if (memFlags & ROCCLR_MEM_INTERPROCESS) {
       int dmabuf_fd = *(reinterpret_cast<int*>(owner()->getSvmPtr()));
       // if interprocess flag is set, then the memory is importable.
-      if (!dev().ImportShareableVMMHandle(owner()->getSvmPtr(),
+      if (!dev().ImportShareableHSAHandle(owner()->getSvmPtr(),
             &owner()->getUserData().hsa_handle)) {
         LogPrintfError("Importing Shareable Memory failed with os_handle: 0x%x \n",
                         owner()->getSvmPtr());
