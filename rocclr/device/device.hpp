@@ -657,11 +657,9 @@ class Settings : public amd::HeapObject {
     DeviceKernelArgs,         //!< Device memory kernel arguments with no memory
                               //!< ordering workaround (e.g. XGMI)
     DeviceKernelArgsReadback, //!< Device memory kernel arguments with kernel
-                              //!< argument readback workaround (works only in
-                              //!< ASICS >= MI200)
+                              //!< argument readback workaround
     DeviceKernelArgsHDP       //!< Device memory kernel arguments with kernel
                               //!< argument readback plus HDP flush workaround.
-                              //!< Works in all ASICS. Requires a valid hdp flush register
   };
 
   uint64_t extensions_;  //!< Supported OCL extensions

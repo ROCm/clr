@@ -246,12 +246,12 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const uint32_t gfxipMinor = isa.versionMinor();
   const uint32_t gfxStepping = isa.versionStepping();
 
-  const bool isMI300 = gfxipMajor == 9 && gfxipMinor == 4 &&
+  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor == 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
-  const bool isMI200 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
-  const bool isPreMI100 =
+  const bool isGfx90a = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
+  const bool isPreGfx908 =
       (gfxipMajor < 9) || ((gfxipMajor == 9) && (gfxipMinor == 0) && (gfxStepping < 8));
-  const bool isNavi10 =
+  const bool isGfx101x =
       (gfxipMajor == 10) && ((gfxipMinor == 0) || (gfxipMinor == 1));
 
   auto kernelArgImpl = KernelArgImpl::HostKernelArgs;
@@ -262,21 +262,18 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     kernelArgImpl = KernelArgImpl::DeviceKernelArgs;
   } else if (hasValidHDPFlush) {
     // If the HDP flush register is valid implement the HDP flush to MMIO
-    // workaround. This does not work on gfx9 devices before MI100 or Navi10
-    // devices
-    if (!(isPreMI100 || isNavi10)) {
+    // workaround.
+    if (!(isPreGfx908 || isGfx101x)) {
       kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
     }
-  } else if (isMI300 || isMI200) {
+  } else if (isGfx94x || isGfx90a) {
     // Implement the kernel argument readback workaround
     // (write all args -> sfence -> write last byte -> mfence -> read last byte)
-    // It works only on MI200 and MI300 because of the strict guarantee on
-    // ordering of stores in those ASICS
     kernelArgImpl = KernelArgImpl::DeviceKernelArgsReadback;
   }
 
-  // Enable device kernel args for MI300* for now
-  if (isMI300) {
+  // Enable device kernel args for gfx94x for now
+  if (isGfx94x) {
     kernel_arg_impl_ = kernelArgImpl;
     kernel_arg_opt_ = true;
   }

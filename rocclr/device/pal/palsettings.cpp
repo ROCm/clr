@@ -360,9 +360,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Report FP_FAST_FMA define if double precision HW
   reportFMA_ = true;
-  // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
-  // Bonaire, Kalindi, Spectre and Spooky so disable
-  // FP_FMA_FMAF for those parts in switch below
   reportFMAF_ = true;
 
   if (doublePrecision_) {
