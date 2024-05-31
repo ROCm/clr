@@ -662,7 +662,7 @@ static constexpr std::array<std::pair<int, int>, 140> gfx10BlockIdPal = {{
     {0x2B, 0},     // GCR       - 136
     {0x2C, 0},     // PH        - 137
     {0x2D, 0},     // UTCL1     - 138
-    {0x31, 0},     // SqWgp     - 139  For Navi3x
+    {0x31, 0},     // SqWgp     - 139
 }};
 
 void PerfCounter::convertInfo() {

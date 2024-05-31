@@ -112,31 +112,25 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
   //                                        Supported        Version       Features
   //                                                                                    SIMD/ SIMD  Instr Bank    LDS     Mem
   // Target ID                 HSAIL ID     ROC    PAL      Maj/Min/Stp   SRAMECC XNACK CU    Width Width Width   Size    Banks
-    {"gfx700",                 "Kaveri",    true,  false,   7,  0,  0,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Spectre, Spooky, Kalindi
-    {"gfx701",                 "Hawaii",    true,  false,   7,  0,  1,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Hawaiipro
-    {"gfx702",                 "gfx702",    true,  false,   7,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Hawaii (can execute Hawiipro code)
-    {"gfx703",                 nullptr,     false, false,   7,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Mullins
-    {"gfx704",                 "Bonaire",   false, false,   7,  0,  4,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx705",                 "Mullins",   false, false,   7,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Actually Godavari
     {"gfx801",                 nullptr,     true,  true,    8,  0,  1,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx801:xnack-",          nullptr,     true,  false,   8,  0,  1,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx801:xnack+",          "Carrizo",   true,  true,    8,  0,  1,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx802",                 "Tonga",     true,  true,    8,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Iceland
-    {"gfx803",                 "Fiji",      true,  true,    8,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Also Ellesmere/Polaris10, Baffin/Polaris11, Polaris12, Polaris22/VegaM
-    {"gfx805",                 nullptr,     true,  true,    8,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32}, // Tongapro
+    {"gfx801:xnack+",          "gfx801",    true,  true,    8,  0,  1,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx802",                 "gfx802",    true,  true,    8,  0,  2,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx803",                 "gfx803",    true,  true,    8,  0,  3,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx805",                 nullptr,     true,  true,    8,  0,  5,    NONE,   NONE, 4,    16,   1,    256,    64 * Ki, 32},
     {"gfx810",                 nullptr,     true,  true,    8,  1,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx810:xnack-",          nullptr,     true,  false,   8,  1,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx810:xnack+",          "Stoney",    true,  true,    8,  1,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx900",                 "gfx901",    true,  true,    9,  0,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Greenland
+    {"gfx810:xnack+",          "gfx810",    true,  true,    8,  1,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx900",                 "gfx901",    true,  true,    9,  0,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx900:xnack-",          "gfx900",    true,  true,    9,  0,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx900:xnack+",          "gfx901",    true,  true,    9,  0,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx902",                 "gfx903",    true,  true,    9,  0,  2,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Raven
+    {"gfx902",                 "gfx903",    true,  true,    9,  0,  2,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx902:xnack-",          "gfx902",    true,  true,    9,  0,  2,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx902:xnack+",          "gfx903",    true,  true,    9,  0,  2,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx904",                 "gfx905",    true,  true,    9,  0,  4,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Vega12
+    {"gfx904",                 "gfx905",    true,  true,    9,  0,  4,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx904:xnack-",          "gfx904",    true,  true,    9,  0,  4,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx904:xnack+",          "gfx905",    true,  true,    9,  0,  4,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx906",                 "gfx907",    true,  true,    9,  0,  6,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Vega20
+    {"gfx906",                 "gfx907",    true,  true,    9,  0,  6,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx906:sramecc-",        "gfx907",    true,  true,    9,  0,  6,    OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx906:sramecc+",        nullptr,     true,  true,    9,  0,  6,    ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx906:xnack-",          "gfx906",    true,  true,    9,  0,  6,    ANY,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
@@ -154,7 +148,7 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx908:sramecc-:xnack+", nullptr,     true,  false,   9,  0,  8,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx908:sramecc+:xnack-", nullptr,     true,  false,   9,  0,  8,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx908:sramecc+:xnack+", nullptr,     true,  false,   9,  0,  8,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx909",                 nullptr,     false, true,    9,  0,  2,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Raven2 (can execute Raven code)
+    {"gfx909",                 nullptr,     false, true,    9,  0,  2,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx909:xnack-",          nullptr,     false, true,    9,  0,  2,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx909:xnack+",          nullptr,     false, true,    9,  0,  2,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a",                 nullptr,     true,  false,   9,  0,  10,   ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
@@ -193,7 +187,7 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx942:sramecc-:xnack+", nullptr,     true,  false,   9,  4,  2,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx942:sramecc+:xnack-", nullptr,     true,  false,   9,  4,  2,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx942:sramecc+:xnack+", nullptr,     true,  false,   9,  4,  2,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx90c",                 nullptr,     true,  true,    9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32}, // Also Renoir
+    {"gfx90c",                 nullptr,     true,  true,    9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack-",          "gfx90c",    true,  true,    9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack+",          "gfx90d",    true,  true,    9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx1010",                "gfx1010",   true,  true,    10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},

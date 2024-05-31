@@ -59,7 +59,6 @@ void OCLPinnedMemory::open(unsigned int test, char* units, double& conversion,
 
   cl_int status;
 
-  // Observed failures with Carrizo on GSL path
   cl_bool is_apu;
   status = clGetDeviceInfo(devices_[deviceId], CL_DEVICE_HOST_UNIFIED_MEMORY,
                            sizeof(cl_bool), &is_apu, nullptr);

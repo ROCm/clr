@@ -1244,7 +1244,6 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
 
-  //TODO: add the assert statement for Raven
   if (!(isa().versionMajor() == 9 && isa().versionMinor() == 0 && isa().versionStepping() == 2)) {
     if (info_.maxEngineClockFrequency_ <= 0) {
       LogError("maxEngineClockFrequency_ is NOT positive!");
@@ -1511,7 +1510,6 @@ bool Device::populateOCLDeviceConstants() {
 
   ::strncpy(info_.driverVersion_, ss.str().c_str(), sizeof(info_.driverVersion_) - 1);
 
-  // Enable OpenCL 2.0 for Vega10+
   if (isa().versionMajor() >= 9) {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.0" " ";
   } else {
@@ -1672,14 +1670,11 @@ bool Device::populateOCLDeviceConstants() {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
     if (amd::IS_HIP) {
-      // Report atomics capability based on GFX IP, control on Hawaii
       if (info_.iommuv2_ || isa().versionMajor() >= 8) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
     else if (!settings().useLightning_) {
-      // Report atomics capability based on GFX IP, control on Hawaii
-      // and Vega10.
       if (info_.iommuv2_ || (isa().versionMajor() == 8)) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
@@ -1874,8 +1869,8 @@ bool Device::populateOCLDeviceConstants() {
       }
       break;
     case (9):
-      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) || // For gfx90a (MI200)
-          (isa().versionMinor() == 4)) {  // For gfx94x (MI300)
+      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
+          (isa().versionMinor() == 4)) {
         info_.vgprAllocGranularity_ = 8;
         info_.vgprsPerSimd_ = 512;
       } else {

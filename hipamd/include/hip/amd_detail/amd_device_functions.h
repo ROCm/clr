@@ -824,8 +824,8 @@ int __syncthreads_or(int predicate)
   PIPE_ID     7:6     Pipeline from which the wave was dispatched.
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
-  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a, gfx940-942
-              14:13   Shader Engine the wave is assigned to for Vega.
+  SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a
+              14:13   Shader Engine the wave is assigned to for gfx940-942
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
   QUEUE_ID    26:24   Queue from which this wave was dispatched.

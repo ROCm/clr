@@ -115,108 +115,6 @@ static const DeviceCounterInfo DeviceInfo[]{
      9,
      {{14, 0, 4}, {97, 1, 2}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {MCVML2_l,
                                  // reg 0, BigK bank 0 hits}
-    // Sea Islands, GFX8
-    {"Bonaire",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Hawaii",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Maui",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Casper",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Spectre",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Slimer",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Spooky",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Kalindi",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Mullins",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Iceland",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Tonga",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Bermuda",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Fiji",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Carrizo",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Ellesmere",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Baffin",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Stoney",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"gfx804",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"gfx803",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Bristol Ridge",
-     0,
-     {{14, 0, 4}, {9, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    // Southern Islands
-    {"Tahiti",
-     0,
-     {{10, 0, 4}, {5, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Pitcairn",
-     0,
-     {{10, 0, 4}, {5, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Capeverde",
-     0,
-     {{10, 0, 4}, {5, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Oland",
-     0,
-     {{10, 0, 4}, {5, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
-    {"Hainan",
-     0,
-     {{10, 0, 4}, {5, 0, 3}}},  // {SQ, reg 0, SQ_PERF_SEL_WAVES}, {GRBM, reg 0,
-                                // GRBM_PERF_SEL_CP_BUSY}
 };
 const int DeviceCounterSize = sizeof(DeviceInfo) / sizeof(DeviceCounterInfo);
 
@@ -694,15 +592,6 @@ void OCLPerfCounters::run(void) {
     size_t idx = targetIdColon - deviceName;
     deviceName[idx] = '\0';
   }
-
-  // Begin: to be removed when crash on Kabini is fixed
-  if (strcmp(deviceName, "Kalindi") == 0) {
-    char msg[256];
-    SNPRINTF(msg, sizeof(msg), "Exiting as device is Kabini!\t");
-    testDescString = msg;
-    return;
-  }
-  // End: to be removed when crash on Kabini is fixed
 
   bool found = false;
   unsigned int devId = 0;
