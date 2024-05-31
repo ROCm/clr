@@ -235,7 +235,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = hip::capture##name(stream, ##__VA_ARGS__);                                 \
     return status;                                                                                 \
-  } else if (stream != nullptr &&                                                                  \
+  } else if (stream != nullptr && stream != hipStreamLegacy &&                                     \
              reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                         \
                  hipStreamCaptureStatusInvalidated) {                                              \
     return hipErrorStreamCaptureInvalidated;                                                       \
