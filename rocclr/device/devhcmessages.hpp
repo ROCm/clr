@@ -66,6 +66,8 @@
 
 #include <vector>
 
+namespace amd {
+
 enum ServiceID {
   SERVICE_RESERVED = 0,
   SERVICE_FUNCTION_CALL = 1,
@@ -92,3 +94,4 @@ class MessageHandler {
   ~MessageHandler();
   bool handlePayload(uint32_t service, uint64_t* payload);
 };
+}// namespace amd

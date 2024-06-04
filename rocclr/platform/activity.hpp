@@ -36,7 +36,7 @@ enum OpId { OP_ID_DISPATCH = 0, OP_ID_COPY = 1, OP_ID_BARRIER = 2, OP_ID_NUMBER 
 
 #include "prof_protocol.h"
 
-namespace activity_prof {
+namespace amd::activity_prof {
 
 extern std::atomic<int (*)(activity_domain_t domain, uint32_t operation_id, void* data)>
     report_activity;
@@ -76,6 +76,6 @@ constexpr OpId OperationId(cl_command_type commandType) {
 bool IsEnabled(OpId operation_id);
 void ReportActivity(const amd::Command& command);
 
-}  // namespace activity_prof
+}  // namespace amd::activity_prof
 
 const char* getOclCommandKindString(cl_command_type kind);

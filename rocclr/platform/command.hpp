@@ -102,7 +102,7 @@ class Event : public RuntimeObject {
       : enabled_(enabled), marker_ts_(false) {
       if (enabled) {
         clear();
-        correlation_id_ = activity_prof::correlation_id;
+        correlation_id_ = amd::activity_prof::correlation_id;
       }
     }
 
@@ -148,7 +148,7 @@ class Event : public RuntimeObject {
   void EnableProfiling() {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
-    profilingInfo_.correlation_id_ = activity_prof::correlation_id;
+    profilingInfo_.correlation_id_ = amd::activity_prof::correlation_id;
   }
 
  public:

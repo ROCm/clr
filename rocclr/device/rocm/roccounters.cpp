@@ -22,6 +22,7 @@
 #include "device/rocm/rocvirtual.hpp"
 #include <array>
 
+namespace roc {
 
 hsa_status_t PerfCounterCallback(
   hsa_ven_amd_aqlprofile_info_type_t  info_type,
@@ -36,9 +37,6 @@ hsa_status_t PerfCounterCallback(
 
   return HSA_STATUS_SUCCESS;
 }
-
-
-namespace roc {
 
 /*
  Converting from ORCA cmndefs.h to ROCR hsa_ven_amd_aqlprofile.h
