@@ -188,6 +188,8 @@ bool LightningKernel::postLoad() {
   workGroupInfo_.wavefrontPerSIMD_ = program()->rocDevice().info().maxWorkItemSizes_[0] / wavefront_size;
   workGroupInfo_.wavefrontSize_ = wavefront_size;
   workGroupInfo_.constMemSize_ = const_size_bytes;
+  workGroupInfo_.maxDynamicSharedSizeBytes_ = static_cast<int>(workGroupInfo_.availableLDSSize_ -
+                                                               workGroupInfo_.localMemSize_);
   if (workGroupInfo_.size_ == 0) {
     return false;
   }
