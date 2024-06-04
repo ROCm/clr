@@ -73,13 +73,13 @@ if(HIP_PLATFORM STREQUAL "amd" )
 #Keeping it as is for now
 install(FILES ${CMAKE_BINARY_DIR}/hipamd/share/hip/.hipInfo DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
 
-install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT binary)
+install ( EXPORT hip-targets  FILE hip-targets.cmake NAMESPACE hip:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip  COMPONENT dev)
 
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT binary)
-install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config.cmake ${CMAKE_BINARY_DIR}/hipamd/src/hip-lang-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang COMPONENT dev)
+install ( EXPORT hip-lang-targets  FILE hip-lang-targets.cmake NAMESPACE hip-lang:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hip-lang  COMPONENT dev)
 
-install(FILES ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc COMPONENT binary)
-install ( EXPORT hiprtc-targets  FILE hiprtc-targets.cmake NAMESPACE hiprtc:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc  COMPONENT binary)
+install(FILES ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config.cmake ${CMAKE_BINARY_DIR}/hipamd/hiprtc-config-version.cmake DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc COMPONENT dev)
+install ( EXPORT hiprtc-targets  FILE hiprtc-targets.cmake NAMESPACE hiprtc:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/hiprtc  COMPONENT dev)
 
 endif()#End HIP_PLATFORM = "amd"
 #End bianry files install
