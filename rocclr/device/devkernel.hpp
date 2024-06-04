@@ -387,6 +387,7 @@ class Kernel : public amd::HeapObject {
     size_t compileSizeHint_[3];       //!< kernel compiled workgroup size hint
     size_t wavesPerSimdHint_;         //!< waves per simd hit
     size_t constMemSize_;             //!< size of user-allocated constant memory
+    size_t maxDynamicSharedSizeBytes_;
     std::string compileVecTypeHint_;  //!< kernel compiled vector type hint
 
     int maxOccupancyPerCu_;           //!< Max occupancy per compute unit in threads

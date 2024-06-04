@@ -139,7 +139,7 @@ hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunc
       *value = static_cast<int>(wrkGrpInfo->size_);
       break;
     case HIP_FUNC_ATTRIBUTE_CONST_SIZE_BYTES:
-      *value = 0;
+      *value = static_cast<int>(wrkGrpInfo->constMemSize_ - 1);
       break;
     case HIP_FUNC_ATTRIBUTE_LOCAL_SIZE_BYTES:
       *value = static_cast<int>(wrkGrpInfo->privateMemSize_);
@@ -148,10 +148,9 @@ hipError_t hipFuncGetAttribute(int* value, hipFunction_attribute attrib, hipFunc
       *value = static_cast<int>(wrkGrpInfo->usedVGPRs_);
       break;
     case HIP_FUNC_ATTRIBUTE_PTX_VERSION:
-      *value = 30;  // Defaults to 3.0 as HCC
-      break;
     case HIP_FUNC_ATTRIBUTE_BINARY_VERSION:
-      *value = static_cast<int>(kernel->signature().version());
+      *value = hip::getCurrentDevice()->devices()[0]->isa().versionMajor() * 10 +
+               hip::getCurrentDevice()->devices()[0]->isa().versionMinor();
       break;
     case HIP_FUNC_ATTRIBUTE_CACHE_MODE_CA:
       *value = 0;
@@ -180,7 +179,42 @@ hipError_t hipFuncGetAttributes(hipFuncAttributes* attr, const void* func) {
 hipError_t hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int value) {
   HIP_INIT_API(hipFuncSetAttribute, func, attr, value);
 
-  // No way to set function attribute yet.
+  if (func == nullptr)  {
+    HIP_RETURN(hipErrorInvalidDeviceFunction);
+  }
+  if (attr < 0 || attr > hipFuncAttributeMax) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hipFunction_t h_func;
+  HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&h_func, func, ihipGetDevice()));
+
+  hip::DeviceFunc* function = hip::DeviceFunc::asFunction(h_func);
+  if (function == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+  amd::Kernel* kernel = reinterpret_cast<hip::DeviceFunc*>(function)->kernel();
+
+  if (kernel == nullptr) {
+    HIP_RETURN(hipErrorInvalidDeviceFunction);
+  }
+  device::Kernel* d_kernel =
+                 (device::Kernel*)(kernel->getDeviceKernel(
+                  *(hip::getCurrentDevice()->devices()[0])));
+
+  if (attr == hipFuncAttributeMaxDynamicSharedMemorySize) {
+    if ((value < 0) || (value > (d_kernel->workGroupInfo()->availableLDSSize_ - 
+                                 d_kernel->workGroupInfo()->localMemSize_))) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    d_kernel->workGroupInfo()->maxDynamicSharedSizeBytes_ = value;
+  }
+
+  if (attr == hipFuncAttributePreferredSharedMemoryCarveout) {
+    if (value < -1 || value > 100)  {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
 
   HIP_RETURN(hipSuccess);
 }
