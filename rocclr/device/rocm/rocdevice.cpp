@@ -274,7 +274,7 @@ Device::~Device() {
       if (qInfo.hostcallBuffer_) {
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hostcall buffer %p for hardware queue %p",
                 qInfo.hostcallBuffer_, qIter->first->base_address);
-        disableHostcalls(qInfo.hostcallBuffer_);
+        amd::disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0",
@@ -301,7 +301,7 @@ Device::~Device() {
   delete[] p2p_agents_list_;
 
   if (coopHostcallBuffer_) {
-    disableHostcalls(coopHostcallBuffer_);
+    amd::disableHostcalls(coopHostcallBuffer_);
     context().svmFree(coopHostcallBuffer_);
     coopHostcallBuffer_ = nullptr;
   }
@@ -3244,8 +3244,8 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   auto wavesPerCu = info().maxThreadsPerCU_ / info().wavefrontWidth_;
   auto numPackets = info().maxComputeUnits_ * wavesPerCu;
 
-  auto size = getHostcallBufferSize(numPackets);
-  auto align = getHostcallBufferAlignment();
+  auto size = amd::getHostcallBufferSize(numPackets);
+  auto align = amd::getHostcallBufferAlignment();
 
   void* buffer = context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
   if (!buffer) {
@@ -3260,7 +3260,7 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   } else {
     coopHostcallBuffer_ = buffer;
   }
-  if (!enableHostcalls(*this, buffer, numPackets)) {
+  if (!amd::enableHostcalls(*this, buffer, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
             buffer);
     return nullptr;

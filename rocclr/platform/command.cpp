@@ -158,8 +158,8 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       releaseResources();
     }
 
-    if (profilingInfo().enabled_ && activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      activity_prof::ReportActivity(command());
+    if (profilingInfo().enabled_ && amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+      amd::activity_prof::ReportActivity(command());
     }
 
     // Broadcast all the waiters.
@@ -311,7 +311,7 @@ const Event::EventWaitList Event::nullWaitList(0);
 Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList,
                  uint32_t commandWaitBits, const Event* waitingEvent)
     : Event(queue,
-            activity_prof::IsEnabled(activity_prof::OperationId(type)) ||
+            amd::activity_prof::IsEnabled(amd::activity_prof::OperationId(type)) ||
                 queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
                 Agent::shouldPostEventEvents()),
       queue_(&queue),

@@ -25,6 +25,7 @@
 #include "devhcmessages.hpp"
 
 #include <vector>
+namespace amd {
 
 enum {
   DESCRIPTOR_OFFSET_FLAG_BEGIN = 0,
@@ -133,9 +134,9 @@ void MessageHandler::discardMessage(Message* message) {
 }
 
 // Defined in devhcprintf.cpp
-namespace amd {
+
 void handlePrintf(uint64_t* output, const uint64_t* input, uint64_t len);
-} // namespace amd
+
 
 bool MessageHandler::handlePayload(uint32_t service, uint64_t* payload) {
   Message* message = nullptr;
@@ -178,3 +179,4 @@ bool MessageHandler::handlePayload(uint32_t service, uint64_t* payload) {
   discardMessage(message);
   return true;
 }
+} // namespace amd

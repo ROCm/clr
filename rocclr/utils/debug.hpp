@@ -63,10 +63,6 @@ enum LogMask {
 //! \brief log file output
 extern FILE* outFile;
 
-//! \cond ignore
-extern "C" void breakpoint();
-//! \endcond
-
 //! \brief Display a warning message.
 extern void report_warning(const char* message);
 

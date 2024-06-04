@@ -42,6 +42,8 @@
 #endif
 #endif
 
+namespace amd {
+
 PacketHeader* HostcallBuffer::getHeader(uint64_t ptr) const {
   return headers_ + (ptr & index_mask_);
 }
@@ -458,3 +460,4 @@ void disableHostcalls(void* bfr) {
     ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Terminated hostcall listener");
   }
 }
+}// namespace amd
