@@ -25,7 +25,7 @@
 
 #include <atomic>
 
-namespace activity_prof {
+namespace amd::activity_prof {
 
 decltype(report_activity) report_activity{nullptr};
 
@@ -122,7 +122,7 @@ void ReportActivity(const amd::Command& command) {
   }
 }
 
-}  // namespace activity_prof
+}  // namespace amd::activity_prof
 
 #define CASE_STRING(X, C)                                                                          \
   case X:                                                                                          \

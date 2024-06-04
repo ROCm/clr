@@ -1155,7 +1155,7 @@ VirtualGPU::~VirtualGPU() {
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
             "deleting hostcall buffer %p for virtual queue %p",
             hostcallBuffer_, this);
-    disableHostcalls(hostcallBuffer_);
+    amd::disableHostcalls(hostcallBuffer_);
     dev().svmFree(hostcallBuffer_);
   }
 }
@@ -3775,8 +3775,8 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   auto wavesPerCu = dev().info().maxThreadsPerCU_ / dev().info().wavefrontWidth_;
   auto numPackets = dev().info().maxComputeUnits_ * wavesPerCu;
 
-  auto size = getHostcallBufferSize(numPackets);
-  auto align = getHostcallBufferAlignment();
+  auto size = amd::getHostcallBufferSize(numPackets);
+  auto align = amd::getHostcallBufferAlignment();
 
   hostcallBuffer_ = dev().svmAlloc(dev().context(), size, align,
                                    CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS, nullptr);
@@ -3794,7 +3794,7 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
           align,
           this);
 
-  if (!enableHostcalls(dev(), hostcallBuffer_, numPackets)) {
+  if (!amd::enableHostcalls(dev(), hostcallBuffer_, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
             "Failed to register hostcall buffer %p with listener",
             hostcallBuffer_);
