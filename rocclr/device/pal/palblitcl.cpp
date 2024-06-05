@@ -439,8 +439,9 @@ const char* TrapHandlerCode = RUNTIME_KERNEL(
 \n
 \n// Add s_code_end padding so instruction prefetch always has something to read.
 \n//.rept (256 - ((. - trap_entry) % 64)) / 4
-\n 64 s_code_end
-\n//.endr
+\n .rept 64
+\n s_code_end
+\n .endr
 \n.endif
 \n);
 }  // namespace amd::pal
