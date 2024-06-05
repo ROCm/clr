@@ -548,7 +548,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   }
   command->enqueue();
   if (!isHostAsync) {
-    stream.finish();
+    command->queue()->finish();
   } else if (!isGPUAsync) {
     hip::Stream* pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
     amd::Command::EventWaitList waitList;
