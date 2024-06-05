@@ -31,12 +31,16 @@ namespace amd {
  */
 
 class Runtime : AllStatic {
+  static volatile int pid_;  //!< Process ID for this runtime initialization
   static volatile bool initialized_;
   static bool LibraryDetached;
 
  public:
   //! Return true if the OpencCL runtime is already initialized
-  inline static bool initialized();
+  inline static bool initialized() { return initialized_; }
+
+  //! Return PID if the OCL/HIP runtime was initialized in the process
+  inline static int pid() { return pid_; }
 
   //! Initialize the OpenCL runtime.
   static bool init();
@@ -88,8 +92,6 @@ public:
 #endif
 
 /*@}*/
-
-inline bool Runtime::initialized() { return initialized_; }
 
 class RuntimeTearDown : public HeapObject {
   static std::vector<ReferenceCountedObject*> external_;
