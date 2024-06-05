@@ -183,7 +183,7 @@ class Event : public RuntimeObject {
 
   //! Signal all threads waiting on this event.
   void signal() {
-    ScopedLock lock(lock_);
+    ScopedLock lock(lock_);// Unnecessary
     lock_.notifyAll();
   }
 
