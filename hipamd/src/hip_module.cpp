@@ -215,8 +215,12 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
                    "Both, kernelParams and extra Params are provided, only one should be provided");
     return hipErrorInvalidValue;
   }
-  if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0 || blockDimX == 0 ||
-      blockDimY == 0 || blockDimZ == 0) {
+
+  if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0) {
+    return hipErrorInvalidValue;
+  }
+
+  if (blockDimX == 0 || blockDimY == 0 || blockDimZ == 0) {
     return hipErrorInvalidConfiguration;
   }
 
@@ -372,7 +376,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
 
-  amd::ScopedLock lock (DEBUG_HIP_KERNARG_COPY_OPT ? &function->dflock_ : nullptr); 
+  amd::ScopedLock lock (DEBUG_HIP_KERNARG_COPY_OPT ? &function->dflock_ : nullptr);
 
   hipError_t status = ihipLaunchKernel_validate(
       f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX, blockDimY, blockDimZ,
@@ -449,9 +453,10 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
 
   STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
                  blockDimY, blockDimZ, sharedMemBytes, kernelParams, extra);
-  if (gridDimX > std::numeric_limits<int32_t>::max() ||
-      gridDimY > std::numeric_limits<int32_t>::max()/1024 ||
-      gridDimZ > std::numeric_limits<int32_t>::max()/1024) {
+
+  constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
+  constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
+  if (gridDimX > int32_max || gridDimY > uint16_max || gridDimZ > uint16_max) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
