@@ -121,7 +121,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   if ((pResDesc->resType == hipResourceTypeLinear) &&
       ((pResDesc->res.linear.devPtr == nullptr) ||
        (!amd::isMultipleOf(pResDesc->res.linear.devPtr, info.imageBaseAddressAlignment_)) ||
-       ((pResDesc->res.linear.sizeInBytes / hip::getElementSize(pResDesc->res.linear.desc)) >= info.imageMaxBufferSize_))) {
+       (pResDesc->res.linear.sizeInBytes >= info.imageMaxBufferSize_ * hip::getElementSize(pResDesc->res.linear.desc)))) {
     return hipErrorInvalidValue;
   }
 
@@ -308,7 +308,10 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
                             0, /* offset */
                             buffer,
                             status);
-    buffer->release();
+    if (buffer != nullptr) {
+      buffer->release();
+    }
+
     if (image == nullptr) {
       return status;
     }
