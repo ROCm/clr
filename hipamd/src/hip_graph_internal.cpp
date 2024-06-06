@@ -579,7 +579,7 @@ void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* st
   }
 }
 
-hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node> topoOrder, hip::Stream* hip_stream,
+hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::Stream* hip_stream,
                                       hip::GraphExec* graphExec) {
   // Accumulate command tracks all the AQL packet batch that we submit to the HW. For now
   // we track only kernel nodes.

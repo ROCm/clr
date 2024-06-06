@@ -52,7 +52,7 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         amd::Command*& graphEnd, hip::Stream* stream);
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                   GraphExec* ptr);
-hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node> topoOrder, hip::Stream* hip_stream,
+hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::Stream* hip_stream,
                                       hip::GraphExec* graphExec = nullptr);
 struct UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
