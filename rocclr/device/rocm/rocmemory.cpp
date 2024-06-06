@@ -38,7 +38,7 @@
 #include "platform/interop_gl.hpp"
 #include "platform/external_memory.hpp"
 
-namespace roc {
+namespace amd::roc {
 
 // ======================================= roc::Memory ============================================
 Memory::Memory(const roc::Device& dev, amd::Memory& owner)

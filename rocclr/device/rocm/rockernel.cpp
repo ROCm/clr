@@ -25,7 +25,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-namespace roc {
+namespace amd::roc {
 
 Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
                const uint32_t workgroupGroupSegmentByteSize,
@@ -205,5 +205,5 @@ bool LightningKernel::postLoad() {
 }
 #endif  // defined(USE_COMGR_LIBRARY)
 
-}  // namespace roc
+}  // namespace amd::roc
 #endif  // WITHOUT_HSA_BACKEND

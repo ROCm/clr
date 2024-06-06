@@ -22,7 +22,7 @@
 #include "device/rocm/rocvirtual.hpp"
 #include <array>
 
-namespace roc {
+namespace amd::roc {
 
 hsa_status_t PerfCounterCallback(
   hsa_ven_amd_aqlprofile_info_type_t  info_type,
@@ -622,5 +622,5 @@ PerfCounterProfile::~PerfCounterProfile() {
   }
 }
 
-}  // namespace roc
+}  // namespace amd::roc
 

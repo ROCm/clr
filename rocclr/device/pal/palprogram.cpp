@@ -35,7 +35,7 @@
 #include <iterator>
 #include <sstream>
 
-namespace pal {
+namespace amd::pal {
 
 Segment::Segment() : gpuAccess_(nullptr), cpuAccess_(nullptr), cpuMem_(nullptr) {}
 
@@ -700,7 +700,7 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
 
 static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
                                            void* data) {
-  auto symbol = Symbol::Object(hSymbol);
+  auto symbol = amd::hsa::loader::Symbol::Object(hSymbol);
   auto symbolNameList = reinterpret_cast<std::vector<std::string>*>(data);
 
   hsa_symbol_kind_t type;
@@ -836,4 +836,4 @@ uint64_t LightningProgram::GetTrapHandlerAddress() const {
   return address;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

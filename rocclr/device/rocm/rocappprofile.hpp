@@ -22,7 +22,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-namespace roc {
+namespace amd::roc {
 
 class AppProfile : public amd::AppProfile {
  public:

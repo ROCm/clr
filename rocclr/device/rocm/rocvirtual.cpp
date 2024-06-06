@@ -73,7 +73,7 @@
 */
 #define HSA_SAMPLER_OBJECT_ALIGNMENT 16
 
-namespace roc {
+namespace amd::roc {
 // (HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_ACQUIRE_FENCE_SCOPE) invalidates I, K and L1
 // (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE) invalidates L1, L2 and flushes
 // L2

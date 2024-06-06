@@ -34,7 +34,7 @@ extern amd::AppProfile* rocCreateAppProfile();
 #endif
 
 #if defined(WITH_PAL_DEVICE)
-// namespace pal {
+// namespace amd::pal {
 extern bool PalDeviceLoad();
 extern void PalDeviceUnload();
 //}
@@ -73,7 +73,7 @@ constexpr char hsaIsaNamePrefix[] = "amdgcn-amd-amdhsa--";
 
 } // namespace
 
-namespace device {
+namespace amd::device {
 extern const char* BlitLinearSourceCode;
 extern const char* BlitImageSourceCode;
 
@@ -1041,7 +1041,7 @@ bool Device::IpcDetach(void* dev_ptr) const {
 
 }  // namespace amd
 
-namespace device {
+namespace amd::device {
 
 Settings::Settings() : value_(0) {
   assert((ClExtTotal < (8 * sizeof(extensions_))) && "Too many extensions!");
@@ -1505,4 +1505,4 @@ bool ClBinary::isSPIRV() const {
   return false;
 }
 
-}  // namespace device
+}  // namespace amd::device

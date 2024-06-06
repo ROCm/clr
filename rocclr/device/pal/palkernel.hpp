@@ -45,8 +45,8 @@ class Metadata;
 }  // namespace hsa
 }  // namespace amd
 
-//! \namespace pal PAL Device Implementation
-namespace pal {
+//! \namespace amd::pal PAL Device Implementation
+namespace amd::pal {
 
 class VirtualGPU;
 class Device;
@@ -154,5 +154,5 @@ class LightningKernel : public HSAILKernel {
 #endif
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

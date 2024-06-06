@@ -33,7 +33,7 @@
  */
 
 //! ROC Blit Manager Implementation
-namespace roc {
+namespace amd::roc {
 
 class Device;
 class Kernel;
@@ -678,4 +678,4 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
 }
 
 
-/*@}*/} // namespace roc
+/*@}*/} // namespace amd::roc

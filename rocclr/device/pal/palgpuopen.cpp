@@ -41,7 +41,7 @@
 #include "protocols/rgpServer.h"
 #include "protocols/driverControlServer.h"
 
-namespace pal {
+namespace amd::pal {
 // ================================================================================================
 RgpCaptureMgr::RgpCaptureMgr(Pal::IPlatform* platform, const Device& device)
     : device_(device),
@@ -969,6 +969,6 @@ void RgpCaptureMgr::WriteComputeBindMarker(const VirtualGPU* gpu, uint64_t api_h
   WriteMarker(gpu, &marker, sizeof(marker));
 }
 
-}  // namespace pal
+}  // namespace amd::pal
 
 #endif // PAL_GPUOPEN_OCL

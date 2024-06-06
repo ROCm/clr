@@ -48,7 +48,7 @@
 #endif  // copysign
 
 //! GPU Device Implementation
-namespace pal {
+namespace amd::pal {
 
 class Kernel;
 class VirtualGPU;
@@ -178,5 +178,5 @@ class PrintfDbgHSA : public PrintfDbg {
   PrintfDbgHSA& operator=(const PrintfDbgHSA&);
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

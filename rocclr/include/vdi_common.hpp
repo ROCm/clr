@@ -31,6 +31,8 @@
 #include <vector>
 #include <utility>
 
+namespace device = amd::device;
+
 //! \cond ignore
 namespace amd {
 

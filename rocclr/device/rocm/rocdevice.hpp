@@ -55,7 +55,7 @@
  */
 
 //! HSA Device Implementation
-namespace roc {
+namespace amd::roc {
 
 /**
  * @brief List of environment variables that could be used to
@@ -688,7 +688,7 @@ class Device : public NullDevice {
 #endif
 #endif
 };                                // class roc::Device
-}  // namespace roc
+}  // namespace amd::roc
 
 /**
  * @}
