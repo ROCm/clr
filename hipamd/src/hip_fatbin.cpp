@@ -175,8 +175,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     // If the image ptr is not clang offload bundle then just directly point the image.
     if (!CodeObject::IsClangOffloadMagicBundle(image_, isCompressed)) {
       for (size_t dev_idx=0; dev_idx < devices.size(); ++dev_idx) {
+        uint64_t elf_size = CodeObject::ElfSize(image_);
+         if (elf_size == 0) {
+          hip_status = hipErrorInvalidImage;
+          break;
+        }
         fatbin_dev_info_[devices[dev_idx]->deviceId()]
-          = new FatBinaryDeviceInfo(image_, CodeObject::ElfSize(image_), 0);
+          = new FatBinaryDeviceInfo(image_, elf_size, 0);
         fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_
           = new amd::Program(*devices[dev_idx]->asContext());
         if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
