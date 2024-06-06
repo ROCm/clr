@@ -22,8 +22,8 @@
 
 #include "device/pal/palmemory.hpp"
 
-//! \namespace pal PAL Resource Implementation
-namespace pal {
+//! \namespace amd::pal PAL Resource Implementation
+namespace amd::pal {
 
 //! Managed buffer (staging or constant)
 class ManagedBuffer : public amd::EmbeddedObject {
@@ -177,5 +177,5 @@ class XferBuffer : public amd::EmbeddedObject {
   ManagedBuffer& mbuf_;  //!< Managed buffer on GPU
   uint32_t size_;        //!< Mx staging buffer size
 };
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

@@ -38,7 +38,7 @@ bool populateFormatStringHashMap(
     std::map<uint64_t, std::string> &strMap);
 } // namespace amd
 
-namespace pal {
+namespace amd::pal {
 
 PrintfDbg::PrintfDbg(Device& device, FILE* file)
     : dbgBuffer_(nullptr),
@@ -732,4 +732,4 @@ bool PrintfDbgHSA::output(VirtualGPU& gpu, bool printfEnabled,
   return true;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

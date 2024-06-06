@@ -244,7 +244,7 @@ inline void WriteAqlArgAt(unsigned char* dst, //!< The write pointer to the buff
   *(reinterpret_cast<T*>(dst + offset)) = src;
 }
 
-namespace device {
+namespace amd::device {
 class ClBinary;
 class BlitManager;
 class Program;
@@ -1333,7 +1333,7 @@ class VirtualDevice : public amd::HeapObject {
   uint index_;              //!< The virtual device unique index
 };
 
-}  // namespace device
+}  // namespace amd::device
 
 namespace amd {
 

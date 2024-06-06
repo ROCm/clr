@@ -38,7 +38,7 @@
 #include "hsailctx.hpp"
 #endif
 
-namespace device {
+namespace amd::device {
 
 // ================================================================================================
 static constexpr clk_value_type_t ClkValueMapType[6][6] = {
@@ -1644,4 +1644,4 @@ void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
   }
 }
 #endif // defined(WITH_COMPILER_LIB)
-}
+} // namespace amd::device

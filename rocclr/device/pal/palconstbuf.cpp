@@ -23,7 +23,7 @@
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palsettings.hpp"
 
-namespace pal {
+namespace amd::pal {
 
 // ================================================================================================
 ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
@@ -170,4 +170,4 @@ Memory& XferBuffer::Acquire(uint32_t size) {
   return buffer_view_;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

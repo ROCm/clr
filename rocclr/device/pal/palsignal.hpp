@@ -26,7 +26,7 @@
 
 #include "palEvent.h"
 
-namespace pal {
+namespace amd::pal {
 
 class Device;
 

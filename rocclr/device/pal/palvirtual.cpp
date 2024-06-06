@@ -50,7 +50,7 @@
 #include "platform/interop_d3d11.hpp"
 #endif  // _WIN32
 
-namespace pal {
+namespace amd::pal {
 
 uint32_t VirtualGPU::Queue::AllocedQueues(const VirtualGPU& gpu, Pal::EngineType type) {
   uint32_t allocedQueues = 0;
@@ -3797,4 +3797,4 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   return hostcallBuffer_;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

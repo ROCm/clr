@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-namespace device {
+namespace amd::device {
 
 #define BLIT_KERNELS(...) #__VA_ARGS__
 
@@ -257,4 +257,4 @@ const char* BlitImageSourceCode = BLIT_KERNELS(
 
 );
 
-}  // namespace device
+}  // namespace amd::device

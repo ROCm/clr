@@ -31,7 +31,7 @@
 #include "VersionHelpers.h"
 #endif
 
-namespace pal {
+namespace amd::pal {
 
 Settings::Settings() {
   // Initialize the GPU device default settings
@@ -511,4 +511,4 @@ void Settings::override() {
   }
 }
 
-}  // namespace pal
+}  // namespace amd::pal

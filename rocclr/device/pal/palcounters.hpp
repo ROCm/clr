@@ -25,7 +25,7 @@
 #include "device/pal/paldevice.hpp"
 #include "palPerfExperiment.h"
 
-namespace pal {
+namespace amd::pal {
 
 enum class PCIndexSelect : uint {
   None = 0,                        ///< no index
@@ -147,4 +147,4 @@ class PerfCounter : public device::PerfCounter {
   std::vector<int> index_;       //!< Counter index in the PAL container
 };
 
-}  // namespace pal
+}  // namespace amd::pal

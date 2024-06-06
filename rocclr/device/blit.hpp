@@ -30,7 +30,7 @@
  */
 
 //! GPU Blit Manager Implementation
-namespace device {
+namespace amd::device {
 
 //! Blit Manager Abstraction class
 class BlitManager : public amd::HeapObject {
@@ -448,6 +448,6 @@ class HostBlitManager : public device::BlitManager {
   HostBlitManager& operator=(const HostBlitManager&);
 };
 
-/*@}*/} // namespace device
+/*@}*/} // namespace amd::device
 
 #endif /*BLIT_HPP_*/

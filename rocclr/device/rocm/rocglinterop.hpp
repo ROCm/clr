@@ -36,7 +36,7 @@ typedef __GLXcontextRec* GLXContext;
 #include "device/rocm/rocregisters.hpp"
 #include "hsa/hsa_ext_amd.h"
 
-namespace roc {
+namespace amd::roc {
 
 // Specific typed container for version 1
 typedef struct metadata_amd_ci_vi_s {

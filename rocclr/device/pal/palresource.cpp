@@ -43,7 +43,7 @@
 #include <iostream>
 #include <cmath>
 
-namespace pal {
+namespace amd::pal {
 
 // ================================================================================================
 Pal::Result GpuMemoryReference::MakeResident() const {
@@ -2368,4 +2368,4 @@ void ResourceCache::removeLast() {
   entry.second->release();
 }
 
-}  // namespace pal
+}  // namespace amd::pal

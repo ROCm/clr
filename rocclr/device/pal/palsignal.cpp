@@ -25,7 +25,7 @@
 
 #include <functional>
 
-namespace pal {
+namespace amd::pal {
 
 Signal::~Signal() {
   dev_->GlbCtx().svmFree(amdSignal_);

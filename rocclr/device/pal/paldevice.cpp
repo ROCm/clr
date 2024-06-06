@@ -149,7 +149,7 @@ static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint3
 
 }  // namespace
 
-namespace device {
+namespace amd::device {
 extern const char* HipExtraSourceCode;
 extern const char* HipExtraSourceCodeNoGWS;
 }
@@ -158,16 +158,16 @@ bool PalDeviceLoad() {
   bool ret = false;
 
   // Create online devices
-  ret |= pal::Device::init();
+  ret |= amd::pal::Device::init();
   // Create offline GPU devices
-  ret |= pal::NullDevice::init();
+  ret |= amd::pal::NullDevice::init();
 
   return ret;
 }
 
-void PalDeviceUnload() { pal::Device::tearDown(); }
+void PalDeviceUnload() { amd::pal::Device::tearDown(); }
 
-namespace pal {
+namespace amd::pal {
 
 Util::GenericAllocator NullDevice::allocator_;
 char* Device::platformObj_;
@@ -2776,4 +2776,4 @@ void Device::DestroyExtSemaphore(void* extSemaphore) {
   amd::Os::alignedFree(extSemaphore);
 }
 
-}  // namespace pal
+}  // namespace amd::pal

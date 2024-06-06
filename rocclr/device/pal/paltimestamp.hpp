@@ -28,7 +28,7 @@
  */
 
 //! PAL Device Implementation
-namespace pal {
+namespace amd::pal {
 
 class Device;
 class VirtualGPU;
@@ -130,5 +130,5 @@ class TimeStampCache : public amd::HeapObject {
   uint tsOffset_;                    //!< Active offset in the current mem object
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

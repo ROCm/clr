@@ -27,7 +27,7 @@
  */
 
 //! HSA OCL STUB Implementation
-namespace roc {
+namespace amd::roc {
 
 //! Device settings
 class Settings : public device::Settings {
@@ -101,6 +101,6 @@ class Settings : public device::Settings {
   void setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidHDPFlush);
 };
 
-/*@}*/} // namespace roc
+/*@}*/} // namespace amd::roc
 
 #endif /*WITHOUT_HSA_BACKEND*/

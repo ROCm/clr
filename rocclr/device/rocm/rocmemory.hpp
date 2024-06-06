@@ -28,7 +28,7 @@
 #include "device/rocm/rocdevice.hpp"
 #include "device/rocm/rocglinterop.hpp"
 
-namespace roc {
+namespace amd::roc {
 class Memory : public device::Memory {
  public:
   enum MEMORY_KIND {

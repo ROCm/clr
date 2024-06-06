@@ -25,7 +25,7 @@
 #include "device/pal/palvirtual.hpp"
 #include "device/pal/palcounters.hpp"
 
-namespace pal {
+namespace amd::pal {
 
 TimeStamp::TimeStamp(const VirtualGPU& gpu, Pal::IGpuMemory* iMem, uint memOffset, address cpuAddr)
     : gpu_(gpu), iMem_(iMem), memOffset_(memOffset) {
@@ -118,4 +118,4 @@ TimeStamp* TimeStampCache::allocTimeStamp() {
   return ts;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

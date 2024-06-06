@@ -21,9 +21,9 @@
 #include "paldevice.hpp"
 
 #if defined(ATI_OS_LINUX)
-namespace pal {
+namespace amd::pal {
 bool Device::associateD3D10Device(void* d3d10Device) { return false; }
-}  // namespace pal
+}  // namespace amd::pal
 #else  // !ATI_OS_WIN
 
 #include <D3D10_1.h>
@@ -38,7 +38,7 @@ bool Device::associateD3D10Device(void* d3d10Device) { return false; }
  **************************************************************************************************************/
 #include "DxxOpenCLInteropExt.h"
 
-namespace pal {
+namespace amd::pal {
 
 static bool queryD3D10DeviceGPUMask(ID3D10Device* pd3d10Device, UINT* pd3d10DeviceGPUMask) {
   IAmdDxExt* pExt = nullptr;
@@ -146,6 +146,6 @@ bool Device::associateD3D10Device(void* d3d10Device) {
   return canInteroperate;
 }
 
-}  // namespace pal
+}  // namespace amd::pal
 
 #endif  // !ATI_OS_WIN

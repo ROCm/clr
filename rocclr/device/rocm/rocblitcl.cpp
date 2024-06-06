@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-namespace roc {
+namespace amd::roc {
 
 #define BLIT_KERNEL(...) #__VA_ARGS__
 
@@ -31,4 +31,4 @@ const char* SchedulerSourceCode = BLIT_KERNEL(
   }
 );
 
-}  // namespace roc
+}  // namespace amd::roc

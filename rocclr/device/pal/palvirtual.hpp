@@ -41,7 +41,7 @@
  */
 
 //! PAL Device Implementation
-namespace pal {
+namespace amd::pal {
 
 class Device;
 class Kernel;
@@ -767,5 +767,5 @@ template <bool avoidBarrierSubmit> uint VirtualGPU::Queue::submit(bool forceFlus
   return id;
 }
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal
