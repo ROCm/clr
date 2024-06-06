@@ -3339,7 +3339,7 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
           distance += link_info[hop_idx].numa_distance;
         }
         uint32_t oneHopDistance
-          = (link_info[0].link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) ? 15 : 20;
+          = (link_info[0].link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) ? 13 : 20;
         link_attr.second = static_cast<int32_t>(distance/oneHopDistance);
         break;
       }
