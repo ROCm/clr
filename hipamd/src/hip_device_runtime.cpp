@@ -462,10 +462,12 @@ hipError_t hipDeviceGetByPCIBusId(int* device, const char* pciBusIdstr) {
   int pciBusID = -1;
   int pciDeviceID = -1;
   int pciDomainID = -1;
+  int pciFunction = -1;
   bool found = false;
-  if (sscanf(pciBusIdstr, "%04x:%02x:%02x", reinterpret_cast<unsigned int*>(&pciDomainID),
+  if (sscanf(pciBusIdstr, "%04x:%02x:%02x.%01x", reinterpret_cast<unsigned int*>(&pciDomainID),
              reinterpret_cast<unsigned int*>(&pciBusID),
-             reinterpret_cast<unsigned int*>(&pciDeviceID)) == 0x3) {
+             reinterpret_cast<unsigned int*>(&pciDeviceID),
+             reinterpret_cast<unsigned int*>(&pciFunction)) == 0x4) {
     int count = 0;
     HIP_RETURN_ONFAIL(ihipDeviceGetCount(&count));
     for (cl_int i = 0; i < count; i++) {
@@ -473,9 +475,11 @@ hipError_t hipDeviceGetByPCIBusId(int* device, const char* pciBusIdstr) {
       hipDeviceProp_tR0600 prop;
       HIP_RETURN_ONFAIL(ihipDeviceGet(&dev, i));
       HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, dev));
+      auto* deviceHandle = g_devices[dev]->devices()[0];
 
       if ((pciBusID == prop.pciBusID) && (pciDomainID == prop.pciDomainID) &&
-          (pciDeviceID == prop.pciDeviceID)) {
+          (pciDeviceID == prop.pciDeviceID) &&
+          (pciFunction == deviceHandle->info().deviceTopology_.pcie.function)) {
         *device = i;
         found = true;
         break;
