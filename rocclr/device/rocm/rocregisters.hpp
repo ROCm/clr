@@ -29,7 +29,7 @@
 #error "LITTLEENDIAN_CPU and BIGENDIAN_CPU are mutually exclusive"
 #endif
 
-namespace roc {
+namespace amd::roc {
 
 enum SQ_RSRC_IMG_TYPES {
   SQ_RSRC_IMG_1D = 0x08,

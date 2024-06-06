@@ -349,7 +349,7 @@ namespace amd {
   }  // hsa
 }  // amd
 
-namespace device {
+namespace amd::device {
 
 class Program;
 
@@ -601,4 +601,4 @@ class Kernel : public amd::HeapObject {
 #if defined(USE_COMGR_LIBRARY)
 amd_comgr_status_t getMetaBuf(const amd_comgr_metadata_node_t meta, std::string* str);
 #endif // defined(USE_COMGR_LIBRARY)
-} // namespace device
+} // namespace amd::device

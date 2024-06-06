@@ -26,7 +26,7 @@
 #include "rocsettings.hpp"
 #include "device/rocm/rocglinterop.hpp"
 
-namespace roc {
+namespace amd::roc {
 
 // ================================================================================================
 Settings::Settings() {
@@ -285,6 +285,6 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     kernel_arg_impl_ = kernelArgImpl & (HIP_FORCE_DEV_KERNARG ? 0xF : 0x0);
   }
 }
-}  // namespace roc
+}  // namespace amd::roc
 
 #endif  // WITHOUT_HSA_BACKEND

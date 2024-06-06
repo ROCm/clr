@@ -23,7 +23,7 @@
 #include <string>
 #include <map>
 
-namespace pal {
+namespace amd::pal {
 
 class AppProfile : public amd::AppProfile {
  public:
@@ -37,4 +37,4 @@ class AppProfile : public amd::AppProfile {
   bool enableHighPerformanceState_;
   bool reportAsOCL12Device_;
 };
-}  // namespace pal
+}  // namespace amd::pal

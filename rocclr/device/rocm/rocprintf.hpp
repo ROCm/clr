@@ -42,7 +42,7 @@
 #endif  // copysign
 
 //! GPU Device Implementation
-namespace roc {
+namespace amd::roc {
 
 class Kernel;
 class VirtualGPU;
@@ -120,4 +120,4 @@ class PrintfDbg : public amd::HeapObject {
   PrintfDbg& operator=(const PrintfDbg&);
 };
 
-/*@}*/} // namespace roc
+/*@}*/} // namespace amd::roc

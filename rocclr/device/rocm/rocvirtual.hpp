@@ -31,7 +31,7 @@
 #include "hsa/hsa_ven_amd_aqlprofile.h"
 #include "rocsched.hpp"
 
-namespace roc {
+namespace amd::roc {
 class Device;
 class Memory;
 struct ProfilingSignal;

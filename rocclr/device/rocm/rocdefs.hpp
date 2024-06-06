@@ -22,7 +22,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-namespace roc {
+namespace amd::roc {
 
 //! Alignment restriction for the pinned memory
 static constexpr size_t PinnedMemoryAlignment = 4 * Ki;
@@ -43,6 +43,6 @@ enum HwQueueEngine : uint32_t {
   External  = 4
 };
 
-} // namespace roc
+} // namespace amd::roc
 
 #endif

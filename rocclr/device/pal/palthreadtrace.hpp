@@ -26,7 +26,7 @@
 #include "palPerfExperiment.h"
 
 #include <vector>
-namespace pal {
+namespace amd::pal {
 
 class VirtualGPU;
 
@@ -119,4 +119,4 @@ class ThreadTrace : public device::ThreadTrace {
   std::vector<amd::Memory*> memObj_;  //!< ThreadTrace memory objects
 };
 
-}  // namespace pal
+}  // namespace amd::pal

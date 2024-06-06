@@ -26,7 +26,7 @@
 #include "device/rocm/rocdevice.hpp"
 #include "hsa/hsa_ven_amd_aqlprofile.h"
 
-namespace roc {
+namespace amd::roc {
 
 class VirtualGPU;
 class PerfCounterProfile;
@@ -187,7 +187,7 @@ class PerfCounterProfile : public amd::ReferenceCountedObject {
 
 };
 
-}  // namespace roc
+}  // namespace amd::roc
 
 #endif  // ROCCOUNTERS_HPP_
 

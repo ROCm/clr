@@ -41,7 +41,7 @@
 #include <sstream>
 #include <iostream>
 
-namespace pal {
+namespace amd::pal {
 
 Memory::Memory(const Device& gpuDev, amd::Memory& owner, size_t size)
     : device::Memory(owner), Resource(gpuDev, size), pinnedMemory_(nullptr), parent_(nullptr) {
@@ -1203,4 +1203,4 @@ bool Image::ValidateMemory(Resource::MemoryType memType) {
   return true;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

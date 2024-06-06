@@ -18,7 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-namespace pal {
+namespace amd::pal {
 
 #define RUNTIME_KERNEL(...) #__VA_ARGS__
 
@@ -443,4 +443,4 @@ const char* TrapHandlerCode = RUNTIME_KERNEL(
 \n//.endr
 \n.endif
 \n);
-}  // namespace pal
+}  // namespace amd::pal

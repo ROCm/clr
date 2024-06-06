@@ -34,7 +34,7 @@
 #include <ctime>
 #include <algorithm>
 
-namespace pal {
+namespace amd::pal {
 
 void HSAILKernel::setWorkGroupInfo(const uint32_t privateSegmentSize,
                                    const uint32_t groupSegmentSize, const uint16_t numSGPRs,
@@ -570,4 +570,4 @@ bool LightningKernel::postLoad() {
 }
 #endif  // defined(USE_COMGR_LIBRARY)
 
-}  // namespace pal
+}  // namespace amd::pal

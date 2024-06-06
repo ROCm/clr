@@ -53,7 +53,7 @@
 #include "hsailctx.hpp"
 #endif
 
-namespace device {
+namespace amd::device {
 
 // TODO: Can this be unified with the copies in:
 // runtime/device/pal/palprogram.cpp, runtime/device/gpu/gpuprogram.cpp,
@@ -3006,4 +3006,4 @@ bool Program::runInitFiniKernel(kernel_kind_t kind) const {
 bool Program::runInitKernels() { return runInitFiniKernel(kernel_kind_t::InitKernel); }
 
 bool Program::runFiniKernels() { return runInitFiniKernel(kernel_kind_t::FiniKernel); }
-} /* namespace device*/
+} /* namespace amd::device*/

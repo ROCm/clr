@@ -115,12 +115,12 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 
 } // namespace
 
-namespace device {
+namespace amd::device {
 extern const char* HipExtraSourceCode;
 extern const char* HipExtraSourceCodeNoGWS;
-} // namespace device
+} // namespace amd::device
 
-namespace roc {
+namespace amd::roc {
 bool roc::Device::isHsaInitialized_ = false;
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
@@ -3596,5 +3596,5 @@ device::UriLocator* Device::createUriLocator() const {
 }
 #endif
 #endif
-} // namespace roc
+} // namespace amd::roc
 #endif  // WITHOUT_HSA_BACKEND

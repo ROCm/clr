@@ -21,9 +21,9 @@
 #include "paldevice.hpp"
 
 #if defined(ATI_OS_LINUX)
-namespace pal {
+namespace amd::pal {
 bool Device::associateD3D9Device(void* d3d9Device) { return false; }
-}  // namespace pal
+}  // namespace amd::pal
 #else  // !ATI_OS_LINUX
 
 #include <d3d9.h>
@@ -39,7 +39,7 @@ bool Device::associateD3D9Device(void* d3d9Device) { return false; }
  **************************************************************************************************************/
 #include "DxxOpenCLInteropExt.h"
 
-namespace pal {
+namespace amd::pal {
 
 bool Device::associateD3D9Device(void* d3d9Device) {
   D3DCAPS9 pCaps;
@@ -64,5 +64,5 @@ bool Device::associateD3D9Device(void* d3d9Device) {
   return canInteroperate;
 }
 
-}  // namespace pal
+}  // namespace amd::pal
 #endif  // !ATI_OS_WIN

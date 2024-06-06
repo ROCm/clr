@@ -31,7 +31,7 @@
  */
 
 //! PAL Blit Manager Implementation
-namespace pal {
+namespace amd::pal {
 
 class Device;
 class Kernel;
@@ -543,5 +543,5 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_streamOpsWait", "__amd_rocclr_initHeap"
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

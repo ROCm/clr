@@ -41,7 +41,7 @@ void __asan_report_nonself_error(uint64_t *callstack, uint32_t n_callstack, uint
     bool is_abort, const char* name, int64_t vma_adjust, int fd,
     uint64_t file_extent_size, uint64_t file_extent_start = 0);
 
-namespace {
+namespace amd{
 void handleSanitizerService(Payload* packt_payload, uint64_t activemask,
         const amd::Device* gpu_device, device::UriLocator* uri_locator) {
   // An address results in invalid access in each active lane
@@ -107,4 +107,4 @@ void handleSanitizerService(Payload* packt_payload, uint64_t activemask,
       /*thread key*/"amdgpu", loadAddrAdjust, uri_fd, size, offset);
 #endif
 }
-} //end anonymous namespace
+} // namespace amd

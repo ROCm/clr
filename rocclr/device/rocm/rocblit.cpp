@@ -27,7 +27,7 @@
 #include "utils/debug.hpp"
 #include <algorithm>
 
-namespace roc {
+namespace amd::roc {
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
@@ -2812,4 +2812,4 @@ bool KernelBlitManager::RunGwsInit(
   return result;
 }
 
-}  // namespace roc
+}  // namespace amd::roc

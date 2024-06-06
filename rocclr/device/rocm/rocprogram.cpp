@@ -35,7 +35,7 @@
 #include <iostream>
 #include <iterator>
 
-namespace roc {
+namespace amd::roc {
 
 static inline const char* hsa_strerror(hsa_status_t status) {
   const char* str = nullptr;
@@ -343,6 +343,6 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
   return true;
 }
 
-}  // namespace roc
+}  // namespace amd::roc
 
 #endif  // WITHOUT_HSA_BACKEND

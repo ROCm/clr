@@ -25,7 +25,7 @@
 
 #include <cmath>
 
-namespace device {
+namespace amd::device {
 
 HostBlitManager::HostBlitManager(VirtualDevice& vDev, Setup setup)
     : BlitManager(setup), vDev_(vDev), dev_(vDev.device()) {}
@@ -766,4 +766,4 @@ void HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   }
 }
 
-}  // namespace gpu
+}  // namespace amd::device

@@ -24,7 +24,7 @@
 #include "os/os.hpp"
 #include <string>
 #include <utility>
-namespace device{
+namespace amd::device{
 // Interface for HSA/PAL Uri Locators
 class UriLocator {
   public:
@@ -38,6 +38,6 @@ class UriLocator {
   virtual  std::pair<uint64_t, uint64_t> decodeUriAndGetFd(UriInfo& uri,
       amd::Os::FileDesc* uri_fd) = 0;
 };
-} //namespace device
+} //namespace amd::device
 #endif
 #endif

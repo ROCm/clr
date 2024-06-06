@@ -22,7 +22,7 @@
 #include "utils/flags.hpp"
 #include "utils/debug.hpp"
 #include "rocsignal.hpp"
-namespace roc {
+namespace amd::roc {
 
 Signal::~Signal() {
   hsa_signal_destroy(signal_);

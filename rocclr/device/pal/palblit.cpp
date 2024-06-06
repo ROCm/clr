@@ -26,7 +26,7 @@
 #include "utils/debug.hpp"
 #include <algorithm>
 
-namespace pal {
+namespace amd::pal {
 
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
@@ -2703,4 +2703,4 @@ Memory* KernelBlitManager::createView(const Memory& parent, const cl_image_forma
   return gpuImage;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

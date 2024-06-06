@@ -22,7 +22,7 @@
 
 #include "hsa.h"
 
-namespace pal {
+namespace amd::pal {
 
 //! AmdAqlWrap slot state
 enum AqlWrapState {
@@ -56,7 +56,7 @@ struct AmdAqlWrap {
   uint32_t enqueue_flags;  //!< [LWO/SRO] Contains the flags for the kernel execution start
   uint32_t command_id;     //!< [LWO/SRO] The unique command ID
   uint32_t child_counter;  //!< [LRW/SRW] Counter that determine the launches of child kernels.
-                           // It’s incremented on the
+                           // It's incremented on the
   // start and decremented on the finish. The parent kernel can be considered as
   // done when the value is 0 and the state is DONE
   uint64_t completion;   //!< [LWO/SRO] CL event for the current execution (clk_event_t)
@@ -64,7 +64,7 @@ struct AmdAqlWrap {
   uint64_t wait_list;  //!< [LRO/SRO] Pointer to an array of clk_event_t objects (64 bytes default)
   uint32_t wait_num;   //!< [LWO/SRO] The number of cl_event_wait objects
   uint32_t reserved[5];              //!< For the future usage
-  hsa_kernel_dispatch_packet_t aql;  //!< [LWO/SRO] AQL packet – 64 bytes AQL packet
+  hsa_kernel_dispatch_packet_t aql;  //!< [LWO/SRO] AQL packet - 64 bytes AQL packet
 };
 
 struct AmdEvent {
@@ -90,4 +90,4 @@ struct SchedulerParam {
   uint32_t reserved[2];     //!< Reserved
 };
 
-}  // namespace pal
+}  // namespace amd::pal

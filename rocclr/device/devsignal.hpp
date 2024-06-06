@@ -26,7 +26,7 @@ namespace amd {
   class Device;
 };
 
-namespace device {
+namespace amd::device {
 
 // Light abstraction over HSA/PAL signals
 class Signal: public amd::HeapObject {

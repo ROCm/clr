@@ -21,7 +21,7 @@
 #include "device/pal/palthreadtrace.hpp"
 #include "device/pal/palvirtual.hpp"
 
-namespace pal {
+namespace amd::pal {
 
 PalThreadTraceReference* PalThreadTraceReference::Create(VirtualGPU& gpu) {
   Pal::Result result;
@@ -179,4 +179,4 @@ bool ThreadTrace::info(uint infoType, uint* info, uint infoSize) const {
   return true;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

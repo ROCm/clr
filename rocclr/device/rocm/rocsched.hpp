@@ -20,7 +20,7 @@
 
 #pragma once
 
-namespace roc {
+namespace amd::roc {
 
 //! AmdAqlWrap slot state
 enum AqlWrapState {

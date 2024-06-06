@@ -54,7 +54,7 @@ namespace option {
 }  // option
 }
 
-namespace device {
+namespace amd::device {
 class ClBinary;
 class Kernel;
 
@@ -504,4 +504,4 @@ class ComgrBinaryData {
 
 #endif
 
-} // namespace device
+} // namespace amd::device

@@ -27,12 +27,12 @@
 /*! \addtogroup GPU
  *  @{
  */
-namespace device {
+namespace amd::device {
 class Memory;
 }
 
 //! PAL Device Implementation
-namespace pal {
+namespace amd::pal {
 
 class Device;
 class Heap;
@@ -274,4 +274,4 @@ class Image : public pal::Memory {
   Image* copyImageBuffer_;
 };
 
-}  // namespace pal
+}  // namespace amd::pal

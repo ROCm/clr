@@ -46,10 +46,10 @@
 #define ROCCLR_MEM_PHYMEM               (1u << 25)
 #define ROCCLR_MEM_HSA_CONTIGUOUS       (1u << 24)
 
-namespace device {
+namespace amd::device {
 class Memory;
 class VirtualDevice;
-}  // namespace device
+}  // namespace amd::device
 
 namespace amd {
 

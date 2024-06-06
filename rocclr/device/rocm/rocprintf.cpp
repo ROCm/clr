@@ -39,7 +39,7 @@ bool populateFormatStringHashMap(
     std::map<uint64_t, std::string> &strMap);
 } // namespace amd
 
-namespace roc {
+namespace amd::roc {
 
 PrintfDbg::PrintfDbg(Device& device, FILE* file)
     : dbgBuffer_(nullptr), dbgBuffer_size_(0), dbgFile_(file), gpuDevice_(device) {}

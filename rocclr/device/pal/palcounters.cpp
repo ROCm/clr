@@ -22,7 +22,7 @@
 #include "device/pal/palvirtual.hpp"
 #include <array>
 
-namespace pal {
+namespace amd::pal {
 
 static constexpr std::array<PCIndexSelect, 50> blockIdToIndexSelect = {{
     PCIndexSelect::None,                     // CPF
@@ -805,4 +805,4 @@ uint64_t PerfCounter::getInfo(uint64_t infoType) const {
   return 0;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

@@ -77,7 +77,7 @@ struct GpuEvent {
 
 //! PAL Device Implementation
 
-namespace pal {
+namespace amd::pal {
 
 //! Maximum number of the supported global atomic counters
 static constexpr uint MaxAtomicCounters = 8;
@@ -490,4 +490,4 @@ static constexpr MemoryFormat MemoryFormatMap[] = {
      {Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X, Pal::ChannelSwizzle::X,
       Pal::ChannelSwizzle::X}}};
 
-}  // namespace pal
+}  // namespace amd::pal

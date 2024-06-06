@@ -25,7 +25,7 @@
 #include "hsa/hsa_ven_amd_loader.h"
 
 #include <vector>
-namespace roc {
+namespace amd::roc {
 class UriLocator : public device::UriLocator {
   bool init_ = false;
   struct UriRange {

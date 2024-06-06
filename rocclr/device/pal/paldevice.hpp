@@ -54,7 +54,7 @@
  */
 
 //! PAL Device Implementation
-namespace pal {
+namespace amd::pal {
 
 //! A nil device object
 class NullDevice : public amd::Device {
@@ -738,5 +738,5 @@ class Device : public NullDevice {
   amd::Program* trap_handler_ = nullptr;  //!< Trap handler program for debugger setup
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

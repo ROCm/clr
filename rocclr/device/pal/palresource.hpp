@@ -28,8 +28,8 @@
 #include <atomic>
 #include <unordered_map>
 
-//! \namespace pal PAL Resource Implementation
-namespace pal {
+//! \namespace amd::pal PAL Resource Implementation
+namespace amd::pal {
 
 class Device;
 class VirtualGPU;
@@ -644,5 +644,5 @@ class ResourceCache : public amd::HeapObject {
   FineUncachedMemorySubAllocator mem_sub_alloc_fine_uncached_; //!< Allocator for suballocations in Fine uncached SVM
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal
