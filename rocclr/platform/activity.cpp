@@ -119,7 +119,7 @@ void ReportActivity(const amd::Command& command) {
   }
 }
 
-}  // namespace amd::activity_prof
+
 
 #define CASE_STRING(X, C)                                                                          \
   case X:                                                                                          \
@@ -165,3 +165,4 @@ const char* getOclCommandKindString(cl_command_type commandType) {
   };
   return "Unknown command kind";
 };
+}  // namespace amd::activity_prof
