@@ -349,7 +349,7 @@ void Command::enqueue() {
   }
 
   ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p",
-          getOclCommandKindString(this->type()), this);
+          amd::activity_prof::getOclCommandKindString(this->type()), this);
 
   // Direct dispatch logic below will submit the command immediately, but the command status
   // update will occur later after flush() with a wait

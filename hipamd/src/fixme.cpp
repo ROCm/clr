@@ -31,10 +31,3 @@
 
 cl_icd_dispatch amd::ICDDispatchedObject::icdVendorDispatch_[] = {0};
 amd::PlatformIDS amd::PlatformID::Platform = {amd::ICDDispatchedObject::icdVendorDispatch_};
-
-RUNTIME_ENTRY(cl_int, clGetDeviceIDs,
-              (cl_platform_id platform, cl_device_type device_type, cl_uint num_entries,
-               cl_device_id* devices, cl_uint* num_devices)) {
-  return CL_SUCCESS;
-}
-RUNTIME_EXIT

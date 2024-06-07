@@ -51,9 +51,9 @@
 /*! IHIP IPC MEMORY Structure */
 #define IHIP_IPC_MEM_HANDLE_SIZE   32
 #define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
-
-extern std::once_flag g_ihipInitialized;
-
+namespace hip{
+  extern std::once_flag g_ihipInitialized;
+}
 typedef struct hipArray {
     void* data;  // FIXME: generalize this
     struct hipChannelFormatDesc desc;
@@ -99,7 +99,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
 #define HIP_INIT(noReturn)                                                                         \
   {                                                                                                \
     bool status = true;                                                                            \
-    std::call_once(g_ihipInitialized, hip::init, &status);                                         \
+    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                         \
     if (!status && !noReturn) {                                                                    \
       HIP_RETURN(hipErrorInvalidDevice);                                                           \
     }                                                                                              \
@@ -112,7 +112,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
 #define HIP_INIT_VOID()                                                                            \
   {                                                                                                \
     bool status = true;                                                                            \
-    std::call_once(g_ihipInitialized, hip::init, &status);                                         \
+    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                         \
     if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                           \
       hip::tls.device_ = hip::g_devices[0];                                                   \
       amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode()); \
