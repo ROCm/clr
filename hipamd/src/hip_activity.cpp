@@ -22,5 +22,5 @@
 #include <hip/hip_runtime_api.h>
 
 extern "C" const char* hipGetCmdName(unsigned op) {
-  return getOclCommandKindString(static_cast<cl_command_type>(op));
+  return amd::activity_prof::getOclCommandKindString(static_cast<cl_command_type>(op));
 }

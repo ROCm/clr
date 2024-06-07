@@ -25,6 +25,7 @@
   case X:                                                                                          \
     case_string = #C;                                                                              \
     break;
+namespace {
 const char* GetGraphNodeTypeString(uint32_t op) {
   const char* case_string;
   switch (static_cast<hipGraphNodeType>(op)) {
@@ -47,6 +48,7 @@ const char* GetGraphNodeTypeString(uint32_t op) {
   };
   return case_string;
 };
+}
 
 namespace hip {
 std::unordered_map<GraphExec*, std::pair<hip::Stream*, bool>> GraphExecStatus_;

@@ -328,7 +328,12 @@ struct Flag {
 #ifdef _WIN32
 # define EXPORT_FLAG extern "C" __declspec(dllexport)
 #else // !_WIN32
+#ifdef BUILD_STATIC_LIBS
+# define EXPORT_FLAG extern
+#else
 # define EXPORT_FLAG extern "C"
+#endif
+namespace {
 #endif // !_WIN32
 
 #define DECLARE_RELEASE_FLAG(type, name, value, help) EXPORT_FLAG type name;
@@ -342,5 +347,7 @@ RUNTIME_FLAGS(DECLARE_DEBUG_FLAG, DECLARE_RELEASE_FLAG, DECLARE_DEBUG_FLAG);
 
 #undef DECLARE_DEBUG_FLAG
 #undef DECLARE_RELEASE_FLAG
-
+#ifndef _WIN32
+}
+#endif // !_WIN32
 #endif /*FLAGS_HPP_*/
