@@ -393,7 +393,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     enableExtension(ClKhrSubGroups);
     enableExtension(ClKhrDepthImages);
 
-    if (GPU_MIPMAP) {
+    if (GPU_MIPMAP && imageSupport_) {
       enableExtension(ClKhrMipMapImage);
       enableExtension(ClKhrMipMapImageWrites);
     }
