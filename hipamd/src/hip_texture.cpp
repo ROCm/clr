@@ -110,9 +110,22 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   // If hipResourceDesc::resType is set to hipResourceTypeMipmappedArray,
   // hipResourceDesc::res::mipmap::mipmap must be set to a valid HIP mipmapped array handle
   // and hipTextureDesc::normalizedCoords must be set to true.
-  if ((pResDesc->resType == hipResourceTypeMipmappedArray) &&
-      ((pResDesc->res.mipmap.mipmap == nullptr) || (pTexDesc->normalizedCoords == 0))) {
-    return hipErrorInvalidValue;
+  if (pResDesc->resType == hipResourceTypeMipmappedArray) {
+    bool mipMapSupport = true;
+    amd::Context& context = *hip::getCurrentDevice()->asContext();
+    const std::vector<amd::Device*>& devices = context.devices();
+    for (auto& dev : devices) {
+      if (!dev->settings().checkExtension(ClKhrMipMapImage)) {
+        mipMapSupport = false; // Now PAL-backend can support mipmap, Rocm-backend cannot.
+      }
+    }
+    if (mipMapSupport == false) {
+      LogInfo("Mipmap not supported on the device");
+      return hipErrorNotSupported;
+    }
+    if (pResDesc->res.mipmap.mipmap == nullptr || pTexDesc->normalizedCoords == 0) {
+      return hipErrorInvalidValue;
+    }
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeLinear,

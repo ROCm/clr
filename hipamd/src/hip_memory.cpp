@@ -921,7 +921,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   const std::vector<amd::Device*>& devices = context.devices();
   if (!devices[0]->info().imageSupport_) {
     LogPrintfError("Device: 0x%x does not support image", devices[0]);
-    status = hipErrorInvalidValue;
+    status = hipErrorNotSupported;
     return nullptr;
   }
 
