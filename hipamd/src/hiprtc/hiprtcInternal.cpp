@@ -65,6 +65,8 @@ RTCProgram::RTCProgram(std::string name) : name_(name) {
 }
 
 bool RTCProgram::findIsa() {
+
+#ifdef BUILD_SHARED_LIBS
   const char* libName;
 #ifdef _WIN32
   std::string dll_name = std::string("amdhip64_" + std::to_string(HIP_VERSION_MAJOR) + ".dll");
@@ -121,6 +123,23 @@ bool RTCProgram::findIsa() {
 
   amd::Os::unloadLibrary(handle);
   return true;
+
+#else
+  int device;
+  hipError_t status = hipGetDevice(&device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  hipDeviceProp_t props;
+  status = hipGetDeviceProperties(&props, device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  isa_ = "amdgcn-amd-amdhsa--";
+  isa_.append(props.gcnArchName);
+
+  return true;
+#endif
 }
 
 // RTC Compile Program Member Functions
