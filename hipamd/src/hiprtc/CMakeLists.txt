@@ -35,6 +35,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 if(BUILD_SHARED_LIBS)
   add_library(hiprtc SHARED)
+  target_compile_definitions(hiprtc PRIVATE BUILD_SHARED_LIBS)
   # Windows doesn't have a strip utility, so CMAKE_STRIP won't be set.
   if((CMAKE_BUILD_TYPE STREQUAL "Release") AND NOT ("${CMAKE_STRIP}" STREQUAL ""))
     add_custom_command(TARGET hiprtc POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:hiprtc>)
