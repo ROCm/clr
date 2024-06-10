@@ -148,7 +148,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
     // If the file name exists but the file size is 0, the something wrong with the file or its path
     if (ufd_->fsize_ == 0) {
-      return hipErrorInvalidValue;
+      return hipErrorInvalidImage;
     }
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
