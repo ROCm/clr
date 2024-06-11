@@ -1684,6 +1684,10 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
       }
     }
     params.interprocess_ = (owner.getMemFlags() & ROCCLR_MEM_INTERPROCESS) ? true : false;
+    // Disable interprocess for >3GBs local memory due to PAL failure.
+    if ((type == Resource::Local || type == Resource::Persistent) && owner.getSize() > 3 * Gi) {
+      params.interprocess_ = false;
+    }
     if (owner.ipcShared()) {
       type = Resource::IpcMemory;
     }
