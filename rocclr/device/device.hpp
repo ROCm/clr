@@ -1310,7 +1310,9 @@ class VirtualDevice : public amd::HeapObject {
   virtual bool isFenceDirty() const = 0;
 
   //! Dispatch captured AQL packet
-  virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket,
+                                 const std::string& kernelName,
+                                 amd::AccumulateCommand* vcmd = nullptr) = 0;
 
  private:
   //! Disable default copy constructor
