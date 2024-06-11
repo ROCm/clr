@@ -594,8 +594,9 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder[i]->GetType() == hipGraphNodeTypeKernel &&
         !reinterpret_cast<hip::GraphKernelNode*>(topoOrder[i])->HasHiddenHeap()) {
       if (topoOrder[i]->GetEnabled()) {
-        hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(), accumulate);
-        accumulate->addKernelName(topoOrder[i]->GetKernelName());
+        hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(),
+                                              topoOrder[i]->GetKernelName(),
+                                              accumulate);
       }
     } else {
       topoOrder[i]->SetStream(hip_stream, graphExec);
