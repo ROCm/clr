@@ -2621,8 +2621,7 @@ bool KernelBlitManager::initHeap(device::Memory* heap_to_initialize, device::Mem
   address parameters = captureArguments(kernels_[blitType]);
   result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
   releaseArguments(parameters);
-  synchronize();
-
+  gpu().releaseGpuMemoryFence();
   return result;
 }
 

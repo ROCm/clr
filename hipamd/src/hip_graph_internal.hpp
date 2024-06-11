@@ -569,6 +569,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   uint32_t kernarg_graph_cur_offset_ = 0;
   uint32_t kernarg_graph_size_ = 128 * Ki;
   int instantiateDeviceId_ = -1;
+  bool hasHiddenHeap_ = false;                 //!< Kernel has hidden heap(device side allocation)
 
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
@@ -619,6 +620,10 @@ struct GraphExec : public amd::ReferenceCountedObject {
     }
     return clonedNode;
   }
+  // returns if graph has nodes that require hidden heap/not
+  bool HasHiddenHeap() const { return hasHiddenHeap_; }
+  // Graph has nodes that require hidden heap.
+  void SetHiddenHeap() { hasHiddenHeap_ = true; }
 
   address allocKernArg(size_t size, size_t alignment) {
     assert(alignment != 0);

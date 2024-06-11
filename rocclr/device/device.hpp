@@ -1308,7 +1308,8 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
-
+  //! Init hidden heap for device memory allocations
+  virtual void HiddenHeapInit() = 0;
   //! Dispatch captured AQL packet
   virtual bool dispatchAqlPacket(uint8_t* aqlpacket,
                                  const std::string& kernelName,
@@ -2102,7 +2103,9 @@ class Device : public RuntimeObject {
   static Memory* p2p_stage_;          //!< Staging resources
   std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
 
-  std::once_flag heap_initialized_; //!< Heap buffer initialization flag
+  std::once_flag heap_initialized_;  //!< Heap buffer initialization flag
+  std::once_flag heap_allocated_;    //!< Heap buffer allocation flag
+
   device::Memory* heap_buffer_;     //!< Preallocated heap buffer for memory allocations on device
 
   amd::Memory* arena_mem_obj_;      //!< Arena memory object
