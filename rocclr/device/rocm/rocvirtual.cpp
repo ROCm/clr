@@ -980,19 +980,26 @@ bool VirtualGPU::dispatchAqlPacket(
 }
 
 // ================================================================================================
-inline bool VirtualGPU::dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd) {
-  amd::ScopedLock lock(execution());
-  if (vcmd != nullptr) {
-    profilingBegin(*vcmd, true);
+inline bool VirtualGPU::dispatchAqlPacket(
+    uint8_t* aqlpacket, const std::string& kernelName, amd::AccumulateCommand* vcmd) {
+
+  if (vcmd == nullptr) {
+    return false;
   }
+
+  vcmd->addKernelName(kernelName);
+  amd::ScopedLock lock(execution());
+
+  profilingBegin(*vcmd, true);
+
   dispatchBlockingWait();
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
   ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Graph shader name : %s",
-          vcmd->getKernelNames().back().c_str());
+          kernelName.c_str());
   dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
-  if (vcmd != nullptr) {
-    profilingEnd(*vcmd);
-  }
+
+  profilingEnd(*vcmd);
+
   return true;
 }
 
