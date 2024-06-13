@@ -800,7 +800,7 @@ bool Buffer::create(bool alloc_local) {
     }
     const bool isFineGrain = memFlags & CL_MEM_SVM_FINE_GRAIN_BUFFER;
 
-    if (isFineGrain) {
+    if (isFineGrain && !(memFlags & CL_MEM_VA_RANGE_AMD)) {
       // Use CPU direct access for the fine grain buffer
       flags_ |= HostMemoryDirectAccess;
     }
