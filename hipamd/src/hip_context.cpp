@@ -312,6 +312,11 @@ hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig) {
 hipError_t hipCtxSetCacheConfig(hipFuncCache_t cacheConfig) {
   HIP_INIT_API(hipCtxSetCacheConfig, cacheConfig);
 
+  if (cacheConfig != hipFuncCachePreferNone && cacheConfig != hipFuncCachePreferShared &&
+      cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   assert(0 && "Unimplemented");
 
   HIP_RETURN(hipErrorNotSupported);

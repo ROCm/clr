@@ -222,7 +222,12 @@ hipError_t hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int valu
 hipError_t hipFuncSetCacheConfig(const void* func, hipFuncCache_t cacheConfig) {
   HIP_INIT_API(hipFuncSetCacheConfig, cacheConfig);
 
-  // No way to set cache config yet.
+  if (func == nullptr) { HIP_RETURN(hipErrorInvalidDeviceFunction); }
+  if (cacheConfig != hipFuncCachePreferNone && cacheConfig != hipFuncCachePreferShared &&
+      cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  // No way to set cache config yet
 
   HIP_RETURN(hipSuccess);
 }
@@ -230,7 +235,13 @@ hipError_t hipFuncSetCacheConfig(const void* func, hipFuncCache_t cacheConfig) {
 hipError_t hipFuncSetSharedMemConfig(const void* func, hipSharedMemConfig config) {
   HIP_INIT_API(hipFuncSetSharedMemConfig, func, config);
 
-  // No way to set Shared Memory config function yet.
+  if (func == nullptr) { HIP_RETURN(hipErrorInvalidDeviceFunction); }
+  if (config != hipSharedMemBankSizeDefault && config != hipSharedMemBankSizeFourByte &&
+      config != hipSharedMemBankSizeEightByte) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // No way to set shared memory config yet
 
   HIP_RETURN(hipSuccess);
 }

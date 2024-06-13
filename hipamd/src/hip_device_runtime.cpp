@@ -574,6 +574,11 @@ hipError_t hipDeviceReset(void) {
 hipError_t hipDeviceSetCacheConfig(hipFuncCache_t cacheConfig) {
   HIP_INIT_API(hipDeviceSetCacheConfig, cacheConfig);
 
+  if (cacheConfig != hipFuncCachePreferNone && cacheConfig != hipFuncCachePreferShared &&
+      cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
