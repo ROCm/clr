@@ -12,16 +12,20 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 - Added new HIP APIs
     - `hipGetProcAddress` returns the pointer to driver function, corresponding to the defined driver function symbol.
     - `hipGetFuncBySymbol` returns the pointer to device entry function that matches entry function symbolPtr.
+    - `hipStreamBeginCaptureToGraph` begins graph capture on a stream to an existing graph.
 - Added a new flag `integrated` support in device property
 
     The `integrated` flag is added in the struct `hipDeviceProp_t`.
     On the integrated `APU` system, the runtime driver detects and sets this flag to `1`, in which case the API `hipDeviceGetAttribute` returns enum `hipDeviceAttribute_t` for hipDeviceAttributeIntegrated as value `1`, for integrated GPU device.
 
     The enum value `hipDeviceAttributeIntegrated` corresponds to `cudaDevAttrIntegrated` on CUDA platform.
+- Added initial support for 8-bit floating point datatype in `amd_hip_fp8.h`. These are accessible via `#include <hip/hip_fp8.h>`
+- Add UUID support for environment variable `HIP_VISIBLE_DEVICES`.
 
 ### Fixed
 - Stream capture support in HIP graph.
 Prohibited and unhandled operations are fixed during stream capture in HIP runtime.
+- Fix undefined symbol error for hipTexRefGetArray & hipTexRefGetBorderColor.
 
 ## HIP 6.1 (For ROCm 6.1)
 ### Optimizations
