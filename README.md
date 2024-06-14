@@ -29,6 +29,8 @@ Building clr requires `rocm-hip-libraries` meta package, which provides the pre-
 
 Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=ON` to configure command.
 
+HIP/CLR can be built as a static library by passing `-DBUILD_SHARED_LIBS=OFF` during the CLR `cmake` step.
+
 For detail instructions, please refer to [how to build HIP](https://rocm.docs.amd.com/projects/HIP/en/latest/install/build.html)
 
 ## Tests
