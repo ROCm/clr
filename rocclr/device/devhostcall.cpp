@@ -273,7 +273,7 @@ class HostcallListener {
 };
 
 HostcallListener* hostcallListener = nullptr;
-amd::Monitor listenerLock("Hostcall listener lock");
+extern amd::Monitor listenerLock;
 constexpr static uint64_t kTimeoutFloor = K * K * 4;
 constexpr static uint64_t kTimeoutCeil = K * K * 16;
 static struct Init {

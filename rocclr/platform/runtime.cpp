@@ -102,6 +102,10 @@ void Runtime::tearDown() {
   initialized_ = false;
 }
 
+// ~RuntimeTearDown() will reference listenerLock.
+// listenerLock will be constructed ealier and destructed later than
+// runtime_tear_down.
+amd::Monitor listenerLock("Hostcall listener lock");
 std::vector<ReferenceCountedObject*> RuntimeTearDown::external_;
 
 RuntimeTearDown::~RuntimeTearDown() {
