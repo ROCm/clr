@@ -650,22 +650,21 @@ Device::Device()
 }
 
 Device::~Device() {
-  if (vaCacheMap_) {
-    CondLog(vaCacheMap_->size() != 0, "Application didn't unmap all host memory!");
-    delete vaCacheMap_;
-  }
-
   if (heap_buffer_ != nullptr) {
     delete heap_buffer_;
     heap_buffer_ = nullptr;
   }
 
-  delete vaCacheAccess_;
-
   if (arena_mem_obj_ != nullptr) {
     arena_mem_obj_->release();
   }
 
+  if (vaCacheMap_) {
+    CondLog(vaCacheMap_->size() != 0, "Application didn't unmap all host memory!");
+    delete vaCacheMap_;
+  }
+
+  delete vaCacheAccess_;
   delete settings_;
   delete[] info_.extensions_;
 }
