@@ -514,9 +514,7 @@ hipError_t hipDeviceGetLimit(size_t* pValue, hipLimit_t limit) {
 
   switch (limit) {
     case hipLimitMallocHeapSize:
-      hipDeviceProp_tR0600 prop;
-      HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, ihipGetDevice()));
-      *pValue = prop.totalGlobalMem;
+      *pValue = hip::getCurrentDevice()->devices()[0]->InitialHeapSize();
       break;
     case hipLimitStackSize:
       *pValue = hip::getCurrentDevice()->devices()[0]->StackSize();
