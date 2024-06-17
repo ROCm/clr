@@ -104,7 +104,7 @@ class thread_group {
  *  @ingroup API
  *  @{
  *  This section describes the cooperative groups functions of HIP runtime API.
- *  
+ *
  *  The cooperative groups provides flexible thread parallel programming algorithms, threads
  *  cooperate and share data to perform collective computations.
  *
@@ -218,7 +218,7 @@ class thread_block : public thread_group {
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
       __hip_assert(false && "invalid tile size");
     }
- 
+
     auto block_size = size();
     auto rank = thread_rank();
     auto partitions = (block_size + tile_size - 1) / tile_size;
@@ -330,7 +330,7 @@ class coalesced_group : public thread_group {
   __CG_QUALIFIER__ coalesced_group new_tiled_group(unsigned int tile_size) const {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
 
-    if (!tile_size || (tile_size > size()) || !pow2) {
+    if (!tile_size || !pow2) {
       return coalesced_group(0);
     }
 
