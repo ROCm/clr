@@ -1513,8 +1513,12 @@ hipError_t hipTexObjectCreate(hipTextureObject_t* pTexObject,
                               const HIP_RESOURCE_VIEW_DESC* pResViewDesc) {
   HIP_INIT_API(hipTexObjectCreate, pTexObject, pResDesc, pTexDesc, pResViewDesc);
 
-  if ((pTexObject == nullptr) || (pResDesc == nullptr) || (pTexDesc == nullptr)) {
-    HIP_RETURN(hipErrorInvalidValue);
+  if (pTexObject == nullptr) {
+    HIP_RETURN(hipErrorNotInitialized);
+  }
+
+  if (pResDesc == nullptr || pTexDesc == nullptr) {
+    HIP_RETURN(hipErrorInvalidContext);
   }
 
   hipResourceDesc resDesc = hip::getResourceDesc(*pResDesc);
