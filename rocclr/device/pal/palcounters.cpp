@@ -691,6 +691,7 @@ void PerfCounter::convertInfo() {
     case Pal::GfxIpLevel::GfxIp10_1:
     case Pal::GfxIpLevel::GfxIp10_3:
     case Pal::GfxIpLevel::GfxIp11_0:
+    case Pal::GfxIpLevel::GfxIp11_5:
       if (info_.blockIndex_ < gfx10BlockIdPal.size()) {
         auto p = gfx10BlockIdPal[info_.blockIndex_];
         info_.blockIndex_ = std::get<0>(p);
