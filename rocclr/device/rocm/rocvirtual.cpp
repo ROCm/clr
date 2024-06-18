@@ -1497,6 +1497,9 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
       }
     }
   }
+  if (command.getCapturingState()) {
+    currCmd_ = &command;
+  }
 }
 
 // ================================================================================================
@@ -1514,6 +1517,7 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
   if (AMD_DIRECT_DISPATCH) {
     assert(retainExternalSignals_ || Barriers().IsExternalSignalListEmpty());
   }
+  currCmd_ = nullptr;
 }
 
 // ================================================================================================
@@ -3018,7 +3022,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-  bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
+  bool isGraphCapture = currCmd_ != nullptr && currCmd_->getCapturingState();
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
@@ -3238,7 +3242,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
       // Allocate buffer to hold kernel arguments
       if (isGraphCapture) {
-        argBuffer = vcmd->getKernArgOffset();
+        argBuffer = currCmd_->getKernArgOffset();
+        currCmd_->SetKernelName(gpuKernel.name());
       } else {
 
         argBuffer = reinterpret_cast<address>(
@@ -3324,18 +3329,18 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
     }
 
-    if (vcmd == nullptr) {
+    if (isGraphCapture) {
       // Dispatch the packet
       if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,
-                             (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
-                             GPU_FLUSH_ON_EXECUTION)) {
+                        (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
+                        GPU_FLUSH_ON_EXECUTION, currCmd_->getCapturingState(),
+                        currCmd_->getAqlPacket())) {
         return false;
       }
     } else {
       if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,
                              (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
-                             GPU_FLUSH_ON_EXECUTION, vcmd->getCapturingState(),
-                             vcmd->getAqlPacket())) {
+                             GPU_FLUSH_ON_EXECUTION)) {
         return false;
       }
     }
