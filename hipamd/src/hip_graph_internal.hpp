@@ -186,6 +186,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   unsigned int isEnabled_;
   uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
   std::string capturedKernelName_;
+  size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
+  size_t kernargSegmentByteSize_ = 256;   //!< Kernel arg segment byte size
+  size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
 
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -237,7 +240,19 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   uint8_t* GetAqlPacket() { return gpuPacket_; }
   void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
-
+  size_t GetKerArgSize() const { return alignedKernArgSize_; }
+  size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
+  size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
+    hipError_t status = CreateCommand(capture_stream);
+    for (auto& command : commands_) {
+      command->setCapturingState(true, GetAqlPacket(), kernArgOffset, &capturedKernelName_);
+      // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
+      // The packet is stored in gpuPacket_ and submitted during graph launch.
+      command->submit(*(command->queue())->vdev());
+      command->release();
+    }
+  }
   hip::Stream* GetQueue() const { return stream_; }
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
@@ -380,6 +395,20 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   unsigned int GetEnabled() const { return isEnabled_; }
   void SetEnabled(unsigned int isEnabled) { isEnabled_ = isEnabled; }
+  // Returns true if capture is enabled for the current node.
+  bool GraphCaptureEnabled() {
+    bool isGraphCapture = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      switch (GetType()) {
+        case hipGraphNodeTypeKernel:
+          isGraphCapture = true;
+          break;
+        default:
+          break;
+      }
+    }
+    return isGraphCapture;
+  }
 };
 
 struct Graph {
@@ -835,16 +864,9 @@ class GraphKernelNode : public GraphNode {
   hipKernelNodeAttrValue kernelAttr_;  //!< Kernel node attributes
   unsigned int kernelAttrInUse_;       //!< Kernel attributes in use
   ihipExtKernelEvents kernelEvents_;   //!< Events for Ext launch kernel
-  size_t alignedKernArgSize_;          //!< Aligned size required for kernel args
-  size_t kernargSegmentByteSize_;      //!< Kernel arg segment byte size
-  size_t kernargSegmentAlignment_;     //!< Kernel arg segment alignment
   bool hasHiddenHeap_;                 //!< Kernel has hidden heap(device side allocation)
 
-
  public:
-  size_t GetKerArgSize() const { return alignedKernArgSize_; }
-  size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
-  size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
   void EnqueueCommands(hipStream_t stream) override {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
@@ -887,21 +909,6 @@ class GraphKernelNode : public GraphNode {
     out << "\"";
     out << "];";
     }
-
-  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
-    hipError_t status = CreateCommand(capture_stream);
-    for (auto& command : commands_) {
-      reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
-          true, GetAqlPacket(), kernArgOffset);
-
-      // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
-      // The packet is stored in gpuPacket_ and submitted during graph launch.
-      command->submit(*(command->queue())->vdev());
-      // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
-      SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
-      command->release();
-    }
-  }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());

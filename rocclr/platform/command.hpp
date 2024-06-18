@@ -256,6 +256,10 @@ class Command : public Event {
   std::vector<void*> data_;
   const Event* waitingEvent_;  //!< Waiting event associated with the marker
 
+  bool capturing_ = false;           //!< Flag to enable/disable graph gpu packet capture
+  uint8_t* gpuPacket_ = nullptr;     //!< GPU packet to capture, when graph capturing is enabled
+  address kernArgOffset_ = nullptr;  //!< KernelArg buffer to used when graph capturing is enabled
+  std::string* capturedKernelName_ = nullptr;  //!< Kenrnel under capture
  protected:
   bool cpu_wait_ = false;         //!< If true, then the command was issued for CPU/GPU sync
 
@@ -292,6 +296,31 @@ class Command : public Event {
   }
 
  public:
+  //! Returns AQL buffer state
+  bool getCapturingState() const { return capturing_; }
+
+  //! Sets AQL capture state, aql packet to capture and where to copy kernArgs
+  void setCapturingState(bool state, uint8_t* packet, address kernArgOffset,
+                         std::string* capturedKernelName) {
+    capturing_ = state;
+    gpuPacket_ = packet;
+    kernArgOffset_ = kernArgOffset;
+    capturedKernelName_ = capturedKernelName;
+  }
+
+  //! Updates kernel name with the captured kernel name
+  void SetKernelName(const std::string& kernelName) {
+    if (capturedKernelName_ != nullptr) {
+      *capturedKernelName_ = kernelName;
+    }
+  }
+
+  //! returns the graph executable object command belongs to.
+  const uint8_t* getAqlPacket() const { return gpuPacket_; }
+
+  //! returns the graph executable object command belongs to.
+  const address getKernArgOffset() const { return kernArgOffset_; }
+
   //! Overload new/delete for fast commands allocation/destruction
   void* operator new(size_t size);
   void operator delete(void* ptr);
@@ -1075,32 +1104,12 @@ class NDRangeKernelCommand : public Command {
   uint32_t firstDevice_;    //!< Device index of the first device in the gridc
   uint32_t numWorkgroups_;  //!< Total number of workgroups in the current launch
 
-  bool capturing_ = false;           //!< Flag to enable/disable graph gpu packet capture
-  uint8_t* gpuPacket_ = nullptr;     //!< GPU packet to capture, when graph capturing is enabled
-  address kernArgOffset_ = nullptr;  //!< KernelArg buffer to used when graph capturing is enabled
-
  public:
   enum {
     CooperativeGroups = 0x01,
     CooperativeMultiDeviceGroups = 0x02,
     AnyOrderLaunch = 0x04,
   };
-
-  //! Returns AQL buffer state
-  bool getCapturingState() const { return capturing_; }
-
-  //! Sets AQL capture state, aql packet to capture and where to copy kernArgs
-  void setCapturingState(bool state, uint8_t* packet, address kernArgOffset) {
-    capturing_ = state;
-    gpuPacket_ = packet;
-    kernArgOffset_ = kernArgOffset;
-  }
-
-  //! returns the graph executable object command belongs to.
-  const uint8_t* getAqlPacket() const { return gpuPacket_; }
-
-  //! returns the graph executable object command belongs to.
-  const address getKernArgOffset() const { return kernArgOffset_; }
 
   //! Construct an ExecuteKernel command
   NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList, Kernel& kernel,

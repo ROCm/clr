@@ -575,5 +575,7 @@ class VirtualGPU : public device::VirtualDevice {
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
 
   using KernelArgImpl = device::Settings::KernelArgImpl;
+
+  amd::Command* currCmd_ = nullptr;  //!< Current command under capture
 };
 }

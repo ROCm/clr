@@ -362,9 +362,9 @@ void GetKernelArgSizeForGraph(std::vector<std::vector<Node>>& parallelLists,
   // GPU packet capture is enabled for kernel nodes. Calculate the kernel
   // arg size required for all graph kernel nodes to allocate
   for (const auto& list : parallelLists) {
-    for (auto& node : list) {
-      if (node->GetType() == hipGraphNodeTypeKernel) {
-        kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
+    for (hip::GraphNode* node : list) {
+      if (node->GraphCaptureEnabled()) {
+        kernArgSizeForGraph += node->GetKerArgSize();
       } else if (node->GetType() == hipGraphNodeTypeGraph) {
         auto& childParallelLists =
             reinterpret_cast<hip::ChildGraphNode*>(node)->GetParallelLists();
@@ -388,18 +388,19 @@ hipError_t AllocKernelArgForGraphNode(std::vector<hip::Node>& topoOrder,
         graphExec->SetHiddenHeap();
         initialized = true;
       }
-      auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
-      // From the kernel pool allocate the kern arg size required for the current kernel node.
+    }
+    if (node->GraphCaptureEnabled()) {
+      // From the kernel pool allocate the kern arg size required for the current node.
       address kernArgOffset = nullptr;
-      if (kernelNode->GetKernargSegmentByteSize()) {
+      if (node->GetKernargSegmentByteSize()) {
         kernArgOffset = graphExec->kernArgManager_->AllocKernArg(
-            kernelNode->GetKernargSegmentByteSize(), kernelNode->GetKernargSegmentAlignment());
+            node->GetKernargSegmentByteSize(), node->GetKernargSegmentAlignment());
         if (kernArgOffset == nullptr) {
           return hipErrorMemoryAllocation;
         }
       }
       // Form GPU packet capture for the kernel node.
-      kernelNode->CaptureAndFormPacket(capture_stream, kernArgOffset);
+      node->CaptureAndFormPacket(capture_stream, kernArgOffset);
     } else if (node->GetType() == hipGraphNodeTypeGraph) {
       auto childNode = reinterpret_cast<hip::ChildGraphNode*>(node);
       auto& childParallelLists = childNode->GetParallelLists();
@@ -551,7 +552,7 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
     accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr);
   }
   for (int i = 0; i < topoOrder.size(); i++) {
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder[i]->GetType() == hipGraphNodeTypeKernel) {
+    if (topoOrder[i]->GraphCaptureEnabled()) {
       if (topoOrder[i]->GetEnabled()) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(),
                                               topoOrder[i]->GetKernelName(),
