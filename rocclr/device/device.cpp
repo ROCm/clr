@@ -225,6 +225,7 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx1103",                "gfx1103",   true,  true,    11, 0,  3,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1150",                "gfx1150",   true,  true,    11, 5,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1151",                "gfx1151",   true,  true,    11, 5,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx1152",                "gfx1152",   true,  true,    11, 5,  2,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1200",                "gfx1200",   true,  true,    12, 0,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1201",                "gfx1201",   true,  true,    12, 0,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
   };
