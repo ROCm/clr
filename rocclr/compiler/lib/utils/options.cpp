@@ -1005,6 +1005,10 @@ processOption(int OptDescTableIx, Options& Opts, const std::string& Value,
 
         break;
 
+    case OID_FSanitize:
+        if (sval != NULL)
+            Opts.clangOptions.push_back("-fsanitize=" + std::string(sval));
+        break;
     default:
         break;
     }
