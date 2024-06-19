@@ -576,6 +576,11 @@ bool Device::BlitProgram::create(amd::Device* device, const std::string& extraKe
   if (device->settings().kernel_arg_opt_) {
     opt += " -Wb,-amdgpu-kernarg-preload-count=8 ";
   }
+#if defined(__clang__)
+#if __has_feature(address_sanitizer)
+  opt += " -fsanitize=address ";
+#endif
+#endif
   if ((retval = program_->build(devices, opt.c_str(), nullptr, nullptr, GPU_DUMP_BLIT_KERNELS))
       != CL_SUCCESS) {
     DevLogPrintfError("Build failed for Kernel: %s with error code %d\n",
