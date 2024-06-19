@@ -315,11 +315,13 @@ if(NOT BUILD_SHARED_LIBS)
 
    set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-devel" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
-   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, rocminfo-static-devel, comgr-static-devel")
+   string(REGEX REPLACE ",? ?rocm-llvm" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, rocm-llvm-static, rocminfo-static-devel, comgr-static-devel")
 
    set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-dev" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
-   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, rocminfo-static-dev, comgr-static-dev")
+   string(REGEX REPLACE ",? ?rocm-llvm" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, rocm-llvm-static, rocminfo-static-dev, comgr-static-dev")
 endif()
 include(CPack)
 #static package generation
