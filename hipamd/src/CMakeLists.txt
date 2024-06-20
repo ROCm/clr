@@ -188,7 +188,7 @@ endif()
 # Enable pre compiled header
 if(__HIP_ENABLE_PCH)
   find_package(LLVM REQUIRED CONFIG
-    PATHS
+    HINTS
       ${ROCM_PATH}/llvm)
   # find_package(LLVM) returns the lib/cmake/llvm location. We require the root.
   if(NOT DEFINED HIP_LLVM_ROOT)
