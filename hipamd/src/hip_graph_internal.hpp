@@ -546,8 +546,19 @@ struct Graph {
 };
 struct GraphKernelNode;
 struct GraphExec : public amd::ReferenceCountedObject {
+  struct KernelArgPoolGraph {
+    KernelArgPoolGraph(address base_addr, size_t size)
+     : kernarg_pool_addr_(base_addr),
+       kernarg_pool_size_(size),
+       kernarg_pool_offset_(0)
+       {}
+    address kernarg_pool_addr_;   //! Base address of the kernel arg pool
+    size_t kernarg_pool_size_;    //! Size of the pool
+    size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
+  };
+
   std::vector<std::vector<Node>> parallelLists_;
-  // Topological order of the graph doesn't include nodes embedded as part of the child graph
+  //! Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
   std::unordered_map<Node, std::vector<Node>> nodeWaitLists_;
   struct Graph* clonedGraph_;
@@ -560,16 +571,13 @@ struct GraphExec : public amd::ReferenceCountedObject {
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
-  // Graph Kernel arg vars
-  bool device_kernarg_pool_ = false;
-  address kernarg_pool_graph_ = nullptr;
-  uint32_t kernarg_pool_size_graph_ = 0;
-  uint32_t kernarg_pool_cur_graph_offset_ = 0;
-  std::vector<address> kernarg_graph_;
-  uint32_t kernarg_graph_cur_offset_ = 0;
-  uint32_t kernarg_graph_size_ = 128 * Ki;
+
+  bool device_kernarg_pool_ = false;                //! Indicate if kernel pool in device mem
+  std::vector<KernelArgPoolGraph> kernarg_graph_;   //! Vector of allocated kernarg pool
+  uint32_t kernarg_graph_cur_offset_ = 0;           //! Current offset in kernarg pool
+
   int instantiateDeviceId_ = -1;
-  bool hasHiddenHeap_ = false;                 //!< Kernel has hidden heap(device side allocation)
+  bool hasHiddenHeap_ = false;    //!< Hidden heap indicator for Kernel node
 
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
@@ -589,21 +597,17 @@ struct GraphExec : public amd::ReferenceCountedObject {
   }
 
   ~GraphExec() {
-    // new commands are launched for every launch they are destroyed as and when command is
-    // terminated after it complete execution
     for (auto stream : parallel_streams_) {
       if (stream != nullptr) {
         hip::Stream::Destroy(stream);
       }
     }
-    // Release the kernel arg memory.
-    auto device = g_devices[ihipGetDevice()]->devices()[0];
+
+    //! Release the kernel arg pools
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      if (kernarg_pool_size_graph_ != 0) {
-        device->hostFree(kernarg_pool_graph_, kernarg_pool_size_graph_);
-        for (auto& element : kernarg_graph_) {
-          device->hostFree(element, kernarg_graph_size_);
-        }
+      auto device = g_devices[ihipGetDevice()]->devices()[0];
+      for (auto& element : kernarg_graph_) {
+        device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
       }
     }
     amd::ScopedLock lock(graphExecSetLock_);
@@ -620,25 +624,29 @@ struct GraphExec : public amd::ReferenceCountedObject {
     }
     return clonedNode;
   }
-  // returns if graph has nodes that require hidden heap/not
+  //! Check if kernel node has hidden heap
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
-  // Graph has nodes that require hidden heap.
+  //! Graph has nodes that require hidden heap.
   void SetHiddenHeap() { hasHiddenHeap_ = true; }
 
   address allocKernArg(size_t size, size_t alignment) {
     assert(alignment != 0);
     address result = nullptr;
-    result = amd::alignUp(kernarg_pool_graph_ + kernarg_pool_cur_graph_offset_, alignment);
-    const size_t pool_new_usage = (result + size) - kernarg_pool_graph_;
-    if (pool_new_usage <= kernarg_pool_size_graph_) {
-      kernarg_pool_cur_graph_offset_ = pool_new_usage;
+    result = amd::alignUp(kernarg_graph_.back().kernarg_pool_addr_ +
+                          kernarg_graph_.back().kernarg_pool_offset_,
+                          alignment);
+    const size_t pool_new_usage = (result + size) - kernarg_graph_.back().kernarg_pool_addr_;
+    if (pool_new_usage <= kernarg_graph_.back().kernarg_pool_size_) {
+      kernarg_graph_.back().kernarg_pool_offset_ = pool_new_usage;
+    } else {
+      return nullptr;
     }
     return result;
   }
 
-  // check executable graphs validity
+  //! Check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
-
+  hipError_t AllocGraphKernargPool(size_t pool_size);
   std::vector<Node>& GetNodes() { return topoOrder_; }
 
   hip::Stream* GetAvailableStreams() {
