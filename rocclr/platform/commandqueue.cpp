@@ -60,10 +60,19 @@ bool HostQueue::terminate() {
   if (AMD_DIRECT_DISPATCH) {
     if (vdev() != nullptr) {
       // If the queue still has the last command, then wait and release it
-      if (lastEnqueueCommand_ != nullptr) {
-        lastEnqueueCommand_->awaitCompletion();
-        lastEnqueueCommand_->release();
-        lastEnqueueCommand_ = nullptr;
+      // We must be in protected way to get last command when calling
+      // awaitCompletion() where lastCommand will be released and possibly
+      // destroyed.
+      Command* lastCommand = getLastQueuedCommand(true);
+      if (lastCommand != nullptr) {
+        lastCommand->awaitCompletion();
+        // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
+        // after lastCommand->awaitCompletion() is called.
+        if (lastEnqueueCommand_ != nullptr) {
+          lastEnqueueCommand_ ->release(); // lastEnqueueCommand_ should be a marker
+          lastEnqueueCommand_ = nullptr;
+        }
+        lastCommand->release();
       }
     }
     thread_.Release();
