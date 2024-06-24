@@ -768,6 +768,20 @@ hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
                                         const hipGraphEdgeData* dependencyData,
                                         size_t numDependencies, hipStreamCaptureMode mode);
 hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr);
+hipError_t hipSetValidDevices(int* device_arr, int len);
+hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice, hipArray_t srcArray, size_t srcOffset,
+                         size_t ByteCount);
+hipError_t hipMemcpyDtoA(hipArray_t dstArray, size_t dstOffset, hipDeviceptr_t srcDevice,
+                         size_t ByteCount);
+hipError_t hipMemcpyAtoA(hipArray_t dstArray, size_t dstOffset, hipArray_t srcArray,
+                         size_t srcOffset, size_t ByteCount);
+hipError_t hipMemcpyAtoHAsync(void* dstHost, hipArray_t srcArray, size_t srcOffset,
+                              size_t ByteCount, hipStream_t stream);
+hipError_t hipMemcpyHtoAAsync(hipArray_t dstArray, size_t dstOffset, const void* srcHost,
+                              size_t ByteCount, hipStream_t stream);
+hipError_t hipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst,
+                                   hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc,
+                                   size_t width, size_t height, hipMemcpyKind kind);
 }  // namespace hip
 
 namespace hip {
@@ -1244,6 +1258,13 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetProcAddress_fn = hip::hipGetProcAddress;
   ptrDispatchTable->hipStreamBeginCaptureToGraph_fn = hip::hipStreamBeginCaptureToGraph;
   ptrDispatchTable->hipGetFuncBySymbol_fn = hip::hipGetFuncBySymbol;
+  ptrDispatchTable->hipSetValidDevices_fn = hip::hipSetValidDevices;
+  ptrDispatchTable->hipMemcpyAtoD_fn = hip::hipMemcpyAtoD;
+  ptrDispatchTable->hipMemcpyDtoA_fn = hip::hipMemcpyDtoA;
+  ptrDispatchTable->hipMemcpyAtoA_fn = hip::hipMemcpyAtoA;
+  ptrDispatchTable->hipMemcpyAtoHAsync_fn = hip::hipMemcpyAtoHAsync;
+  ptrDispatchTable->hipMemcpyHtoAAsync_fn = hip::hipMemcpyHtoAAsync;
+  ptrDispatchTable->hipMemcpy2DArrayToArray_fn = hip::hipMemcpy2DArrayToArray;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1790,22 +1811,29 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetCaptureInfo_v2_spt_fn, 425)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchHostFunc_spt_fn, 426)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetStreamDeviceId_fn, 427)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemsetNode_fn, 428)
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresWaitNode_fn, 429)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddExternalSemaphoresSignalNode_fn, 430)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeSetParams_fn, 431)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeSetParams_fn, 432)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresSignalNodeGetParams_fn, 433)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExternalSemaphoresWaitNodeGetParams_fn, 434)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresSignalNodeSetParams_fn, 435)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecExternalSemaphoresWaitNodeSetParams_fn, 436)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphAddNode_fn, 437)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438)
 HIP_ENFORCE_ABI(HipDispatchTable, hipExtGetLastError_fn, 439)
 HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetBorderColor_fn, 440)
 HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetArray_fn, 441)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
-HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCaptureToGraph_fn, 443);
-HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444);
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCaptureToGraph_fn, 443)
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetValidDevices_fn, 445)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoD_fn, 446)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoA_fn, 447)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoA_fn, 448)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoHAsync_fn, 449)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoAAsync_fn, 450)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 451)
 
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
@@ -1814,7 +1842,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444);
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 445)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 452)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 3,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

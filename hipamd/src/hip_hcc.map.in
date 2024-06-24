@@ -560,6 +560,13 @@ local:
 hip_6.2 {
 global:
     hipGetFuncBySymbol;
+    hipSetValidDevices;
+    hipMemcpyAtoD;
+    hipMemcpyDtoA;
+    hipMemcpyAtoA;
+    hipMemcpyAtoHAsync;
+    hipMemcpyHtoAAsync;
+    hipMemcpy2DArrayToArray;
 local:
     *;
 } hip_6.1;

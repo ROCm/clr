@@ -463,3 +463,10 @@ hipGraphAddNode
 hipGraphInstantiateWithParams
 hipStreamBeginCaptureToGraph
 hipGetFuncBySymbol
+hipSetValidDevices
+hipMemcpyAtoD
+hipMemcpyDtoA
+hipMemcpyAtoA
+hipMemcpyAtoHAsync
+hipMemcpyHtoAAsync
+hipMemcpy2DArrayToArray
