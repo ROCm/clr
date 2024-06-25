@@ -1800,7 +1800,7 @@ THE SOFTWARE.
              return tmp.h;
          }
     #endif // defined(__cplusplus)
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) || defined(_MSC_VER)
     #if !defined(__HIPCC_RTC__)
       #include "hip_fp16_gcc.h"
     #endif

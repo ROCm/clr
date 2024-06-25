@@ -52,7 +52,8 @@ hipError_t FillCommands(std::vector<std::vector<Node>>& parallelLists,
                         amd::Command*& graphEnd, hip::Stream* stream);
 void UpdateStream(std::vector<std::vector<Node>>& parallelLists, hip::Stream* stream,
                   GraphExec* ptr);
-
+hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::Stream* hip_stream,
+                                      hip::GraphExec* graphExec = nullptr);
 struct UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
   static std::unordered_set<UserObject*> ObjectSet_;
@@ -233,7 +234,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   // Return gpu packet address to update with actual packet under capture.
   uint8_t* GetAqlPacket() { return gpuPacket_; }
-  void SetKernelName(std::string kernelName) { capturedKernelName_ = kernelName; }
+  void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
 
   hip::Stream* GetQueue() const { return stream_; }
@@ -495,6 +496,7 @@ struct Graph {
     void* ptr;
     const auto& dev_info = g_devices[0]->devices()[0]->info();
 
+    size = amd::alignUp(size, dev_info.virtualMemAllocGranularity_);
     // Single virtual alloc would reserve for all devices.
     ptr = g_devices[0]->devices()[0]->virtualAlloc(startAddress, size,
             dev_info.virtualMemAllocGranularity_);
@@ -543,7 +545,7 @@ struct Graph {
   }
 };
 struct GraphKernelNode;
-struct GraphExec {
+struct GraphExec : public amd::ReferenceCountedObject {
   std::vector<std::vector<Node>> parallelLists_;
   // Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
@@ -572,7 +574,8 @@ struct GraphExec {
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
             std::unordered_map<Node, std::vector<Node>>& nodeWaitLists, struct Graph*& clonedGraph,
             std::unordered_map<Node, Node>& clonedNodes, uint64_t flags = 0)
-      : parallelLists_(lists),
+      : ReferenceCountedObject(),
+        parallelLists_(lists),
         topoOrder_(topoOrder),
         nodeWaitLists_(nodeWaitLists),
         clonedGraph_(clonedGraph),
@@ -641,13 +644,13 @@ struct GraphExec {
   }
 
   void ResetQueueIndex() { currentQueueIndex_ = 0; }
+  uint64_t GetFlags() const { return flags_; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
   hipError_t Run(hipStream_t stream);
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
-
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
@@ -659,18 +662,21 @@ struct ChildGraphNode : public GraphNode {
   amd::Command* lastEnqueuedCommand_;
   amd::Command* startCommand_;
   amd::Command* endCommand_;
+  bool graphCaptureStatus_;
  public:
   ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle") {
     childGraph_ = g->clone();
     lastEnqueuedCommand_ = nullptr;
     startCommand_ = nullptr;
     endCommand_ = nullptr;
+    graphCaptureStatus_ = false;
   }
 
   ~ChildGraphNode() { delete childGraph_; }
 
   ChildGraphNode(const ChildGraphNode& rhs) : GraphNode(rhs) {
     childGraph_ = rhs.childGraph_->clone();
+    graphCaptureStatus_ = rhs.graphCaptureStatus_;
   }
 
   GraphNode* clone() const override {
@@ -678,6 +684,19 @@ struct ChildGraphNode : public GraphNode {
   }
 
   Graph* GetChildGraph() override { return childGraph_; }
+
+  void SetGraphCaptureStatus(bool status) { graphCaptureStatus_ = status; }
+
+  bool GetGraphCaptureStatus() { return graphCaptureStatus_; }
+
+  std::vector<Node>& GetChildGraphNodeOrder() {
+    return childGraphNodeOrder_;
+  }
+
+  std::vector<std::vector<Node>>& GetParallelLists() {
+    return parallelLists_;
+  }
+
 
   hipError_t GetNumParallelStreams(size_t &num) override {
     if (false == TopologicalOrder(childGraphNodeOrder_)) {
@@ -713,8 +732,10 @@ struct ChildGraphNode : public GraphNode {
     }
     startCommand_ = nullptr;
     endCommand_ = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, childGraph_,
-                          startCommand_, endCommand_, stream);
+    if (!graphCaptureStatus_) {
+      status = FillCommands(parallelLists_, nodeWaitLists_, childGraphNodeOrder_, childGraph_,
+                            startCommand_, endCommand_, stream);
+    }
     return status;
   }
 
@@ -733,19 +754,24 @@ struct ChildGraphNode : public GraphNode {
     return childGraph_->TopologicalOrder(TopoOrder);
   }
   void EnqueueCommands(hipStream_t stream) override {
-    // enqueue child graph start command
-    if (startCommand_ != nullptr) {
-      startCommand_->enqueue();
-      startCommand_->release();
-    }
-    // enqueue nodes in child graph in level order
-    for (auto& node : childGraphNodeOrder_) {
-      node->EnqueueCommands(stream);
-    }
-    // enqueue child graph end command
-    if (endCommand_ != nullptr) {
-      endCommand_->enqueue();
-      endCommand_->release();
+    if (graphCaptureStatus_) {
+      hipError_t status =
+          EnqueueGraphWithSingleList(childGraphNodeOrder_, reinterpret_cast<hip::Stream*>(stream));
+    } else {
+      // enqueue child graph start command
+      if (startCommand_ != nullptr) {
+        startCommand_->enqueue();
+        startCommand_->release();
+      }
+      // enqueue nodes in child graph in level order
+      for (auto& node : childGraphNodeOrder_) {
+        node->EnqueueCommands(stream);
+      }
+      // enqueue child graph end command
+      if (endCommand_ != nullptr) {
+        endCommand_->enqueue();
+        endCommand_->release();
+      }
     }
   }
 
@@ -792,6 +818,29 @@ class GraphKernelNode : public GraphNode {
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
+  void EnqueueCommands(hipStream_t stream) override {
+    // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
+    // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
+    if (!isEnabled_) {
+      amd::Command::EventWaitList waitList;
+      if (!commands_.empty()) {
+        waitList = commands_[0]->eventWaitList();
+      }
+      hip::Stream* hip_stream = hip::getStream(stream);
+      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      command->enqueue();
+      command->release();
+      return;
+    }
+    for (auto& command : commands_) {
+      hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+      hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+      amd::Kernel* kernel = function->kernel();
+      amd::ScopedLock lock(function->dflock_);
+      command->enqueue();
+      command->release();
+    }
+  }
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
     out << "style";
@@ -830,7 +879,7 @@ class GraphKernelNode : public GraphNode {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     std::string label;
-    char buffer[500];
+    char buffer[4096];
     if (flag == hipGraphDebugDotFlagsVerbose) {
       sprintf(buffer,
               "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
@@ -1024,9 +1073,15 @@ class GraphKernelNode : public GraphNode {
   }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
-    hipFunction_t func = nullptr;
-    hipError_t status = validateKernelParams(&kernelParams_, &func,
-                                             stream ? hip::getDeviceID(stream->context()) : -1);
+    int devID = hip::getDeviceID(stream->context());
+    hipFunction_t func = getFunc(kernelParams_, devID);
+    if (!func) {
+      return hipErrorInvalidDeviceFunction;
+    }
+    hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+    amd::Kernel* kernel = function->kernel();
+    amd::ScopedLock lock(function->dflock_);
+    hipError_t status = validateKernelParams(&kernelParams_, func, devID);
     if (hipSuccess != status) {
       return status;
     }
@@ -1050,8 +1105,12 @@ class GraphKernelNode : public GraphNode {
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
+    hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+    if (!func) {
+      return hipErrorInvalidDeviceFunction;
+    }
     // updates kernel params
-    hipError_t status = validateKernelParams(params);
+    hipError_t status = validateKernelParams(params, func, ihipGetDevice());
     if (hipSuccess != status) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to validateKernelParams");
       return status;
@@ -1167,13 +1226,7 @@ class GraphKernelNode : public GraphNode {
   }
 
   static hipError_t validateKernelParams(const hipKernelNodeParams* pNodeParams,
-                                         hipFunction_t* ptrFunc = nullptr, int devId = -1) {
-    devId = devId == -1 ? ihipGetDevice() : devId;
-    hipFunction_t func = getFunc(*pNodeParams, devId);
-    if (!func) {
-      return hipErrorInvalidDeviceFunction;
-    }
-
+                                         hipFunction_t func, int devId) {
     size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
     size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
     size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
@@ -1186,8 +1239,6 @@ class GraphKernelNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-
-    if (ptrFunc) *ptrFunc = func;
     return hipSuccess;
   }
 };
@@ -1244,7 +1295,7 @@ class GraphMemcpyNode : public GraphNode {
     std::memcpy(params, &copyParams_, sizeof(hipMemcpy3DParms));
   }
 
-  virtual hipMemcpyKind GetMemcpyKind() const { return hipMemcpyDefault; };
+  virtual hipMemcpyKind GetMemcpyKind() const { return copyParams_.kind; };
 
   hipError_t SetParams(const hipMemcpy3DParms* params) {
     hipError_t status = ValidateParams(params);
@@ -1314,7 +1365,7 @@ class GraphMemcpyNode : public GraphNode {
     }
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(
           buffer,
           "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
@@ -1492,7 +1543,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(
           buffer,
           "{\n%s\n| {{ID | node handle} | {%u | %p}}\n| {kind | %s}\n| {{srcPtr | dstPtr} | "
@@ -1741,7 +1792,7 @@ class GraphMemsetNode : public GraphNode {
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     std::string label;
     if (flag == hipGraphDebugDotFlagsMemsetNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
-      char buffer[500];
+      char buffer[4096];
       sprintf(buffer,
               "{\n%s\n| {{ID | node handle | dptr | pitch | value | elementSize | width | "
               "height | depth} | {%u | %p | %p | %zu | %u | %u | %zu | %zu | %zu}}}",

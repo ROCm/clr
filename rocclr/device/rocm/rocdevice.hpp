@@ -55,7 +55,7 @@
  */
 
 //! HSA Device Implementation
-namespace roc {
+namespace amd::roc {
 
 /**
  * @brief List of environment variables that could be used to
@@ -82,6 +82,7 @@ public:
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
   amd::Monitor  lock_;    //!< Signal lock for update
+  bool isPacketDispatch_; //!< True if the packet associated with the signal is dispatch
 
   typedef union {
     struct {
@@ -98,6 +99,7 @@ public:
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
     , lock_("Signal Ops Lock", true)
+    , isPacketDispatch_(false)
     {
       signal_.handle = 0;
       flags_.done_ = true;
@@ -285,7 +287,11 @@ class NullDevice : public amd::Device {
     return true;
   }
 
-  bool IsHwEventReady(const amd::Event& event, bool wait = false) const override { return false; }
+  bool IsHwEventReady(const amd::Event& event, bool wait = false,
+                      uint32_t hip_event_flags = 0) const override {
+    return false;
+  }
+
   bool IsHwEventReadyForcedWait(const amd::Event& event) const override { return false; }
   void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const override{};
   void ReleaseGlobalSignal(void* signal) const override {}
@@ -453,7 +459,8 @@ class Device : public NullDevice {
   bool allowPeerAccess(device::Memory* memory) const;
   void deviceVmemRelease(uint64_t mem_handle) const;
   uint64_t deviceVmemAlloc(size_t size, uint64_t flags) const;
-  void* deviceLocalAlloc(size_t size, bool atomics = false, bool pseudo_fine_grain=false) const;
+  void* deviceLocalAlloc(size_t size, bool atomics = false, bool pseudo_fine_grain=false,
+                         bool contiguous = false) const;
 
   void memFree(void* ptr, size_t size) const;
 
@@ -480,7 +487,8 @@ class Device : public NullDevice {
   virtual bool SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeInput,
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
-  virtual bool IsHwEventReady(const amd::Event& event, bool wait = false) const;
+  virtual bool IsHwEventReady(const amd::Event& event, bool wait = false,
+                              uint32_t hip_event_flags = 0) const;
   virtual bool IsHwEventReadyForcedWait(const amd::Event& event) const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
   virtual void ReleaseGlobalSignal(void* signal) const;
@@ -618,7 +626,7 @@ class Device : public NullDevice {
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
   hsa_agent_t bkendDevice_;
   uint32_t pciDeviceId_;
-  hsa_agent_t* p2p_agents_list_;
+  hsa_agent_t* p2p_agents_list_ = nullptr;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;
   hsa_amd_memory_pool_t system_segment_;
@@ -680,7 +688,7 @@ class Device : public NullDevice {
 #endif
 #endif
 };                                // class roc::Device
-}  // namespace roc
+}  // namespace amd::roc
 
 /**
  * @}

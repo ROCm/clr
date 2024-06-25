@@ -26,7 +26,7 @@
 #include "rocsettings.hpp"
 #include "device/rocm/rocglinterop.hpp"
 
-namespace roc {
+namespace amd::roc {
 
 // ================================================================================================
 Settings::Settings() {
@@ -94,7 +94,6 @@ Settings::Settings() {
   // Use coarse grain system memory for kernel arguments by default (to keep GPU cache)
   fgs_kernel_arg_ = false;
   barrier_value_packet_ = false;
-
   kernel_arg_impl_ = KernelArgImpl::HostKernelArgs;
   gwsInitSupported_ = true;
   limit_blit_wg_ = 16;
@@ -102,7 +101,7 @@ Settings::Settings() {
 
 // ================================================================================================
 bool Settings::create(bool fullProfile, const amd::Isa& isa,
-                      bool enableXNACK, bool coop_groups, 
+                      bool enableXNACK, bool coop_groups,
                       bool isXgmi, bool hasValidHDPFlush) {
 
   uint32_t gfxipMajor = isa.versionMajor();
@@ -247,11 +246,13 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const uint32_t gfxipMinor = isa.versionMinor();
   const uint32_t gfxStepping = isa.versionStepping();
 
-  const bool isMI300 = gfxipMajor == 9 && gfxipMinor == 4 &&
+  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor == 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
-  const bool isMI200 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
-  const bool isMI100 = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 8);
-  const bool isNavi = (gfxipMajor >= 10);
+  const bool isGfx90a = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
+  const bool isPreGfx908 =
+      (gfxipMajor < 9) || ((gfxipMajor == 9) && (gfxipMinor == 0) && (gfxStepping < 8));
+  const bool isGfx101x =
+      (gfxipMajor == 10) && ((gfxipMinor == 0) || (gfxipMinor == 1));
 
   auto kernelArgImpl = KernelArgImpl::HostKernelArgs;
 
@@ -259,19 +260,20 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     // The XGMI-connected path does not require the manual memory ordering
     // workarounds that the PCIe connected path requires
     kernelArgImpl = KernelArgImpl::DeviceKernelArgs;
-  } else if (isMI300 || isMI200) {
-    // Implement the kernel argument readback workaround. It works only on
-    // MI200, MI300 because of the strict guarantee on ordering of
-    // stores in those ASICS
+  } else if (hasValidHDPFlush) {
+    // If the HDP flush register is valid implement the HDP flush to MMIO
+    // workaround.
+    if (!(isPreGfx908 || isGfx101x)) {
+      kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
+    }
+  } else if (isGfx94x || isGfx90a) {
+    // Implement the kernel argument readback workaround
+    // (write all args -> sfence -> write last byte -> mfence -> read last byte)
     kernelArgImpl = KernelArgImpl::DeviceKernelArgsReadback;
-  } else if (hasValidHDPFlush && (isNavi || isMI100)) {
-    // For dev >= gfx10 and MI100 ASICS implement the HDP flush to MMIO if the
-    // HDP flush register is valid
-    kernelArgImpl = KernelArgImpl::DeviceKernelArgsHDP;
   }
 
-  // Enable device kernel args for MI300* for now
-  if (isMI300) {
+  // Enable device kernel args for gfx94x for now
+  if (isGfx94x) {
     kernel_arg_impl_ = kernelArgImpl;
     kernel_arg_opt_ = true;
   }
@@ -280,6 +282,6 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
     kernel_arg_impl_ = kernelArgImpl & (HIP_FORCE_DEV_KERNARG ? 0xF : 0x0);
   }
 }
-}  // namespace roc
+}  // namespace amd::roc
 
 #endif  // WITHOUT_HSA_BACKEND

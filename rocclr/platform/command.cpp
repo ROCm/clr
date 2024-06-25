@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -17,14 +17,6 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
-
-/*!
- * \file command.cpp
- * \brief  Definitions for Event, Command and HostQueue objects.
- *
- * \author Laurent Morichetti
- * \date   October 2008
- */
 
 #include "platform/activity.hpp"
 #include "platform/command.hpp"
@@ -158,8 +150,8 @@ bool Event::setStatus(int32_t status, uint64_t timeStamp) {
       releaseResources();
     }
 
-    if (profilingInfo().enabled_ && activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-      activity_prof::ReportActivity(command());
+    if (profilingInfo().enabled_ && amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+      amd::activity_prof::ReportActivity(command());
     }
 
     // Broadcast all the waiters.
@@ -311,7 +303,7 @@ const Event::EventWaitList Event::nullWaitList(0);
 Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& eventWaitList,
                  uint32_t commandWaitBits, const Event* waitingEvent)
     : Event(queue,
-            activity_prof::IsEnabled(activity_prof::OperationId(type)) ||
+            amd::activity_prof::IsEnabled(amd::activity_prof::OperationId(type)) ||
                 queue.properties().test(CL_QUEUE_PROFILING_ENABLE) ||
                 Agent::shouldPostEventEvents()),
       queue_(&queue),
@@ -324,6 +316,18 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
   for (const auto &event: eventWaitList) {
     event->retain();
   }
+}
+
+SysmemPool<ComputeCommand> Command::command_pool_;
+
+// ================================================================================================
+void Command::operator delete(void* ptr) {
+  command_pool_.Free(ptr);
+}
+
+// ================================================================================================
+void* Command::operator new(size_t size) {
+  return command_pool_.Alloc(size);
 }
 
 // ================================================================================================
@@ -421,6 +425,7 @@ NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList
   if (forceProfiling) {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
+    profilingInfo_.correlation_id_ = activity_prof::correlation_id;
     profilingInfo_.marker_ts_ = true;
   }
   kernel_.retain();
@@ -636,6 +641,27 @@ bool MigrateMemObjectsCommand::validateMemory() {
     }
   }
   return true;
+}
+
+// =================================================================================================
+int32_t NDRangeKernelCommand::AllocCaptureSetValidate(void** kernelParams, address kernArgs) {
+  const amd::Device& device = queue()->device();
+   // Validate the kernel before submission
+  if (!queue()->device().validateKernel(kernel(), queue()->vdev(), cooperativeGroups())) {
+    return CL_OUT_OF_RESOURCES;
+  }
+
+  parameters_ = kernel().parameters().alloc(*queue()->vdev());
+  if (parameters_ == nullptr) {
+    LogError("Cannot allocate memory for parameters_");
+    return CL_OUT_OF_RESOURCES;
+  }
+
+  if (!kernel().parameters().captureAndSet(kernelParams, kernArgs, parameters_)) {
+    LogError("Cannot capture and set the kernel parameters");
+    return CL_OUT_OF_RESOURCES;
+  }
+  return CL_SUCCESS;
 }
 
 int32_t NDRangeKernelCommand::captureAndValidate() {

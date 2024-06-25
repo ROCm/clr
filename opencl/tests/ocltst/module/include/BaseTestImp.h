@@ -119,12 +119,12 @@ class BaseTestImp : public OCLTest {
 
   virtual void open(unsigned int test, char* units, double& conversion,
                     unsigned int deviceId, unsigned int platformIndex) {
-    return open(test, "Tahiti", platformIndex);
+    return open(test, "", platformIndex);
   }
 
   virtual void open(unsigned int test, char* units, double& conversion,
                     unsigned int deviceId) {
-    return open(test, "Tahiti", 0);
+    return open(test, "", 0);
   }
 
   virtual void run(void) = 0;

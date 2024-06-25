@@ -38,7 +38,7 @@
 #include "platform/interop_gl.hpp"
 #include "platform/external_memory.hpp"
 
-namespace roc {
+namespace amd::roc {
 
 // ======================================= roc::Memory ============================================
 Memory::Memory(const roc::Device& dev, amd::Memory& owner)
@@ -621,7 +621,7 @@ Buffer::~Buffer() {
 
     if (owner()->ipcShared()) {
       // Detach the memory from HSA
-      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getHostMem());
+      auto hsa_status = hsa_amd_ipc_memory_detach(owner()->getSvmPtr());
       if (hsa_status != HSA_STATUS_SUCCESS) {
         LogPrintfError("HSA failed to detach memory with status: %d \n", hsa_status);
       }
@@ -789,7 +789,6 @@ bool Buffer::create(bool alloc_local) {
     }
 
     owner()->setSvmPtr(reinterpret_cast<void*>(owner()->getUserData().hsa_handle));
-    amd::MemObjMap::AddMemObj(owner()->getSvmPtr(), owner());
 
     return true;
   }
@@ -857,7 +856,8 @@ bool Buffer::create(bool alloc_local) {
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
         deviceMemory_ = dev().deviceLocalAlloc(size(), (memFlags & CL_MEM_SVM_ATOMICS) != 0,
-                                               (memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0);
+                                               (memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0,
+                                               (memFlags & ROCCLR_MEM_HSA_CONTIGUOUS) != 0);
       }
       owner()->setSvmPtr(deviceMemory_);
     } else {

@@ -93,7 +93,7 @@ static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = nullptr;
 bool gGlFuncInit = false;
 #endif
 
-namespace pal {
+namespace amd::pal {
 
 //
 /// GSL Surface Formats as per defined in cmSurfFmtEnum enum in
@@ -961,4 +961,4 @@ bool Device::resGLFree(void* GLplatformContext, void* mbResHandle, uint type) co
 #endif
 }
 
-}  // namespace pal
+}  // namespace amd::pal

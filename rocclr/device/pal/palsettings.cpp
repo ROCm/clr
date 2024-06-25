@@ -31,7 +31,7 @@
 #include "VersionHelpers.h"
 #endif
 
-namespace pal {
+namespace amd::pal {
 
 Settings::Settings() {
   // Initialize the GPU device default settings
@@ -177,6 +177,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi33:
     case Pal::AsicRevision::Navi32:
     case Pal::AsicRevision::Navi31:
+      gwsInitSupported_ = false;
     // Fall through for Navi2x ...
     case Pal::AsicRevision::Phoenix1:
     case Pal::AsicRevision::Phoenix2:
@@ -203,11 +204,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi10_A0:
       gfx10Plus_ = true;
       useLightning_ = GPU_ENABLE_LC;
-      // Force luxmark to use HSAIL for gfx10+ if GPU_ENABLE_LC isn't set in ENV
-      if (flagIsDefault(GPU_ENABLE_LC) &&
-          (appName == "luxmark.exe" || appName == "luxmark")) {
-        useLightning_ = false;
-      }
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
         enableWave32Mode_ = true;
@@ -364,9 +360,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   // Report FP_FAST_FMA define if double precision HW
   reportFMA_ = true;
-  // FMA is 1/4 speed on Pitcairn, Cape Verde, Devastator and Scrapper
-  // Bonaire, Kalindi, Spectre and Spooky so disable
-  // FP_FMA_FMAF for those parts in switch below
   reportFMAF_ = true;
 
   if (doublePrecision_) {
@@ -510,4 +503,4 @@ void Settings::override() {
   }
 }
 
-}  // namespace pal
+}  // namespace amd::pal

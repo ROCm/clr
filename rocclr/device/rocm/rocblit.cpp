@@ -27,7 +27,7 @@
 #include "utils/debug.hpp"
 #include <algorithm>
 
-namespace roc {
+namespace amd::roc {
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
@@ -72,8 +72,7 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
-       !setup_.disableHostCopyBuffer_)) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
     gpu().Barriers().WaitCurrent();
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
@@ -166,12 +165,10 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
-       !setup_.disableHostCopyBuffer_)) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
     gpu().Barriers().WaitCurrent();
-    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size,
-                                           entire, copyMetadata);
+    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire, copyMetadata);
   } else {
     Memory& xferBuf = dev().xferRead().acquire();
     address staging = xferBuf.getDeviceMemory();
@@ -239,8 +236,8 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
                                  const amd::Coord3D& origin, const amd::Coord3D& size,
                                  bool entire, amd::CopyMetadata copyMetadata) const {
   // Use host copy if memory has direct access
-  if ((setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
@@ -336,8 +333,8 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
   gpu().releaseGpuMemoryFence();
 
   // Use host copy if memory has direct access
-  if ((setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
+  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
                                             copyMetadata);
   } else {
@@ -393,9 +390,8 @@ bool DmaBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstMe
                                 const amd::Coord3D& size, bool entire,
                                 amd::CopyMetadata copyMetadata) const {
   if (setup_.disableCopyBuffer_ ||
-      (!setup_.disableHostCopyBuffer_ && srcMemory.isHostMemDirectAccess() &&
-      !srcMemory.isCpuUncached() && (dev().agent_profile() != HSA_PROFILE_FULL) &&
-      dstMemory.isHostMemDirectAccess())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+      (dev().agent_profile() != HSA_PROFILE_FULL) && dstMemory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBuffer(srcMemory, dstMemory, srcOrigin, dstOrigin, size, false,
@@ -413,8 +409,8 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
                                     const amd::Coord3D& size, bool entire,
                                     amd::CopyMetadata copyMetadata) const {
   if (setup_.disableCopyBufferRect_ ||
-      (!setup_.disableHostCopyBuffer_ && srcMemory.isHostMemDirectAccess() &&
-      !srcMemory.isCpuUncached() && dstMemory.isHostMemDirectAccess())) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
+       dstMemory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     return HostBlitManager::copyBufferRect(srcMemory, dstMemory, srcRect, dstRect, size, entire,
@@ -1843,7 +1839,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ || (srcMemory.isHostMemDirectAccess() &&
-      !srcMemory.isCpuUncached() && !setup_.disableHostCopyBuffer_)) {
+      !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
@@ -1895,8 +1891,7 @@ bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
-      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached() &&
-       !setup_.disableHostCopyBuffer_)) {
+      (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire,
@@ -1946,8 +1941,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
   bool result = false;
 
   // Use host copy if memory has direct access
-  if ((setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
+  if (setup_.disableWriteBuffer_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBuffer(srcHost, dstMemory, origin, size, entire, copyMetadata);
@@ -1998,8 +1993,8 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
   bool result = false;
 
   // Use host copy if memory has direct access
-  if ((setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
-      gpuMem(dstMemory).IsPersistentDirectMap()) && !setup_.disableHostCopyBuffer_) {
+  if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
+      gpuMem(dstMemory).IsPersistentDirectMap()) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
@@ -2080,8 +2075,7 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
   bool result = false;
 
   // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess() &&
-      !setup_.disableHostCopyBuffer_)) {
+  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);
@@ -2161,8 +2155,7 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
   bool result = false;
 
     // Use host fill if memory has direct access
-  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess() &&
-      !setup_.disableHostCopyBuffer_)) {
+  if (setup_.disableFillBuffer_ || (!forceBlit && memory.isHostMemDirectAccess())) {
     // Stall GPU before CPU access
     gpu().releaseGpuMemoryFence();
     result = HostBlitManager::fillBuffer(memory, pattern, patternSize, size, origin, size, entire);
@@ -2819,4 +2812,4 @@ bool KernelBlitManager::RunGwsInit(
   return result;
 }
 
-}  // namespace roc
+}  // namespace amd::roc

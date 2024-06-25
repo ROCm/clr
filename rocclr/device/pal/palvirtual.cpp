@@ -50,7 +50,7 @@
 #include "platform/interop_d3d11.hpp"
 #endif  // _WIN32
 
-namespace pal {
+namespace amd::pal {
 
 uint32_t VirtualGPU::Queue::AllocedQueues(const VirtualGPU& gpu, Pal::EngineType type) {
   uint32_t allocedQueues = 0;
@@ -1155,7 +1155,7 @@ VirtualGPU::~VirtualGPU() {
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
             "deleting hostcall buffer %p for virtual queue %p",
             hostcallBuffer_, this);
-    disableHostcalls(hostcallBuffer_);
+    amd::disableHostcalls(hostcallBuffer_);
     dev().svmFree(hostcallBuffer_);
   }
 }
@@ -1569,7 +1569,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& vcmd) {
     }
 
     if (nullptr == srcMem && nullptr == dstMem) {  // both not in svm space
-      amd::Os::fastMemcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
+      std::memcpy(vcmd.dst(), vcmd.src(), vcmd.srcSize());
       result = true;
     } else if (nullptr == srcMem && nullptr != dstMem) {  // src not in svm space
       Memory* memory = dev().getGpuMemory(dstMem);
@@ -2230,11 +2230,15 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
       amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
       vaddr_mem_obj->getUserData().phys_mem_obj = vcmd.memory();
+      vcmd.memory()->getUserData().vaddr_mem_obj = vaddr_mem_obj;
     } else {
       // assert the vaddr_mem_obj is mapped and needs to be removed
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      if (vaddr_mem_obj->getUserData().phys_mem_obj != nullptr) {
+        vaddr_mem_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
+        vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      }
     }
   }
   profilingEnd(vcmd);
@@ -2773,11 +2777,17 @@ void VirtualGPU::submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd) {
   if (cmd.semaphoreCmd() ==
       amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE) {
     flushDMA(MainEngine);
-    queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
-                                                       cmd.fence());
+    if (Pal::Result::Success !=
+        queues_[MainEngine]->iQueue_->SignalQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                           cmd.fence())) {
+      LogError("Failed to signal external semaphore");
+    }
   } else {
-    queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
-                                                       cmd.fence());
+    if (Pal::Result::Success !=
+        queues_[MainEngine]->iQueue_->WaitQueueSemaphore(const_cast<Pal::IQueueSemaphore*>(sem),
+                                                         cmd.fence())) {
+      LogError("Failed to wait on external semaphore");
+    }
   }
 }
 
@@ -3765,8 +3775,8 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   auto wavesPerCu = dev().info().maxThreadsPerCU_ / dev().info().wavefrontWidth_;
   auto numPackets = dev().info().maxComputeUnits_ * wavesPerCu;
 
-  auto size = getHostcallBufferSize(numPackets);
-  auto align = getHostcallBufferAlignment();
+  auto size = amd::getHostcallBufferSize(numPackets);
+  auto align = amd::getHostcallBufferAlignment();
 
   hostcallBuffer_ = dev().svmAlloc(dev().context(), size, align,
                                    CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS, nullptr);
@@ -3784,7 +3794,7 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
           align,
           this);
 
-  if (!enableHostcalls(dev(), hostcallBuffer_, numPackets)) {
+  if (!amd::enableHostcalls(dev(), hostcallBuffer_, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE,
             "Failed to register hostcall buffer %p with listener",
             hostcallBuffer_);
@@ -3793,4 +3803,4 @@ void* VirtualGPU::getOrCreateHostcallBuffer() {
   return hostcallBuffer_;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

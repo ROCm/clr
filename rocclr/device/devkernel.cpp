@@ -38,7 +38,7 @@
 #include "hsailctx.hpp"
 #endif
 
-namespace device {
+namespace amd::device {
 
 // ================================================================================================
 static constexpr clk_value_type_t ClkValueMapType[6][6] = {
@@ -617,6 +617,7 @@ Kernel::Kernel(const amd::Device& dev, const std::string& name, const Program& p
   workGroupInfo_.compileSizeHint_[1] = 0;
   workGroupInfo_.compileSizeHint_[2] = 0;
   workGroupInfo_.compileVecTypeHint_ = "";
+  workGroupInfo_.isWGPMode_ = false;
   workGroupInfo_.uniformWorkGroupSize_ = false;
   workGroupInfo_.wavesPerSimdHint_ = 0;
   workGroupInfo_.constMemSize_ = 0;
@@ -1643,4 +1644,4 @@ void Kernel::InitPrintf(const aclPrintfFmt* aclPrintf) {
   }
 }
 #endif // defined(WITH_COMPILER_LIB)
-}
+} // namespace amd::device

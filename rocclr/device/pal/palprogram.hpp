@@ -36,8 +36,8 @@ class Context;
 }  // namespace hsa
 }  // namespace amd
 
-//! \namespace pal PAL Device Implementation
-namespace pal {
+//! \namespace amd::pal PAL Device Implementation
+namespace amd::pal {
 
 /*! \addtogroup pal PAL Device Implementation
  *  @{
@@ -79,7 +79,7 @@ class Segment : public amd::HeapObject {
   address cpuMem_;     //!< CPU memory for segment without GPU direct access (backing store)
 };
 
-class PALHSALoaderContext final : public Context {
+class PALHSALoaderContext final : public hsa::loader::Context {
  public:
   PALHSALoaderContext(HSAILProgram* program) : program_(program) {}
 
@@ -282,5 +282,5 @@ class LightningProgram : public HSAILProgram {
   virtual bool createBinary(amd::option::Options* options) override;
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

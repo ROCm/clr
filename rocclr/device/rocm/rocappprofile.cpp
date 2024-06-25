@@ -28,7 +28,7 @@
 #include <algorithm>
 
 amd::AppProfile* rocCreateAppProfile() {
-  amd::AppProfile* appProfile = new roc::AppProfile;
+  amd::AppProfile* appProfile = new amd::roc::AppProfile;
 
   if ((appProfile == nullptr) || !appProfile->init()) {
     DevLogPrintfError("App Profile init failed, appProfile: 0x%x \n",
@@ -39,7 +39,7 @@ amd::AppProfile* rocCreateAppProfile() {
   return appProfile;
 }
 
-namespace roc {
+namespace amd::roc {
 
 bool AppProfile::ParseApplicationProfile() {
   std::string appName("Explorer");

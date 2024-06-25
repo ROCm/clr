@@ -953,7 +953,45 @@ typedef hipError_t (*t_hipStreamBeginCaptureToGraph)(hipStream_t stream, hipGrap
                                                      size_t numDependencies,
                                                      hipStreamCaptureMode mode);
 typedef hipError_t (*t_hipGetFuncBySymbol)(hipFunction_t* functionPtr, const void* symbolPtr);
+typedef hipError_t (*t_hipDrvGraphAddMemFreeNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                  const hipGraphNode_t* dependencies, size_t numDependencies,
+                                  hipDeviceptr_t dptr);
 
+typedef hipError_t (*t_hipDrvGraphExecMemcpyNodeSetParams)(hipGraphExec_t hGraphExec,
+                                   hipGraphNode_t hNode, const HIP_MEMCPY3D* copyParams,
+                                   hipCtx_t ctx);
+
+typedef hipError_t (*t_hipDrvGraphExecMemsetNodeSetParams)(hipGraphExec_t hGraphExec,
+                                   hipGraphNode_t hNode, const HIP_MEMSET_NODE_PARAMS* memsetParams,
+                                   hipCtx_t ctx);
+typedef hipError_t (*t_hipSetValidDevices)(int* device_arr, int len);
+typedef hipError_t (*t_hipMemcpyAtoD)(hipDeviceptr_t dstDevice, hipArray_t srcArray,
+                                      size_t srcOffset, size_t ByteCount);
+typedef hipError_t (*t_hipMemcpyDtoA)(hipArray_t dstArray, size_t dstOffset,
+                                      hipDeviceptr_t srcDevice, size_t ByteCount);
+typedef hipError_t (*t_hipMemcpyAtoA)(hipArray_t dstArray, size_t dstOffset, hipArray_t srcArray,
+                                      size_t srcOffset, size_t ByteCount);
+typedef hipError_t (*t_hipMemcpyAtoHAsync)(void* dstHost, hipArray_t srcArray, size_t srcOffset,
+                                           size_t ByteCount, hipStream_t stream);
+typedef hipError_t (*t_hipMemcpyHtoAAsync)(hipArray_t dstArray, size_t dstOffset,
+                                           const void* srcHost, size_t ByteCount,
+                                           hipStream_t stream);
+typedef hipError_t (*t_hipMemcpy2DArrayToArray)(hipArray_t dst, size_t wOffsetDst,
+                                                size_t hOffsetDst, hipArray_const_t src,
+                                                size_t wOffsetSrc, size_t hOffsetSrc, size_t width,
+                                                size_t height, hipMemcpyKind kind);
+
+
+typedef hipError_t (*t_hipGraphExecGetFlags)(hipGraphExec_t graphExec, unsigned long long* flags);
+typedef hipError_t (*t_hipGraphNodeSetParams)(hipGraphNode_t node, hipGraphNodeParams *nodeParams);
+typedef hipError_t (*t_hipGraphExecNodeSetParams)(hipGraphExec_t graphExec, hipGraphNode_t node,
+                                    hipGraphNodeParams* nodeParams);
+
+
+
+typedef hipError_t (*t_hipExternalMemoryGetMappedMipmappedArray)(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   size_t size;
@@ -1420,4 +1458,18 @@ struct HipDispatchTable {
   t_hipGetProcAddress hipGetProcAddress_fn;
   t_hipStreamBeginCaptureToGraph hipStreamBeginCaptureToGraph_fn;
   t_hipGetFuncBySymbol hipGetFuncBySymbol_fn;
+  t_hipDrvGraphAddMemFreeNode hipDrvGraphAddMemFreeNode_fn;
+  t_hipDrvGraphExecMemcpyNodeSetParams hipDrvGraphExecMemcpyNodeSetParams_fn;
+  t_hipDrvGraphExecMemsetNodeSetParams hipDrvGraphExecMemsetNodeSetParams_fn;
+  t_hipSetValidDevices hipSetValidDevices_fn;
+  t_hipMemcpyAtoD hipMemcpyAtoD_fn;
+  t_hipMemcpyDtoA hipMemcpyDtoA_fn;
+  t_hipMemcpyAtoA hipMemcpyAtoA_fn;
+  t_hipMemcpyAtoHAsync hipMemcpyAtoHAsync_fn;
+  t_hipMemcpyHtoAAsync hipMemcpyHtoAAsync_fn;
+  t_hipMemcpy2DArrayToArray hipMemcpy2DArrayToArray_fn;
+  t_hipGraphExecGetFlags hipGraphExecGetFlags_fn;
+  t_hipGraphNodeSetParams hipGraphNodeSetParams_fn;
+  t_hipGraphExecNodeSetParams hipGraphExecNodeSetParams_fn;
+  t_hipExternalMemoryGetMappedMipmappedArray hipExternalMemoryGetMappedMipmappedArray_fn;
 };

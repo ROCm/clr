@@ -63,15 +63,39 @@ class CodeObject {
 
   static uint64_t ElfSize(const void* emi);
 
-  static bool IsClangOffloadMagicBundle(const void* data);
+  static bool IsClangOffloadMagicBundle(const void* data, bool& isCompressed);
 
-protected:
+  // Return size of fat bin
+  static size_t getFatbinSize(const void* data, const bool isCompressed = false);
+
+  /**
+     *  @brief Extract code object from fatbin using comgr unbundling action
+     *
+     *  @param[in]  data the bundle data(fatbin or loaded module data). It can be in uncompressed,
+     *              compressed and even SPIR-V(to be supported later) mode.
+     *  @param[in]  size the size of the bundle data
+     *  @param[in]  agent_triple_target_ids isa names of concerned devices
+     *  @param[out] code_objs the buffer address and size pairs of extracted code objects of
+     *              concerned devices
+     *  Returned error code
+     *
+     *  @return #hipSuccess, #hipErrorInvalidKernelFile, #hipErrorInvalidValue,
+     *          #hipErrorNoBinaryForGpu
+     *
+     *  @see FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
+     *                                             const std::vector<hip::Device*>& devices)
+     */
+  static hipError_t extractCodeObjectFromFatBinaryUsingComgr(
+      const void* data, size_t size, const std::vector<std::string>& devices,
+      std::vector<std::pair<const void*, size_t>>& code_objs);
+
+ protected:
   //Given an ptr to image or file, extracts to code object
   //for corresponding devices
   static hipError_t extractCodeObjectFromFatBinary(const void*,
                     const std::vector<std::string>&,
                     std::vector<std::pair<const void*, size_t>>&);
-
+ 
   CodeObject() {}
 private:
   friend const std::vector<hipModule_t>& modules();

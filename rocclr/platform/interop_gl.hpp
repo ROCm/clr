@@ -280,6 +280,19 @@ public:
         bool            isValid_;   //!< If TRUE, then it's a valid setup
     };
 
+    //! Locks any access to the virtual GPUs
+    class Lock : public amd::StackObject {
+    public:
+        //! Default constructor
+        Lock(GLFunctions* env);
+
+        //! Destructor
+        ~Lock();
+
+    private:
+        GLFunctions* env_;       //!< GL environment
+    };
+
 private:
     HMODULE libHandle_;
     int missed_;    // Indicates how many GL functions not init'ed, if any

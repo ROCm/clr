@@ -72,9 +72,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-if(BUILD_SHARED_LIBS)
-  target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
-endif()
+target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
 
 set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
@@ -104,6 +102,14 @@ if(WIN32)
 endif()
 
 target_link_libraries(hiprtc PUBLIC ${CMAKE_DL_LIBS})
+# Add link to comgr, hsa-runtime and other required libraries in target files
+# This is required for static libraries
+if(NOT BUILD_SHARED_LIBS)
+  find_package(hsa-runtime64)
+  find_package(amd_comgr)
+  target_link_libraries(hiprtc PRIVATE
+    pthread numa rt c amd_comgr hsa-runtime64::hsa-runtime64)
+endif()
 
 if(BUILD_SHARED_LIBS)
   target_link_libraries(hiprtc PRIVATE rocclr)
@@ -188,6 +194,7 @@ set_target_properties(hiprtc-builtins PROPERTIES
   CXX_EXTENSIONS OFF
   POSITION_INDEPENDENT_CODE ON
   LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib
+  ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib
   LINKER_LANGUAGE CXX
   VERSION ${HIP_LIB_VERSION_STRING})
 
@@ -218,7 +225,9 @@ target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
 if(NOT WIN32)
-  target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+  if (BUILD_SHARED_LIBS)
+    target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+  endif()
 endif()
 
 list(APPEND HIPRTC_OBJECTS ${HIPRTC_GEN_OBJ})

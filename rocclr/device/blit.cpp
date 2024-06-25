@@ -25,7 +25,7 @@
 
 #include <cmath>
 
-namespace device {
+namespace amd::device {
 
 HostBlitManager::HostBlitManager(VirtualDevice& vDev, Setup setup)
     : BlitManager(setup), vDev_(vDev), dev_(vDev.device()) {}
@@ -41,7 +41,7 @@ bool HostBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
   }
 
   // Copy memory
-  amd::Os::fastMemcpy(dstHost, reinterpret_cast<const_address>(src) + origin[0], size[0]);
+  std::memcpy(dstHost, reinterpret_cast<const_address>(src) + origin[0], size[0]);
 
   // Unmap device memory
   srcMemory.cpuUnmap(vDev_);
@@ -69,8 +69,8 @@ bool HostBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
       dstOffset = hostRect.offset(0, y, z);
 
       // Copy memory line by line
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dstHost) + dstOffset),
-                          (reinterpret_cast<const_address>(src) + srcOffset), size[0]);
+      std::memcpy((reinterpret_cast<address>(dstHost) + dstOffset),
+                  (reinterpret_cast<const_address>(src) + srcOffset), size[0]);
     }
   }
 
@@ -133,8 +133,8 @@ bool HostBlitManager::readImage(device::Memory& srcMemory, void* dstHost,
     // Copy memory line by line
     for (size_t row = 0; row < size[1]; ++row) {
       // Copy memory
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dstHost) + dstOffs),
-                          (reinterpret_cast<const_address>(src) + srcOffs), copySize);
+      std::memcpy((reinterpret_cast<address>(dstHost) + dstOffs),
+                  (reinterpret_cast<const_address>(src) + srcOffs), copySize);
 
       srcOffs += srcRowPitch;
       dstOffs += rowPitch;
@@ -163,7 +163,7 @@ bool HostBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory
   }
 
   // Copy memory
-  amd::Os::fastMemcpy(reinterpret_cast<address>(dst) + origin[0], srcHost, size[0]);
+  std::memcpy(reinterpret_cast<address>(dst) + origin[0], srcHost, size[0]);
 
   // Unmap the device memory
   dstMemory.cpuUnmap(vDev_);
@@ -191,8 +191,8 @@ bool HostBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMe
       dstOffset = bufRect.offset(0, y, z);
 
       // Copy memory line by line
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffset),
-                          (reinterpret_cast<const_address>(srcHost) + srcOffset), size[0]);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffset),
+                  (reinterpret_cast<const_address>(srcHost) + srcOffset), size[0]);
     }
   }
 
@@ -258,8 +258,8 @@ bool HostBlitManager::writeImage(const void* srcHost, device::Memory& dstMemory,
     // Copy memory line by line
     for (size_t row = 0; row < size[1]; ++row) {
       // Copy memory
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
-                          (reinterpret_cast<const_address>(srcHost) + srcOffs), copySize);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
+                  (reinterpret_cast<const_address>(srcHost) + srcOffs), copySize);
 
       dstOffs += dstRowPitch;
       srcOffs += rowPitch;
@@ -293,8 +293,8 @@ bool HostBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& dstM
   }
 
   // Straight forward buffer copy
-  amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOrigin[0]),
-                      (reinterpret_cast<const_address>(src) + srcOrigin[0]), size[0]);
+  std::memcpy((reinterpret_cast<address>(dst) + dstOrigin[0]),
+              (reinterpret_cast<const_address>(src) + srcOrigin[0]), size[0]);
 
   // Unmap source and destination memory
   dstMemory.cpuUnmap(vDev_);
@@ -329,8 +329,8 @@ bool HostBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& 
       size_t dstOffset = dstRect.offset(0, y, z);
 
       // Copy memory line by line
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffset),
-                          (reinterpret_cast<const_address>(src) + srcOffset), size[0]);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffset),
+                  (reinterpret_cast<const_address>(src) + srcOffset), size[0]);
     }
   }
 
@@ -392,8 +392,8 @@ bool HostBlitManager::copyImageToBuffer(device::Memory& srcMemory, device::Memor
 
     // Copy memory line by line
     for (size_t rows = 0; rows < size[1]; ++rows) {
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
-                          (reinterpret_cast<const_address>(src) + srcOffs), copySize);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
+                  (reinterpret_cast<const_address>(src) + srcOffs), copySize);
 
       srcOffs += srcRowPitch;
       dstOffs += copySize;
@@ -458,8 +458,8 @@ bool HostBlitManager::copyBufferToImage(device::Memory& srcMemory, device::Memor
 
     // Copy memory line by line
     for (size_t rows = 0; rows < size[1]; ++rows) {
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
-                          (reinterpret_cast<const_address>(src) + srcOffs), copySize);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
+                  (reinterpret_cast<const_address>(src) + srcOffs), copySize);
 
       srcOffs += copySize;
       dstOffs += dstRowPitch;
@@ -544,8 +544,8 @@ bool HostBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dstMe
 
     // Copy memory line by line
     for (size_t rows = 0; rows < size[1]; ++rows) {
-      amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
-                          (reinterpret_cast<const_address>(src) + srcOffs), copySize);
+      std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
+                  (reinterpret_cast<const_address>(src) + srcOffs), copySize);
 
       srcOffs += srcRowPitch;
       dstOffs += dstRowPitch;
@@ -766,4 +766,4 @@ void HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   }
 }
 
-}  // namespace gpu
+}  // namespace amd::device

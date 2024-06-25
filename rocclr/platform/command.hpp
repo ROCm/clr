@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -17,13 +17,6 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
-
-/*! \file command.hpp
- *  \brief  Declarations for Event, Command and HostQueue objects.
- *
- *  \author Laurent Morichetti
- *  \date   October 2008
- */
 
 #ifndef COMMAND_HPP_
 #define COMMAND_HPP_
@@ -62,6 +55,7 @@ namespace amd {
 
 class Command;
 class HostQueue;
+union ComputeCommand;
 
 /*! \brief Encapsulates the status of a command.
  *
@@ -108,7 +102,7 @@ class Event : public RuntimeObject {
       : enabled_(enabled), marker_ts_(false) {
       if (enabled) {
         clear();
-        correlation_id_ = activity_prof::correlation_id;
+        correlation_id_ = amd::activity_prof::correlation_id;
       }
     }
 
@@ -154,7 +148,7 @@ class Event : public RuntimeObject {
   void EnableProfiling() {
     profilingInfo_.enabled_ = true;
     profilingInfo_.clear();
-    profilingInfo_.correlation_id_ = activity_prof::correlation_id;
+    profilingInfo_.correlation_id_ = amd::activity_prof::correlation_id;
   }
 
  public:
@@ -254,6 +248,7 @@ union CopyMetadata {
  */
 class Command : public Event {
  private:
+  static SysmemPool<ComputeCommand> command_pool_;  //!< Pool of active commands
   HostQueue* queue_;               //!< The command queue this command is enqueue into
   Command* next_;                  //!< Next GPU command in the queue list
   Command* batch_head_ = nullptr;  //!< The head of the batch commands
@@ -297,6 +292,10 @@ class Command : public Event {
   }
 
  public:
+  //! Overload new/delete for fast commands allocation/destruction
+  void* operator new(size_t size);
+  void operator delete(void* ptr);
+
   //! Return the queue this command is enqueued into.
   HostQueue* queue() const { return queue_; }
 
@@ -1178,7 +1177,11 @@ class NDRangeKernelCommand : public Command {
     numWorkgroups_ = numWorkgroups;
   }
 
+  // Capture kernel parameters and validate
   int32_t captureAndValidate();
+
+  // Allocate, capture and set kernel parameters
+  int32_t AllocCaptureSetValidate(void** kernelParams, address kernArgs);
 };
 
 class NativeFnCommand : public Command {
@@ -1252,8 +1255,6 @@ class Marker : public Command {
 
 class AccumulateCommand : public Command {
  private:
-  uint8_t* lastPacket_;
-
   //! Kernel names and timestamps list for activity profiling
   std::vector<std::string> kernelNames_;
   std::vector<std::pair<uint64_t, uint64_t>> tsList_;
@@ -1261,17 +1262,13 @@ class AccumulateCommand : public Command {
  public:
   //! Create a new Marker
   AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
-         const Event* waitingEvent = nullptr, uint8_t* lastPacket = nullptr)
-      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent),
-        lastPacket_(lastPacket)
+         const Event* waitingEvent = nullptr)
+      : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent)
       {}
-  //! Return last packet
-  uint8_t* getLastPacket() const { return lastPacket_; }
 
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) {
-    // "^" is to indicate kernel is captured at instantiate
-    kernelNames_.push_back("^  " + kernelName);
+    kernelNames_.push_back(kernelName);
   }
 
   //! Add kernel timestamp to the list if available
@@ -1786,6 +1783,39 @@ public:
   size_t size() const { return size_; }
   //! Read the pointer
   const void* ptr() const { return ptr_; }
+};
+
+//! Union used in memory suballocator, must be updated with the new commands
+union ComputeCommand {
+  ReadMemoryCommand             cmd0;
+  WriteMemoryCommand            cmd1;
+  FillMemoryCommand             cmd2;
+  CopyMemoryCommand             cmd3;
+  MapMemoryCommand              cmd4;
+  UnmapMemoryCommand            cmd5;
+  MigrateMemObjectsCommand      cmd6;
+  NDRangeKernelCommand          cmd7;
+  NativeFnCommand               cmd8;
+  ExternalSemaphoreCmd          cmd9;
+  Marker                        cmd10;
+  AccumulateCommand             cmd11;
+  AcquireExtObjectsCommand      cmd13;
+  ReleaseExtObjectsCommand      cmd14;
+  PerfCounterCommand            cmd15;
+  ThreadTraceMemObjectsCommand  cmd16;
+  ThreadTraceCommand            cmd17;
+  SignalCommand                 cmd18;
+  MakeBuffersResidentCommand    cmd19;
+  SvmFreeMemoryCommand          cmd20;
+  SvmCopyMemoryCommand          cmd21;
+  SvmFillMemoryCommand          cmd22;
+  SvmMapMemoryCommand           cmd23;
+  SvmUnmapMemoryCommand         cmd24;
+  CopyMemoryP2PCommand          cmd25;
+  SvmPrefetchAsyncCommand       cmd26;
+  VirtualMapCommand             cmd27;
+  ComputeCommand() {}
+  ~ComputeCommand() {}
 };
 
 /*! @}

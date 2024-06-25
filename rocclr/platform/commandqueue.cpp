@@ -59,11 +59,11 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 bool HostQueue::terminate() {
   if (AMD_DIRECT_DISPATCH) {
     if (vdev() != nullptr) {
-      Command* marker = new Marker(*this, true);
-      if (marker != nullptr) {
-        marker->enqueue();
-        marker->awaitCompletion();
-        marker->release();
+      // If the queue still has the last command, then wait and release it
+      if (lastEnqueueCommand_ != nullptr) {
+        lastEnqueueCommand_->awaitCompletion();
+        lastEnqueueCommand_->release();
+        lastEnqueueCommand_ = nullptr;
       }
     }
     thread_.Release();
@@ -123,9 +123,6 @@ void HostQueue::finish(bool cpu_wait) {
   // If command doesn't contain HW event and runtime didn't request CPU wait,
   // then force marker submit
   bool force_marker = false;
-  // Force CPU wait if profiler is enabled. Pytorch tests may use tracer's plugin and rely on
-  // profiling information to be available right after finish.
-  cpu_wait |= activity_prof::IsEnabled(OP_ID_DISPATCH);
   if (AMD_DIRECT_DISPATCH && (command != nullptr) && !cpu_wait) {
     void* hw_event =
       (command->NotifyEvent() != nullptr) ? command->NotifyEvent()->HwEvent() : command->HwEvent();
@@ -149,16 +146,19 @@ void HostQueue::finish(bool cpu_wait) {
   if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
     ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
     command->awaitCompletion();
-  }
-  if (IS_HIP) {
-    ScopedLock sl(vdev()->execution());
-    ScopedLock l(lastCmdLock_);
-    // Runtime can clear the last command only if no other submissions occured during finish()
-    if (command == lastEnqueueCommand_) {
-      lastEnqueueCommand_->release();
-      lastEnqueueCommand_ = nullptr;
+
+    if (IS_HIP) {
+      ScopedLock sl(vdev()->execution());
+      ScopedLock l(lastCmdLock_);
+      // Runtime can clear the last command only if no other submissions occured
+      // during finish()
+      if (command == lastEnqueueCommand_) {
+        lastEnqueueCommand_->release();
+        lastEnqueueCommand_ = nullptr;
+      }
     }
   }
+
   command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }

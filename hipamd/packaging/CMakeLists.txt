@@ -41,22 +41,33 @@ install(FILES ${CPACK_RESOURCE_FILE_LICENSE} DESTINATION ${CMAKE_INSTALL_DOCDIR}
 set(CPACK_RPM_PACKAGE_LICENSE "MIT")
 #Begin binary files install
 if(HIP_PLATFORM STREQUAL "amd" )
-   if(BUILD_SHARED_LIBS)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_MAJOR} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libhiprtc-builtins.so.${HIP_LIB_VERSION_STRING} DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-      # Add libraries to asan package
-      install(DIRECTORY ${PROJECT_BINARY_DIR}/lib/ DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT asan
-                                                 PATTERN ".hipInfo" EXCLUDE)
-   else()
-      install(PROGRAMS ${PROJECT_BINARY_DIR}/lib/libamdhip64.a DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT binary)
-   endif()#End BUILD_SHARED_LIBS
+   # Set component name and  library type
+   set(COMPONENT_NAME "binary")
+   set(CMAKE_LIB_TYPE "LIBRARY")
+
+   if(NOT BUILD_SHARED_LIBS)
+      # Change library type for static builds
+      set(CMAKE_LIB_TYPE "ARCHIVE")
+   endif()
+
+   if(ENABLE_ASAN_PACKAGING)
+      # Change component name for ASAN builds
+      set(COMPONENT_NAME "asan")
+   endif()
+
+   # Install libraries
+   install(TARGETS amdhip64
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
+   install(TARGETS hiprtc
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
+   install(TARGETS hiprtc-builtins
+              ${CMAKE_LIB_TYPE}
+              DESTINATION ${CMAKE_INSTALL_LIBDIR}
+              COMPONENT ${COMPONENT_NAME})
 
 #TODO:This do not belong in BINARY package.
 #Keeping it as is for now
@@ -74,19 +85,25 @@ endif()#End HIP_PLATFORM = "amd"
 #End bianry files install
 
 #Begin dev files install
-if(WIN32)
-  install(DIRECTORY ${HIP_COMMON_DIR}/bin DESTINATION . COMPONENT dev
-          USE_SOURCE_PERMISSIONS)
-else()
-  install(DIRECTORY ${HIP_COMMON_DIR}/bin DESTINATION .  COMPONENT dev
-          USE_SOURCE_PERMISSIONS
-          DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-          PATTERN *.bat EXCLUDE)
+#Install bin files from HIP_COMMON_DIR
+file(GLOB BIN_FILES ${HIP_COMMON_DIR}/bin/*)
+if(NOT WIN32)
+    list(FILTER BIN_FILES EXCLUDE REGEX ".bat$")
 endif()
+foreach(binFile ${BIN_FILES})
+    install(PROGRAMS ${binFile} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
+endforeach()
+unset(BIN_FILES)
 
-install(DIRECTORY ${hip_SOURCE_DIR}/bin DESTINATION . COMPONENT dev
-        USE_SOURCE_PERMISSIONS
-        DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
+#Install bin files from hip_SOURCE_DIR
+file(GLOB BIN_FILES ${hip_SOURCE_DIR}/bin/*)
+if(NOT WIN32)
+    list(FILTER BIN_FILES EXCLUDE REGEX ".bat$")
+endif()
+foreach(binFile ${BIN_FILES})
+    install(PROGRAMS ${binFile} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT dev)
+endforeach()
+
 install(DIRECTORY ${HIP_COMMON_DIR}/include DESTINATION . COMPONENT dev)
 install(DIRECTORY ${hip_SOURCE_DIR}/include/hip/amd_detail
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip COMPONENT dev)
@@ -271,5 +288,21 @@ if(NOT ROCM_DEP_ROCMCORE)
     string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_RPM_ASAN_PACKAGE_REQUIRES ${CPACK_RPM_ASAN_PACKAGE_REQUIRES})
     string(REGEX REPLACE ",? ?rocm-core-asan" "" CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS ${CPACK_DEBIAN_ASAN_PACKAGE_DEPENDS})
 endif()
-
+# package name and dependencies for static package
+if(NOT BUILD_SHARED_LIBS)
+   set(CPACK_RPM_STATIC_PACKAGE_NAME "hip-static-devel")
+   set(CPACK_DEBIAN_STATIC_PACKAGE_NAME "hip-static-dev")
+   set(CPACK_COMPONENT_STATIC_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [Static Libraries - AMD]")
+   set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}")
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel >= 1.3, rocminfo-static-devel,  comgr-static-devel >= 2.0, rocm-llvm, hipcc-static-devel")
+   set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}")
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev (>= 1.3), rocminfo-static-dev,  comgr-static-dev (>= 3.0), rocm-llvm, hipcc-static-dev")
+endif()
 include(CPack)
+#static package generation
+# Group binary and dev component to single package
+if(NOT BUILD_SHARED_LIBS)
+    cpack_add_component_group("static")
+    cpack_add_component( binary  GROUP static )
+    cpack_add_component( dev GROUP static )
+endif()

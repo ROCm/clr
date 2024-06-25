@@ -35,7 +35,7 @@
 #include <iterator>
 #include <sstream>
 
-namespace pal {
+namespace amd::pal {
 
 Segment::Segment() : gpuAccess_(nullptr), cpuAccess_(nullptr), cpuMem_(nullptr) {}
 
@@ -139,10 +139,10 @@ bool Segment::alloc(HSAILProgram& prog, amdgpu_hsa_elf_segment_t segment, size_t
 
 void Segment::copy(size_t offset, const void* src, size_t size) {
   if (cpuAccess_ != nullptr) {
-    amd::Os::fastMemcpy(cpuAddress(offset), src, size);
+    std::memcpy(cpuAddress(offset), src, size);
   } else {
     if (cpuMem_ != nullptr) {
-      amd::Os::fastMemcpy(cpuAddress(offset), src, size);
+      std::memcpy(cpuAddress(offset), src, size);
     }
     amd::ScopedLock k(gpuAccess_->dev().xferMgr().lockXfer());
     VirtualGPU& gpu = *gpuAccess_->dev().xferQueue();
@@ -568,7 +568,7 @@ void* PALHSALoaderContext::SegmentAlloc(amdgpu_hsa_elf_segment_t segment, hsa_ag
 bool PALHSALoaderContext::SegmentCopy(amdgpu_hsa_elf_segment_t segment, hsa_agent_t agent,
                                       void* dst, size_t offset, const void* src, size_t size) {
   if (program_->isNull()) {
-    amd::Os::fastMemcpy(reinterpret_cast<address>(dst) + offset, src, size);
+    std::memcpy(reinterpret_cast<address>(dst) + offset, src, size);
     return true;
   }
   Segment* s = reinterpret_cast<Segment*>(dst);
@@ -700,7 +700,7 @@ hsa_status_t PALHSALoaderContext::SamplerDestroy(hsa_agent_t agent,
 
 static hsa_status_t GetKernelNamesCallback(hsa_executable_t hExec, hsa_executable_symbol_t hSymbol,
                                            void* data) {
-  auto symbol = Symbol::Object(hSymbol);
+  auto symbol = amd::hsa::loader::Symbol::Object(hSymbol);
   auto symbolNameList = reinterpret_cast<std::vector<std::string>*>(data);
 
   hsa_symbol_kind_t type;
@@ -836,4 +836,4 @@ uint64_t LightningProgram::GetTrapHandlerAddress() const {
   return address;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

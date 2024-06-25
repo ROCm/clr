@@ -430,6 +430,12 @@ hipError_t hipGetMipmappedArrayLevel(hipArray_t* levelArray,
   return hip::GetHipDispatchTable()->hipGetMipmappedArrayLevel_fn(levelArray, mipmappedArray,
                                                                   level);
 }
+hipError_t hipExternalMemoryGetMappedMipmappedArray(
+    hipMipmappedArray_t* mipmap, hipExternalMemory_t extMem,
+    const hipExternalMemoryMipmappedArrayDesc* mipmapDesc) {
+  return hip::GetHipDispatchTable()->hipExternalMemoryGetMappedMipmappedArray_fn(mipmap, extMem,
+                                                                                 mipmapDesc);
+}
 hipError_t hipGetSymbolAddress(void** devPtr, const void* symbol) {
   return hip::GetHipDispatchTable()->hipGetSymbolAddress_fn(devPtr, symbol);
 }
@@ -1742,4 +1748,54 @@ hipError_t hipStreamBeginCaptureToGraph(hipStream_t stream, hipGraph_t graph,
 }
 hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr) {
   return hip::GetHipDispatchTable()->hipGetFuncBySymbol_fn(functionPtr, symbolPtr);
+}
+hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+  return hip::GetHipDispatchTable()->hipDrvGraphExecMemsetNodeSetParams_fn(hGraphExec, hNode,
+                                   memsetParams, ctx);
+}
+hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                  const hipGraphNode_t* dependencies, size_t numDependencies,
+                                  hipDeviceptr_t dptr) {
+  return hip::GetHipDispatchTable()->hipDrvGraphAddMemFreeNode_fn(phGraphNode, hGraph,
+                                  dependencies, numDependencies,
+                                  dptr);
+}
+hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
+                                   const HIP_MEMCPY3D* copyParams, hipCtx_t ctx) {
+  return hip::GetHipDispatchTable()->hipDrvGraphExecMemcpyNodeSetParams_fn(hGraphExec, hNode,
+                                   copyParams, ctx);
+}
+hipError_t hipSetValidDevices(int* device_arr, int len) {
+  return hip::GetHipDispatchTable()->hipSetValidDevices_fn(device_arr, len);
+}
+hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice, hipArray_t srcArray, size_t srcOffset,
+                         size_t ByteCount) {
+  return hip::GetHipDispatchTable()->hipMemcpyAtoD_fn(dstDevice, srcArray, srcOffset,
+                                                      ByteCount);
+}
+hipError_t hipMemcpyDtoA(hipArray_t dstArray, size_t dstOffset, hipDeviceptr_t srcDevice,
+                         size_t ByteCount) {
+  return hip::GetHipDispatchTable()->hipMemcpyDtoA_fn(dstArray, dstOffset, srcDevice, ByteCount);
+}
+hipError_t hipMemcpyAtoA(hipArray_t dstArray, size_t dstOffset, hipArray_t srcArray,
+                         size_t srcOffset, size_t ByteCount) {
+  return hip::GetHipDispatchTable()->hipMemcpyAtoA_fn(dstArray, dstOffset, srcArray, srcOffset,
+                                                      ByteCount);
+}
+hipError_t hipMemcpyAtoHAsync(void* dstHost, hipArray_t srcArray, size_t srcOffset,
+                              size_t ByteCount, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemcpyAtoHAsync_fn(dstHost, srcArray, srcOffset, ByteCount,
+                                                           stream);
+}
+hipError_t hipMemcpyHtoAAsync(hipArray_t dstArray, size_t dstOffset, const void* srcHost,
+                              size_t ByteCount, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemcpyHtoAAsync_fn(dstArray, dstOffset, srcHost, ByteCount,
+                                                           stream);
+}
+hipError_t hipMemcpy2DArrayToArray(hipArray_t dst, size_t wOffsetDst, size_t hOffsetDst,
+                                   hipArray_const_t src, size_t wOffsetSrc, size_t hOffsetSrc,
+                                   size_t width, size_t height, hipMemcpyKind kind) {
+  return hip::GetHipDispatchTable()->hipMemcpy2DArrayToArray_fn(
+      dst, wOffsetDst, hOffsetDst, src, wOffsetSrc, hOffsetSrc, width, height, kind);
 }

@@ -149,24 +149,25 @@ static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint3
 
 }  // namespace
 
-namespace device {
+namespace amd::device {
 extern const char* HipExtraSourceCode;
+extern const char* HipExtraSourceCodeNoGWS;
 }
 
 bool PalDeviceLoad() {
   bool ret = false;
 
   // Create online devices
-  ret |= pal::Device::init();
+  ret |= amd::pal::Device::init();
   // Create offline GPU devices
-  ret |= pal::NullDevice::init();
+  ret |= amd::pal::NullDevice::init();
 
   return ret;
 }
 
-void PalDeviceUnload() { pal::Device::tearDown(); }
+void PalDeviceUnload() { amd::pal::Device::tearDown(); }
 
-namespace pal {
+namespace amd::pal {
 
 Util::GenericAllocator NullDevice::allocator_;
 char* Device::platformObj_;
@@ -905,7 +906,6 @@ bool Device::create(Pal::IDevice* device) {
                   static_cast<Pal::AsicRevision>(PAL_FORCE_ASIC_REVISION);
 
   // XNACK flag should be set for PageMigration or IOMMUv2 support.
-  // Note: Navi2x should have a fix in HW.
   bool isXNACKEnabled =
       (static_cast<uint>(properties().gpuMemoryProperties.flags.pageMigrationEnabled ||
                          properties().gpuMemoryProperties.flags.iommuv2Support));
@@ -2663,7 +2663,11 @@ bool Device::createBlitProgram() {
   std::string extraBlits;
   std::string ocl20;
   if (amd::IS_HIP) {
-    extraBlits = device::HipExtraSourceCode;
+    if (settings().gwsInitSupported_) {
+      extraBlits = device::HipExtraSourceCode;
+    } else {
+      extraBlits = device::HipExtraSourceCodeNoGWS;
+    }
   } else {
     if (settings().oclVersion_ >= OpenCL20) {
       extraBlits = iDev()->GetDispatchKernelSource();
@@ -2746,7 +2750,8 @@ bool Device::importExtSemaphore(void** extSemaphore, const amd::Os::FileDesc& ha
       (sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreWin32 ||
        sem_handle_type == amd::ExternalSemaphoreHandleType::TimelineSemaphoreFd);
   palOpenInfo.flags.sharedViaNtHandle =
-      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32);
+      (sem_handle_type == amd::ExternalSemaphoreHandleType::OpaqueWin32 ||
+       sem_handle_type == amd::ExternalSemaphoreHandleType::D3D12Fence);
   Pal::Result result;
 
   size_t semaphoreSize = iDev()->GetExternalSharedQueueSemaphoreSize(
@@ -2771,4 +2776,4 @@ void Device::DestroyExtSemaphore(void* extSemaphore) {
   amd::Os::alignedFree(extSemaphore);
 }
 
-}  // namespace pal
+}  // namespace amd::pal

@@ -44,11 +44,12 @@
 #define ROCCLR_MEM_HSA_UNCACHED         (1u << 27)
 #define ROCCLR_MEM_INTERPROCESS         (1u << 26)
 #define ROCCLR_MEM_PHYMEM               (1u << 25)
+#define ROCCLR_MEM_HSA_CONTIGUOUS       (1u << 24)
 
-namespace device {
+namespace amd::device {
 class Memory;
 class VirtualDevice;
-}  // namespace device
+}  // namespace amd::device
 
 namespace amd {
 
@@ -150,6 +151,7 @@ class Memory : public amd::RuntimeObject {
      int deviceId = 0;     //!< Device ID memory is allocated on
      void* data = nullptr; //!< Opaque user data from CL or HIP or etc.
      amd::Memory* phys_mem_obj = nullptr; //<! Physical mem obj, only set on virtual mem
+     amd::Memory* vaddr_mem_obj = nullptr; //<! Virtual address mem obj, only set on virtual mem
      uint64_t hsa_handle = 0; //!<Opaque hsa handle saved for Virtual memories
      unsigned int flags = 0; //!< HIP memory flags
      //! hipMallocPitch allocates buffer using width & height and returns pitch & device pointer.
@@ -412,6 +414,9 @@ class Memory : public amd::RuntimeObject {
 
   //!find if memory object is Arena memory
   virtual bool isArena() { return false; }
+
+  //! get device by id when glb ctx is used.
+  Device* GetDeviceById();
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,

@@ -27,7 +27,7 @@
 
 #ifndef WITHOUT_HSA_BACKEND
 
-namespace roc {
+namespace amd::roc {
 
 #define MAX_INFO_STRING_LEN 0x40
 
@@ -84,6 +84,6 @@ class LightningKernel : public roc::Kernel {
   bool postLoad();
 };
 
-}  // namespace roc
+}  // namespace amd::roc
 
 #endif  // WITHOUT_HSA_BACKEND

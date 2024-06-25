@@ -57,15 +57,12 @@ enum LogMask {
   LOG_LOCATION  = 65536,  //!< (0x10000) Log message location
   LOG_MEM       = 131072, //!< (0x20000) Memory allocation
   LOG_MEM_POOL  = 262144, //!< (0x40000) Memory pool allocation, including memory in graphs
+  LOG_TS        = 524288, //!< (0x80000) Timestamp details
   LOG_ALWAYS    = -1      //!< (0xFFFFFFFF) Log always even mask flag is zero
 };
 
 //! \brief log file output
 extern FILE* outFile;
-
-//! \cond ignore
-extern "C" void breakpoint();
-//! \endcond
 
 //! \brief Display a warning message.
 extern void report_warning(const char* message);

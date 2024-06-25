@@ -42,6 +42,8 @@
 #endif
 #endif
 
+namespace amd {
+
 PacketHeader* HostcallBuffer::getHeader(uint64_t ptr) const {
   return headers_ + (ptr & index_mask_);
 }
@@ -95,7 +97,8 @@ static void handlePayload(MessageHandler& messages, uint32_t service, uint64_t* 
           amd::MemObjMap::RemoveMemObj(reinterpret_cast<void*>(payload[0]));
           mem->release();
         } else {
-          ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Unknown pointer in devmem service\n");
+          ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, "Hostcall: Unknown pointer %p in devmem service",
+                  payload[0]);
         }
       } else {
         amd::Context& ctx = dev.context();
@@ -458,3 +461,4 @@ void disableHostcalls(void* bfr) {
     ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Terminated hostcall listener");
   }
 }
+}// namespace amd

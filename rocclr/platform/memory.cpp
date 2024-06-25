@@ -28,10 +28,10 @@
 
 #include <atomic>
 
+namespace amd {
+
 // Stores the no. of memory allocations
 std::atomic<uint32_t> numAllocs = {0};
-
-namespace amd {
 
 bool BufferRect::create(const size_t* bufferOrigin, const size_t* region, size_t bufferRowPitch,
                         size_t bufferSlicePitch) {
@@ -538,6 +538,11 @@ void Memory::uncommitSvmMemory() {
     amd::Os::uncommitMemory(svmHostAddress_, size_);
     svmPtrCommited_ = false;
   }
+}
+
+Device* Memory::GetDeviceById() {
+  size_t device_idx = (userData_.deviceId < getContext().devices().size()) ? userData_.deviceId : 0;
+  return getContext().devices()[device_idx];
 }
 
 void Buffer::initDeviceMemory() {

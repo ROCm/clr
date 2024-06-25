@@ -43,7 +43,7 @@
 #include <iostream>
 #include <cmath>
 
-namespace pal {
+namespace amd::pal {
 
 // ================================================================================================
 Pal::Result GpuMemoryReference::MakeResident() const {
@@ -1340,11 +1340,10 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     createInfo.flags.busAddressable = true;
   } else if (memoryType() == VaRange) {
     createInfo.flags.virtualAlloc = true;
+    createInfo.vaRange = Pal::VaRange::Svm;
     if (params->owner_->getSvmPtr() != nullptr) {
-      createInfo.vaRange = Pal::VaRange::Svm;
       createInfo.flags.useReservedGpuVa = true;
       createInfo.pReservedGpuVaOwner = params->svmBase_->iMem();
-      desc_.SVMRes_ = true;
     }
   }
 
@@ -1367,7 +1366,16 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
     mapCount_++;
   }
   if (memoryType() == VaRange) {
-    params->owner_->setSvmPtr(reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr));
+    void* gpu_virt_addr = reinterpret_cast<void*>(memRef_->iMem()->Desc().gpuVirtAddr);
+
+    // if svm_ptr was not set, set the gpu_virt_addr
+    if (params->owner_->getSvmPtr() == nullptr) {
+      params->owner_->setSvmPtr(gpu_virt_addr);
+    } else if (params->owner_->getSvmPtr() != gpu_virt_addr) {
+      LogPrintfError("Cannot get different ptrs in va_range, svm_ptr: %p new_svm_ptr:%p \n",
+                     params->owner_->getSvmPtr(), gpu_virt_addr);
+      return false;
+    }
   }
   return true;
 }
@@ -1700,7 +1708,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
     dst = static_cast<void*>(static_cast<char*>(dst) + origin[0]);
 
     // Copy memory
-    amd::Os::fastMemcpy(dst, hostPtr, copySize);
+    std::memcpy(dst, hostPtr, copySize);
   } else {
     size_t dstOffsBase = origin[0] * elementSize_;
 
@@ -1728,7 +1736,7 @@ bool Resource::hostWrite(VirtualGPU* gpu, const void* hostPtr, const amd::Coord3
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
         // Copy memory
-        amd::Os::fastMemcpy((reinterpret_cast<address>(dst) + dstOffs),
+        std::memcpy((reinterpret_cast<address>(dst) + dstOffs),
                             (reinterpret_cast<const_address>(hostPtr) + srcOffs),
                             size[0] * elementSize_);
 
@@ -1770,7 +1778,7 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
     src = static_cast<void*>(static_cast<char*>(src) + origin[0]);
 
     // Copy memory
-    amd::Os::fastMemcpy(hostPtr, src, copySize);
+    std::memcpy(hostPtr, src, copySize);
   } else {
     size_t srcOffsBase = origin[0] * elementSize_;
 
@@ -1798,9 +1806,9 @@ bool Resource::hostRead(VirtualGPU* gpu, void* hostPtr, const amd::Coord3D& orig
       // Copy memory line by line
       for (size_t row = 0; row < size[1]; ++row) {
         // Copy memory
-        amd::Os::fastMemcpy((reinterpret_cast<address>(hostPtr) + dstOffs),
-                            (reinterpret_cast<const_address>(src) + srcOffs),
-                            size[0] * elementSize_);
+        std::memcpy((reinterpret_cast<address>(hostPtr) + dstOffs),
+                    (reinterpret_cast<const_address>(src) + srcOffs),
+                    size[0] * elementSize_);
 
         srcOffs += desc().pitch_ * elementSize_;
         dstOffs += rowPitch;
@@ -1939,7 +1947,7 @@ bool Resource::isPersistentDirectMap(bool writeMap) const {
   if (directMap && desc().tiled_) {
     // Latest HW does have tiling apertures
     directMap = false;
-  } 
+  }
   if (memoryType() == View) {
     directMap = viewOwner_->isPersistentDirectMap(writeMap);
   }
@@ -2222,7 +2230,10 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   size_t size = ref->iMem()->Desc().size;
 
   // Check if runtime can free suballocation
-  if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
+  if (desc->type_ == Resource::VaRange) {
+    // We do no sub allocate VA Range.
+    result = true;
+  } else if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
     result = mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
     result = mem_sub_alloc_coarse_.Free(&lockCacheOps_, ref, offset);
@@ -2279,7 +2290,10 @@ GpuMemoryReference* ResourceCache::findGpuMemory(Resource::Descriptor* desc, Pal
   GpuMemoryReference* ref = nullptr;
 
   // Check if the runtime can suballocate memory
-  if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
+  if (desc->type_ == Resource::VaRange) {
+    // Do not use suballocator for VA_Range.
+    return nullptr;
+  } else if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
     ref = mem_sub_alloc_local_.Allocate(size, alignment, reserved_va, offset);
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {
     ref = mem_sub_alloc_coarse_.Allocate(size, alignment, reserved_va, offset);
@@ -2368,4 +2382,4 @@ void ResourceCache::removeLast() {
   entry.second->release();
 }
 
-}  // namespace pal
+}  // namespace amd::pal

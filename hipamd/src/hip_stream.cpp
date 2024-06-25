@@ -80,7 +80,7 @@ void Stream::Destroy(hip::Stream* stream) {
 // ================================================================================================
 bool isValid(hipStream_t& stream) {
   // NULL stream is always valid
-  if (stream == nullptr) {
+  if (stream == nullptr || stream == hipStreamLegacy) {
     return true;
   }
 
@@ -343,10 +343,14 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   constexpr bool kDontWaitForCpu = false;
 
   auto hip_stream = hip::getStream(stream, wait);
-
   // Wait for the current host queue
   hip_stream->finish(kDontWaitForCpu);
-
+  if (stream == nullptr) {
+    // null stream will sync with other streams.
+    ReleaseGraphExec(hip_stream->DeviceId());
+  } else {
+    ReleaseGraphExec(hip_stream);
+  }
   // Release freed memory for all memory pools on the device
   hip_stream->GetDevice()->ReleaseFreedMemory();
   return hipSuccess;

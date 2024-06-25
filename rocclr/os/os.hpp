@@ -232,9 +232,6 @@ class Os : AllStatic {
   //! Deallocate an aligned chunk of memory.
   static void alignedFree(void* mem);
 
-  //! Platform-specific optimized memcpy()
-  static void* fastMemcpy(void* dest, const void* src, size_t n);
-
   //! NUMA related settings
   static void setPreferredNumaNode(uint32_t node);
 

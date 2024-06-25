@@ -28,8 +28,8 @@
 #include <iostream>
 #include "rocdevice.hpp"
 
-//! \namespace roc HSA Device Implementation
-namespace roc {
+//! \namespace amd::roc HSA Device Implementation
+namespace amd::roc {
 
 class HSAILProgram;
 class LightningProgram;
@@ -125,6 +125,6 @@ private:
                   std::string uri = std::string()) override final;
 };
 
-/*@}*/} // namespace roc
+/*@}*/} // namespace amd::roc
 
 #endif /*WITHOUT_HSA_BACKEND*/

@@ -73,6 +73,9 @@ struct Graph;
 struct GraphNode;
 struct GraphExec;
 struct UserObject;
+class Stream;
+extern void ReleaseGraphExec(int deviceId);
+extern void ReleaseGraphExec(hip::Stream* stream);
 typedef struct ihipIpcMemHandle_st {
   char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
   size_t psize;
@@ -227,7 +230,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define STREAM_CAPTURE(name, stream, ...)                                                          \
   hip::getStreamPerThread(stream);                                                                 \
-  if (stream != nullptr &&                                                                         \
+  if (stream != nullptr && stream != hipStreamLegacy &&                                            \
       reinterpret_cast<hip::Stream*>(stream)->GetCaptureStatus() ==                                \
           hipStreamCaptureStatusActive) {                                                          \
     hipError_t status = hip::capture##name(stream, ##__VA_ARGS__);                                 \
@@ -239,7 +242,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
   }
 
 #define PER_THREAD_DEFAULT_STREAM(stream)                                                         \
-  if (stream == nullptr) {                                                                        \
+  if (stream == nullptr || stream == hipStreamLegacy) {                                           \
     stream = getPerThreadDefaultStream();                                                         \
   }
 

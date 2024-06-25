@@ -41,15 +41,6 @@ namespace amd {
 FILE* outFile = stderr;
 
 // ================================================================================================
-//! \cond ignore
-extern "C" void breakpoint(void) {
-#ifdef _MSC_VER
-  DebugBreak();
-#endif  // _MSC_VER
-}
-//! \endcond
-
-// ================================================================================================
 void report_warning(const char* message) { fprintf(outFile, "Warning: %s\n", message); }
 
 // ================================================================================================

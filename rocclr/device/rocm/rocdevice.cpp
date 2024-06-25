@@ -115,12 +115,12 @@ bool getValueFromIsaMeta(amd_comgr_metadata_node_t& isaMeta, const char* key,
 
 } // namespace
 
-namespace device {
+namespace amd::device {
 extern const char* HipExtraSourceCode;
 extern const char* HipExtraSourceCodeNoGWS;
-} // namespace device
+} // namespace amd::device
 
-namespace roc {
+namespace amd::roc {
 bool roc::Device::isHsaInitialized_ = false;
 std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
@@ -199,6 +199,7 @@ Device::Device(hsa_agent_t bkendDevice)
   system_kernarg_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
+  gpu_ext_fine_grained_segment_.handle = 0;
   prefetch_signal_.handle = 0;
   isXgmi_ = false;
   cache_state_ = Device::CacheState::kCacheStateInvalid;
@@ -274,7 +275,7 @@ Device::~Device() {
       if (qInfo.hostcallBuffer_) {
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hostcall buffer %p for hardware queue %p",
                 qInfo.hostcallBuffer_, qIter->first->base_address);
-        disableHostcalls(qInfo.hostcallBuffer_);
+        amd::disableHostcalls(qInfo.hostcallBuffer_);
         context().svmFree(qInfo.hostcallBuffer_);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0",
@@ -301,7 +302,7 @@ Device::~Device() {
   delete[] p2p_agents_list_;
 
   if (coopHostcallBuffer_) {
-    disableHostcalls(coopHostcallBuffer_);
+    amd::disableHostcalls(coopHostcallBuffer_);
     context().svmFree(coopHostcallBuffer_);
     coopHostcallBuffer_ = nullptr;
   }
@@ -475,6 +476,15 @@ bool Device::init() {
   }
 
   status = hsa_init();
+
+  // If there are no GPUs available, hsa_init will fail with HSA_STATUS_ERROR_OUT_OF_RESOURCES
+  // but for NoGpu tests to pass, true needs to be returned
+  constexpr bool kNoOfflineDevices = false;
+  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES && devices.size() == 0) {
+    return true;
+  }
+
   if (status != HSA_STATUS_SUCCESS) {
     LogPrintfError("hsa_init failed with %x", status);
     return false;
@@ -577,8 +587,7 @@ bool Device::init() {
   }
 
   // Query active devices only
-  constexpr bool kNoOfflineDevices = false;
-  std::vector<amd::Device*> devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
+  devices = getDevices(CL_DEVICE_TYPE_GPU, kNoOfflineDevices);
   if (devices.size() > 0) {
     bool p2p_available = false;
     // Loop through all available devices
@@ -1208,6 +1217,11 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(info_.globalMemCacheLineSize_ > 0);
 
+  // override cache line size to 256 for gfx12, as it is used for kern arg alignment.
+  if ((isa().versionMajor() >= 12) && (info_.globalMemCacheLineSize_ < 256)) {
+    info_.globalMemCacheLineSize_ = 256;
+  }
+
   uint32_t cachesize[4] = {0};
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_CACHE_SIZE, cachesize)) {
@@ -1230,7 +1244,6 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
 
-  //TODO: add the assert statement for Raven
   if (!(isa().versionMajor() == 9 && isa().versionMinor() == 0 && isa().versionStepping() == 2)) {
     if (info_.maxEngineClockFrequency_ <= 0) {
       LogError("maxEngineClockFrequency_ is NOT positive!");
@@ -1460,8 +1473,8 @@ bool Device::populateOCLDeviceConstants() {
     info_.hostUnifiedMemory_ = 1;
     info_.iommuv2_ = true;
   }
-  info_.memBaseAddrAlign_ =
-      8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ? sizeof(int64_t[16]) : MEMOBJ_BASE_ADDR_ALIGN);
+  info_.memBaseAddrAlign_ = 8 * (flagIsDefault(MEMOBJ_BASE_ADDR_ALIGN) ?
+      sizeof(int64_t[16]) * 2 : MEMOBJ_BASE_ADDR_ALIGN);
   info_.minDataTypeAlignSize_ = sizeof(int64_t[16]);
 
   info_.maxConstantArgs_ = 8;
@@ -1497,7 +1510,6 @@ bool Device::populateOCLDeviceConstants() {
 
   ::strncpy(info_.driverVersion_, ss.str().c_str(), sizeof(info_.driverVersion_) - 1);
 
-  // Enable OpenCL 2.0 for Vega10+
   if (isa().versionMajor() >= 9) {
     info_.version_ = "OpenCL " /*OPENCL_VERSION_STR*/"2.0" " ";
   } else {
@@ -1658,14 +1670,11 @@ bool Device::populateOCLDeviceConstants() {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
     if (amd::IS_HIP) {
-      // Report atomics capability based on GFX IP, control on Hawaii
       if (info_.iommuv2_ || isa().versionMajor() >= 8) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
     }
     else if (!settings().useLightning_) {
-      // Report atomics capability based on GFX IP, control on Hawaii
-      // and Vega10.
       if (info_.iommuv2_ || (isa().versionMajor() == 8)) {
         info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
       }
@@ -1829,6 +1838,20 @@ bool Device::populateOCLDeviceConstants() {
             info_.vgprsPerSimd_ = 1024;
             break;
         }
+      } else if (isa().versionMinor() == 5) {
+        switch (isa().versionStepping()) {
+          case (1):
+            info_.vgprAllocGranularity_ = 24;
+            info_.vgprsPerSimd_ = 1536;
+            break;
+          default:
+            info_.vgprAllocGranularity_ = 16;
+            info_.vgprsPerSimd_ = 1024;
+            break;
+        }
+      } else {
+          info_.vgprAllocGranularity_ = 16;
+          info_.vgprsPerSimd_ = 1024;
       }
       break;
     case (10):
@@ -1846,8 +1869,8 @@ bool Device::populateOCLDeviceConstants() {
       }
       break;
     case (9):
-      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) || // For gfx90a (MI200)
-          (isa().versionMinor() == 4)) {  // For gfx94x (MI300)
+      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
+          (isa().versionMinor() == 4)) {
         info_.vgprAllocGranularity_ = 8;
         info_.vgprsPerSimd_ = 512;
       } else {
@@ -2331,14 +2354,23 @@ void Device::deviceVmemRelease(uint64_t mem_handle) const {
   }
 }
 
-void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain) const {
-  const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain) ? gpu_ext_fine_grained_segment_
-                                      : (atomics) ? gpu_fine_grained_segment_ : gpuvm_segment_;
+void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain,
+                               bool contiguous) const {
+
+  const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain && gpu_ext_fine_grained_segment_.handle)
+                                       ? gpu_ext_fine_grained_segment_ 
+                                         : (atomics && gpu_fine_grained_segment_.handle)
+                                            ? gpu_fine_grained_segment_ : gpuvm_segment_;
 
   if (pool.handle == 0 || gpuvm_segment_max_alloc_ == 0) {
     DevLogPrintfError("Invalid argument, pool_handle: 0x%x , max_alloc: %u \n",
                       pool.handle, gpuvm_segment_max_alloc_);
     return nullptr;
+  }
+
+  uint32_t hsa_mem_flags = 0;
+  if (contiguous) {
+    hsa_mem_flags = HSA_AMD_MEMORY_POOL_CONTIGUOUS_FLAG;
   }
 
   void* ptr = nullptr;
@@ -2905,14 +2937,19 @@ bool Device::IsHwEventReadyForcedWait(const amd::Event& event) const {
 }
 
 // ================================================================================================
-bool Device::IsHwEventReady(const amd::Event& event, bool wait) const {
+bool Device::IsHwEventReady(const amd::Event& event, bool wait, uint32_t hip_event_flags) const {
   void* hw_event =
       (event.NotifyEvent() != nullptr) ? event.NotifyEvent()->HwEvent() : event.HwEvent();
   if (hw_event == nullptr) {
     ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event");
     return false;
   } else if (wait) {
-    return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, ActiveWait());
+    // hipEventBlockingSync
+    // when set the CPU gives up host thread for other work
+    // when not set the CPU enters a busy-wait on the event to occur
+    constexpr int kHipEventBlockingSync = 0x1;
+    bool active_wait = !(hip_event_flags & kHipEventBlockingSync) && ActiveWait();
+    return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, active_wait);
   }
   return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) == 0);
 }
@@ -3210,8 +3247,8 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   auto wavesPerCu = info().maxThreadsPerCU_ / info().wavefrontWidth_;
   auto numPackets = info().maxComputeUnits_ * wavesPerCu;
 
-  auto size = getHostcallBufferSize(numPackets);
-  auto align = getHostcallBufferAlignment();
+  auto size = amd::getHostcallBufferSize(numPackets);
+  auto align = amd::getHostcallBufferAlignment();
 
   void* buffer = context().svmAlloc(size, align, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_SVM_ATOMICS);
   if (!buffer) {
@@ -3226,7 +3263,7 @@ void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
   } else {
     coopHostcallBuffer_ = buffer;
   }
-  if (!enableHostcalls(*this, buffer, numPackets)) {
+  if (!amd::enableHostcalls(*this, buffer, numPackets)) {
     ClPrint(amd::LOG_ERROR, amd::LOG_QUEUE, "Failed to register hostcall buffer %p with listener",
             buffer);
     return nullptr;
@@ -3319,7 +3356,7 @@ bool Device::findLinkInfo(const hsa_amd_memory_pool_t& pool,
           distance += link_info[hop_idx].numa_distance;
         }
         uint32_t oneHopDistance
-          = (link_info[0].link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) ? 15 : 20;
+          = (link_info[0].link_type == HSA_AMD_LINK_INFO_TYPE_XGMI) ? 13 : 20;
         link_attr.second = static_cast<int32_t>(distance/oneHopDistance);
         break;
       }
@@ -3554,5 +3591,5 @@ device::UriLocator* Device::createUriLocator() const {
 }
 #endif
 #endif
-} // namespace roc
+} // namespace amd::roc
 #endif  // WITHOUT_HSA_BACKEND

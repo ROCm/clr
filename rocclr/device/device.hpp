@@ -244,7 +244,7 @@ inline void WriteAqlArgAt(unsigned char* dst, //!< The write pointer to the buff
   *(reinterpret_cast<T*>(dst + offset)) = src;
 }
 
-namespace device {
+namespace amd::device {
 class ClBinary;
 class BlitManager;
 class Program;
@@ -657,11 +657,9 @@ class Settings : public amd::HeapObject {
     DeviceKernelArgs,         //!< Device memory kernel arguments with no memory
                               //!< ordering workaround (e.g. XGMI)
     DeviceKernelArgsReadback, //!< Device memory kernel arguments with kernel
-                              //!< argument readback workaround (works only in
-                              //!< ASICS >= MI200)
+                              //!< argument readback workaround
     DeviceKernelArgsHDP       //!< Device memory kernel arguments with kernel
                               //!< argument readback plus HDP flush workaround.
-                              //!< Works in all ASICS. Requires a valid hdp flush register
   };
 
   uint64_t extensions_;  //!< Supported OCL extensions
@@ -1331,7 +1329,7 @@ class VirtualDevice : public amd::HeapObject {
   uint index_;              //!< The virtual device unique index
 };
 
-}  // namespace device
+}  // namespace amd::device
 
 namespace amd {
 
@@ -1772,7 +1770,7 @@ class Device : public RuntimeObject {
   }
 
   virtual void* deviceLocalAlloc(size_t size, bool atomics = false,
-                                 bool pseudo_fine_grain = false) const {
+                                 bool pseudo_fine_grain = false, bool contiguous = false) const {
     ShouldNotCallThis();
     return NULL;
   }
@@ -1929,7 +1927,9 @@ class Device : public RuntimeObject {
   // Returns the status of HW event, associated with amd::Event
   virtual bool IsHwEventReady(
       const amd::Event& event,    //!< AMD event for HW status validation
-      bool wait = false) const {  //!< If true then forces the event completion
+      bool wait = false,          //!< If true then forces the event completion
+      uint32_t hip_event_flags = 0 //!< flags associated with the event. 0 = hipEventDefault
+      ) const {
     return false;
   };
 

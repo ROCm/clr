@@ -30,7 +30,7 @@
  */
 
 //! GPU Blit Manager Implementation
-namespace device {
+namespace amd::device {
 
 //! Blit Manager Abstraction class
 class BlitManager : public amd::HeapObject {
@@ -53,7 +53,6 @@ class BlitManager : public amd::HeapObject {
       uint disableFillImage_ : 1;
       uint disableCopyBufferToImageOpt_ : 1;
       uint disableHwlCopyBuffer_ : 1;
-      uint disableHostCopyBuffer_ : 1;
     };
     uint32_t value_;
     Setup() : value_(0) {}
@@ -449,6 +448,6 @@ class HostBlitManager : public device::BlitManager {
   HostBlitManager& operator=(const HostBlitManager&);
 };
 
-/*@}*/} // namespace device
+/*@}*/} // namespace amd::device
 
 #endif /*BLIT_HPP_*/

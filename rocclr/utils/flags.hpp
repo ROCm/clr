@@ -194,11 +194,11 @@ release(bool, ROC_SYSTEM_SCOPE_SIGNAL, true,                                  \
         "Enable system scope for signals (uses interrupts).")                 \
 release(bool, GPU_FORCE_QUEUE_PROFILING, false,                               \
         "Force command queue profiling by default")                           \
-release(bool, HIP_MEM_POOL_SUPPORT, IS_WINDOWS,                               \
+release(bool, HIP_MEM_POOL_SUPPORT, true,                                     \
         "Enables memory pool support in HIP")                                 \
-release(bool, HIP_MEM_POOL_USE_VM, IS_WINDOWS,                                \
+release(bool, HIP_MEM_POOL_USE_VM, true,                                      \
         "Enables memory pool support in HIP")                                 \
-release(bool, PAL_HIP_IPC_FLAG, true,                                        \
+release(bool, PAL_HIP_IPC_FLAG, true,                                         \
         "Enable interprocess flag for device allocation in PAL HIP")          \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
         "Force a specific asic revision for all devices")                     \
@@ -249,6 +249,10 @@ release(bool, HIP_VMEM_MANAGE_SUPPORT, true,                                  \
         "Virtual Memory Management Support")                                  \
 release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
          "Enable/Disable graph debug dot print dump")                         \
+release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
+        "Force to always use new comgr unbundling action")                    \
+release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
+         "Enable/Disable multiple kern arg copies")                           \
 
 namespace amd {
 

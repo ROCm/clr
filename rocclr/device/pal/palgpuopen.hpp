@@ -37,7 +37,7 @@
 #include "palQueue.h"
 #include "palUtil.h"
 
-namespace pal {
+namespace amd::pal {
 class Settings;
 class Device;
 class VirtualGPU;
@@ -88,7 +88,7 @@ class HandlerServer;
 
 }  // namespace DevDriver
 
-namespace pal {
+namespace amd::pal {
 // ================================================================================================
 // RgpSqttMarkerIdentifier - Identifiers for RGP SQ thread-tracing markers (Table 1)
 enum RgpSqttMarkerIdentifier : uint32_t {
@@ -429,9 +429,9 @@ inline bool RgpCaptureMgr::IsQueueTimingActive() const {
           (trace_.status_ == TraceStatus::Running || trace_.status_ == TraceStatus::Preparing ||
            trace_.status_ == TraceStatus::WaitingForSqtt));
 }
-}  // namespace pal
+}  // namespace amd::pal
 #else // PAL_GPUOPEN_OCL
-namespace pal {
+namespace amd::pal {
 class RgpCaptureMgr {
  public:
   static RgpCaptureMgr* Create(Pal::IPlatform* platform, const Device& device) { return nullptr; }
@@ -450,5 +450,5 @@ class RgpCaptureMgr {
     return true;
   }
 };
-}  // namespace pal
+}  // namespace amd::pal
 #endif // PAL_GPUOPEN_OCL

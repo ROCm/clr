@@ -23,7 +23,7 @@
 #include "rocurilocator.hpp"
 #include <sstream>
 
-namespace roc {
+namespace amd::roc {
 hsa_status_t UriLocator::createUriRangeTable() {
   auto execCb = [] (hsa_executable_t exec,
     void *data) -> hsa_status_t {
@@ -178,6 +178,6 @@ UriLocator::UriInfo UriLocator::lookUpUri(uint64_t device_pc) {
 
   return errorstate;
 }
-} //namespace roc
+} //namespace amd::roc
 #endif
 #endif

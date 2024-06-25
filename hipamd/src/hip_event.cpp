@@ -74,12 +74,12 @@ hipError_t Event::synchronize() {
   auto hip_device = g_devices[deviceId()];
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (!hip_device->devices()[0]->IsHwEventReady(*event_, kWaitCompletion)) {
+  if (!hip_device->devices()[0]->IsHwEventReady(*event_, kWaitCompletion, flags_)) {
     if (event_->HwEvent() != nullptr) {
       amd::Command* command = nullptr;
-      hipError_t status = recordCommand(command, event_->command().queue(), flags);
+      hipError_t status = recordCommand(command, event_->command().queue(), flags_);
       command->enqueue();
-      hip_device->devices()[0]->IsHwEventReady(command->event(), kWaitCompletion);
+      hip_device->devices()[0]->IsHwEventReady(command->event(), kWaitCompletion, flags_);
       command->release();
     } else {
       event_->awaitCompletion();
@@ -93,7 +93,7 @@ bool Event::awaitEventCompletion() {
 }
 
 bool EventDD::awaitEventCompletion() {
-  return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, true);
+  return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, true, flags_);
 }
 
 hipError_t Event::elapsedTime(Event& eStop, float& ms) {
@@ -104,7 +104,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
       return hipErrorInvalidHandle;
     }
 
-    if (flags & hipEventDisableTiming) {
+    if (flags_ & hipEventDisableTiming) {
       return hipErrorInvalidHandle;
     }
 
@@ -120,7 +120,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     return hipErrorInvalidHandle;
   }
 
-  if ((flags | eStop.flags) & hipEventDisableTiming) {
+  if ((flags_ | eStop.flags_) & hipEventDisableTiming) {
     return hipErrorInvalidHandle;
   }
 
@@ -224,7 +224,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
 hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                 uint32_t ext_flags ) {
   if (command == nullptr) {
-    int32_t releaseFlags = ((ext_flags == 0) ? flags : ext_flags) &
+    int32_t releaseFlags = ((ext_flags == 0) ? flags_ : ext_flags) &
                             (hipEventReleaseToDevice | hipEventReleaseToSystem |
                              hipEventDisableSystemFence);
     if (releaseFlags & hipEventDisableSystemFence) {
@@ -444,7 +444,8 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   hipError_t status = e->synchronize();
   // Release freed memory for all memory pools on the device
   g_devices[e->deviceId()]->ReleaseFreedMemory();
-
+  // Release all graph exec objects destroyed by user.
+  ReleaseGraphExec(e->deviceId());
   HIP_RETURN(status);
 }
 

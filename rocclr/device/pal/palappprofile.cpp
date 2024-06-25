@@ -23,7 +23,7 @@
 #include "device/appprofile.hpp"
 #include "device/pal/palappprofile.hpp"
 
-namespace pal {
+namespace amd::pal {
 
 AppProfile::AppProfile()
     : amd::AppProfile(), enableHighPerformanceState_(true), reportAsOCL12Device_(false) {
@@ -32,4 +32,4 @@ AppProfile::AppProfile()
 
   propertyDataMap_.insert({"OCL12Device", PropertyData(DataType_Boolean, &reportAsOCL12Device_)});
 }
-}  // namespace pal
+}  // namespace amd::pal

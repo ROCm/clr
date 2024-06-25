@@ -26,7 +26,7 @@
 #include "utils/debug.hpp"
 #include <algorithm>
 
-namespace pal {
+namespace amd::pal {
 
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
@@ -2601,26 +2601,31 @@ void KernelBlitManager::writeRawData(device::Memory& memory, size_t size, const 
 }
 
 bool KernelBlitManager::RunGwsInit(
-    uint32_t value) const {
-    amd::ScopedLock k(lockXferOps_);
+  uint32_t value) const {
+  amd::ScopedLock k(lockXferOps_);
 
-    size_t globalWorkOffset[1] = { 0 };
-    size_t globalWorkSize[1] = { 1 };
-    size_t localWorkSize[1] = { 1 };
+  if (dev().settings().gwsInitSupported_ == false) {
+    LogError("GWS Init is not supported on this target");
+    return false;
+  }
 
-    // Program kernels arguments
-    setArgument(kernels_[GwsInit], 0, sizeof(uint32_t), &value);
+  size_t globalWorkOffset[1] = { 0 };
+  size_t globalWorkSize[1] = { 1 };
+  size_t localWorkSize[1] = { 1 };
 
-    // Create ND range object for the kernel's execution
-    amd::NDRangeContainer ndrange(1, globalWorkOffset, globalWorkSize, localWorkSize);
+  // Program kernels arguments
+  setArgument(kernels_[GwsInit], 0, sizeof(uint32_t), &value);
 
-    // Execute the blit
-    address parameters = kernels_[GwsInit]->parameters().values();
-    bool result = gpu().submitKernelInternal(ndrange, *kernels_[GwsInit], parameters);
+  // Create ND range object for the kernel's execution
+  amd::NDRangeContainer ndrange(1, globalWorkOffset, globalWorkSize, localWorkSize);
 
-    synchronize();
+  // Execute the blit
+  address parameters = kernels_[GwsInit]->parameters().values();
+  bool result = gpu().submitKernelInternal(ndrange, *kernels_[GwsInit], parameters);
 
-    return result;
+  synchronize();
+
+  return result;
 }
 
 amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
@@ -2698,4 +2703,4 @@ Memory* KernelBlitManager::createView(const Memory& parent, const cl_image_forma
   return gpuImage;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

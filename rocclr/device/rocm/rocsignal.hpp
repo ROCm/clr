@@ -24,7 +24,7 @@
 
 #include "hsa/hsa.h"
 
-namespace roc {
+namespace amd::roc {
 
 class Signal: public device::Signal {
 private:

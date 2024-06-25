@@ -27,6 +27,12 @@
 #include "CL/cl.h"
 #include "CL/cl_ext.h"
 
+#ifdef WIN_OS
+#define SNPRINTF sprintf_s
+#else
+#define SNPRINTF snprintf
+#endif
+
 struct AMDDeviceInfo {
   const char* targetName_;        //!< Target name
   const char* machineTarget_;     //!< Machine target
@@ -42,83 +48,35 @@ struct AMDDeviceInfo {
 
 static const cl_uint Ki = 1024;
 static const AMDDeviceInfo DeviceInfo[] = {
-    /* CAL_TARGET_CAYMAN */
-    {"Cayman", "cayman", 1, 16, 4, 256, 32 * Ki, 32, 5, 0},
-    /* CAL_TARGET_TAHITI */
-    {"Tahiti", "tahiti", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
-    /* CAL_TARGET_PITCAIRN */
-    {"Pitcairn", "pitcairn", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
-    /* CAL_TARGET_CAPEVERDE */
-    {"Capeverde", "capeverde", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
-    /* CAL_TARGET_DEVASTATOR */
-    {"Devastator", "trinity", 1, 16, 4, 256, 32 * Ki, 32, 5, 0},
-    /* CAL_TARGET_SCRAPPER */
-    {"Scrapper", "trinity", 1, 16, 4, 256, 32 * Ki, 32, 5, 0},
-    /* CAL_TARGET_OLAND */ {"Oland", "oland", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
-    /* CAL_TARGET_BONAIRE */
-    {"Bonaire", "bonaire", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* CAL_TARGET_SPECTRE */
-    {"Spectre", "spectre", 4, 16, 1, 256, 64 * Ki, 32, 7, 1},
-    /* CAL_TARGET_SPOOKY */
-    {"Spooky", "spooky", 4, 16, 1, 256, 64 * Ki, 32, 7, 1},
-    /* CAL_TARGET_KALINDI */
-    {"Kalindi", "kalindi", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* CAL_TARGET_HAINAN */
-    {"Hainan", "hainan", 4, 16, 1, 256, 64 * Ki, 32, 6, 0},
-    /* CAL_TARGET_HAWAII */
-    {"Hawaii", "hawaii", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* CAL_TARGET_ICELAND */
-    {"Iceland", "iceland", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_TONGA */ {"Tonga", "tonga", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_MULLINS */
-    {"Mullins", "mullins", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* CAL_TARGET_FIJI */ {"Fiji", "fiji", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_CARRIZO */
-    {"Carrizo", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_CARRIZO */
-    {"Bristol Ridge", "carrizo", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_Ellesmere */
-    {"Ellesmere", "ellesmere", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_BAFFIN */
-    {"Baffin", "baffin", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* ROCM Kaveri */ {"gfx700", "gfx700", 4, 16, 1, 256, 64 * Ki, 32, 7, 1},
-    /* ROCM Hawaii */ {"gfx701", "gfx701", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* ROCM Kabini */ {"gfx703", "gfx703", 4, 16, 1, 256, 64 * Ki, 32, 7, 2},
-    /* ROCM Iceland */ {"gfx800", "gfx800", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* ROCM Carrizo */ {"gfx801", "gfx801", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* ROCM Tonga */ {"gfx802", "gfx802", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* ROCM Fiji  */ {"gfx803", "gfx803", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* Vega10 */ {"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* CAL_TARGET_STONEY */
-    {"Stoney", "stoney", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* CAL_TARGET_LEXA */
-    {"gfx804", "gfx804", 4, 16, 1, 256, 64 * Ki, 32, 8, 0},
-    /* Vega10_XNACK */ {"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Raven */ {"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Raven_XNACK */ {"gfx903", "gfx903", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Vega12      */ {"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Vega12_XNACK */ {"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Vega20 */ {"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* Vega20_XNACK */ {"gfx907", "gfx907", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* MI100 */ {"gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* MI200 */ {"gfx90a", "gfx90a", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
-    /* MI300 */ {"gfx940", "gfx940", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
-    /* MI300X */ {"gfx941", "gfx941", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
-    /* MI300X1*/ {"gfx942", "gfx942", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
-    /* Navi10 */ {"gfx1010", "gfx1010", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
-    /* Navi12 */ {"gfx1011", "gfx1011", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
-    /* Navi14 */ {"gfx1012", "gfx1012", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
-    /* Navi21 */   { "gfx1030",     "gfx1030",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Navi22 */   { "gfx1031",     "gfx1031",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Navi23 */   { "gfx1032",     "gfx1032",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Van Gogh */ { "gfx1033",     "gfx1033",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Navi24 */   { "gfx1034",     "gfx1034",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Rembrandt */{ "gfx1035",     "gfx1035",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Raphael */  { "gfx1036",     "gfx1036",     4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
-    /* Navi31*/    { "gfx1100",     "gfx1100",     4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
-    /* Navi32*/    { "gfx1101",     "gfx1101",     4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
-    /* Navi33*/    { "gfx1102",     "gfx1102",     4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
-    /* Phoenix */  { "gfx1103",     "gfx1103",     4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
+    {"gfx900", "gfx900", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx901", "gfx901", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx902", "gfx902", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx903", "gfx903", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx904", "gfx904", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx905", "gfx905", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx906", "gfx906", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx907", "gfx907", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx908", "gfx908", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx90a", "gfx90a", 4, 16, 1, 256, 64 * Ki, 32, 9, 0},
+    {"gfx940", "gfx940", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
+    {"gfx941", "gfx941", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
+    {"gfx942", "gfx942", 4, 16, 1, 256, 64 * Ki, 32, 9, 4},
+    {"gfx1010", "gfx1010", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
+    {"gfx1011", "gfx1011", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
+    {"gfx1012", "gfx1012", 4, 32, 1, 256, 64 * Ki, 32, 10, 1},
+    {"gfx1030", "gfx1030", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1031", "gfx1031", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1032", "gfx1032", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1033", "gfx1033", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1034", "gfx1034", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1035", "gfx1035", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1036", "gfx1036", 4, 32, 1, 256, 64 * Ki, 32, 10, 3 },
+    {"gfx1100", "gfx1100", 4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
+    {"gfx1101", "gfx1101", 4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
+    {"gfx1102", "gfx1102", 4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
+    {"gfx1103", "gfx1103", 4, 32, 1, 256, 64 * Ki, 32, 11, 0 },
+    {"gfx1200", "gfx1200", 4, 32, 1, 256, 64 * Ki, 32, 12, 0 },
+    {"gfx1201", "gfx1201", 4, 32, 1, 256, 64 * Ki, 32, 12, 0 },
 };
 
 const int DeviceInfoSize = sizeof(DeviceInfo) / sizeof(AMDDeviceInfo);
@@ -176,7 +134,14 @@ void OCLDeviceQueries::open(unsigned int test, char* units, double& conversion,
       break;
     }
   }
-  CHECK_RESULT(deviceFound != true, "Device %s is not supported", name);
+  
+  if (!deviceFound) {
+    char msg[256];
+    SNPRINTF(msg, sizeof(msg), "Unsupported device(%s) for the test!\t",
+             name);
+    testDescString = msg;
+    return;
+  }
 
   error_ = _wrapper->clGetDeviceInfo(devices_[deviceId],
                                      CL_DEVICE_SIMD_PER_COMPUTE_UNIT_AMD,

@@ -71,7 +71,7 @@ if(BUILD_SHARED_LIBS)
     add_custom_command(TARGET amdhip64 POST_BUILD COMMAND ${CMAKE_STRIP} $<TARGET_FILE:amdhip64>)
   endif()
 else()
-  add_library(amdhip64 STATIC rocclr)
+  add_library(amdhip64 STATIC $<TARGET_OBJECTS:rocclr>)
 endif()
 
 set_target_properties(amdhip64 PROPERTIES
@@ -162,6 +162,14 @@ target_include_directories(amdhip64
 target_compile_definitions(amdhip64 PRIVATE __HIP_PLATFORM_AMD__)
 target_link_libraries(amdhip64 PRIVATE ${OPENGL_LIBRARIES})
 target_link_libraries(amdhip64 PRIVATE ${CMAKE_DL_LIBS})
+# Add link to comgr, hsa-runtime and other required libraries in target files
+# This is required for static libraries
+if(NOT BUILD_SHARED_LIBS)
+  find_package(hsa-runtime64)
+  find_package(amd_comgr)
+  target_link_libraries(amdhip64 PRIVATE
+    pthread numa rt c amd_comgr hsa-runtime64::hsa-runtime64)
+endif()
 
 # Note in static case we cannot link against rocclr.
 # If we would, we'd also have to export rocclr and have hipcc pass it to the linker.
@@ -201,9 +209,9 @@ set(HIPRTC_OBJECTS)
 add_subdirectory(hiprtc)
 
 if(NOT WIN32)
+  target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
   if(BUILD_SHARED_LIBS)
     target_link_libraries(amdhip64 PRIVATE ${HIPRTC_OBJECTS})
-    target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
     add_dependencies(amdhip64 hiprtc-builtins)
     INSTALL(TARGETS hiprtc-builtins
       RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -287,7 +295,7 @@ endif()
 
 target_compile_definitions(amdhip64 PUBLIC USE_PROF_API=1)
 
-if(WIN32)
+if(WIN32 OR NOT BUILD_SHARED_LIBS)
     # rocprofiler-register is not support on Windows
     set(HIP_ENABLE_ROCPROFILER_REGISTER OFF)
 else()

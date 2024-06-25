@@ -23,7 +23,7 @@
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palsettings.hpp"
 
-namespace pal {
+namespace amd::pal {
 
 // ================================================================================================
 ManagedBuffer::ManagedBuffer(VirtualGPU& gpu, uint32_t size)
@@ -72,7 +72,7 @@ bool ManagedBuffer::create(Resource::MemoryType type) {
 // ================================================================================================
 address ManagedBuffer::reserve(uint32_t size, uint64_t* gpu_address) {
   // Align to the maximum data size available in OpenCL
-  static constexpr uint32_t MemAlignment = sizeof(double[16]);
+  static constexpr uint32_t MemAlignment = sizeof(double[32]);
 
   // Align reserve size on the vector's boundary
   uint32_t count = amd::alignUp(size, MemAlignment);
@@ -170,4 +170,4 @@ Memory& XferBuffer::Acquire(uint32_t size) {
   return buffer_view_;
 }
 
-}  // namespace pal
+}  // namespace amd::pal

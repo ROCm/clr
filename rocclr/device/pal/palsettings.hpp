@@ -29,7 +29,7 @@
  */
 
 //! PAL Device Implementation
-namespace pal {
+namespace amd::pal {
 
 //! Device settings
 class Settings : public device::Settings {
@@ -142,5 +142,5 @@ class Settings : public device::Settings {
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
-/*@}*/  // namespace pal
-}  // namespace pal
+/*@}*/  // namespace amd::pal
+}  // namespace amd::pal

@@ -92,8 +92,8 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);
   }
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
-    reinterpret_cast<hip::Stream*>(stream);
+  auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+    hip::getCurrentDevice()->NullStream() : reinterpret_cast<hip::Stream*>(stream);
   auto device = hip_stream->GetDevice();
   auto mem_pool = device->GetCurrentMemoryPool();
 
@@ -147,8 +147,8 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
 
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
 
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
-                    : reinterpret_cast<hip::Stream*>(stream);
+  auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+    hip::getCurrentDevice()->NullStream(): reinterpret_cast<hip::Stream*>(stream);
 
   hip::Event* event = nullptr;
   bool graph_in_use = false;
@@ -192,7 +192,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
         }
       }
     }
-    
+
     auto cmd = new FreeAsyncCommand(*hip_stream, dev_ptr, event);
     if (cmd == nullptr) {
       HIP_RETURN(hipErrorUnknown);
@@ -367,8 +367,8 @@ hipError_t hipMallocFromPoolAsync(
   STREAM_CAPTURE(hipMallocAsync, stream, mem_pool, size, dev_ptr);
 
   auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream() :
-    reinterpret_cast<hip::Stream*>(stream);
+  auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
+    hip::getCurrentDevice()->NullStream() : reinterpret_cast<hip::Stream*>(stream);
   *dev_ptr = mpool->AllocateMemory(size, hip_stream);
   if (*dev_ptr == nullptr) {
     HIP_RETURN(hipErrorOutOfMemory);

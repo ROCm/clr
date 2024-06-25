@@ -29,7 +29,7 @@
 #include <dlfcn.h>
 #endif
 
-namespace roc {
+namespace amd::roc {
 
 namespace MesaInterop {
 

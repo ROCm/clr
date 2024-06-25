@@ -524,7 +524,7 @@ int Os::systemCall(const std::string& command) {
 #if 1
   size_t len = command.size();
   char* cmd = new char[len + 1];
-  fastMemcpy(cmd, command.c_str(), len);
+  std::memcpy(cmd, command.c_str(), len);
   cmd[len] = 0;
 
   // Split the command into arguments. This is a very
@@ -680,8 +680,6 @@ uint64_t Os::xgetbv(uint32_t ecx) {
   return ((uint64_t)edx << 32) | (uint64_t)eax;
 }
 #endif  // ATI_ARCH_X86
-
-void* Os::fastMemcpy(void* dest, const void* src, size_t n) { return memcpy(dest, src, n); }
 
 uint64_t Os::offsetToEpochNanos() {
   static uint64_t offset = 0;

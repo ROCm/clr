@@ -61,11 +61,24 @@ set_target_properties(amdocl PROPERTIES
   CXX_EXTENSIONS OFF
   POSITION_INDEPENDENT_CODE ON)
 
+# set amdocl library version
+set(AMDOCL_LIB_VERSION_MAJOR "2")
+set(AMDOCL_LIB_VERSION_MINOR "1")
+if(DEFINED ENV{ROCM_LIBPATCH_VERSION})
+  set(AMDOCL_LIB_VERSION_PATCH "${AMDOCL_LIB_VERSION_MAJOR}.${AMDOCL_LIB_VERSION_MINOR}.$ENV{ROCM_LIBPATCH_VERSION}")
+endif()
+
+set_target_properties(amdocl PROPERTIES
+                      VERSION "${AMDOCL_LIB_VERSION_PATCH}"
+                      SOVERSION ${AMDOCL_LIB_VERSION_MAJOR})
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
   set_target_properties(amdocl PROPERTIES OUTPUT_NAME "amdocl64")
 else()
   set_target_properties(amdocl PROPERTIES OUTPUT_NAME "amdocl32")
 endif()
+
+target_include_directories(amdocl PUBLIC $<TARGET_PROPERTY:rocclr,INCLUDE_DIRECTORIES>)
 
 target_sources(amdocl PRIVATE
   cl_command.cpp

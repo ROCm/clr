@@ -765,7 +765,13 @@ RUNTIME_ENTRY_RET(cl_event, clCreateEventFromGLsyncKHR,
     LogWarning("Memory allocation of clglEvent object failed");
     return nullptr;
   }
-  clglEvent->context().glenv()->glFlush_();
+
+  // Add this scope to bound the scoped lock
+  {
+    amd::GLFunctions::Lock lock(clglEvent->context().glenv());
+    clglEvent->context().glenv()->glFlush_();
+  }  // Release scoped lock
+
   // initially set the status of fence as queued
   clglEvent->setStatus(CL_SUBMITTED);
   // store GLsync id of the fence in event in order to associate them together
@@ -1108,22 +1114,21 @@ cl_mem clCreateFromGLBufferAMD(Context& amdContext, cl_mem_flags flags, GLuint b
 
     // Mapping will be done at acquire time (sync point)
 
+    // Now create BufferGL object
+    pBufferGL = new (amdContext) BufferGL(amdContext, flags, gliSize, 0, bufobj);
+
+    if (!pBufferGL) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      LogWarning("cannot create object of class BufferGL");
+      return (cl_mem)0;
+    }
+
+    if (!pBufferGL->create()) {
+      *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+      pBufferGL->release();
+      return (cl_mem)0;
+    }
   }  // Release scoped lock
-
-  // Now create BufferGL object
-  pBufferGL = new (amdContext) BufferGL(amdContext, flags, gliSize, 0, bufobj);
-
-  if (!pBufferGL) {
-    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-    LogWarning("cannot create object of class BufferGL");
-    return (cl_mem)0;
-  }
-
-  if (!pBufferGL->create()) {
-    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    pBufferGL->release();
-    return (cl_mem)0;
-  }
 
   *not_null(errcode_ret) = CL_SUCCESS;
 
@@ -1430,33 +1435,33 @@ cl_mem clCreateFromGLTextureAMD(Context& amdContext, cl_mem_flags clFlags, GLenu
 
     // PBO and mapping will be done at "acquire" time (sync point)
 
+    target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
+
+    if (wholeMipmap) {
+      pImageGL = new (amdContext)
+          ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
+                static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
+                texture, miplevel, glInternalFormat, clGLType, numSamples, gliTexMaxLevel, target);
+    } else {
+      pImageGL = new (amdContext)
+          ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
+                static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
+                texture, miplevel, glInternalFormat, clGLType, numSamples, target);
+    }
+
+    if (!pImageGL) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      LogWarning("Cannot create class ImageGL - out of memory?");
+      return static_cast<cl_mem>(0);
+    }
+
+    if (!pImageGL->create()) {
+      *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+      pImageGL->release();
+      return static_cast<cl_mem>(0);
+    }
+
   }  // Release scoped lock
-
-  target = (glTarget == GL_TEXTURE_CUBE_MAP) ? target : 0;
-
-  if (wholeMipmap) {
-    pImageGL = new (amdContext)
-        ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
-              static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
-              texture, miplevel, glInternalFormat, clGLType, numSamples, gliTexMaxLevel, target);
-  } else {
-    pImageGL = new (amdContext)
-        ImageGL(amdContext, clType, clFlags, clImageFormat, static_cast<size_t>(gliTexWidth),
-              static_cast<size_t>(gliTexHeight), static_cast<size_t>(gliTexDepth), glTarget,
-              texture, miplevel, glInternalFormat, clGLType, numSamples, target);
-  }
-
-  if (!pImageGL) {
-    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-    LogWarning("Cannot create class ImageGL - out of memory?");
-    return static_cast<cl_mem>(0);
-  }
-
-  if (!pImageGL->create()) {
-    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    pImageGL->release();
-    return static_cast<cl_mem>(0);
-  }
 
   *not_null(errcode_ret) = CL_SUCCESS;
   return as_cl<Memory>(pImageGL);
@@ -1553,24 +1558,23 @@ cl_mem clCreateFromGLRenderbufferAMD(Context& amdContext, cl_mem_flags clFlags, 
 
     // PBO and mapping will be done at "acquire" time (sync point)
 
+    pImageGL =
+        new (amdContext) ImageGL(amdContext, CL_MEM_OBJECT_IMAGE2D, clFlags, clImageFormat,
+                                 (size_t)gliRbWidth, (size_t)gliRbHeight, 1, glTarget, renderbuffer,
+                                 0, glInternalFormat, CL_GL_OBJECT_RENDERBUFFER, 0);
+
+    if (!pImageGL) {
+      *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
+      LogWarning("Cannot create class ImageGL from renderbuffer - out of memory?");
+      return (cl_mem)0;
+    }
+
+    if (!pImageGL->create()) {
+      *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+      pImageGL->release();
+      return (cl_mem)0;
+    }
   }  // Release scoped lock
-
-  pImageGL =
-      new (amdContext) ImageGL(amdContext, CL_MEM_OBJECT_IMAGE2D, clFlags, clImageFormat,
-                               (size_t)gliRbWidth, (size_t)gliRbHeight, 1, glTarget, renderbuffer,
-                               0, glInternalFormat, CL_GL_OBJECT_RENDERBUFFER, 0);
-
-  if (!pImageGL) {
-    *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-    LogWarning("Cannot create class ImageGL from renderbuffer - out of memory?");
-    return (cl_mem)0;
-  }
-
-  if (!pImageGL->create()) {
-    *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
-    pImageGL->release();
-    return (cl_mem)0;
-  }
 
   *not_null(errcode_ret) = CL_SUCCESS;
   return as_cl<Memory>(pImageGL);
@@ -1627,6 +1631,7 @@ cl_int clEnqueueAcquireExtObjectsAMD(cl_command_queue command_queue, cl_uint num
     // that any such pending OpenGL operations are complete for an OpenGL context bound
     // to the same thread as the OpenCL context.
     if (hostQueue.device().settings().checkExtension(ClKhrGlEvent)) {
+      GLFunctions::Lock lock(gl_functions);
       gl_functions->WaitCurrentGlContext(hostQueue.context().info());
     }
   }
