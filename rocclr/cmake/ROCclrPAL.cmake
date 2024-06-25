@@ -36,14 +36,19 @@ set(PAL_BUILD_SECURITY      OFF)
 set(PAL_SPPAP_CLOSED_SOURCE OFF)
 set(PAL_BUILD_GFX           ON)
 set(PAL_BUILD_NULL_DEVICE   OFF)
+
+
+# The following flags force on certain ASIC support
+# This is used for development and test purpose
+# Please do not set following flags in staging and mainline in new ASICs
 set(PAL_BUILD_GFX6          ON)
 set(PAL_BUILD_GFX9          ON)
 set(PAL_BUILD_GFX11         ON)
-set(PAL_BUILD_GFX12         ON)
 set(PAL_BUILD_NAVI31        ON)
 set(PAL_BUILD_NAVI32        ON)
 set(PAL_BUILD_NAVI33        ON)
 set(PAL_BUILD_PHOENIX1      ON)
+# Please do not set above flags in staging and mainline in new ASICs
 
 set(PAL_BRANCHDEFS          ON)
 
