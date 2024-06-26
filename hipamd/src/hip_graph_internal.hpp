@@ -394,7 +394,7 @@ struct Graph {
   hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
   std::unordered_set<GraphNode*> capturedNodes_;
   bool graphInstantiated_;
-
+  std::unordered_set<void*> memAllocNodePtrs_;
  public:
   Graph(hip::Device* device, const Graph* original = nullptr)
       : pOriginalGraph_(original)
@@ -419,7 +419,7 @@ struct Graph {
     if (mem_pool_ != nullptr) {
       mem_pool_->release();
     }
-
+    memAllocNodePtrs_.clear();
   }
 
   void AddManualNodeDuringCapture(GraphNode* node) { capturedNodes_.insert(node); }
