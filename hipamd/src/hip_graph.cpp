@@ -65,7 +65,7 @@ inline hipError_t ihipGraphAddNode(hip::GraphNode* graphNode, hip::Graph* graph,
       return hipErrorInvalidValue;
     }
     DuplicateDep.insert(pDependencies[i]);
-    pDependencies[i]->AddEdge(graphNode);
+    pDependencies[i]->AddEdgeDep(graphNode);
   }
   if (capture == false) {
     {
@@ -1017,18 +1017,16 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
     return hipErrorStreamCaptureInvalidated;
   }
 
-  // check if all parallel streams have joined
-  // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do
-  // not result in hipErrorStreamCaptureUnjoined
-  // add temporary node to check if all parallel streams have joined
+  // Add temporary node to check if all parallel streams have joined
   hip::GraphNode* pGraphNode;
   pGraphNode = reinterpret_cast<hip::GraphNode*>(new hip::GraphEmptyNode());
   hipError_t status =
       ihipGraphAddNode(pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                        s->GetLastCapturedNodes().size());
-
   if (s->GetCaptureGraph()->GetLeafNodeCount() > 1) {
     std::vector<hip::GraphNode*> leafNodes = s->GetCaptureGraph()->GetLeafNodes();
+    // Manually added nodes doesnt result in hipErrorStreamCaptureUnjoined. Remove them from leaf
+    // nodes.
     std::unordered_set<hip::GraphNode*> nodes = s->GetCaptureGraph()->GetManualNodesDuringCapture();
     for (auto node : nodes) {
       const auto& fnode = std::find(leafNodes.begin(), leafNodes.end(), node);
@@ -1036,6 +1034,8 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
         leafNodes.erase(fnode);
       }
     }
+    // Nodes that are removed from the dependency set via API hipStreamUpdateCaptureDependencies do
+    // not result in hipErrorStreamCaptureUnjoined
     const std::vector<hip::GraphNode*>& removedDepNodes = s->GetRemovedDependencies();
     bool foundInRemovedDep = false;
     for (auto leafNode : leafNodes) {
@@ -1055,6 +1055,7 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
     // remove temporary node
     s->GetCaptureGraph()->RemoveNode(pGraphNode);
   }
+
   *pGraph = s->GetCaptureGraph();
   // end capture on all streams/events part of graph capture
   return s->EndCapture();
@@ -1681,7 +1682,7 @@ hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
         HIP_RETURN(hipErrorInvalidValue);
       }
     }
-    fromNode[i]->AddEdge(toNode[i]);
+    fromNode[i]->AddEdgeDep(toNode[i]);
   }
   HIP_RETURN(hipSuccess);
 }
@@ -1930,7 +1931,7 @@ hipError_t hipGraphRemoveDependencies(hipGraph_t graph, const hipGraphNode_t* fr
   hip::Graph* g = reinterpret_cast<hip::Graph*>(graph);
   for (size_t i = 0; i < numDependencies; i++) {
     if (toNode[i]->GetParentGraph() != g || fromNode[i]->GetParentGraph() != g ||
-        fromNode[i]->RemoveUpdateEdge(toNode[i]) == false) {
+        fromNode[i]->RemoveEdgeDep(toNode[i]) == false) {
       HIP_RETURN(hipErrorInvalidValue);
     }
   }
@@ -2053,16 +2054,8 @@ hipError_t hipGraphDestroyNode(hipGraphNode_t node) {
       n->GetType() == hipGraphNodeTypeMemFree) {
     HIP_RETURN(hipErrorNotSupported);
   }
-  // First remove all the edges both incoming and outgoing from node.
-  for (auto& edge : n->GetEdges()) {
-    n->RemoveUpdateEdge(edge);
-  }
-  const std::vector<hip::GraphNode*>& dependencies = n->GetDependencies();
-  for (auto& parent : dependencies) {
-    parent->RemoveEdge(n);
-    parent->SetOutDegree(parent->GetOutDegree() - 1);
-  }
-  // Remove the node from graph.
+  // Remove the node from graph should takecare of updating edges of parent and deps of child nodes
+  // as part of graph node destructor
   n->GetParentGraph()->RemoveNode(n);
   HIP_RETURN(hipSuccess);
 }
