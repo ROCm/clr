@@ -2516,13 +2516,15 @@ hipError_t hipGraphAddMemAllocNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   pNodeParams->dptr = nullptr;
   auto mem_alloc_node = new hip::GraphMemAllocNode(pNodeParams);
   hip::GraphNode* node = mem_alloc_node;
-  auto status =
-      ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(graph),
+  auto hgraph = reinterpret_cast<hip::Graph*>(graph);
+  auto status = ihipGraphAddNode(node, hgraph,
                        reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies);
   // The address must be provided during the node creation time
   pNodeParams->dptr =
       (HIP_MEM_POOL_USE_VM) ? mem_alloc_node->ReserveAddress() : mem_alloc_node->Execute();
   *pGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  amd::ScopedLock lock(hip::Graph::graphSetLock_);
+  hgraph->memAllocNodePtrs_.insert(pNodeParams->dptr);
   HIP_RETURN(status);
 }
 
@@ -2572,17 +2574,25 @@ hipError_t hipGraphAddMemFreeNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
       dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  // memAllocNodePtrs_ stores only local to graph alloc dptrs whose free node is not added.
+  // and so we need to traverse all graphs of graphSet_ and below cases are handled.
+  // 1) Free node cannot be added twice to the same graph
+  // 2) Free node if it part of another graph cannot be added to this graph
   hip::GraphNode* pNode;
-  for (auto it : hip::Graph::graphSet_) {
-    for (auto n : it->vertices_) {
-      if (n->GetType() == hipGraphNodeTypeMemFree) {
-        void* param;
-        reinterpret_cast<hip::GraphMemFreeNode*>(n)->GetParams(&param);
-        if (param == dev_ptr) {
-          HIP_RETURN(hipErrorInvalidValue);
-        }
+  bool bGraphFound = false;
+  {
+    amd::ScopedLock lock(hip::Graph::graphSetLock_);
+    for (auto itGraph : hip::Graph::graphSet_) {
+      std::unordered_set<void*>::iterator itDevPtr = itGraph->memAllocNodePtrs_.find(dev_ptr);
+      if (itDevPtr != itGraph->memAllocNodePtrs_.end()) {
+        bGraphFound = true;
+        itGraph->memAllocNodePtrs_.erase(itDevPtr);
+        break;
       }
     }
+  }
+  if (bGraphFound == false) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
   auto status =
       ihipGraphAddMemFreeNode(&pNode,
