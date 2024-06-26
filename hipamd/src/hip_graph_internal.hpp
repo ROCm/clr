@@ -273,32 +273,31 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     }
   }
   /// Add graph node dependency
-  void AddDependency(const Node& node) { dependencies_.push_back(node); }
+  void AddDependency(const Node& node) {
+    dependencies_.push_back(node);
+    inDegree_++;
+  }
   /// Remove graph node dependency
   void RemoveDependency(const Node& node) {
     dependencies_.erase(std::remove(dependencies_.begin(), dependencies_.end(), node),
                         dependencies_.end());
+    inDegree_--;
   }
   void RemoveEdge(const Node& childNode) {
     edges_.erase(std::remove(edges_.begin(), edges_.end(), childNode), edges_.end());
+    outDegree_--;
   }
-  /// Return graph node children
-  const std::vector<Node>& GetEdges() const { return edges_; }
-  /// Updates graph node children
-  void SetEdges(std::vector<Node>& edges) {
-    for (auto entry : edges) {
-      edges_.push_back(entry);
-    }
-  }
-  /// Add edge, update parent node outdegree, child node indegree and dependency
   void AddEdge(const Node& childNode) {
     edges_.push_back(childNode);
     outDegree_++;
-    childNode->SetInDegree(childNode->GetInDegree() + 1);
+  }
+  /// Add edge, update parent node outdegree, child node indegree and dependency
+  void AddEdgeDep(const Node& childNode) {
+    AddEdge(childNode);
     childNode->AddDependency(this);
   }
   /// Remove edge, update parent node outdegree, child node indegree and dependency
-  bool RemoveUpdateEdge(const Node& childNode) {
+  bool RemoveEdgeDep(const Node& childNode) {
     // std::remove changes the end() hence saving it before hand for validation
     auto currEdgeEnd = edges_.end();
     auto it = std::remove(edges_.begin(), edges_.end(), childNode);
@@ -308,9 +307,16 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     }
     edges_.erase(it, edges_.end());
     outDegree_--;
-    childNode->SetInDegree(childNode->GetInDegree() - 1);
     childNode->RemoveDependency(this);
     return true;
+  }
+  /// Return graph node children
+  const std::vector<Node>& GetEdges() const { return edges_; }
+  /// Updates graph node children
+  void SetEdges(std::vector<Node>& edges) {
+    for (auto entry : edges) {
+      edges_.push_back(entry);
+    }
   }
   /// Get Runlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual void GetRunList(std::vector<std::vector<Node>>& parallelList,
