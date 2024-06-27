@@ -347,7 +347,8 @@ bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   if (src && dst && srcMemory == nullptr && dstMemory == nullptr) {
-    if (kind != hipMemcpyHostToHost && kind != hipMemcpyDefault) {
+    if (!g_devices[0]->devices()[0]->info().hmmCpuMemoryAccessible_ &&
+         kind != hipMemcpyHostToHost && kind != hipMemcpyDefault) {
       return false;
     }
   }
