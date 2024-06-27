@@ -384,7 +384,7 @@ void Command::enqueue() {
 
   if ((queue_->device().settings().waitCommand_ && (type_ != 0)) ||
       ((commandWaitBits_ & 0x2) != 0)) {
-    awaitCompletion();
+    queue_->finish();
   }
 
   // set this queue status is active
