@@ -1659,9 +1659,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
 
         // If direct access failed
         if (!result) {
-          // Don't use cached allocation
-          // if size is biger than max single alloc
-          if (owner.getSize() > info().maxMemAllocSize_) {
+          // Don't use cached allocation if size is biger than max single alloc or it's HIP
+          if (amd::IS_HIP || (owner.getSize() > info().maxMemAllocSize_)) {
             delete gpuMemory;
             return nullptr;
           }
