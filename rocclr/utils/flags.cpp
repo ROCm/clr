@@ -210,6 +210,7 @@ Flag Flag::flags_[] = {
 
 }  // namespace amd
 
+#ifndef BUILD_STATIC_LIBS
 #ifndef _WIN32
 namespace {
 #endif
@@ -222,4 +223,5 @@ RUNTIME_FLAGS(DEFINE_DEBUG_FLAG_VALUE, DEFINE_RELEASE_FLAG_VALUE, DEFINE_DEBUG_F
 #undef DEFINE_RELEASE_FLAG_VALUE
 #ifndef _WIN32
 }
-#endif
+#endif /*!_WIN32*/
+#endif /*!BUILD_STATIC_LIBS*/
