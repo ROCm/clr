@@ -39,6 +39,7 @@ packages/
 install/
 .vs/
 .vscode/
+.cache/
 
 # Editor temp files
 *.swp
