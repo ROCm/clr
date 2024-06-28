@@ -3110,33 +3110,34 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
           break;
         }
         case amd::KernelParameterDescriptor::HiddenMultiGridSync: {
-          uint64_t gridSync = coopGroups ? 1 : 0;
-          bool multiGrid = (vcmd != nullptr) ? vcmd->cooperativeMultiDeviceGroups() : false;
+          bool multiGridSync = (vcmd != nullptr) ? vcmd->cooperativeMultiDeviceGroups() : false;
+          bool singleGridSync = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
           Device::MGSyncInfo* syncInfo = nullptr;
-          if (multiGrid) {
+          if (multiGridSync) {
             // Find CPU pointer to the right sync info structure. It should be after MGSyncData
             syncInfo = reinterpret_cast<Device::MGSyncInfo*>(
               dev().MGSync() + Device::kMGInfoSizePerDevice * dev().index() + Device::kMGSyncDataSize);
             // Update sync data address. Use the offset adjustment to the right location
             syncInfo->mgs = reinterpret_cast<Device::MGSyncData*>(dev().MGSync() +
                             Device::kMGInfoSizePerDevice * vcmd->firstDevice());
-          }
-          else {
+          } else if (singleGridSync) {
             syncInfo = reinterpret_cast<Device::MGSyncInfo*>(allocKernArg(Device::kSGInfoSize, 64));
             syncInfo->mgs = nullptr;
           }
-          // Update sync data address.
-          syncInfo->sgs = {0};
-          // Fill all sync info fields
-          syncInfo->grid_id = vcmd->gridId();
-          syncInfo->num_grids = vcmd->numGrids();
-          syncInfo->prev_sum = vcmd->prevGridSum();
-          syncInfo->all_sum = vcmd->allGridSum();
-          syncInfo->num_wg = vcmd->numWorkgroups();
+          if (multiGridSync || singleGridSync) {
+            // Update sync data address.
+            syncInfo->sgs = {0};
+            // Fill rest of sync info fields
+            syncInfo->grid_id = vcmd->gridId();
+            syncInfo->num_grids = vcmd->numGrids();
+            syncInfo->prev_sum = vcmd->prevGridSum();
+            syncInfo->all_sum = vcmd->allGridSum();
+            syncInfo->num_wg = vcmd->numWorkgroups();
+          }
           // Update GPU address for grid sync info. Use the offset adjustment for the right
           // location
-          gridSync = reinterpret_cast<uint64_t>(syncInfo);
-          WriteAqlArgAt(hidden_arguments, gridSync, it.size_, it.offset_);
+          WriteAqlArgAt(hidden_arguments, reinterpret_cast<uint64_t>(syncInfo), it.size_,
+                        it.offset_);
           break;
         }
         case amd::KernelParameterDescriptor::HiddenHeap:
