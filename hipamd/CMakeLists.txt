@@ -459,17 +459,6 @@ if(NOT WIN32)
 endif()
 
 #############################
-# Code formatting
-#############################
-# Target: clangformat
-find_program(CLANGFORMAT_EXE clang-format PATHS ${HCC_HOME}/bin)
-if(CLANGFORMAT_EXE)
-    file(GLOB_RECURSE FORMAT_SOURCE_FILE_LIST *.cpp *.hpp *.h)
-    add_custom_target(clangformat COMMAND ${CLANGFORMAT_EXE} -style=file -i ${FORMAT_SOURCE_FILE_LIST}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-endif()
-
-#############################
 # Code analysis
 #############################
 # Target: clang
