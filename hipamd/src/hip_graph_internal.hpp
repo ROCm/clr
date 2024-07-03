@@ -88,6 +88,7 @@ struct UserObject : public amd::ReferenceCountedObject {
   }
 
   static bool isUserObjvalid(UserObject* pUsertObj) {
+    amd::ScopedLock lock(UserObjectLock_);
     auto it = ObjectSet_.find(pUsertObj);
     if (it == ObjectSet_.end()) {
       return false;
