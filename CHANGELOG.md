@@ -13,6 +13,8 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipGetProcAddress` returns the pointer to driver function, corresponding to the defined driver function symbol.
     - `hipGetFuncBySymbol` returns the pointer to device entry function that matches entry function symbolPtr.
     - `hipStreamBeginCaptureToGraph` begins graph capture on a stream to an existing graph.
+    - `hipGraphInstantiateWithParams`  creates an executable graph from a graph.
+
 - Added a new flag `integrated` support in device property
 
     The `integrated` flag is added in the struct `hipDeviceProp_t`.
