@@ -392,8 +392,8 @@ hipError_t AllocKernelArgForGraphNode(std::vector<hip::Node>& topoOrder,
       // From the kernel pool allocate the kern arg size required for the current kernel node.
       address kernArgOffset = nullptr;
       if (kernelNode->GetKernargSegmentByteSize()) {
-        kernArgOffset = graphExec->allocKernArg(kernelNode->GetKernargSegmentByteSize(),
-                                                kernelNode->GetKernargSegmentAlignment());
+        kernArgOffset = graphExec->kernArgManager_->AllocKernArg(
+            kernelNode->GetKernargSegmentByteSize(), kernelNode->GetKernargSegmentAlignment());
         if (kernArgOffset == nullptr) {
           return hipErrorMemoryAllocation;
         }
@@ -418,30 +418,6 @@ hipError_t AllocKernelArgForGraphNode(std::vector<hip::Node>& topoOrder,
 }
 
 // ================================================================================================
-hipError_t GraphExec::AllocGraphKernargPool(size_t pool_size) {
-  hipError_t status = hipSuccess;
-  assert(pool_size > 0);
-  address graph_kernarg_base;
-  auto device = g_devices[ihipGetDevice()]->devices()[0];
-
-  if (device->info().largeBar_) {
-    graph_kernarg_base =
-        reinterpret_cast<address>(device->deviceLocalAlloc(pool_size));
-    device_kernarg_pool_ = true;
-  } else {
-    graph_kernarg_base = reinterpret_cast<address>(
-                          device->hostAlloc(pool_size, 0,
-                          amd::Device::MemorySegment::kKernArg));
-  }
-
-  if (graph_kernarg_base == nullptr) {
-    return hipErrorMemoryAllocation;
-  }
-  kernarg_graph_.push_back(KernelArgPoolGraph(graph_kernarg_base, pool_size));
-  return status;
-}
-
-// ================================================================================================
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
   if (parallelLists_.size() == 1) {
@@ -449,33 +425,16 @@ hipError_t GraphExec::CaptureAQLPackets() {
     GetKernelArgSizeForGraph(parallelLists_, kernArgSizeForGraph);
     auto device = g_devices[ihipGetDevice()]->devices()[0];
     // Add a larger initial pool to accomodate for any updates to kernel args
-    status = AllocGraphKernargPool(kernArgSizeForGraph + kKernArgChunkSize);
-    if (status != hipSuccess) {
-      return status;
+    bool bStatus = kernArgManager_->AllocGraphKernargPool(kernArgSizeForGraph + kKernArgChunkSize);
+    if (bStatus != true) {
+      return hipErrorMemoryAllocation;
     }
 
     status = AllocKernelArgForGraphNode(topoOrder_, capture_stream_, this);
     if (status != hipSuccess) {
       return status;
     }
-
-    if (device_kernarg_pool_) {
-      auto kernArgImpl = device->settings().kernel_arg_impl_;
-
-      if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
-        *device->info().hdpMemFlushCntl = 1u;
-        auto kSentinel = *reinterpret_cast<volatile int*>(device->info().hdpMemFlushCntl);
-      } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
-                 kernarg_graph_.back().kernarg_pool_addr_ != 0) {
-        address dev_ptr = kernarg_graph_.back().kernarg_pool_addr_ +
-                          kernarg_graph_.back().kernarg_pool_size_;
-        auto kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
-        _mm_sfence();
-        *(dev_ptr - 1) = kSentinel;
-        _mm_mfence();
-        kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
-      }
-    }
+    kernArgManager_->ReadBackOrFlush();
   }
   return status;
 }
@@ -486,16 +445,11 @@ hipError_t GraphExec::UpdateAQLPacket(hip::GraphKernelNode* node) {
   if (parallelLists_.size() == 1) {
     size_t pool_new_usage = 0;
     address kernArgOffset = nullptr;
-    kernArgOffset = allocKernArg(node->GetKerArgSize(),
-                                  node->GetKernargSegmentAlignment());
-
-    if (kernArgOffset == nullptr ) {
-      // Allocate new pool for kernarg and get the offset
-      status = AllocGraphKernargPool(kKernArgChunkSize);
-      kernArgOffset = allocKernArg(node->GetKerArgSize(),
-                              node->GetKernargSegmentAlignment());
+    kernArgOffset =
+        kernArgManager_->AllocKernArg(node->GetKerArgSize(), node->GetKernargSegmentAlignment());
+    if (kernArgOffset == nullptr) {
+      return hipErrorMemoryAllocation;
     }
-
     node->CaptureAndFormPacket(capture_stream_, kernArgOffset);
   }
   return hipSuccess;
@@ -689,6 +643,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   ResetQueueIndex();
   return status;
 }
+
 void ReleaseGraphExec(int deviceId) {
   // Release all graph exec objects destroyed by user.
   amd::ScopedLock lock(GraphExecStatusLock_);
@@ -705,6 +660,7 @@ void ReleaseGraphExec(int deviceId) {
     }
   }
 }
+
 void ReleaseGraphExec(hip::Stream* stream) {
   amd::ScopedLock lock(GraphExecStatusLock_);
   for (auto itr = GraphExecStatus_.begin(); itr != GraphExecStatus_.end();) {
@@ -718,6 +674,71 @@ void ReleaseGraphExec(hip::Stream* stream) {
       break;
     } else {
       ++itr;
+    }
+  }
+}
+
+// ================================================================================================
+bool GraphKernelArgManager::AllocGraphKernargPool(size_t pool_size) {
+  bool bStatus = true;
+  assert(pool_size > 0);
+  address graph_kernarg_base;
+  auto device = g_devices[ihipGetDevice()]->devices()[0];
+
+  if (device->info().largeBar_) {
+    graph_kernarg_base = reinterpret_cast<address>(device->deviceLocalAlloc(pool_size));
+    device_kernarg_pool_ = true;
+  } else {
+    graph_kernarg_base = reinterpret_cast<address>(
+        device->hostAlloc(pool_size, 0, amd::Device::MemorySegment::kKernArg));
+  }
+
+  if (graph_kernarg_base == nullptr) {
+    return false;
+  }
+  kernarg_graph_.push_back(KernelArgPoolGraph(graph_kernarg_base, pool_size));
+  return true;
+}
+
+address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment) {
+  assert(alignment != 0);
+  address result = nullptr;
+  result = amd::alignUp(
+      kernarg_graph_.back().kernarg_pool_addr_ + kernarg_graph_.back().kernarg_pool_offset_,
+      alignment);
+  const size_t pool_new_usage = (result + size) - kernarg_graph_.back().kernarg_pool_addr_;
+  if (pool_new_usage <= kernarg_graph_.back().kernarg_pool_size_) {
+    kernarg_graph_.back().kernarg_pool_offset_ = pool_new_usage;
+  } else {
+    // If current chunck is full allocate new chunck with same size as current
+    bool bStatus = AllocGraphKernargPool(kernarg_graph_.back().kernarg_pool_size_);
+    if (bStatus == false) {
+      return nullptr;
+    } else {
+      // Allocte kernel arg memory from new chunck
+      return AllocKernArg(size, alignment);
+    }
+  }
+  return result;
+}
+
+void GraphKernelArgManager::ReadBackOrFlush() {
+  if (device_kernarg_pool_) {
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    auto kernArgImpl = device->settings().kernel_arg_impl_;
+
+    if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
+      *device->info().hdpMemFlushCntl = 1u;
+      auto kSentinel = *reinterpret_cast<volatile int*>(device->info().hdpMemFlushCntl);
+    } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
+               kernarg_graph_.back().kernarg_pool_addr_ != 0) {
+      address dev_ptr =
+          kernarg_graph_.back().kernarg_pool_addr_ + kernarg_graph_.back().kernarg_pool_size_;
+      auto kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
+      _mm_sfence();
+      *(dev_ptr - 1) = kSentinel;
+      _mm_mfence();
+      kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
     }
   }
 }

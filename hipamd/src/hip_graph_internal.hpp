@@ -552,18 +552,42 @@ struct Graph {
   }
 };
 struct GraphKernelNode;
-struct GraphExec : public amd::ReferenceCountedObject {
+struct GraphKernelArgManager : public amd::ReferenceCountedObject {
+ public:
+  GraphKernelArgManager() : ReferenceCountedObject() {}
+  ~GraphKernelArgManager() {
+    //! Release the kernel arg pools
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    for (auto& element : kernarg_graph_) {
+      device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
+    }
+    kernarg_graph_.clear();
+  }
+
+  // Allocate kernel arg pool for the given size.
+  bool AllocGraphKernargPool(size_t pool_size);
+
+  // Allocate kernel args from current chunck for given size and alignment.
+  // If kernel arg pool is full allocate new chunck and alloc kern args from new pool.
+  address AllocKernArg(size_t size, size_t alignment);
+
+  // Do HDP flush/When HDP flush register is invalid fallback to Readback
+  void ReadBackOrFlush();
+
+ private:
   struct KernelArgPoolGraph {
     KernelArgPoolGraph(address base_addr, size_t size)
-     : kernarg_pool_addr_(base_addr),
-       kernarg_pool_size_(size),
-       kernarg_pool_offset_(0)
-       {}
+        : kernarg_pool_addr_(base_addr), kernarg_pool_size_(size), kernarg_pool_offset_(0) {}
     address kernarg_pool_addr_;   //! Base address of the kernel arg pool
     size_t kernarg_pool_size_;    //! Size of the pool
     size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
   };
+  bool device_kernarg_pool_ = false;               //! Indicate if kernel pool in device mem
+  std::vector<KernelArgPoolGraph> kernarg_graph_;  //! Vector of allocated kernarg pool
+  using KernelArgImpl = device::Settings::KernelArgImpl;
+};
 
+struct GraphExec : public amd::ReferenceCountedObject {
   std::vector<std::vector<Node>> parallelLists_;
   //! Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
@@ -578,11 +602,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
-
-  bool device_kernarg_pool_ = false;                //! Indicate if kernel pool in device mem
-  std::vector<KernelArgPoolGraph> kernarg_graph_;   //! Vector of allocated kernarg pool
-  uint32_t kernarg_graph_cur_offset_ = 0;           //! Current offset in kernarg pool
-
+  GraphKernelArgManager* kernArgManager_ = nullptr; //!< Kernel Arg manager for graph.
   int instantiateDeviceId_ = -1;
   bool hasHiddenHeap_ = false;    //!< Hidden heap indicator for Kernel node
 
@@ -609,17 +629,12 @@ struct GraphExec : public amd::ReferenceCountedObject {
         hip::Stream::Destroy(stream);
       }
     }
-
-    //! Release the kernel arg pools
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      auto device = g_devices[ihipGetDevice()]->devices()[0];
-      for (auto& element : kernarg_graph_) {
-        device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
-      }
-    }
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.erase(this);
     delete clonedGraph_;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      kernArgManager_->release();
+    }
   }
 
   Node GetClonedNode(Node node) {
@@ -636,24 +651,8 @@ struct GraphExec : public amd::ReferenceCountedObject {
   //! Graph has nodes that require hidden heap.
   void SetHiddenHeap() { hasHiddenHeap_ = true; }
 
-  address allocKernArg(size_t size, size_t alignment) {
-    assert(alignment != 0);
-    address result = nullptr;
-    result = amd::alignUp(kernarg_graph_.back().kernarg_pool_addr_ +
-                          kernarg_graph_.back().kernarg_pool_offset_,
-                          alignment);
-    const size_t pool_new_usage = (result + size) - kernarg_graph_.back().kernarg_pool_addr_;
-    if (pool_new_usage <= kernarg_graph_.back().kernarg_pool_size_) {
-      kernarg_graph_.back().kernarg_pool_offset_ = pool_new_usage;
-    } else {
-      return nullptr;
-    }
-    return result;
-  }
-
   //! Check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
-  hipError_t AllocGraphKernargPool(size_t pool_size);
   std::vector<Node>& GetNodes() { return topoOrder_; }
 
   hip::Stream* GetAvailableStreams() {
@@ -671,7 +670,16 @@ struct GraphExec : public amd::ReferenceCountedObject {
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
-  using KernelArgImpl = device::Settings::KernelArgImpl;
+  // Kenrel arg manger is for the entire graph.
+  // Child graph also shares the same kernel arg manager object. some apps have 100's of
+  // child graph nodes and each child graph has only one node.
+  void SetKernelArgManager(GraphKernelArgManager* kernArgManager) {
+    kernArgManager_ = kernArgManager;
+    kernArgManager_->retain();
+  }
+  GraphKernelArgManager* GetKernelArgManager() {
+    return kernArgManager_;
+  }
 };
 
 struct ChildGraphNode : public GraphNode {

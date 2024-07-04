@@ -1320,6 +1320,9 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
         LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
       }
     }
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      (*pGraphExec)->SetKernelArgManager(new hip::GraphKernelArgManager());
+    }
     return (*pGraphExec)->Init();
   } else {
     return hipErrorOutOfMemory;
