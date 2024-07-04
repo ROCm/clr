@@ -1,6 +1,6 @@
 # AMD CLR - Compute Language Runtimes
 
-AMD CLR (Compute Language Runtime) contains source codes for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
+AMD CLR (Common Language Runtime) contains source codes for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
 
 ## Project Organisation
 
