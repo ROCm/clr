@@ -469,11 +469,11 @@ hipError_t GraphExec::CaptureAQLPackets() {
                  kernarg_graph_.back().kernarg_pool_addr_ != 0) {
         address dev_ptr = kernarg_graph_.back().kernarg_pool_addr_ +
                           kernarg_graph_.back().kernarg_pool_size_;
-        auto kSentinel = *reinterpret_cast<volatile address>(dev_ptr - 1);
+        auto kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
         _mm_sfence();
         *(dev_ptr - 1) = kSentinel;
         _mm_mfence();
-        kSentinel = *reinterpret_cast<volatile address>(dev_ptr - 1);
+        kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
       }
     }
   }
