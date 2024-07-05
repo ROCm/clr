@@ -3250,7 +3250,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
           _mm_sfence();
           *(argBuffer + argSize - 1) = *(parameters + argSize - 1);
           _mm_mfence();
-          auto kSentinel = *reinterpret_cast<volatile address>(argBuffer + argSize - 1);
+          auto kSentinel = *reinterpret_cast<volatile unsigned char*>(
+              argBuffer + argSize - 1);
         }
       }
     }

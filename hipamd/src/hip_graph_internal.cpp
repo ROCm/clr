@@ -440,11 +440,11 @@ hipError_t GraphExec::CaptureAQLPackets() {
       } else if (kernArgImpl == KernelArgImpl::DeviceKernelArgsReadback &&
                  kernarg_pool_size_graph_ != 0) {
         address dev_ptr = kernarg_pool_graph_ + kernarg_pool_size_graph_;
-        auto kSentinel = *reinterpret_cast<volatile address>(dev_ptr - 1);
+        auto kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
         _mm_sfence();
         *(dev_ptr - 1) = kSentinel;
         _mm_mfence();
-        kSentinel = *reinterpret_cast<volatile address>(dev_ptr - 1);
+        kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
       }
     }
   }
