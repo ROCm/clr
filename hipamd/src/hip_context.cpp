@@ -61,7 +61,6 @@ void init(bool* status) {
       return;
     }
     g_devices.push_back(device);
-    amd::RuntimeTearDown::RegisterObject(device);
   }
 
   amd::Context* hContext = new amd::Context(devices, amd::Context::Info());
@@ -74,7 +73,6 @@ void init(bool* status) {
     hContext->release();
   }
   host_context = hContext;
-  amd::RuntimeTearDown::RegisterObject(hContext);
 
   PlatformState::instance().init();
   *status = true;

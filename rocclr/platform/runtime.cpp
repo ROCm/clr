@@ -100,24 +100,11 @@ void Runtime::tearDown() {
   initialized_ = false;
 }
 
-std::vector<ReferenceCountedObject*> RuntimeTearDown::external_;
-
-RuntimeTearDown::~RuntimeTearDown() {
-#ifndef _WIN32
-  if (amd::IS_HIP) {
-    for (auto it: external_) {
-      it->release();
-    }
-    Runtime::tearDown();
-  }
-#endif
-}
-
-void RuntimeTearDown::RegisterObject(ReferenceCountedObject* obj) {
-    external_.push_back(obj);
-}
-
-class RuntimeTearDown runtime_tear_down;
+class RuntimeTearDown : public amd::HeapObject {
+public:
+  RuntimeTearDown() {}
+  ~RuntimeTearDown() { /*Runtime::tearDown();*/ }
+} runtime_tear_down;
 
 uint ReferenceCountedObject::retain() {
   return referenceCount_.fetch_add(1, std::memory_order_relaxed) + 1;
