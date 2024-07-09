@@ -245,11 +245,6 @@ void Device::checkAtomicSupport() {
 }
 
 Device::~Device() {
-  if (coopHostcallBuffer_) {
-    amd::disableHostcalls(coopHostcallBuffer_);
-    context().svmFree(coopHostcallBuffer_);
-    coopHostcallBuffer_ = nullptr;
-  }
   // Release cached map targets
   for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
     if ((*mapCache_)[i] != nullptr) {
@@ -304,6 +299,12 @@ Device::~Device() {
   }
 
   delete[] p2p_agents_list_;
+
+  if (coopHostcallBuffer_) {
+    amd::disableHostcalls(coopHostcallBuffer_);
+    context().svmFree(coopHostcallBuffer_);
+    coopHostcallBuffer_ = nullptr;
+  }
 
   if (0 != prefetch_signal_.handle) {
     hsa_signal_destroy(prefetch_signal_);
