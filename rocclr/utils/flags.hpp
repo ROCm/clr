@@ -253,7 +253,7 @@ release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
-release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
+release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, true,                    \
         "Use std::mutext in amd::monotor")                                    \
 
 namespace amd {
