@@ -390,6 +390,9 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
       {
         auto itValueKind = ArgValueKindV3.find(buf);
         if (itValueKind == ArgValueKindV3.end()) {
+          LogPrintfError("Unknown Kernel arg metadata: %s", buf.c_str());
+          LogError("This may be due to running HIP app that requires a new HIP runtime version");
+          LogError("Please update the display driver");
           return AMD_COMGR_STATUS_ERROR;
         }
         lcArg->info_.oclObject_ = itValueKind->second;
