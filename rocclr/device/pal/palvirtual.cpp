@@ -1979,7 +1979,67 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
       }
       break;
     }
-    case CL_COMMAND_COPY_BUFFER_RECT:
+    case CL_COMMAND_COPY_BUFFER_RECT: {
+      if (p2pAllowed) {
+        result = blitMgr().copyBufferRect(*srcDevMem, *dstDevMem, cmd.srcRect(), cmd.dstRect(), size,
+                                          cmd.isEntireMemory(), cmd.copyMetadata());
+      } else {
+        amd::ScopedLock lock(dev().P2PStageOps());
+        Memory* dstStgMem = static_cast<pal::Memory*>(
+            dev().P2PStage()->getDeviceMemory(*cmd.source().getContext().devices()[0]));
+        Memory* srcStgMem = static_cast<pal::Memory*>(
+            dev().P2PStage()->getDeviceMemory(*cmd.destination().getContext().devices()[0]));
+
+        if ((cmd.srcRect().slicePitch_ * size[2]) <= Device::kP2PStagingSize) {
+          result = true;
+          // Perform 2 step transfer with staging buffer
+          result &= srcDevMem->dev().xferMgr().copyBufferRect(*srcDevMem, *dstStgMem, cmd.srcRect(),
+                                                              cmd.srcRect(), size, false,
+                                                              cmd.copyMetadata());
+
+          result &= dstDevMem->dev().xferMgr().copyBufferRect(*srcStgMem, *dstDevMem, cmd.srcRect(),
+                                                              cmd.dstRect(), size, false,
+                                                              cmd.copyMetadata());
+        }
+        else {
+          size_t srcOffset;
+          size_t dstOffset;
+          result = true;
+
+          for (size_t z = 0; z < size[2]; ++z) {
+            for (size_t y = 0; y < size[1]; ++y) {
+              srcOffset = cmd.srcRect().offset(0, y, z);
+              dstOffset = cmd.dstRect().offset(0, y, z);
+
+              amd::Coord3D srcOrigin(srcOffset);
+              amd::Coord3D dstOrigin(dstOffset);
+              size_t copy_size = Device::kP2PStagingSize;
+              size_t left_size = size[0];
+              amd::Coord3D stageOffset(0);
+              do {
+                if (left_size <= copy_size) {
+                  copy_size = left_size;
+                }
+                left_size -= copy_size;
+
+                // Perform 2 step transfer with staging buffer
+                result &= srcDevMem->partialMemCopyTo(*(srcDevMem->dev().xferQueue()), srcOrigin,
+                                                      stageOffset, copy_size, *dstStgMem);
+                srcDevMem->dev().xferQueue()->waitAllEngines();
+
+                result &= srcStgMem->partialMemCopyTo(*(dstDevMem->dev().xferQueue()), stageOffset,
+                                                      dstOrigin, copy_size, *dstDevMem);
+                srcStgMem->dev().xferQueue()->waitAllEngines();
+
+                srcOrigin.c[0] += copy_size;
+                dstOrigin.c[0] += copy_size;
+              } while (left_size > 0);
+            }
+          }
+        }
+      }
+      break;
+    }
     case CL_COMMAND_COPY_IMAGE:
     case CL_COMMAND_COPY_IMAGE_TO_BUFFER:
     case CL_COMMAND_COPY_BUFFER_TO_IMAGE:
