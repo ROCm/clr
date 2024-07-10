@@ -134,7 +134,7 @@ void OCLDeviceQueries::open(unsigned int test, char* units, double& conversion,
       break;
     }
   }
-  
+
   if (!deviceFound) {
     char msg[256];
     SNPRINTF(msg, sizeof(msg), "Unsupported device(%s) for the test!\t",

@@ -686,7 +686,7 @@ class Settings : public amd::HeapObject {
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
       uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
-      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation 
+      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation
       uint reserved_ : 7;
     };
     uint value_;

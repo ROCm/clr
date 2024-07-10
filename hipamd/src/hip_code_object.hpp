@@ -95,7 +95,7 @@ class CodeObject {
   static hipError_t extractCodeObjectFromFatBinary(const void*,
                     const std::vector<std::string>&,
                     std::vector<std::pair<const void*, size_t>>&);
- 
+
   CodeObject() {}
 private:
   friend const std::vector<hipModule_t>& modules();

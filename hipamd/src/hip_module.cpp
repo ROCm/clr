@@ -328,7 +328,7 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
       kernelCommand->release();
       return hipErrorOutOfMemory;
     }
-    
+
   } else {
     for (size_t i = 0; i < kernel->signature().numParameters(); ++i) {
       const amd::KernelParameterDescriptor& desc = kernel->signature().at(i);
