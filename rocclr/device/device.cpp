@@ -430,8 +430,8 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
 
     size_t offset = (reinterpret_cast<address>(vptr)
                      - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
-    vaddr_sub_obj = new (device_context) amd::Buffer(*vaddr_base_obj, CL_MEM_VA_RANGE_AMD, offset,
-                                                     size);
+    Context& ctx = vaddr_base_obj->getContext();
+    vaddr_sub_obj = new (ctx) amd::Buffer(*vaddr_base_obj,CL_MEM_VA_RANGE_AMD, offset, size);
 
     // This curr_mem_obj->create() does not create an actual memory but stores the memory info
     // with given vptr on ROCr backend.
