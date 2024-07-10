@@ -87,10 +87,6 @@ FatBinaryInfo::~FatBinaryInfo() {
     image_ = nullptr;
     uri_ = std::string();
 
-    if (0 == PlatformState::instance().UfdMapSize()) {
-      LogError("All Unique FDs are closed");
-    }
-
   } else {
     // Using Runtime Unbundler
     if (amd::Os::isValidFileDesc(fdesc_)) {
