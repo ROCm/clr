@@ -2358,7 +2358,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain
                                bool contiguous) const {
 
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain && gpu_ext_fine_grained_segment_.handle)
-                                       ? gpu_ext_fine_grained_segment_ 
+                                       ? gpu_ext_fine_grained_segment_
                                          : (atomics && gpu_fine_grained_segment_.handle)
                                             ? gpu_fine_grained_segment_ : gpuvm_segment_;
 

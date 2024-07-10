@@ -84,7 +84,7 @@ struct is_callable_impl<F(Ts...), void_t_<typename std::result_of<F(Ts...)>::typ
 template <class Base, class T, class Derived>
 auto simple_invoke(T Base::*pmd, Derived&& ref)
 -> decltype(static_cast<Derived&&>(ref).*pmd);
- 
+
 template <class PMD, class Pointer>
 auto simple_invoke(PMD&& pmd, Pointer&& ptr)
 -> decltype((*static_cast<Pointer&&>(ptr)).*static_cast<PMD&&>(pmd));
@@ -92,11 +92,11 @@ auto simple_invoke(PMD&& pmd, Pointer&& ptr)
 template <class Base, class T, class Derived>
 auto simple_invoke(T Base::*pmd, const std::reference_wrapper<Derived>& ref)
 -> decltype(ref.get().*pmd);
- 
+
 template <class Base, class T, class Derived, class... Args>
 auto simple_invoke(T Base::*pmf, Derived&& ref, Args&&... args)
 -> decltype((static_cast<Derived&&>(ref).*pmf)(static_cast<Args&&>(args)...));
- 
+
 template <class PMF, class Pointer, class... Args>
 auto simple_invoke(PMF&& pmf, Pointer&& ptr, Args&&... args)
 -> decltype(((*static_cast<Pointer&&>(ptr)).*static_cast<PMF&&>(pmf))(static_cast<Args&&>(args)...));
@@ -106,7 +106,7 @@ auto simple_invoke(T Base::*pmf, const std::reference_wrapper<Derived>& ref, Arg
 -> decltype((ref.get().*pmf)(static_cast<Args&&>(args)...));
 
 template<class F, class... Ts>
-auto simple_invoke(F&& f, Ts&&... xs) 
+auto simple_invoke(F&& f, Ts&&... xs)
 -> decltype(f(static_cast<Ts&&>(xs)...));
 
 template <typename, typename = void>

@@ -36,7 +36,7 @@ class GenericAllocation : public amd::RuntimeObject {
   hipMemAllocationProp properties_;    //<! Allocation Properties
 
 public:
-  GenericAllocation(amd::Memory& phys_mem_ref, size_t size, const hipMemAllocationProp& prop) 
+  GenericAllocation(amd::Memory& phys_mem_ref, size_t size, const hipMemAllocationProp& prop)
                     : phys_mem_ref_(phys_mem_ref), size_(size), properties_(prop) {}
   ~GenericAllocation() {}
 

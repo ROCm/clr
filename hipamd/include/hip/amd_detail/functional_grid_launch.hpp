@@ -111,7 +111,7 @@ inline hip_impl::kernarg make_kernarg(
     kernarg.reserve(sizeof(to_formals));
 
     auto& ps = hip_impl::get_program_state();
-    return make_kernarg<0>(to_formals, 
+    return make_kernarg<0>(to_formals,
                            ps.get_kernargs_size_align(
                                reinterpret_cast<std::uintptr_t>(kernel)),
                            std::move(kernarg));
@@ -130,7 +130,7 @@ void hipLaunchKernelGGLImpl(
     hipStream_t stream,
     void** kernarg) {
 
-    const auto& kd = hip_impl::get_program_state().kernel_descriptor(function_address, 
+    const auto& kd = hip_impl::get_program_state().kernel_descriptor(function_address,
                                                                target_agent(stream));
 
     hipModuleLaunchKernel(kd, numBlocks.x, numBlocks.y, numBlocks.z,
