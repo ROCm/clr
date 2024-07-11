@@ -51,8 +51,10 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 }
 
 namespace hip {
-std::unordered_map<GraphExec*, std::pair<hip::Stream*, bool>> GraphExecStatus_;
-amd::Monitor GraphExecStatusLock_{"Guards graph execution state"};
+std::unordered_map<GraphExec *, std::pair<hip::Stream *, bool>>
+    GraphExecStatus_ ROCCLR_INIT_PRIORITY(101);
+amd::Monitor GraphExecStatusLock_ ROCCLR_INIT_PRIORITY(101){
+    "Guards graph execution state"};
 
 int GraphNode::nextID = 0;
 int Graph::nextID = 0;

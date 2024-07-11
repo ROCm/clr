@@ -109,7 +109,7 @@ amd::Monitor listenerLock("Hostcall listener lock");
 std::vector<ReferenceCountedObject*> RuntimeTearDown::external_;
 
 RuntimeTearDown::~RuntimeTearDown() {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(BUILD_STATIC_LIBS)
   // Only perform destruction if process matches the initialization,
   // to avoid a call with the child process after fork()
   if (amd::IS_HIP && amd::Os::getProcessId() == Runtime::pid()) {

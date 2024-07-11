@@ -318,7 +318,7 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
   }
 }
 
-SysmemPool<ComputeCommand> Command::command_pool_;
+SysmemPool<ComputeCommand> Command::command_pool_ ROCCLR_INIT_PRIORITY(101);
 
 // ================================================================================================
 void Command::operator delete(void* ptr) {
