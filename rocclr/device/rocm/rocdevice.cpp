@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2008 - 2024 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -3212,6 +3212,22 @@ void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMas
       qInfo.refCount--;
       ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "releaseQueue refCount:%p (%d)",
               qIter->first->base_address, qIter->second.refCount);
+      // hsa queues with cumask set are not being reused. Hence, if the app uses multiple
+      // such queues it can cause memory leak and those must be destroyed here once the
+      // refcount reaches 0.
+      if ((!cuMask.empty()) && (qInfo.refCount == 0)) {
+        if (qInfo.hostcallBuffer_) {
+          ClPrint(amd::LOG_INFO, amd::LOG_QUEUE,
+                  "Deleting hostcall buffer %p for hardware queue %p",
+                  qInfo.hostcallBuffer_, qIter->first->base_address);
+          amd::disableHostcalls(qInfo.hostcallBuffer_);
+          context().svmFree(qInfo.hostcallBuffer_);
+        }
+        ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting hardware queue %p with refCount 0",
+                queue->base_address);
+        qIter = it.erase(qIter);
+        hsa_queue_destroy(queue);
+      }
     }
   }
 }
