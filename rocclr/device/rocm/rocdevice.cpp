@@ -1820,6 +1820,7 @@ bool Device::populateOCLDeviceConstants() {
       LogError("HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED query failed ");
     }
   }
+  HIP_MEM_POOL_USE_VM &= info_.virtualMemoryManagement_;
 
   switch (isa().versionMajor()) {
     case (11):
