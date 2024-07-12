@@ -804,8 +804,8 @@ bool LightningProgram::setKernels(void* binary, size_t binSize, amd::Os::FileDes
                                   size_t foffset, std::string uri) {
 #if defined(USE_COMGR_LIBRARY)
   // Collect the information about compiled binary, except the trap handler
-  if (!isNull() && (palDevice().rgpCaptureMgr() != nullptr) && !isTrapHandler()) {
-    apiHash_ = palDevice().rgpCaptureMgr()->AddElfBinary(
+  if (!isNull() && (palDevice().captureMgr() != nullptr) && !isTrapHandler()) {
+    apiHash_ = palDevice().captureMgr()->AddElfBinary(
         binary, binSize, binary, binSize, codeSegGpu_->iMem(), codeSegGpu_->offset());
   }
 

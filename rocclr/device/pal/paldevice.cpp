@@ -25,6 +25,8 @@
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palmemory.hpp"
 #include "device/pal/paldevice.hpp"
+#include "device/pal/palgpuopen.hpp"
+#include "device/pal/palubercapturemgr.hpp"
 #include "utils/flags.hpp"
 #include "utils/versions.hpp"
 #include "thread/monitor.hpp"
@@ -59,6 +61,7 @@
 #ifdef PAL_GPUOPEN_OCL
 // gpuutil headers
 #include "gpuUtil/palGpaSession.h"
+#include "palTraceSession.h"
 #include "devDriverServer.h"
 #include "protocols/rgpServer.h"
 #include "protocols/driverControlServer.h"
@@ -816,7 +819,7 @@ Device::Device()
       globalScratchBuf_(nullptr),
       srdManager_(nullptr),
       resourceList_(nullptr),
-      rgpCaptureMgr_(nullptr) {}
+      captureMgr_(nullptr) {}
 
 Device::~Device() {
   if (p2p_stage_ != nullptr) {
@@ -877,7 +880,7 @@ Device::~Device() {
   device_ = nullptr;
 
   // Delete developer driver manager
-  delete rgpCaptureMgr_;
+  delete captureMgr_;
 }
 
 extern const char* SchedulerSourceCode;
@@ -969,10 +972,21 @@ bool Device::create(Pal::IDevice* device) {
   // Make sure CP DMA can be used for all possible transfers
   palSettings->cpDmaCmdCopyMemoryMaxBytes = 0xFFFFFFFF;
 
-  // Create RGP capture manager
+  // Create RGP / UberTrace capture manager
   // Note: RGP initialization in PAL must be performed before CommitSettingsAndInit()
-  rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
-  if (nullptr != rgpCaptureMgr_) {
+#if PAL_BUILD_RDF
+  if ((platform_->GetTraceSession() != nullptr) &&
+      (platform_->GetTraceSession()->IsTracingEnabled()))
+  {
+    captureMgr_ = UberTraceCaptureMgr::Create(platform_, *this);
+  }
+  else
+#endif
+  {
+    captureMgr_ = RgpCaptureMgr::Create(platform_, *this);
+  }
+
+  if (nullptr != captureMgr_) {
     // KMD forced DWORD alignment for debug VMID, request it back to Unaligned
     palSettings->hardwareBufferAlignmentMode = Pal::BufferAlignmentMode::Unaligned;
     Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
@@ -1113,10 +1127,10 @@ void PAL_STDCALL Device::PalDeveloperCallback(void* pPrivateData, const Pal::uin
 
   switch (type) {
     case Pal::Developer::CallbackType::BarrierBegin:
-      device->rgpCaptureMgr()->WriteBarrierStartMarker(gpu, barrier);
+      device->captureMgr()->WriteBarrierStartMarker(gpu, barrier);
       break;
     case Pal::Developer::CallbackType::BarrierEnd:
-      device->rgpCaptureMgr()->WriteBarrierEndMarker(gpu, barrier);
+      device->captureMgr()->WriteBarrierEndMarker(gpu, barrier);
       break;
     case Pal::Developer::CallbackType::ImageBarrier:
       assert(false);
@@ -1186,10 +1200,10 @@ bool Device::initializeHeapResources() {
     }
 
     // Update RGP capture manager
-    if (rgpCaptureMgr_ != nullptr) {
-      if (!rgpCaptureMgr_->Update(platform_)) {
-        delete rgpCaptureMgr_;
-        rgpCaptureMgr_ = nullptr;
+    if (captureMgr_ != nullptr) {
+      if (!captureMgr_->Update(platform_)) {
+        delete captureMgr_;
+        captureMgr_ = nullptr;
       }
     }
 

@@ -36,7 +36,7 @@
 #include "device/pal/paldefs.hpp"
 #include "device/pal/palsettings.hpp"
 #include "device/pal/palappprofile.hpp"
-#include "device/pal/palgpuopen.hpp"
+#include "device/pal/palcapturemgr.hpp"
 #include "device/pal/palsignal.hpp"
 #include "acl.h"
 #include "memory"
@@ -587,7 +587,8 @@ class Device : public NullDevice {
   //! Allow access for peer device
   bool deviceAllowAccess(void* dst) const;
 
-  RgpCaptureMgr* rgpCaptureMgr() const { return rgpCaptureMgr_; }
+  //! Returns a handle to the capture manager (RGP or UberTrace)
+  ICaptureMgr* captureMgr() const { return captureMgr_; }
 
   //! Update free memory for OCL extension
   void updateAllocedMemory(Pal::GpuHeap heap,  //!< PAL GPU heap for update
@@ -750,7 +751,7 @@ class Device : public NullDevice {
   mutable std::atomic<Pal::gpusize>
       allocedMem[Pal::GpuHeap::GpuHeapCount];    //!< Free memory counter
   std::unordered_set<Resource*>* resourceList_;  //!< Active resource list
-  RgpCaptureMgr* rgpCaptureMgr_;                 //!< RGP capture manager
+  ICaptureMgr* captureMgr_;                      //!< RGP/UberTrace capture manager
   Pal::GpuMemoryHeapProperties
       heaps_[Pal::GpuHeapCount];         //!< Information about heaps, returned from PAL
   std::map<Pal::IQueue*, QueueRecycleInfo*> queue_pool_;  //!< Pool of PAL queues for recycling
