@@ -76,6 +76,7 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/pal/palsignal.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palthreadtrace.cpp
   ${ROCCLR_SRC_DIR}/device/pal/paltimestamp.cpp
+  ${ROCCLR_SRC_DIR}/device/pal/palubercapturemgr.cpp
   ${ROCCLR_SRC_DIR}/device/pal/palvirtual.cpp)
 
 target_compile_definitions(rocclr PUBLIC WITH_PAL_DEVICE PAL_GPUOPEN_OCL)

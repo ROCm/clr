@@ -21,7 +21,7 @@
 #pragma once
 
 #include <queue>
-#include "device/pal/paldefs.hpp"
+#include "device/pal/palcapturemgr.hpp"
 #include "platform/commandqueue.hpp"
 #include "device/blit.hpp"
 
@@ -314,34 +314,36 @@ struct RgpSqttMarkerUserEventWithString {
 // ================================================================================================
 // This class provides functionality to interact with the GPU Open Developer Mode message passing
 // service and the rest of the driver.
-class RgpCaptureMgr {
+class RgpCaptureMgr final : public ICaptureMgr {
  public:
   ~RgpCaptureMgr();
 
   static RgpCaptureMgr* Create(Pal::IPlatform* platform, const Device& device);
 
-  void Finalize();
+  void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel,
+                   size_t x, size_t y, size_t z) override;
 
-  void PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size_t x, size_t y, size_t z);
-  void PostDispatch(VirtualGPU* gpu);
+  void PostDispatch(VirtualGPU* gpu) override;
 
-  void WaitForDriverResume();
-
-  void PostDeviceCreate();
-  void PreDeviceDestroy();
-  void FinishRGPTrace(VirtualGPU* gpu, bool aborted);
-
-  bool IsQueueTimingActive() const;
+  void FinishRGPTrace(VirtualGPU* gpu, bool aborted) override;
 
   void WriteBarrierStartMarker(const VirtualGPU* gpu,
-                               const Pal::Developer::BarrierData& data) const;
-  void WriteBarrierEndMarker(const VirtualGPU* gpu, const Pal::Developer::BarrierData& data) const;
-  bool RegisterTimedQueue(uint32_t queue_id, Pal::IQueue* iQueue, bool* debug_vmid) const;
+                               const Pal::Developer::BarrierData& data) const override;
+
+  void WriteBarrierEndMarker(const VirtualGPU* gpu,
+                             const Pal::Developer::BarrierData& data) const override;
+
+  bool RegisterTimedQueue(uint32_t queue_id,
+                          Pal::IQueue* iQueue, bool* debug_vmid) const override;
+
   Pal::Result TimedQueueSubmit(Pal::IQueue* queue, uint64_t cmdId,
-                               const Pal::SubmitInfo& submitInfo) const;
-  bool Update(Pal::IPlatform* platform);
-  uint64_t AddElfBinary(const void* exe_binary, size_t exe_binary_size, const void* elf_binary,
-                    size_t elf_binary_size, Pal::IGpuMemory* pGpuMemory, size_t offset);
+                               const Pal::SubmitInfo& submitInfo) const override;
+
+  bool Update(Pal::IPlatform* platform) override;
+
+  uint64_t AddElfBinary(const void* exe_binary, size_t exe_binary_size,
+                        const void* elf_binary, size_t elf_binary_size,
+                        Pal::IGpuMemory* pGpuMemory, size_t offset) override;
  private:
   // Steps that an RGP trace goes through
   enum class TraceStatus {
@@ -375,6 +377,8 @@ class RgpCaptureMgr {
   RgpCaptureMgr(Pal::IPlatform* platform, const Device& device);
 
   bool Init(Pal::IPlatform* platform);
+  void Finalize();
+
   Pal::Result PrepareRGPTrace(VirtualGPU* pQueue);
   Pal::Result BeginRGPTrace(VirtualGPU* pQueue);
   Pal::Result EndRGPHardwareTrace(VirtualGPU* pQueue);
@@ -382,6 +386,7 @@ class RgpCaptureMgr {
   void DestroyRGPTracing();
   Pal::Result CheckForTraceResults();
   static bool GpuSupportsTracing(const Pal::DeviceProperties& props, const Settings& settings);
+
   RgpSqttMarkerEvent BuildEventMarker(const VirtualGPU* gpu, RgpSqttMarkerEventType api_type) const;
   void WriteMarker(const VirtualGPU* gpu, const void* data, size_t data_size) const;
   void WriteEventWithDimsMarker(const VirtualGPU* gpu, RgpSqttMarkerEventType apiType, uint32_t x,
@@ -389,6 +394,13 @@ class RgpCaptureMgr {
   void WriteUserEventMarker(const VirtualGPU* gpu, RgpSqttMarkerUserEventType eventType,
                             const std::string& name) const;
   void WriteComputeBindMarker(const VirtualGPU* gpu, uint64_t api_hash) const;
+
+  void WaitForDriverResume();
+
+  void PostDeviceCreate();
+  void PreDeviceDestroy();
+
+  bool IsQueueTimingActive() const;
 
   const Device& device_;
   DevDriver::DevDriverServer* dev_driver_server_;

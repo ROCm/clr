@@ -422,7 +422,7 @@ bool VirtualGPU::Queue::flush() {
   // Submit command buffer to OS
   Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
-    result = gpu_.dev().rgpCaptureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
+    result = gpu_.dev().captureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
   } else {
     result = iQueue_->Submit(submitInfo);
   }
@@ -1025,12 +1025,11 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
 
   // If the developer mode manager is available and it's not a device queue,
   // then enable RGP capturing
-  if ((index() != 0) && dev().rgpCaptureMgr() != nullptr) {
+  if ((index() != 0) && dev().captureMgr() != nullptr) {
     bool dbg_vmid = false;
     state_.rgpCaptureEnabled_ = true;
-    dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index(), queue(MainEngine).iQueue_, &dbg_vmid);
-    dev().rgpCaptureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_,
-                                              &dbg_vmid);
+    dev().captureMgr()->RegisterTimedQueue(2 * index(), queue(MainEngine).iQueue_, &dbg_vmid);
+    dev().captureMgr()->RegisterTimedQueue(2 * index() + 1, queue(SdmaEngine).iQueue_, &dbg_vmid);
   }
 
   return true;
@@ -1076,7 +1075,7 @@ VirtualGPU::~VirtualGPU() {
 
   // Destroy RGP trace
   if (rgpCaptureEna()) {
-    dev().rgpCaptureMgr()->FinishRGPTrace(this, true);
+    dev().captureMgr()->FinishRGPTrace(this, true);
   }
 
   while (!freeCbQueue_.empty()) {
@@ -2575,7 +2574,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         newLocalSize[i] = sizes.local()[i];
       }
     }
-    dev().rgpCaptureMgr()->PreDispatch(
+    dev().captureMgr()->PreDispatch(
         this, hsaKernel,
         // Report global size in workgroups, since that's the RGP trace semantics
         newGlobalSize[0] / newLocalSize[0], newGlobalSize[1] / newLocalSize[1],
@@ -2758,7 +2757,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   // Perform post dispatch logic for RGP traces
   if (rgpCaptureEna()) {
-    dev().rgpCaptureMgr()->PostDispatch(this);
+    dev().captureMgr()->PostDispatch(this);
   }
 
   return true;
