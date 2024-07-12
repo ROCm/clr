@@ -431,6 +431,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateBuffer, (cl_context context, cl_mem_flags flag
     size_t offset = static_cast<address>(host_ptr) - static_cast<address>(svmMem->getSvmPtr());
     if (size + offset > svmSize) {
       LogWarning("invalid parameter \"size\"");
+      *not_null(errcode_ret) = CL_INVALID_BUFFER_SIZE;
       return (cl_mem)0;
     }
     mem = new (amdContext) amd::Buffer(*svmMem, flags, offset, size);
