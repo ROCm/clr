@@ -2506,6 +2506,57 @@ void Device::virtualFree(void* addr) {
 }
 
 // ================================================================================================
+bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
+
+  amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
+  if (phys_mem_obj == nullptr) {
+    // If the phys_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
+    // if not-mapped then print a different error message. (No functional change due to this check).
+    amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
+    if (vaddr_mem_obj == nullptr) {
+      LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
+      return false;
+    }
+    LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
+    return false;
+  }
+
+  // Check for valid size.
+  if (va_size > phys_mem_obj->getSize()) {
+    LogPrintfError("Given size: %u cannot be greater than mem_size: %u \n", va_size,
+                    phys_mem_obj->getSize());
+    return false;
+  }
+
+  device::Memory* phys_dev_mem = phys_mem_obj->getDeviceMemory(*this);
+  phys_dev_mem->SetAccess(static_cast<device::Memory::MemAccess>(access_flags));
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+
+  amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
+  if (phys_mem_obj == nullptr) {
+    // If the phys_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
+    // if not-mapped then print a different error message. (No functional change due to this check).
+    amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
+    if (vaddr_mem_obj == nullptr) {
+      LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
+      return false;
+    }
+    LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
+    return false;
+  }
+
+  device::Memory* phys_dev_mem = phys_mem_obj->getDeviceMemory(*this);
+  device::Memory::MemAccess mem_access = phys_dev_mem->GetAccess();
+  *access_flags_ptr = static_cast<VmmAccess>(mem_access);
+
+  return true;
+}
+// ================================================================================================
 bool Device::AcquireExclusiveGpuAccess() {
   // Lock the virtual GPU list
   vgpusAccess().lock();

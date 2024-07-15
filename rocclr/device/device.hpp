@@ -726,6 +726,13 @@ class Memory : public amd::HeapObject {
     CpuWriteOnly = 0x00000002,  //!< Lock for CPU write only operation
   };
 
+  //! Memory Access flags at device level
+  enum MemAccess {
+    kMemAccessNone = 0,        //! No Access
+    kMemAccessRead = 1,        //! Read Access
+    kMemAccessReadWrite = 3    //! Read and Write Access
+  };
+
   union SyncFlags {
     struct {
       uint skipParent_ : 1;  //!< Skip parent synchronization
@@ -766,11 +773,14 @@ class Memory : public amd::HeapObject {
   Memory(amd::Memory& owner)
       : flags_(0), owner_(&owner), version_(0), mapMemory_(NULL), indirectMapCount_(0) {
     size_ = owner.getSize();
+    memAccess_ = MemAccess::kMemAccessNone;
   }
 
   //! Constructor (no owner), always eager allocation.
   Memory(size_t size)
-      : flags_(0), owner_(NULL), version_(0), mapMemory_(NULL), indirectMapCount_(0), size_(size) {}
+      : flags_(0), owner_(NULL), version_(0), mapMemory_(NULL), indirectMapCount_(0), size_(size) {
+    memAccess_ = MemAccess::kMemAccessNone;
+  }
 
   enum GLResourceOP {
     GLDecompressResource = 0,  // orders the GL driver to decompress any depth-stencil or MSAA
@@ -921,6 +931,12 @@ class Memory : public amd::HeapObject {
     }
   }
 
+  //! Set access to the memory in this device.
+  void SetAccess(MemAccess memAccess) { memAccess_ = memAccess; }
+
+  //! Get current access of the memory in device.
+  MemAccess GetAccess() const { return memAccess_; }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -933,6 +949,8 @@ class Memory : public amd::HeapObject {
     PersistentMap = 0x00000080            //!< Map Peristent memory
   };
   uint flags_;  //!< Memory object flags
+
+  MemAccess memAccess_; //!< Memory Access flag
 
   amd::Memory* owner_;  //!< The Memory instance that we cache,
                         //!< or NULL if we're device-private workspace.
