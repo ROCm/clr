@@ -555,16 +555,13 @@ class Device : public NullDevice {
   //! SVM free
   virtual void svmFree(void* ptr) const;
 
+  //! Virtual address space allocation(reservation)
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
   virtual void virtualFree(void* addr);
 
-  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
-    return true;
-  }
-
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
-    return true;
-  }
+  //! Set/Get memory access set by the app
+  virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
 
   virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle);
 
