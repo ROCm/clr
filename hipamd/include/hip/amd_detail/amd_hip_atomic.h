@@ -618,8 +618,7 @@ float atomicMin(float* addr, float val) {
   } u_hold_t;
   u_hold_t u{val};
   bool neg_zero = 0x80000000U == u.b;
-  #if __has_builtin(__hip_atomic_load) && \
-      __has_builtin(__hip_atomic_compare_exchange_strong)
+
   float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool done = false;
   while (!done && (value > val || (neg_zero && value == 0.0f))) {
@@ -627,35 +626,30 @@ float atomicMin(float* addr, float val) {
                __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
   return value;
-  #else
-  unsigned int *uaddr = (unsigned int *)addr;
-  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-  bool done = false;
-  while (!done && (__uint_as_float(value) > val || (neg_zero && __uint_as_float(value) == 0.0f))) {
-    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-  }
-  return __uint_as_float(value);
-  #endif
 #endif
 }
 
 __device__
 inline
-float atomicMin_system(float* address, float val) {
-  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
-  #else
-    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  float value = __uint_as_float(tmp);
+float atomicMin_system(float* addr, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMin(addr, val);
+#else
+  typedef union u_hold {
+    float a;
+    unsigned int b;
+  } u_hold_t;
+  u_hold_t u{val};
+  bool neg_zero = 0x80000000U == u.b;
 
-  while (val < value) {
-    value = atomicCAS_system(address, value, val);
+  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  bool done = false;
+  while (!done && (value > val || (neg_zero && value == 0.0f))) {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-
   return value;
+#endif
 }
 
 __device__
@@ -670,8 +664,7 @@ double atomicMin(double* addr, double val) {
   } u_hold_t;
   u_hold_t u{val};
   bool neg_zero = 0x8000000000000000ULL == u.b;
-  #if __has_builtin(__hip_atomic_load) && \
-      __has_builtin(__hip_atomic_compare_exchange_strong)
+
   double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool done = false;
   while (!done && (value > val || (neg_zero && value == 0.0)))  {
@@ -679,36 +672,30 @@ double atomicMin(double* addr, double val) {
                __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
   return value;
-  #else
-  unsigned long long *uaddr = (unsigned long long *)addr;
-  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-  bool done = false;
-  while (!done &&
-         (__longlong_as_double(value) > val || (neg_zero && __longlong_as_double(value) == 0.0))) {
-    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-  }
-  return __longlong_as_double(value);
-  #endif
 #endif
 }
 
 __device__
 inline
-double atomicMin_system(double* address, double val) {
-  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
-  #else
-    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  double value = __longlong_as_double(tmp);
+double atomicMin_system(double* addr, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMin(addr, val);
+#else
+  typedef union u_hold {
+    double a;
+    unsigned long long b;
+  } u_hold_t;
+  u_hold_t u{val};
+  bool neg_zero = 0x8000000000000000ULL == u.b;
 
-  while (val < value) {
-    value = atomicCAS_system(address, value, val);
+  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  bool done = false;
+  while (!done && (value > val || (neg_zero && value == 0.0)))  {
+    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-
   return value;
+#endif
 }
 
 __device__
@@ -873,46 +860,42 @@ float atomicMax(float* addr, float val) {
     float a;
     unsigned int b;
   } u_hold_t;
-  u_hold_t u{val};
+  u_hold_t u;
+
+  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool neg_zero = 0x80000000U == u.b;
-  #if __has_builtin(__hip_atomic_load) && \
-      __has_builtin(__hip_atomic_compare_exchange_strong)
-  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool done = false;
-  while (!done && (value < val || (neg_zero && value == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
+    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
                __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+    neg_zero = 0x80000000U == u.b;
   }
-  return value;
-  #else
-  unsigned int *uaddr = (unsigned int *)addr;
-  unsigned int value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-  bool done = false;
-  while (!done && (__uint_as_float(value) < val || (neg_zero && __uint_as_float(value) == 0.0f))) {
-    done = __atomic_compare_exchange_n(uaddr, &value, __float_as_uint(val), false,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-  }
-  return __uint_as_float(value);
-  #endif
+  return u.a;
 #endif
 }
 
 __device__
 inline
-float atomicMax_system(float* address, float val) {
-  unsigned int* uaddr { reinterpret_cast<unsigned int*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned int tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
-  #else
-    unsigned int tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  float value = __uint_as_float(tmp);
+float atomicMax_system(float* addr, float val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMax(addr, val);
+#else
+  typedef union u_hold {
+    float a;
+    unsigned int b;
+  } u_hold_t;
+  u_hold_t u;
 
-  while (value < val) {
-    value = atomicCAS_system(address, value, val);
+  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  bool neg_zero = 0x80000000U == u.b;
+  bool done = false;
+  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
+    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+    neg_zero = 0x80000000U == u.b;
   }
-
-  return value;
+  return u.a;
+#endif
 }
 
 __device__
@@ -925,47 +908,42 @@ double atomicMax(double* addr, double val) {
     double a;
     unsigned long long b;
   } u_hold_t;
-  u_hold_t u{val};
+  u_hold_t u;
+
+  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool neg_zero = 0x8000000000000000ULL == u.b;
-  #if __has_builtin(__hip_atomic_load) && \
-      __has_builtin(__hip_atomic_compare_exchange_strong)
-  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   bool done = false;
-  while (!done && (value < val || (neg_zero && value == 0.0))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
+  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
+    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
                __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+    neg_zero = 0x8000000000000000ULL == u.b;
   }
-  return value;
-  #else
-  unsigned long long *uaddr = (unsigned long long *)addr;
-  unsigned long long value = __atomic_load_n(uaddr, __ATOMIC_RELAXED);
-  bool done = false;
-  while (!done &&
-         (__longlong_as_double(value) < val || (neg_zero && __longlong_as_double(value) == 0.0))) {
-    done = __atomic_compare_exchange_n(uaddr, &value, __double_as_longlong(val), false,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-  }
-  return __longlong_as_double(value);
-  #endif
+  return u.a;
 #endif
 }
 
 __device__
 inline
-double atomicMax_system(double* address, double val) {
-  unsigned long long* uaddr { reinterpret_cast<unsigned long long*>(address) };
-  #if __has_builtin(__hip_atomic_load)
-    unsigned long long tmp {__hip_atomic_load(uaddr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM)};
-  #else
-    unsigned long long tmp {__atomic_load_n(uaddr, __ATOMIC_RELAXED)};
-  #endif
-  double value = __longlong_as_double(tmp);
+double atomicMax_system(double* addr, double val) {
+#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
+  return unsafeAtomicMax(addr, val);
+#else
+  typedef union u_hold {
+    double a;
+    unsigned long long b;
+  } u_hold_t;
+  u_hold_t u;
 
-  while (value < val) {
-      value = atomicCAS_system(address, value, val);
+  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  bool neg_zero = 0x8000000000000000ULL == u.b;
+  bool done = false;
+  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
+    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
+               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+    neg_zero = 0x8000000000000000ULL == u.b;
   }
-
-  return value;
+  return u.a;
+#endif
 }
 
 __device__
