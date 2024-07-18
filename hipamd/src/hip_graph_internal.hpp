@@ -252,6 +252,8 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
       command->submit(*(command->queue())->vdev());
       command->release();
     }
+    // Commands are captured and released. Clear them from the object.
+    commands_.clear();
   }
   hip::Stream* GetQueue() const { return stream_; }
 
@@ -704,7 +706,6 @@ struct GraphExec : public amd::ReferenceCountedObject {
   // child graph nodes and each child graph has only one node.
   void SetKernelArgManager(GraphKernelArgManager* kernArgManager) {
     kernArgManager_ = kernArgManager;
-    kernArgManager_->retain();
   }
   GraphKernelArgManager* GetKernelArgManager() {
     return kernArgManager_;
