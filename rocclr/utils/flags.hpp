@@ -331,7 +331,7 @@ struct Flag {
 #else
 # define EXPORT_FLAG extern "C"
 #endif
-namespace amd::flags {
+namespace {
 #endif // !_WIN32
 
 #define DECLARE_RELEASE_FLAG(type, name, value, help) EXPORT_FLAG type name;
@@ -347,6 +347,21 @@ RUNTIME_FLAGS(DECLARE_DEBUG_FLAG, DECLARE_RELEASE_FLAG, DECLARE_DEBUG_FLAG);
 #undef DECLARE_RELEASE_FLAG
 #ifndef _WIN32
 }
-using namespace amd::flags;
 #endif // !_WIN32
+
+#ifdef BUILD_STATIC_LIBS
+#ifndef _WIN32
+namespace {
+#endif
+#define DEFINE_RELEASE_FLAG_VALUE(type, name, value, help) type name = value;
+#define DEFINE_DEBUG_FLAG_VALUE(type, name, value, help) DEBUG_ONLY(type name = value);
+
+RUNTIME_FLAGS(DEFINE_DEBUG_FLAG_VALUE, DEFINE_RELEASE_FLAG_VALUE, DEFINE_DEBUG_FLAG_VALUE);
+
+#undef DEFINE_DEBUG_FLAG_VALUE
+#undef DEFINE_RELEASE_FLAG_VALUE
+#ifndef _WIN32
+}
+#endif /*!_WIN32*/
+#endif /*BUILD_STATIC_LIBS*/
 #endif /*FLAGS_HPP_*/
