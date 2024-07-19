@@ -1630,7 +1630,6 @@ class Device : public RuntimeObject {
   enum class VmmAccess {
     kNone           = 0x0,
     kReadOnly       = 0x1,
-    kWriteOnly      = 0x2,
     kReadWrite      = 0x3
   };
 
@@ -1883,7 +1882,15 @@ class Device : public RuntimeObject {
    * @param va_addr Virtual Address ptr
    * @param access_flags_ptr Access permissions to be filled
    */
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) = 0;
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const = 0;
+
+  /**
+   * Validate Access permisions for a virtual memory object.
+   *
+   * @param va_addr Virtual Address ptr
+   * @param access_flags_ptr Access permissions to be filled
+   */
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) const = 0;
 
   /**
    * Free a VA range

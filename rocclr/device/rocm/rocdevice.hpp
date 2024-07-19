@@ -240,9 +240,14 @@ class NullDevice : public amd::Device {
     return false;
   }
 
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) override {
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const {
     ShouldNotReachHere();
     return false;
+  }
+
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) const {
+    ShouldNotReachHere();
+    return true;
   }
 
   //! Determine if we can use device memory for SVM
@@ -478,7 +483,8 @@ class Device : public NullDevice {
   virtual void virtualFree(void* addr);
 
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const;
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) { return true; }
 
   virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle);
 

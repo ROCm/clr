@@ -2511,34 +2511,50 @@ void Device::virtualFree(void* addr) {
 // ================================================================================================
 bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
 
-  amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
-  if (phys_mem_obj == nullptr) {
-    // If the phys_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
+  if (amd_mem_obj == nullptr) {
+    // If the amd_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
     // if not-mapped then print a different error message. (No functional change due to this check).
-    amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
-    if (vaddr_mem_obj == nullptr) {
+    amd_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
+    if (amd_mem_obj == nullptr) {
       LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
       return false;
     }
     LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
-    return false;
   }
 
   // Check for valid size.
-  if (va_size > phys_mem_obj->getSize()) {
+  if (va_size > amd_mem_obj->getSize()) {
     LogPrintfError("Given size: %u cannot be greater than mem_size: %u \n", va_size,
-                    phys_mem_obj->getSize());
+                    amd_mem_obj->getSize());
     return false;
   }
 
-  device::Memory* phys_dev_mem = phys_mem_obj->getDeviceMemory(*this);
-  phys_dev_mem->SetAccess(static_cast<device::Memory::MemAccess>(access_flags));
+  device::Memory* dev_mem_obj = amd_mem_obj->getDeviceMemory(*this);
+  dev_mem_obj->SetAccess(static_cast<device::Memory::MemAccess>(access_flags));
 
   return true;
 }
 
 // ================================================================================================
-bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+bool Device::ValidateMemAccess(amd::Memory& amd_mem_obj, bool read_write) const {
+
+  device::Memory* dev_mem = amd_mem_obj.getDeviceMemory(*this);
+  device::Memory::MemAccess mem_access = dev_mem->GetAccess();
+
+  // If read_write flag is set, then only read_write is valid, else it could be a read or write.
+  if (read_write && mem_access != device::Memory::MemAccess::kMemAccessReadWrite) {
+    return false;
+  } else if ((mem_access != device::Memory::MemAccess::kMemAccessRead)
+              && (mem_access != device::Memory::MemAccess::kMemAccessReadWrite)) {
+    return false;
+  }
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const {
 
   amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
   if (phys_mem_obj == nullptr) {
@@ -2549,7 +2565,7 @@ bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
       LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
       return false;
     }
-    LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
+    LogPrintfInfo("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
     return false;
   }
 

@@ -71,9 +71,6 @@ static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kNone)
 static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadOnly)
               == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RO),
               "Vmm Access Flag Read mismatch with ROCr-runtime!");
-static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kWriteOnly)
-              == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_WO),
-              "Vmm Access Flag Write mismatch with ROC-runtime!");
 static_assert(static_cast<uint32_t>(amd::Device::VmmAccess::kReadWrite)
               == static_cast<uint32_t>(HSA_ACCESS_PERMISSION_RW),
               "Vmm Access Flag Read Write mismatch with ROC-runtime!");
@@ -2511,7 +2508,7 @@ bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags)
   return true;
 }
 
-bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const {
   hsa_status_t hsa_status = HSA_STATUS_SUCCESS;
   hsa_access_permission_t perms;
 

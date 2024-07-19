@@ -545,6 +545,14 @@ Device* Memory::GetDeviceById() {
   return getContext().devices()[device_idx];
 }
 
+// =================================================================================================
+bool Memory::ValidateMemAccess(const Device& dev, bool read_write) {
+  if (flags_ & CL_MEM_VA_RANGE_AMD) {
+    return dev.ValidateMemAccess(*this, read_write);
+  }
+  return true;
+}
+
 void Buffer::initDeviceMemory() {
   deviceMemories_ = reinterpret_cast<DeviceMemory*>(reinterpret_cast<char*>(this) + sizeof(Buffer));
   memset(deviceMemories_, 0, NumDevicesWithP2P() * sizeof(DeviceMemory));
