@@ -419,22 +419,40 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
 
-  // If the mem object is a VMM sub buffer (subbuffer has parent set),
-  // then use parent's size for validation.
-  if (srcMemory && srcMemory->parent() && (srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  if (srcMemory != nullptr) {
+    // Validate Mem Access in case of VMM Memory
+    if (!srcMemory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], false)) {
+      return hipErrorUnknown;
+    }
+
+    // Size validation
+    if (sizeBytes > (srcMemory->getSize() - sOffset)) {
+      return hipErrorInvalidValue;
+    }
+
+    // If the mem object is a VMM sub buffer (subbuffer has parent set),
+    // then use parent's size for validation.
+    if (srcMemory->parent() && (srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
       srcMemory = srcMemory->parent();
+    }
   }
 
-  // If the mem object is a VMM sub buffer (subbuffer has parent set),
-  // then use parent's size for validation.
-  if (dstMemory && dstMemory->parent() && (dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  if (dstMemory != nullptr) {
+    // Validate Mem Access in case of VMM Memory
+    if (!dstMemory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
+      return hipErrorUnknown;
+    }
+
+    // Size validation
+    if (sizeBytes > (dstMemory->getSize() - dOffset)) {
+      return hipErrorInvalidValue;
+    }
+
+    // If the mem object is a VMM sub buffer (subbuffer has parent set),
+    // then use parent's size for validation.
+    if (dstMemory->parent() && (dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
       dstMemory = dstMemory->parent();
-  }
-
-  // Return error if sizeBytes passed to memcpy is more than the actual size allocated
-  if ((dstMemory && sizeBytes > (dstMemory->getSize() - dOffset)) ||
-      (srcMemory && sizeBytes > (srcMemory->getSize() - sOffset))) {
-    return hipErrorInvalidValue;
+    }
   }
 
   //If src and dst ptr are null then kind must be either h2h or def.
@@ -3185,6 +3203,11 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
     memory = memory->parent();
   }
 
+  // Validate Mem Access in case of VMM Memory
+  if (!memory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
+    return hipErrorUnknown;
+  }
+
   // Return error if sizeBytes passed to memcpy is more than the actual size allocated
   if (sizeBytes > (memory->getSize() - offset)){
     return hipErrorInvalidValue;
@@ -3212,6 +3235,11 @@ hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams) {
   size_t discardOffset = 0;
   amd::Memory *memObj = getMemoryObject(pNodeParams->dst, discardOffset);
   if (memObj != nullptr) {
+    // Validate Mem Access in case of VMM Memory
+    if (!memObj->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
+      return hipErrorUnknown;
+    }
+
     if ((pNodeParams->pitch * pNodeParams->height) > memObj->getSize()) {
       return hipErrorInvalidValue;
     }

@@ -3517,6 +3517,12 @@ bool VirtualGPU::processMemObjectsHSA(const amd::Kernel& kernel, const_address p
           continue;
         }
       } else {
+
+        // Validate Mem Access in case of VMM Memory
+        if (!memory->ValidateMemAccess(dev(), true)) {
+          return false;
+        }
+
         Memory* gpuMemory = dev().getGpuMemory(memory);
         if (nullptr != gpuMemory) {
           // Synchronize data with other memory instances if necessary

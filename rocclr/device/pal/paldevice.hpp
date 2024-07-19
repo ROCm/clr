@@ -151,7 +151,11 @@ class NullDevice : public amd::Device {
     return true;
   }
 
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const {
+    return true;
+  }
+
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) const {
     return true;
   }
 
@@ -561,7 +565,8 @@ class Device : public NullDevice {
 
   //! Set/Get memory access set by the app
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
-  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr);
+  virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const;
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) const;
 
   virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle);
 

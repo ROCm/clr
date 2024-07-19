@@ -417,6 +417,9 @@ class Memory : public amd::RuntimeObject {
 
   //! get device by id when glb ctx is used.
   Device* GetDeviceById();
+
+  //! Validate memory access for vmm memory
+  bool ValidateMemAccess(const Device& dev, bool read_write);
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,
