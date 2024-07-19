@@ -973,6 +973,8 @@ bool Device::create(Pal::IDevice* device) {
   // Note: RGP initialization in PAL must be performed before CommitSettingsAndInit()
   rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
   if (nullptr != rgpCaptureMgr_) {
+    // KMD forced DWORD alignment for debug VMID, request it back to Unaligned
+    palSettings->hardwareBufferAlignmentMode = Pal::BufferAlignmentMode::Unaligned;
     Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
   }
 
