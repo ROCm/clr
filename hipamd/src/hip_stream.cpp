@@ -581,13 +581,13 @@ hipError_t streamCallback_common(hipStream_t stream, StreamCallback* cbo, void* 
     return hipErrorInvalidValue;
   }
   block_command->enqueue();
-  block_command->release();
 
   // Release the callback marker
   command->release();
   // Notify the command queue about a possible waiter for the calback
   block_command->notifyCmdQueue();
 
+  block_command->release();
   return hipSuccess;
 }
 
