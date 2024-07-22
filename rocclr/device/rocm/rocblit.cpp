@@ -673,13 +673,6 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     dstAgent = dstMemory.dev().getBackendDevice();
   }
 
-  // This workaround is needed for performance to get around the slowdown
-  // caused to SDMA engine powering down if its not active. Forcing agents
-  // to amdgpu device causes rocr to take blit path internally.
-  if (size[0] <= dev().settings().sdmaCopyThreshold_) {
-    srcAgent = dstAgent = dev().getBackendDevice();
-  }
-
   uint32_t copyMask = 0;
   uint32_t freeEngineMask = 0;
   bool kUseRegularCopyApi = 0;
@@ -810,12 +803,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
 
     // Copy data from Host to Device
     if (hostToDev) {
-      // This workaround is needed for performance to get around the slowdown
-      // caused to SDMA engine powering down if its not active. Forcing agents
-      // to amdgpu device causes rocr to take blit path internally.
-      const hsa_agent_t srcAgent =
-          (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() :
-                                                          dev().getCpuAgent();
+      const hsa_agent_t srcAgent = dev().getCpuAgent();
 
       HwQueueEngine engine = HwQueueEngine::Unknown;
       if (srcAgent.handle == dev().getBackendDevice().handle) {
@@ -844,12 +832,7 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       continue;
     }
 
-    // This workaround is needed for performance to get around the slowdown
-    // caused to SDMA engine powering down if its not active. Forcing agents
-    // to amdgpu device causes rocr to take blit path internally.
-    const hsa_agent_t dstAgent =
-        (size <= dev().settings().sdmaCopyThreshold_) ? dev().getBackendDevice() :
-                                                        dev().getCpuAgent();
+    const hsa_agent_t dstAgent = dev().getCpuAgent();
 
     HwQueueEngine engine = HwQueueEngine::Unknown;
     if (dstAgent.handle == dev().getBackendDevice().handle) {
@@ -1847,8 +1830,12 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
     return result;
   } else {
     size_t pinSize = size[0];
+
     // Check if a pinned transfer can be executed with a single pin
-    if ((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) {
+    // If sdmaCopyThreshold is set ignore pinning restrictions and always pin to make sure we use
+    // Blit for copies
+    if (((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) ||
+        (pinSize <= dev().settings().sdmaCopyThreshold_)) {
       size_t partial;
       amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
 
@@ -1952,7 +1939,10 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
     size_t pinSize = size[0];
 
     // Check if a pinned transfer can be executed with a single pin
-    if ((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) {
+    // If sdmaCopyThreshold is set ignore pinning restrictions and always pin to make sure we use
+    // Blit for copies
+    if (((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) ||
+        (pinSize <= dev().settings().sdmaCopyThreshold_)) {
       size_t partial;
       amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
 
@@ -1969,7 +1959,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
       // Get device memory for this virtual device
       Memory* srcMemory = dev().getRocMemory(amdMemory);
 
-      // Copy buffer rect
+      // Copy buffer
       result = copyBuffer(*srcMemory, dstMemory, srcOrigin, origin, size, entire, copyMetadata);
 
       // Add pinned memory for a later release
@@ -2273,6 +2263,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
 
   bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
+                           (sizeIn[0] <= dev().settings().sdmaCopyThreshold_) ||
                            (!srcMemory.isHostMemDirectAccess() &&
                             !dstMemory.isHostMemDirectAccess() &&
                             !(p2p || asan) && !ipcShared &&
