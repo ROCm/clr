@@ -39,7 +39,7 @@ THE SOFTWARE.
 #endif
 
 #define __HIP_SURFACE_OBJECT_PARAMETERS_INIT                                                            \
-    unsigned int ADDRESS_SPACE_CONSTANT* i = (unsigned int ADDRESS_SPACE_CONSTANT*)surfObj; 
+    unsigned int ADDRESS_SPACE_CONSTANT* i = (unsigned int ADDRESS_SPACE_CONSTANT*)surfObj;
 
 // CUDA is using byte address, need map to pixel address for HIP
 static __HOST_DEVICE__ __forceinline__ int __hipGetPixelAddr(int x, int format, int order) {
@@ -96,6 +96,14 @@ static __HOST_DEVICE__ __forceinline__ int __hipGetPixelAddr(int x, int format, 
     return x = OrderLUT[order] == 3 ? x / OrderLUT[order] : x >> OrderLUT[order];
 }
 
+/** \brief Reads the value at coordinate x from the one-dimensional surface.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The coordinate where the value will be read out.
+ *  \param boundaryMode [in] The boundary mode is currently ignored.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -107,6 +115,13 @@ static __device__ __hip_img_chk__ void surf1Dread(T* data, hipSurfaceObject_t su
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the one-dimensional surface at coordinate x.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The coordinate where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -117,6 +132,15 @@ static __device__ __hip_img_chk__ void surf1Dwrite(T data, hipSurfaceObject_t su
     __ockl_image_store_1D(i, x, tmp);
 }
 
+
+/** \brief Reads the value from the two-dimensional surface at coordinate x, y.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the value will be read out.
+ *  \param y [in] The y coordinate where the value will be read out.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -127,6 +151,15 @@ static __device__ __hip_img_chk__ void surf2Dread(T* data, hipSurfaceObject_t su
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the two-dimensional surface at coordinate 
+ *         x, y.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param y [in] The y coordinate where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -137,6 +170,16 @@ static __device__ __hip_img_chk__ void surf2Dwrite(T data, hipSurfaceObject_t su
     __ockl_image_store_2D(i, int2(x, y).data, tmp);
 }
 
+/** \brief Reads the value from the three-dimensional surface at coordinate 
+ *         x, y, z.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the value will be read out.
+ *  \param y [in] The y coordinate where the value will be read out.
+ *  \param z [in] The z coordinate where the value will be read out.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -147,6 +190,16 @@ static __device__ __hip_img_chk__ void surf3Dread(T* data, hipSurfaceObject_t su
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the three-dimensional surface at coordinate
+ *         x, y, z.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param y [in] The y coordinate where the data will be written.
+ *  \param z [in] The z coordinate where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -157,6 +210,15 @@ static __device__ __hip_img_chk__ void surf3Dwrite(T data, hipSurfaceObject_t su
     __ockl_image_store_3D(i, int4(x, y, z, 0).data, tmp);
 }
 
+/** \brief Reads the value from the one-dimensional layered surface at
+ *         coordinate x and layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The coordinate where the value will be read out.
+ *  \param layer [in] The layer index where the value will be read out.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -167,6 +229,15 @@ static __device__ __hip_img_chk__ void surf1DLayeredread(T* data, hipSurfaceObje
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the one-dimensional layered surface at 
+ *         coordinate x and layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param layer [in] The layer index where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -177,6 +248,16 @@ static __device__ __hip_img_chk__ void surf1DLayeredwrite(T data, hipSurfaceObje
     __ockl_image_store_lod_1D(i, x, layer, tmp);
 }
 
+/** \brief Reads the value from the two-dimensional layered surface at 
+ *         coordinate x, y and layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the value will be read out.
+ *  \param y [in] The y coordinate where the value will be read out.
+ *  \param layer [in] The layer index where the value will be read out.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -187,6 +268,16 @@ static __device__ __hip_img_chk__ void surf2DLayeredread(T* data, hipSurfaceObje
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the two-dimensional layered surface at
+ *         coordinate x, y and layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param y [in] The y coordinate where the data will be written.
+ *  \param layer [in] The layer index where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -197,6 +288,16 @@ static __device__ __hip_img_chk__ void surf2DLayeredwrite(T data, hipSurfaceObje
     __ockl_image_store_lod_2D(i, int2(x, y).data, layer, tmp);
 }
 
+/** \brief Reads the value from the cubemap surface at coordinate x, y and
+ *         face index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the value will be read out.
+ *  \param y [in] The y coordinate where the value will be read out.
+ *  \param face [in] The face index where the value will be read out.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -207,6 +308,16 @@ static __device__ __hip_img_chk__ void surfCubemapread(T* data, hipSurfaceObject
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the cubemap surface at coordinate x, y and
+ *         face index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value is written to surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param y [in] The y coordinate where the data will be written.
+ *  \param face [in] The face index where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -217,6 +328,17 @@ static __device__ __hip_img_chk__ void surfCubemapwrite(T data, hipSurfaceObject
     __ockl_image_store_CM(i, int2(x, y).data, face, tmp);
 }
 
+/** \brief Reads the value from the layered cubemap surface at coordinate x, y
+ *         and face, layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [out] The T type result is stored in this pointer.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the value will be read out.
+ *  \param y [in] The y coordinate where the value will be read out.
+ *  \param face [in] The face index where the value will be read out.
+ *  \param layer [in] The layer index where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
@@ -228,6 +350,17 @@ static __device__ __hip_img_chk__ void surfCubemapLayeredread(T* data, hipSurfac
     *data = __hipMapFrom<T>(tmp);
 }
 
+/** \brief Writes the value data to the layered cubemap surface at coordinate
+ *         x, y and face, layer index.
+ *
+ *  \tparam T The data type of the surface.
+ *  \param data [in] The T type value to write to the surface.
+ *  \param surfObj [in] The surface descriptor.
+ *  \param x [in] The x coordinate where the data will be written.
+ *  \param y [in] The y coordinate where the data will be written.
+ *  \param face [in] The face index where the data will be written.
+ *  \param layer [in] The layer index where the data will be written.
+ */
 template <
     typename T,
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
