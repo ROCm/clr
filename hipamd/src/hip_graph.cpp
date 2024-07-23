@@ -1295,6 +1295,7 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   }
   std::unordered_map<hip::GraphNode*, hip::GraphNode*> clonedNodes;
   hip::Graph* clonedGraph = graph->clone(clonedNodes);
+  clonedGraph->memAllocNodePtrs_ = graph->memAllocNodePtrs_;
   if (clonedGraph == nullptr) {
     return hipErrorInvalidValue;
   }
