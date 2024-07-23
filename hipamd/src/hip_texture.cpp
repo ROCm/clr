@@ -392,7 +392,9 @@ hipError_t ihipDestroyTextureObject(hipTextureObject_t texObject) {
     return hipErrorNotSupported;
   }
 
-  texObject->image->release();
+  if (texObject != nullptr && texObject->image) {
+    texObject->image->release();
+  }
 
   // The texture object always owns the sampler SRD.
   texObject->sampler->release();
@@ -554,7 +556,8 @@ hipError_t ihipBindTexture(size_t* offset,
   }
 
   // Align the user ptr to HW requirments.
-  resDesc.res.linear.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
+  resDesc.res.linear.devPtr =
+      static_cast<char*>(const_cast<void*>(devPtr)) - (offset != nullptr ? *offset : 0);
   hipTextureDesc texDesc = hip::getTextureDesc(texref);
 
   return ihipCreateTextureObject(const_cast<hipTextureObject_t*>(&texref->textureObject), &resDesc, &texDesc, nullptr);
@@ -569,7 +572,8 @@ hipError_t ihipBindTexture2D(size_t* offset,
                              size_t pitch) {
   if ((texref == nullptr) ||
       (devPtr == nullptr) ||
-      (desc == nullptr)) {
+      (desc == nullptr) ||
+      (pitch == 0)) {
     return hipErrorInvalidValue;
   }
 
@@ -594,7 +598,8 @@ hipError_t ihipBindTexture2D(size_t* offset,
   }
 
   // Align the user ptr to HW requirments.
-  resDesc.res.pitch2D.devPtr = static_cast<char*>(const_cast<void*>(devPtr)) - *offset;
+  resDesc.res.pitch2D.devPtr =
+      static_cast<char*>(const_cast<void*>(devPtr)) - (offset != nullptr ? *offset : 0);
   hipTextureDesc texDesc = hip::getTextureDesc(texref);
 
   return ihipCreateTextureObject(const_cast<hipTextureObject_t*>(&texref->textureObject), &resDesc, &texDesc, nullptr);
