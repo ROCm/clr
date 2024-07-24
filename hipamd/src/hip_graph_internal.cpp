@@ -561,7 +561,7 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
     } else {
       topoOrder[i]->SetStream(hip_stream, graphExec);
       status = topoOrder[i]->CreateCommand(topoOrder[i]->GetQueue());
-      topoOrder[i]->EnqueueCommands(reinterpret_cast<hipStream_t>(hip_stream));
+      topoOrder[i]->EnqueueCommands(hip_stream);
     }
   }
 
@@ -572,17 +572,14 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
   return status;
 }
 
-hipError_t GraphExec::Run(hipStream_t stream) {
+hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   hipError_t status = hipSuccess;
 
-  if (hip::getStream(stream) == nullptr) {
-    return hipErrorInvalidResourceHandle;
-  }
-  auto hip_stream = (stream == nullptr) ? hip::getCurrentDevice()->NullStream()
-                                        : reinterpret_cast<hip::Stream*>(stream);
+  hip::Stream* launch_stream = hip::getStream(graph_launch_stream);
+
   if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!topoOrder_.empty()) {
-      topoOrder_[0]->GetParentGraph()->FreeAllMemory(hip_stream);
+      topoOrder_[0]->GetParentGraph()->FreeAllMemory(launch_stream);
     }
   }
 
@@ -599,31 +596,31 @@ hipError_t GraphExec::Run(hipStream_t stream) {
   }
 
   if (parallelLists_.size() == 1 &&
-      instantiateDeviceId_ == hip_stream->DeviceId()) {
+      instantiateDeviceId_ == launch_stream->DeviceId()) {
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       // If the graph has kernels that does device side allocation,  during packet capture, heap is
       // allocated because heap pointer has to be added to the AQL packet, and initialized during
       // graph launch.
       static bool initialized = false;
       if (!initialized && HasHiddenHeap()) {
-        hip_stream->vdev()->HiddenHeapInit();
+        launch_stream->vdev()->HiddenHeapInit();
         initialized = true;
       }
     }
-    status = EnqueueGraphWithSingleList(topoOrder_, hip_stream, this);
+    status = EnqueueGraphWithSingleList(topoOrder_, launch_stream, this);
   } else if (parallelLists_.size() == 1 &&
-             instantiateDeviceId_ != hip_stream->DeviceId()) {
+             instantiateDeviceId_ != launch_stream->DeviceId()) {
     for (int i = 0; i < topoOrder_.size(); i++) {
-      topoOrder_[i]->SetStream(hip_stream, this);
+      topoOrder_[i]->SetStream(launch_stream, this);
       status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
-      topoOrder_[i]->EnqueueCommands(stream);
+      topoOrder_[i]->EnqueueCommands(launch_stream);
     }
   } else {
-    UpdateStream(parallelLists_, hip_stream, this);
+    UpdateStream(parallelLists_, launch_stream, this);
     amd::Command* rootCommand = nullptr;
     amd::Command* endCommand = nullptr;
     status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
-                          endCommand, hip_stream);
+                          endCommand, launch_stream);
     if (status != hipSuccess) {
       return status;
     }
@@ -632,7 +629,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
       rootCommand->release();
     }
     for (int i = 0; i < topoOrder_.size(); i++) {
-      topoOrder_[i]->EnqueueCommands(reinterpret_cast<hipStream_t>(topoOrder_[i]->GetQueue()));
+      topoOrder_[i]->EnqueueCommands(topoOrder_[i]->GetQueue());
     }
     if (endCommand != nullptr) {
       endCommand->enqueue();
@@ -640,7 +637,7 @@ hipError_t GraphExec::Run(hipStream_t stream) {
     }
   }
   amd::ScopedLock lock(GraphExecStatusLock_);
-  GraphExecStatus_[this] = std::make_pair(hip_stream, false);
+  GraphExecStatus_[this] = std::make_pair(launch_stream, false);
   ResetQueueIndex();
   return status;
 }
