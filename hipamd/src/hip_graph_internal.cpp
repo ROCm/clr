@@ -66,6 +66,7 @@ std::unordered_set<GraphExec*> GraphExec::graphExecSet_;
 amd::Monitor GraphExec::graphExecSetLock_{"Guards global exec graph set"};
 std::unordered_set<UserObject*> UserObject::ObjectSet_;
 amd::Monitor UserObject::UserObjectLock_{"Guards global user object"};
+amd::Monitor GraphNode::WorkerThreadLock_{"Guards mem map add/remove against work thread"};
 
 hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {
