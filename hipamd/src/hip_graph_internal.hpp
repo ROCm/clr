@@ -342,7 +342,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   /// Get topological sort of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual bool TopologicalOrder(std::vector<Node>& TopoOrder) { return true; }
   /// Update waitlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
-  virtual void UpdateEventWaitLists(amd::Command::EventWaitList waitList) {
+  virtual void UpdateEventWaitLists(const amd::Command::EventWaitList& waitList) {
     for (auto command : commands_) {
       command->updateEventWaitList(waitList);
     }
@@ -798,7 +798,7 @@ struct ChildGraphNode : public GraphNode {
   }
 
   //
-  void UpdateEventWaitLists(amd::Command::EventWaitList waitList) override {
+  void UpdateEventWaitLists(const amd::Command::EventWaitList& waitList) override {
     if (startCommand_ != nullptr) {
       startCommand_->updateEventWaitList(waitList);
     }
