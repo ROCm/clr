@@ -253,7 +253,6 @@ class VirtualGPU : public device::VirtualDevice {
     //! Adds an external signal(submission in another queue) for dependency tracking
     void AddExternalSignal(ProfilingSignal* signal) {
       external_signals_.push_back(signal);
-      engine_ = HwQueueEngine::External;
     }
 
     //! Get the last active signal on the queue
