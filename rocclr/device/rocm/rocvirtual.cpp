@@ -534,28 +534,28 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
     if (!skip_internal_signal) {
       external_signals_.push_back(signal_list_[current_id_]);
     }
+  }
 
-    // Validate all signals for the wait and skip already completed
-    for (uint32_t i = 0; i < external_signals_.size(); ++i) {
-      // Early signal status check
-      if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
-        const Settings& settings = gpu_.dev().settings();
-        // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
-        // For small copies set forced wait
-        if (!WaitForSignal<true>(external_signals_[i]->signal_, false,
-                                 external_signals_[i]->flags_.forceHostWait_)) {
-          if (settings.cpu_wait_for_signal_) {
-            // Wait on CPU for completion if requested
-            CpuWaitForSignal(external_signals_[i]);
-          } else {
-            // Add HSA signal for tracking on GPU
-            waiting_signals_.push_back(external_signals_[i]->signal_);
-          }
+  // Validate all signals for the wait and skip already completed
+  for (uint32_t i = 0; i < external_signals_.size(); ++i) {
+    // Early signal status check
+    if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
+      const Settings& settings = gpu_.dev().settings();
+      // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
+      // For small copies set forced wait
+      if (!WaitForSignal<true>(external_signals_[i]->signal_, false,
+                               external_signals_[i]->flags_.forceHostWait_)) {
+        if (settings.cpu_wait_for_signal_) {
+          // Wait on CPU for completion if requested
+          CpuWaitForSignal(external_signals_[i]);
+        } else {
+          // Add HSA signal for tracking on GPU
+          waiting_signals_.push_back(external_signals_[i]->signal_);
         }
       }
     }
-    external_signals_.clear();
   }
+  external_signals_.clear();
 
   // Return the array of waiting HSA signals
   return waiting_signals_;
