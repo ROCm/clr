@@ -221,6 +221,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   struct Graph* parentGraph_;
   static std::unordered_set<GraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
+  static amd::Monitor WorkerThreadLock_;
   unsigned int isEnabled_;
   bool signal_is_required_ = false; //!< This node requires a signal on the command
   std::vector<uint8_t *> gpuPackets_; //!< GPU Packet to enqueue during graph launch
@@ -1544,7 +1545,13 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     commands_.reserve(1);
     amd::Command* command = nullptr;
+    if (!AMD_DIRECT_DISPATCH) {
+      WorkerThreadLock_.lock();
+    }
     status = ihipMemcpyCommand(command, dst_, src_, count_, kind_, *stream);
+    if (!AMD_DIRECT_DISPATCH) {
+      WorkerThreadLock_.unlock();
+    }
     commands_.emplace_back(command);
     return status;
   }
@@ -2275,6 +2282,9 @@ class GraphMemAllocNode final : public GraphNode {
     virtual void submit(device::VirtualDevice& device) final {
       // Remove VA reference from the global mapping. Runtime has to keep a dummy reference for
       // validation logic during the capture or creation of the nodes
+      if (!AMD_DIRECT_DISPATCH) {
+        WorkerThreadLock_.lock();
+      }
       if (amd::MemObjMap::FindMemObj(va_->getSvmPtr())) {
         amd::MemObjMap::RemoveMemObj(va_->getSvmPtr());
       }
@@ -2284,6 +2294,9 @@ class GraphMemAllocNode final : public GraphNode {
       auto dptr = graph_->AllocateMemory(aligned_size, static_cast<hip::Stream*>(queue()), nullptr);
       if (dptr == nullptr) {
         setStatus(CL_INVALID_OPERATION);
+        if (!AMD_DIRECT_DISPATCH) {
+          WorkerThreadLock_.unlock();
+        }
         return;
       }
       size_t offset = 0;
@@ -2294,6 +2307,9 @@ class GraphMemAllocNode final : public GraphNode {
       size_ = aligned_size;
       // Execute the original mapping command
       VirtualMapCommand::submit(device);
+      if (!AMD_DIRECT_DISPATCH) {
+        WorkerThreadLock_.unlock();
+      }
       amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(va_->getSvmPtr());
       assert(vaddr_sub_obj != nullptr);
       queue()->device().SetMemAccess(vaddr_sub_obj->getSvmPtr(), aligned_size,
