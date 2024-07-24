@@ -325,7 +325,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   virtual hipError_t GetNumParallelStreams(size_t &num) { return hipSuccess; }
   /// Enqueue commands part of the node
-  virtual void EnqueueCommands(hipStream_t stream) {
+  virtual void EnqueueCommands(hip::Stream* stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
     if (!isEnabled_ &&
@@ -335,8 +335,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
       if (!commands_.empty()) {
         waitList = commands_[0]->eventWaitList();
       }
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
       return;
@@ -757,10 +756,10 @@ struct ChildGraphNode : public GraphNode {
   bool TopologicalOrder(std::vector<Node>& TopoOrder) override {
     return childGraph_->TopologicalOrder(TopoOrder);
   }
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (graphCaptureStatus_) {
       hipError_t status =
-          EnqueueGraphWithSingleList(childGraphNodeOrder_, reinterpret_cast<hip::Stream*>(stream));
+          EnqueueGraphWithSingleList(childGraphNodeOrder_, stream);
     } else {
       // enqueue child graph start command
       if (startCommand_ != nullptr) {
@@ -822,7 +821,7 @@ class GraphKernelNode : public GraphNode {
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
     if (!isEnabled_) {
@@ -830,8 +829,7 @@ class GraphKernelNode : public GraphNode {
       if (!commands_.empty()) {
         waitList = commands_[0]->eventWaitList();
       }
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
       return;
@@ -845,6 +843,7 @@ class GraphKernelNode : public GraphNode {
       command->release();
     }
   }
+
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
     out << "style";
@@ -1284,12 +1283,12 @@ class GraphMemcpyNode : public GraphNode {
     return status;
   }
 
-  virtual void EnqueueCommands(hipStream_t stream) override {
+  virtual void EnqueueCommands(hip::Stream* stream) override {
     if ( (copyParams_.kind == hipMemcpyHostToHost || copyParams_.kind == hipMemcpyDefault) &&
           isEnabled_ && IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr)) {
       ihipHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr,
                      copyParams_.extent.width * copyParams_.extent.height *
-                     copyParams_.extent.depth, *hip::getStream(stream));
+                     copyParams_.extent.depth, *stream);
       return;
     }
     GraphNode::EnqueueCommands(stream);
@@ -1438,7 +1437,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     return status;
   }
 
-  virtual void EnqueueCommands(hipStream_t stream) override {
+  virtual void EnqueueCommands(hip::Stream* stream) override {
     bool isH2H = false;
     if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
       isH2H = true;
@@ -1451,14 +1450,13 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     if (isEnabled_) {
       //HtoH
       if (isH2H) {
-        ihipHtoHMemcpy(dst_, src_, count_, *hip::getStream(stream));
+        ihipHtoHMemcpy(dst_, src_, count_, *stream);
         return;
       }
       amd::Command* command = commands_[0];
       amd::HostQueue* cmdQueue = command->queue();
-      hip::Stream* hip_stream = hip::getStream(stream);
 
-      if (cmdQueue == hip_stream) {
+      if (cmdQueue == stream) {
         command->enqueue();
         command->release();
         return;
@@ -1466,7 +1464,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
 
       amd::Command::EventWaitList waitList;
       amd::Command* depdentMarker = nullptr;
-      amd::Command* cmd = hip_stream->getLastQueuedCommand(true);
+      amd::Command* cmd = stream->getLastQueuedCommand(true);
       if (cmd != nullptr) {
         waitList.push_back(cmd);
         amd::Command* depdentMarker = new amd::Marker(*cmdQueue, true, waitList);
@@ -1483,7 +1481,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       if (cmd != nullptr) {
         waitList.clear();
         waitList.push_back(cmd);
-        amd::Command* depdentMarker = new amd::Marker(*hip_stream, true, waitList);
+        amd::Command* depdentMarker = new amd::Marker(*stream, true, waitList);
         if (depdentMarker != nullptr) {
           depdentMarker->enqueue();  // Make sure future commands of queue synced with command
           depdentMarker->release();
@@ -1492,8 +1490,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       }
     } else {
       amd::Command::EventWaitList waitList;
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
     }
@@ -1973,11 +1970,12 @@ class GraphEventRecordNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
       // command release during enqueueRecordCommand
-      hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
+      hipError_t status = e->enqueueRecordCommand(
+            reinterpret_cast<hipStream_t>(stream), commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue event record command failed for node %p - status %d", this,
@@ -2026,10 +2024,11 @@ class GraphEventWaitNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
-      hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
+      hipError_t status =
+        e->enqueueStreamWaitCommand(reinterpret_cast<hipStream_t>(stream), commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue stream wait command failed for node %p - status %d", this,
@@ -2087,7 +2086,7 @@ class GraphHostNode : public GraphNode {
     NodeParams->fn(NodeParams->userData);
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       if (!commands_[0]->setCallback(CL_COMPLETE, GraphHostNode::Callback, &NodeParams_)) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during setCallback");
@@ -2411,7 +2410,7 @@ class GraphDrvMemcpyNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     bool isHtoH = false;
     if(copyParams_.srcMemoryType == hipMemoryTypeHost &&
        copyParams_.dstMemoryType == hipMemoryTypeHost &&
@@ -2421,7 +2420,7 @@ class GraphDrvMemcpyNode : public GraphNode {
     if (isEnabled_ && isHtoH) {
       ihipHtoHMemcpy(copyParams_.dstHost, copyParams_.srcHost,
                      copyParams_.WidthInBytes * copyParams_.Height *
-                     copyParams_.Depth, *hip::getStream(stream));
+                     copyParams_.Depth, *stream);
       return;
     }
     GraphNode::EnqueueCommands(stream);
