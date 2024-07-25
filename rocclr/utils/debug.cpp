@@ -80,8 +80,8 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
 void log_printf(LogLevel level, const char* file, int line, const char* format, ...) {
   va_list ap;
   std::stringstream pidtid;
-  if (AMD_LOG_LEVEL > 4) {
-    pidtid << "[pid:" << Os::getProcessId() << " tid: " ;
+  if (AMD_LOG_LEVEL >= 4) {
+    pidtid << "[pid:" << Os::getProcessId() << " tid: 0x" ;
     pidtid << std::hex << std::setw(5) << std::this_thread::get_id() << "]";
   }
 
@@ -91,7 +91,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
 
-  fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
+  fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s\n", level, file, line,
     timeUs, pidtid.str().c_str(),message);
 
   fflush(outFile);
@@ -102,8 +102,8 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
                 const char* format, ...) {
   va_list ap;
   std::stringstream pidtid;
-  if (AMD_LOG_LEVEL > 4) {
-    pidtid << "[pid:" << Os::getProcessId() << " tid: " ;
+  if (AMD_LOG_LEVEL >= 4) {
+    pidtid << "[pid:" << Os::getProcessId() << " tid: 0x" ;
     pidtid << std::hex << std::setw(5) << std::this_thread::get_id() << "]";
   }
   va_start(ap, format);
@@ -113,10 +113,10 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
 
   if (start == 0 || *start == 0) {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
+    fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s\n", level, file, line,
       timeUs, pidtid.str().c_str(), message);
   } else {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s: duration: %lud us\n",
+    fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s: duration: %lu us\n",
       level, file, line, timeUs, pidtid.str().c_str(), message, timeUs - *start);
   }
   fflush(outFile);
