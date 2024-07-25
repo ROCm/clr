@@ -633,12 +633,6 @@ hipError_t hipBindTexture2D(size_t* offset,
 hipError_t ihipBindTextureToArray(const textureReference* texref,
                                   hipArray_const_t array,
                                   const hipChannelFormatDesc* desc) {
-  if ((texref == nullptr) ||
-      (array == nullptr) ||
-      (desc == nullptr)) {
-    return hipErrorInvalidValue;
-  }
-
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
   // Any memory previously bound to hTexRef is unbound.
   // No need to check for errors.
@@ -663,6 +657,10 @@ hipError_t hipBindTextureToArray(const textureReference* texref,
                                  hipArray_const_t array,
                                  const hipChannelFormatDesc* desc) {
   HIP_INIT_API(hipBindTextureToArray, texref, array, desc);
+
+  if ((texref == nullptr) || (array == nullptr) || (desc == nullptr)) {
+    return hipErrorInvalidValue;
+  }
 
   hipDeviceptr_t refDevPtr = nullptr;
   size_t refDevSize = 0;
