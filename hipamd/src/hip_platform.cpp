@@ -26,6 +26,8 @@
 #include "platform/runtime.hpp"
 
 #include <unordered_map>
+#include <mutex>
+
 namespace hip {
 constexpr unsigned __hipFatMAGIC2 = 0x48495046;  // "HIPF"
 
@@ -177,11 +179,9 @@ void __hipRegisterTexture(
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   // By calling hipDeviceSynchronize ensure that all HSA signal handlers
   // complete before removeFatBinary
-  hipError_t err = hipDeviceSynchronize();
-  if (err != hipSuccess) {
-    LogPrintfError("Error during hipDeviceSynchronize, error: %d", err);
-  }
-  err = PlatformState::instance().removeFatBinary(modules);
+  static std::once_flag unregister_device_sync;
+  std::call_once(unregister_device_sync, hipDeviceSynchronize);
+  hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }
 
