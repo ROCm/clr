@@ -909,7 +909,7 @@ bool Device::UpdateStackSize(uint64_t stackSize) {
   if (stackSize > kStackSize) {
     return false;
   }
-  stack_size_ = stackSize;
+  stack_size_ = amd::alignUp(stackSize, 16);
   return true;
 }
 
