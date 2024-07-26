@@ -2277,7 +2277,8 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
                             bool coop_groups) {
   // Find the number of scratch registers used in the kernel
   const device::Kernel* devKernel = kernel.getDeviceKernel(*this);
-  uint regNum = static_cast<uint>(devKernel->workGroupInfo()->scratchRegs_);
+  uint32_t regNum = static_cast<uint32_t>(devKernel->workGroupInfo()->scratchRegs_);
+  regNum = std::max<uint32_t>(static_cast<uint32_t>(stack_size_) / sizeof(uint32_t), regNum);
   const VirtualGPU* vgpu = static_cast<const VirtualGPU*>(vdev);
 
   if (!allocScratch(regNum, vgpu, devKernel->workGroupInfo()->usedVGPRs_)) {

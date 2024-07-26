@@ -2685,16 +2685,24 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       LogError("Couldn't load kernel arguments");
       return false;
     }
+    // Dynamic call stack size is considered to calculate private segment size and scratch regs
+    // in LightningKernel::postLoad(). As it is not called during hipModuleLaunchKernel unlike
+    // hipLaunchKernel/hipLaunchKernelGGL, Updated value is passed to dispatch packet.
+    size_t privateMemSize = hsaKernel.spillSegSize();
+    if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+      privateMemSize = std::max<uint32_t>(static_cast<uint32_t>(device().StackSize()),
+                                hsaKernel.workGroupInfo()->scratchRegs_ * sizeof(uint32_t)) ;
+    }
 
     // Set up the dispatch information
     Pal::DispatchAqlParams dispatchParam = {};
     dispatchParam.pAqlPacket = aqlPkt;
-    if (hsaKernel.workGroupInfo()->scratchRegs_ > 0) {
+    if (privateMemSize > 0) {
       const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
       dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
       dispatchParam.scratchSize = scratch->size_;
       dispatchParam.scratchOffset = scratch->offset_;
-      dispatchParam.workitemPrivateSegmentSize = hsaKernel.spillSegSize();
+      dispatchParam.workitemPrivateSegmentSize = privateMemSize;
     }
     dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
     dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
