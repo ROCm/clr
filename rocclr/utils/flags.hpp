@@ -249,6 +249,10 @@ release(bool, HIP_VMEM_MANAGE_SUPPORT, true,                                  \
         "Virtual Memory Management Support")                                  \
 release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
          "Enable/Disable graph debug dot print dump")                         \
+release(bool, DEBUG_HIP_FORCE_ASYNC_QUEUE, false,                             \
+        "Forces grpahs into async queue mode. DEBUG_HIP_FORCE_GRAPH_QUEUES must be 1") \
+release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
+        "Forces the number of streams for the graph parallel execution")      \
 release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \

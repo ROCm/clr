@@ -152,6 +152,12 @@ class Event : public RuntimeObject {
   }
 
  public:
+  //! Use profiling info to force a tracking signal on command
+  void SetProfiling() {
+    EnableProfiling();
+    profilingInfo_.marker_ts_ = true;
+  }
+
   //! Return the context for this event.
   virtual const Context& context() const = 0;
 

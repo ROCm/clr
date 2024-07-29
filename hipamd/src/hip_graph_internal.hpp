@@ -168,6 +168,9 @@ struct hipGraphNodeDOTAttribute {
 
 struct GraphNode : public hipGraphNodeDOTAttribute {
  protected:
+  // Declare Graph and GraphExec as friends of node for simpler access to GraphNode fields
+  friend class Graph;
+  friend class GraphExec;
   hip::Stream* stream_ = nullptr;
   unsigned int id_;
   hipGraphNodeType type_;
@@ -175,15 +178,16 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   std::vector<Node> edges_;
   std::vector<Node> dependencies_;
   bool visited_;
-  // count of in coming edge  s
-  size_t inDegree_;
-  // count of outgoing edges
-  size_t outDegree_;
+  size_t inDegree_;     //!< count of in coming edges (@todo: remove, it's dependencies_.size())
+  size_t outDegree_;    //!< count of outgoing edges (@todo: remove, it's edges_.size())
+  int32_t stream_id_ = -1;  //! Stream ID on which this node will be executed
+  int32_t launch_id_ = -1;  //! Launch ID of this node in the entire graph execution sequence
   static int nextID;
   struct Graph* parentGraph_;
   static std::unordered_set<GraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
   unsigned int isEnabled_;
+  bool signal_is_required_ = false; //!< This node requires a signal on the command
   uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
   std::string capturedKernelName_;
   size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
@@ -259,6 +263,15 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
     stream_ = stream;
+  }
+  //! Updates the grpah node with the execution stream
+  void SetStream(
+    const std::vector<hip::Stream*>& streams  //!< A pool of streams to use in graph's execution
+    ) {
+    assert(stream_id_ != -1 && "Stream ID wasn't initialized");
+    stream_ = streams[stream_id_];
+    // Reset the launch ID after the stream assignment
+    launch_id_ = -1;
   }
   /// Create amd::command for the graph node
   virtual hipError_t CreateCommand(hip::Stream* stream) {
@@ -413,6 +426,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
 };
 
 struct Graph {
+  // Mark GraphExec as friend for faster access to the Graph fields.
+  // (@todo GrpahExec should be derived from Graph)
+  friend class GraphExec;
   std::vector<Node> vertices_;
   const Graph* pOriginalGraph_ = nullptr;
   static std::unordered_set<Graph*> graphSet_;
@@ -420,6 +436,14 @@ struct Graph {
   std::unordered_set<UserObject*> graphUserObj_;
   unsigned int id_;
   static int nextID;
+  int max_streams_ = 0;       //!< Maximum number of extra streams used in the graph launch
+  std::vector<Node> roots_;   //!< Root nodes, used in parallel launches
+  std::vector<Node> leafs_;   //!< The list of leaf nodes on every parallel stream
+  //!< Used as a temporary storage for the waiting nodes
+  //!< to reduce the stack pressure in recursion
+  std::vector<Node> wait_order_;
+  std::vector<hip::Stream*> streams_; //!< The list of streams, used in the execution
+  int32_t current_id_ = 0;    //!< The current node ID in the graph execution sequence
   hip::Device* device_;       //!< HIP device object
   hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
   std::unordered_set<GraphNode*> capturedNodes_;
@@ -435,6 +459,9 @@ struct Graph {
     mem_pool_ = device->GetGraphMemoryPool();
     mem_pool_->retain();
     graphInstantiated_ = false;
+    roots_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
+    leafs_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
+    wait_order_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
   }
 
   ~Graph() {
@@ -503,6 +530,35 @@ struct Graph {
                       std::unordered_map<Node, std::vector<Node>>& dependencies);
   void GetRunList(std::vector<std::vector<Node>>& parallelLists,
                   std::unordered_map<Node, std::vector<Node>>& dependencies);
+
+  //! Schedules one node on a vitual stream.
+  //! It will also process the nodes in edges, using recursion
+  void ScheduleOneNode(
+    Node node,      //!< Node for scheduling on a virtual stream
+    int stream_id   //!< Current active virtual stream to use for scheduling
+    );
+
+  //! Schedules all nodes in the graph into different streams
+  void ScheduleNodes();
+
+  //! Update streams for the graph execution
+  void UpdateStreams(
+    hip::Stream* launch_stream, //!< Launch stream from the application
+    const std::vector<hip::Stream*>& parallel_stream  //!< The list of parallel streams
+  );
+
+  //! Runs one node on the assigned stream
+  bool RunOneNode(
+    Node node,    //!< Node for the execution on GPU
+    bool wait     //!< Wait dependencies
+    );
+
+  //! Runs all nodes from the execution graph on the assigned streams
+  bool RunNodes(
+    int32_t base_stream = 0,  //!< The base stream to run the graph on
+    const std::vector<hip::Stream*>* streams = nullptr  //!< Streams to run the graph
+  );
+
   bool TopologicalOrder(std::vector<Node>& TopoOrder);
 
   Graph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
@@ -631,10 +687,10 @@ struct GraphExec : public amd::ReferenceCountedObject {
   static std::unordered_set<GraphExec*> graphExecSet_;
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
-  bool repeatLaunch_ = false;
   GraphKernelArgManager* kernArgManager_ = nullptr; //!< Kernel Arg manager for graph.
   int instantiateDeviceId_ = -1;
-  bool hasHiddenHeap_ = false;    //!< Hidden heap indicator for Kernel node
+  bool hasHiddenHeap_ = false;  //!< Hidden heap indicator for Kernel node
+  bool repeatLaunch_ = false;
 
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
@@ -656,6 +712,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   ~GraphExec() {
     for (auto stream : parallel_streams_) {
       if (stream != nullptr) {
+        stream->finish();
         hip::Stream::Destroy(stream);
       }
     }
@@ -676,6 +733,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
     }
     return clonedNode;
   }
+
   //! Check if kernel node has hidden heap
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
   //! Graph has nodes that require hidden heap.
@@ -1126,13 +1184,28 @@ class GraphKernelNode : public GraphNode {
     }
     commands_.reserve(1);
     amd::Command* command;
+    uint32_t flags = 0;
+    if (DEBUG_HIP_FORCE_ASYNC_QUEUE) {
+      // If there is one dependency, but many edges, then execute this node in any order
+      if (((dependencies_.size() == 1) && (dependencies_[0]->GetEdges().size() > 1) &&
+          (DEBUG_HIP_FORCE_GRAPH_QUEUES == 1))) {
+        // Makes sure the first node in the edges will have a barrier always
+        if (dependencies_[0]->GetEdges()[0] != this) {
+          flags = hipExtAnyOrderLaunch;
+        }
+      }
+    }
     status = ihipLaunchKernelCommand(
         command, func, kernelParams_.gridDim.x * kernelParams_.blockDim.x,
         kernelParams_.gridDim.y * kernelParams_.blockDim.y,
         kernelParams_.gridDim.z * kernelParams_.blockDim.z, kernelParams_.blockDim.x,
         kernelParams_.blockDim.y, kernelParams_.blockDim.z, kernelParams_.sharedMemBytes,
         stream, kernelParams_.kernelParams, kernelParams_.extra, kernelEvents_.startEvent_,
-        kernelEvents_.stopEvent_, 0, 0, 0, 0, 0, 0, 0);
+        kernelEvents_.stopEvent_, flags, 0, 0, 0, 0, 0, 0);
+    if (signal_is_required_) {
+      // Optimize the barriers by adding a signal into the dispatch packet directly
+      command->SetProfiling();
+    }
     commands_.emplace_back(command);
     return status;
   }
@@ -2152,6 +2225,7 @@ class GraphHostNode : public GraphNode {
   }
 };
 
+// ================================================================================================
 class GraphEmptyNode : public GraphNode {
  public:
   GraphEmptyNode() : GraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "EMPTY") {}
@@ -2166,10 +2240,13 @@ class GraphEmptyNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-    amd::Command::EventWaitList waitList;
-    commands_.reserve(1);
-    amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
-    commands_.emplace_back(command);
+    // If just one stream was forced for the execution, then the barrier can be skipped
+    if (DEBUG_HIP_FORCE_GRAPH_QUEUES != 1) {
+      amd::Command::EventWaitList waitList;
+      commands_.reserve(1);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+      commands_.emplace_back(command);
+    }
     return hipSuccess;
   }
 };

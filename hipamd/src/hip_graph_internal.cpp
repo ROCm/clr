@@ -240,6 +240,63 @@ void Graph::GetRunList(std::vector<std::vector<Node>>& parallelLists,
   }
 }
 
+// ================================================================================================
+void Graph::ScheduleOneNode(Node node, int stream_id) {
+  if (node->stream_id_ == -1) {
+    // Assign active stream to the current node
+    node->stream_id_ = stream_id;
+    max_streams_ = std::max(max_streams_, stream_id);
+
+    // Update the dependencies if a signal is required
+    for (auto dep: node->GetDependencies()) {
+      // Check if the stream ID doesn't match and enable signal
+      if (dep->stream_id_ != node->stream_id_) {
+        dep->signal_is_required_ |= true;
+      }
+    }
+    // Process child graph separately, since, there is no connection
+    if (node->GetType() == hipGraphNodeTypeGraph) {
+      auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
+      child->ScheduleNodes();
+      max_streams_ = std::max(max_streams_, child->max_streams_);
+    }
+    for (auto edge: node->GetEdges()) {
+      ScheduleOneNode(edge, stream_id);
+      // 1. Each extra edge will get a new stream from the pool
+      // 2. Streams will be reused if the number of edges > streams
+      stream_id = (stream_id + 1) % DEBUG_HIP_FORCE_GRAPH_QUEUES;
+    }
+  }
+}
+
+// ================================================================================================
+void Graph::ScheduleNodes() {
+  for (auto node : vertices_) {
+    node->stream_id_ = -1;
+    node->signal_is_required_ = false;
+  }
+  memset(&roots_[0], 0, sizeof(Node) * roots_.size());
+  max_streams_ = 0;
+  // Start processing all nodes in the graph to find async executions.
+  int stream_id = 0;
+  for (auto node : vertices_) {
+    if (node->stream_id_ == -1) {
+      ScheduleOneNode(node, stream_id);
+      // Find the root nodes
+      if ((node->GetDependencies().size() == 0) && (node->stream_id_ != 0)) {
+        // Fill in only the first in the sequence
+        if (roots_[node->stream_id_] == nullptr) {
+          roots_[node->stream_id_] = node;
+        }
+      }
+      // 1. Each extra root will get a new stream from the pool
+      // 2. Streams will be recycled if the number of roots > streams
+      stream_id = (stream_id + 1) % DEBUG_HIP_FORCE_GRAPH_QUEUES;
+    }
+  }
+}
+
+// ================================================================================================
 bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
   std::queue<Node> q;
   std::unordered_map<Node, int> inDegree;
@@ -298,6 +355,8 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     userObj->retain();
     newGraph->graphUserObj_.insert(userObj);
   }
+  // Clone the root nodes to the new graph
+  memcpy(&newGraph->roots_[0], &roots_[0], sizeof(Node) * roots_.size());
   return newGraph;
 }
 
@@ -334,17 +393,21 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t GraphExec::Init() {
   hipError_t status = hipSuccess;
   size_t min_num_streams = 1;
-
-  for (auto& node : topoOrder_) {
-    status = node->GetNumParallelStreams(min_num_streams);
-    if (status != hipSuccess) {
-      return status;
+  if ((DEBUG_HIP_FORCE_GRAPH_QUEUES == 0) || (parallelLists_.size() == 1)) {
+    for (auto& node : topoOrder_) {
+      status = node->GetNumParallelStreams(min_num_streams);
+      if (status != hipSuccess) {
+        return status;
+      }
     }
+    status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
+  } else {
+    status = CreateStreams(clonedGraph_->max_streams_);
   }
-  status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
   if (status != hipSuccess) {
     return status;
   }
@@ -574,6 +637,172 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
   return status;
 }
 
+// ================================================================================================
+void Graph::UpdateStreams(
+    hip::Stream* launch_stream,
+    const std::vector<hip::Stream*>& parallel_streams) {
+  // Allocate array for parallel streams, based on the graph scheduling + current stream
+  streams_.resize(parallel_streams.size() + 1);
+
+  // Current stream is the default in the assignment
+  streams_[0] = launch_stream;
+  // Assign the streams in the array of all streams
+  for (uint32_t i = 0; i < parallel_streams.size(); ++i) {
+    streams_[i + 1] = parallel_streams[i];
+  }
+}
+
+// ================================================================================================
+bool Graph::RunOneNode(Node node, bool wait) {
+  if (node->launch_id_ == -1) {
+    // Process child graph separately, since, there is no connection
+    if (node->GetType() == hipGraphNodeTypeGraph) {
+      auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
+      child->RunNodes(node->stream_id_, &streams_);
+    }
+    // Clear the storage of the wait nodes
+    memset(&wait_order_[0], 0, sizeof(Node) * wait_order_.size());
+    amd::Command::EventWaitList waitList;
+    // Walk through dependencies and find the last launches on each parallel stream
+    for (auto depNode : node->GetDependencies()) {
+      // Process only the nodes that have been submitted
+      if (depNode->launch_id_ != -1) {
+        // If it's the same stream then skip the signal, since it's in order
+        if (depNode->stream_id_ != node->stream_id_) {
+          // If there is no wait node on the stream, then assign one
+          if ((wait_order_[depNode->stream_id_] == nullptr) ||
+          // If another node executed on the same stream, then use the latest launch only,
+          // since the same stream has in-order run
+              (wait_order_[depNode->stream_id_]->launch_id_ < depNode->launch_id_)) {
+            wait_order_[depNode->stream_id_] = depNode;
+          }
+        }
+      } else {
+        // It should be a safe return,
+        // since the last edge to this dependency has to submit the command
+        return true;
+      }
+    }
+    // Create a wait list from the last launches of all dependencies
+    for (auto dep : wait_order_) {
+      if (dep != nullptr) {
+        // Add all commands in the wait list
+        for (auto command : dep->GetCommands()) {
+          waitList.push_back(command);
+        }
+      }
+    }
+    // Assing a stream to the current node
+    node->SetStream(streams_);
+    // Create the execution commands on the assigned stream
+    auto status = node->CreateCommand(node->GetQueue());
+    if (status != hipSuccess) {
+      LogPrintfError("Command creation for node id(%d) failed!", current_id_ + 1);
+      return false;
+    }
+    // Retain all commands, since potentially the command can finish before a wait signal
+    for (auto command : node->GetCommands()) {
+      command->retain();
+    }
+
+    // If a wait was requested, then process the list
+    if (wait && !waitList.empty()) {
+      node->UpdateEventWaitLists(waitList);
+    }
+    // Start the execution
+    node->EnqueueCommands(node->GetQueue());
+    // Assign the launch ID of the submmitted node
+    node->launch_id_ = current_id_++;
+    uint32_t i = 0;
+    // Execute the nodes in the edges list
+    for (auto edge: node->GetEdges()) {
+      // Don't wait in the nodes, executed on the same streams and if it has just one dependency
+      bool wait = ((i < DEBUG_HIP_FORCE_GRAPH_QUEUES) ||
+                   (edge->GetDependencies().size() > 1)) ? true : false;
+      // Execute the edge node
+      if (!RunOneNode(edge, wait)) {
+        return false;
+      }
+      i++;
+    }
+    if ((i == 0) && (node->stream_id_ != 0)) {
+      // Add a leaf node into the list for a wait.
+      // Always use the last node, since it's the latest for the particular queue
+      leafs_[node->stream_id_] = node;
+    }
+  }
+  return true;
+}
+
+// ================================================================================================
+bool Graph::RunNodes(
+    int32_t base_stream,
+    const std::vector<hip::Stream*>* parallel_streams) {
+  if (parallel_streams != nullptr) {
+    streams_ = *parallel_streams;
+  }
+
+  amd::Command::EventWaitList wait_list;
+  current_id_ = 0;
+  memset(&leafs_[0], 0, sizeof(Node) * leafs_.size());
+
+  // Add possible waits in parallel streams for the app's default launch stream
+  constexpr bool kRetainCommand = true;
+  auto last_command = streams_[base_stream]->getLastQueuedCommand(kRetainCommand);
+  if (last_command != nullptr) {
+    // Add the last command into the waiting list
+    wait_list.push_back(last_command);
+    // Check if the graph has multiple root nodes
+    for (uint32_t i = 0; i < DEBUG_HIP_FORCE_GRAPH_QUEUES; ++i) {
+      if ((base_stream != i) && (roots_[i] != nullptr)) {
+        // Wait for the app's queue
+        auto start_marker = new amd::Marker(*streams_[i], true, wait_list);
+        if (start_marker != nullptr) {
+          start_marker->enqueue();
+          start_marker->release();
+        }
+      }
+    }
+    last_command->release();
+  }
+
+  // Run all commands in the graph
+  for (auto node : vertices_) {
+    if (node->launch_id_ == -1) {
+      if (!RunOneNode(node, true)) {
+        return false;
+      }
+    }
+  }
+  wait_list.clear();
+  // Check if the graph has multiple leaf nodes
+  for (uint32_t i = 0; i < DEBUG_HIP_FORCE_GRAPH_QUEUES; ++i) {
+    if ((base_stream != i) && (leafs_[i] != nullptr)) {
+      // Add all commands in the wait list
+      for (auto command : leafs_[i]->GetCommands()) {
+        wait_list.push_back(command);
+      }
+    }
+  }
+  // Wait for leafs in the graph's app stream
+  if (wait_list.size() > 0) {
+    auto end_marker = new amd::Marker(*streams_[base_stream], true, wait_list);
+    if (end_marker != nullptr) {
+      end_marker->enqueue();
+      end_marker->release();
+    }
+  }
+  // Release commands after execution
+  for (auto& node : vertices_) {
+    node->launch_id_ = -1;
+    for (auto command : node->GetCommands()) {
+      command->release();
+    }
+  }
+  return true;
+}
+
+// ================================================================================================
 hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   hipError_t status = hipSuccess;
 
@@ -618,24 +847,34 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
       topoOrder_[i]->EnqueueCommands(launch_stream);
     }
   } else {
-    UpdateStream(parallelLists_, launch_stream, this);
-    amd::Command* rootCommand = nullptr;
-    amd::Command* endCommand = nullptr;
-    status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
-                          endCommand, launch_stream);
-    if (status != hipSuccess) {
-      return status;
-    }
-    if (rootCommand != nullptr) {
-      rootCommand->enqueue();
-      rootCommand->release();
-    }
-    for (int i = 0; i < topoOrder_.size(); i++) {
-      topoOrder_[i]->EnqueueCommands(topoOrder_[i]->GetQueue());
-    }
-    if (endCommand != nullptr) {
-      endCommand->enqueue();
-      endCommand->release();
+    if (DEBUG_HIP_FORCE_GRAPH_QUEUES == 0) {
+      UpdateStream(parallelLists_, launch_stream, this);
+      amd::Command* rootCommand = nullptr;
+      amd::Command* endCommand = nullptr;
+      status = FillCommands(parallelLists_, nodeWaitLists_, topoOrder_, clonedGraph_, rootCommand,
+                            endCommand, launch_stream);
+      if (status != hipSuccess) {
+        return status;
+      }
+      if (rootCommand != nullptr) {
+        rootCommand->enqueue();
+        rootCommand->release();
+      }
+      for (int i = 0; i < topoOrder_.size(); i++) {
+        topoOrder_[i]->EnqueueCommands(topoOrder_[i]->GetQueue());
+      }
+      if (endCommand != nullptr) {
+        endCommand->enqueue();
+        endCommand->release();
+      }
+    } else {
+      // Update streams for the graph execution
+      clonedGraph_->UpdateStreams(launch_stream, parallel_streams_);
+      // Execute all nodes in the graph
+      if (!clonedGraph_->RunNodes()) {
+        LogError("Failed to launch nodes!");
+        return hipErrorOutOfMemory;
+      }
     }
   }
   amd::ScopedLock lock(GraphExecStatusLock_);

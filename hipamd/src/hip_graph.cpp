@@ -1305,6 +1305,9 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   std::vector<std::vector<hip::GraphNode*>> parallelLists;
   std::unordered_map<hip::GraphNode*, std::vector<hip::GraphNode*>> nodeWaitLists;
   clonedGraph->GetRunList(parallelLists, nodeWaitLists);
+  if (DEBUG_HIP_FORCE_GRAPH_QUEUES != 0) {
+    clonedGraph->ScheduleNodes();
+  }
   *pGraphExec =
       new hip::GraphExec(graphNodes, parallelLists, nodeWaitLists, clonedGraph, clonedNodes,
                          flags);
