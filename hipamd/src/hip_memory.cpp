@@ -341,6 +341,56 @@ hipError_t ihipMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 }
 
 // ================================================================================================
+hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
+{
+  if (ptr == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  if (sizeBytes == 0) {
+    *ptr = nullptr;
+    return hipSuccess;
+  }
+
+  *ptr = nullptr;
+  const unsigned int coherentFlags = hipHostMallocCoherent | hipHostMallocNonCoherent;
+
+  // can't have both Coherent and NonCoherent flags set at the same time
+  if ((flags & coherentFlags) == coherentFlags) {
+    LogPrintfError(
+        "Cannot have both coherent and non-coherent flags "
+        "at the same time, flags: %u coherent flags: %u",
+        flags, coherentFlags);
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
+  if (flags == 0 ||
+      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
+      (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
+    ihipFlags |= CL_MEM_SVM_ATOMICS;
+  }
+
+  if (flags & hipHostMallocNumaUser) {
+    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
+  }
+
+  if (flags & hipHostMallocNonCoherent) {
+    ihipFlags &= ~CL_MEM_SVM_ATOMICS;
+  }
+
+  hipError_t status = ihipMalloc(ptr, sizeBytes, ihipFlags);
+
+  if ((status == hipSuccess) && ((*ptr) != nullptr)) {
+    size_t offset = 0; // This is ignored
+    amd::Memory* svmMem = getMemoryObject(*ptr, offset);
+    // Save the HIP memory flags so that they can be accessed later
+    svmMem->getUserData().flags = flags;
+  }
+
+  HIP_RETURN(status, *ptr);
+}
+
+// ================================================================================================
 bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
@@ -624,44 +674,7 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  *ptr = nullptr;
-
-  const unsigned int coherentFlags = hipHostMallocCoherent | hipHostMallocNonCoherent;
-
-  // can't have both Coherent and NonCoherent flags set at the same time
-  if ((flags & coherentFlags) == coherentFlags) {
-    LogPrintfError(
-        "Cannot have both coherent and non-coherent flags "
-        "at the same time, flags: %u coherent flags: %u",
-        flags, coherentFlags);
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
-  if (flags == 0 ||
-      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
-      (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
-    ihipFlags |= CL_MEM_SVM_ATOMICS;
-  }
-
-  if (flags & hipHostMallocNumaUser) {
-    ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
-  }
-
-  if (flags & hipHostMallocNonCoherent) {
-    ihipFlags &= ~CL_MEM_SVM_ATOMICS;
-  }
-
-  hipError_t status = ihipMalloc(ptr, sizeBytes, ihipFlags);
-
-  if ((status == hipSuccess) && ((*ptr) != nullptr)) {
-    size_t offset = 0; // This is ignored
-    amd::Memory* svmMem = getMemoryObject(*ptr, offset);
-    // Save the HIP memory flags so that they can be accessed later
-    svmMem->getUserData().flags = flags;
-  }
-
-  HIP_RETURN_DURATION(status, *ptr);
+  HIP_RETURN(ihipHostMalloc(ptr, sizeBytes, flags));
 }
 
 hipError_t hipFree(void* ptr) {
@@ -1296,11 +1309,13 @@ hipError_t hipHostUnregister(void* hostPtr) {
   HIP_RETURN(ihipHostUnregister(hostPtr));
 }
 
-// Deprecated function:
 hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostAlloc, ptr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
-  HIP_RETURN(ihipMalloc(ptr, sizeBytes, flags), (ptr != nullptr)? *ptr : nullptr);
+  if (ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(ihipHostMalloc(ptr, sizeBytes, flags));
 };
 
 inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes,
