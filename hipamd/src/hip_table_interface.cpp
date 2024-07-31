@@ -1759,6 +1759,9 @@ hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGrap
   return hip::GetHipDispatchTable()->hipDrvGraphExecMemsetNodeSetParams_fn(hGraphExec, hNode,
                                    memsetParams, ctx);
 }
+hipError_t hipGraphExecGetFlags(hipGraphExec_t graphExec, unsigned long long* flags) {
+ return hip::GetHipDispatchTable()->hipGraphExecGetFlags_fn(graphExec, flags);
+}
 hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                   const hipGraphNode_t* dependencies, size_t numDependencies,
                                   hipDeviceptr_t dptr) {
