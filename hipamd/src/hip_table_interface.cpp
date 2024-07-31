@@ -1805,3 +1805,6 @@ hipError_t hipDrvGraphMemcpyNodeGetParams(hipGraphNode_t hNode, HIP_MEMCPY3D* no
 hipError_t hipDrvGraphMemcpyNodeSetParams(hipGraphNode_t hNode, const HIP_MEMCPY3D* nodeParams) {
   return hip::GetHipDispatchTable()->hipDrvGraphMemcpyNodeSetParams_fn(hNode, nodeParams);
 }
+hipError_t hipExtHostAlloc(void** ptr, size_t size, unsigned int flags) {
+  return hip::GetHipDispatchTable()->hipExtHostAlloc_fn(ptr, size, flags);
+}
