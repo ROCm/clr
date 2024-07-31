@@ -23,6 +23,12 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
+#if defined(__has_attribute) && __has_attribute(maybe_undef)
+#define MAYBE_UNDEF __attribute__((maybe_undef))
+#else
+#define MAYBE_UNDEF
+#endif
+
 __device__ static inline unsigned __hip_ds_bpermute(int index, unsigned src) {
     union { int i; unsigned u; float f; } tmp; tmp.u = src;
     tmp.i = __builtin_amdgcn_ds_bpermute(index, tmp.i);
@@ -122,28 +128,28 @@ __device__ static inline unsigned int __lane_id() {
 
 __device__
 inline
-int __shfl(int var, int src_lane, int width = warpSize) {
+int __shfl(MAYBE_UNDEF int var, int src_lane, int width = warpSize) {
     int self = __lane_id();
     int index = (src_lane & (width - 1)) + (self & ~(width-1));
     return __builtin_amdgcn_ds_bpermute(index<<2, var);
 }
 __device__
 inline
-unsigned int __shfl(unsigned int var, int src_lane, int width = warpSize) {
+unsigned int __shfl(MAYBE_UNDEF unsigned int var, int src_lane, int width = warpSize) {
      union { int i; unsigned u; float f; } tmp; tmp.u = var;
     tmp.i = __shfl(tmp.i, src_lane, width);
     return tmp.u;
 }
 __device__
 inline
-float __shfl(float var, int src_lane, int width = warpSize) {
+float __shfl(MAYBE_UNDEF float var, int src_lane, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl(tmp.i, src_lane, width);
     return tmp.f;
 }
 __device__
 inline
-double __shfl(double var, int src_lane, int width = warpSize) {
+double __shfl(MAYBE_UNDEF double var, int src_lane, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
     static_assert(sizeof(double) == sizeof(uint64_t), "");
 
@@ -157,7 +163,7 @@ double __shfl(double var, int src_lane, int width = warpSize) {
 }
 __device__
 inline
-long __shfl(long var, int src_lane, int width = warpSize)
+long __shfl(MAYBE_UNDEF long var, int src_lane, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
@@ -177,7 +183,7 @@ long __shfl(long var, int src_lane, int width = warpSize)
 }
 __device__
 inline
-unsigned long __shfl(unsigned long var, int src_lane, int width = warpSize) {
+unsigned long __shfl(MAYBE_UNDEF unsigned long var, int src_lane, int width = warpSize) {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
     static_assert(sizeof(unsigned long) == sizeof(uint64_t), "");
@@ -196,7 +202,7 @@ unsigned long __shfl(unsigned long var, int src_lane, int width = warpSize) {
 }
 __device__
 inline
-long long __shfl(long long var, int src_lane, int width = warpSize)
+long long __shfl(MAYBE_UNDEF long long var, int src_lane, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
     static_assert(sizeof(long long) == sizeof(uint64_t), "");
@@ -211,7 +217,7 @@ long long __shfl(long long var, int src_lane, int width = warpSize)
 }
 __device__
 inline
-unsigned long long __shfl(unsigned long long var, int src_lane, int width = warpSize) {
+unsigned long long __shfl(MAYBE_UNDEF unsigned long long var, int src_lane, int width = warpSize) {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
     static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
 
@@ -226,7 +232,7 @@ unsigned long long __shfl(unsigned long long var, int src_lane, int width = warp
 
 __device__
 inline
-int __shfl_up(int var, unsigned int lane_delta, int width = warpSize) {
+int __shfl_up(MAYBE_UNDEF int var, unsigned int lane_delta, int width = warpSize) {
     int self = __lane_id();
     int index = self - lane_delta;
     index = (index < (self & ~(width-1)))?self:index;
@@ -234,21 +240,21 @@ int __shfl_up(int var, unsigned int lane_delta, int width = warpSize) {
 }
 __device__
 inline
-unsigned int __shfl_up(unsigned int var, unsigned int lane_delta, int width = warpSize) {
+unsigned int __shfl_up(MAYBE_UNDEF unsigned int var, unsigned int lane_delta, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.u = var;
     tmp.i = __shfl_up(tmp.i, lane_delta, width);
     return tmp.u;
 }
 __device__
 inline
-float __shfl_up(float var, unsigned int lane_delta, int width = warpSize) {
+float __shfl_up(MAYBE_UNDEF float var, unsigned int lane_delta, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl_up(tmp.i, lane_delta, width);
     return tmp.f;
 }
 __device__
 inline
-double __shfl_up(double var, unsigned int lane_delta, int width = warpSize) {
+double __shfl_up(MAYBE_UNDEF double var, unsigned int lane_delta, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
     static_assert(sizeof(double) == sizeof(uint64_t), "");
 
@@ -262,7 +268,7 @@ double __shfl_up(double var, unsigned int lane_delta, int width = warpSize) {
 }
 __device__
 inline
-long __shfl_up(long var, unsigned int lane_delta, int width = warpSize)
+long __shfl_up(MAYBE_UNDEF long var, unsigned int lane_delta, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
@@ -283,7 +289,7 @@ long __shfl_up(long var, unsigned int lane_delta, int width = warpSize)
 
 __device__
 inline
-unsigned long __shfl_up(unsigned long var, unsigned int lane_delta, int width = warpSize)
+unsigned long __shfl_up(MAYBE_UNDEF unsigned long var, unsigned int lane_delta, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
@@ -304,7 +310,7 @@ unsigned long __shfl_up(unsigned long var, unsigned int lane_delta, int width = 
 
 __device__
 inline
-long long __shfl_up(long long var, unsigned int lane_delta, int width = warpSize)
+long long __shfl_up(MAYBE_UNDEF long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
     static_assert(sizeof(long long) == sizeof(uint64_t), "");
@@ -318,7 +324,7 @@ long long __shfl_up(long long var, unsigned int lane_delta, int width = warpSize
 
 __device__
 inline
-unsigned long long __shfl_up(unsigned long long var, unsigned int lane_delta, int width = warpSize)
+unsigned long long __shfl_up(MAYBE_UNDEF unsigned long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
     static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
@@ -332,7 +338,7 @@ unsigned long long __shfl_up(unsigned long long var, unsigned int lane_delta, in
 
 __device__
 inline
-int __shfl_down(int var, unsigned int lane_delta, int width = warpSize) {
+int __shfl_down(MAYBE_UNDEF int var, unsigned int lane_delta, int width = warpSize) {
     int self = __lane_id();
     int index = self + lane_delta;
     index = (int)((self&(width-1))+lane_delta) >= width?self:index;
@@ -340,21 +346,21 @@ int __shfl_down(int var, unsigned int lane_delta, int width = warpSize) {
 }
 __device__
 inline
-unsigned int __shfl_down(unsigned int var, unsigned int lane_delta, int width = warpSize) {
+unsigned int __shfl_down(MAYBE_UNDEF unsigned int var, unsigned int lane_delta, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.u = var;
     tmp.i = __shfl_down(tmp.i, lane_delta, width);
     return tmp.u;
 }
 __device__
 inline
-float __shfl_down(float var, unsigned int lane_delta, int width = warpSize) {
+float __shfl_down(MAYBE_UNDEF float var, unsigned int lane_delta, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl_down(tmp.i, lane_delta, width);
     return tmp.f;
 }
 __device__
 inline
-double __shfl_down(double var, unsigned int lane_delta, int width = warpSize) {
+double __shfl_down(MAYBE_UNDEF double var, unsigned int lane_delta, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
     static_assert(sizeof(double) == sizeof(uint64_t), "");
 
@@ -368,7 +374,7 @@ double __shfl_down(double var, unsigned int lane_delta, int width = warpSize) {
 }
 __device__
 inline
-long __shfl_down(long var, unsigned int lane_delta, int width = warpSize)
+long __shfl_down(MAYBE_UNDEF long var, unsigned int lane_delta, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
@@ -388,7 +394,7 @@ long __shfl_down(long var, unsigned int lane_delta, int width = warpSize)
 }
 __device__
 inline
-unsigned long __shfl_down(unsigned long var, unsigned int lane_delta, int width = warpSize)
+unsigned long __shfl_down(MAYBE_UNDEF unsigned long var, unsigned int lane_delta, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
@@ -408,7 +414,7 @@ unsigned long __shfl_down(unsigned long var, unsigned int lane_delta, int width 
 }
 __device__
 inline
-long long __shfl_down(long long var, unsigned int lane_delta, int width = warpSize)
+long long __shfl_down(MAYBE_UNDEF long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
     static_assert(sizeof(long long) == sizeof(uint64_t), "");
@@ -421,7 +427,7 @@ long long __shfl_down(long long var, unsigned int lane_delta, int width = warpSi
 }
 __device__
 inline
-unsigned long long __shfl_down(unsigned long long var, unsigned int lane_delta, int width = warpSize)
+unsigned long long __shfl_down(MAYBE_UNDEF unsigned long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
     static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
@@ -435,7 +441,7 @@ unsigned long long __shfl_down(unsigned long long var, unsigned int lane_delta, 
 
 __device__
 inline
-int __shfl_xor(int var, int lane_mask, int width = warpSize) {
+int __shfl_xor(MAYBE_UNDEF int var, int lane_mask, int width = warpSize) {
     int self = __lane_id();
     int index = self^lane_mask;
     index = index >= ((self+width)&~(width-1))?self:index;
@@ -443,21 +449,21 @@ int __shfl_xor(int var, int lane_mask, int width = warpSize) {
 }
 __device__
 inline
-unsigned int __shfl_xor(unsigned int var, int lane_mask, int width = warpSize) {
+unsigned int __shfl_xor(MAYBE_UNDEF unsigned int var, int lane_mask, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.u = var;
     tmp.i = __shfl_xor(tmp.i, lane_mask, width);
     return tmp.u;
 }
 __device__
 inline
-float __shfl_xor(float var, int lane_mask, int width = warpSize) {
+float __shfl_xor(MAYBE_UNDEF float var, int lane_mask, int width = warpSize) {
     union { int i; unsigned u; float f; } tmp; tmp.f = var;
     tmp.i = __shfl_xor(tmp.i, lane_mask, width);
     return tmp.f;
 }
 __device__
 inline
-double __shfl_xor(double var, int lane_mask, int width = warpSize) {
+double __shfl_xor(MAYBE_UNDEF double var, int lane_mask, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
     static_assert(sizeof(double) == sizeof(uint64_t), "");
 
@@ -471,7 +477,7 @@ double __shfl_xor(double var, int lane_mask, int width = warpSize) {
 }
 __device__
 inline
-long __shfl_xor(long var, int lane_mask, int width = warpSize)
+long __shfl_xor(MAYBE_UNDEF long var, int lane_mask, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
@@ -491,7 +497,7 @@ long __shfl_xor(long var, int lane_mask, int width = warpSize)
 }
 __device__
 inline
-unsigned long __shfl_xor(unsigned long var, int lane_mask, int width = warpSize)
+unsigned long __shfl_xor(MAYBE_UNDEF unsigned long var, int lane_mask, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
@@ -511,7 +517,7 @@ unsigned long __shfl_xor(unsigned long var, int lane_mask, int width = warpSize)
 }
 __device__
 inline
-long long __shfl_xor(long long var, int lane_mask, int width = warpSize)
+long long __shfl_xor(MAYBE_UNDEF long long var, int lane_mask, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
     static_assert(sizeof(long long) == sizeof(uint64_t), "");
@@ -524,7 +530,7 @@ long long __shfl_xor(long long var, int lane_mask, int width = warpSize)
 }
 __device__
 inline
-unsigned long long __shfl_xor(unsigned long long var, int lane_mask, int width = warpSize)
+unsigned long long __shfl_xor(MAYBE_UNDEF unsigned long long var, int lane_mask, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
     static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
