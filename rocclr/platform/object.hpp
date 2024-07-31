@@ -260,7 +260,7 @@ private:
   };
 
   std::atomic<uint64_t> current_alloc_ = 0; //!< Current allocation, global index
-  size_t        max_chunk_idx_ = 0;         //!< Current max chunk index
+  std::atomic<size_t> max_chunk_idx_ = 0;   //!< Current max chunk index
   amd::Monitor  chunk_access_;              //!< Lock for the chunk list access
   std::set<AllocChunk*> chunks_;            //!< List of allocated memory chunks
   T* active_allocs_[kActiveAllocSize] = {}; //!< Active chunks for fast access
