@@ -4,8 +4,11 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ## HIP 6.3 (For ROCm 6.3)
 ### Changed
-- Un-deprecate hipHostAlloc
-- Un-deprecate hipFreeHost
+* Un-deprecated HIP APIs
+    - `hipHostAlloc`
+    - `hipFreeHost`
+* New HIP APIs
+    - `hipExtHostAlloc` preserves the functionality of `hipHostMalloc`.
 
 ## HIP 6.2 (For ROCm 6.2)
 

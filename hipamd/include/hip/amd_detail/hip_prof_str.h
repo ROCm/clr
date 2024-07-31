@@ -424,7 +424,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpyDtoA = 404,
   HIP_API_ID_hipMemcpyHtoAAsync = 405,
   HIP_API_ID_hipSetValidDevices = 406,
-  HIP_API_ID_LAST = 406,
+  HIP_API_ID_hipExtHostAlloc = 407,
+  HIP_API_ID_LAST = 407,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -671,6 +672,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipHostGetDevicePointer: return "hipHostGetDevicePointer";
     case HIP_API_ID_hipHostGetFlags: return "hipHostGetFlags";
     case HIP_API_ID_hipHostMalloc: return "hipHostMalloc";
+    case HIP_API_ID_hipExtHostAlloc: return "hipExtHostAlloc";
     case HIP_API_ID_hipHostRegister: return "hipHostRegister";
     case HIP_API_ID_hipHostUnregister: return "hipHostUnregister";
     case HIP_API_ID_hipImportExternalMemory: return "hipImportExternalMemory";
@@ -1073,6 +1075,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipHostGetDevicePointer", name) == 0) return HIP_API_ID_hipHostGetDevicePointer;
   if (strcmp("hipHostGetFlags", name) == 0) return HIP_API_ID_hipHostGetFlags;
   if (strcmp("hipHostMalloc", name) == 0) return HIP_API_ID_hipHostMalloc;
+  if (strcmp("hipExtHostAlloc", name) == 0) return HIP_API_ID_hipExtHostAlloc;
   if (strcmp("hipHostRegister", name) == 0) return HIP_API_ID_hipHostRegister;
   if (strcmp("hipHostUnregister", name) == 0) return HIP_API_ID_hipHostUnregister;
   if (strcmp("hipImportExternalMemory", name) == 0) return HIP_API_ID_hipImportExternalMemory;
@@ -2462,6 +2465,12 @@ typedef struct hip_api_data_s {
       size_t size;
       unsigned int flags;
     } hipHostMalloc;
+    struct {
+      void** ptr;
+      void* ptr__val;
+      size_t size;
+      unsigned int flags;
+    } hipExtHostAlloc;
     struct {
       void* hostPtr;
       size_t sizeBytes;
@@ -4809,6 +4818,12 @@ typedef struct hip_api_data_s {
   cb_data.args.hipHostMalloc.size = (size_t)sizeBytes; \
   cb_data.args.hipHostMalloc.flags = (unsigned int)flags; \
 };
+// hipExtHostAlloc[('void**', 'ptr'), ('size_t', 'size'), ('unsigned int', 'flags')]
+#define INIT_hipExtHostAlloc_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipExtHostAlloc.ptr = (void**)ptr; \
+  cb_data.args.hipExtHostAlloc.size = (size_t)sizeBytes; \
+  cb_data.args.hipExtHostAlloc.flags = (unsigned int)flags; \
+};
 // hipHostRegister[('void*', 'hostPtr'), ('size_t', 'sizeBytes'), ('unsigned int', 'flags')]
 #define INIT_hipHostRegister_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipHostRegister.hostPtr = (void*)hostPtr; \
@@ -6896,6 +6911,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipHostMalloc[('void**', 'ptr'), ('size_t', 'size'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipHostMalloc:
       if (data->args.hipHostMalloc.ptr) data->args.hipHostMalloc.ptr__val = *(data->args.hipHostMalloc.ptr);
+      break;
+// hipExtHostAlloc[('void**', 'ptr'), ('size_t', 'size'), ('unsigned int', 'flags')]
+    case HIP_API_ID_hipExtHostAlloc:
+      if (data->args.hipExtHostAlloc.ptr) data->args.hipExtHostAlloc.ptr__val = *(data->args.hipExtHostAlloc.ptr);
       break;
 // hipHostRegister[('void*', 'hostPtr'), ('size_t', 'sizeBytes'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipHostRegister:
@@ -9240,6 +9259,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.ptr__val); }
       oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.size);
       oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipHostMalloc.flags);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipExtHostAlloc:
+      oss << "hipExtHostAlloc(";
+      if (data->args.hipExtHostAlloc.ptr == NULL) oss << "ptr=NULL";
+      else { oss << "ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtHostAlloc.ptr__val); }
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtHostAlloc.size);
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipExtHostAlloc.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipHostRegister:
