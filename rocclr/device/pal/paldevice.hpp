@@ -670,6 +670,10 @@ class Device : public NullDevice {
   //! Allocates hidden heap for device memory allocations
   void HiddenHeapAlloc(const VirtualGPU& gpu);
 
+  const Pal::GpuMemoryHeapProperties& GetGpuHeapInvisible() const {
+    return heaps_[Pal::GpuHeapInvisible];
+  }
+
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);

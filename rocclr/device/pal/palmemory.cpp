@@ -120,6 +120,11 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
       // if requested memory is greater than available then exit the loop
       dev().globalFreeMemory(freeMemory);
 
+      const Pal::GpuMemoryHeapProperties invisibleHeap = dev().GetGpuHeapInvisible();
+      if (dev().settings().apuSystem_ && (size() > (invisibleHeap.logicalSize * 2))) {
+        memType = RemoteUSWC;
+        break;
+      }
       // Local to Persistent
       if (memoryType() == Local) {
         // For dgpu freeMemory[0] reports a sum of visible+invisible fb
