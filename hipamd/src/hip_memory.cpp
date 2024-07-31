@@ -352,7 +352,7 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   }
 
   *ptr = nullptr;
-  const unsigned int coherentFlags = hipHostMallocCoherent | hipHostMallocNonCoherent;
+  const unsigned int coherentFlags = hipExtHostAllocCoherent | hipExtHostAllocNonCoherent;
 
   // can't have both Coherent and NonCoherent flags set at the same time
   if ((flags & coherentFlags) == coherentFlags) {
@@ -365,16 +365,16 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 
   unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
   if (flags == 0 ||
-      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
-      (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
+      flags & (hipExtHostAllocCoherent | hipHostAllocMapped | hipExtHostAllocNumaUser) ||
+      (!(flags & hipExtHostAllocNonCoherent) && HIP_HOST_COHERENT)) {
     ihipFlags |= CL_MEM_SVM_ATOMICS;
   }
 
-  if (flags & hipHostMallocNumaUser) {
+  if (flags & hipExtHostAllocNumaUser) {
     ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
   }
 
-  if (flags & hipHostMallocNonCoherent) {
+  if (flags & hipExtHostAllocNonCoherent) {
     ihipFlags &= ~CL_MEM_SVM_ATOMICS;
   }
 
@@ -671,6 +671,16 @@ hipError_t hipMalloc(void** ptr, size_t sizeBytes) {
 
 hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostMalloc, ptr, sizeBytes, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+  if (ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hipError_t status = ihipHostMalloc(ptr, sizeBytes, flags);
+  HIP_RETURN_DURATION(status, *ptr);
+}
+
+hipError_t hipExtHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
+  HIP_INIT_API(hipExtHostAlloc, ptr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1222,7 +1232,8 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  // To match with Nvidia behaviour validate that hostPtr passed was allocated using hipHostMalloc(), and not hipMalloc()
+  // To match with Nvidia behaviour validate that hostPtr passed
+  // was allocated using hipHostAlloc(), and not hipMalloc()
   if (!(svmMem->getMemFlags() & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -1314,11 +1325,12 @@ hipError_t hipHostUnregister(void* hostPtr) {
 hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostAlloc, ptr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (flags > (hipHostMallocPortable | hipHostMallocMapped |
-      hipHostMallocWriteCombined)) {
+  if (flags > (hipHostAllocPortable | hipHostAllocMapped |
+      hipHostAllocWriteCombined)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
