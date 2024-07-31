@@ -3507,7 +3507,7 @@ bool Device::IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer
 
 // ================================================================================================
 void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
-  auto HeapAllocOnly = [this, &gpu]() -> bool {
+  auto HeapAllocZeroOut = [this, &gpu]() -> bool {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
@@ -3519,22 +3519,12 @@ void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
       LogError("Heap buffer allocation failed!");
       return false;
     }
-    return true;
-  };
-  std::call_once(heap_allocated_, HeapAllocOnly);
-}
-
-// ================================================================================================
-void Device::HiddenHeapInit(const VirtualGPU& gpu) {
-  auto HeapZeroOut = [this, &gpu]() -> bool {
-    static constexpr size_t HeapBufferSize = 128 * Ki;
-    bool result = static_cast<const KernelBlitManager&>(gpu.blitMgr())
-                      .initHeap(heap_buffer_, initial_heap_buffer_, HeapBufferSize,
-                                initial_heap_size_ / (2 * Mi));
+    bool result = static_cast<const KernelBlitManager&>(gpu.blitMgr()).initHeap(
+        heap_buffer_, initial_heap_buffer_, HeapBufferSize, initial_heap_size_ / (2 * Mi));
 
     return result;
   };
-  std::call_once(heap_initialized_, HeapZeroOut);
+  std::call_once(heap_initialized_, HeapAllocZeroOut);
 }
 
 // ================================================================================================

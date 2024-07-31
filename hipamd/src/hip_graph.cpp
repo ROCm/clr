@@ -95,12 +95,8 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   if (!hip::Graph::isGraphValid(graph)) {
     return hipErrorInvalidValue;
   }
-  hipFunction_t func = hip::GraphKernelNode::getFunc(*pNodeParams, ihipGetDevice());
-  if (!func) {
-    return hipErrorInvalidDeviceFunction;
-  }
-  hipError_t status =
-      hip::GraphKernelNode::validateKernelParams(pNodeParams, func, ihipGetDevice());
+
+  hipError_t status = hip::GraphKernelNode::validateKernelParams(pNodeParams);
   if (hipSuccess != status) {
     return status;
   }

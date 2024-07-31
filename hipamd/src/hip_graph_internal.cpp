@@ -360,7 +360,8 @@ void GetKernelArgSizeForGraph(std::vector<std::vector<Node>>& parallelLists,
   // arg size required for all graph kernel nodes to allocate
   for (const auto& list : parallelLists) {
     for (auto& node : list) {
-      if (node->GetType() == hipGraphNodeTypeKernel) {
+      if (node->GetType() == hipGraphNodeTypeKernel &&
+          !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
         kernArgSizeForGraph += reinterpret_cast<hip::GraphKernelNode*>(node)->GetKerArgSize();
       } else if (node->GetType() == hipGraphNodeTypeGraph) {
         auto& childParallelLists = reinterpret_cast<hip::ChildGraphNode*>(node)->GetParallelLists();
@@ -376,13 +377,8 @@ hipError_t AllocKernelArgForGraph(std::vector<hip::Node>& topoOrder, hip::Stream
                                   hip::GraphExec* graphExec) {
   hipError_t status = hipSuccess;
   for (auto& node : topoOrder) {
-    if (node->GetType() == hipGraphNodeTypeKernel) {
-      // Check if graph requires hidden heap and set as part of graphExec param.
-      static bool initialized = false;
-      if (!initialized && reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
-        graphExec->SetHiddenHeap();
-        initialized = true;
-      }
+    if (node->GetType() == hipGraphNodeTypeKernel &&
+        !reinterpret_cast<hip::GraphKernelNode*>(node)->HasHiddenHeap()) {
       auto kernelNode = reinterpret_cast<hip::GraphKernelNode*>(node);
       // From the kernel pool allocate the kern arg size required for the current kernel node.
       address kernArgOffset = nullptr;
@@ -597,7 +593,8 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
     accumulate = new amd::AccumulateCommand(*hip_stream, {}, nullptr);
   }
   for (int i = 0; i < topoOrder.size(); i++) {
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder[i]->GetType() == hipGraphNodeTypeKernel) {
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && topoOrder[i]->GetType() == hipGraphNodeTypeKernel &&
+        !reinterpret_cast<hip::GraphKernelNode*>(topoOrder[i])->HasHiddenHeap()) {
       if (topoOrder[i]->GetEnabled()) {
         hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(),
                                               topoOrder[i]->GetKernelName(),
@@ -642,16 +639,6 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
 
   if (parallelLists_.size() == 1 &&
       instantiateDeviceId_ == launch_stream->DeviceId()) {
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      // If the graph has kernels that does device side allocation,  during packet capture, heap is
-      // allocated because heap pointer has to be added to the AQL packet, and initialized during
-      // graph launch.
-      static bool initialized = false;
-      if (!initialized && HasHiddenHeap()) {
-        launch_stream->vdev()->HiddenHeapInit();
-        initialized = true;
-      }
-    }
     status = EnqueueGraphWithSingleList(topoOrder_, launch_stream, this);
   } else if (parallelLists_.size() == 1 &&
              instantiateDeviceId_ != launch_stream->DeviceId()) {

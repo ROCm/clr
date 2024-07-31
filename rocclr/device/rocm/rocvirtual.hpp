@@ -419,8 +419,6 @@ class VirtualGPU : public device::VirtualDevice {
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
-  void HiddenHeapInit();
-
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
   // } roc OpenCL integration

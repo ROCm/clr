@@ -2959,8 +2959,6 @@ static inline void nontemporalMemcpy(
 #endif
 }
 
-void VirtualGPU::HiddenHeapInit() { const_cast<Device&>(dev()).HiddenHeapInit(*this); }
-
 // ================================================================================================
 bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     const amd::Kernel& kernel, const_address parameters, void* eventHandle,
@@ -3015,7 +3013,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-  bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
+
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
@@ -3142,10 +3140,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
             const_cast<Device&>(dev()).HiddenHeapAlloc(*this);
           }
           if (dev().HeapBuffer() != nullptr) {
-            // Initialize hidden heap buffer
-            if (!isGraphCapture) {
-              const_cast<Device&>(dev()).HiddenHeapInit(*this);
-            }
             // Add heap pointer to the code
             size_t heap_ptr = static_cast<size_t>(dev().HeapBuffer()->virtualAddress());
             WriteAqlArgAt(hidden_arguments, heap_ptr, it.size_, it.offset_);
@@ -3228,6 +3222,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     }
 
     address argBuffer = hidden_arguments;
+    bool isGraphCapture = vcmd != nullptr && vcmd->getCapturingState();
     size_t argSize = std::min(gpuKernel.KernargSegmentByteSize(), signature.paramsSize());
 
     // Find all parameters for the current kernel

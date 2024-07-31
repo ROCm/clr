@@ -568,7 +568,6 @@ struct GraphExec : public amd::ReferenceCountedObject {
   uint32_t kernarg_graph_cur_offset_ = 0;
   uint32_t kernarg_graph_size_ = 128 * Ki;
   int instantiateDeviceId_ = -1;
-  bool hasHiddenHeap_ = false;                 //!< Kernel has hidden heap(device side allocation)
 
  public:
   GraphExec(std::vector<Node>& topoOrder, std::vector<std::vector<Node>>& lists,
@@ -619,10 +618,6 @@ struct GraphExec : public amd::ReferenceCountedObject {
     }
     return clonedNode;
   }
-  // returns if graph has nodes that require hidden heap/not
-  bool HasHiddenHeap() const { return hasHiddenHeap_; }
-  // Graph has nodes that require hidden heap.
-  void SetHiddenHeap() { hasHiddenHeap_ = true; }
 
   address allocKernArg(size_t size, size_t alignment) {
     assert(alignment != 0);
@@ -821,28 +816,6 @@ class GraphKernelNode : public GraphNode {
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
-  void EnqueueCommands(hip::Stream* stream) override {
-    // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
-    // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
-    if (!isEnabled_) {
-      amd::Command::EventWaitList waitList;
-      if (!commands_.empty()) {
-        waitList = commands_[0]->eventWaitList();
-      }
-      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
-      command->enqueue();
-      command->release();
-      return;
-    }
-    for (auto& command : commands_) {
-      hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
-      hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
-      amd::Kernel* kernel = function->kernel();
-      amd::ScopedLock lock(function->dflock_);
-      command->enqueue();
-      command->release();
-    }
-  }
 
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
@@ -1076,15 +1049,9 @@ class GraphKernelNode : public GraphNode {
   }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
-    int devID = hip::getDeviceID(stream->context());
-    hipFunction_t func = getFunc(kernelParams_, devID);
-    if (!func) {
-      return hipErrorInvalidDeviceFunction;
-    }
-    hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
-    amd::Kernel* kernel = function->kernel();
-    amd::ScopedLock lock(function->dflock_);
-    hipError_t status = validateKernelParams(&kernelParams_, func, devID);
+    hipFunction_t func = nullptr;
+    hipError_t status = validateKernelParams(&kernelParams_, &func,
+                                             stream ? hip::getDeviceID(stream->context()) : -1);
     if (hipSuccess != status) {
       return status;
     }
@@ -1108,12 +1075,8 @@ class GraphKernelNode : public GraphNode {
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
-    hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
-    if (!func) {
-      return hipErrorInvalidDeviceFunction;
-    }
     // updates kernel params
-    hipError_t status = validateKernelParams(params, func, ihipGetDevice());
+    hipError_t status = validateKernelParams(params);
     if (hipSuccess != status) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to validateKernelParams");
       return status;
@@ -1229,7 +1192,13 @@ class GraphKernelNode : public GraphNode {
   }
 
   static hipError_t validateKernelParams(const hipKernelNodeParams* pNodeParams,
-                                         hipFunction_t func, int devId) {
+                                         hipFunction_t* ptrFunc = nullptr, int devId = -1) {
+    devId = devId == -1 ? ihipGetDevice() : devId;
+    hipFunction_t func = getFunc(*pNodeParams, devId);
+    if (!func) {
+      return hipErrorInvalidDeviceFunction;
+    }
+
     size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
     size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
     size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
@@ -1242,6 +1211,8 @@ class GraphKernelNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
+
+    if (ptrFunc) *ptrFunc = func;
     return hipSuccess;
   }
 };
