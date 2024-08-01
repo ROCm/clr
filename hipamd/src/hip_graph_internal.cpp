@@ -392,17 +392,7 @@ hipError_t AllocKernelArgForGraphNode(std::vector<hip::Node>& topoOrder,
       }
     }
     if (node->GraphCaptureEnabled()) {
-      // From the kernel pool allocate the kern arg size required for the current node.
-      address kernArgOffset = nullptr;
-      if (node->GetKernargSegmentByteSize()) {
-        kernArgOffset = graphExec->kernArgManager_->AllocKernArg(
-            node->GetKernargSegmentByteSize(), node->GetKernargSegmentAlignment());
-        if (kernArgOffset == nullptr) {
-          return hipErrorMemoryAllocation;
-        }
-      }
-      // Form GPU packet capture for the kernel node.
-      node->CaptureAndFormPacket(capture_stream, kernArgOffset);
+      node->CaptureAndFormPacket(capture_stream, graphExec->GetKernelArgManager());
     } else if (node->GetType() == hipGraphNodeTypeGraph) {
       auto childNode = reinterpret_cast<hip::ChildGraphNode*>(node);
       auto& childParallelLists = childNode->GetParallelLists();
@@ -443,17 +433,10 @@ hipError_t GraphExec::CaptureAQLPackets() {
 }
 
 // ================================================================================================
-hipError_t GraphExec::UpdateAQLPacket(hip::GraphKernelNode* node) {
+hipError_t GraphExec::UpdateAQLPacket(hip::GraphNode* node) {
   hipError_t status = hipSuccess;
   if (parallelLists_.size() == 1) {
-    size_t pool_new_usage = 0;
-    address kernArgOffset = nullptr;
-    kernArgOffset =
-        kernArgManager_->AllocKernArg(node->GetKerArgSize(), node->GetKernargSegmentAlignment());
-    if (kernArgOffset == nullptr) {
-      return hipErrorMemoryAllocation;
-    }
-    node->CaptureAndFormPacket(capture_stream_, kernArgOffset);
+    node->CaptureAndFormPacket(capture_stream_, kernArgManager_);
   }
   return hipSuccess;
 }
@@ -556,9 +539,10 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
   for (int i = 0; i < topoOrder.size(); i++) {
     if (topoOrder[i]->GraphCaptureEnabled()) {
       if (topoOrder[i]->GetEnabled()) {
-        hip_stream->vdev()->dispatchAqlPacket(topoOrder[i]->GetAqlPacket(),
-                                              topoOrder[i]->GetKernelName(),
-                                              accumulate);
+        std::vector<uint8_t*>& gpuPackets = topoOrder[i]->GetAqlPackets();
+        for (auto& packet : gpuPackets) {
+          hip_stream->vdev()->dispatchAqlPacket(packet, topoOrder[i]->GetKernelName(), accumulate);
+        }
       }
     } else {
       topoOrder[i]->SetStream(hip_stream, graphExec);

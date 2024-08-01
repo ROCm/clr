@@ -166,6 +166,41 @@ struct hipGraphNodeDOTAttribute {
   }
 };
 
+class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::GraphKernelArgManager  {
+ public:
+  GraphKernelArgManager() : amd::ReferenceCountedObject() {}
+  ~GraphKernelArgManager() {
+    //! Release the kernel arg pools
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    for (auto& element : kernarg_graph_) {
+      device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
+    }
+    kernarg_graph_.clear();
+  }
+
+  // Allocate kernel arg pool for the given size.
+  bool AllocGraphKernargPool(size_t pool_size);
+
+  // Allocate kernel args from current chunck for given size and alignment.
+  // If kernel arg pool is full allocate new chunck and alloc kern args from new pool.
+  address AllocKernArg(size_t size, size_t alignment) override;
+
+  // Do HDP flush/When HDP flush register is invalid fallback to Readback
+  void ReadBackOrFlush();
+
+ private:
+  struct KernelArgPoolGraph {
+    KernelArgPoolGraph(address base_addr, size_t size)
+        : kernarg_pool_addr_(base_addr), kernarg_pool_size_(size), kernarg_pool_offset_(0) {}
+    address kernarg_pool_addr_;   //! Base address of the kernel arg pool
+    size_t kernarg_pool_size_;    //! Size of the pool
+    size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
+  };
+  bool device_kernarg_pool_ = false;               //! Indicate if kernel pool in device mem
+  std::vector<KernelArgPoolGraph> kernarg_graph_;  //! Vector of allocated kernarg pool
+  using KernelArgImpl = device::Settings::KernelArgImpl;
+};
+
 struct GraphNode : public hipGraphNodeDOTAttribute {
  protected:
   hip::Stream* stream_ = nullptr;
@@ -184,7 +219,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   static std::unordered_set<GraphNode*> nodeSet_;
   static amd::Monitor nodeSetLock_;
   unsigned int isEnabled_;
-  uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
+  std::vector<uint8_t *> gpuPackets_; //!< GPU Packet to enqueue during graph launch
   std::string capturedKernelName_;
   size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
   size_t kernargSegmentByteSize_ = 256;   //!< Kernel arg segment byte size
@@ -224,6 +259,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     for (auto node : dependencies_) {
       node->RemoveEdge(this);
     }
+    for (auto packet : gpuPackets_) {
+      delete packet;
+    }
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.erase(this);
   }
@@ -237,16 +275,16 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     return true;
   }
   // Return gpu packet address to update with actual packet under capture.
-  uint8_t* GetAqlPacket() { return gpuPacket_; }
+  std::vector<uint8_t *>& GetAqlPackets() { return gpuPackets_; }
   void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
   size_t GetKerArgSize() const { return alignedKernArgSize_; }
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
-  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
+  void CaptureAndFormPacket(hip::Stream* capture_stream, GraphKernelArgManager* kernArgMgr) {
     hipError_t status = CreateCommand(capture_stream);
     for (auto& command : commands_) {
-      command->setCapturingState(true, GetAqlPacket(), kernArgOffset, &capturedKernelName_);
+      command->setCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
       // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
       // The packet is stored in gpuPacket_ and submitted during graph launch.
       command->submit(*(command->queue())->vdev());
@@ -402,6 +440,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       switch (GetType()) {
         case hipGraphNodeTypeKernel:
+          isGraphCapture = true;
+          break;
+        case hipGraphNodeTypeMemset:
           isGraphCapture = true;
           break;
         default:
@@ -582,40 +623,6 @@ struct Graph {
   }
 };
 struct GraphKernelNode;
-struct GraphKernelArgManager : public amd::ReferenceCountedObject {
- public:
-  GraphKernelArgManager() : ReferenceCountedObject() {}
-  ~GraphKernelArgManager() {
-    //! Release the kernel arg pools
-    auto device = g_devices[ihipGetDevice()]->devices()[0];
-    for (auto& element : kernarg_graph_) {
-      device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
-    }
-    kernarg_graph_.clear();
-  }
-
-  // Allocate kernel arg pool for the given size.
-  bool AllocGraphKernargPool(size_t pool_size);
-
-  // Allocate kernel args from current chunck for given size and alignment.
-  // If kernel arg pool is full allocate new chunck and alloc kern args from new pool.
-  address AllocKernArg(size_t size, size_t alignment);
-
-  // Do HDP flush/When HDP flush register is invalid fallback to Readback
-  void ReadBackOrFlush();
-
- private:
-  struct KernelArgPoolGraph {
-    KernelArgPoolGraph(address base_addr, size_t size)
-        : kernarg_pool_addr_(base_addr), kernarg_pool_size_(size), kernarg_pool_offset_(0) {}
-    address kernarg_pool_addr_;   //! Base address of the kernel arg pool
-    size_t kernarg_pool_size_;    //! Size of the pool
-    size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
-  };
-  bool device_kernarg_pool_ = false;               //! Indicate if kernel pool in device mem
-  std::vector<KernelArgPoolGraph> kernarg_graph_;  //! Vector of allocated kernarg pool
-  using KernelArgImpl = device::Settings::KernelArgImpl;
-};
 
 struct GraphExec : public amd::ReferenceCountedObject {
   std::vector<std::vector<Node>> parallelLists_;
@@ -699,7 +706,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   hipError_t Run(hipStream_t stream);
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
-  hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
+  hipError_t UpdateAQLPacket(hip::GraphNode* node);
   // Kenrel arg manger is for the entire graph.
   // Child graph also shares the same kernel arg manager object. some apps have 100's of
   // child graph nodes and each child graph has only one node.

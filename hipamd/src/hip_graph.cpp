@@ -1651,7 +1651,15 @@ hipError_t hipGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::GraphMemsetNode*>(clonedNode)->SetParams(pNodeParams, true));
+  hipError_t status = reinterpret_cast<hip::GraphMemsetNode*>(clonedNode)->SetParams(pNodeParams, true);
+  if(status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+        ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddDependencies(hipGraph_t graph, const hipGraphNode_t* from,
@@ -1773,7 +1781,7 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
     std::vector<hip::GraphNode*> childGraphNodes;
     reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->TopologicalOrder(childGraphNodes);
     for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes.size(); i++) {
-      if (childGraphNodes[i]->GetType() == hipGraphNodeTypeKernel) {
+      if (childGraphNodes[i]->GraphCaptureEnabled()) {
         status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
                      ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
         if (status != hipSuccess) {
@@ -2478,8 +2486,7 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
           *updateResult_out = hipGraphExecUpdateErrorNotSupported;
         }
         HIP_RETURN(hipErrorGraphExecUpdateFailure);
-      } else if (DEBUG_CLR_GRAPH_PACKET_CAPTURE &&
-                 oldGraphExecNodes[i]->GetType() == hipGraphNodeTypeKernel) {
+      } else if (DEBUG_CLR_GRAPH_PACKET_CAPTURE && newGraphNodes[i]->GraphCaptureEnabled()) {
         status =
             reinterpret_cast<hip::GraphExec*>(hGraphExec)
                 ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(oldGraphExecNodes[i]));
