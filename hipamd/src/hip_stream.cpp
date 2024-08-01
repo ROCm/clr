@@ -78,6 +78,12 @@ void Stream::Destroy(hip::Stream* stream) {
 }
 
 // ================================================================================================
+bool Stream::terminate() {
+  HostQueue::terminate();
+  ReleaseGraphExec(this);
+  return true;
+}
+// ================================================================================================
 bool isValid(hipStream_t& stream) {
   // NULL stream is always valid
   if (stream == nullptr || stream == hipStreamLegacy) {

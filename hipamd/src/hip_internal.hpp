@@ -342,6 +342,9 @@ public:
     static bool StreamCaptureBlocking();
 
     static void Destroy(hip::Stream* stream);
+
+    virtual bool terminate();
+
     /// Check Stream Capture status to make sure it is done
     static bool StreamCaptureOngoing(hipStream_t hStream);
 

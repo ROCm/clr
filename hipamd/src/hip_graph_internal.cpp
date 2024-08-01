@@ -54,7 +54,7 @@ namespace hip {
 std::unordered_map<GraphExec *, std::pair<hip::Stream *, bool>>
     GraphExecStatus_ ROCCLR_INIT_PRIORITY(101);
 amd::Monitor GraphExecStatusLock_ ROCCLR_INIT_PRIORITY(101){
-    "Guards graph execution state"};
+    "Guards graph execution state", true};
 
 int GraphNode::nextID = 0;
 int Graph::nextID = 0;
