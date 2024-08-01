@@ -29,6 +29,7 @@
 
 #if defined(__linux__)
 #include <sched.h>
+#include <libgen.h>
 #endif
 
 #ifdef _WIN32
@@ -373,6 +374,10 @@ ALWAYSINLINE address Os::currentStackPtr() {
 
 
 #if defined(__linux__)
+
+#ifndef __GLIBC__
+typedef unsigned long int __cpu_mask;
+#endif
 
 inline void Os::ThreadAffinityMask::init() { CPU_ZERO(&mask_); }
 
