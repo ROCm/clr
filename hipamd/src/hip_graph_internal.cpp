@@ -894,7 +894,6 @@ void ReleaseGraphExec(hip::Stream* stream) {
         (itr->first)->release();
       }
       GraphExecStatus_.erase(itr++);
-      break;
     } else {
       ++itr;
     }
