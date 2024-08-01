@@ -239,6 +239,12 @@ union CopyMetadata {
         copyEnginePreference_(copyEnginePreference) {}
 };
 
+// Interface to callback to allocate kernel args from the graph kernel arg pool.
+class GraphKernelArgManager {
+ public:
+  virtual address AllocKernArg(size_t size, size_t alignment) = 0;
+};
+
 /*! \brief An operation that is submitted to a command queue.
  *
  *  %Command is the abstract base type of all OpenCL operations
@@ -257,7 +263,8 @@ class Command : public Event {
   const Event* waitingEvent_;  //!< Waiting event associated with the marker
 
   bool capturing_ = false;           //!< Flag to enable/disable graph gpu packet capture
-  uint8_t* gpuPacket_ = nullptr;     //!< GPU packet to capture, when graph capturing is enabled
+  std::vector<uint8_t*>* gpuPackets_;  //!< GPU packets captured when graph capturing is enabled
+  GraphKernelArgManager* graphKernArgMgr_ = nullptr;  //!< KernelMgr for graph
   address kernArgOffset_ = nullptr;  //!< KernelArg buffer to used when graph capturing is enabled
   std::string* capturedKernelName_ = nullptr;  //!< Kenrnel under capture
  protected:
@@ -300,11 +307,12 @@ class Command : public Event {
   bool getCapturingState() const { return capturing_; }
 
   //! Sets AQL capture state, aql packet to capture and where to copy kernArgs
-  void setCapturingState(bool state, uint8_t* packet, address kernArgOffset,
+  void setCapturingState(bool state, std::vector<uint8_t*>* packet,
+                         amd::GraphKernelArgManager* graphKernArgMgr,
                          std::string* capturedKernelName) {
     capturing_ = state;
-    gpuPacket_ = packet;
-    kernArgOffset_ = kernArgOffset;
+    gpuPackets_ = packet;
+    graphKernArgMgr_ = graphKernArgMgr;
     capturedKernelName_ = capturedKernelName;
   }
 
@@ -315,11 +323,16 @@ class Command : public Event {
     }
   }
 
-  //! returns the graph executable object command belongs to.
-  const uint8_t* getAqlPacket() const { return gpuPacket_; }
+  //! Returns the graph executable object command belongs to.
+  const uint8_t* getAqlPacket() const {
+    uint8_t* packet = new uint8_t[64];
+    gpuPackets_->push_back(packet);
+    return packet;
+  }
 
-  //! returns the graph executable object command belongs to.
-  const address getKernArgOffset() const { return kernArgOffset_; }
+  address getKernArgOffset(int size, int alignment) {
+    return graphKernArgMgr_->AllocKernArg(size, alignment);
+  }
 
   //! Overload new/delete for fast commands allocation/destruction
   void* operator new(size_t size);
