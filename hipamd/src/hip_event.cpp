@@ -439,7 +439,7 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
   if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
       s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
-      return HIP_RETURN(hipErrorCapturedEvent);
+      HIP_RETURN(hipErrorCapturedEvent);
   }
   if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream()) == true) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
@@ -460,7 +460,7 @@ hipError_t ihipEventQuery(hipEvent_t event) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
   if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
-    return HIP_RETURN(hipErrorCapturedEvent);
+    HIP_RETURN(hipErrorCapturedEvent);
   }
   return e->query();
 }

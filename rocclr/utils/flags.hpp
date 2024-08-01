@@ -266,9 +266,12 @@ release(bool, DEBUG_CLR_SYSMEM_POOL, true,                                    \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
 release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
-        "Use std::mutex in amd::monotor")                                     \
+        "Use std::mutex in amd::monitor")                                     \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
+release(uint, DEBUG_HIP_7_PREVIEW, 0,                                         \
+        "Enables specific backward incompatible changes support before 7.0,"  \
+        "using the mask. By default the changes are disabled and is set to 0")\
 
 namespace amd {
 
