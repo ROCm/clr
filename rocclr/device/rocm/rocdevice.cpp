@@ -2223,7 +2223,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
 
   stat = hsa_amd_agents_allow_access(gpu_agents_.size(), &gpu_agents_[0], nullptr, ptr);
   if (stat != HSA_STATUS_SUCCESS) {
-    LogPrintfError("Fail hsa_amd_agents_alloc_access with err %d", stat);
+    LogPrintfError("Fail hsa_amd_agents_allow_access with err %d", stat);
     hostFree(ptr, size);
     return nullptr;
   }
