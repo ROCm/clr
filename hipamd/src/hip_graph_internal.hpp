@@ -639,6 +639,12 @@ struct Graph {
       LogError("Failed to reserve Virtual Address");
     }
 
+    // Set Access to read write for all devices.
+    for (size_t dev_idx = 0; dev_idx < g_devices.size(); ++dev_idx) {
+      amd::Device* device = g_devices[dev_idx]->devices()[0];
+      device->SetMemAccess(ptr, size, amd::Device::VmmAccess::kReadWrite);
+    }
+
     return ptr;
   }
 
