@@ -183,6 +183,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , xferQueue_(nullptr)
     , xferRead_(nullptr)
     , xferWrite_(nullptr)
+    , p2p_agents_list_(nullptr)
     , freeMem_(0)
     , vgpusAccess_("Virtual GPU List Ops Lock", true)
     , hsa_exclusive_gpu_access_(false)
@@ -304,7 +305,8 @@ Device::~Device() {
     context_->release();
   }
 
-  delete[] p2p_agents_list_;
+  if (p2p_agents_list_ != nullptr)
+    delete[] p2p_agents_list_;
 
   if (0 != prefetch_signal_.handle) {
     hsa_signal_destroy(prefetch_signal_);
