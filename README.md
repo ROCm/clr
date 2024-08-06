@@ -1,6 +1,6 @@
 # AMD CLR - Compute Language Runtimes
 
-AMD Common Language Runtime contains source codes for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
+AMD CLR (Common Language Runtime) contains source codes for AMD's compute languages runtimes: `HIP` and `OpenCL™`.
 
 ## Project Organisation
 
@@ -15,19 +15,36 @@ AMD Common Language Runtime contains source codes for AMD's compute languages ru
 Please refer to Quick Start Guide in [ROCm Docs](https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/quick-start.html).
 
 Building clr requires `rocm-hip-libraries` meta package, which provides the pre-requisites for clr.
+If you need to build static clr library, `rocm-llvm-dev` package should be installed which has support for compilation of the static library.
 
 ### Linux
 
 - Clone this repository
-- `cd clr && mkdir build && cd build`
-- For HIP : `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
-  - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
-  - `HIPCC_BIN_DIR` points to [HIPCC](https://github.com/ROCm/HIPCC)'s bin folder. If not provided, it defaults to `/opt/rocm/bin`.
-- For OpenCL™ : `cmake .. -DCLR_BUILD_OCL=ON`
-- `make` : to build
-- `make install` : to install
+```
+cd clr && mkdir build && cd build
+```
+- For HIP:
+
+`cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
+
+
+  `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
+
+- For OpenCL™:
+
+`cmake .. -DCLR_BUILD_OCL=ON`
+
+- Build and install
+
+```
+make
+make install
+```
 
 Users can also build `OCL` and `HIP` at the same time by passing `-DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=ON` to configure command.
+
+HIP/CLR can be built as a static library, users need to add more options in `cmake` command,
+ `-DBUILD_SHARED_LIBS=OFF` and `-DCMAKE_PREFIX_PATH="/opt/rocm/;/opt/rocm/llvm`.
 
 For detail instructions, please refer to [how to build HIP](https://rocm.docs.amd.com/projects/HIP/en/latest/install/build.html)
 
@@ -37,7 +54,9 @@ For detail instructions, please refer to [how to build HIP](https://rocm.docs.am
 
 To run `hip-tests` please go to the repository and follow the steps.
 
-There used to be directed tests in [ROCm/HIP](https://github.com/ROCm/HIP) which are now removed in favor of `hip-tests` repository.
+## Release notes
+
+HIP provides release notes in [CLR change log](https://github.com/ROCm/clr/blob/develop/CHANGELOG.md), which has the records of changes in each release.
 
 ## Disclaimer
 

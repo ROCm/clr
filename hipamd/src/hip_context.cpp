@@ -25,9 +25,9 @@
 #include "utils/flags.hpp"
 #include "utils/versions.hpp"
 
+namespace hip {
 std::once_flag g_ihipInitialized;
 
-namespace hip {
 std::vector<hip::Device*> g_devices;
 thread_local TlsAggregator tls;
 amd::Context* host_context = nullptr;

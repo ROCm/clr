@@ -594,7 +594,8 @@ class Device : public NullDevice {
 
   //! Allocates hidden heap for device memory allocations
   void HiddenHeapAlloc(const VirtualGPU& gpu);
-
+  //! Init hidden heap for device memory allocations
+  void HiddenHeapInit(const VirtualGPU& gpu);
   uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
   void resetSDMAMask(const device::BlitManager* handle) const;
   void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;

@@ -79,6 +79,7 @@ class thread_group {
     struct _tiled_info tiled_info;
   } coalesced_info;
 
+  friend __CG_QUALIFIER__ thread_group this_thread();
   friend __CG_QUALIFIER__ thread_group tiled_partition(const thread_group& parent,
                                                        unsigned int tile_size);
   friend class thread_block;
@@ -103,7 +104,7 @@ class thread_group {
  *  @ingroup API
  *  @{
  *  This section describes the cooperative groups functions of HIP runtime API.
- *  
+ *
  *  The cooperative groups provides flexible thread parallel programming algorithms, threads
  *  cooperate and share data to perform collective computations.
  *
@@ -175,6 +176,7 @@ class grid_group : public thread_group {
   __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::grid::thread_rank(); }
   __CG_QUALIFIER__ bool is_valid() const { return internal::grid::is_valid(); }
   __CG_QUALIFIER__ void sync() const { internal::grid::sync(); }
+  __CG_QUALIFIER__ dim3 group_dim() const { return internal::workgroup::block_dim(); }
 };
 
 /** @brief User exposed API interface to construct grid cooperative group type
@@ -216,7 +218,7 @@ class thread_block : public thread_group {
     if (!tile_size || (tile_size > __AMDGCN_WAVEFRONT_SIZE) || !pow2) {
       __hip_assert(false && "invalid tile size");
     }
- 
+
     auto block_size = size();
     auto rank = thread_rank();
     auto partitions = (block_size + tile_size - 1) / tile_size;
@@ -306,6 +308,8 @@ class tiled_group : public thread_group {
   }
 };
 
+template <unsigned int size, class ParentCGTy> class thread_block_tile;
+
 /** \brief   The coalesced_group cooperative group type
  *
  *  \details Represents a active thread group in a wavefront.
@@ -318,11 +322,15 @@ class coalesced_group : public thread_group {
   friend __CG_QUALIFIER__ coalesced_group coalesced_threads();
   friend __CG_QUALIFIER__ thread_group tiled_partition(const thread_group& parent, unsigned int tile_size);
   friend __CG_QUALIFIER__ coalesced_group tiled_partition(const coalesced_group& parent, unsigned int tile_size);
+  friend __CG_QUALIFIER__ coalesced_group binary_partition(const coalesced_group& cgrp, bool pred);
+  template <unsigned int fsize, class fparent>
+  friend __CG_QUALIFIER__ coalesced_group
+  binary_partition(const thread_block_tile<fsize, fparent>& tgrp, bool pred);
 
   __CG_QUALIFIER__ coalesced_group new_tiled_group(unsigned int tile_size) const {
     const bool pow2 = ((tile_size & (tile_size - 1)) == 0);
 
-    if (!tile_size || (tile_size > size()) || !pow2) {
+    if (!tile_size || !pow2) {
       return coalesced_group(0);
     }
 
@@ -465,6 +473,34 @@ class coalesced_group : public thread_group {
 
     return __shfl(var, lane, __AMDGCN_WAVEFRONT_SIZE);
   }
+#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+   __CG_QUALIFIER__ unsigned long long ballot(int pred) const {
+     return internal::helper::adjust_mask(
+         coalesced_info.member_mask,
+         __ballot_sync<unsigned long long>(coalesced_info.member_mask, pred));
+   }
+
+   __CG_QUALIFIER__ int any(int pred) const {
+     return __any_sync(static_cast<unsigned long long>(coalesced_info.member_mask), pred);
+   }
+
+   __CG_QUALIFIER__ int all(int pred) const {
+     return __all_sync(static_cast<unsigned long long>(coalesced_info.member_mask), pred);
+   }
+
+   template <typename T> __CG_QUALIFIER__ unsigned long long match_any(T value) const {
+     return internal::helper::adjust_mask(
+         coalesced_info.member_mask,
+         __match_any_sync(static_cast<unsigned long long>(coalesced_info.member_mask), value));
+   }
+
+   template <typename T> __CG_QUALIFIER__ unsigned long long match_all(T value, int& pred) const {
+     return internal::helper::adjust_mask(
+         coalesced_info.member_mask,
+         __match_all_sync(static_cast<unsigned long long>(coalesced_info.member_mask), value,
+                          &pred));
+   }
+#endif
 };
 
 /** \brief   User exposed API to create coalesced groups.
@@ -625,6 +661,17 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
                 "Tile size is either not a power of 2 or greater than the wavefront size");
   using tile_base<size>::numThreads;
 
+  template <unsigned int fsize, class fparent>
+  friend __CG_QUALIFIER__ coalesced_group
+  binary_partition(const thread_block_tile<fsize, fparent>& tgrp, bool pred);
+
+#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+  __CG_QUALIFIER__ unsigned long long build_mask() const {
+    unsigned long long mask = ~0ull >> (64 - numThreads);
+    return mask << ((internal::workgroup::thread_rank() / numThreads) * numThreads);
+  }
+#endif
+
  public:
   __CG_STATIC_QUALIFIER__ void sync() {
     internal::tiled_group::sync();
@@ -649,7 +696,29 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
     static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_xor(var, laneMask, numThreads));
   }
+
+#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+  __CG_QUALIFIER__ unsigned long long ballot(int pred) const {
+    const auto mask = build_mask();
+    return internal::helper::adjust_mask(mask, __ballot_sync(mask, pred));
+  }
+
+  __CG_QUALIFIER__ int any(int pred) const { return __any_sync(build_mask(), pred); }
+
+  __CG_QUALIFIER__ int all(int pred) const { return __all_sync(build_mask(), pred); }
+
+  template <typename T> __CG_QUALIFIER__ unsigned long long match_any(T value) const {
+    const auto mask = build_mask();
+    return internal::helper::adjust_mask(mask, __match_any_sync(mask, value));
+  }
+
+  template <typename T> __CG_QUALIFIER__ unsigned long long match_all(T value, int& pred) const {
+    const auto mask = build_mask();
+    return internal::helper::adjust_mask(mask, __match_all_sync(mask, value, &pred));
+  }
+#endif
 };
+
 /** \brief   User exposed API that captures the state of the parent group pre-partition
  */
 template <unsigned int tileSize, typename ParentCGTy>
@@ -727,6 +796,10 @@ class thread_block_tile_type<tileSize, void> : public thread_block_tile_base<til
 */
 };
 
+__CG_QUALIFIER__ thread_group this_thread() {
+  thread_group g(internal::group_type::cg_coalesced_group, 1, __ockl_activelane_u32());
+  return g;
+}
 
 /** \brief   User exposed API to partition groups.
  *
@@ -762,8 +835,6 @@ __CG_QUALIFIER__ tiled_group tiled_partition(const tiled_group& parent, unsigned
 __CG_QUALIFIER__ coalesced_group tiled_partition(const coalesced_group& parent, unsigned int tile_size) {
     return (parent.new_tiled_group(tile_size));
 }
-
-template <unsigned int size, class ParentCGTy> class thread_block_tile;
 
 namespace impl {
 template <unsigned int size, class ParentCGTy> class thread_block_tile_internal;
@@ -829,6 +900,34 @@ __CG_QUALIFIER__ thread_block_tile<size, ParentCGTy> tiled_partition(const Paren
                 "Tiled partition with size > wavefront size. Currently not supported ");
   return impl::tiled_partition_internal<size, ParentCGTy>(g);
 }
+
+#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+/** \brief Binary partition
+ *
+ *  \details This splits the input thread group into two partitions determined by predicate
+ */
+__CG_QUALIFIER__ coalesced_group binary_partition(const coalesced_group& cgrp, bool pred) {
+  auto mask = __ballot_sync<unsigned long long>(cgrp.coalesced_info.member_mask, pred);
+
+  if (pred) {
+    return coalesced_group(mask);
+  } else {
+    return coalesced_group(cgrp.coalesced_info.member_mask ^ mask);
+  }
+}
+
+template <unsigned int size, class parent>
+__CG_QUALIFIER__ coalesced_group binary_partition(const thread_block_tile<size, parent>& tgrp,
+                                                  bool pred) {
+  auto mask = __ballot_sync<unsigned long long>(tgrp.build_mask(), pred);
+
+  if (pred) {
+    return coalesced_group(mask);
+  } else {
+    return coalesced_group(tgrp.build_mask() ^ mask);
+  }
+}
+#endif
 }  // namespace cooperative_groups
 
 #endif  // __cplusplus

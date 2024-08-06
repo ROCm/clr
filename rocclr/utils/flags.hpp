@@ -252,7 +252,9 @@ release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
 release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
-         "Enable/Disable multiple kern arg copies")                           \
+        "Enable/Disable multiple kern arg copies")                            \
+release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
+        "Use std::mutext in amd::monotor")                                    \
 
 namespace amd {
 
@@ -328,7 +330,12 @@ struct Flag {
 #ifdef _WIN32
 # define EXPORT_FLAG extern "C" __declspec(dllexport)
 #else // !_WIN32
+#ifdef BUILD_STATIC_LIBS
+# define EXPORT_FLAG extern
+#else
 # define EXPORT_FLAG extern "C"
+#endif
+namespace amd::flags {
 #endif // !_WIN32
 
 #define DECLARE_RELEASE_FLAG(type, name, value, help) EXPORT_FLAG type name;
@@ -342,5 +349,8 @@ RUNTIME_FLAGS(DECLARE_DEBUG_FLAG, DECLARE_RELEASE_FLAG, DECLARE_DEBUG_FLAG);
 
 #undef DECLARE_DEBUG_FLAG
 #undef DECLARE_RELEASE_FLAG
-
+#ifndef _WIN32
+}
+using namespace amd::flags;
+#endif // !_WIN32
 #endif /*FLAGS_HPP_*/

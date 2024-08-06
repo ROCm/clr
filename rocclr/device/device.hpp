@@ -686,7 +686,7 @@ class Settings : public amd::HeapObject {
       uint rocr_backend_ : 1;         //!< Device uses ROCr backend for submissions
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
       uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
-      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation 
+      uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation
       uint reserved_ : 7;
     };
     uint value_;
@@ -1308,9 +1308,12 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
-
+  //! Init hidden heap for device memory allocations
+  virtual void HiddenHeapInit() = 0;
   //! Dispatch captured AQL packet
-  virtual bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) = 0;
+  virtual bool dispatchAqlPacket(uint8_t* aqlpacket,
+                                 const std::string& kernelName,
+                                 amd::AccumulateCommand* vcmd = nullptr) = 0;
 
  private:
   //! Disable default copy constructor
@@ -2100,7 +2103,9 @@ class Device : public RuntimeObject {
   static Memory* p2p_stage_;          //!< Staging resources
   std::vector<Device*> enabled_p2p_devices_;  //!< List of user enabled P2P devices for this device
 
-  std::once_flag heap_initialized_; //!< Heap buffer initialization flag
+  std::once_flag heap_initialized_;  //!< Heap buffer initialization flag
+  std::once_flag heap_allocated_;    //!< Heap buffer allocation flag
+
   device::Memory* heap_buffer_;     //!< Preallocated heap buffer for memory allocations on device
 
   amd::Memory* arena_mem_obj_;      //!< Arena memory object

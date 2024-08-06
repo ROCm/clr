@@ -69,6 +69,9 @@ if(CLR_BUILD_HIP)
 endif()
 if(CLR_BUILD_HIP)
     option(BUILD_SHARED_LIBS "Build the shared library" ON)
+    if (NOT BUILD_SHARED_LIBS)
+        add_compile_definitions(BUILD_STATIC_LIBS)
+    endif()
 endif()
 if((CLR_BUILD_HIP AND HIP_PLATFORM STREQUAL "amd") OR CLR_BUILD_OCL)
     add_subdirectory(rocclr)
@@ -80,4 +83,15 @@ if(CLR_BUILD_HIP)
 endif()
 if(CLR_BUILD_OCL)
     add_subdirectory(opencl)
+endif()
+
+#############################
+# Code formatting
+#############################
+# Target: clangformat
+find_program(CLANGFORMAT_EXE clang-format PATHS "/opt/rocm/lib/llvm/bin")
+if(CLANGFORMAT_EXE)
+    file(GLOB_RECURSE FORMAT_SOURCE_FILE_LIST *.cpp *.hpp *.hh *.h *.cc *.c)
+    add_custom_target(clangformat COMMAND ${CLANGFORMAT_EXE} -style=file -i ${FORMAT_SOURCE_FILE_LIST}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()

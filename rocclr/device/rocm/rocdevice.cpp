@@ -246,6 +246,11 @@ void Device::checkAtomicSupport() {
 }
 
 Device::~Device() {
+  if (coopHostcallBuffer_) {
+    amd::disableHostcalls(coopHostcallBuffer_);
+    context().svmFree(coopHostcallBuffer_);
+    coopHostcallBuffer_ = nullptr;
+  }
   // Release cached map targets
   for (uint i = 0; mapCache_ != nullptr && i < mapCache_->size(); ++i) {
     if ((*mapCache_)[i] != nullptr) {
@@ -300,12 +305,6 @@ Device::~Device() {
   }
 
   delete[] p2p_agents_list_;
-
-  if (coopHostcallBuffer_) {
-    amd::disableHostcalls(coopHostcallBuffer_);
-    context().svmFree(coopHostcallBuffer_);
-    coopHostcallBuffer_ = nullptr;
-  }
 
   if (0 != prefetch_signal_.handle) {
     hsa_signal_destroy(prefetch_signal_);
@@ -1821,6 +1820,7 @@ bool Device::populateOCLDeviceConstants() {
       LogError("HSA_AMD_SYSTEM_INFO_VIRTUAL_MEM_API_SUPPORTED query failed ");
     }
   }
+  HIP_MEM_POOL_USE_VM &= info_.virtualMemoryManagement_;
 
   switch (isa().versionMajor()) {
     case (11):
@@ -2358,7 +2358,7 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain
                                bool contiguous) const {
 
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain && gpu_ext_fine_grained_segment_.handle)
-                                       ? gpu_ext_fine_grained_segment_ 
+                                       ? gpu_ext_fine_grained_segment_
                                          : (atomics && gpu_fine_grained_segment_.handle)
                                             ? gpu_fine_grained_segment_ : gpuvm_segment_;
 
@@ -3511,7 +3511,7 @@ bool Device::IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer
 
 // ================================================================================================
 void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
-  auto HeapAllocZeroOut = [this, &gpu]() -> bool {
+  auto HeapAllocOnly = [this, &gpu]() -> bool {
     // Allocate initial heap for device memory allocator
     static constexpr size_t HeapBufferSize = 128 * Ki;
     heap_buffer_ = createMemory(HeapBufferSize);
@@ -3523,12 +3523,22 @@ void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
       LogError("Heap buffer allocation failed!");
       return false;
     }
-    bool result = static_cast<const KernelBlitManager&>(gpu.blitMgr()).initHeap(
-        heap_buffer_, initial_heap_buffer_, HeapBufferSize, initial_heap_size_ / (2 * Mi));
+    return true;
+  };
+  std::call_once(heap_allocated_, HeapAllocOnly);
+}
+
+// ================================================================================================
+void Device::HiddenHeapInit(const VirtualGPU& gpu) {
+  auto HeapZeroOut = [this, &gpu]() -> bool {
+    static constexpr size_t HeapBufferSize = 128 * Ki;
+    bool result = static_cast<const KernelBlitManager&>(gpu.blitMgr())
+                      .initHeap(heap_buffer_, initial_heap_buffer_, HeapBufferSize,
+                                initial_heap_size_ / (2 * Mi));
 
     return result;
   };
-  std::call_once(heap_initialized_, HeapAllocZeroOut);
+  std::call_once(heap_initialized_, HeapZeroOut);
 }
 
 // ================================================================================================

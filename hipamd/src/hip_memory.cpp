@@ -347,7 +347,8 @@ bool IsHtoHMemcpyValid(void* dst, const void* src, hipMemcpyKind kind) {
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   if (src && dst && srcMemory == nullptr && dstMemory == nullptr) {
-    if (kind != hipMemcpyHostToHost && kind != hipMemcpyDefault) {
+    if (!g_devices[0]->devices()[0]->info().hmmCpuMemoryAccessible_ &&
+         kind != hipMemcpyHostToHost && kind != hipMemcpyDefault) {
       return false;
     }
   }
@@ -921,7 +922,7 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
   const std::vector<amd::Device*>& devices = context.devices();
   if (!devices[0]->info().imageSupport_) {
     LogPrintfError("Device: 0x%x does not support image", devices[0]);
-    status = hipErrorInvalidValue;
+    status = hipErrorNotSupported;
     return nullptr;
   }
 
@@ -1500,6 +1501,9 @@ hipError_t hipMemcpyAsync_common(void* dst, const void* src, size_t sizeBytes,
   if (hip_stream == nullptr) {
     return hipErrorInvalidValue;
   }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
   return ihipMemcpy(dst, src, sizeBytes, kind, *hip_stream, true);
 }
 
@@ -1524,6 +1528,9 @@ hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice, void* srcHost, size_t By
   if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1540,6 +1547,9 @@ hipError_t hipMemcpyDtoDAsync(hipDeviceptr_t dstDevice, hipDeviceptr_t srcDevice
   if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -1555,6 +1565,9 @@ hipError_t hipMemcpyDtoHAsync(void* dstHost, hipDeviceptr_t srcDevice, size_t By
   STREAM_CAPTURE(hipMemcpyDtoHAsync, stream, dstHost, srcDevice, ByteCount, kind);
   if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
   }
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {

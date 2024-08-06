@@ -419,6 +419,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
+  void HiddenHeapInit();
+
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
   // } roc OpenCL integration
@@ -426,7 +428,8 @@ class VirtualGPU : public device::VirtualDevice {
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();
 
-  inline bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr);
+  inline bool dispatchAqlPacket(uint8_t* aqlpacket, const std::string& kernelName,
+                                amd::AccumulateCommand* vcmd = nullptr);
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest,
                          bool blocking = true, bool capturing = false,
                          const uint8_t* aqlPacket = nullptr);

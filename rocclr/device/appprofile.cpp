@@ -25,11 +25,6 @@
 #include <cstdlib>
 #include <cstring>
 
-typedef void* ADLApplicationProfile;
-int SearchProfileOfAnApplication(const wchar_t* fileName, ADLApplicationProfile** lppProfile)
-{
-  return 0;
-}
 
 #define GETPROCADDRESS(_adltype_, _adlfunc_) (_adltype_) amd::Os::getSymbol(adlHandle_, #_adlfunc_);
 
@@ -77,16 +72,6 @@ bool AppProfile::init() {
 }
 
 bool AppProfile::ParseApplicationProfile() {
-  ADLApplicationProfile* pProfile = NULL;
-
-  if (!SearchProfileOfAnApplication(wsAppFileName_.c_str(), &pProfile)) {
-    return false;
-  }
-
-  if (pProfile == NULL) {
-    return false;
-  }
-
   return true;
 }
 }

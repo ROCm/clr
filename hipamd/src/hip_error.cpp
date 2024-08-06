@@ -354,9 +354,9 @@ const char *ihipGetErrorString(hipError_t hip_error) {
     }
 }
 
-const char* hipGetErrorName(hipError_t hip_error) 
-{ 
-  return ihipGetErrorName(hip_error); 
+const char* hipGetErrorName(hipError_t hip_error)
+{
+  return ihipGetErrorName(hip_error);
 }
 
 const char *hipGetErrorString(hipError_t hip_error)

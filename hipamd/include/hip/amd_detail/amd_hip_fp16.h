@@ -30,6 +30,9 @@ THE SOFTWARE.
   #define __HOST_DEVICE__ __host__ __device__
   #include <hip/amd_detail/amd_hip_common.h>
   #include "hip/amd_detail/host_defines.h"
+#if defined(__clang__) && defined(__HIP__)
+  #include "hip/amd_detail/amd_hip_atomic.h"
+#endif // defined(__clang__) && defined(__HIP__)
   #include <assert.h>
   #if defined(__cplusplus)
     #include <algorithm>
@@ -1502,6 +1505,39 @@ THE SOFTWARE.
                     static_cast<__half2_raw>(x).data /
                     static_cast<__half2_raw>(y).data};
             }
+
+            // Atomic
+            #if defined(__clang__) && defined(__HIP__)
+            inline __device__ __half2 unsafeAtomicAdd(__half2* address, __half2 value) {
+            #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__) && __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2f16)
+                // The api expects an ext_vector_type of half
+                typedef __fp16 __attribute__((ext_vector_type(2))) vec_fp162;
+                static_assert(sizeof(vec_fp162) == sizeof(__half2_raw));
+                union {
+                    __half2_raw h2r;
+                    vec_fp162 fp16;
+                } u {value};
+                vec_fp162 ret =
+                    __builtin_amdgcn_flat_atomic_fadd_v2f16((vec_fp162*)address, u.fp16);
+                return __half2{ret[0], ret[1]};
+            #else
+                static_assert(sizeof(__half2_raw) == sizeof(unsigned int));
+                union u_hold {
+                    __half2_raw h2r;
+                    unsigned int u32;
+                };
+                u_hold old_val, new_val;
+                old_val.u32 = __hip_atomic_load((unsigned int*)address, __ATOMIC_RELAXED,
+                                                __HIP_MEMORY_SCOPE_AGENT);
+                do {
+                    new_val.h2r = __hadd2(old_val.h2r, value);
+                } while (!__hip_atomic_compare_exchange_strong(
+                    (unsigned int*)address, &old_val.u32, new_val.u32, __ATOMIC_RELAXED,
+                    __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT));
+                return old_val.h2r;
+            #endif
+            }
+            #endif // defined(__clang__) && defined(__HIP__)
 
             // Math functions
             #if defined(__clang__) && defined(__HIP__)

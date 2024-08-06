@@ -102,6 +102,33 @@ typedef enum {
  *  on Windows.
  *
  */
+namespace helper {
+/**
+ * @brief Create output mask from input_mask at places where base_mask is set
+ *
+ * Example: base_mask = 0101'0101, input_mask = 1111'0000
+ * Output mask: 1100
+ * Explaination:
+ *           | | | |  | | | |
+ * base:    0|1|0|1|'0|1|0|1|   // Which bits are set
+ * input:   1|1|1|1|'0|0|0|0|   // Which values are picked
+ *           | | | |  | | | |
+ * output:    1   1    0   0
+ */
+__CG_STATIC_QUALIFIER__ unsigned long long adjust_mask(
+    unsigned long long base_mask, unsigned long long input_mask) {
+  unsigned long long out = 0;
+  for (unsigned int i = 0, index = 0; i < __AMDGCN_WAVEFRONT_SIZE; i++) {
+    auto lane_active = base_mask & (1ull << i);
+    if (lane_active) {
+      auto result = input_mask & (1ull << i);
+      out |= ((result ? 1ull : 0ull) << index);
+      index++;
+    }
+  }
+  return out;
+}
+}  // namespace helper
 /**
  *
  * @brief  Functionalities related to multi-grid cooperative group type

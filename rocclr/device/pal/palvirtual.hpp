@@ -357,8 +357,13 @@ class VirtualGPU : public device::VirtualDevice {
 
   bool isFenceDirty() const { return false; }
 
-  inline bool dispatchAqlPacket(uint8_t* aqlpacket, amd::AccumulateCommand* vcmd = nullptr) {
-     return false; }
+  void HiddenHeapInit() {}
+
+  inline bool dispatchAqlPacket(uint8_t* aqlpacket, const std::string& kernelName,
+                                amd::AccumulateCommand* vcmd = nullptr) {
+    vcmd->addKernelName(kernelName);
+    return false;
+  }
 
   void resetFenceDirty() {}
 

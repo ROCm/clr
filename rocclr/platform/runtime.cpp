@@ -47,6 +47,7 @@ namespace amd {
 
 volatile bool Runtime::initialized_ = false;
 bool Runtime::LibraryDetached = false;
+volatile int Runtime::pid_ = 0;
 
 bool Runtime::init() {
   if (initialized_) {
@@ -80,6 +81,7 @@ bool Runtime::init() {
   }
 
   initialized_ = true;
+  pid_ = amd::Os::getProcessId();
   ClTrace(LOG_DEBUG, LOG_INIT);
   return true;
 }
@@ -100,11 +102,17 @@ void Runtime::tearDown() {
   initialized_ = false;
 }
 
+// ~RuntimeTearDown() will reference listenerLock.
+// listenerLock will be constructed ealier and destructed later than
+// runtime_tear_down.
+amd::Monitor listenerLock("Hostcall listener lock");
 std::vector<ReferenceCountedObject*> RuntimeTearDown::external_;
 
 RuntimeTearDown::~RuntimeTearDown() {
 #ifndef _WIN32
-  if (amd::IS_HIP) {
+  // Only perform destruction if process matches the initialization,
+  // to avoid a call with the child process after fork()
+  if (amd::IS_HIP && amd::Os::getProcessId() == Runtime::pid()) {
     for (auto it: external_) {
       it->release();
     }

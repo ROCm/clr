@@ -160,6 +160,7 @@ else()
   set ( CPACK_RPM_PACKAGE_RELEASE "local" )
 endif()
 
+set ( EL7_DISTRO "FALSE" )
 ## 'dist' breaks manual builds on debian systems due to empty Provides
 execute_process( COMMAND rpm --eval %{?dist}
                  RESULT_VARIABLE PROC_RESULT
@@ -168,6 +169,9 @@ execute_process( COMMAND rpm --eval %{?dist}
 
 if ( PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "" )
   string ( APPEND CPACK_RPM_PACKAGE_RELEASE "%{?dist}" )
+  if ( "${EVAL_RESULT}" STREQUAL ".el7" )
+     set ( EL7_DISTRO "TRUE" )
+  endif() # end check string el7
 endif()
 message(STATUS "CPACK_RPM_PACKAGE_RELEASE: ${CPACK_RPM_PACKAGE_RELEASE}")
 
@@ -452,17 +456,6 @@ install(
 
 if(NOT WIN32)
     add_subdirectory(packaging)
-endif()
-
-#############################
-# Code formatting
-#############################
-# Target: clangformat
-find_program(CLANGFORMAT_EXE clang-format PATHS ${HCC_HOME}/bin)
-if(CLANGFORMAT_EXE)
-    file(GLOB_RECURSE FORMAT_SOURCE_FILE_LIST *.cpp *.hpp *.h)
-    add_custom_target(clangformat COMMAND ${CLANGFORMAT_EXE} -style=file -i ${FORMAT_SOURCE_FILE_LIST}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 endif()
 
 #############################
