@@ -8,25 +8,27 @@ resources:
     type: github
     endpoint: ROCm
     name: ROCm/HIP
-    ref: develop
+    ref: amd-staging
   - repository: hipother_repo
     type: github
     endpoint: ROCm
     name: ROCm/hipother
-    ref: develop
+    ref: amd-staging
   pipelines:
   - pipeline: hip_pipeline
     source: \HIP
     trigger:
       branches:
         include:
-        - develop
+        - amd-staging
+        - amd-mainline
   - pipeline: hipother_pipeline
     source: \hipother
     trigger:
       branches:
         include:
-        - develop
+        - amd-staging
+        - amd-mainline
 
 variables:
 - group: common
@@ -36,7 +38,8 @@ trigger:
   batch: true
   branches:
     include:
-    - develop
+    - amd-staging
+    - amd-mainline
   paths:
     exclude:
     - CODEOWNERS
@@ -47,7 +50,8 @@ pr:
   autoCancel: true
   branches:
     include:
-    - develop
+    - amd-staging
+    - amd-mainline
   paths:
     exclude:
     - CODEOWNERS
