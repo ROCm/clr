@@ -212,7 +212,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   std::vector<uint8_t *> gpuPackets_; //!< GPU Packet to enqueue during graph launch
   std::string capturedKernelName_;
   size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
-  size_t kernargSegmentByteSize_ = 256;   //!< Kernel arg segment byte size
+  size_t kernargSegmentByteSize_ = 512;   //!< Kernel arg segment byte size
   size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
 
  public:
@@ -434,13 +434,11 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   unsigned int GetEnabled() const { return isEnabled_; }
   void SetEnabled(unsigned int isEnabled) { isEnabled_ = isEnabled; }
   // Returns true if capture is enabled for the current node.
-  bool GraphCaptureEnabled() {
+  virtual bool GraphCaptureEnabled() {
     bool isGraphCapture = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       switch (GetType()) {
         case hipGraphNodeTypeKernel:
-          isGraphCapture = true;
-          break;
         case hipGraphNodeTypeMemset:
           isGraphCapture = true;
           break;
@@ -1525,6 +1523,19 @@ class GraphMemcpyNode : public GraphNode {
       return shape_;
     }
   }
+  virtual bool GraphCaptureEnabled() override {
+    bool isGraphCapture = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      switch (copyParams_.kind) {
+        case hipMemcpyDeviceToDevice:
+          isGraphCapture = true;
+          break;
+        default:
+          break;
+      }
+    }
+    return isGraphCapture;
+  }
 };
 
 class GraphMemcpyNode1D : public GraphMemcpyNode {
@@ -1703,6 +1714,19 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     } else {
       return shape_;
     }
+  }
+  virtual bool GraphCaptureEnabled() override {
+    bool isGraphCapture = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      switch (kind_) {
+        case hipMemcpyDeviceToDevice:
+          isGraphCapture = true;
+          break;
+        default:
+          break;
+      }
+    }
+    return isGraphCapture;
   }
 };
 
