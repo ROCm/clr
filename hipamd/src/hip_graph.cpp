@@ -1202,8 +1202,16 @@ hipError_t hipGraphExecMemcpyNodeSetParams1D(hipGraphExec_t hGraphExec, hipGraph
   if (oldkind != kind) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNode1D*>(clonedNode)->SetParams(dst, src,
-                                                                              count, kind));
+  hipError_t status = reinterpret_cast<hip::GraphMemcpyNode1D*>(clonedNode)->SetParams(dst, src,
+                                                                              count, kind);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                 ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -1612,7 +1620,15 @@ hipError_t hipGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNo
   if (oldkind != newkind) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNode*>(clonedNode)->SetParams(pNodeParams));
+  hipError_t status = reinterpret_cast<hip::GraphMemcpyNode*>(clonedNode)->SetParams(pNodeParams);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                 ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphMemsetNodeGetParams(hipGraphNode_t node, hipMemsetParams* pNodeParams) {
@@ -2181,8 +2197,16 @@ hipError_t hipGraphExecMemcpyNodeSetParamsFromSymbol(hipGraphExec_t hGraphExec, 
     HIP_RETURN(hipErrorInvalidValue);
   }
   constexpr bool kCheckDeviceIsSame = true;
-  HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNodeFromSymbol*>(clonedNode)
-                 ->SetParams(dst, symbol, count, offset, kind, kCheckDeviceIsSame));
+  hipError_t status = reinterpret_cast<hip::GraphMemcpyNodeFromSymbol*>(clonedNode)
+               ->SetParams(dst, symbol, count, offset, kind, kCheckDeviceIsSame);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                 ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddMemcpyNodeToSymbol(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -2255,8 +2279,16 @@ hipError_t hipGraphExecMemcpyNodeSetParamsToSymbol(hipGraphExec_t hGraphExec, hi
     HIP_RETURN(hipErrorInvalidValue);
   }
   constexpr bool kCheckDeviceIsSame = true;
-  HIP_RETURN(reinterpret_cast<hip::GraphMemcpyNodeToSymbol*>(clonedNode)
-                 ->SetParams(symbol, src, count, offset, kind, kCheckDeviceIsSame));
+  hipError_t status =  reinterpret_cast<hip::GraphMemcpyNodeToSymbol*>(clonedNode)
+                 ->SetParams(symbol, src, count, offset, kind, kCheckDeviceIsSame);
+  if (status != hipSuccess) {
+    HIP_RETURN(status);
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
+                 ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(clonedNode));
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphAddEventRecordNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
