@@ -301,7 +301,8 @@ std::vector<Device*>* Device::devices_ = nullptr;
 AppProfile Device::appProfile_;
 
 Context* Device::glb_ctx_ = nullptr;
-Monitor Device::p2p_stage_ops_("P2P Staging Lock", true);
+// P2P Staging Lock
+Monitor Device::p2p_stage_ops_(true);
 Memory* Device::p2p_stage_ = nullptr;
 
 Monitor MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
@@ -714,7 +715,8 @@ bool Device::ValidateHsail() {
 bool Device::create(const Isa &isa) {
   assert(!vaCacheAccess_ && !vaCacheMap_);
   isa_ = &isa;
-  vaCacheAccess_ = new amd::Monitor("VA Cache Ops Lock", true);
+  // VA Cache Ops Lock
+  vaCacheAccess_ = new amd::Monitor(true);
   if (nullptr == vaCacheAccess_) {
     return false;
   }

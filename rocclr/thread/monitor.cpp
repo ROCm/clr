@@ -33,17 +33,8 @@ MonitorBase::~MonitorBase() {}
 
 namespace legacy_monitor {
 
-Monitor::Monitor(const char* name, bool recursive)
-    : contendersList_(0), onDeck_(0), waitersList_(NULL), owner_(NULL), recursive_(recursive) {
-  if (name == NULL) {
-    const char unknownName[] = "@unknown@";
-    assert(sizeof(unknownName) < sizeof(name_) && "just checking");
-    ::strncpy(name_, unknownName, sizeof(name_) - 1);
-  } else {
-    ::strncpy(name_, name, sizeof(name_) - 1);
-  }
-  name_[sizeof(name_) - 1] = '\0';
-}
+Monitor::Monitor(bool recursive)
+    : contendersList_(0), onDeck_(0), waitersList_(NULL), owner_(NULL), recursive_(recursive) {}
 
 bool Monitor::trySpinLock() {
   if (tryLock()) {

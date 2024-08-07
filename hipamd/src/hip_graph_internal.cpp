@@ -53,20 +53,25 @@ const char* GetGraphNodeTypeString(uint32_t op) {
 namespace hip {
 std::unordered_map<GraphExec *, std::pair<hip::Stream *, bool>>
     GraphExecStatus_ ROCCLR_INIT_PRIORITY(101);
-amd::Monitor GraphExecStatusLock_ ROCCLR_INIT_PRIORITY(101){
-    "Guards graph execution state", true};
+// Guards graph execution state
+amd::Monitor GraphExecStatusLock_ ROCCLR_INIT_PRIORITY(101){true};
 
 int GraphNode::nextID = 0;
 int Graph::nextID = 0;
 std::unordered_set<GraphNode*> GraphNode::nodeSet_;
-amd::Monitor GraphNode::nodeSetLock_{"Guards global node set"};
+// Guards global node set
+amd::Monitor GraphNode::nodeSetLock_{};
 std::unordered_set<Graph*> Graph::graphSet_;
-amd::Monitor Graph::graphSetLock_{"Guards global graph set"};
+// Guards global graph set
+amd::Monitor Graph::graphSetLock_{};
 std::unordered_set<GraphExec*> GraphExec::graphExecSet_;
-amd::Monitor GraphExec::graphExecSetLock_{"Guards global exec graph set"};
+// Guards global exec graph set
+amd::Monitor GraphExec::graphExecSetLock_{};
 std::unordered_set<UserObject*> UserObject::ObjectSet_;
-amd::Monitor UserObject::UserObjectLock_{"Guards global user object"};
-amd::Monitor GraphNode::WorkerThreadLock_{"Guards mem map add/remove against work thread"};
+// Guards global user object
+amd::Monitor UserObject::UserObjectLock_{};
+// Guards mem map add/remove against work thread
+amd::Monitor GraphNode::WorkerThreadLock_{};
 
 hipError_t GraphMemcpyNode1D::ValidateParams(void* dst, const void* src, size_t count,
                                                 hipMemcpyKind kind) {

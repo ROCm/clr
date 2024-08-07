@@ -137,7 +137,7 @@ class Program : public RuntimeObject {
         language_(language),
         symbolTable_(NULL),
         programLog_(),
-        programLock_("Program lock", true) {
+        programLock_(true) /* Program lock */ {
     for (auto i = 0; i != numHeaders; ++i) {
       headers_.emplace_back(headers[i]);
       headerNames_.emplace_back(headerNames[i]);
@@ -148,7 +148,7 @@ class Program : public RuntimeObject {
   Program(Context& context, Language language = Binary)
       : context_(context), language_(language),
         symbolTable_(NULL),
-        programLock_("Program lock", true) {}
+        programLock_(true) /* Program lock */ {}
 
   //! Returns context, associated with the current program.
   const Context& context() const { return context_(); }

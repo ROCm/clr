@@ -579,7 +579,7 @@ class ResourceCache : public amd::HeapObject {
  public:
   //! Default constructor
   ResourceCache(Device* device, size_t cacheSizeLimit)
-      : lockCacheOps_("PAL resource cache", true),
+      : lockCacheOps_(true), /* PAL resource cache */
         cacheSize_(0),
         lclCacheSize_(0),
         persistentCacheSize_(0),

@@ -28,7 +28,8 @@
 #include "platform/external_memory.hpp"
 namespace hip {
 
-amd::Monitor hipArraySetLock{"Guards global hipArray set"};
+// Guards global hipArray set
+amd::Monitor hipArraySetLock{};
 std::unordered_set<hipArray*> hipArraySet;
 
 // ================================================================================================

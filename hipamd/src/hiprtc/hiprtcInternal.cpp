@@ -306,7 +306,8 @@ bool RTCCompileProgram::transformOptions(std::vector<std::string>& compile_optio
   return findIsa();
 }
 
-amd::Monitor RTCProgram::lock_("HIPRTC Program", true);
+// HIPRTC Program lock
+amd::Monitor RTCProgram::lock_(true);
 
 bool RTCCompileProgram::compile(const std::vector<std::string>& options, bool fgpu_rdc) {
   if (!addSource_impl()) {

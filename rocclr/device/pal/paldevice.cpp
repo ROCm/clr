@@ -803,13 +803,13 @@ Device::ScopedLockVgpus::~ScopedLockVgpus() {
 Device::Device()
     : NullDevice(),
       numOfVgpus_(0),
-      lockAsyncOps_("Device Async Ops Lock", true),
-      lockForInitHeap_("Initialization of Heap Resource", true),
-      lockPAL_("PAL Ops Lock", true),
-      vgpusAccess_("Virtual GPU List Ops Lock", true),
-      scratchAlloc_("Scratch Allocation Lock", true),
-      mapCacheOps_("Map Cache Lock", true),
-      lockResourceOps_("Resource List Ops Lock", true),
+      lockAsyncOps_(true), /* Device Async Ops Lock */
+      lockForInitHeap_(true), /* Initialization of Heap Resource */
+      lockPAL_(true), /* PAL Ops Lock */
+      vgpusAccess_(true), /* Virtual GPU List Ops Lock */
+      scratchAlloc_(true), /* Scratch Allocation Lock */
+      mapCacheOps_(true), /* Map Cache Lock */
+      lockResourceOps_(true), /* Resource List Ops Lock */
       xferRead_(nullptr),
       mapCache_(nullptr),
       resourceCache_(nullptr),

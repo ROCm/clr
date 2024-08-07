@@ -181,7 +181,7 @@ Device::Device(hsa_agent_t bkendDevice)
     , xferRead_(nullptr)
     , xferWrite_(nullptr)
     , freeMem_(0)
-    , vgpusAccess_("Virtual GPU List Ops Lock", true)
+    , vgpusAccess_(true) /* Virtual GPU List Ops Lock */
     , hsa_exclusive_gpu_access_(false)
     , queuePool_(QueuePriority::Total)
     , coopHostcallBuffer_(nullptr)
@@ -809,7 +809,8 @@ bool Device::create() {
     return false;
   }
 
-  mapCacheOps_ = new amd::Monitor("Map Cache Lock", true);
+  // Map Cache Lock
+  mapCacheOps_ = new amd::Monitor(true);
   if (nullptr == mapCacheOps_) {
     return false;
   }

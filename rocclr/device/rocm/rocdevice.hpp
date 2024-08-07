@@ -98,7 +98,7 @@ public:
   ProfilingSignal()
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
-    , lock_("Signal Ops Lock", true)
+    , lock_(true) /* Signal Ops Lock */
     , isPacketDispatch_(false)
     {
       signal_.handle = 0;
