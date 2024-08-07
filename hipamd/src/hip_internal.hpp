@@ -453,8 +453,10 @@ public:
 
   /// HIP Device class
   class Device : public amd::ReferenceCountedObject {
-    amd::Monitor lock_{"Device lock", true};
-    amd::Monitor streamSetLock{"Guards device stream set"};
+    // Device lock
+    amd::Monitor lock_{true};
+    // Guards device stream set
+    amd::Monitor streamSetLock{};
     std::unordered_set<hip::Stream*> streamSet;
     /// ROCclr context
     amd::Context* context_;

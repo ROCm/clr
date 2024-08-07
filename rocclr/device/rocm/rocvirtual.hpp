@@ -124,7 +124,7 @@ class Timestamp : public amd::ReferenceCountedObject {
     , command_(command)
     , parsedCommand_(nullptr)
     , callback_signal_(hsa_signal_t{})
-    , lock_("Timestamp lock", true) {}
+    , lock_(true) /* Timestamp lock */ {}
 
   ~Timestamp() {}
 

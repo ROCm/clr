@@ -69,7 +69,8 @@ inline static std::vector<std::string> splitSpaceSeparatedString(const char *str
 }
 
 #if defined(WITH_COMPILER_LIB)
-amd::Monitor Program::buildLock_("HSAIL build lock", true);
+// HSAIL build lock
+amd::Monitor Program::buildLock_(true);
 #endif
 
 // ================================================================================================
@@ -2939,7 +2940,8 @@ bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const
 #endif
 }
 
-amd::Monitor Program::initFiniLock_("Init Fini Launch Lock", true);
+// Init Fini Launch Lock
+amd::Monitor Program::initFiniLock_(true);
 
 bool Program::runInitFiniKernel(kernel_kind_t kind) const {
   amd::HostQueue* queue = nullptr;

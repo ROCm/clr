@@ -80,7 +80,6 @@ public:
   virtual void wait() = 0;
   virtual void notify() = 0;
   virtual void notifyAll() = 0;
-  virtual const char* name() const = 0;
 };
 
 namespace legacy_monitor {
@@ -97,8 +96,6 @@ class Monitor final: public HeapObject, public MonitorBase {
    *  and main lock.
    */
   std::atomic_intptr_t contendersList_;
-  //! The Mutex's name
-  char name_[64];
 
   //! Semaphore of the next thread to contend for the lock.
   std::atomic_intptr_t onDeck_;
@@ -135,7 +132,7 @@ class Monitor final: public HeapObject, public MonitorBase {
   void setOwner(Thread* thread) { owner_ = thread; }
 
  public:
-  explicit Monitor(const char* name = NULL, bool recursive = false);
+  explicit Monitor(bool recursive = false);
   ~Monitor() {}
 
   //! Try to acquire the lock, return true if successful.
@@ -165,9 +162,6 @@ class Monitor final: public HeapObject, public MonitorBase {
    *  \note The monitor must be owned before calling notifyAll().
    */
   void notifyAll();
-
-  //! Return this lock's name.
-  const char* name() const { return name_; }
 };
 
 
@@ -176,17 +170,8 @@ class Monitor final: public HeapObject, public MonitorBase {
 namespace mutex_monitor {
 class Monitor final: public HeapObject, public MonitorBase {
  public:
-  explicit Monitor(const char* name = nullptr, bool recursive = false)
+  explicit Monitor(bool recursive = false)
       : recursive_(recursive) {
-    if (name == NULL) {
-      const char unknownName[] = "@unknown@";
-      assert(sizeof(unknownName) < sizeof(name_) && "just checking");
-      ::strncpy(name_, unknownName, sizeof(name_) - 1);
-    } else {
-      ::strncpy(name_, name, sizeof(name_) - 1);
-    }
-    name_[sizeof(name_) - 1] = '\0';
-
     if (recursive)
       new (&rec_mutex_) std::recursive_mutex();
     else
@@ -244,16 +229,12 @@ class Monitor final: public HeapObject, public MonitorBase {
    */
   void notifyAll() { cv_.notify_all(); }
 
-  //! Return this lock's name.
-  const char* name() const { return name_; }
-
  private:
   union {
     std::mutex mutex_;
     std::recursive_mutex rec_mutex_;
   };
   std::condition_variable cv_; //!< The condition variable for sync on the mutex
-  char name_[64]; //!< The mutex's name
   const bool recursive_; //!< True if this is a recursive mutex, false otherwise.
 };
 } // namespace mutex_monitor
@@ -261,12 +242,12 @@ class Monitor final: public HeapObject, public MonitorBase {
 // Monitor API wrapper to user
 class Monitor {
 public:
-  explicit Monitor(const char* name = nullptr, bool recursive = false) {
+  explicit Monitor(bool recursive = false) {
     if (DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR) {
-      monitor_ = new mutex_monitor::Monitor(name, recursive);
+      monitor_ = new mutex_monitor::Monitor(recursive);
     }
     else {
-      monitor_ = new legacy_monitor::Monitor(name, recursive);
+      monitor_ = new legacy_monitor::Monitor(recursive);
     }
   }
   inline ~Monitor() { delete monitor_; };
@@ -276,7 +257,6 @@ public:
   inline void wait() { monitor_->wait(); }
   inline void notify() { monitor_->notify(); }
   inline void notifyAll() { monitor_->notifyAll(); }
-  inline const char* name() { return monitor_->name(); }
 
 private:
   MonitorBase* monitor_;

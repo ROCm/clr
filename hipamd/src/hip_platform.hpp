@@ -43,10 +43,12 @@ struct UniqueFD {
 
 namespace hip {
 class PlatformState {
-  amd::Monitor lock_{"Guards PlatformState globals", true};
+  // Guards PlatformState globals
+  amd::Monitor lock_{true};
 
   // global level lock for unique file descritor map: ufd_map_
-  amd::Monitor ufd_lock_{"Unique FD Store Lock", true};
+  // Unique FD Store Lock
+  amd::Monitor ufd_lock_{true};
 
   // Singleton object
   static PlatformState* platform_;

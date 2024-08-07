@@ -872,7 +872,7 @@ KernelBlitManager::KernelBlitManager(VirtualGPU& gpu, Setup setup)
     : DmaBlitManager(gpu, setup),
       program_(nullptr),
       xferBufferSize_(0),
-      lockXferOps_("Transfer Ops Lock", true) {
+      lockXferOps_(true) /* Transfer Ops Lock*/ {
   for (uint i = 0; i < BlitTotal; ++i) {
     kernels_[i] = nullptr;
   }

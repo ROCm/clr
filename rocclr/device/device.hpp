@@ -1265,7 +1265,7 @@ class VirtualDevice : public amd::HeapObject {
   VirtualDevice(amd::Device& device)
     : device_(device)
     , blitMgr_(NULL)
-    , execution_("Virtual device execution lock", true)
+    , execution_(true) /* Virtual device execution lock */
     , index_(0) {}
 
   //! Destroy this virtual device.
@@ -2156,7 +2156,7 @@ class Device : public RuntimeObject {
   uint64_t stack_size_{1024};       //!< Device stack size
   device::Memory* initial_heap_buffer_;   //!< Initial heap buffer
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
-  amd::Monitor activeQueuesLock_ {"Guards access to the activeQueues set"};
+  amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
  private:
   const Isa *isa_;                //!< Device isa

@@ -199,7 +199,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
   MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr, bool phys_mem = false)
       : busy_heap_(device),
         free_heap_(device),
-        lock_pool_ops_("Pool operations", true),
+        lock_pool_ops_(true), /* Pool operations */
         device_(device),
         shared_(nullptr),
         max_total_size_(0) {

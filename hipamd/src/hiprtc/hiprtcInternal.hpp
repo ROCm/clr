@@ -72,7 +72,8 @@ template <typename T, typename... Args> inline std::string ToString(T first, Arg
 }  // namespace internal
 }  // namespace hiprtc
 
-static amd::Monitor g_hiprtcInitlock{"hiprtcInit lock"};
+// hiprtcInit lock
+static amd::Monitor g_hiprtcInitlock{};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
   amd::Thread* thread = amd::Thread::current();                                                    \
   if (!VDI_CHECK_THREAD(thread)) {                                                                 \

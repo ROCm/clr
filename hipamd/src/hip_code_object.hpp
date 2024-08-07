@@ -103,7 +103,8 @@ private:
 
 //Dynamic Code Object
 class DynCO : public CodeObject {
-  amd::Monitor dclock_{"Guards Dynamic Code object", true};
+  // Guards Dynamic Code object
+  amd::Monitor dclock_{true};
 
 public:
   DynCO() : device_id_(ihipGetDevice()), fb_info_(nullptr) {}
@@ -151,7 +152,8 @@ private:
 
 //Static Code Object
 class StatCO: public CodeObject {
-  amd::Monitor sclock_{"Guards Static Code object", true};
+  // Guards Static Code object
+  amd::Monitor sclock_{true};
 public:
   StatCO();
   virtual ~StatCO();

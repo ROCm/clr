@@ -31,8 +31,10 @@ extern std::unordered_map<GraphExec*, std::pair<hip::Stream*, bool>> GraphExecSt
 extern amd::Monitor GraphExecStatusLock_;
 
 std::vector<hip::Stream*> g_captureStreams;
-amd::Monitor g_captureStreamsLock{"StreamCaptureGlobalList"};
-amd::Monitor g_streamSetLock{"StreamCaptureset"};
+// StreamCaptureGlobalList lock
+amd::Monitor g_captureStreamsLock{};
+// StreamCaptureset lock
+amd::Monitor g_streamSetLock{};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
 hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags);
 hipError_t ihipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t* dependencies,

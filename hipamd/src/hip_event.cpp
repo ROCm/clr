@@ -27,7 +27,8 @@
 
 namespace hip {
 
-static amd::Monitor eventSetLock{"Guards global event set"};
+// Guards global event set
+static amd::Monitor eventSetLock{};
 static std::unordered_set<hipEvent_t> eventSet;
 
 bool Event::ready(eventType type) {

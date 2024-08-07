@@ -259,7 +259,7 @@ class Device : public NullDevice {
     amd::Monitor queue_lock_;       //!< Queue lock for access
     AqlPacketMgmt aql_packet_mgmt_; //!< AQL packets management class for debugger support
     QueueRecycleInfo() : counter_(1), engineType_(Pal::EngineTypeCompute), index_(0),
-          queue_lock_("Queue lock for sharing", true) {}
+          queue_lock_(true) /* Queue lock for sharing */ {}
 
     //! Returns the aql packet list
     uintptr_t AqlPacketList() const {

@@ -195,7 +195,7 @@ struct Coord3D {
 template <class T>
 class SysmemPool {
 public:
-  SysmemPool(): chunk_access_("Sysmem Pool Lock", true) {}
+  SysmemPool(): chunk_access_(true) /* Sysmem Pool Lock */ {}
   ~SysmemPool() {
     // Release current chunk
     if (chunks_.size() == 1) {

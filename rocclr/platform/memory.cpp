@@ -96,7 +96,7 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       svmHostAddress_(svmPtr),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_("Memory Ops Lock", true) {
+      lockMemoryOps_(true) /* Memory Ops Lock */ {
   svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
   canBeCached_ = true;
 }
@@ -120,7 +120,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       svmHostAddress_(parent.getSvmPtr()),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_("Memory Ops Lock", true) {
+      lockMemoryOps_(true)  /* Memory Ops Lock */ {
   svmPtrCommited_ = parent.isSvmPtrCommited();
   canBeCached_ = true;
   parent_->retain();
