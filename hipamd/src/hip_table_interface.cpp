@@ -586,6 +586,11 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
   return hip::GetHipDispatchTable()->hipGraphExecChildGraphNodeSetParams_fn(hGraphExec, node,
                                                                             childGraph);
 }
+hipError_t hipGraphExecNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
+                                     hipGraphNodeParams* nodeParams) {
+  return hip::GetHipDispatchTable()->hipGraphExecNodeSetParams_fn(hGraphExec, node,
+                                                                  nodeParams);
+}
 hipError_t hipGraphExecDestroy(hipGraphExec_t graphExec) {
   return hip::GetHipDispatchTable()->hipGraphExecDestroy_fn(graphExec);
 }
