@@ -1004,6 +1004,11 @@ hipError_t hipTexRefSetArray(textureReference* texRef,
     HIP_RETURN(err);
   }
 
+  // If flag = HIP_TRSA_OVERRIDE_FORMAT,
+  // Override the texref format with a format inferred from the array
+  texRef->format = array->Format;
+  texRef->numChannels = array->NumChannels;
+
   hipResourceDesc resDesc = {};
   resDesc.resType = hipResourceTypeArray;
   resDesc.res.array.array = const_cast<hipArray_t>(array);
