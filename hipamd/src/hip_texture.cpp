@@ -1265,7 +1265,7 @@ hipError_t hipTexRefGetMaxAnisotropy(int* pmaxAnsio,
 
   *pmaxAnsio = texRef->maxAnisotropy;
 
-  HIP_RETURN(hipErrorInvalidValue);
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipTexRefGetMipmapFilterMode(hipTextureFilterMode* pfm,
