@@ -1093,7 +1093,7 @@ hipError_t hipTexRefSetAddress(size_t* ByteOffset,
   }
 
   // Align the user ptr to HW requirments.
-  resDesc.res.linear.devPtr = static_cast<char*>(dptr) - *ByteOffset;
+  resDesc.res.linear.devPtr = static_cast<char*>(dptr) - (ByteOffset ? *ByteOffset : 0);
   hipTextureDesc texDesc = hip::getTextureDesc(texRef);
 
   err = ihipCreateTextureObject(&texRef->textureObject, &resDesc, &texDesc, nullptr);
