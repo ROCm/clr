@@ -1418,6 +1418,11 @@ bool VirtualGPU::copyMemory(cl_command_type type, amd::Memory& srcMem, amd::Memo
   pal::Memory* dstMemory = dev().getGpuMemory(&dstMem);
   pal::Memory* srcMemory = dev().getGpuMemory(&srcMem);
 
+  if(dstMemory == nullptr || srcMemory == nullptr){
+    LogError("submitcopyMemory Failed!");
+    return false;
+  }
+
   // Synchronize source and destination memory
   device::Memory::SyncFlags syncFlags;
   syncFlags.skipEntire_ = entire;
