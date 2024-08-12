@@ -152,7 +152,7 @@ bool Flag::init() {
     if (!flagIsDefault(AMD_LOG_LEVEL_FILE)) {
       std::string fileName = AMD_LOG_LEVEL_FILE;
       fileName = fileName + "_" + std::to_string(Os::getProcessId());
-      outFile = fopen(fileName.c_str(), "w");
+      outFile = fopen(fileName.c_str(), "a");
     }
   }
 
