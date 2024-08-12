@@ -360,7 +360,7 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
         "Cannot have both coherent and non-coherent flags "
         "at the same time, flags: %u coherent flags: %u",
         flags, coherentFlags);
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
 
   unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
@@ -387,7 +387,7 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
     svmMem->getUserData().flags = flags;
   }
 
-  HIP_RETURN(status, *ptr);
+  return status;
 }
 
 // ================================================================================================
@@ -675,7 +675,8 @@ hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(ihipHostMalloc(ptr, sizeBytes, flags));
+  hipError_t status = ihipHostMalloc(ptr, sizeBytes, flags);
+  HIP_RETURN_DURATION(status, *ptr);
 }
 
 hipError_t hipFree(void* ptr) {
@@ -749,7 +750,7 @@ hipError_t hipHostFree(void* ptr) {
   amd::Memory* memory_object = getMemoryObject(ptr, offset);
   if (memory_object != nullptr) {
     if (memory_object->getSvmPtr() == nullptr) {
-      return hipErrorInvalidValue;
+      HIP_RETURN(hipErrorInvalidValue);
     }
   }
   HIP_RETURN(ihipFree(ptr));
@@ -1316,7 +1317,13 @@ hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(ihipHostMalloc(ptr, sizeBytes, flags));
+  if (flags > (hipHostMallocPortable | hipHostMallocMapped |
+      hipHostMallocWriteCombined)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  hipError_t status = ihipHostMalloc(ptr, sizeBytes, flags);
+  HIP_RETURN_DURATION(status, *ptr);
 };
 
 inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes,
@@ -4223,6 +4230,13 @@ hipError_t hipMallocHost(void** ptr,
 hipError_t hipFreeHost(void *ptr) {
   HIP_INIT_API(hipFreeHost, ptr);
   CHECK_STREAM_CAPTURE_SUPPORTED();
+  size_t offset = 0;
+  amd::Memory* memory_object = getMemoryObject(ptr, offset);
+  if (memory_object != nullptr) {
+    if (memory_object->getSvmPtr() == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
   HIP_RETURN(ihipFree(ptr));
 }
 
