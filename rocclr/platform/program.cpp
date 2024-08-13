@@ -541,13 +541,11 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
     parsedOptions.oVariables->AssumeAlias = true;
 
     if (language_ == Assembly) {
-      constexpr char asmLang[] = "asm";
-      parsedOptions.oVariables->XLang = asmLang;
+      parsedOptions.oVariables->XLang = "asm";
     }
 
     if (language_ == HIP) {
-      constexpr char hipLang[] = "HIP";
-      parsedOptions.oVariables->CLStd = hipLang;
+      parsedOptions.oVariables->CLStd = "HIP";
       parsedOptions.origOptionStr = options;
       parsedOptions.oVariables->DumpPrefix = "_hip_";
       parsedOptions.oVariables->OptLevel = '3';
