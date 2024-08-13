@@ -2244,7 +2244,10 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
       reinterpret_cast<roc::Memory*>(cmd.memory().getDeviceMemory(dev(), false));
 
   cl_command_type type = cmd.type();
-  bool imageBuffer = false;
+  bool imageBuffer = (cmd.memory().getType() == CL_MEM_OBJECT_IMAGE1D_BUFFER);
+  if (imageBuffer) {
+    type = CL_COMMAND_MAP_BUFFER;
+  }
 
   // Save map requirement.
   cl_map_flags mapFlag = cmd.mapFlags();
@@ -2312,8 +2315,9 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
         roc::Memory* hsaMapMemory =
             static_cast<roc::Memory*>(mapMemory->getDeviceMemory(dev(), false));
         result =
-            blitMgr().copyImageToBuffer(*hsaMemory, *hsaMapMemory, cmd.origin(), amd::Coord3D(0, 0, 0),
-                                        cmd.size(), cmd.isEntireMemory());
+           blitMgr().copyImageToBuffer(*hsaMemory, *hsaMapMemory, cmd.origin(),
+                                        amd::Coord3D(0, 0, 0), cmd.size(),
+                                        cmd.isEntireMemory());
       } else {
         result = blitMgr().readImage(*hsaMemory, hostPtr, amd::Coord3D(0), image->getRegion(),
                                      image->getRowPitch(), image->getSlicePitch(), true);
@@ -2386,6 +2390,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
       } else {
         amd::Coord3D origin(mapInfo->origin_[0]);
         amd::Coord3D size(mapInfo->region_[0]);
+        amd::Coord3D dstOrigin(mapInfo->origin_[0],0,0);
         if (imageBuffer) {
           size_t elemSize = cmd.memory().asImage()->getImageFormat().getElementSize();
           origin.c[0] *= elemSize;
@@ -2402,8 +2407,8 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
             releaseGpuMemoryFence();
             std::memcpy(hostPtr, svmPtr, size[0]);
           }
-          result = blitMgr().copyBuffer(*hsaMapMemory, *devMemory, mapInfo->origin_, mapInfo->origin_,
-                                        mapInfo->region_, mapInfo->isEntire());
+          result = blitMgr().copyBuffer(*hsaMapMemory, *devMemory, origin, dstOrigin,
+                                        size, mapInfo->isEntire());
         } else {
           result = blitMgr().writeBuffer(cmd.mapPtr(), *devMemory, origin, size);
         }
