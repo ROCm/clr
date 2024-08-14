@@ -2,6 +2,23 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
+## HIP 6.2.41134 for ROCm 6.2.1
+
+### Changes
+
+* New HIP APIs
+    - `hipMemcpyAtoA`  copies from one 1D array to another.
+    - `hipMemcpyDtoA`  copies from device memory to a 1D array.
+    - `hipMemcpyAtoD`  copies from one 1D array to device memory.
+    - `hipMemcpyAtoHAsync`  copies from one 1D array to host memory.
+    - `hipMemcpyHtoAAsync`  copies from host memory to a 1D array.
+    - `hipMemcpy2DArrayToArray`  copies data between host and device.
+
+### Resolved issues
+
+* Soft hang when use AMD_SERIALIZE_KERNEL.
+* Memory leak in hipIpcCloseMemHandle.
+
 ## HIP 6.2 (For ROCm 6.2)
 
 ### Added
