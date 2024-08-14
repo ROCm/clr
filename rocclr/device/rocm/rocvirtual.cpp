@@ -999,7 +999,16 @@ inline bool VirtualGPU::dispatchAqlPacket(
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
   ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Graph shader name : %s",
           kernelName.c_str());
-  dispatchGenericAqlPacket(packet, packet->header, packet->setup, false);
+
+  // The Aqlpacket with valid header will trigger the issue that AQL fill
+  // the header before filling the body. However, the CP can handle the AQL package
+  // after seeing the valid AQL header with the AQL package's body is NULL.
+  // This patch fixes this potential issue that filling AQL header before
+  // filling the AQL body.
+  uint16_t packetHeader = packet->header;
+  packet->header = (HSA_PACKET_TYPE_INVALID << HSA_PACKET_HEADER_TYPE);
+  dispatchGenericAqlPacket(packet, packetHeader, packet->setup, false);
+  packet->header = packetHeader;
 
   profilingEnd(*vcmd);
 
