@@ -136,8 +136,12 @@ bool Stream::StreamCaptureBlocking() {
 }
 
 bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
+  if (hStream == nullptr || hStream == hipStreamLegacy) {
+    return false;
+  }
+
   hip::Stream* s = reinterpret_cast<hip::Stream*>(hStream);
-  if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
+  if (s->GetCaptureStatus() == hipStreamCaptureStatusNone) {
     // If current thread is capturing in relaxed mode
     if (hip::tls.stream_capture_mode_ == hipStreamCaptureModeRelaxed) {
       return false;
@@ -158,10 +162,10 @@ bool Stream::StreamCaptureOngoing(hipStream_t hStream) {
       return true;
     }
     return false;
-  } else if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+  } else if (s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
     s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
     return true;
-  } else if (s != nullptr && s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
+  } else if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
     return true;
   }
   return false;
@@ -346,13 +350,13 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
   }
-  if (stream != nullptr) {
+  if (stream != nullptr && stream != hipStreamLegacy) {
     // If still capturing return error
     if (hip::Stream::StreamCaptureOngoing(stream) == true) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
-  bool wait = (stream == nullptr) ? true : false;
+  bool wait = (stream == nullptr || stream == hipStreamLegacy) ? true : false;
   constexpr bool kDontWaitForCpu = false;
 
   auto hip_stream = hip::getStream(stream, wait);
