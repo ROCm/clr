@@ -249,6 +249,7 @@ void Device::destroyAllStreams() {
   for (auto& it : toBeDeleted) {
     hip::Stream::Destroy(it);
   }
+  hip::tls.stream_per_thread_obj_.clear_spt();
 }
 
 // ================================================================================================

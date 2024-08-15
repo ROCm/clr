@@ -269,6 +269,7 @@ public:
   void operator=(const stream_per_thread& ) = delete;
   ~stream_per_thread();
   hipStream_t get();
+  void clear_spt();
 };
 
   class Device;
