@@ -236,6 +236,10 @@ hipStream_t stream_per_thread::get() {
   return m_streams[currDev];
 }
 
+void stream_per_thread::clear_spt() {
+  m_streams[getCurrentDevice()->deviceId()] = nullptr;
+}
+
 
 // ================================================================================================
 void getStreamPerThread(hipStream_t& stream) {
