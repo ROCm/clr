@@ -550,6 +550,12 @@ inline std::ostream& operator<<(std::ostream& os, const hipDataType& s) {
     case HIP_C_64U:
       os << "HIP_C_64U";
       break;
+    case HIP_R_8F_E4M3:
+      os << "HIP_R_8F_E4M3";
+      break;
+    case HIP_R_8F_E5M2:
+      os << "HIP_R_8F_E5M2";
+      break;
     case HIP_R_8F_E4M3_FNUZ:
       os << "HIP_R_8F_E4M3_FNUZ";
       break;
