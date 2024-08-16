@@ -235,6 +235,7 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   prop.type = hipMemAllocationTypePinned;
   prop.location.type = hipMemLocationTypeDevice;
   prop.location.id = hip::getCurrentDevice()->deviceId();
+  prop.requestedHandleType = shHandleType;
 
   phys_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, 0, prop);
