@@ -723,8 +723,6 @@ void HostBlitManager::FillBufferInfo::PackInfo(const device::Memory& memory, siz
   // 1. Validate input arguments
   guarantee(fill_size >= pattern_size, "Pattern Size: %u cannot be greater than fill size: %u \n",
                                         pattern_size, fill_size);
-  guarantee(fill_size <= memory.size(), "Cannot fill: %u more than the mem object size:%u \n",
-                                        fill_size, memory.size());
 
   // 2. Calculate the next closest dword aligned address for faster processing
   size_t dst_addr = memory.virtualAddress() + fill_origin;
