@@ -1835,12 +1835,15 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 h2trunc(const __hip_bfloat162 h) {
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
                                                        __hip_bfloat162 value) {
-#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__) && __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2bf16)
+#if __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2bf16)
   typedef short __attribute__((ext_vector_type(2))) vec_short2;
-  __hip_bfloat162_raw bf2_v = value;
-  vec_short2 s2_in{bf2_v.x, bf2_v.y};
-  vec_short2 s2_ret = __builtin_amdgcn_flat_atomic_fadd_v2bf16((vec_short2*)address, s2_in);
-  return __hip_bfloat162_raw{s2_ret[0], s2_ret[1]};
+  static_assert(sizeof(vec_short2) == sizeof(__hip_bfloat162_raw));
+  union {
+    __hip_bfloat162_raw bf162_raw;
+    vec_short2 vs2;
+  } u{static_cast<__hip_bfloat162_raw>(value)};
+  u.vs2 = __builtin_amdgcn_flat_atomic_fadd_v2bf16((vec_short2*)address, u.vs2);
+  return static_cast<__hip_bfloat162>(u.bf162_raw);
 #else
   static_assert(sizeof(unsigned int) == sizeof(__hip_bfloat162_raw));
   union u_hold {
