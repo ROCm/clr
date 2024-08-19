@@ -1316,7 +1316,7 @@ VirtualGPU::~VirtualGPU() {
   }
 
   if (gpu_queue_) {
-    roc_device_.releaseQueue(gpu_queue_, cuMask_);
+    roc_device_.releaseQueue(gpu_queue_, cuMask_, cooperative_);
   }
 }
 

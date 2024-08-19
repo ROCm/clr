@@ -556,7 +556,7 @@ class Device : public NullDevice {
                             amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
 
   //! Release HSA queue
-  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {});
+  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {}, bool coop_queue = false);
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
