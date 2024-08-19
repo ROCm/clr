@@ -3221,7 +3221,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   return queue;
 }
 
-void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMask) {
+void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMask, bool coop_queue) {
   for (auto& it : cuMask.size() == 0 ? queuePool_ : queueWithCUMaskPool_) {
     auto qIter = it.find(queue);
     if (qIter != it.end()) {
@@ -3248,6 +3248,12 @@ void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMas
       }
     }
   }
+  if (coop_queue) { // cooperative queue
+      ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Deleting CG enabled hardware queue %p ",
+               queue->base_address);
+      hsa_queue_destroy(queue);
+  }
+
 }
 
 void* Device::getOrCreateHostcallBuffer(hsa_queue_t* queue, bool coop_queue,
