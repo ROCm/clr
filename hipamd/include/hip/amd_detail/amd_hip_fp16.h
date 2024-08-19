@@ -1509,17 +1509,17 @@ THE SOFTWARE.
             // Atomic
             #if defined(__clang__) && defined(__HIP__)
             inline __device__ __half2 unsafeAtomicAdd(__half2* address, __half2 value) {
-            #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__) && __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2f16)
+            #if __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2f16)
                 // The api expects an ext_vector_type of half
-                typedef __fp16 __attribute__((ext_vector_type(2))) vec_fp162;
+                typedef _Float16 __attribute__((ext_vector_type(2))) vec_fp162;
                 static_assert(sizeof(vec_fp162) == sizeof(__half2_raw));
                 union {
                     __half2_raw h2r;
                     vec_fp162 fp16;
-                } u {value};
-                vec_fp162 ret =
+                } u {static_cast<__half2_raw>(value)};
+                u.fp16 =
                     __builtin_amdgcn_flat_atomic_fadd_v2f16((vec_fp162*)address, u.fp16);
-                return __half2{ret[0], ret[1]};
+                return static_cast<__half2>(u.h2r);
             #else
                 static_assert(sizeof(__half2_raw) == sizeof(unsigned int));
                 union u_hold {
