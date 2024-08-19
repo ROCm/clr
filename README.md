@@ -56,7 +56,7 @@ To run `hip-tests` please go to the repository and follow the steps.
 
 ## Release notes
 
-HIP provides release notes in [CLR change log](https://github.com/ROCm/clr/blob/develop/CHANGELOG.md), which has the records of changes in each release.
+HIP provides release notes in [CLR change log](./CHANGELOG.md), which has the records of changes in each release.
 
 ## Disclaimer
 

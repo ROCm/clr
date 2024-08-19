@@ -2,10 +2,38 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
-## HIP 6.3 (For ROCm 6.3)
-### Changed
-- Un-deprecate hipHostAlloc
-- Un-deprecate hipFreeHost
+## HIP 6.3 for ROCm 6.3
+
+### Changes
+
+* Un-deprecated HIP APIs
+    - `hipHostAlloc`
+    - `hipFreeHost`
+
+* New HIP APIs
+    - `hipGraphExecGetFlags`  returns the flags on executable graph.
+    - `hipGraphNodeSetParams`  updates parameters of a created node.
+    - `hipGraphExecNodeSetParams`  updates parameters of a created node on executable graph.
+    - `hipDrvGraphMemcpyNodeGetParams`  gets a memcpy node's parameters.
+    - `hipDrvGraphMemcpyNodeSetParams`  sets a memcpy node's parameters.
+    - `hipDrvGraphAddMemFreeNode`  creates a memory free node and adds it to a graph.
+    - `hipDrvGraphExecMemcpyNodeSetParams`  sets the parameters for a memcpy node in the given graphExec.
+    - `hipDrvGraphExecMemsetNodeSetParams`  sets the parameters for a memset node in the given graphExec.
+
+### Optimizations
+
+### Resolved issues
+
+### Known issues
+
+### Upcoming changes
+
+## HIP 6.2.41134 for ROCm 6.2.1
+
+### Resolved issues
+
+* Soft hang when use AMD_SERIALIZE_KERNEL.
+* Memory leak in hipIpcCloseMemHandle.
 
 ## HIP 6.2 (For ROCm 6.2)
 
@@ -19,6 +47,12 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipGetFuncBySymbol` returns the pointer to device entry function that matches entry function symbolPtr.
     - `hipStreamBeginCaptureToGraph` begins graph capture on a stream to an existing graph.
     - `hipGraphInstantiateWithParams`  creates an executable graph from a graph.
+    - `hipMemcpyAtoA`  copies from one 1D array to another.
+    - `hipMemcpyDtoA`  copies from device memory to a 1D array.
+    - `hipMemcpyAtoD`  copies from one 1D array to device memory.
+    - `hipMemcpyAtoHAsync`  copies from one 1D array to host memory.
+    - `hipMemcpyHtoAAsync`  copies from host memory to a 1D array.
+    - `hipMemcpy2DArrayToArray`  copies data between host and device.
 
 - Added a new flag `integrated` support in device property
 
