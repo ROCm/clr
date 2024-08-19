@@ -640,11 +640,6 @@ void Graph::UpdateStreams(
 // ================================================================================================
 bool Graph::RunOneNode(Node node, bool wait) {
   if (node->launch_id_ == -1) {
-    // Process child graph separately, since, there is no connection
-    if (node->GetType() == hipGraphNodeTypeGraph) {
-      auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
-      child->RunNodes(node->stream_id_, &streams_);
-    }
     // Clear the storage of the wait nodes
     memset(&wait_order_[0], 0, sizeof(Node) * wait_order_.size());
     amd::Command::EventWaitList waitList;
@@ -668,35 +663,47 @@ bool Graph::RunOneNode(Node node, bool wait) {
         return true;
       }
     }
-    // Create a wait list from the last launches of all dependencies
-    for (auto dep : wait_order_) {
-      if (dep != nullptr) {
-        // Add all commands in the wait list
-        for (auto command : dep->GetCommands()) {
-          waitList.push_back(command);
+
+    if (node->GetType() == hipGraphNodeTypeGraph) {
+      // Process child graph separately, since, there is no connection
+      auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
+      if (!reinterpret_cast<hip::ChildGraphNode*>(node)->graphCaptureStatus_) {
+        child->RunNodes(node->stream_id_, &streams_);
+      }
+    } else {
+      // Create a wait list from the last launches of all dependencies
+      for (auto dep : wait_order_) {
+        if (dep != nullptr) {
+          // Add all commands in the wait list
+          if (dep->GetType() != hipGraphNodeTypeGraph) {
+            for (auto command : dep->GetCommands()) {
+              waitList.push_back(command);
+            }
+          }
         }
       }
-    }
-    // Assing a stream to the current node
-    node->SetStream(streams_);
-    // Create the execution commands on the assigned stream
-    auto status = node->CreateCommand(node->GetQueue());
-    if (status != hipSuccess) {
-      LogPrintfError("Command creation for node id(%d) failed!", current_id_ + 1);
-      return false;
-    }
-    // Retain all commands, since potentially the command can finish before a wait signal
-    for (auto command : node->GetCommands()) {
-      command->retain();
-    }
+      // Assing a stream to the current node
+      node->SetStream(streams_);
+      // Create the execution commands on the assigned stream
+      auto status = node->CreateCommand(node->GetQueue());
+      if (status != hipSuccess) {
+        LogPrintfError("Command creation for node id(%d) failed!", current_id_ + 1);
+        return false;
+      }
+      // Retain all commands, since potentially the command can finish before a wait signal
+      for (auto command : node->GetCommands()) {
+        command->retain();
+      }
 
-    // If a wait was requested, then process the list
-    if (wait && !waitList.empty()) {
-      node->UpdateEventWaitLists(waitList);
+      // If a wait was requested, then process the list
+      if (wait && !waitList.empty()) {
+        node->UpdateEventWaitLists(waitList);
+      }
+      // Start the execution
+      node->EnqueueCommands(node->GetQueue());
     }
-    // Start the execution
-    node->EnqueueCommands(node->GetQueue());
     // Assign the launch ID of the submmitted node
+    // This is also applied to childGraphs to prevent them from being reprocessed
     node->launch_id_ = current_id_++;
     uint32_t i = 0;
     // Execute the nodes in the edges list
@@ -710,7 +717,7 @@ bool Graph::RunOneNode(Node node, bool wait) {
       }
       i++;
     }
-    if ((i == 0) && (node->stream_id_ != 0)) {
+    if (i == 0) {
       // Add a leaf node into the list for a wait.
       // Always use the last node, since it's the latest for the particular queue
       leafs_[node->stream_id_] = node;
@@ -764,8 +771,10 @@ bool Graph::RunNodes(
   for (uint32_t i = 0; i < DEBUG_HIP_FORCE_GRAPH_QUEUES; ++i) {
     if ((base_stream != i) && (leafs_[i] != nullptr)) {
       // Add all commands in the wait list
-      for (auto command : leafs_[i]->GetCommands()) {
-        wait_list.push_back(command);
+      if (leafs_[i]->GetType() != hipGraphNodeTypeGraph) {
+        for (auto command : leafs_[i]->GetCommands()) {
+          wait_list.push_back(command);
+        }
       }
     }
   }
@@ -780,8 +789,10 @@ bool Graph::RunNodes(
   // Release commands after execution
   for (auto& node : vertices_) {
     node->launch_id_ = -1;
-    for (auto command : node->GetCommands()) {
-      command->release();
+    if (node->GetType() != hipGraphNodeTypeGraph) {
+      for (auto command : node->GetCommands()) {
+        command->release();
+      }
     }
   }
   return true;
