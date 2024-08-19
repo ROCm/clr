@@ -1086,19 +1086,24 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
 hipError_t ihipArrayCreate(hipArray_t* array,
                            const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray,
                            unsigned int numMipmapLevels) {
-  if (array == nullptr) {
+  if (!array || !pAllocateArray) {
     return hipErrorInvalidValue;
   }
-
   // NumChannels specifies the number of packed components per HIP array element; it may be 1, 2, or 4;
   if ((pAllocateArray->NumChannels != 1) &&
       (pAllocateArray->NumChannels != 2) &&
       (pAllocateArray->NumChannels != 4)) {
     return hipErrorInvalidValue;
   }
-
-  if (pAllocateArray->Flags & hipArrayCubemap) {
+  unsigned int flags = hipArrayDefault | hipArrayLayered | hipArraySurfaceLoadStore |
+                       hipArrayTextureGather; // hipArrayCubemap isn't supported
+  if (pAllocateArray->Flags & (~flags)) {
     return hipErrorInvalidValue;
+  }
+  if (pAllocateArray->Flags & hipArrayTextureGather) {
+    // hipArrayTextureGather only works for 2D
+    if (pAllocateArray->Width == 0 || pAllocateArray->Height == 0 || pAllocateArray->Depth > 0)
+      return hipErrorInvalidValue;
   }
 
   const cl_channel_order channelOrder = hip::getCLChannelOrder(pAllocateArray->NumChannels, 0);
@@ -4282,6 +4287,21 @@ hipError_t ihipMipmapArrayCreate(hipMipmappedArray_t* mipmapped_array_pptr,
     LogPrintfError("Mipmap not supported on one of the devices, Mip Level: %d", num_mipmap_levels);
     return hipErrorNotSupported;
   }
+  if (!mipmapped_array_pptr || !mipmapped_array_desc_ptr) {
+    return hipErrorInvalidValue;
+  }
+  unsigned int flags = hipArrayDefault | hipArrayLayered | hipArraySurfaceLoadStore |
+                       hipArrayTextureGather; // hipArrayCubemap isn't supported
+  if (mipmapped_array_desc_ptr->Flags & (~flags)) {
+    return hipErrorInvalidValue;
+  }
+  if (mipmapped_array_desc_ptr->Flags & hipArrayTextureGather) {
+    // hipArrayTextureGather only works for 2D
+    if (mipmapped_array_desc_ptr->Width == 0 || mipmapped_array_desc_ptr->Height == 0 ||
+        mipmapped_array_desc_ptr->Depth > 0)
+      return hipErrorInvalidValue;
+  }
+
   const cl_channel_order channel_order = hip::getCLChannelOrder(
                                            mipmapped_array_desc_ptr->NumChannels, 0);
   const cl_channel_type channel_type = hip::getCLChannelType(mipmapped_array_desc_ptr->Format,
@@ -4353,10 +4373,16 @@ hipError_t ihipMipmappedArrayGetLevel(hipArray_t* level_array_pptr,
                                      hipMipmappedArray_t mipmapped_array_ptr,
                                      unsigned int mip_level) {
 
-  if (level_array_pptr == nullptr || mipmapped_array_ptr == nullptr) {
+  if (level_array_pptr == nullptr) {
     return hipErrorInvalidValue;
   }
-
+  if (mipmapped_array_ptr == nullptr) {
+    return hipErrorInvalidHandle;
+  }
+  if (mip_level < mipmapped_array_ptr->min_mipmap_level ||
+      mipmapped_array_ptr->max_mipmap_level < mip_level) {
+    return hipErrorInvalidValue;
+  }
   // Convert the raw data to amd::Image
   cl_mem cl_mem_obj = reinterpret_cast<cl_mem>(mipmapped_array_ptr->data);
   if (is_valid(cl_mem_obj) == false) {
