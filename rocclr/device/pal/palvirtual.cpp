@@ -2199,17 +2199,35 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   amd::ScopedLock lock(execution());
 
   profilingBegin(vcmd);
-  amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
-  if (vaddr_mem_obj == nullptr || !(vaddr_mem_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+  amd::Memory* phys_mem_obj = vcmd.memory();
+  amd::Memory* vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
+  if (vaddr_base_obj == nullptr || !(vaddr_base_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
     profilingEnd(vcmd);
     return;
   }
-  pal::Memory* vaddr_pal_mem = dev().getGpuMemory(vaddr_mem_obj);
-  Pal::IGpuMemory* phymem_igpu_mem = (vcmd.memory() == nullptr) ?
-      nullptr : dev().getGpuMemory(vcmd.memory())->iMem();
+
+  // Create a view, since original base obj will map the whole memory and multimap cases wont work.
+  amd::Memory* vaddr_sub_obj = nullptr;
+  size_t vaddr_offset = 0;
+  if (phys_mem_obj != nullptr) {
+    constexpr bool kParent = false;
+    vaddr_sub_obj = phys_mem_obj->getContext().devices()[0]->CreateVirtualBuffer(
+                      phys_mem_obj->getContext(), const_cast<void*>(vcmd.ptr()),
+                      vcmd.size(), phys_mem_obj->getUserData().deviceId, kParent);
+
+    // Calculate the offset from the original pointer.
+    vaddr_offset = (reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr())
+                     - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
+  }
+
+  // The imem() in the backend is shared between base and sub/view object.
+  pal::Memory* vaddr_pal_mem = dev().getGpuMemory(vaddr_base_obj);
+  Pal::IGpuMemory* phymem_igpu_mem = (phys_mem_obj == nullptr) ?
+      nullptr : dev().getGpuMemory(phys_mem_obj)->iMem();
+
   Pal::VirtualMemoryRemapRange range{
     vaddr_pal_mem->iMem(),
-    0,
+    vaddr_offset,
     phymem_igpu_mem,
     0,
     vcmd.size(),
@@ -2217,7 +2235,7 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   };
 
   // Wait for previous operations before unmap
-  if (vcmd.memory() == nullptr) {
+  if (phys_mem_obj == nullptr) {
     // @note: Need to verify if compute requires a wait or IB flush is enough
     WaitForIdleCompute();
     WaitForIdleSdma();
@@ -2230,19 +2248,22 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   eventEnd(MainEngine, event);
   setGpuEvent(event);
   if (result == Pal::Result::Success) {
-    if (vcmd.memory() != nullptr) {
+    if (phys_mem_obj != nullptr) {
       // assert the vaddr_mem_obj wasn't mapped already
       assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) == nullptr);
-      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_mem_obj);
-      vaddr_mem_obj->getUserData().phys_mem_obj = vcmd.memory();
-      vcmd.memory()->getUserData().vaddr_mem_obj = vaddr_mem_obj;
+      amd::MemObjMap::AddMemObj(vcmd.ptr(), vaddr_sub_obj);
+      vaddr_sub_obj->getUserData().phys_mem_obj = phys_mem_obj;
+      phys_mem_obj->getUserData().vaddr_mem_obj = vaddr_sub_obj;
     } else {
       // assert the vaddr_mem_obj is mapped and needs to be removed
-      assert(amd::MemObjMap::FindMemObj(vcmd.ptr()) != nullptr);
+      amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(vcmd.ptr());
+      assert(vaddr_sub_obj != nullptr);
+      assert(vcmd.ptr() == vaddr_sub_obj->getSvmPtr());
+
       amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      if (vaddr_mem_obj->getUserData().phys_mem_obj != nullptr) {
-        vaddr_mem_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
-        vaddr_mem_obj->getUserData().phys_mem_obj = nullptr;
+      if (vaddr_sub_obj->getUserData().phys_mem_obj != nullptr) {
+        vaddr_sub_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
+        vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
       }
     }
   }

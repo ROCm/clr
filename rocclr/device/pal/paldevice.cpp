@@ -2488,7 +2488,9 @@ void Device::svmFree(void* ptr) const {
 
 // ================================================================================================
 void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
-  amd::Memory* mem = CreateVirtualBuffer(context(), addr, size, -1, true, true);
+  constexpr bool kParent = true;
+  constexpr bool kForceAlloc = true;
+  amd::Memory* mem = CreateVirtualBuffer(context(), addr, size, -1, kParent, kForceAlloc);
   assert(mem != nullptr);
   return mem->getSvmPtr();
 }
