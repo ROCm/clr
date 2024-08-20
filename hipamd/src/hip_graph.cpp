@@ -1319,7 +1319,7 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
       std::string filename =
           "graph_" + std::to_string(amd::Os::getProcessId()) + "_dot_print_" + std::to_string(i++);
       hipError_t status =
-          ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(graph), filename.c_str(), 0);
+          ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(clonedGraph), filename.c_str(), 0);
       if (status == hipSuccess) {
         LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
       }

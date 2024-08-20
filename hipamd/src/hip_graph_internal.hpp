@@ -148,22 +148,7 @@ struct hipGraphNodeDOTAttribute {
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) { return label_; }
 
-  virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {
-    out << "[";
-    out << "style";
-    out << "=\"";
-    out << style_;
-    out << "\"";
-    out << "shape";
-    out << "=\"";
-    out << GetShape(flag);
-    out << "\"";
-    out << "label";
-    out << "=\"";
-    out << GetLabel(flag);
-    out << "\"";
-    out << "];";
-  }
+  virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {}
 };
 
 class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::GraphKernelArgManager  {
@@ -464,6 +449,25 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
       }
     }
     return isGraphCapture;
+  }
+  virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
+    out << "[";
+    out << "style";
+    out << "=\"";
+    out << style_;
+    out << "\"";
+    out << "shape";
+    out << "=\"";
+    out << GetShape(flag);
+    out << "\"";
+    out << "label";
+    out << "=\"";
+    out << GetLabel(flag);
+    if (DEBUG_HIP_GRAPH_DOT_PRINT) {
+      out << "\nStreamId:" << stream_id_;
+    }
+    out << "\"";
+    out << "];";
   }
 };
 
@@ -969,8 +973,9 @@ class GraphKernelNode : public GraphNode {
     out << "=\"";
     out << style_;
     (flag == hipGraphDebugDotFlagsKernelNodeParams ||
-      flag == hipGraphDebugDotFlagsKernelNodeAttributes) ?
-      out << "\n" : out << "\"";
+     flag == hipGraphDebugDotFlagsKernelNodeAttributes)
+        ? out << "\n"
+        : out << "\"";
     out << "shape";
     out << "=\"";
     out << GetShape(flag);
@@ -978,9 +983,12 @@ class GraphKernelNode : public GraphNode {
     out << "label";
     out << "=\"";
     out << GetLabel(flag);
+    if (DEBUG_HIP_GRAPH_DOT_PRINT) {
+      out << "StreamId:" << stream_id_;
+    }
     out << "\"";
     out << "];";
-    }
+  }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
