@@ -29,14 +29,11 @@
 #include <utility>
 
 namespace amd {
-MonitorBase::~MonitorBase() {}
-
-namespace legacy_monitor {
 
 Monitor::Monitor(const char* name, bool recursive)
     : contendersList_(0), onDeck_(0), waitersList_(NULL), owner_(NULL), recursive_(recursive) {
   if (name == NULL) {
-    const char unknownName[] = "@unknown@";
+    const char* unknownName = "@unknown@";
     assert(sizeof(unknownName) < sizeof(name_) && "just checking");
     ::strncpy(name_, unknownName, sizeof(name_) - 1);
   } else {
@@ -319,89 +316,4 @@ void Monitor::notifyAll() {
   }
 }
 
-bool Monitor::tryLock() {
-  Thread* thread = Thread::current();
-  assert(thread != NULL && "cannot lock() from (null)");
-
-  intptr_t ptr = contendersList_.load(std::memory_order_acquire);
-
-  if (unlikely((ptr & kLockBit) != 0)) {
-    if (recursive_ && thread == owner_) {
-      // Recursive lock: increment the lock count and return.
-      ++lockCount_;
-      return true;
-    }
-    return false;  // Already locked!
-  }
-
-  if (unlikely(!contendersList_.compare_exchange_weak(
-          ptr, ptr | kLockBit, std::memory_order_acq_rel, std::memory_order_acquire))) {
-    return false;  // We failed the CAS from unlocked to locked.
-  }
-
-  setOwner(thread);  // cannot move above the CAS.
-  lockCount_ = 1;
-
-  return true;
-}
-
-void Monitor::lock() {
-  if (unlikely(!tryLock())) {
-    // The lock is contented.
-    finishLock();
-  }
-
-  // This is the beginning of the critical region. From now-on, everything
-  // executes single-threaded!
-  //
-}
-
-void Monitor::unlock() {
-  assert(isLocked() && owner_ == Thread::current() && "invariant");
-
-  if (recursive_ && --lockCount_ > 0) {
-    // was a recursive lock case, simply return.
-    return;
-  }
-
-  setOwner(NULL);
-
-  // Clear the lock bit.
-  intptr_t ptr = contendersList_.load(std::memory_order_acquire);
-  while (!contendersList_.compare_exchange_weak(ptr, ptr & ~kLockBit, std::memory_order_acq_rel,
-                                                std::memory_order_acquire))
-    ;
-
-  // A StoreLoad barrier is required to make sure future loads do not happen before the
-  // contendersList_ store is published.
-  std::atomic_thread_fence(std::memory_order_seq_cst);
-
-  //
-  // We succeeded the CAS from locked to unlocked.
-  // This is the end of the critical region.
-
-  // Check if we have an on-deck thread that needs signaling.
-  intptr_t onDeck = onDeck_;
-  if (onDeck != 0) {
-    if ((onDeck & kLockBit) == 0) {
-      // Only signal if it is unmarked.
-      reinterpret_cast<Semaphore*>(onDeck)->post();
-    }
-    return;  // We are done.
-  }
-
-  // We do not have an on-deck thread yet, we might have to walk the list in
-  // order to select the next onDeck_. Only one thread needs to fill onDeck_,
-  // so return if the list is empty or if the lock got acquired again (it's
-  // somebody else's problem now!)
-
-  intptr_t head = contendersList_;
-  if (head == 0 || (head & kLockBit) != 0) {
-    return;
-  }
-
-  // Finish the unlock operation: find a thread to wake up.
-  finishUnlock();
-}
-} // namespace legacy_monitor
 }  // namespace amd
