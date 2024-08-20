@@ -1006,6 +1006,7 @@ typedef hipError_t (*t_hipDeviceGetTexture1DLinearMaxWidth)(size_t *maxWidthInEl
                                                             int device);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
+  // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
   size_t size;
   t___hipPopCallConfiguration __hipPopCallConfiguration_fn;
   t___hipPushCallConfiguration __hipPushCallConfiguration_fn;
@@ -1016,10 +1017,27 @@ struct HipCompilerDispatchTable {
   t___hipRegisterTexture __hipRegisterTexture_fn;
   t___hipRegisterVar __hipRegisterVar_fn;
   t___hipUnregisterFatBinary __hipUnregisterFatBinary_fn;
+
+  // DO NOT EDIT ABOVE!
+  // HIP_COMPILER_API_TABLE_STEP_VERSION == 1
+
+  // ******************************************************************************************* //
+  //
+  //                                            READ BELOW
+  //
+  // ******************************************************************************************* //
+  // KEEP AT END OF STRUCT
+  // 1) DO NOT REORDER ANY EXIST MEMBERS
+  // 2) INCREASE STEP VERSION DEFINE BEFORE ADDING NEW MEMBERS
+  // 3) INSERT NEW MEMBERS UNDER APPROPRIATE STEP VERSION COMMENT
+  // 4) GENERATE COMMENT FOR NEXT STEP VERSION
+  // 5) ADD "DO NOT EDIT ABOVE!" COMMENT
+  // ******************************************************************************************* //
 };
 
 // HIP API dispatch table
 struct HipDispatchTable {
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 0
   size_t size;
   t_hipApiName hipApiName_fn;
   t_hipArray3DCreate hipArray3DCreate_fn;
@@ -1467,12 +1485,15 @@ struct HipDispatchTable {
   t_hipExtGetLastError hipExtGetLastError_fn;
   t_hipTexRefGetBorderColor hipTexRefGetBorderColor_fn;
   t_hipTexRefGetArray hipTexRefGetArray_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 1
   t_hipGetProcAddress hipGetProcAddress_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 2
   t_hipStreamBeginCaptureToGraph hipStreamBeginCaptureToGraph_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 3
   t_hipGetFuncBySymbol hipGetFuncBySymbol_fn;
-  t_hipDrvGraphAddMemFreeNode hipDrvGraphAddMemFreeNode_fn;
-  t_hipDrvGraphExecMemcpyNodeSetParams hipDrvGraphExecMemcpyNodeSetParams_fn;
-  t_hipDrvGraphExecMemsetNodeSetParams hipDrvGraphExecMemsetNodeSetParams_fn;
   t_hipSetValidDevices hipSetValidDevices_fn;
   t_hipMemcpyAtoD hipMemcpyAtoD_fn;
   t_hipMemcpyDtoA hipMemcpyDtoA_fn;
@@ -1480,12 +1501,37 @@ struct HipDispatchTable {
   t_hipMemcpyAtoHAsync hipMemcpyAtoHAsync_fn;
   t_hipMemcpyHtoAAsync hipMemcpyHtoAAsync_fn;
   t_hipMemcpy2DArrayToArray hipMemcpy2DArrayToArray_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 4
+  t_hipDrvGraphAddMemFreeNode hipDrvGraphAddMemFreeNode_fn;
+  t_hipDrvGraphExecMemcpyNodeSetParams hipDrvGraphExecMemcpyNodeSetParams_fn;
+  t_hipDrvGraphExecMemsetNodeSetParams hipDrvGraphExecMemsetNodeSetParams_fn;
   t_hipGraphExecGetFlags hipGraphExecGetFlags_fn;
   t_hipGraphNodeSetParams hipGraphNodeSetParams_fn;
   t_hipGraphExecNodeSetParams hipGraphExecNodeSetParams_fn;
   t_hipExternalMemoryGetMappedMipmappedArray hipExternalMemoryGetMappedMipmappedArray_fn;
   t_hipDrvGraphMemcpyNodeGetParams hipDrvGraphMemcpyNodeGetParams_fn;
   t_hipDrvGraphMemcpyNodeSetParams hipDrvGraphMemcpyNodeSetParams_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 5
   t_hipExtHostAlloc hipExtHostAlloc_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 6
   t_hipDeviceGetTexture1DLinearMaxWidth hipDeviceGetTexture1DLinearMaxWidth_fn;
+
+  // DO NOT EDIT ABOVE!
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7
+
+  // ******************************************************************************************* //
+  //
+  //                                            READ BELOW
+  //
+  // ******************************************************************************************* //
+  // KEEP AT END OF STRUCT
+  // 1) DO NOT REORDER ANY EXIST MEMBERS
+  // 2) INCREASE STEP VERSION DEFINE BEFORE ADDING NEW MEMBERS
+  // 3) INSERT NEW MEMBERS UNDER APPROPRIATE STEP VERSION COMMENT
+  // 4) GENERATE COMMENT FOR NEXT STEP VERSION
+  // 5) ADD "DO NOT EDIT ABOVE!" COMMENT
+  // ******************************************************************************************* //
 };

@@ -1281,9 +1281,6 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetProcAddress_fn = hip::hipGetProcAddress;
   ptrDispatchTable->hipStreamBeginCaptureToGraph_fn = hip::hipStreamBeginCaptureToGraph;
   ptrDispatchTable->hipGetFuncBySymbol_fn = hip::hipGetFuncBySymbol;
-  ptrDispatchTable->hipDrvGraphAddMemFreeNode_fn = hip::hipDrvGraphAddMemFreeNode;
-  ptrDispatchTable->hipDrvGraphExecMemcpyNodeSetParams_fn = hip::hipDrvGraphExecMemcpyNodeSetParams;
-  ptrDispatchTable->hipDrvGraphExecMemsetNodeSetParams_fn = hip::hipDrvGraphExecMemsetNodeSetParams;
   ptrDispatchTable->hipSetValidDevices_fn = hip::hipSetValidDevices;
   ptrDispatchTable->hipMemcpyAtoD_fn = hip::hipMemcpyAtoD;
   ptrDispatchTable->hipMemcpyDtoA_fn = hip::hipMemcpyDtoA;
@@ -1291,6 +1288,9 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemcpyAtoHAsync_fn = hip::hipMemcpyAtoHAsync;
   ptrDispatchTable->hipMemcpyHtoAAsync_fn = hip::hipMemcpyHtoAAsync;
   ptrDispatchTable->hipMemcpy2DArrayToArray_fn = hip::hipMemcpy2DArrayToArray;
+  ptrDispatchTable->hipDrvGraphAddMemFreeNode_fn = hip::hipDrvGraphAddMemFreeNode;
+  ptrDispatchTable->hipDrvGraphExecMemcpyNodeSetParams_fn = hip::hipDrvGraphExecMemcpyNodeSetParams;
+  ptrDispatchTable->hipDrvGraphExecMemsetNodeSetParams_fn = hip::hipDrvGraphExecMemsetNodeSetParams;
   ptrDispatchTable->hipGraphExecGetFlags_fn = hip::hipGraphExecGetFlags;
   ptrDispatchTable->hipGraphNodeSetParams_fn = hip::hipGraphNodeSetParams;
   ptrDispatchTable->hipGraphExecNodeSetParams_fn = hip::hipGraphExecNodeSetParams;
@@ -1391,6 +1391,7 @@ constexpr auto ComputeTableOffset(size_t num_funcs) {
                 ". Only add new function pointers to end of struct and do not rearrange them " );
 
 // These ensure that function pointers are not re-ordered
+// HIP_COMPILER_API_TABLE_STEP_VERSION == 0
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipPopCallConfiguration_fn, 0)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipPushCallConfiguration_fn, 1)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterFatBinary_fn, 2)
@@ -1400,6 +1401,7 @@ HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterSurface_fn, 5)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterTexture_fn, 6)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipRegisterVar_fn, 7)
 HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipUnregisterFatBinary_fn, 8)
+// HIP_COMPILER_API_TABLE_STEP_VERSION == 1
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1414,6 +1416,7 @@ static_assert(HIP_COMPILER_API_TABLE_MAJOR_VERSION == 0 && HIP_COMPILER_API_TABL
               "pointers and then update this check so it is true");
 
 // These ensure that function pointers are not re-ordered
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 0
 HIP_ENFORCE_ABI(HipDispatchTable, hipApiName_fn, 0)
 HIP_ENFORCE_ABI(HipDispatchTable, hipArray3DCreate_fn, 1)
 HIP_ENFORCE_ABI(HipDispatchTable, hipArray3DGetDescriptor_fn, 2)
@@ -1857,26 +1860,32 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphInstantiateWithParams_fn, 438)
 HIP_ENFORCE_ABI(HipDispatchTable, hipExtGetLastError_fn, 439)
 HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetBorderColor_fn, 440)
 HIP_ENFORCE_ABI(HipDispatchTable, hipTexRefGetArray_fn, 441)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 1
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetProcAddress_fn, 442)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 2
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamBeginCaptureToGraph_fn, 443)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 3
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetFuncBySymbol_fn, 444)
-HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemFreeNode_fn, 445)
-HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemcpyNodeSetParams_fn, 446)
-HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemsetNodeSetParams_fn, 447)
-HIP_ENFORCE_ABI(HipDispatchTable, hipSetValidDevices_fn, 448)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoD_fn, 449)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoA_fn, 450)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoA_fn, 451)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoHAsync_fn, 452)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoAAsync_fn, 453)
-HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 454)
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetValidDevices_fn, 445)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoD_fn, 446)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyDtoA_fn, 447)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoA_fn, 448)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyAtoHAsync_fn, 449)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyHtoAAsync_fn, 450)
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy2DArrayToArray_fn, 451)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 4
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphAddMemFreeNode_fn, 452)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemcpyNodeSetParams_fn, 453)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphExecMemsetNodeSetParams_fn, 454)
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecGetFlags_fn, 455);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphNodeSetParams_fn, 456);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecNodeSetParams_fn, 457);
 HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 458)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeGetParams_fn, 459)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeSetParams_fn, 460)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 5
 HIP_ENFORCE_ABI(HipDispatchTable, hipExtHostAlloc_fn, 461)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 6
 HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetTexture1DLinearMaxWidth_fn, 462)
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
