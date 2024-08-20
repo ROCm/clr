@@ -580,7 +580,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.localL1CacheSupported = 1;
   deviceProps.persistingL2CacheMaxSize = info.l2CacheSize_;
   deviceProps.reservedSharedMemPerBlock = 0;
-  deviceProps.sharedMemPerBlockOptin = 0;
+  deviceProps.sharedMemPerBlockOptin = info.localMemSizePerCU_;
 
   // Unsupported features
   // Single to double precision perf ratio

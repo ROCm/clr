@@ -39,8 +39,7 @@ enum HwQueueEngine : uint32_t {
   Compute   = 0,
   SdmaRead  = 1,
   SdmaWrite = 2,
-  Unknown   = 3,
-  External  = 4
+  Unknown   = 3
 };
 
 } // namespace amd::roc

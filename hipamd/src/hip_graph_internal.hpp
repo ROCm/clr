@@ -186,6 +186,9 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   unsigned int isEnabled_;
   uint8_t gpuPacket_[64];  //!< GPU Packet to enqueue during graph launch
   std::string capturedKernelName_;
+  size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
+  size_t kernargSegmentByteSize_ = 256;   //!< Kernel arg segment byte size
+  size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
 
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
@@ -237,7 +240,21 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   uint8_t* GetAqlPacket() { return gpuPacket_; }
   void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
-
+  size_t GetKerArgSize() const { return alignedKernArgSize_; }
+  size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
+  size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
+    hipError_t status = CreateCommand(capture_stream);
+    for (auto& command : commands_) {
+      command->setCapturingState(true, GetAqlPacket(), kernArgOffset, &capturedKernelName_);
+      // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
+      // The packet is stored in gpuPacket_ and submitted during graph launch.
+      command->submit(*(command->queue())->vdev());
+      command->release();
+    }
+    // Commands are captured and released. Clear them from the object.
+    commands_.clear();
+  }
   hip::Stream* GetQueue() const { return stream_; }
 
   virtual void SetStream(hip::Stream* stream, GraphExec* ptr = nullptr) {
@@ -325,14 +342,14 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   /// Get topological sort of the nodes embedded as part of the graphnode(e.g. ChildGraph)
   virtual bool TopologicalOrder(std::vector<Node>& TopoOrder) { return true; }
   /// Update waitlist of the nodes embedded as part of the graphnode(e.g. ChildGraph)
-  virtual void UpdateEventWaitLists(amd::Command::EventWaitList waitList) {
+  virtual void UpdateEventWaitLists(const amd::Command::EventWaitList& waitList) {
     for (auto command : commands_) {
       command->updateEventWaitList(waitList);
     }
   }
   virtual hipError_t GetNumParallelStreams(size_t &num) { return hipSuccess; }
   /// Enqueue commands part of the node
-  virtual void EnqueueCommands(hipStream_t stream) {
+  virtual void EnqueueCommands(hip::Stream* stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
     if (!isEnabled_ &&
@@ -342,8 +359,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
       if (!commands_.empty()) {
         waitList = commands_[0]->eventWaitList();
       }
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
       return;
@@ -380,6 +396,20 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   unsigned int GetEnabled() const { return isEnabled_; }
   void SetEnabled(unsigned int isEnabled) { isEnabled_ = isEnabled; }
+  // Returns true if capture is enabled for the current node.
+  bool GraphCaptureEnabled() {
+    bool isGraphCapture = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      switch (GetType()) {
+        case hipGraphNodeTypeKernel:
+          isGraphCapture = true;
+          break;
+        default:
+          break;
+      }
+    }
+    return isGraphCapture;
+  }
 };
 
 struct Graph {
@@ -552,18 +582,42 @@ struct Graph {
   }
 };
 struct GraphKernelNode;
-struct GraphExec : public amd::ReferenceCountedObject {
+struct GraphKernelArgManager : public amd::ReferenceCountedObject {
+ public:
+  GraphKernelArgManager() : ReferenceCountedObject() {}
+  ~GraphKernelArgManager() {
+    //! Release the kernel arg pools
+    auto device = g_devices[ihipGetDevice()]->devices()[0];
+    for (auto& element : kernarg_graph_) {
+      device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
+    }
+    kernarg_graph_.clear();
+  }
+
+  // Allocate kernel arg pool for the given size.
+  bool AllocGraphKernargPool(size_t pool_size);
+
+  // Allocate kernel args from current chunck for given size and alignment.
+  // If kernel arg pool is full allocate new chunck and alloc kern args from new pool.
+  address AllocKernArg(size_t size, size_t alignment);
+
+  // Do HDP flush/When HDP flush register is invalid fallback to Readback
+  void ReadBackOrFlush();
+
+ private:
   struct KernelArgPoolGraph {
     KernelArgPoolGraph(address base_addr, size_t size)
-     : kernarg_pool_addr_(base_addr),
-       kernarg_pool_size_(size),
-       kernarg_pool_offset_(0)
-       {}
+        : kernarg_pool_addr_(base_addr), kernarg_pool_size_(size), kernarg_pool_offset_(0) {}
     address kernarg_pool_addr_;   //! Base address of the kernel arg pool
     size_t kernarg_pool_size_;    //! Size of the pool
     size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
   };
+  bool device_kernarg_pool_ = false;               //! Indicate if kernel pool in device mem
+  std::vector<KernelArgPoolGraph> kernarg_graph_;  //! Vector of allocated kernarg pool
+  using KernelArgImpl = device::Settings::KernelArgImpl;
+};
 
+struct GraphExec : public amd::ReferenceCountedObject {
   std::vector<std::vector<Node>> parallelLists_;
   //! Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
@@ -578,11 +632,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
   bool repeatLaunch_ = false;
-
-  bool device_kernarg_pool_ = false;                //! Indicate if kernel pool in device mem
-  std::vector<KernelArgPoolGraph> kernarg_graph_;   //! Vector of allocated kernarg pool
-  uint32_t kernarg_graph_cur_offset_ = 0;           //! Current offset in kernarg pool
-
+  GraphKernelArgManager* kernArgManager_ = nullptr; //!< Kernel Arg manager for graph.
   int instantiateDeviceId_ = -1;
   bool hasHiddenHeap_ = false;    //!< Hidden heap indicator for Kernel node
 
@@ -609,17 +659,12 @@ struct GraphExec : public amd::ReferenceCountedObject {
         hip::Stream::Destroy(stream);
       }
     }
-
-    //! Release the kernel arg pools
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      auto device = g_devices[ihipGetDevice()]->devices()[0];
-      for (auto& element : kernarg_graph_) {
-        device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
-      }
-    }
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.erase(this);
     delete clonedGraph_;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      kernArgManager_->release();
+    }
   }
 
   Node GetClonedNode(Node node) {
@@ -636,24 +681,8 @@ struct GraphExec : public amd::ReferenceCountedObject {
   //! Graph has nodes that require hidden heap.
   void SetHiddenHeap() { hasHiddenHeap_ = true; }
 
-  address allocKernArg(size_t size, size_t alignment) {
-    assert(alignment != 0);
-    address result = nullptr;
-    result = amd::alignUp(kernarg_graph_.back().kernarg_pool_addr_ +
-                          kernarg_graph_.back().kernarg_pool_offset_,
-                          alignment);
-    const size_t pool_new_usage = (result + size) - kernarg_graph_.back().kernarg_pool_addr_;
-    if (pool_new_usage <= kernarg_graph_.back().kernarg_pool_size_) {
-      kernarg_graph_.back().kernarg_pool_offset_ = pool_new_usage;
-    } else {
-      return nullptr;
-    }
-    return result;
-  }
-
   //! Check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
-  hipError_t AllocGraphKernargPool(size_t pool_size);
   std::vector<Node>& GetNodes() { return topoOrder_; }
 
   hip::Stream* GetAvailableStreams() {
@@ -671,7 +700,15 @@ struct GraphExec : public amd::ReferenceCountedObject {
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphKernelNode* node);
-  using KernelArgImpl = device::Settings::KernelArgImpl;
+  // Kenrel arg manger is for the entire graph.
+  // Child graph also shares the same kernel arg manager object. some apps have 100's of
+  // child graph nodes and each child graph has only one node.
+  void SetKernelArgManager(GraphKernelArgManager* kernArgManager) {
+    kernArgManager_ = kernArgManager;
+  }
+  GraphKernelArgManager* GetKernelArgManager() {
+    return kernArgManager_;
+  }
 };
 
 struct ChildGraphNode : public GraphNode {
@@ -760,7 +797,7 @@ struct ChildGraphNode : public GraphNode {
   }
 
   //
-  void UpdateEventWaitLists(amd::Command::EventWaitList waitList) override {
+  void UpdateEventWaitLists(const amd::Command::EventWaitList& waitList) override {
     if (startCommand_ != nullptr) {
       startCommand_->updateEventWaitList(waitList);
     }
@@ -773,10 +810,10 @@ struct ChildGraphNode : public GraphNode {
   bool TopologicalOrder(std::vector<Node>& TopoOrder) override {
     return childGraph_->TopologicalOrder(TopoOrder);
   }
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (graphCaptureStatus_) {
       hipError_t status =
-          EnqueueGraphWithSingleList(childGraphNodeOrder_, reinterpret_cast<hip::Stream*>(stream));
+          EnqueueGraphWithSingleList(childGraphNodeOrder_, stream);
     } else {
       // enqueue child graph start command
       if (startCommand_ != nullptr) {
@@ -827,18 +864,11 @@ class GraphKernelNode : public GraphNode {
   hipKernelNodeAttrValue kernelAttr_;  //!< Kernel node attributes
   unsigned int kernelAttrInUse_;       //!< Kernel attributes in use
   ihipExtKernelEvents kernelEvents_;   //!< Events for Ext launch kernel
-  size_t alignedKernArgSize_;          //!< Aligned size required for kernel args
-  size_t kernargSegmentByteSize_;      //!< Kernel arg segment byte size
-  size_t kernargSegmentAlignment_;     //!< Kernel arg segment alignment
   bool hasHiddenHeap_;                 //!< Kernel has hidden heap(device side allocation)
 
-
  public:
-  size_t GetKerArgSize() const { return alignedKernArgSize_; }
-  size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
-  size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
     if (!isEnabled_) {
@@ -846,8 +876,7 @@ class GraphKernelNode : public GraphNode {
       if (!commands_.empty()) {
         waitList = commands_[0]->eventWaitList();
       }
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
       return;
@@ -861,6 +890,7 @@ class GraphKernelNode : public GraphNode {
       command->release();
     }
   }
+
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
     out << "[";
     out << "style";
@@ -879,21 +909,6 @@ class GraphKernelNode : public GraphNode {
     out << "\"";
     out << "];";
     }
-
-  void CaptureAndFormPacket(hip::Stream* capture_stream, address kernArgOffset) {
-    hipError_t status = CreateCommand(capture_stream);
-    for (auto& command : commands_) {
-      reinterpret_cast<amd::NDRangeKernelCommand*>(command)->setCapturingState(
-          true, GetAqlPacket(), kernArgOffset);
-
-      // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
-      // The packet is stored in gpuPacket_ and submitted during graph launch.
-      command->submit(*(command->queue())->vdev());
-      // Need to ensure if the command is NDRangeKernelCommand if we capture non kernel nodes
-      SetKernelName(reinterpret_cast<amd::NDRangeKernelCommand*>(command)->kernel().name());
-      command->release();
-    }
-  }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
@@ -1300,12 +1315,12 @@ class GraphMemcpyNode : public GraphNode {
     return status;
   }
 
-  virtual void EnqueueCommands(hipStream_t stream) override {
+  virtual void EnqueueCommands(hip::Stream* stream) override {
     if ( (copyParams_.kind == hipMemcpyHostToHost || copyParams_.kind == hipMemcpyDefault) &&
           isEnabled_ && IsHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr)) {
       ihipHtoHMemcpy(copyParams_.dstPtr.ptr, copyParams_.srcPtr.ptr,
                      copyParams_.extent.width * copyParams_.extent.height *
-                     copyParams_.extent.depth, *hip::getStream(stream));
+                     copyParams_.extent.depth, *stream);
       return;
     }
     GraphNode::EnqueueCommands(stream);
@@ -1454,7 +1469,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     return status;
   }
 
-  virtual void EnqueueCommands(hipStream_t stream) override {
+  virtual void EnqueueCommands(hip::Stream* stream) override {
     bool isH2H = false;
     if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
       isH2H = true;
@@ -1467,14 +1482,13 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     if (isEnabled_) {
       //HtoH
       if (isH2H) {
-        ihipHtoHMemcpy(dst_, src_, count_, *hip::getStream(stream));
+        ihipHtoHMemcpy(dst_, src_, count_, *stream);
         return;
       }
       amd::Command* command = commands_[0];
       amd::HostQueue* cmdQueue = command->queue();
-      hip::Stream* hip_stream = hip::getStream(stream);
 
-      if (cmdQueue == hip_stream) {
+      if (cmdQueue == stream) {
         command->enqueue();
         command->release();
         return;
@@ -1482,7 +1496,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
 
       amd::Command::EventWaitList waitList;
       amd::Command* depdentMarker = nullptr;
-      amd::Command* cmd = hip_stream->getLastQueuedCommand(true);
+      amd::Command* cmd = stream->getLastQueuedCommand(true);
       if (cmd != nullptr) {
         waitList.push_back(cmd);
         amd::Command* depdentMarker = new amd::Marker(*cmdQueue, true, waitList);
@@ -1499,7 +1513,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       if (cmd != nullptr) {
         waitList.clear();
         waitList.push_back(cmd);
-        amd::Command* depdentMarker = new amd::Marker(*hip_stream, true, waitList);
+        amd::Command* depdentMarker = new amd::Marker(*stream, true, waitList);
         if (depdentMarker != nullptr) {
           depdentMarker->enqueue();  // Make sure future commands of queue synced with command
           depdentMarker->release();
@@ -1508,8 +1522,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       }
     } else {
       amd::Command::EventWaitList waitList;
-      hip::Stream* hip_stream = hip::getStream(stream);
-      amd::Command* command = new amd::Marker(*hip_stream, !kMarkerDisableFlush, waitList);
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
       command->enqueue();
       command->release();
     }
@@ -1989,11 +2002,12 @@ class GraphEventRecordNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
       // command release during enqueueRecordCommand
-      hipError_t status = e->enqueueRecordCommand(stream, commands_[0], true);
+      hipError_t status = e->enqueueRecordCommand(
+            reinterpret_cast<hipStream_t>(stream), commands_[0], true);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue event record command failed for node %p - status %d", this,
@@ -2042,10 +2056,11 @@ class GraphEventWaitNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
-      hipError_t status = e->enqueueStreamWaitCommand(stream, commands_[0]);
+      hipError_t status =
+        e->enqueueStreamWaitCommand(reinterpret_cast<hipStream_t>(stream), commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue stream wait command failed for node %p - status %d", this,
@@ -2103,7 +2118,7 @@ class GraphHostNode : public GraphNode {
     NodeParams->fn(NodeParams->userData);
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       if (!commands_[0]->setCallback(CL_COMPLETE, GraphHostNode::Callback, &NodeParams_)) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during setCallback");
@@ -2427,7 +2442,7 @@ class GraphDrvMemcpyNode : public GraphNode {
     return status;
   }
 
-  void EnqueueCommands(hipStream_t stream) override {
+  void EnqueueCommands(hip::Stream* stream) override {
     bool isHtoH = false;
     if(copyParams_.srcMemoryType == hipMemoryTypeHost &&
        copyParams_.dstMemoryType == hipMemoryTypeHost &&
@@ -2437,7 +2452,7 @@ class GraphDrvMemcpyNode : public GraphNode {
     if (isEnabled_ && isHtoH) {
       ihipHtoHMemcpy(copyParams_.dstHost, copyParams_.srcHost,
                      copyParams_.WidthInBytes * copyParams_.Height *
-                     copyParams_.Depth, *hip::getStream(stream));
+                     copyParams_.Depth, *stream);
       return;
     }
     GraphNode::EnqueueCommands(stream);

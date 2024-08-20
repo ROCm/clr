@@ -156,7 +156,7 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle,
   }
 
   if (!ga->asAmdMemory().getContext().devices()[0]->ExportShareableVMMHandle(
-        ga->asAmdMemory().getUserData().hsa_handle, flags, shareableHandle)) {
+        ga->asAmdMemory(), flags, shareableHandle)) {
     LogPrintfError("Exporting Handle failed with flags: %d", flags);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -224,17 +224,10 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   }
 
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
-  amd::Memory* phys_mem_obj = new (device->context()) amd::Buffer(device->context(),
-                                ROCCLR_MEM_PHYMEM | ROCCLR_MEM_INTERPROCESS, 0, osHandle);
+  amd::Memory* phys_mem_obj = device->ImportShareableVMMHandle(osHandle);
 
   if (phys_mem_obj == nullptr) {
     LogError("failed to new a va range curr_mem_obj object!");
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-
-  if (!phys_mem_obj->create(nullptr, false)) {
-    LogError("failed to create a va range mem object");
-    phys_mem_obj->release();
     HIP_RETURN(hipErrorInvalidValue);
   }
 

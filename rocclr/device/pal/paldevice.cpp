@@ -973,6 +973,8 @@ bool Device::create(Pal::IDevice* device) {
   // Note: RGP initialization in PAL must be performed before CommitSettingsAndInit()
   rgpCaptureMgr_ = RgpCaptureMgr::Create(platform_, *this);
   if (nullptr != rgpCaptureMgr_) {
+    // KMD forced DWORD alignment for debug VMID, request it back to Unaligned
+    palSettings->hardwareBufferAlignmentMode = Pal::BufferAlignmentMode::Unaligned;
     Pal::IPlatform::InstallDeveloperCb(iPlat(), &Device::PalDeveloperCallback, this);
   }
 
@@ -1659,9 +1661,8 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
 
         // If direct access failed
         if (!result) {
-          // Don't use cached allocation
-          // if size is biger than max single alloc
-          if (owner.getSize() > info().maxMemAllocSize_) {
+          // Don't use cached allocation if size is biger than max single alloc or it's HIP
+          if (amd::IS_HIP || (owner.getSize() > info().maxMemAllocSize_)) {
             delete gpuMemory;
             return nullptr;
           }
@@ -2506,6 +2507,57 @@ void Device::virtualFree(void* addr) {
 }
 
 // ================================================================================================
+bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
+
+  amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
+  if (phys_mem_obj == nullptr) {
+    // If the phys_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
+    // if not-mapped then print a different error message. (No functional change due to this check).
+    amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
+    if (vaddr_mem_obj == nullptr) {
+      LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
+      return false;
+    }
+    LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
+    return false;
+  }
+
+  // Check for valid size.
+  if (va_size > phys_mem_obj->getSize()) {
+    LogPrintfError("Given size: %u cannot be greater than mem_size: %u \n", va_size,
+                    phys_mem_obj->getSize());
+    return false;
+  }
+
+  device::Memory* phys_dev_mem = phys_mem_obj->getDeviceMemory(*this);
+  phys_dev_mem->SetAccess(static_cast<device::Memory::MemAccess>(access_flags));
+
+  return true;
+}
+
+// ================================================================================================
+bool Device::GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) {
+
+  amd::Memory* phys_mem_obj = amd::MemObjMap::FindMemObj(va_addr);
+  if (phys_mem_obj == nullptr) {
+    // If the phys_mem_obj is null, the check if this is a valid va_addr, but not-mapped,
+    // if not-mapped then print a different error message. (No functional change due to this check).
+    amd::Memory* vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(va_addr);
+    if (vaddr_mem_obj == nullptr) {
+      LogPrintfError("Cannot find virtual address: 0x%x \n", va_addr);
+      return false;
+    }
+    LogPrintfError("Virtual address present, but not mapped yet: 0x%x \n", va_addr);
+    return false;
+  }
+
+  device::Memory* phys_dev_mem = phys_mem_obj->getDeviceMemory(*this);
+  device::Memory::MemAccess mem_access = phys_dev_mem->GetAccess();
+  *access_flags_ptr = static_cast<VmmAccess>(mem_access);
+
+  return true;
+}
+// ================================================================================================
 bool Device::AcquireExclusiveGpuAccess() {
   // Lock the virtual GPU list
   vgpusAccess().lock();
@@ -2778,6 +2830,35 @@ void Device::DestroyExtSemaphore(void* extSemaphore) {
   Pal::IQueueSemaphore* sem = reinterpret_cast<Pal::IQueueSemaphore*>(extSemaphore);
   sem->Destroy();
   amd::Os::alignedFree(extSemaphore);
+}
+
+// ================================================================================================
+bool Device::ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle) {
+  device::Memory* dev_mem = static_cast<device::Memory*>(amd_mem_obj.getDeviceMemory(*this));
+  return dev_mem->ExportHandle(shareableHandle);
+}
+
+// ================================================================================================
+amd::Memory* Device::ImportShareableVMMHandle(void* osHandle) {
+
+  int flags = 0;
+  size_t mem_offset = 0;
+  size_t mem_size = 0;
+
+  amd::Memory* amd_mem_obj = new (context()) amd::IpcBuffer(context(), flags, mem_offset,
+                                  mem_size, osHandle);
+
+  if (amd_mem_obj == nullptr) {
+    LogError("failed to create a mem object!");
+    return nullptr;
+  }
+
+  if (!amd_mem_obj->create(nullptr)) {
+    LogError("failed to create a svm hidden buffer!");
+    amd_mem_obj->release();
+    return nullptr;
+  }
+  return amd_mem_obj;
 }
 
 }  // namespace amd::pal

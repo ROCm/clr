@@ -28,7 +28,7 @@
 namespace hip {
 std::once_flag g_ihipInitialized;
 
-std::vector<hip::Device*> g_devices;
+std::vector<hip::Device*> g_devices ROCCLR_INIT_PRIORITY(101);
 thread_local TlsAggregator tls;
 amd::Context* host_context = nullptr;
 

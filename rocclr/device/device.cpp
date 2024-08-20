@@ -83,6 +83,16 @@ bool VirtualDevice::ActiveWait() const {
 
 }
 
+static_assert(static_cast<uint32_t>(device::Memory::MemAccess::kMemAccessNone)
+            == static_cast<uint32_t>(amd::Device::VmmAccess::kNone),
+            "Mem Access Flag None mismatch between Device and Memory!");
+static_assert(static_cast<uint32_t>(device::Memory::MemAccess::kMemAccessRead)
+            == static_cast<uint32_t>(amd::Device::VmmAccess::kReadOnly),
+            "Mem Access Flag Read mismatch between Device and Memory!");
+static_assert(static_cast<uint32_t>(device::Memory::MemAccess::kMemAccessReadWrite)
+            == static_cast<uint32_t>(amd::Device::VmmAccess::kReadWrite),
+            "Mem Access Flag Read Write mismatch between Device and Memory!");
+
 namespace amd {
 
 amd::Monitor Device::lockP2P_("Lock P2P ON/OFF");

@@ -63,19 +63,19 @@ __device__ static inline int __clzll(long long int input) {
     return __ockl_clz_u64((uint64_t)input);
 }
 
-__device__ static inline unsigned int __ffs(unsigned int input) {
+__device__ static inline int __ffs(unsigned int input) {
     return ( input == 0 ? -1 : __builtin_ctz(input) ) + 1;
 }
 
-__device__ static inline unsigned int __ffsll(unsigned long long int input) {
+__device__ static inline int __ffsll(unsigned long long int input) {
     return ( input == 0 ? -1 : __builtin_ctzll(input) ) + 1;
 }
 
-__device__ static inline unsigned int __ffs(int input) {
+__device__ static inline int __ffs(int input) {
     return ( input == 0 ? -1 : __builtin_ctz(input) ) + 1;
 }
 
-__device__ static inline unsigned int __ffsll(long long int input) {
+__device__ static inline int __ffsll(long long int input) {
     return ( input == 0 ? -1 : __builtin_ctzll(input) ) + 1;
 }
 
@@ -118,25 +118,25 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
     return total;
 }
 
-__device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) {
-  uint64_t temp_mask = mask;
+__device__ static int32_t __fns32(uint32_t mask, uint32_t base, int32_t offset) {
+  uint32_t temp_mask = mask;
   int32_t temp_offset = offset;
   if (offset == 0) {
     temp_mask &= (1 << base);
     temp_offset = 1;
   }
   else if (offset < 0) {
-    temp_mask = __builtin_bitreverse64(mask);
-    base = 63 - base;
+    temp_mask = __builtin_bitreverse32(mask);
+    base = 31 - base;
     temp_offset = -offset;
   }
-  temp_mask = temp_mask & ((~0ULL) << base);
-  if (__builtin_popcountll(temp_mask) < temp_offset)
+  temp_mask = temp_mask & ((~0U) << base);
+  if (__builtin_popcount(temp_mask) < temp_offset)
     return -1;
   int32_t total = 0;
-  for (int i = 0x20; i > 0; i >>= 1) {
-    uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
+  for (int i = 0x10; i > 0; i >>= 1) {
+    uint32_t temp_mask_lo = temp_mask & ((1U << i) - 1);
+    int32_t pcnt = __builtin_popcount(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -147,10 +147,16 @@ __device__ static int32_t __fns32(uint64_t mask, uint32_t base, int32_t offset) 
     }
   }
   if (offset < 0)
-    return 63 - total;
+    return 31 - total;
   else
     return total;
 }
+
+// Wrapper around __fns32() to make porting from CUDA easier
+__device__ static int32_t __fns(unsigned int mask, unsigned int base, int offset) {
+    return __fns32(mask, base, offset);
+}
+
 __device__ static inline unsigned int __brev(unsigned int input) {
     return __builtin_bitreverse32(input);
 }
