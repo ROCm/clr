@@ -4,16 +4,6 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ## HIP 6.2.41134 for ROCm 6.2.1
 
-### Changes
-
-* New HIP APIs
-    - `hipMemcpyAtoA`  copies from one 1D array to another.
-    - `hipMemcpyDtoA`  copies from device memory to a 1D array.
-    - `hipMemcpyAtoD`  copies from one 1D array to device memory.
-    - `hipMemcpyAtoHAsync`  copies from one 1D array to host memory.
-    - `hipMemcpyHtoAAsync`  copies from host memory to a 1D array.
-    - `hipMemcpy2DArrayToArray`  copies data between host and device.
-
 ### Resolved issues
 
 * Soft hang when use AMD_SERIALIZE_KERNEL.
@@ -31,6 +21,12 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipGetFuncBySymbol` returns the pointer to device entry function that matches entry function symbolPtr.
     - `hipStreamBeginCaptureToGraph` begins graph capture on a stream to an existing graph.
     - `hipGraphInstantiateWithParams`  creates an executable graph from a graph.
+    - `hipMemcpyAtoA`  copies from one 1D array to another.
+    - `hipMemcpyDtoA`  copies from device memory to a 1D array.
+    - `hipMemcpyAtoD`  copies from one 1D array to device memory.
+    - `hipMemcpyAtoHAsync`  copies from one 1D array to host memory.
+    - `hipMemcpyHtoAAsync`  copies from host memory to a 1D array.
+    - `hipMemcpy2DArrayToArray`  copies data between host and device.
 
 - Added a new flag `integrated` support in device property
 
