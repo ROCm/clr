@@ -635,7 +635,7 @@ hipError_t hipDeviceGetTexture1DLinearMaxWidth(size_t* maxWidthInElements,
 hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
   CHECK_SUPPORTED_DURING_CAPTURE();
-  constexpr bool kDoWaitForCpu = true;
+  constexpr bool kDoWaitForCpu = false;
   hip::getCurrentDevice()->SyncAllStreams(kDoWaitForCpu);
   HIP_RETURN(hipSuccess);
 }
