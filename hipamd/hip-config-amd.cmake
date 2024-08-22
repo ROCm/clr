@@ -69,11 +69,16 @@ endif()
 # If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
 # of all the devices present in the machine
 if(NOT AMDGPU_TARGETS)
-  if (WIN32)
-    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
+  if(BUILD_SHARED_LIBS)
+    if (WIN32)
+      set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
+    else()
+      set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch")
+    endif()
   else()
-    set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch")
+    set(AMDGPU_ARCH "${ROCM_PATH}/bin/rocm_agent_enumerator")
   endif()
+
   execute_process(
     COMMAND ${AMDGPU_ARCH}
     RESULT_VARIABLE AMDGPU_ARCH_RESULT
@@ -90,13 +95,21 @@ if(NOT AMDGPU_TARGETS)
         " Output: '${AMDGPU_ARCH_OUTPUT}'\n \n"
 
         " As a result, --offload-arch will not be set for subsuqent\n"
-        " compilations, and the default architecture (gfx906) will be used\n")
+        " compilations, and the default architecture\n"
+        " (gfx906 for dynamic build / gfx942 for static build) will be used\n")
   else()
+    # rocm_agent_enumerator adds gfx000 entry
+    string(REPLACE "gfx000\n" "" AMDGPU_ARCH_OUTPUT "${AMDGPU_ARCH_OUTPUT}")
     if (NOT AMDGPU_ARCH_OUTPUT STREQUAL "")
       string(REPLACE "\n" ";" AMDGPU_ARCH_OUTPUT ${AMDGPU_ARCH_OUTPUT})
       set(AMDGPU_TARGETS ${AMDGPU_ARCH_OUTPUT} CACHE STRING "AMD GPU targets to compile for")
     endif()
   endif()
+endif()
+
+if (NOT AMDGPU_TARGETS AND NOT BUILD_SHARED_LIBS)
+  # The default architecture is gfx942 for static build
+  set(AMDGPU_TARGETS "gfx942" CACHE STRING "AMD GPU targets to compile for")
 endif()
 
 set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU targets to compile for")
