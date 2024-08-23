@@ -23,6 +23,10 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
+#if !defined(__HIPCC_RTC__)
+#include "device_library_decls.h"  // ockl warp functions
+#endif // !defined(__HIPCC_RTC__)
+
 #if defined(__has_attribute) && __has_attribute(maybe_undef)
 #define MAYBE_UNDEF __attribute__((maybe_undef))
 #else
