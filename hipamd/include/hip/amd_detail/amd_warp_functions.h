@@ -23,6 +23,10 @@ THE SOFTWARE.
 #ifndef HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 #define HIP_INCLUDE_HIP_AMD_DETAIL_WARP_FUNCTIONS_H
 
+#if !defined(__HIPCC_RTC__)
+#include "device_library_decls.h"  // ockl warp functions
+#endif // !defined(__HIPCC_RTC__)
+
 __device__ static inline unsigned __hip_ds_bpermute(int index, unsigned src) {
     union { int i; unsigned u; float f; } tmp; tmp.u = src;
     tmp.i = __builtin_amdgcn_ds_bpermute(index, tmp.i);
