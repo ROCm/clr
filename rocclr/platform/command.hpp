@@ -952,6 +952,8 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
   const BufferRect& dstRect() const { return dstRect_; }
   //! Return the copy MetaData
   amd::CopyMetadata copyMetadata() const { return copyMetadata_; }
+  //! Updates copy MetaData
+  void SetCopyMetadata(amd::CopyMetadata copyMetadata) { copyMetadata_ = copyMetadata; }
   //! Updates the host memory to read from
   void setSource(Memory& srcMemory) { memory1_ = &srcMemory; }
   //! Updates the memory object to write to.

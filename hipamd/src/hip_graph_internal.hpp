@@ -1576,6 +1576,13 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       WorkerThreadLock_.lock();
     }
     status = ihipMemcpyCommand(command, dst_, src_, count_, kind_, *stream);
+    hip::MemcpyType type = ihipGetMemcpyType(src_, dst_, kind_);
+    if (type == hipCopyBuffer) {
+      amd::CopyMemoryCommand* cpycmd = reinterpret_cast<amd::CopyMemoryCommand*>(command);
+      amd::CopyMetadata copyMetadata = cpycmd->copyMetadata();
+      copyMetadata.copyEnginePreference_ = amd::CopyMetadata::CopyEnginePreference::BLIT;
+      cpycmd->SetCopyMetadata(copyMetadata);
+    }
     if (!AMD_DIRECT_DISPATCH) {
       WorkerThreadLock_.unlock();
     }
@@ -1720,8 +1727,9 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   virtual bool GraphCaptureEnabled() override {
     bool isGraphCapture = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      switch (kind_) {
-        case hipMemcpyDeviceToDevice:
+      hip::MemcpyType type = ihipGetMemcpyType(src_, dst_, kind_);
+      switch (type) {
+        case hipCopyBuffer:
           isGraphCapture = true;
           break;
         default:
