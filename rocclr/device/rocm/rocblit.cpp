@@ -2263,12 +2263,12 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 #endif
 
   bool useShaderCopyPath = setup_.disableHwlCopyBuffer_ ||
-                           (sizeIn[0] <= dev().settings().sdmaCopyThreshold_) ||
-                           (!srcMemory.isHostMemDirectAccess() &&
-                            !dstMemory.isHostMemDirectAccess() &&
-                            !(p2p || asan) && !ipcShared &&
-                            !(copyMetadata.copyEnginePreference_ ==
-                              amd::CopyMetadata::CopyEnginePreference::SDMA));
+      (sizeIn[0] <= dev().settings().sdmaCopyThreshold_) ||
+      (!(p2p || asan || ipcShared) &&
+           (!srcMemory.isHostMemDirectAccess() && !dstMemory.isHostMemDirectAccess() &&
+            !(copyMetadata.copyEnginePreference_ ==
+              amd::CopyMetadata::CopyEnginePreference::SDMA)) ||
+       (copyMetadata.copyEnginePreference_ == amd::CopyMetadata::CopyEnginePreference::BLIT));
 
   if (!useShaderCopyPath) {
     if (amd::IS_HIP) {
