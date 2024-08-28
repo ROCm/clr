@@ -2399,7 +2399,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
       } else {
         amd::Coord3D origin(mapInfo->origin_[0]);
         amd::Coord3D size(mapInfo->region_[0]);
-        amd::Coord3D dstOrigin(mapInfo->origin_[0],0,0);
+        amd::Coord3D dstOrigin(mapInfo->origin_[0]);
         if (imageBuffer) {
           size_t elemSize = cmd.memory().asImage()->getImageFormat().getElementSize();
           origin.c[0] *= elemSize;
