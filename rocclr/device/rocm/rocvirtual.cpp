@@ -1180,6 +1180,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
           barrier_value_packet_.cond == 0 ? "EQ" : barrier_value_packet_.cond == 1 ?
                                         "NE" : barrier_value_packet_.cond == 2 ? "LT" : "GTE",
           barrier_value_packet_.completion_signal);
+  // Clear dependent signals for the next packet
+  barrier_value_packet_.signal = hsa_signal_t{};
 }
 
 // ================================================================================================
