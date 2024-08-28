@@ -237,7 +237,9 @@ hipStream_t stream_per_thread::get() {
 }
 
 void stream_per_thread::clear_spt() {
-  m_streams[getCurrentDevice()->deviceId()] = nullptr;
+  if (!m_streams.empty()) {
+    m_streams[getCurrentDevice()->deviceId()] = nullptr;
+  }
 }
 
 
