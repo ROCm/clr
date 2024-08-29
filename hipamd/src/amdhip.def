@@ -29,6 +29,7 @@ hipDeviceGetCacheConfig
 hipDeviceGetStreamPriorityRange
 hipDeviceGetLimit
 hipDeviceGetName
+hipDeviceGetTexture1DLinearMaxWidth
 hipDeviceGetUuid
 hipDeviceGetPCIBusId
 hipDeviceGetSharedMemConfig
