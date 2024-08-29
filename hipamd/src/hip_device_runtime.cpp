@@ -614,6 +614,24 @@ hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) {
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipDeviceGetTexture1DLinearMaxWidth(size_t* maxWidthInElements,
+ const hipChannelFormatDesc* fmtDesc, int device) {
+  HIP_INIT_API(hipDeviceGetTexture1DLinearMaxWidth, maxWidthInElements, fmtDesc, device);
+  if (maxWidthInElements == nullptr || fmtDesc == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hipDeviceProp_tR0600 prop = {0};
+  HIP_RETURN_ONFAIL(ihipGetDeviceProperties(&prop, device));
+  // Calculate element size according to fmtDesc
+  size_t elementSize = (fmtDesc->x + fmtDesc->y
+  + fmtDesc->z + fmtDesc->w) / 8; // Convert from bits to bytes
+  if (elementSize == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  *maxWidthInElements = prop.maxTexture1DLinear / elementSize;
+  HIP_RETURN(hipSuccess);
+}
+
 hipError_t hipDeviceSynchronize() {
   HIP_INIT_API(hipDeviceSynchronize);
   CHECK_SUPPORTED_DURING_CAPTURE();

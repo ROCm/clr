@@ -121,6 +121,9 @@ hipError_t hipDeviceGetP2PAttribute(int* value, hipDeviceP2PAttr attr, int srcDe
 hipError_t hipDeviceGetPCIBusId(char* pciBusId, int len, int device);
 hipError_t hipDeviceGetSharedMemConfig(hipSharedMemConfig* pConfig);
 hipError_t hipDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPriority);
+hipError_t hipDeviceGetTexture1DLinearMaxWidth(size_t* maxWidthInElements,
+                                               const hipChannelFormatDesc* fmtDesc,
+                                               int device);
 hipError_t hipDeviceGetUuid(hipUUID* uuid, hipDevice_t device);
 hipError_t hipDeviceGraphMemTrim(int device);
 hipError_t hipDevicePrimaryCtxGetState(hipDevice_t dev, unsigned int* flags, int* active);
@@ -872,6 +875,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipDeviceGetPCIBusId_fn = hip::hipDeviceGetPCIBusId;
   ptrDispatchTable->hipDeviceGetSharedMemConfig_fn = hip::hipDeviceGetSharedMemConfig;
   ptrDispatchTable->hipDeviceGetStreamPriorityRange_fn = hip::hipDeviceGetStreamPriorityRange;
+  ptrDispatchTable->hipDeviceGetTexture1DLinearMaxWidth_fn = hip::hipDeviceGetTexture1DLinearMaxWidth;
   ptrDispatchTable->hipDeviceGetUuid_fn = hip::hipDeviceGetUuid;
   ptrDispatchTable->hipDeviceGraphMemTrim_fn = hip::hipDeviceGraphMemTrim;
   ptrDispatchTable->hipDevicePrimaryCtxGetState_fn = hip::hipDevicePrimaryCtxGetState;
@@ -1873,6 +1877,7 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 4
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeGetParams_fn, 459)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeSetParams_fn, 460)
 HIP_ENFORCE_ABI(HipDispatchTable, hipExtHostAlloc_fn, 461)
+HIP_ENFORCE_ABI(HipDispatchTable, hipDeviceGetTexture1DLinearMaxWidth_fn, 462)
 
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
@@ -1880,9 +1885,9 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipExtHostAlloc_fn, 461)
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 462)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 463)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 5,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 6,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif

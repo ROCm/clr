@@ -437,6 +437,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipCreateTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDestroyTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDeviceGetCount = HIP_API_ID_NONE,
+  HIP_API_ID_hipDeviceGetTexture1DLinearMaxWidth = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureAlignmentOffset = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
@@ -3977,9 +3978,13 @@ typedef struct hip_api_data_s {
 };
 // hipDrvGraphMemcpyNodeGetParams[('hipGraphNode_t', 'hNode'), ('HIP_MEMCPY3D*', 'nodeParams')]
 #define INIT_hipDrvGraphMemcpyNodeGetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDrvGraphMemcpyNodeGetParams.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipDrvGraphMemcpyNodeGetParams.nodeParams = (HIP_MEMCPY3D*)nodeParams; \
 };
 // hipDrvGraphMemcpyNodeSetParams[('hipGraphNode_t', 'hNode'), ('const HIP_MEMCPY3D*', 'nodeParams')]
 #define INIT_hipDrvGraphMemcpyNodeSetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipDrvGraphMemcpyNodeSetParams.hNode = (hipGraphNode_t)hNode; \
+  cb_data.args.hipDrvGraphMemcpyNodeSetParams.nodeParams = (const HIP_MEMCPY3D*)nodeParams; \
 };
 // hipDrvMemcpy2DUnaligned[('const hip_Memcpy2D*', 'pCopy')]
 #define INIT_hipDrvMemcpy2DUnaligned_CB_ARGS_DATA(cb_data) { \
@@ -4455,6 +4460,8 @@ typedef struct hip_api_data_s {
 };
 // hipGraphExecGetFlags[('hipGraphExec_t', 'graphExec'), ('unsigned long long*', 'flags')]
 #define INIT_hipGraphExecGetFlags_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphExecGetFlags.graphExec = (hipGraphExec_t)graphExec; \
+  cb_data.args.hipGraphExecGetFlags.flags = (unsigned long long*)flags; \
 };
 // hipGraphExecHostNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'node'), ('const hipHostNodeParams*', 'pNodeParams')]
 #define INIT_hipGraphExecHostNodeSetParams_CB_ARGS_DATA(cb_data) { \
@@ -4511,6 +4518,9 @@ typedef struct hip_api_data_s {
 };
 // hipGraphExecNodeSetParams[('hipGraphExec_t', 'graphExec'), ('hipGraphNode_t', 'node'), ('hipGraphNodeParams*', 'nodeParams')]
 #define INIT_hipGraphExecNodeSetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphExecNodeSetParams.graphExec = (hipGraphExec_t)graphExec; \
+  cb_data.args.hipGraphExecNodeSetParams.node = (hipGraphNode_t)node; \
+  cb_data.args.hipGraphExecNodeSetParams.nodeParams = (hipGraphNodeParams*)nodeParams; \
 };
 // hipGraphExecUpdate[('hipGraphExec_t', 'hGraphExec'), ('hipGraph_t', 'hGraph'), ('hipGraphNode_t*', 'hErrorNode_out'), ('hipGraphExecUpdateResult*', 'updateResult_out')]
 #define INIT_hipGraphExecUpdate_CB_ARGS_DATA(cb_data) { \
@@ -4707,6 +4717,8 @@ typedef struct hip_api_data_s {
 };
 // hipGraphNodeSetParams[('hipGraphNode_t', 'node'), ('hipGraphNodeParams*', 'nodeParams')]
 #define INIT_hipGraphNodeSetParams_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGraphNodeSetParams.node = (hipGraphNode_t)node; \
+  cb_data.args.hipGraphNodeSetParams.nodeParams = (hipGraphNodeParams*)nodeParams; \
 };
 // hipGraphReleaseUserObject[('hipGraph_t', 'graph'), ('hipUserObject_t', 'object'), ('unsigned int', 'count')]
 #define INIT_hipGraphReleaseUserObject_CB_ARGS_DATA(cb_data) { \
@@ -6031,6 +6043,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipDestroyTextureObject_CB_ARGS_DATA(cb_data) {};
 // hipDeviceGetCount()
 #define INIT_hipDeviceGetCount_CB_ARGS_DATA(cb_data) {};
+// hipDeviceGetTexture1DLinearMaxWidth()
+#define INIT_hipDeviceGetTexture1DLinearMaxWidth_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureAlignmentOffset()
 #define INIT_hipGetTextureAlignmentOffset_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureObjectResourceDesc()
