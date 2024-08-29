@@ -1439,6 +1439,8 @@ void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
     //! That means the app didn't call clFlush/clFinish for very long time.
     // Reset the signal for the barrier packet
     hsa_signal_silent_store_relaxed(kernarg_pool_signal_[active_chunk_], kInitSignalValueOne);
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Issue barrier to flush kernel arg chunk %d",
+            active_chunk_);
     // Dispatch a barrier packet into the queue
     dispatchBarrierPacket(kBarrierPacketHeader, true, kernarg_pool_signal_[active_chunk_]);
     // Get the next chunk
@@ -3265,7 +3267,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                                gpuKernel.KernargSegmentAlignment());
         currCmd_->SetKernelName(gpuKernel.name());
       } else {
-
+        ClPrint(amd::LOG_INFO, amd::LOG_KERN, "KernargSegmentByteSize = %lu "
+                "KernargSegmentAlignment = %lu", gpuKernel.KernargSegmentByteSize(),
+                gpuKernel.KernargSegmentAlignment());
         argBuffer = reinterpret_cast<address>(
             allocKernArg(gpuKernel.KernargSegmentByteSize(),
                          gpuKernel.KernargSegmentAlignment()));
