@@ -276,7 +276,7 @@ float atomicAdd_system(float* address, float val) {
 }
 
 #if !defined(__HIPCC_RTC__)
-DEPRECATED("use atomicAdd instead")
+HIP_DEPRECATED("use atomicAdd instead")
 #endif // !defined(__HIPCC_RTC__)
 __device__
 inline
@@ -1392,7 +1392,7 @@ float atomicAdd(float* address, float val)
 }
 
 #if !defined(__HIPCC_RTC__)
-DEPRECATED("use atomicAdd instead")
+HIP_DEPRECATED("use atomicAdd instead")
 #endif // !defined(__HIPCC_RTC__)
 __device__
 inline
