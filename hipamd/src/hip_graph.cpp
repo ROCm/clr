@@ -2758,8 +2758,13 @@ hipError_t hipUserObjectRelease(hipUserObject_t object, unsigned int count) {
     HIP_RETURN(hipSuccess);
   }
   //! If all the counts are gone not longer need the obj in the list
+  //! If user object is about to be deleted, It's reference needs to be
+  //! removed from graph's user object list.
   if (userObject->referenceCount() == count) {
     hip::UserObject::removeUSerObj(userObject);
+    for (auto& g : userObject->owning_graphs_) {
+      g->RemoveUserObjGraph(userObject);
+    }
   }
   userObject->decreaseRefCount(count);
   HIP_RETURN(hipSuccess);
@@ -2796,11 +2801,10 @@ hipError_t hipGraphRetainUserObject(hipGraph_t graph, hipUserObject_t object, un
     if (status != hipSuccess) {
       HIP_RETURN(status);
     }
-  } else {
-    //! if flag is UserObjMove delete userobj from list
-    hip::UserObject::removeUSerObj(userObject);
   }
   g->addUserObjGraph(userObject);
+  userObject->owning_graphs_.insert(g);
+  g->IncrementGraphUserObjRefCount(userObject, count);
   HIP_RETURN(status);
 }
 
@@ -2814,11 +2818,14 @@ hipError_t hipGraphReleaseUserObject(hipGraph_t graph, hipUserObject_t object, u
   if (!g->isUserObjGraphValid(userObject) || userObject->referenceCount() < count) {
     HIP_RETURN(hipSuccess);
   }
+  g->DecrementGraphUserObjRefCount(userObject, count);
   //! Obj is being destroyed
   unsigned int releaseCount =
       (userObject->referenceCount() < count) ? userObject->referenceCount() : count;
   if (userObject->referenceCount() == releaseCount) {
     g->RemoveUserObjGraph(userObject);
+    //! If user object is about to be deleted, Its owner needs to be updated.
+    userObject->owning_graphs_.erase(g);
   }
   hipError_t status = hip::hipUserObjectRelease(object, count);
   HIP_RETURN(status);

@@ -58,7 +58,10 @@ struct UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
   static std::unordered_set<UserObject*> ObjectSet_;
   static amd::Monitor UserObjectLock_;
-
+  // Graphs owns this user object.
+  // In case if User object is about to be deleted (last release()), Pointer refering to it
+  // should be cleared from Graph's list of user object.
+  std::unordered_set<Graph*> owning_graphs_;
  public:
   UserObject(UserCallbackDestructor callback, void* data, unsigned int flags)
       : ReferenceCountedObject(), callback_(callback), data_(data), flags_(flags) {
@@ -72,6 +75,7 @@ struct UserObject : public amd::ReferenceCountedObject {
       callback_(data_);
     }
     ObjectSet_.erase(this);
+    owning_graphs_.clear();
   }
 
   void increaseRefCount(const unsigned int refCount) {
@@ -478,7 +482,8 @@ struct Graph {
   const Graph* pOriginalGraph_ = nullptr;
   static std::unordered_set<Graph*> graphSet_;
   static amd::Monitor graphSetLock_;
-  std::unordered_set<UserObject*> graphUserObj_;
+  //!<graphUserObj_.second stores refcount owned by this graph for user object,
+  std::unordered_map<UserObject*, int> graphUserObj_;
   unsigned int id_;
   static int nextID;
   int max_streams_ = 0;       //!< Maximum number of extra streams used in the graph launch
@@ -508,16 +513,38 @@ struct Graph {
     leafs_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
     wait_order_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
   }
-
+  void RemoveUserObjectFromOwingGraphs(UserObject* uObj) {
+    for (auto& g : uObj->owning_graphs_) {
+      if (g != this) {
+        g->RemoveUserObjGraph(uObj);
+      }
+    }
+  }
   ~Graph() {
     for (auto node : vertices_) {
       delete node;
     }
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.erase(this);
-    for (auto userobj : graphUserObj_) {
-      userobj->release();
+    for (auto& userobj : graphUserObj_) {
+      // Graph is destorying so remove it from user object's graph list.
+      userobj.first->owning_graphs_.erase(this);
+      // Bypass if graph owned refcount is more then actual refcount of user object
+      if (userobj.second > userobj.first->referenceCount()) {
+        continue;
+      }
+      // User object is about to die and hence remove it.
+      if (userobj.first->referenceCount() == userobj.second) {
+        RemoveUserObjectFromOwingGraphs(userobj.first);
+      }
+      // Release user object = # of times it is owned by this graph.
+      for (int i = 0; i < userobj.second; i++) {
+        if (userobj.first->referenceCount() >= 1) {
+          userobj.first->release();
+        }
+      }
     }
+    graphUserObj_.clear();
     if (mem_pool_ != nullptr) {
       mem_pool_->release();
     }
@@ -558,7 +585,23 @@ struct Graph {
   // Add user obj resource to graph
   void addUserObjGraph(UserObject* pUserObj) {
     amd::ScopedLock lock(graphSetLock_);
-    graphUserObj_.insert(pUserObj);
+    graphUserObj_.insert({pUserObj, 0});
+  }
+  // Increments graphUserObj_.second.
+  void IncrementGraphUserObjRefCount(UserObject* pUserObj, unsigned int count) {
+    amd::ScopedLock lock(graphSetLock_);
+    auto it = graphUserObj_.find(pUserObj);
+    if (it != graphUserObj_.end()) {
+      it->second += count;
+    }
+  }
+  // Decrements graphUserObj_.second.
+  void DecrementGraphUserObjRefCount(UserObject* pUserObj, unsigned int count) {
+    amd::ScopedLock lock(graphSetLock_);
+    auto it = graphUserObj_.find(pUserObj);
+    if (it != graphUserObj_.end()) {
+      it->second -= count;
+    }
   }
   // Check user obj resource from graph is valid
   bool isUserObjGraphValid(UserObject* pUserObj) {
