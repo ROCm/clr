@@ -357,9 +357,12 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     }
     clonedNodes[node]->SetDependencies(clonedDependencies);
   }
-  for (auto userObj : graphUserObj_) {
-    userObj->retain();
+  for (auto& userObj : graphUserObj_) {
+    userObj.first->retain();
     newGraph->graphUserObj_.insert(userObj);
+    // Clone graph should have its separate graph owned ref count = 1
+    newGraph->graphUserObj_[userObj.first] = 1;
+    userObj.first->owning_graphs_.insert(newGraph);
   }
   // Clone the root nodes to the new graph
   if (roots_.size() > 0) {
