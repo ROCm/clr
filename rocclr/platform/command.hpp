@@ -260,7 +260,7 @@ class GraphKernelArgManager {
  */
 class Command : public Event {
  private:
-  static SysmemPool<ComputeCommand> command_pool_;  //!< Pool of active commands
+  static SysmemPool<ComputeCommand> *command_pool_;  //!< Pool of active commands
   HostQueue* queue_;               //!< The command queue this command is enqueue into
   Command* next_;                  //!< Next GPU command in the queue list
   Command* batch_head_ = nullptr;  //!< The head of the batch commands
@@ -310,6 +310,12 @@ class Command : public Event {
 
  public:
   //! Returns AQL buffer state
+  static void ReleaseSysmemPool() {
+    if (command_pool_ != nullptr) {
+      delete command_pool_;
+      command_pool_ = nullptr;
+    }
+  }
   bool getCapturingState() const { return capturing_; }
 
   //! Sets AQL capture state, aql packet to capture and where to copy kernArgs

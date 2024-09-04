@@ -97,6 +97,7 @@ void Runtime::tearDown() {
   if (outFile != stderr && outFile != nullptr) {
     fclose(outFile);
   }
+  Command::ReleaseSysmemPool();
   initialized_ = false;
 }
 
