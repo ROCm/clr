@@ -318,16 +318,15 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
   }
 }
 
-SysmemPool<ComputeCommand> Command::command_pool_ ROCCLR_INIT_PRIORITY(101);
-
+SysmemPool<ComputeCommand>* Command::command_pool_ = new SysmemPool<ComputeCommand>;
 // ================================================================================================
 void Command::operator delete(void* ptr) {
-  command_pool_.Free(ptr);
+  return command_pool_->Free(ptr);
 }
 
 // ================================================================================================
 void* Command::operator new(size_t size) {
-  return command_pool_.Alloc(size);
+  return command_pool_->Alloc(size);
 }
 
 // ================================================================================================
