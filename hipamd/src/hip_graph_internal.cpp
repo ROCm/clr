@@ -357,7 +357,9 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     newGraph->graphUserObj_.insert(userObj);
   }
   // Clone the root nodes to the new graph
-  memcpy(&newGraph->roots_[0], &roots_[0], sizeof(Node) * roots_.size());
+  if (roots_.size() > 0) {
+    memcpy(&newGraph->roots_[0], &roots_[0], sizeof(Node) * roots_.size());
+  }
   return newGraph;
 }
 
