@@ -186,9 +186,11 @@ void Timestamp::checkGpuTime() {
 bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   Timestamp* ts = reinterpret_cast<Timestamp*>(arg);
 
-  amd::Thread* thread = amd::Thread::current();
-  if (!(thread != nullptr ||
-      ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
+  static std::shared_ptr<amd::Thread> thread;
+  if (amd::Thread::current() == nullptr) {
+    thread = std::make_shared<amd::HostThread>();
+  }
+  if (thread.get() != amd::Thread::current()) {
     return false;
   }
 
