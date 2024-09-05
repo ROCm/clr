@@ -21,6 +21,7 @@
 #include "platform/runtime.hpp"
 #include "platform/program.hpp"
 #include "platform/ndrange.hpp"
+#include "platform/kernel_init.hpp"
 #include "devkernel.hpp"
 #include "utils/macros.hpp"
 #include "utils/options.hpp"
@@ -84,8 +85,8 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  auto itArgField = ArgFieldMap.find(buf);
-  if (itArgField == ArgFieldMap.end()) {
+  ArgField itArgField = amd::Kernel::FindValue<ArgField>(amd::Kernel::kArgFieldMap, buf);
+  if (itArgField == ArgField::MaxSize) {
     return AMD_COMGR_STATUS_ERROR;
   }
 
@@ -94,7 +95,7 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
 
   amd::KernelParameterDescriptor* lcArg = static_cast<amd::KernelParameterDescriptor*>(data);
 
-  switch (itArgField->second) {
+  switch (itArgField) {
     case ArgField::Name:
       lcArg->name_ = buf;
       break;
@@ -109,15 +110,17 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
       break;
     case ArgField::ValueKind:
       {
-        auto itValueKind = ArgValueKind.find(buf);
-        if (itValueKind == ArgValueKind.end()) {
+        amd::KernelParameterDescriptor::Desc itValueKind
+          = amd::Kernel::FindValue<amd::KernelParameterDescriptor::Desc>
+            (amd::Kernel::kArgValueKind, buf);
+        if (itValueKind == amd::KernelParameterDescriptor::Desc::MaxSize) {
           lcArg->info_.hidden_ = true;
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->info_.oclObject_ = itValueKind->second;
+        lcArg->info_.oclObject_ = itValueKind;
         switch (lcArg->info_.oclObject_) {
           case amd::KernelParameterDescriptor::MemoryObject:
-            if (itValueKind->first.compare("DynamicSharedPointer") == 0) {
+            if (buf.compare("DynamicSharedPointer") == 0) {
               lcArg->info_.shared_ = true;
             }
             break;
@@ -141,28 +144,28 @@ static amd_comgr_status_t populateArgs(const amd_comgr_metadata_node_t key,
       break;
     case ArgField::AddrSpaceQual:
       {
-        auto itAddrSpaceQual = ArgAddrSpaceQual.find(buf);
-        if (itAddrSpaceQual == ArgAddrSpaceQual.end()) {
+        cl_int itAddrSpaceQual = amd::Kernel::FindValue(amd::Kernel::kArgAddrSpaceQual, buf);
+        if (itAddrSpaceQual == static_cast<cl_int>(0)) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->addressQualifier_ = itAddrSpaceQual->second;
+        lcArg->addressQualifier_ = itAddrSpaceQual;
       }
       break;
     case ArgField::AccQual:
       {
-        auto itAccQual = ArgAccQual.find(buf);
-        if (itAccQual == ArgAccQual.end()) {
+        cl_int itAccQual = amd::Kernel::FindValue(amd::Kernel::kArgAccQual, buf);
+        if (itAccQual == static_cast<cl_int>(0)) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->accessQualifier_ = itAccQual->second;
+        lcArg->accessQualifier_ = itAccQual;
         lcArg->info_.readOnly_ =
             (lcArg->accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
       }
       break;
     case ArgField::ActualAccQual:
       {
-        auto itAccQual = ArgAccQual.find(buf);
-        if (itAccQual == ArgAccQual.end()) {
+        cl_int itAccQual = amd::Kernel::FindValue(amd::Kernel::kArgAccQual, buf);
+        if (itAccQual == static_cast<cl_int>(0)) {
             return AMD_COMGR_STATUS_ERROR;
         }
         // lcArg->mActualAccQual = itAccQual->second;
@@ -204,13 +207,13 @@ static amd_comgr_status_t populateAttrs(const amd_comgr_metadata_node_t key,
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  auto itAttrField = AttrFieldMap.find(buf);
-  if (itAttrField == AttrFieldMap.end()) {
+  AttrField itAttrField = amd::Kernel::FindValue<AttrField>(amd::Kernel::kAttrFieldMap, buf);
+  if (itAttrField == AttrField::MaxSize) {
     return AMD_COMGR_STATUS_ERROR;
   }
 
   device::Kernel* kernel = static_cast<device::Kernel*>(data);
-  switch (itAttrField->second) {
+  switch (itAttrField) {
     case AttrField::ReqdWorkGroupSize:
       {
         status = amd::Comgr::get_metadata_list_size(value, &size);
@@ -287,8 +290,9 @@ static amd_comgr_status_t populateCodeProps(const amd_comgr_metadata_node_t key,
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  auto itCodePropField = CodePropFieldMap.find(buf);
-  if (itCodePropField == CodePropFieldMap.end()) {
+  CodePropField itCodePropField = amd::Kernel::FindValue<CodePropField>
+                                  (amd::Kernel::kCodePropFieldMap, buf);
+  if (itCodePropField == CodePropField::MaxSize) {
     return AMD_COMGR_STATUS_ERROR;
   }
 
@@ -298,7 +302,7 @@ static amd_comgr_status_t populateCodeProps(const amd_comgr_metadata_node_t key,
   }
 
   device::Kernel*  kernel = static_cast<device::Kernel*>(data);
-  switch (itCodePropField->second) {
+  switch (itCodePropField) {
     case CodePropField::KernargSegmentSize:
       kernel->SetKernargSegmentByteSize(atoi(buf.c_str()));
       break;
@@ -363,8 +367,8 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  auto itArgField = ArgFieldMapV3.find(buf);
-  if (itArgField == ArgFieldMapV3.end()) {
+  ArgField itArgField = amd::Kernel::FindValue<ArgField>(amd::Kernel::kArgFieldMapV3, buf);
+  if (itArgField == ArgField::MaxSize) {
     return AMD_COMGR_STATUS_ERROR;
   }
 
@@ -373,7 +377,7 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
 
   amd::KernelParameterDescriptor* lcArg = static_cast<amd::KernelParameterDescriptor*>(data);
 
-  switch (itArgField->second) {
+  switch (itArgField) {
     case ArgField::Name:
       lcArg->name_ = buf;
       break;
@@ -388,16 +392,18 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
       break;
     case ArgField::ValueKind:
       {
-        auto itValueKind = ArgValueKindV3.find(buf);
-        if (itValueKind == ArgValueKindV3.end()) {
+        amd::KernelParameterDescriptor::Desc itArgValue
+          = amd::Kernel::FindValue<amd::KernelParameterDescriptor::Desc>
+                         (amd::Kernel::kArgValueKindV3, buf);
+        if (itArgValue == amd::KernelParameterDescriptor::MaxSize) {
           LogPrintfError("Unknown Kernel arg metadata: %s", buf.c_str());
           LogError("This may be due to running HIP app that requires a new HIP runtime version");
           LogError("Please update the display driver");
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->info_.oclObject_ = itValueKind->second;
+        lcArg->info_.oclObject_ = itArgValue;
         if (lcArg->info_.oclObject_ == amd::KernelParameterDescriptor::MemoryObject) {
-          if (itValueKind->first.compare("dynamic_shared_pointer") == 0) {
+          if (buf.compare("dynamic_shared_pointer") == 0) {
             lcArg->info_.shared_ = true;
           }
         } else if ((lcArg->info_.oclObject_ >= amd::KernelParameterDescriptor::HiddenNone) &&
@@ -411,20 +417,20 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
       break;
     case ArgField::AddrSpaceQual:
       {
-        auto itAddrSpaceQual = ArgAddrSpaceQualV3.find(buf);
-        if (itAddrSpaceQual == ArgAddrSpaceQualV3.end()) {
+        cl_int itAddrSpaceQual = amd::Kernel::FindValue(amd::Kernel::kArgAddrSpaceQualV3, buf);
+        if (itAddrSpaceQual == static_cast<cl_int>(0)) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->addressQualifier_ = itAddrSpaceQual->second;
+        lcArg->addressQualifier_ = itAddrSpaceQual;
       }
       break;
     case ArgField::AccQual:
       {
-        auto itAccQual = ArgAccQualV3.find(buf);
-        if (itAccQual == ArgAccQualV3.end()) {
+        cl_int itAccQual = amd::Kernel::FindValue(amd::Kernel::kArgAccQualV3, buf);
+        if (itAccQual == static_cast<cl_int>(0)) {
           return AMD_COMGR_STATUS_ERROR;
         }
-        lcArg->accessQualifier_ = itAccQual->second;
+        lcArg->accessQualifier_ = itAccQual;
         if (!lcArg->info_.isReadOnlyByCompiler) {
           lcArg->info_.readOnly_ =
             (lcArg->accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
@@ -433,13 +439,13 @@ static amd_comgr_status_t populateArgsV3(const amd_comgr_metadata_node_t key,
       break;
     case ArgField::ActualAccQual:
       {
-        auto itAccQual = ArgAccQualV3.find(buf);
-        if (itAccQual == ArgAccQualV3.end()) {
+        cl_int itAccQual = amd::Kernel::FindValue(amd::Kernel::kArgAccQualV3, buf);
+        if (itAccQual == static_cast<cl_int>(0)) {
             return AMD_COMGR_STATUS_ERROR;
         }
         lcArg->info_.isReadOnlyByCompiler = true;
         lcArg->info_.readOnly_ =
-          (itAccQual->second == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
+          (itAccQual == CL_KERNEL_ARG_ACCESS_READ_ONLY) ? true : false;
       }
       break;
     case ArgField::IsConst:
@@ -477,13 +483,14 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  auto itKernelField = KernelFieldMapV3.find(buf);
-  if (itKernelField == KernelFieldMapV3.end()) {
+  KernelField itKernelField = amd::Kernel::FindValue<KernelField>
+                              (amd::Kernel::kKernelFieldMapV3, buf);
+  if (itKernelField == KernelField::MaxSize) {
     return AMD_COMGR_STATUS_ERROR;
   }
 
-  if (itKernelField->second != KernelField::ReqdWorkGroupSize &&
-      itKernelField->second != KernelField::WorkGroupSizeHint) {
+  if (itKernelField != KernelField::ReqdWorkGroupSize &&
+      itKernelField != KernelField::WorkGroupSizeHint) {
       status = getMetaBuf(value,&buf);
   }
   if (status != AMD_COMGR_STATUS_SUCCESS) {
@@ -491,7 +498,7 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
   }
 
   device::Kernel* kernel = static_cast<device::Kernel*>(data);
-  switch (itKernelField->second) {
+  switch (itKernelField) {
     case KernelField::ReqdWorkGroupSize:
       status = amd::Comgr::get_metadata_list_size(value, &size);
       if (size == 3 && status == AMD_COMGR_STATUS_SUCCESS) {
