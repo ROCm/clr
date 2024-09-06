@@ -1065,7 +1065,7 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   fence_dirty_ = true;
   auto cache_state = extractAqlBits(packetHeader, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
-  if (!skipSignal) {
+  if (!skipSignal && (signal.handle == 0)) {
     // Get active signal for current dispatch if profiling is necessary
     barrier_packet_.completion_signal =
       Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
@@ -1188,9 +1188,6 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
 
 // ================================================================================================
 void VirtualGPU::ResetQueueStates() {
-  // Release all transfer buffers on this command queue
-  releaseXferWrite();
-
   // Release all memory dependencies
   memoryDependency().clear();
 
@@ -1234,6 +1231,7 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       schedulerSignal_({0}),
       barriers_(*this),
       kernarg_pool_signal_(KernelArgPoolNumSignal),
+      managed_buffer_(*this, ManagedBuffer::kPoolNumSignals * device.settings().stagedXferSize_),
       cuMask_(cuMask),
       priority_(priority),
       copy_command_type_(0),
@@ -1385,7 +1383,75 @@ bool VirtualGPU::create() {
     LogError("Could not create signal for copy queue!");
     return false;
   }
+  // Create managed buffer for staging copies
+  if (!managed_buffer_.Create()) {
+    LogError("Could not create managed buffer for this queue!");
+    return false;
+  }
   return true;
+}
+
+// ================================================================================================
+VirtualGPU::ManagedBuffer::~ManagedBuffer() {
+  for (auto& it : pool_signal_) {
+    if (it.handle != 0) {
+      hsa_signal_destroy(it);
+    }
+  }
+  if (pool_base_ != nullptr) {
+    gpu_.dev().hostFree(pool_base_, pool_size_);
+  }
+}
+
+// ================================================================================================
+bool VirtualGPU::ManagedBuffer::Create() {
+  pool_chunk_end_ = pool_size_ / kPoolNumSignals;
+  active_chunk_ = 0;
+  // Allocate memory for managed buffer
+  pool_base_ = reinterpret_cast<address>(
+    gpu_.dev().hostAlloc(pool_size_, 0, Device::MemorySegment::kNoAtomics));
+  if (pool_base_ == nullptr) {
+    return false;
+  }
+  hsa_agent_t agent = gpu_.dev().getBackendDevice();
+  for (auto& it : pool_signal_) {
+    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 1, &agent, &it)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ================================================================================================
+address VirtualGPU::ManagedBuffer::Acquire(uint32_t size) {
+  auto alignment = gpu_.dev().info().globalMemCacheLineSize_;
+  address result = nullptr;
+  result = amd::alignUp(pool_base_ + pool_cur_offset_, alignment);
+  const size_t pool_new_usage = (result + size) - pool_base_;
+  if (pool_new_usage <= pool_chunk_end_) {
+    pool_cur_offset_ = pool_new_usage;
+    return result;
+  } else {
+    // Reset the signal for the barrier packet
+    hsa_signal_silent_store_relaxed(pool_signal_[active_chunk_], kInitSignalValueOne);
+    // Currently don't skip wait signal check, because SDMA engine cna be used in staging copy
+    constexpr bool kSkipSignal = false;
+    // Dispatch a barrier packet into the queue
+    gpu_.dispatchBarrierPacket(kBarrierPacketHeader, kSkipSignal, pool_signal_[active_chunk_]);
+    // Get the next chunk
+    active_chunk_ = ++active_chunk_ % kPoolNumSignals;
+    // Make sure the new active chunk is free
+    bool test = WaitForSignal(pool_signal_[active_chunk_], gpu_.ActiveWait());
+    assert(test && "Runtime can't fail a wait for chunk!");
+    // Make sure the current offset matches the new chunk to avoid possible overlaps
+    // between chunks and issues during recycle
+    pool_cur_offset_ = (active_chunk_ == 0) ? 0 : pool_chunk_end_;
+    pool_chunk_end_ = pool_cur_offset_ + pool_size_ / kPoolNumSignals;
+    result = amd::alignUp(pool_base_ + pool_cur_offset_, alignment);
+    pool_cur_offset_ = (result + size) - pool_base_;
+  }
+
+  return result;
 }
 
 // ================================================================================================
@@ -3560,28 +3626,6 @@ void VirtualGPU::flush(amd::Command* list, bool wait) {
 
   // Release all pinned memory
   releasePinnedMem();
-}
-
-// ================================================================================================
-void VirtualGPU::addXferWrite(Memory& memory) {
-  //! @note: ROCr backend doesn't have per resource busy tracking, hence runtime has to wait
-  //!        unconditionally, before it can release pinned memory
-  releaseGpuMemoryFence();
-  if (xferWriteBuffers_.size() > 7) {
-    dev().xferWrite().release(*this, *xferWriteBuffers_.front());
-    xferWriteBuffers_.erase(xferWriteBuffers_.begin());
-  }
-
-  // Delay destruction
-  xferWriteBuffers_.push_back(&memory);
-}
-
-// ================================================================================================
-void VirtualGPU::releaseXferWrite() {
-  for (auto& memory : xferWriteBuffers_) {
-    dev().xferWrite().release(*this, *memory);
-  }
-  xferWriteBuffers_.resize(0);
 }
 
 // ================================================================================================

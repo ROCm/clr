@@ -217,11 +217,10 @@ bool DmaBlitManager::readImage(device::Memory& srcMemory, void* dstHost,
 }
 
 // ================================================================================================
-bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, Memory& xferBuf,
+bool DmaBlitManager::writeMemoryStaged(const void* srcHost, Memory& dstMemory, address staging,
                                        size_t origin, size_t& offset, size_t& totalSize,
                                        size_t xferSize) const {
   address dst = dstMemory.getDeviceMemory();
-  address staging = xferBuf.getDeviceMemory();
 
   // Copy data from host to device
   dst += origin + offset;
@@ -308,16 +307,15 @@ bool DmaBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemory,
     }
 
     if (dstSize != 0) {
-      Memory& xferBuf = dev().xferWrite().acquire();
+      address staging = gpu().Staging().Acquire(
+        std::min(dstSize, dev().settings().stagedXferSize_));
 
       // Write memory using a staging resource
-      if (!writeMemoryStaged(srcHost, gpuMem(dstMemory), xferBuf, origin[0], offset, dstSize,
+      if (!writeMemoryStaged(srcHost, gpuMem(dstMemory), staging, origin[0], offset, dstSize,
                              dstSize)) {
         LogError("DmaBlitManager::writeBuffer failed!");
         return false;
       }
-
-      gpu().addXferWrite(xferBuf);
     }
   }
 
@@ -338,8 +336,8 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
                                             copyMetadata);
   } else {
-    Memory& xferBuf = dev().xferWrite().acquire();
-    address staging = xferBuf.getDeviceMemory();
+    address staging = gpu().Staging().Acquire(
+      std::min(size[0], dev().settings().stagedXferSize_));
     address dst = static_cast<roc::Memory&>(dstMemory).getDeviceMemory();
 
     size_t srcOffset;
@@ -358,7 +356,6 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
         }
       }
     }
-    gpu().addXferWrite(xferBuf);
   }
 
   return true;
@@ -780,7 +777,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_t size,
                                    address staging, bool hostToDev) const {
   // Stall GPU, sicne CPU copy is possible
-  gpu().releaseGpuMemoryFence();
+  gpu().releaseGpuMemoryFence(hostToDev);
 
   // No allocation is necessary for Full Profile
   hsa_status_t status;
@@ -826,8 +823,11 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
         return false;
       }
-      gpu().Barriers().WaitCurrent();
       totalSize -= size;
+      if (totalSize > 0) {
+        // Wait if there are extra copies, which don't fit in a single staging buffer
+        gpu().Barriers().WaitCurrent();
+      }
       offset += size;
       continue;
     }
