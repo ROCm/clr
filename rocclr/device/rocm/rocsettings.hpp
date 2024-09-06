@@ -68,7 +68,6 @@ class Settings : public device::Settings {
   uint numWaitEvents_;        //!< The number of wait events for device enqueue
 
   size_t xferBufSize_;        //!< Transfer buffer size for image copy optimization
-  size_t stagedXferSize_;     //!< Staged buffer size
   size_t pinnedXferSize_;     //!< Pinned buffer size for transfer
   size_t pinnedMinXferSize_;  //!< Minimal buffer size for pinned transfer
 

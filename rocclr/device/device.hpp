@@ -707,6 +707,8 @@ class Settings : public amd::HeapObject {
   //! Enable the specified extension
   void enableExtension(uint name) { extensions_ |= static_cast<uint64_t>(1) << name; }
 
+  size_t stagedXferSize_ = 0;     //!< Staged buffer size
+
  private:
   //! Disable copy constructor
   Settings(const Settings&);

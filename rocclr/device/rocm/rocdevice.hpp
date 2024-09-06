@@ -521,9 +521,6 @@ class Device : public NullDevice {
   bool addMapTarget(amd::Memory* memory) const;
 
   //! Returns transfer buffer object
-  XferBuffers& xferWrite() const { return *xferWrite_; }
-
-  //! Returns transfer buffer object
   XferBuffers& xferRead() const { return *xferRead_; }
 
   //! Returns a ROC memory object from AMD memory object
@@ -653,7 +650,6 @@ class Device : public NullDevice {
   VirtualGPU* xferQueue_;  //!< Transfer queue, created on demand
 
   XferBuffers* xferRead_;   //!< Transfer buffers read
-  XferBuffers* xferWrite_;  //!< Transfer buffers write
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode

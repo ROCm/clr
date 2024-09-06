@@ -599,7 +599,9 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
     return hipSuccess;
   } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
              ((srcMemory != nullptr) && (dstMemory == nullptr))) {
-    isHostAsync = false;
+    // Don't wait for unpinned H2D copy if staging is used for copy
+    isHostAsync &= ((srcMemory == nullptr) && (dstMemory != nullptr) && AMD_DIRECT_DISPATCH &&
+      (sizeBytes <= stream.device().settings().stagedXferSize_)) ? true : false;
   } else if (srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) {
     hipMemoryType srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
         srcMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;

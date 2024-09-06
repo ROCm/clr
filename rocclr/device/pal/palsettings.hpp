@@ -98,7 +98,6 @@ class Settings : public device::Settings {
   uint hostMemDirectAccess_;     //!< Enables direct access to the host memory
   uint numScratchWavesPerCu_;    //!< Maximum number of waves when scratch is enabled
   size_t xferBufSize_;           //!< Transfer buffer size for image copy optimization
-  size_t stagedXferSize_;        //!< Staged buffer size
   size_t pinnedXferSize_;        //!< Pinned buffer size for transfer
   size_t pinnedMinXferSize_;     //!< Minimal buffer size for pinned transfer
   size_t cpDmaCopySizeMax_;      //!< Threshold for CP DMA path in copy

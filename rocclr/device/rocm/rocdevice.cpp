@@ -179,7 +179,6 @@ Device::Device(hsa_agent_t bkendDevice)
     , alloc_granularity_(0)
     , xferQueue_(nullptr)
     , xferRead_(nullptr)
-    , xferWrite_(nullptr)
     , freeMem_(0)
     , vgpusAccess_(true) /* Virtual GPU List Ops Lock */
     , hsa_exclusive_gpu_access_(false)
@@ -290,7 +289,6 @@ Device::~Device() {
 
   // Destroy temporary buffers for read/write
   delete xferRead_;
-  delete xferWrite_;
 
   // Destroy transfer queue
   delete xferQueue_;
@@ -823,15 +821,6 @@ bool Device::create() {
   mapCache_->push_back(nullptr);
 
   if (settings().stagedXferSize_ != 0) {
-    // Initialize staged write buffers
-    if (settings().stagedXferWrite_) {
-      xferWrite_ = new XferBuffers(*this, amd::alignUp(settings().stagedXferSize_, 4 * Ki));
-      if ((xferWrite_ == nullptr) || !xferWrite_->create()) {
-        LogError("Couldn't allocate transfer buffer objects for read");
-        return false;
-      }
-    }
-
     // Initialize staged read buffers
     if (settings().stagedXferRead_) {
       xferRead_ = new XferBuffers(*this, amd::alignUp(settings().stagedXferSize_, 4 * Ki));

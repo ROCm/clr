@@ -185,6 +185,31 @@ class Timestamp : public amd::ReferenceCountedObject {
 
 class VirtualGPU : public device::VirtualDevice {
  public:
+  class ManagedBuffer : public amd::EmbeddedObject {
+  public:
+    //! The number of chunks the arg pool will be divided
+    static constexpr uint32_t kPoolNumSignals = 4;
+    ManagedBuffer(VirtualGPU& gpu, uint32_t pool_size)
+      : gpu_(gpu)
+      , pool_size_(pool_size)
+      , pool_signal_(kPoolNumSignals) {}
+    ~ManagedBuffer();
+
+    //! Allocates all necessary resources to manage memory
+    bool Create();
+
+    //! Acquires memory for use on the gpu
+    address Acquire(uint32_t size);
+
+  private:
+    VirtualGPU& gpu_;                 //!< Queue object for ROCm device
+    address   pool_base_ = nullptr;   //!< Memory pool base address
+    uint32_t  pool_size_;             //!< Memory pool base size
+    uint32_t  pool_chunk_end_ = 0;    //!< The end offset of the current chunk
+    uint32_t  active_chunk_ = 0;      //!< The index of the current active chunk
+    uint32_t  pool_cur_offset_ = 0;   //!< Current active offset for update
+    std::vector<hsa_signal_t> pool_signal_; //!< Pool of HSA signals to manage multiple chunks
+  };
   class MemoryDependency : public amd::EmbeddedObject {
    public:
     //! Default constructor
@@ -386,11 +411,8 @@ class VirtualGPU : public device::VirtualDevice {
                          std::vector<device::Memory*>& wrtBackImageBuffer //!< Images for writeback
                          );
 
-  //! Adds a stage write buffer into a list
-  void addXferWrite(Memory& memory);
-
-  //! Releases stage write buffers
-  void releaseXferWrite();
+  //! Returns a managed buffer for staging copies
+  ManagedBuffer& Staging() { return managed_buffer_; }
 
   //! Adds a pinned memory object into a map
   void addPinnedMem(amd::Memory* mem);
@@ -422,6 +444,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
+
   // } roc OpenCL integration
  private:
   //! Dispatches a barrier with blocking HSA signals
@@ -437,10 +460,10 @@ class VirtualGPU : public device::VirtualDevice {
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking);
 
-  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
-                             hsa_signal_t signal = hsa_signal_t{0});
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
+  void dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal = false,
+                             hsa_signal_t signal = hsa_signal_t{0});
   void dispatchBarrierValuePacket(uint16_t packetHeader,
                                   bool resolveDepSignal = false,
                                   hsa_signal_t signal = hsa_signal_t{0},
@@ -499,7 +522,6 @@ class VirtualGPU : public device::VirtualDevice {
   //! Resets the current queue state. Note: should be called after AQL queue becomes idle
   void ResetQueueStates();
 
-  std::vector<Memory*> xferWriteBuffers_;  //!< Stage write buffers
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
   //! Queue state flags
@@ -548,6 +570,8 @@ class VirtualGPU : public device::VirtualDevice {
   uint32_t  kernarg_pool_cur_offset_;
   std::vector<hsa_signal_t> kernarg_pool_signal_; //!< Pool of HSA signals to manage
                                                   //!< multiple chunks
+
+  ManagedBuffer managed_buffer_;  //!< Memory manager for staging copies
 
   friend class Timestamp;
 

@@ -261,7 +261,7 @@ class DmaBlitManager : public device::HostBlitManager {
   //! Write into video memory, using a staged buffer
   bool writeMemoryStaged(const void* srcHost,  //!< Source host memory
                          Memory& dstMemory,    //!< Destination memory object
-                         Memory& xferBuf,      //!< Staged buffer for write
+                         address staging,      //!< Staged buffer for write
                          size_t origin,        //!< Original offset in the destination memory
                          size_t& offset,       //!< Offset for the current copy pointer
                          size_t& totalSize,    //!< Total size for the copy region
