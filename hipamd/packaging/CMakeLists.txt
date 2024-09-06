@@ -146,12 +146,9 @@ if(DOXYGEN_EXE)
 endif()
 #End doc files install
 
-
 ##################################
 # Packaging steps COMMON Variables
 ##################################
-set(CPACK_SET_DESTDIR TRUE)
-
 set(CPACK_PACKAGE_VENDOR "Advanced Micro Devices, Inc.")
 set(CPACK_PACKAGE_CONTACT "HIP Support <hip.support@amd.com>")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "HIP:Heterogenous-computing Interface for Portability")
