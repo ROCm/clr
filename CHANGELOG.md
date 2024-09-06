@@ -21,6 +21,10 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipDrvGraphExecMemsetNodeSetParams`  sets the parameters for a memset node in the given graphExec.
     - `hipExtHostAlloc` preserves the functionality of `hipHostMalloc`.
 
+* Deprecated HIP APIs
+    - `hipHostMalloc` to be replaced by `hipExtHostAlloc`.
+    - `hipHostFree` to be replaced by `hipFreeHost`.
+
 ### Optimizations
 
 ### Resolved issues
