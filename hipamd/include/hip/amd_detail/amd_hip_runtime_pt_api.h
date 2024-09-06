@@ -108,30 +108,37 @@ hipError_t hipMemcpy3D_spt(const struct hipMemcpy3DParms* p);
 
 hipError_t hipMemset_spt(void* dst, int value, size_t sizeBytes);
 
-hipError_t hipMemsetAsync_spt(void* dst, int value, size_t sizeBytes, hipStream_t stream);
+hipError_t hipMemsetAsync_spt(void* dst, int value, size_t sizeBytes,
+                                            hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemset2D_spt(void* dst, size_t pitch, int value, size_t width, size_t height);
 
 hipError_t hipMemset2DAsync_spt(void* dst, size_t pitch, int value,
-                            size_t width, size_t height, hipStream_t stream);
+                            size_t width, size_t height,
+                            hipStream_t stream __dparm(hipStreamPerThread));
 
-hipError_t hipMemset3DAsync_spt(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent, hipStream_t stream);
+hipError_t hipMemset3DAsync_spt(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent,
+                                                hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemset3D_spt(hipPitchedPtr pitchedDevPtr, int  value, hipExtent extent );
 
 hipError_t hipMemcpyAsync_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind,
-                          hipStream_t stream);
+                          hipStream_t stream __dparm(hipStreamPerThread));
 
-hipError_t hipMemcpy3DAsync_spt(const hipMemcpy3DParms* p, hipStream_t stream);
+hipError_t hipMemcpy3DAsync_spt(const hipMemcpy3DParms* p,
+                                hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemcpy2DAsync_spt(void* dst, size_t dpitch, const void* src, size_t spitch, size_t width,
-                            size_t height, hipMemcpyKind kind, hipStream_t stream);
+                            size_t height, hipMemcpyKind kind,
+                            hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemcpyFromSymbolAsync_spt(void* dst, const void* symbol, size_t sizeBytes,
-                                    size_t offset, hipMemcpyKind kind, hipStream_t stream);
+                                    size_t offset, hipMemcpyKind kind,
+                                    hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemcpyToSymbolAsync_spt(const void* symbol, const void* src, size_t sizeBytes,
-                                  size_t offset, hipMemcpyKind kind, hipStream_t stream);
+                                  size_t offset, hipMemcpyKind kind,
+                                  hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemcpyFromArray_spt(void* dst, hipArray_const_t src, size_t wOffsetSrc, size_t hOffset,
                                   size_t count, hipMemcpyKind kind);
@@ -141,11 +148,12 @@ hipError_t hipMemcpy2DToArray_spt(hipArray_t dst, size_t wOffset, size_t hOffset
 
 hipError_t hipMemcpy2DFromArrayAsync_spt(void* dst, size_t dpitch, hipArray_const_t src,
                                   size_t wOffsetSrc, size_t hOffsetSrc, size_t width, size_t height,
-                                  hipMemcpyKind kind, hipStream_t stream);
+                                  hipMemcpyKind kind,
+                                  hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipMemcpy2DToArrayAsync_spt(hipArray_t dst, size_t wOffset, size_t hOffset, const void* src,
                                   size_t spitch, size_t width, size_t height, hipMemcpyKind kind,
-                                  hipStream_t stream);
+                                  hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipStreamQuery_spt(hipStream_t stream);
 
@@ -159,21 +167,19 @@ hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags);
 
 hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback, void* userData,
                                 unsigned int flags);
-#ifdef __cplusplus
-hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream = NULL);
-#else
-hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream);
-#endif
+
+hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipLaunchCooperativeKernel_spt(const void* f,
                                       dim3 gridDim, dim3 blockDim,
-                                      void **kernelParams, uint32_t sharedMemBytes, hipStream_t hStream);
+                                      void **kernelParams, uint32_t sharedMemBytes,
+                                      hipStream_t hStream __dparm(hipStreamPerThread));
 
 hipError_t hipLaunchKernel_spt(const void* function_address,
                            dim3 numBlocks,
                            dim3 dimBlocks,
                            void** args,
-                           size_t sharedMemBytes, hipStream_t stream);
+                           size_t sharedMemBytes, hipStream_t stream __dparm(hipStreamPerThread));
 
 hipError_t hipGraphLaunch_spt(hipGraphExec_t graphExec, hipStream_t stream);
 hipError_t hipStreamBeginCapture_spt(hipStream_t stream, hipStreamCaptureMode mode);
