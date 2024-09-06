@@ -619,6 +619,13 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
       return hipErrorInvalidDeviceFunction;
     }
   }
+
+  constexpr auto gridDimYZmax = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
+  const auto& isa = g_devices[deviceId]->devices()[0]->isa().versionMajor();
+  if (isa >= 12 && (gridDim.y > gridDimYZmax || gridDim.z > gridDimYZmax)) {
+    return hipErrorInvalidConfiguration;
+  }
+
   size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
   size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;
