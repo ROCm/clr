@@ -267,6 +267,9 @@ class HostQueue : public CommandQueue {
     // Release the last command in the batch
     if (lastEnqueueCommand_ != nullptr) {
       lastEnqueueCommand_->release();
+    } else {
+      // The queue becomes active. Add it to the set of activeQueues.
+      device_.addToActiveQueues(this);
     }
 
     // Extra retain for the last command

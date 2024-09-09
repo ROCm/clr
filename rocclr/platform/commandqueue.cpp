@@ -69,6 +69,7 @@ bool HostQueue::terminate() {
         // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
         // after lastCommand->awaitCompletion() is called.
         if (lastEnqueueCommand_ != nullptr) {
+          device_.removeFromActiveQueues(this);
           lastEnqueueCommand_ ->release(); // lastEnqueueCommand_ should be a marker
           lastEnqueueCommand_ = nullptr;
         }
@@ -162,6 +163,7 @@ void HostQueue::finish(bool cpu_wait) {
       // Runtime can clear the last command only if no other submissions occured
       // during finish()
       if (command == lastEnqueueCommand_) {
+        device_.removeFromActiveQueues(this);
         lastEnqueueCommand_->release();
         lastEnqueueCommand_ = nullptr;
       }
@@ -278,6 +280,9 @@ void HostQueue::append(Command& command) {
 
   if (prevLastEnqueueCommand != nullptr) {
     prevLastEnqueueCommand->release();
+  } else {
+    // The queue becomes active. Add it to the set of activeQueues.
+    device_.addToActiveQueues(this);
   }
 }
 

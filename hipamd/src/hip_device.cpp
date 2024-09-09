@@ -185,10 +185,9 @@ void Device::WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stre
       waitForStream(null_stream_);
     }
   } else {
-    amd::ScopedLock lock(streamSetLock);
-
-    for (const auto& active_stream : streamSet) {
-      // If it's the current device
+    auto activeQueues = blocking_stream->device().getActiveQueues();
+    for (const auto& command : activeQueues) {
+      hip::Stream* active_stream = static_cast<hip::Stream*>(command);
       if (// Make sure it's a default stream
         ((active_stream->Flags() & hipStreamNonBlocking) == 0) &&
         // and it's not the current stream
