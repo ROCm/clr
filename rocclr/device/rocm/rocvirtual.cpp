@@ -1545,7 +1545,9 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * and then calls start() to get the current host timestamp.
 */
 void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
-  if (command.profilingInfo().enabled_) {
+  // Disable profiling when command is being captured to prevent memory leak from created timestamp_
+  // which won't get freed, since the command is not being executed until graph launch
+  if (!command.getPktCapturingState() && command.profilingInfo().enabled_) {
     if (timestamp_ != nullptr) {
       LogWarning("Trying to create a second timestamp in VirtualGPU. \
                   This could have unintended consequences.");
@@ -1581,7 +1583,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
       }
     }
   }
-  if (command.getCapturingState()) {
+  if (command.getPktCapturingState()) {
     currCmd_ = &command;
   }
 }
@@ -1592,7 +1594,7 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
 * current host timestamp if no signal is available.
 */
 void VirtualGPU::profilingEnd(amd::Command& command) {
-  if (command.profilingInfo().enabled_) {
+  if (!command.getPktCapturingState() && command.profilingInfo().enabled_) {
     if (timestamp_->HwProfiling() == false) {
       timestamp_->end();
     }
@@ -3111,7 +3113,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-  bool isGraphCapture = currCmd_ != nullptr && currCmd_->getCapturingState();
+  bool isGraphCapture = currCmd_ != nullptr && currCmd_->getPktCapturingState();
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
@@ -3424,9 +3426,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     if (isGraphCapture) {
       // Dispatch the packet
       if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,
-                        (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
-                        GPU_FLUSH_ON_EXECUTION, currCmd_->getCapturingState(),
-                        currCmd_->getAqlPacket())) {
+                             (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
+                             GPU_FLUSH_ON_EXECUTION, currCmd_->getPktCapturingState(),
+                             currCmd_->getAqlPacket())) {
         return false;
       }
     } else {

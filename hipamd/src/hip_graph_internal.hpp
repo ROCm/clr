@@ -250,7 +250,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
       node->RemoveEdge(this);
     }
     for (auto packet : gpuPackets_) {
-      delete packet;
+      delete[] packet;
     }
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.erase(this);
@@ -275,7 +275,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     hipError_t status = CreateCommand(capture_stream);
     gpuPackets_.clear();
     for (auto& command : commands_) {
-      command->setCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
+      command->setPktCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
       // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
       // The packet is stored in gpuPacket_ and submitted during graph launch.
       command->submit(*(command->queue())->vdev());
