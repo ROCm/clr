@@ -69,7 +69,7 @@ endif()
 # If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
 # of all the devices present in the machine
 if(NOT AMDGPU_TARGETS)
-  if(BUILD_SHARED_LIBS)
+  if(@BUILD_SHARED_LIBS@)
     if (WIN32)
       set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
     else()
@@ -107,7 +107,7 @@ if(NOT AMDGPU_TARGETS)
   endif()
 endif()
 
-if (NOT AMDGPU_TARGETS AND NOT BUILD_SHARED_LIBS)
+if (NOT AMDGPU_TARGETS AND NOT @BUILD_SHARED_LIBS@)
   # The default architecture is gfx942 for static build
   set(AMDGPU_TARGETS "gfx942" CACHE STRING "AMD GPU targets to compile for")
 endif()
