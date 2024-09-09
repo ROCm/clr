@@ -120,7 +120,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
       // if requested memory is greater than available then exit the loop
       dev().globalFreeMemory(freeMemory);
 
-      const Pal::GpuMemoryHeapProperties invisibleHeap = dev().GetGpuHeapInvisible();
+      const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
       if (dev().settings().apuSystem_ && (size() > (invisibleHeap.logicalSize * 2))) {
         memType = RemoteUSWC;
         break;
