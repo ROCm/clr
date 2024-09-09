@@ -2089,6 +2089,24 @@ class Device : public RuntimeObject {
     return false;
   }
 
+  //! Returns the queues that have at least one submitted command
+  std::vector<amd::CommandQueue*> getActiveQueues() {
+     amd::ScopedLock lock(activeQueuesLock_);
+     return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
+  }
+
+  //! Adds the queue to the set of active command queues
+  void addToActiveQueues(amd::CommandQueue* commandQueue) {
+     amd::ScopedLock lock(activeQueuesLock_);
+     activeQueues.insert(commandQueue);
+  }
+
+  //! Removes the queue from the set of active command queues
+  void removeFromActiveQueues(amd::CommandQueue* commandQueue) {
+    amd::ScopedLock lock(activeQueuesLock_);
+    activeQueues.erase(commandQueue);
+  }
+
   // Notifies device about context destroy
   virtual void ContextDestroy() {}
 
@@ -2138,6 +2156,8 @@ class Device : public RuntimeObject {
   uint64_t stack_size_{1024};       //!< Device stack size
   device::Memory* initial_heap_buffer_;   //!< Initial heap buffer
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
+  amd::Monitor activeQueuesLock_ {"Guards access to the activeQueues set"};
+  std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
  private:
   const Isa *isa_;                //!< Device isa
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);
