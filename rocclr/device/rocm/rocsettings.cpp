@@ -256,6 +256,8 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
 
   auto kernelArgImpl = KernelArgImpl::HostKernelArgs;
 
+  hasValidHDPFlush &= DEBUG_CLR_KERNARG_HDP_FLUSH_WA;
+
   if (isXgmi) {
     // The XGMI-connected path does not require the manual memory ordering
     // workarounds that the PCIe connected path requires
@@ -281,6 +283,8 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   if (!flagIsDefault(HIP_FORCE_DEV_KERNARG)) {
     kernel_arg_impl_ = kernelArgImpl & (HIP_FORCE_DEV_KERNARG ? 0xF : 0x0);
   }
+
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Using dev kernel arg wa = %d", kernel_arg_impl_);
 }
 }  // namespace amd::roc
 

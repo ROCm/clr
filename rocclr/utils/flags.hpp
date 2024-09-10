@@ -258,7 +258,9 @@ release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
 release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
-        "Use std::mutext in amd::monotor")                                    \
+        "Use std::mutex in amd::monotor")                                     \
+release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
+        "Toggle kernel arg copy workaround")                                  \
 
 namespace amd {
 
