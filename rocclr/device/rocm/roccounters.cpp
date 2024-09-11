@@ -43,7 +43,12 @@ hsa_status_t PerfCounterCallback(
  Note that some blocks are not defined in cmndefs.h
 */
 
-static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 97> viBlockIdOrcaToRocr = {{
+struct BlockNameIdMapType {
+  hsa_ven_amd_aqlprofile_block_name_t name;
+  int value;
+};
+
+static constexpr BlockNameIdMapType viBlockIdOrcaToRocr[] = {
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0 - 0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1 - 1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2 - 2
@@ -141,12 +146,13 @@ static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>,
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // WD - 94
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CPG - 95
     {HSA_VEN_AMD_AQLPROFILE_BLOCK_NAME_CPC, 0},     // CPC - 96
-}};
+};
 
 // The number of counters per block has been increased for gfx9 but this table may not reflect all
 // of them
 // as compute may not use all of them.
-static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 125> gfx9BlockIdOrcaToRocr = {{
+static constexpr size_t gfx9BlockIdOrcaToRocrSize = 125;
+static constexpr BlockNameIdMapType gfx9BlockIdOrcaToRocr[gfx9BlockIdOrcaToRocrSize] = {
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2
@@ -271,9 +277,10 @@ static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>,
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 5},     // RMI - 122
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 6},     // RMI - 123
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 7},     // RMI - 124
-}};
+};
 
-static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>, 139> gfx10BlockIdOrcaToRocr = {{
+static constexpr size_t gfx10BlockIdOrcaToRocrSize = 139;
+static constexpr BlockNameIdMapType gfx10BlockIdOrcaToRocr[gfx10BlockIdOrcaToRocrSize] = {
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // CB0      - 0
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 1},      // CB1      - 1
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 2},      // CB2      - 2
@@ -413,7 +420,7 @@ static constexpr std::array<std::pair<hsa_ven_amd_aqlprofile_block_name_t, int>,
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // GCR      - 136
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // PH       - 137
     {HSA_VEN_AMD_AQLPROFILE_BLOCKS_NUMBER, 0},      // UTCL1    - 138
-}};
+};
 
   //! Constructor for the ROC PerfCounter object
 PerfCounter::PerfCounter(const Device& device,   //!< A ROC device object
@@ -431,18 +438,18 @@ PerfCounter::PerfCounter(const Device& device,   //!< A ROC device object
   switch (roc_device_.isa().versionMajor()) {
     case (9):
       gfxVersion_ = ROC_GFX9;
-      if (blockIndex < gfx9BlockIdOrcaToRocr.size()) {
+      if (blockIndex < gfx9BlockIdOrcaToRocrSize) {
         auto p = gfx9BlockIdOrcaToRocr[blockIndex];
-        event_.block_name = std::get<0>(p);
-        event_.block_index = std::get<1>(p);
+        event_.block_name = p.name;
+        event_.block_index = p.value;
       }
       break;
     case (10):
       gfxVersion_ = ROC_GFX10;
-      if (blockIndex < gfx10BlockIdOrcaToRocr.size()) {
+      if (blockIndex < gfx10BlockIdOrcaToRocrSize) {
         auto p = gfx10BlockIdOrcaToRocr[blockIndex];
-        event_.block_name = std::get<0>(p);
-        event_.block_index = std::get<1>(p);
+        event_.block_name = p.name;
+        event_.block_index = p.value;
       }
       break;
     default:
