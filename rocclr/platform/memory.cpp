@@ -416,21 +416,21 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
 Memory::~Memory() {
   // For_each destructor callback:
   DestructorCallBackEntry* entry;
-  for (entry = destructorCallbacks_; entry != NULL; entry = entry->next_) {
+  for (entry = destructorCallbacks_; entry != nullptr; entry = entry->next_) {
     // invoke the callback function.
     entry->callback_(const_cast<cl_mem>(as_cl(this)), entry->data_);
   }
 
   // Release the parent.
-  if (NULL != parent_) {
+  if (parent_ != nullptr) {
     // Update cache if runtime destroys a subbuffer
-    if (NULL != parent_->getHostMem() && (vDev_ == NULL)) {
+    if (parent_->getHostMem() != nullptr && (vDev_ == nullptr)) {
       cacheWriteBack(nullptr);
     }
     parent_->removeSubBuffer(this);
   }
 
-  if (NULL != deviceMemories_) {
+  if (deviceMemories_ != nullptr) {
     // Destroy all device memory objects
     for (uint i = 0; i < numDevices_; ++i) {
       delete deviceMemories_[i].value_;
@@ -444,19 +444,20 @@ Memory::~Memory() {
 
   // Destroy the destructor callback entries
   DestructorCallBackEntry* callback = destructorCallbacks_;
-  while (callback != NULL) {
+  while (callback != nullptr) {
     DestructorCallBackEntry* next = callback->next_;
     delete callback;
     callback = next;
   }
 
   // Make sure runtime destroys the parent only after subbuffer destruction
-  if (NULL != parent_) {
+  if (parent_ != nullptr) {
     parent_->release();
   }
   hostMemRef_.deallocateMemory(context_());
-  if (getMemFlags() & CL_MEM_VA_RANGE_AMD) {
-    if (parent_ == nullptr) {
+  if (parent_ == nullptr && (getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    // The mapping may manually be removed prior to objects destruction
+    if (amd::MemObjMap::FindVirtualMemObj(getSvmPtr())) {
       amd::MemObjMap::RemoveVirtualMemObj(getSvmPtr());
     }
     // If runtime executes graph mempool with VM, then VA can be mapped in space

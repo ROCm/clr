@@ -2391,6 +2391,13 @@ class GraphMemAllocNode final : public GraphNode {
 
   virtual ~GraphMemAllocNode() final {
     if (va_ != nullptr) {
+      if (va_->referenceCount() == 1) {
+        auto graph = GetParentGraph();
+        if (graph != nullptr) {
+          graph->FreeAddress(va_->getSvmPtr());
+        }
+      }
+
       va_->release();
     }
   }
@@ -2498,6 +2505,7 @@ class GraphMemFreeNode : public GraphNode {
         hip::setCurrentDevice(device_id_);
       }
       // Free virtual address
+      vaddr_sub_obj->release();
       vaddr_mem_obj->release();
       // Release the allocation back to graph's pool
       graph_->FreeMemory(phys_mem_obj->getSvmPtr(), static_cast<hip::Stream*>(queue()));
