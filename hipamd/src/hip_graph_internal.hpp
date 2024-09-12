@@ -2736,4 +2736,49 @@ class hipGraphExternalSemWaitNode : public GraphNode {
   }
 };
 
+class hipGraphBatchMemOpNode : public GraphNode {
+  hipBatchMemOpNodeParams batchMemOpNodeParam_;
+
+ public:
+  hipGraphBatchMemOpNode(const hipBatchMemOpNodeParams* pNodeParams)
+      : GraphNode(hipGraphNodeTypeBatchMemOp, "solid", "rectangle", "BATCH_MEM_OP_NODE") {
+    batchMemOpNodeParam_ = *pNodeParams;
+  }
+
+  hipGraphBatchMemOpNode(const hipGraphBatchMemOpNode& rhs) : GraphNode(rhs) {
+    batchMemOpNodeParam_ = rhs.batchMemOpNodeParam_;
+  }
+  ~hipGraphBatchMemOpNode() {}
+
+  GraphNode* clone() const {
+    return new hipGraphBatchMemOpNode(static_cast<hipGraphBatchMemOpNode const&>(*this));
+  }
+
+  hipError_t CreateCommand(hip::Stream* stream) {
+    hipError_t status = GraphNode::CreateCommand(stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+    amd::Command::EventWaitList waitList;
+    amd::BatchMemoryOperationCommand* command = new amd::BatchMemoryOperationCommand(
+        *stream, ROCCLR_COMMAND_BATCH_STREAM, batchMemOpNodeParam_.count,
+        batchMemOpNodeParam_.flags, waitList, batchMemOpNodeParam_.paramArray,
+        sizeof(hipStreamBatchMemOpParams));
+    if (command == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+    commands_.emplace_back(command);
+    return hipSuccess;
+  }
+
+  void GetParams(hipBatchMemOpNodeParams* pNodeParams) const {
+    std::memcpy(pNodeParams, &batchMemOpNodeParam_, sizeof(hipBatchMemOpNodeParams));
+  }
+
+  hipError_t SetParams(const hipBatchMemOpNodeParams* pNodeParams) {
+    std::memcpy(&batchMemOpNodeParam_, pNodeParams, sizeof(hipBatchMemOpNodeParams));
+    return hipSuccess;
+  }
+};
+
 }  // namespace hip

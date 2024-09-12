@@ -61,7 +61,7 @@
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 7
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 8
 
 // HIP API interface
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
@@ -723,7 +723,8 @@ typedef hipError_t (*t_hipStreamWriteValue32)(hipStream_t stream, void* ptr, uin
 typedef hipError_t (*t_hipStreamWriteValue64)(hipStream_t stream, void* ptr, uint64_t value,
                                               unsigned int flags);
 typedef hipError_t (*t_hipStreamBatchMemOp)(hipStream_t stream, unsigned int count,
-    hipStreamBatchMemOpParams* paramArray, unsigned int flags);
+                                            hipStreamBatchMemOpParams* paramArray,
+                                            unsigned int flags);
 typedef hipError_t (*t_hipTexObjectCreate)(hipTextureObject_t* pTexObject,
                                            const HIP_RESOURCE_DESC* pResDesc,
                                            const HIP_TEXTURE_DESC* pTexDesc,
@@ -1006,6 +1007,17 @@ typedef hipError_t (*t_hipExtHostAlloc)(void **ptr, size_t size,
 typedef hipError_t (*t_hipDeviceGetTexture1DLinearMaxWidth)(size_t *maxWidthInElements,
                                                             const hipChannelFormatDesc *fmtDesc,
                                                             int device);
+
+typedef hipError_t (*t_hipGraphAddBatchMemOpNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                                  const hipGraphNode_t* dependencies,
+                                                  size_t numDependencies,
+                                                  const hipBatchMemOpNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphBatchMemOpNodeGetParams)(hipGraphNode_t hNode,
+                                                        hipBatchMemOpNodeParams* nodeParams_out);
+typedef hipError_t (*t_hipGraphBatchMemOpNodeSetParams)(hipGraphNode_t hNode,
+                                                        hipBatchMemOpNodeParams* nodeParams);
+typedef hipError_t (*t_hipGraphExecBatchMemOpNodeSetParams)(
+    hipGraphExec_t hGraphExec, hipGraphNode_t hNode, const hipBatchMemOpNodeParams* nodeParams);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1523,6 +1535,12 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7
   t_hipStreamBatchMemOp hipStreamBatchMemOp_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 8
+  t_hipGraphAddBatchMemOpNode hipGraphAddBatchMemOpNode_fn;
+  t_hipGraphBatchMemOpNodeGetParams hipGraphBatchMemOpNodeGetParams_fn;
+  t_hipGraphBatchMemOpNodeSetParams hipGraphBatchMemOpNodeSetParams_fn;
+  t_hipGraphExecBatchMemOpNodeSetParams hipGraphExecBatchMemOpNodeSetParams_fn;
 
   // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7

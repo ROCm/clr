@@ -3427,4 +3427,58 @@ hipError_t hipDrvGraphMemcpyNodeSetParams(hipGraphNode_t hNode, const HIP_MEMCPY
   HIP_RETURN(reinterpret_cast<hip::GraphDrvMemcpyNode*>(hNode)->SetParams(nodeParams));
 }
 
+hipError_t hipGraphAddBatchMemOpNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
+                                     const hipGraphNode_t* dependencies, size_t numDependencies,
+                                     const hipBatchMemOpNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphAddBatchMemOpNode, phGraphNode, hGraph, dependencies, numDependencies,
+               nodeParams);
+  if (phGraphNode == nullptr || hGraph == nullptr ||
+      (numDependencies > 0 && dependencies == nullptr) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* node = new hip::hipGraphBatchMemOpNode(nodeParams);
+  hipError_t status =
+      ihipGraphAddNode(node, reinterpret_cast<hip::Graph*>(hGraph),
+                       reinterpret_cast<hip::GraphNode* const*>(dependencies), numDependencies);
+  *phGraphNode = reinterpret_cast<hipGraphNode_t>(node);
+  HIP_RETURN(status);
+}
+
+hipError_t hipGraphBatchMemOpNodeGetParams(hipGraphNode_t hNode,
+                                           hipBatchMemOpNodeParams* nodeParams_out) {
+  HIP_INIT_API(hipGraphBatchMemOpNodeGetParams, hNode, nodeParams_out);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || nodeParams_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  reinterpret_cast<hip::hipGraphBatchMemOpNode*>(n)->GetParams(nodeParams_out);
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipGraphBatchMemOpNodeSetParams(hipGraphNode_t hNode,
+                                           hipBatchMemOpNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphBatchMemOpNodeSetParams, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  if (!hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphBatchMemOpNode*>(n)->SetParams(nodeParams));
+}
+
+hipError_t hipGraphExecBatchMemOpNodeSetParams(hipGraphExec_t hGraphExec,
+                                               hipGraphNode_t hNode,
+                                               const hipBatchMemOpNodeParams* nodeParams) {
+  HIP_INIT_API(hipGraphExecBatchMemOpNodeSetParams, hGraphExec, hNode, nodeParams);
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
+  hip::GraphExec* graphExec = reinterpret_cast<hip::GraphExec*>(hGraphExec);
+  if (hGraphExec == nullptr || hNode == nullptr || !hip::GraphExec::isGraphExecValid(graphExec) ||
+      !hip::GraphNode::isNodeValid(n) || nodeParams == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(graphExec)->GetClonedNode(n);
+  if (clonedNode == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  HIP_RETURN(reinterpret_cast<hip::hipGraphBatchMemOpNode*>(clonedNode)->SetParams(nodeParams));
+}
 }  // namespace hip
