@@ -273,6 +273,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   void CaptureAndFormPacket(hip::Stream* capture_stream, GraphKernelArgManager* kernArgMgr) {
     hipError_t status = CreateCommand(capture_stream);
+    gpuPackets_.clear();
     for (auto& command : commands_) {
       command->setCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
       // Enqueue command to capture GPU Packet. The packet is not submitted to the device.
