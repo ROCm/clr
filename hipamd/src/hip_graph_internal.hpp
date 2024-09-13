@@ -601,7 +601,8 @@ struct Graph {
   //! Runs all nodes from the execution graph on the assigned streams
   bool RunNodes(
     int32_t base_stream = 0,  //!< The base stream to run the graph on
-    const std::vector<hip::Stream*>* streams = nullptr  //!< Streams to run the graph
+    const std::vector<hip::Stream*>* streams = nullptr,  //!< Streams to run the graph
+    const amd::Command::EventWaitList* parent_waitlist = nullptr //!< Parent Graph waitlist
   );
 
   bool TopologicalOrder(std::vector<Node>& TopoOrder);
