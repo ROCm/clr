@@ -666,24 +666,24 @@ bool Graph::RunOneNode(Node node, bool wait) {
       }
     }
 
+    // Create a wait list from the last launches of all dependencies
+    for (auto dep : wait_order_) {
+      if (dep != nullptr) {
+        // Add all commands in the wait list
+        if (dep->GetType() != hipGraphNodeTypeGraph) {
+          for (auto command : dep->GetCommands()) {
+            waitList.push_back(command);
+          }
+        }
+      }
+    }
     if (node->GetType() == hipGraphNodeTypeGraph) {
       // Process child graph separately, since, there is no connection
       auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
       if (!reinterpret_cast<hip::ChildGraphNode*>(node)->graphCaptureStatus_) {
-        child->RunNodes(node->stream_id_, &streams_);
+        child->RunNodes(node->stream_id_, &streams_, &waitList);
       }
     } else {
-      // Create a wait list from the last launches of all dependencies
-      for (auto dep : wait_order_) {
-        if (dep != nullptr) {
-          // Add all commands in the wait list
-          if (dep->GetType() != hipGraphNodeTypeGraph) {
-            for (auto command : dep->GetCommands()) {
-              waitList.push_back(command);
-            }
-          }
-        }
-      }
       // Assing a stream to the current node
       node->SetStream(streams_);
       // Create the execution commands on the assigned stream
@@ -731,11 +731,21 @@ bool Graph::RunOneNode(Node node, bool wait) {
 // ================================================================================================
 bool Graph::RunNodes(
     int32_t base_stream,
-    const std::vector<hip::Stream*>* parallel_streams) {
+    const std::vector<hip::Stream*>* parallel_streams,
+    const amd::Command::EventWaitList* parent_waitlist) {
+
   if (parallel_streams != nullptr) {
     streams_ = *parallel_streams;
   }
 
+  // childgraph node has dependencies on parent graph nodes from other streams
+  if (parent_waitlist != nullptr) {
+    auto start_marker = new amd::Marker(*streams_[base_stream], true, *parent_waitlist);
+    if (start_marker != nullptr) {
+      start_marker->enqueue();
+      start_marker->release();
+    }
+  }
   amd::Command::EventWaitList wait_list;
   current_id_ = 0;
   memset(&leafs_[0], 0, sizeof(Node) * leafs_.size());
