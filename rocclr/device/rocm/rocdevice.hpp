@@ -484,7 +484,7 @@ class Device : public NullDevice {
 
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
   virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const;
-  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) { return true; }
+  virtual bool ValidateMemAccess(amd::Memory& mem, bool read_write) const { return true; }
 
   virtual bool ExportShareableVMMHandle(amd::Memory& amd_mem_obj, int flags, void* shareableHandle);
 
