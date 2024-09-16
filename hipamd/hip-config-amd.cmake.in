@@ -96,12 +96,12 @@ if(NOT GPU_TARGETS)
 
   if(AMDGPU_ARCH_ERROR)
     message(AUTHOR_WARNING
-        " GPU_TARGETS was not set, and system GPU detection was unsuccsesful.\n \n"
+        " GPU_TARGETS was not set, and system GPU detection was unsuccsessful.\n \n"
         " The amdgpu-arch tool failed:\n"
         " Error: '${AMDGPU_ARCH_ERROR}'\n"
         " Output: '${AMDGPU_ARCH_OUTPUT}'\n \n"
 
-        " As a result, --offload-arch will not be set for subsuqent\n"
+        " As a result, --offload-arch will not be set for subsequent\n"
         " compilations, and the default architecture\n"
         " (gfx906 for dynamic build / gfx942 for static build) will be used\n")
   else()
