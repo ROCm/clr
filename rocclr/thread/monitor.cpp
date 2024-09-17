@@ -29,6 +29,7 @@
 #include <utility>
 
 namespace amd {
+//MonitorBase::~MonitorBase() {}
 
 Monitor::Monitor(const char* name, bool recursive)
     : contendersList_(0), onDeck_(0), waitersList_(NULL), owner_(NULL), recursive_(recursive) {

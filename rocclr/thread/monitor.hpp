@@ -69,7 +69,23 @@ template <class T, class AllocClass = HeapObject> struct SimplyLinkedNode : publ
 
 }  // namespace details
 
-class Monitor : public HeapObject {
+  /*
+
+class MonitorBase {
+public:
+  MonitorBase() {}
+  virtual ~MonitorBase() = 0;
+  virtual bool tryLock() = 0;
+  virtual void lock() = 0;
+  virtual void unlock() = 0;
+  virtual void wait() = 0;
+  virtual void notify() = 0;
+  virtual void notifyAll() = 0;
+};
+  */
+
+namespace legacy_monitor {
+class Monitor: public HeapObject /*, public MonitorBase*/ {
   typedef details::SimplyLinkedNode<Semaphore*, StackObject> LinkedNode;
 
  private:
@@ -151,10 +167,109 @@ class Monitor : public HeapObject {
    */
   void notifyAll();
 
-  //! Return this lock's name.
-  const char* name() const { return name_; }
-};
 
+} // namespace legacy_monitor
+
+namespace mutex_monitor {
+class Monitor final: public HeapObject /*, public MonitorBase*/ {
+ public:
+  explicit Monitor(bool recursive = false)
+      : recursive_(recursive) {
+    if (recursive)
+      new (&rec_mutex_) std::recursive_mutex();
+    else
+      new (&mutex_) std::mutex();
+  }
+
+  ~Monitor() {
+    // Caller must make sure the mutext is unlocked.
+    if (recursive_)
+      rec_mutex_.~recursive_mutex();
+    else
+      mutex_.~mutex();
+  }
+
+  //! Try to acquire the lock, return true if successful, false if failed.
+  bool tryLock() {
+    return recursive_ ? rec_mutex_.try_lock() : mutex_.try_lock();
+  }
+
+  //! Acquire the lock or suspend the calling thread.
+  void lock() {
+    recursive_ ? rec_mutex_.lock() : mutex_.lock();
+  }
+
+  //! Release the lock and wake a single waiting thread if any.
+  void unlock() {
+    recursive_ ? rec_mutex_.unlock() : mutex_.unlock();
+  }
+
+  /*! \brief Give up the lock and go to sleep.
+   *
+   *  Calling wait() causes the current thread to go to sleep until
+   *  another thread calls notify()/notifyAll().
+   *
+   *  \note The monitor must be owned before calling wait().
+   */
+  void wait() {
+    assert(recursive_ == false && "wait() doesn't support recursive mode");
+    // the mutex must be locked by caller
+    std::unique_lock lk(mutex_, std::adopt_lock);
+    cv_.wait(lk);
+    // the mutex is locked again
+    lk.release();  // Release the ownership so that the caller should unlock the mutex
+  }
+
+  /*! \brief Wake up a single thread waiting on this monitor.
+   *
+   *  \note The monitor may or may not be owned before calling notify().
+   */
+  void notify() { cv_.notify_one(); }
+
+  /*! \brief Wake up all threads that are waiting on this monitor.
+   *
+   *  \note The monitor may or may not be owned before calling notifyAll().
+   */
+  void notifyAll() { cv_.notify_all(); }
+
+ private:
+  union {
+    std::mutex mutex_;
+    std::recursive_mutex rec_mutex_;
+  };
+  std::condition_variable cv_; //!< The condition variable for sync on the mutex
+  const bool recursive_; //!< True if this is a recursive mutex, false otherwise.
+};
+} // namespace mutex_monitor
+
+// Monitor API wrapper to user
+class Monitor: public legacy_monitor::Monitor {
+public:
+  explicit Monitor(bool recursive = false) : legacy_monitor::Monitor(recursive) {}
+};
+/*
+class Monitor {
+public:
+  explicit Monitor(bool recursive = false) {
+    if (DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR) {
+      monitor_ = new mutex_monitor::Monitor(recursive);
+    }
+    else {
+      monitor_ = new legacy_monitor::Monitor(recursive);
+    }
+  }
+  inline ~Monitor() { delete monitor_; };
+  inline bool tryLock() { return monitor_->tryLock(); }
+  inline void lock() { monitor_->lock(); }
+  inline void unlock() { monitor_->unlock(); }
+  inline void wait() { monitor_->wait(); }
+  inline void notify() { monitor_->notify(); }
+  inline void notifyAll() { monitor_->notifyAll(); }
+
+private:
+  MonitorBase* monitor_;
+};
+*/
 class ScopedLock : StackObject {
  private:
   Monitor* lock_;
