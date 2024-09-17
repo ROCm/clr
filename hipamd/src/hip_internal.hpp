@@ -32,6 +32,7 @@
 #include <thread>
 #include <stack>
 #include <mutex>
+#include <shared_mutex>
 #include <iterator>
 #ifdef _WIN32
 #include <process.h>
@@ -464,8 +465,10 @@ public:
 
   /// HIP Device class
   class Device : public amd::ReferenceCountedObject {
-    amd::Monitor lock_{"Device lock", true};
-    amd::Monitor streamSetLock{"Guards device stream set"};
+    // Device lock
+    amd::Monitor lock_{true};
+    // Guards device stream set
+    std::shared_mutex streamSetLock;
     std::unordered_set<hip::Stream*> streamSet;
     /// ROCclr context
     amd::Context* context_;
