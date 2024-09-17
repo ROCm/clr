@@ -281,7 +281,7 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
           if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
             ts.SetEvent(e);
             // Make sure runtime sends a notification
-            auto result = e->ready(Query);
+            auto result = e->ready();
           }
         }
       } else {
