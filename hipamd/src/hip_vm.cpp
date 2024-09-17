@@ -39,10 +39,13 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size) {
   if (devPtr == nullptr || size == 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  amd::Memory* memObj = amd::MemObjMap::FindVirtualMemObj(devPtr);
+  if (memObj == nullptr) {
+    LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", devPtr);
+  }
   // Single call frees address range for all devices.
   g_devices[0]->devices()[0]->virtualFree(devPtr);
-
+  memObj->release();
   HIP_RETURN(hipSuccess);
 }
 
@@ -125,10 +128,6 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
   phys_mem_obj->getUserData().deviceId = prop->location.id;
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, size, *prop);
   *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(phys_mem_obj->getUserData().data);
-
-  // Remove because the entry of 0x1 is not needed in MemObjMap.
-  // We save the copy of Phy mem obj in virtual mem obj during mapping.
-  amd::MemObjMap::RemoveMemObj(ptr);
 
   HIP_RETURN(hipSuccess);
 }
@@ -261,7 +260,6 @@ hipError_t hipMemMap(void* ptr, size_t size, size_t offset, hipMemGenericAllocat
   ga->retain();
 
   auto& queue = *g_devices[ga->GetProperties().location.id]->NullStream();
-
   // Map the physical address to virtual address
   amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
                                                  &ga->asAmdMemory());
@@ -366,6 +364,7 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
+  vaddr_sub_obj->release();
 
   // restore the original pa of the generic allocation
   hip::GenericAllocation* ga

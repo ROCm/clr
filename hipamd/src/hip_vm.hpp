@@ -38,7 +38,10 @@ class GenericAllocation : public amd::RuntimeObject {
 public:
   GenericAllocation(amd::Memory& phys_mem_ref, size_t size, const hipMemAllocationProp& prop)
                     : phys_mem_ref_(phys_mem_ref), size_(size), properties_(prop) {}
-  ~GenericAllocation() {}
+  ~GenericAllocation() {
+    amd::Context* amdContext = g_devices[properties_.location.id]->asContext();
+    amd::SvmBuffer::free(*amdContext, phys_mem_ref_.getSvmPtr());
+  }
 
   const hipMemAllocationProp& GetProperties() const { return properties_; }
   hipMemGenericAllocationHandle_t asMemGenericAllocationHandle() {

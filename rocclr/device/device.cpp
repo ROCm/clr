@@ -479,11 +479,7 @@ bool Device::DestroyVirtualBuffer(amd::Memory* vaddr_mem_obj) {
     return false;
   }
 
-  if (vaddr_mem_obj->parent() == nullptr) {
-    // If parent is nullptr, then vaddr_mem_obj is the parent.
-    amd::MemObjMap::RemoveVirtualMemObj(vaddr_mem_obj->getSvmPtr());
-    return true;
-  } else {
+  if (vaddr_mem_obj->parent() != nullptr) {
     // If parent is not nullptr, this is the sub-buffer object.
     amd::Memory* vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vaddr_mem_obj->getSvmPtr());
     if (vaddr_base_obj == nullptr) {

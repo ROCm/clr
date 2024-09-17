@@ -426,15 +426,15 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
       return hipErrorUnknown;
     }
 
-    // Size validation
-    if (sizeBytes > (srcMemory->getSize() - sOffset)) {
-      return hipErrorInvalidValue;
-    }
-
     // If the mem object is a VMM sub buffer (subbuffer has parent set),
     // then use parent's size for validation.
     if (srcMemory->parent() && (srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
       srcMemory = srcMemory->parent();
+    }
+
+    // Size validation
+    if (sizeBytes > (srcMemory->getSize() - sOffset)) {
+      return hipErrorInvalidValue;
     }
   }
 
@@ -444,15 +444,15 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
       return hipErrorUnknown;
     }
 
-    // Size validation
-    if (sizeBytes > (dstMemory->getSize() - dOffset)) {
-      return hipErrorInvalidValue;
-    }
-
     // If the mem object is a VMM sub buffer (subbuffer has parent set),
     // then use parent's size for validation.
     if (dstMemory->parent() && (dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
       dstMemory = dstMemory->parent();
+    }
+
+    // Size validation
+    if (sizeBytes > (dstMemory->getSize() - dOffset)) {
+      return hipErrorInvalidValue;
     }
   }
 
