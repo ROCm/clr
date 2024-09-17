@@ -55,7 +55,7 @@ namespace amd {
 
 class Command;
 class HostQueue;
-union ComputeCommand;
+struct ComputeCommand;
 
 /*! \brief Encapsulates the status of a command.
  *
@@ -249,7 +249,8 @@ union CopyMetadata {
  */
 class Command : public Event {
  private:
-  static SysmemPool<ComputeCommand> command_pool_;  //!< Pool of active commands
+  static SysmemPool<ComputeCommand> *command_pool_[16];  //!< Pool of active commands
+
   HostQueue* queue_;               //!< The command queue this command is enqueue into
   Command* next_;                  //!< Next GPU command in the queue list
   Command* batch_head_ = nullptr;  //!< The head of the batch commands
@@ -261,10 +262,11 @@ class Command : public Event {
   uint8_t* gpuPacket_ = nullptr;     //!< GPU packet to capture, when graph capturing is enabled
   address kernArgOffset_ = nullptr;  //!< KernelArg buffer to used when graph capturing is enabled
   std::string* capturedKernelName_ = nullptr;  //!< Kenrnel under capture
+
  protected:
   bool cpu_wait_ = false;         //!< If true, then the command was issued for CPU/GPU sync
 
-  //! The Events that need to complete before this command is submitted.
+  //! The Events that need to comp  lete before this command is submitted.
   EventWaitList eventWaitList_;
 
   //! Force await completion of previous command
@@ -298,7 +300,15 @@ class Command : public Event {
 
  public:
   //! Returns AQL buffer state
-  bool getCapturingState() const { return capturing_; }
+  static void ReleaseSysmemPool() {
+    for (int i=0; i<16; i++) {
+      if (command_pool_[i] != nullptr) {
+        delete command_pool_[i];
+        command_pool_[i] = nullptr;
+      }
+    }
+  }
+  bool getPktCapturingState() const { return packetCapturing_; }
 
   //! Sets AQL capture state, aql packet to capture and where to copy kernArgs
   void setCapturingState(bool state, uint8_t* packet, address kernArgOffset,
@@ -323,7 +333,7 @@ class Command : public Event {
   const address getKernArgOffset() const { return kernArgOffset_; }
 
   //! Overload new/delete for fast commands allocation/destruction
-  void* operator new(size_t size);
+  void* operator new(size_t size, int queue=0);
   void operator delete(void* ptr);
 
   //! Return the queue this command is enqueued into.
@@ -1798,7 +1808,8 @@ public:
 };
 
 //! Union used in memory suballocator, must be updated with the new commands
-union ComputeCommand {
+struct ComputeCommand {
+  union {
   ReadMemoryCommand             cmd0;
   WriteMemoryCommand            cmd1;
   FillMemoryCommand             cmd2;
@@ -1826,6 +1837,8 @@ union ComputeCommand {
   CopyMemoryP2PCommand          cmd25;
   SvmPrefetchAsyncCommand       cmd26;
   VirtualMapCommand             cmd27;
+  };
+  int command_group_;
   ComputeCommand() {}
   ~ComputeCommand() {}
 };

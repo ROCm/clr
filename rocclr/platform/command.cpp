@@ -318,16 +318,39 @@ Command::Command(HostQueue& queue, cl_command_type type, const EventWaitList& ev
   }
 }
 
-SysmemPool<ComputeCommand> Command::command_pool_ ROCCLR_INIT_PRIORITY(101);
+SysmemPool<ComputeCommand>* Command::command_pool_[16] = {
+  new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, 
+  new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, 
+  new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, 
+  new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, new SysmemPool<ComputeCommand>, 
+};
 
 // ================================================================================================
 void Command::operator delete(void* ptr) {
-  command_pool_.Free(ptr);
+  ComputeCommand* command = (ComputeCommand*) ptr;
+
+  if ((command->command_group_ & 0xFFFFFFF0) == 0xBAADF000) {
+    command_pool_[command->command_group_ & 0xF]->Free(ptr);
+    return;
+  }
+  printf("ERROR: attempting to free pointer %p with incorrect command-group magic word %08x\n", ptr, command->command_group_);
 }
 
+int queue_counter = 0;
 // ================================================================================================
-void* Command::operator new(size_t size) {
-  return command_pool_.Alloc(size);
+void* Command::operator new(size_t size, int queue) {
+  //return command_pool_[0].Alloc(size);
+  queue = queue_counter & 15;
+  queue_counter++;
+  /*
+  if (queue == 0)
+    queue = rand() & 15;
+  else
+    queue = queue & 15;
+  */
+  ComputeCommand* obj = reinterpret_cast<ComputeCommand*>(command_pool_[queue]->Alloc(size));
+  obj->command_group_ = 0xBAADF000 + queue;
+  return obj;
 }
 
 // ================================================================================================
