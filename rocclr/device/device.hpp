@@ -53,6 +53,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <shared_mutex>
 #include <list>
 #include <set>
 #include <unordered_set>
@@ -1374,7 +1375,7 @@ class MemObjMap : public AllStatic {
       MemObjMap_;                      //!< the mem object<->hostptr information container
   static std::map<uintptr_t, amd::Memory*>
       VirtualMemObjMap_;               //!< the virtual mem object<->hostptr information container
-  static amd::Monitor AllocatedLock_;  //!< amd monitor locker
+  static std::shared_mutex AllocatedLock_;  //!< amd monitor locker
 };
 
 /// @brief Instruction Set Architecture properties.

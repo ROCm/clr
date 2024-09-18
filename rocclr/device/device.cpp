@@ -303,17 +303,17 @@ Context* Device::glb_ctx_ = nullptr;
 Monitor Device::p2p_stage_ops_("P2P Staging Lock", true);
 Memory* Device::p2p_stage_ = nullptr;
 
-Monitor MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
+std::shared_mutex MemObjMap::AllocatedLock_; // ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
 
 size_t MemObjMap::size() {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::shared_lock<std::shared_mutex> lock(AllocatedLock_);
   return MemObjMap_.size();
 }
 
 void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   auto rval = MemObjMap_.insert({ reinterpret_cast<uintptr_t>(k), v });
   if (!rval.second) {
     DevLogPrintfError("Memobj map already has an entry for ptr: 0x%x",
@@ -322,14 +322,14 @@ void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
 }
 
 void MemObjMap::RemoveMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   auto rval = MemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
   guarantee(rval == 1, "Memobj map does not have ptr: 0x%x",
                         reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::shared_lock<std::shared_mutex> lock(AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
   auto it = MemObjMap_.upper_bound(key);
   if (it == MemObjMap_.begin()) {
@@ -349,7 +349,7 @@ amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
   }
 }
 void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   auto rval = VirtualMemObjMap_.insert({ reinterpret_cast<uintptr_t>(k), v });
   if (!rval.second) {
     DevLogPrintfError("Virtual Memobj map already has an entry for ptr: 0x%x",
@@ -358,14 +358,14 @@ void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
 }
 
 void MemObjMap::RemoveVirtualMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   auto rval = VirtualMemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
   guarantee(rval == 1, "Virtual Memobj map does not have ptr: 0x%x",
                        reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
+  std::shared_lock<std::shared_mutex> lock(AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
   auto it = VirtualMemObjMap_.upper_bound(key);
   if (it == VirtualMemObjMap_.begin()) {
@@ -501,7 +501,7 @@ void MemObjMap::UpdateAccess(amd::Device *peerDev) {
 
   // Provides access to all memory allocated on peerDev but
   // hsa_amd_agents_allow_access was not called because there was no peer
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   for (auto it : MemObjMap_) {
     const std::vector<Device*>& devices = it.second->getContext().devices();
     if (devices.size() == 1 && devices[0] == peerDev) {
@@ -517,7 +517,7 @@ void MemObjMap::UpdateAccess(amd::Device *peerDev) {
 void MemObjMap::Purge(amd::Device* dev) {
   assert(dev != nullptr);
 
-  amd::ScopedLock lock(AllocatedLock_);
+  std::unique_lock<std::shared_mutex> lock(AllocatedLock_);
   for (auto it = MemObjMap_.cbegin(); it != MemObjMap_.cend(); ) {
     amd::Memory* memObj = it->second;
     unsigned int flags = memObj->getMemFlags();
