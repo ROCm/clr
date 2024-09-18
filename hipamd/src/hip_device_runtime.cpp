@@ -657,7 +657,7 @@ hipError_t hipGetDevice(int* deviceId) {
       HIP_RETURN(hipErrorNoDevice);
     }
     *deviceId = dev;
-    HIP_RETURN(hipSuccess);
+    HIP_RETURN(hipSuccess, *deviceId);
   } else {
     HIP_RETURN(hipErrorInvalidValue);
   }

@@ -39,6 +39,7 @@ hip::Stream* Device::NullStream(bool wait) {
     }
   }
   if (null_stream_ == nullptr) {
+    LogError("Cannot create new Stream object");
     return nullptr;
   }
   if (wait == true) {

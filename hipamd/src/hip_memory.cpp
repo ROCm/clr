@@ -1360,7 +1360,24 @@ hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
 
   hipError_t status = ihipHostMalloc(ptr, sizeBytes, flags);
   HIP_RETURN_DURATION(status, *ptr);
-};
+}
+
+hipError_t hipMemcpyAsync_common(void* dst, const void* src, size_t sizeBytes,
+                          hipMemcpyKind kind, hipStream_t stream) {
+  STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
+
+  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (hip_stream == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+  return ihipMemcpy(dst, src, sizeBytes, kind, *hip_stream, true);
+}
 
 inline hipError_t ihipMemcpySymbol_validate(const void* symbol, size_t sizeBytes,
   size_t offset, size_t &sym_size, hipDeviceptr_t &device_ptr) {
@@ -1462,8 +1479,8 @@ hipError_t hipMemcpyToSymbolAsync_common(const void* symbol, const void* src, si
   if (status != hipSuccess) {
     return status;
   }
-  /* Copy memory from source to destination address */
-  return hipMemcpyAsync(device_ptr, src, sizeBytes, kind, stream);
+
+  return hipMemcpyAsync_common(device_ptr, src, sizeBytes, kind, stream);
 }
 
 hipError_t hipMemcpyToSymbolAsync(const void* symbol, const void* src, size_t sizeBytes,
@@ -1547,23 +1564,6 @@ hipError_t hipMemcpyDtoD(hipDeviceptr_t dstDevice,
     HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN_DURATION(ihipMemcpy(dstDevice, srcDevice, ByteCount, hipMemcpyDeviceToDevice, *stream));
-}
-
-hipError_t hipMemcpyAsync_common(void* dst, const void* src, size_t sizeBytes,
-                          hipMemcpyKind kind, hipStream_t stream) {
-  STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
-
-  if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
-    return hipErrorInvalidMemcpyDirection;
-  }
-  hip::Stream* hip_stream = hip::getStream(stream);
-  if (hip_stream == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-  return ihipMemcpy(dst, src, sizeBytes, kind, *hip_stream, true);
 }
 
 hipError_t hipMemcpyAsync(void* dst, const void* src, size_t sizeBytes,
