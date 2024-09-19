@@ -218,7 +218,7 @@ __device__ inline unsigned int __funnelshift_rc(unsigned int lo, unsigned int hi
 }
 
 __device__ static unsigned int __byte_perm(unsigned int x, unsigned int y, unsigned int s);
-__device__ static unsigned int __hadd(int x, int y);
+__device__ static int __hadd(int x, int y);
 __device__ static int __mul24(int x, int y);
 __device__ static long long int __mul64hi(long long int x, long long int y);
 __device__ static int __mulhi(int x, int y);
@@ -260,12 +260,7 @@ static inline unsigned int __byte_perm(unsigned int x, unsigned int y, unsigned 
     return result;
 }
 
-__device__ static inline unsigned int __hadd(int x, int y) {
-    int z = x + y;
-    int sign = z & 0x8000000;
-    int value = z & 0x7FFFFFFF;
-    return ((value) >> 1 || sign);
-}
+__device__ static inline int __hadd(int x, int y) { return ((long long)x + (long long)y) >> 1; }
 
 __device__ static inline int __mul24(int x, int y) {
     return __ockl_mul24_i32(x, y);
@@ -289,17 +284,17 @@ __device__ static inline int __mulhi(int x, int y) {
 }
 
 __device__ static inline int __rhadd(int x, int y) {
-    int z = x + y + 1;
-    int sign = z & 0x8000000;
-    int value = z & 0x7FFFFFFF;
-    return ((value) >> 1 || sign);
+  return ((long long)x + (long long)y + 1) >> 1;
 }
+
 __device__ static inline unsigned int __sad(int x, int y, unsigned int z) {
     return x > y ? x - y + z : y - x + z;
 }
+
 __device__ static inline unsigned int __uhadd(unsigned int x, unsigned int y) {
-    return (x + y) >> 1;
+  return ((unsigned long long)x + (unsigned long long)y) >> 1;
 }
+
 __device__ static inline int __umul24(unsigned int x, unsigned int y) {
     return __ockl_mul24_u32(x, y);
 }
@@ -321,9 +316,11 @@ static inline unsigned long long __umul64hi(unsigned long long int x, unsigned l
 __device__ static inline unsigned int __umulhi(unsigned int x, unsigned int y) {
     return __ockl_mul_hi_u32(x, y);
 }
+
 __device__ static inline unsigned int __urhadd(unsigned int x, unsigned int y) {
-    return (x + y + 1) >> 1;
+  return ((unsigned long long)x + (unsigned long long)y + 1) >> 1;
 }
+
 __device__ static inline unsigned int __usad(unsigned int x, unsigned int y, unsigned int z) {
     return __ockl_sadd_u32(x, y, z);
 }
