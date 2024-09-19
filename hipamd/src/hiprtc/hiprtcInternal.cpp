@@ -184,11 +184,7 @@ RTCCompileProgram::RTCCompileProgram(std::string name_) : RTCProgram(name_), fgp
   compile_options_.push_back(hipVerMajor);
   compile_options_.push_back(hipVerMinor);
   compile_options_.push_back(hipVerPatch);
-  compile_options_.push_back("-D__HIPCC_RTC__");
-  compile_options_.push_back("-include");
-  compile_options_.push_back("hiprtc_runtime.h");
   compile_options_.push_back("-std=c++14");
-  compile_options_.push_back("-nogpuinc");
   compile_options_.push_back("-Wno-gnu-line-marker");
   compile_options_.push_back("-Wno-missing-prototypes");
 #ifdef _WIN32
