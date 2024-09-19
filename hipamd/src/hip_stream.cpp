@@ -75,6 +75,7 @@ bool Stream::Create() {
 void Stream::Destroy(hip::Stream* stream) {
   stream->device_->RemoveStream(stream);
   stream->release();
+  stream = nullptr;
 }
 
 // ================================================================================================
