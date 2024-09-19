@@ -116,16 +116,35 @@ hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char
   auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
 
   bool fgpu_rdc = false;
-  std::vector<std::string> opt;
+  bool no_builtin_header = false;
+  std::vector<std::string> opt, compile_options;
   opt.reserve(numOptions);
+  compile_options.reserve(numOptions + 4);
   for (int i = 0; i < numOptions; i++) {
     if (std::string(options[i]) == std::string("-fgpu-rdc")) {
       fgpu_rdc = true;
     }
-    opt.push_back(std::string(options[i]));
+
+    if (std::string(options[i]) != std::string("--hiprtc-no-builtin-header")) {
+      opt.push_back(std::string(options[i]));
+    } else {
+      no_builtin_header = true;
+    }
   }
 
-  if (!rtcProgram->compile(opt, fgpu_rdc)) {
+  // Do not include the default hiprtc header if the app passes --hiprtc-no-builtin-header option.
+  // This is to avoid conflicts with std type traits defined in hiprtc header. Once the actual fix
+  // to move type traits to __hip_internal namespace is made in 7.0, this option can be removed.
+  if (!no_builtin_header) {
+    compile_options.push_back("-D__HIPCC_RTC__");
+    compile_options.push_back("-nogpuinc");
+    compile_options.push_back("-include");
+    compile_options.push_back("hiprtc_runtime.h");
+  }
+
+  compile_options.insert(std::end(compile_options), std::begin(opt), std::end(opt));
+
+  if (!rtcProgram->compile(compile_options, fgpu_rdc)) {
     HIPRTC_RETURN(HIPRTC_ERROR_COMPILATION);
   }
 
