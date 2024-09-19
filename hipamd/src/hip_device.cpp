@@ -36,6 +36,10 @@ hip::Stream* Device::NullStream(bool wait) {
     amd::ScopedLock lock(lock_);
     if (null_stream_ == nullptr) {
       null_stream_ = new Stream(this, Stream::Priority::Normal, 0, true);
+      // Stream creation might be failed from rcor and in that case, vdev is null.
+      if (null_stream_->vdev() == nullptr) {
+        Stream::Destroy(null_stream_);
+      }
     }
   }
   if (null_stream_ == nullptr) {

@@ -3328,6 +3328,7 @@ hipError_t ihipMemset(void* dst, int64_t value, size_t valueSize, size_t sizeByt
     }
     std::vector<amd::Command*> commands;
     hip::Stream* hip_stream = hip::getStream(stream);
+    if (hip_stream == nullptr) { return hipErrorOutOfMemory; }
     hip_error = ihipMemsetCommand(commands, dst, value, valueSize, sizeBytes, hip_stream);
     if (hip_error != hipSuccess) {
       break;

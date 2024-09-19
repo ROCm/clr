@@ -1461,9 +1461,11 @@ bool VirtualGPU::initPool(size_t kernarg_pool_size) {
       roc_device_.info().largeBar_) {
     kernarg_pool_base_ =
       reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
-    // @note Workaround first access penalty.
-    // KFD may update CPU page tables on the first CPU access
-    *kernarg_pool_base_ = 0;
+    if (kernarg_pool_base_ != nullptr) {
+      // @note Workaround first access penalty.
+      // KFD may update CPU page tables on the first CPU access
+      *kernarg_pool_base_ = 0;
+    }
   } else {
     kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
                                                    Device::MemorySegment::kKernArg));
