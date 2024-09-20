@@ -114,6 +114,7 @@ class Event : public RuntimeObject {
     uint64_t correlation_id_;
     bool enabled_;        //!< Profiling enabled for the wave limiter
     bool marker_ts_;      //!< TS marker
+    bool batch_flush_ = true; //!< Command can flush the batch in direct dispatch mode
 
    void clear() {
       queued_ = 0ULL;

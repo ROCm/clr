@@ -253,6 +253,8 @@ release(bool, DEBUG_HIP_GRAPH_DOT_PRINT, false,                               \
          "Enable/Disable graph debug dot print dump")                         \
 release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
+release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
+        "Blocks synchronization on CPU until the callback processing is done")\
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
          "Enable/Disable multiple kern arg copies")                           \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \

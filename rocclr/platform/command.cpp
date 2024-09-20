@@ -367,7 +367,9 @@ void Command::enqueue() {
     ScopedLock sl(queue_->vdev()->execution());
     queue_->FormSubmissionBatch(this);
 
-    if (type() == CL_COMMAND_MARKER || type() == 0 || type() == CL_COMMAND_TASK) {
+    // Enqueue flushes, except profiling markers to avoid frequent expensive callbacks
+    if (((type() == 0) && profilingInfo().batch_flush_) ||
+        (type() == CL_COMMAND_MARKER) || (type() == CL_COMMAND_TASK)) {
       // The current HSA signal tracking logic requires profiling enabled for the markers
       EnableProfiling();
       // Update batch head for the current marker. Hence the status of all commands can be

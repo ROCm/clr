@@ -139,16 +139,19 @@ hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* stream, uint32_t flags) {
+// ================================================================================================
+hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* stream,
+                                   uint32_t flags, bool batch_flush) {
   bool unrecorded = isUnRecorded();
   if (unrecorded) {
     command = new amd::Marker(*stream, kMarkerDisableFlush);
   } else {
-    return Event::recordCommand(command, stream);
+    return Event::recordCommand(command, stream, batch_flush);
   }
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
   bool unrecorded = isUnRecorded();
   if (unrecorded) {
