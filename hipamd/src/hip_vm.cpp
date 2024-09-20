@@ -35,7 +35,7 @@ static_assert(static_cast<uint32_t>(hipMemAccessFlagsProtReadWrite)
 
 hipError_t hipMemAddressFree(void* devPtr, size_t size) {
   HIP_INIT_API(hipMemAddressFree, devPtr, size);
-
+  hipError_t status = hipSuccess;
   if (devPtr == nullptr || size == 0) {
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -44,9 +44,11 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size) {
     LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", devPtr);
   }
   // Single call frees address range for all devices.
-  g_devices[0]->devices()[0]->virtualFree(devPtr);
+  if (!(g_devices[0]->devices()[0]->virtualFree(devPtr))) {
+    status = hipErrorUnknown;
+  }
   memObj->release();
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN(status);
 }
 
 hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void* addr,

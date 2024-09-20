@@ -2470,18 +2470,22 @@ void* Device::virtualAlloc(void* req_addr, size_t size, size_t alignment) {
   return mem->getSvmPtr();
 }
 
-void Device::virtualFree(void* addr) {
+bool Device::virtualFree(void* addr) {
   amd::Memory* memObj = amd::MemObjMap::FindVirtualMemObj(addr);
   if (memObj == nullptr) {
     LogPrintfError("Cannot find the Virtual MemObj entry for this addr 0x%x", addr);
   }
 
-  memObj->getContext().devices()[0]->DestroyVirtualBuffer(memObj);
+  if (!memObj->getContext().devices()[0]->DestroyVirtualBuffer(memObj)) {
+    return false;
+  }
 
   hsa_status_t hsa_status = hsa_amd_vmem_address_free(memObj->getSvmPtr(), memObj->getSize());
   if (hsa_status != HSA_STATUS_SUCCESS) {
     LogPrintfError("Failed hsa_amd_vmem_address_free. Failed with status:%d \n", hsa_status);
+    return false;
   }
+  return true;
 }
 
 bool Device::SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
