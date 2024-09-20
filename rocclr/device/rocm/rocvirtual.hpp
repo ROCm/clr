@@ -248,7 +248,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   class HwQueueTracker : public amd::EmbeddedObject {
    public:
-    HwQueueTracker(const VirtualGPU& gpu): gpu_(gpu), handlerPending_(false) {}
+    HwQueueTracker(const VirtualGPU& gpu): gpu_(gpu) {}
 
     ~HwQueueTracker();
 
@@ -289,12 +289,6 @@ class VirtualGPU : public device::VirtualDevice {
     //! Empty check for external signals
     bool IsExternalSignalListEmpty() const { return external_signals_.empty(); }
 
-    //! Set the status to indicate a pending handler
-    void SetHandlerPending(bool pending) { handlerPending_ = pending; }
-
-    //! Check if callback has been queued
-    bool IsHandlerPending() const { return handlerPending_; }
-
     //! Get/Set SDMA profiling
     bool GetSDMAProfiling() { return sdma_profiling_; }
     void SetSDMAProfiling(bool profile) {
@@ -319,7 +313,6 @@ class VirtualGPU : public device::VirtualDevice {
     const VirtualGPU& gpu_;       //!< VirtualGPU, associated with this tracker
     std::vector<ProfilingSignal*> external_signals_; //!< External signals for a wait in this queue
     std::vector<hsa_signal_t> waiting_signals_;   //!< Current waiting signals in this queue
-    bool handlerPending_;         //!< This indicates if we have queued a callback handler
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
@@ -433,10 +426,6 @@ class VirtualGPU : public device::VirtualDevice {
   HwQueueTracker& Barriers() { return barriers_; }
 
   Timestamp* timestamp() const { return timestamp_; }
-
-  //! Indicates the status of the callback handler. The callback would process the commands
-  //! and would collect profiling data, update refcounts
-  bool isHandlerPending() const { return barriers_.IsHandlerPending(); }
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
