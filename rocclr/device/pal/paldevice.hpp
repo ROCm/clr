@@ -145,7 +145,7 @@ class NullDevice : public amd::Device {
   }
   virtual void svmFree(void* ptr) const { return; }
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment) { return nullptr; };
-  virtual void virtualFree(void* addr) { };
+  virtual bool virtualFree(void* addr) { return true; }
 
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags) {
     return true;
@@ -561,7 +561,7 @@ class Device : public NullDevice {
 
   //! Virtual address space allocation(reservation)
   virtual void* virtualAlloc(void* addr, size_t size, size_t alignment);
-  virtual void virtualFree(void* addr);
+  virtual bool virtualFree(void* addr);
 
   //! Set/Get memory access set by the app
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);

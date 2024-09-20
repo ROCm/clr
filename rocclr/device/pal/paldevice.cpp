@@ -2512,16 +2512,18 @@ void* Device::virtualAlloc(void* addr, size_t size, size_t alignment) {
 }
 
 // ================================================================================================
-void Device::virtualFree(void* addr) {
+bool Device::virtualFree(void* addr) {
   auto vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(addr);
   if (vaddr_mem_obj == nullptr) {
     LogPrintfError("Cannot find any mem_obj for addr: 0x%x \n", addr);
-    return;
+    return false;
   }
 
   if (!vaddr_mem_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_mem_obj)) {
     LogPrintfError("Cannot destroy mem_obj:0x%x for addr: 0x%x \n", vaddr_mem_obj, addr);
+    return false;
   }
+  return true;
 }
 
 // ================================================================================================

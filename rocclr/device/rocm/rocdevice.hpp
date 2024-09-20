@@ -229,9 +229,9 @@ class NullDevice : public amd::Device {
     return nullptr;
   }
 
-  void virtualFree(void* addr) override {
+  bool virtualFree(void* addr) override {
     ShouldNotReachHere();
-    return;
+    return true;
   }
 
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags)
@@ -480,7 +480,7 @@ class Device : public NullDevice {
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
 
   virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
-  virtual void virtualFree(void* addr);
+  virtual bool virtualFree(void* addr);
 
   virtual bool SetMemAccess(void* va_addr, size_t va_size, VmmAccess access_flags);
   virtual bool GetMemAccess(void* va_addr, VmmAccess* access_flags_ptr) const;

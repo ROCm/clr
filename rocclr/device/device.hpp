@@ -1896,7 +1896,7 @@ class Device : public RuntimeObject {
    *
    * @param addr Start address of the range
    */
-  virtual void virtualFree(void* addr) = 0;
+  virtual bool virtualFree(void* addr) = 0;
 
   /**
    * Export Shareable VMM Handle to FD
