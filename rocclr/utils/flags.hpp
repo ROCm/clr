@@ -257,6 +257,8 @@ release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
         "Forces the number of streams for the graph parallel execution")      \
 release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
+release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
+        "Blocks synchronization on CPU until the callback processing is done")\
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
 release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \

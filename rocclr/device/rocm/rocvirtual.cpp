@@ -127,6 +127,9 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 
 // ================================================================================================
 void Timestamp::checkGpuTime() {
+  if (amd::IS_HIP && !amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+    return;
+  }
   amd::ScopedLock s(lock_);
   if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
@@ -479,12 +482,10 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
           ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
             prof_signal->signal_.handle, prof_signal);
         }
-        SetHandlerPending(false);
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
       } else if (ts->command().profilingInfo().marker_ts_) {
-        SetHandlerPending(true);
         // Update the current command/marker with HW event
         prof_signal->retain();
         ts->command().SetHwEvent(prof_signal);
@@ -1652,7 +1653,7 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
   // also true for any command B, which falls between A and C.
   current = list;
   while (current != nullptr) {
-    if (current->profilingInfo().enabled_) {
+      if (current->profilingInfo().enabled_) {
       if (!current->data().empty()) {
         for (auto i = 0; i < current->data().size(); i++) {
           // Since this is a valid command to get a timestamp, we use the
