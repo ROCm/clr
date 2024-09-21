@@ -62,6 +62,8 @@
   #endif
 #endif
 
+// Include it explicitly for HIPRTC
+#include "amd_hip_bf16.h"
 
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
@@ -70,10 +72,30 @@
 #include "host_defines.h"          // __hip_internal::
 #include "amd_hip_vector_types.h"  // float2 etc
 #include "amd_hip_fp16.h"          // __half_raw
-#include "amd_hip_bf16.h"          // bf16
 #include "math_fwd.h"              // ocml device functions
 #include "hip_assert.h"            // hip assertions
-#endif                             // !defined(__HIPCC_RTC__)
+#define __HIP_SCHAR_MAX SCHAR_MAX
+#define __HIP_SCHAR_MIN SCHAR_MIN
+#define __HIP_UCHAR_MAX UCHAR_MAX
+#define __HIP_SHRT_MIN SHRT_MIN
+#define __HIP_SHRT_MAX SHRT_MAX
+#define __HIP_CHAR_MIN CHAR_MIN
+#define __HIP_CHAR_MAX CHAR_MAX
+#else
+// fp8 header uses all this, since we do not include standard header, we include this
+#define __HIP_SCHAR_MAX __SCHAR_MAX__
+#define __HIP_SCHAR_MIN (-__SCHAR_MAX__ - 1)
+#define __HIP_UCHAR_MAX (__SCHAR_MAX__ * 2 + 1)
+#define __HIP_SHRT_MIN (-__SHRT_MAX__ - 1)
+#define __HIP_SHRT_MAX __SHRT_MAX__
+#ifdef __CHAR_UNSIGNED__ /* -funsigned-char */
+#define __HIP_CHAR_MIN 0
+#define __HIP_CHAR_MAX __HIP_UCHAR_MAX
+#else
+#define __HIP_CHAR_MIN __HIP_SCHAR_MIN
+#define __HIP_CHAR_MAX __SCHAR_MAX__
+#endif
+#endif  // !defined(__HIPCC_RTC__)
 
 #if defined(__HIPCC_RTC__)
 #define __FP8_HOST_DEVICE__ __device__
@@ -1057,7 +1079,7 @@ struct __hip_fp8_e4m3_fnuz {
     return !(static_cast<unsigned short>(__x) == 0);
   }
 
-  /*! convert fp8 e4m3 to char, clamp number to CHAR_MIN/CHAR_MAX if its out of range */
+  /*! convert fp8 e4m3 to char, clamp number to __HIP_CHAR_MIN/__HIP_CHAR_MAX if its out of range */
 #if HIP_FP8_TYPE_FNUZ
   __FP8_HOST_DEVICE__ operator char() const {
 #else
@@ -1069,10 +1091,10 @@ struct __hip_fp8_e4m3_fnuz {
 
     auto fval = internal::cast_from_f8<float, true>(__x, __wm, __we);
     auto llval = static_cast<long long>(fval);
-    if (llval <= CHAR_MIN) {
-      return CHAR_MIN;
-    } else if (llval >= CHAR_MAX) {
-      return CHAR_MAX;
+    if (llval <= __HIP_CHAR_MIN) {
+      return __HIP_CHAR_MIN;
+    } else if (llval >= __HIP_CHAR_MAX) {
+      return __HIP_CHAR_MAX;
     }
     return static_cast<char>(fval);
   }
@@ -1153,10 +1175,10 @@ struct __hip_fp8_e4m3_fnuz {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SHRT_MIN) {
-      return SHRT_MIN;
-    } else if (llval >= SHRT_MAX) {
-      return SHRT_MAX;
+    if (llval <= __HIP_SHRT_MIN) {
+      return __HIP_SHRT_MIN;
+    } else if (llval >= __HIP_SHRT_MAX) {
+      return __HIP_SHRT_MAX;
     }
     return static_cast<short>(fval);
   }
@@ -1173,10 +1195,10 @@ struct __hip_fp8_e4m3_fnuz {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SCHAR_MIN) {
-      return SCHAR_MIN;
-    } else if (llval >= SCHAR_MAX) {
-      return SCHAR_MAX;
+    if (llval <= __HIP_SCHAR_MIN) {
+      return __HIP_SCHAR_MIN;
+    } else if (llval >= __HIP_SCHAR_MAX) {
+      return __HIP_SCHAR_MAX;
     }
     return static_cast<signed char>(fval);
   }
@@ -1195,8 +1217,8 @@ struct __hip_fp8_e4m3_fnuz {
     auto llval = static_cast<long long>(fval);
     if (llval <= 0) {
       return 0;
-    } else if (llval >= UCHAR_MAX) {
-      return UCHAR_MAX;
+    } else if (llval >= __HIP_UCHAR_MAX) {
+      return __HIP_UCHAR_MAX;
     }
     return static_cast<unsigned char>(fval);
   }
@@ -1640,10 +1662,10 @@ struct __hip_fp8_e5m2_fnuz {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= CHAR_MIN) {
-      return CHAR_MIN;
-    } else if (llval >= CHAR_MAX) {
-      return CHAR_MAX;
+    if (llval <= __HIP_CHAR_MIN) {
+      return __HIP_CHAR_MIN;
+    } else if (llval >= __HIP_CHAR_MAX) {
+      return __HIP_CHAR_MAX;
     }
     return static_cast<char>(fval);
   }
@@ -1711,10 +1733,10 @@ struct __hip_fp8_e5m2_fnuz {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SHRT_MIN) {
-      return SHRT_MIN;
-    } else if (llval >= SHRT_MAX) {
-      return SHRT_MAX;
+    if (llval <= __HIP_SHRT_MIN) {
+      return __HIP_SHRT_MIN;
+    } else if (llval >= __HIP_SHRT_MAX) {
+      return __HIP_SHRT_MAX;
     }
     return static_cast<short>(fval);
   }
@@ -1731,10 +1753,10 @@ struct __hip_fp8_e5m2_fnuz {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SCHAR_MIN) {
-      return SCHAR_MIN;
-    } else if (llval >= SCHAR_MAX) {
-      return SCHAR_MAX;
+    if (llval <= __HIP_SCHAR_MIN) {
+      return __HIP_SCHAR_MIN;
+    } else if (llval >= __HIP_SCHAR_MAX) {
+      return __HIP_SCHAR_MAX;
     }
     return static_cast<signed char>(fval);
   }
@@ -1753,8 +1775,8 @@ struct __hip_fp8_e5m2_fnuz {
     auto llval = static_cast<long long>(fval);
     if (llval <= 0) {
       return 0;
-    } else if (llval >= UCHAR_MAX) {
-      return UCHAR_MAX;
+    } else if (llval >= __HIP_UCHAR_MAX) {
+      return __HIP_UCHAR_MAX;
     }
     return static_cast<unsigned char>(fval);
   }
@@ -2173,7 +2195,7 @@ struct __hip_fp8_e4m3 {
     return !(static_cast<unsigned short>(__x) == 0 || static_cast<unsigned short>(__x) == 0x80);
   }
 
-  /*! convert fp8 e4m3 to char, clamp number to CHAR_MIN/CHAR_MAX if its out of range */
+  /*! convert fp8 e4m3 to char, clamp number to __HIP_CHAR_MIN/__HIP_CHAR_MAX if its out of range */
 #if HIP_FP8_TYPE_OCP
   __FP8_HOST_DEVICE__ operator char() const {
 #else
@@ -2185,10 +2207,10 @@ struct __hip_fp8_e4m3 {
 
     auto fval = internal::cast_from_f8<float, false>(__x, __wm, __we);
     auto llval = static_cast<long long>(fval);
-    if (llval <= CHAR_MIN) {
-      return CHAR_MIN;
-    } else if (llval >= CHAR_MAX) {
-      return CHAR_MAX;
+    if (llval <= __HIP_CHAR_MIN) {
+      return __HIP_CHAR_MIN;
+    } else if (llval >= __HIP_CHAR_MAX) {
+      return __HIP_CHAR_MAX;
     }
     return static_cast<char>(fval);
   }
@@ -2269,10 +2291,10 @@ struct __hip_fp8_e4m3 {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SHRT_MIN) {
-      return SHRT_MIN;
-    } else if (llval >= SHRT_MAX) {
-      return SHRT_MAX;
+    if (llval <= __HIP_SHRT_MIN) {
+      return __HIP_SHRT_MIN;
+    } else if (llval >= __HIP_SHRT_MAX) {
+      return __HIP_SHRT_MAX;
     }
     return static_cast<short>(fval);
   }
@@ -2289,10 +2311,10 @@ struct __hip_fp8_e4m3 {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SCHAR_MIN) {
-      return SCHAR_MIN;
-    } else if (llval >= SCHAR_MAX) {
-      return SCHAR_MAX;
+    if (llval <= __HIP_SCHAR_MIN) {
+      return __HIP_SCHAR_MIN;
+    } else if (llval >= __HIP_SCHAR_MAX) {
+      return __HIP_SCHAR_MAX;
     }
     return static_cast<signed char>(fval);
   }
@@ -2311,8 +2333,8 @@ struct __hip_fp8_e4m3 {
     auto llval = static_cast<long long>(fval);
     if (llval <= 0) {
       return 0;
-    } else if (llval >= UCHAR_MAX) {
-      return UCHAR_MAX;
+    } else if (llval >= __HIP_UCHAR_MAX) {
+      return __HIP_UCHAR_MAX;
     }
     return static_cast<unsigned char>(fval);
   }
@@ -2760,10 +2782,10 @@ struct __hip_fp8_e5m2 {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= CHAR_MIN) {
-      return CHAR_MIN;
-    } else if (llval >= CHAR_MAX) {
-      return CHAR_MAX;
+    if (llval <= __HIP_CHAR_MIN) {
+      return __HIP_CHAR_MIN;
+    } else if (llval >= __HIP_CHAR_MAX) {
+      return __HIP_CHAR_MAX;
     }
     return static_cast<char>(fval);
   }
@@ -2832,10 +2854,10 @@ struct __hip_fp8_e5m2 {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SHRT_MIN) {
-      return SHRT_MIN;
-    } else if (llval >= SHRT_MAX) {
-      return SHRT_MAX;
+    if (llval <= __HIP_SHRT_MIN) {
+      return __HIP_SHRT_MIN;
+    } else if (llval >= __HIP_SHRT_MAX) {
+      return __HIP_SHRT_MAX;
     }
     return static_cast<short>(fval);
   }
@@ -2852,10 +2874,10 @@ struct __hip_fp8_e5m2 {
 
     float fval = *this;
     auto llval = static_cast<long long>(fval);
-    if (llval <= SCHAR_MIN) {
-      return SCHAR_MIN;
-    } else if (llval >= SCHAR_MAX) {
-      return SCHAR_MAX;
+    if (llval <= __HIP_SCHAR_MIN) {
+      return __HIP_SCHAR_MIN;
+    } else if (llval >= __HIP_SCHAR_MAX) {
+      return __HIP_SCHAR_MAX;
     }
     return static_cast<signed char>(fval);
   }
@@ -2874,8 +2896,8 @@ struct __hip_fp8_e5m2 {
     auto llval = static_cast<long long>(fval);
     if (llval <= 0) {
       return 0;
-    } else if (llval >= UCHAR_MAX) {
-      return UCHAR_MAX;
+    } else if (llval >= __HIP_UCHAR_MAX) {
+      return __HIP_UCHAR_MAX;
     }
     return static_cast<unsigned char>(fval);
   }

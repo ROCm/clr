@@ -111,14 +111,13 @@
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
 #include <hip/amd_detail/amd_warp_functions.h>  // Sync functions
-#endif                                          // !defined(__HIPCC_RTC__)
-
-#include "amd_hip_vector_types.h"  // float2 etc
-#include "device_library_decls.h"  // ocml conversion functions
+#include "amd_hip_vector_types.h"               // float2 etc
+#include "device_library_decls.h"               // ocml conversion functions
 #if defined(__clang__) && defined(__HIP__)
 #include "amd_hip_atomic.h"
 #endif                 // defined(__clang__) && defined(__HIP__)
 #include "math_fwd.h"  // ocml device functions
+#endif                 // !defined(__HIPCC_RTC__)
 
 #define __BF16_DEVICE__ __device__
 #if defined(__HIPCC_RTC__)
