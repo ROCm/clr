@@ -1300,6 +1300,15 @@ void Image::copyToBackingStore(void* initFrom) {
   }
 }
 
+template <typename In, typename Out> static Out interpret_value(In in) {
+  static_assert(sizeof(In) == sizeof(Out));
+  union {
+    In in_val;
+    Out out_val;
+  } u{in};
+  return u.out_val;
+}
+
 static int round_to_even(float v) {
   // clamp overflow
   if (v >= -(float)std::numeric_limits<int>::min()) {
@@ -1311,8 +1320,8 @@ static int round_to_even(float v) {
   static const unsigned int magic[2] = {0x4b000000u, 0xcb000000u};
 
   // round fractional values to integer value
-  if (fabsf(v) < *reinterpret_cast<const float*>(&magic[0])) {
-    float magicVal = *reinterpret_cast<const float*>(&magic[v < 0.0f]);
+  if (fabsf(v) < interpret_value<unsigned, float>(magic[0])) {
+    float magicVal = interpret_value<unsigned, float>(magic[v < 0.0f]);
     v += magicVal;
     v -= magicVal;
   }
@@ -1337,21 +1346,21 @@ static uint16_t float2half_rtz(float f) {
   }
   int values[5] = {0x47800000, 0x33800000, 0x38800000, 0x4b800000, 0x7f800000};
   // overflow
-  if (x >= *reinterpret_cast<float*>(&values[0])) {
-    if (x == *reinterpret_cast<float*>(&values[4])) {
+  if (x >= interpret_value<int, float>(values[0])) {
+    if (x == interpret_value<int, float>(values[4])) {
       return 0x7c00 | sign;
     }
     return 0x7bff | sign;
   }
 
   // underflow
-  if (x < *reinterpret_cast<float*>(&values[1])) {
+  if (x < interpret_value<int, float>(values[1])) {
     return sign;  // The halfway case can return 0x0001 or 0. 0 is even.
   }
 
   // half denormal
-  if (x < *reinterpret_cast<float*>(&values[2])) {
-    x *= *reinterpret_cast<float*>(&values[3]);
+  if (x < interpret_value<int, float>(values[2])) {
+    x *= interpret_value<int, float>(values[3]);
     return static_cast<uint16_t>((int)x | sign);
   }
 
