@@ -166,7 +166,8 @@ void UberTraceCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel
 
   // Increment dispatch count in RenderOp trace controller
   Pal::IQueue* pQueue = gpu->queue(MainEngine).iQueue_;
-  trace_controller_->RecordRenderOp(pQueue, GpuUtil::RenderOpTraceController::RenderOpDispatch);
+  trace_controller_->RecordRenderOp(pQueue,
+                                    GpuUtil::RenderOpTraceController::RenderOp::RenderOpDispatch);
 
   // Increment the global dispatch counter
   global_disp_count_++;
