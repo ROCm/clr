@@ -2062,6 +2062,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
     if (system_total_alloced > total_alloced) {
       total_alloced = system_total_alloced;
     }
+    system_total_alloced = mem_budget_info.usage[Pal::GpuHeapGroupNonLocal];
     // Avoid possible negative values in case of extra alignments
     if (mem_budget_info.usage[Pal::GpuHeapGroupNonLocal] >
         (resourceCache().cacheSize() - cache_group_local)) {
