@@ -194,7 +194,9 @@ hipError_t hipGraphicsSubResourceGetMappedArray(hipArray_t* array, hipGraphicsRe
     HIP_RETURN(hipErrorInvalidValue);
   }
   // arrayIndex higher than zero not implmented
-  assert(arrayIndex == 0) ;
+  if (arrayIndex > 0) {
+    return hipErrorInvalidValue;
+  }
   amd::Image * view = image->createView(amdContext, image->getImageFormat(), nullptr, mipLevel, 0);
 
   hipArray* myarray = new hipArray();

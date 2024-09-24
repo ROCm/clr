@@ -2191,9 +2191,10 @@ hipError_t ihipMemcpyAtoAValidate(hipArray_t srcArray, hipArray_t dstArray, amd:
 
   // HIP assumes the width is in bytes, but OCL assumes it's in pixels.
   // Note that src and dst should have the same element size.
-  assert(srcImage->getImageFormat().getElementSize() ==
-         dstImage->getImageFormat().getElementSize());
   const size_t elementSize = srcImage->getImageFormat().getElementSize();
+  if (elementSize != dstImage->getImageFormat().getElementSize()) {
+    return hipErrorInvalidValue;
+  }
   static_cast<size_t*>(srcOrigin)[0] /= elementSize;
   static_cast<size_t*>(dstOrigin)[0] /= elementSize;
   static_cast<size_t*>(copyRegion)[0] /= elementSize;

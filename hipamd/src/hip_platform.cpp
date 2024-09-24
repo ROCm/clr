@@ -76,7 +76,10 @@ void** __hipRegisterFatBinary(const void* data) {
                    fbwrapper->version);
     return nullptr;
   }
-  return reinterpret_cast<void**>(PlatformState::instance().addFatBinary(fbwrapper->binary));
+
+  bool success{};
+  auto fat_binary_info = PlatformState::instance().addFatBinary(fbwrapper->binary, success);
+  return success ? reinterpret_cast<void**>(fat_binary_info) : nullptr;
 }
 
 void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunction,
@@ -899,8 +902,8 @@ hipError_t PlatformState::digestFatBinary(const void* data, hip::FatBinaryInfo*&
   return statCO_.digestFatBinary(data, programs);
 }
 
-hip::FatBinaryInfo** PlatformState::addFatBinary(const void* data) {
-  return statCO_.addFatBinary(data, initialized_);
+hip::FatBinaryInfo** PlatformState::addFatBinary(const void* data, bool& success) {
+  return statCO_.addFatBinary(data, initialized_, success);
 }
 
 hipError_t PlatformState::removeFatBinary(hip::FatBinaryInfo** module) {

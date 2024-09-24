@@ -1163,13 +1163,16 @@ hipError_t StatCO::digestFatBinary(const void* data, FatBinaryInfo*& programs) {
   return hipSuccess;
 }
 
-FatBinaryInfo** StatCO::addFatBinary(const void* data, bool initialized) {
+FatBinaryInfo** StatCO::addFatBinary(const void* data, bool initialized, bool& success) {
   amd::ScopedLock lock(sclock_);
 
-  if (initialized) {
-    hipError_t err = digestFatBinary(data, modules_[data]);
-    assert(err == hipSuccess);
+  if (initialized == false) {
+    success = true;
+    return &modules_[data];
   }
+
+  hipError_t err = digestFatBinary(data, modules_[data]);
+  success = (err == hipSuccess);
   return &modules_[data];
 }
 

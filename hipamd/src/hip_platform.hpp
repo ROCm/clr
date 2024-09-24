@@ -82,7 +82,7 @@ class PlatformState {
   }
 
   // Static Code Objects functions
-  hip::FatBinaryInfo** addFatBinary(const void* data);
+  hip::FatBinaryInfo** addFatBinary(const void* data, bool& success);
   hipError_t removeFatBinary(hip::FatBinaryInfo** module);
   hipError_t digestFatBinary(const void* data, hip::FatBinaryInfo*& programs);
 

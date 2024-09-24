@@ -160,7 +160,7 @@ public:
   virtual ~StatCO();
 
   //Add/Remove/Digest Fat Binaries passed to us from "__hipRegisterFatBinary"
-  FatBinaryInfo** addFatBinary(const void* data, bool initialized);
+  FatBinaryInfo** addFatBinary(const void* data, bool initialized, bool& success);
   hipError_t removeFatBinary(FatBinaryInfo** module);
   hipError_t digestFatBinary(const void* data, FatBinaryInfo*& programs);
 
