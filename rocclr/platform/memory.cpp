@@ -530,16 +530,22 @@ void Memory::commitSvmMemory() {
   ScopedLock lock(lockMemoryOps_);
   // if VRAM is visible for host, it is not necessary to mmap again
   if (!svmPtrCommited_ && !largeBarSystem_) {
-    amd::Os::commitMemory(svmHostAddress_, size_, amd::Os::MEM_PROT_RW);
-    svmPtrCommited_ = true;
+    if (amd::Os::commitMemory(svmHostAddress_, size_, amd::Os::MEM_PROT_RW)) {
+      svmPtrCommited_ = true;
+    } else {
+      LogPrintfError("Mem Map failed for the host address 0x%x", svmHostAddress_);
+    }
   }
 }
 
 void Memory::uncommitSvmMemory() {
   ScopedLock lock(lockMemoryOps_);
   if (svmPtrCommited_ && !(flags_ & CL_MEM_SVM_FINE_GRAIN_BUFFER)) {
-    amd::Os::uncommitMemory(svmHostAddress_, size_);
-    svmPtrCommited_ = false;
+    if (amd::Os::uncommitMemory(svmHostAddress_, size_)) {
+      svmPtrCommited_ = false;
+    } else {
+      LogPrintfError("Mem Unmap failed for the host address 0x%x", svmHostAddress_);
+    }
   }
 }
 
