@@ -649,6 +649,7 @@ Device::Device()
       blitProgram_(nullptr),
       context_(nullptr),
       heap_buffer_(nullptr),
+      initial_heap_buffer_(nullptr),
       arena_mem_obj_(nullptr),
       vaCacheAccess_(nullptr),
       vaCacheMap_(nullptr),
@@ -660,6 +661,11 @@ Device::~Device() {
   if (heap_buffer_ != nullptr) {
     delete heap_buffer_;
     heap_buffer_ = nullptr;
+  }
+
+  if (initial_heap_buffer_ != nullptr) {
+    delete initial_heap_buffer_;
+    initial_heap_buffer_ = nullptr;
   }
 
   if (arena_mem_obj_ != nullptr) {
