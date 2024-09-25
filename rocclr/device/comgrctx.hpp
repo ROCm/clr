@@ -76,7 +76,10 @@ typedef amd_comgr_status_t (*t_amd_comgr_populate_mangled_names)(amd_comgr_data_
 typedef amd_comgr_status_t (*t_amd_comgr_get_mangled_name)(amd_comgr_data_t data, size_t index, size_t *size, char *mangled_name);
 typedef amd_comgr_status_t (*t_amd_comgr_populate_name_expression_map)(amd_comgr_data_t data, size_t *count);
 typedef amd_comgr_status_t (*t_amd_comgr_map_name_expression_to_symbol_name)(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name);
+typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_device_lib_linking)(amd_comgr_action_info_t action_info, bool link_device_lib);
 typedef amd_comgr_status_t (*t_amd_comgr_action_info_set_bundle_entry_ids)(amd_comgr_action_info_t action_info, const char* bundle_entry_ids[], size_t count);
+typedef amd_comgr_status_t (*t_amd_comgr_set_data_from_file_slice)(amd_comgr_data_t data, int fd, uint64_t offset, uint64_t size);
+typedef amd_comgr_status_t (*t_amd_comgr_lookup_code_object)(amd_comgr_data_t data, amd_comgr_code_object_info_t *info, size_t size);
 
 struct ComgrEntryPoints {
   void* handle;
@@ -130,7 +133,10 @@ struct ComgrEntryPoints {
   t_amd_comgr_get_mangled_name          amd_comgr_get_mangled_name;
   t_amd_comgr_populate_name_expression_map  amd_comgr_populate_name_expression_map;
   t_amd_comgr_map_name_expression_to_symbol_name amd_comgr_map_name_expression_to_symbol_name;
+  t_amd_comgr_action_info_set_device_lib_linking amd_comgr_action_info_set_device_lib_linking;
   t_amd_comgr_action_info_set_bundle_entry_ids   amd_comgr_action_info_set_bundle_entry_ids;
+  t_amd_comgr_set_data_from_file_slice   amd_comgr_set_data_from_file_slice;
+  t_amd_comgr_lookup_code_object  amd_comgr_lookup_code_object;
 };
 
 #ifdef COMGR_DYN_DLL
@@ -306,6 +312,15 @@ public:
   }
   static amd_comgr_status_t map_name_expression_to_symbol_name(amd_comgr_data_t data, size_t *size, char *name_expression, char* symbol_name) {
     return COMGR_DYN(amd_comgr_map_name_expression_to_symbol_name)(data, size, name_expression, symbol_name);
+  }
+  static amd_comgr_status_t action_info_set_device_lib_linking(amd_comgr_action_info_t action_info, bool link_device_lib) {
+    return COMGR_DYN(amd_comgr_action_info_set_device_lib_linking)(action_info, link_device_lib);
+  }
+  static amd_comgr_status_t set_data_from_file_slice(amd_comgr_data_t data, int fd, uint64_t offset, uint64_t size) {
+    return COMGR_DYN(amd_comgr_set_data_from_file_slice)(data, fd, offset, size);
+  }
+  static amd_comgr_status_t lookup_code_object(amd_comgr_data_t data, amd_comgr_code_object_info_t* info_list, size_t info_list_size) {
+    return COMGR_DYN(amd_comgr_lookup_code_object)(data, info_list, info_list_size);
   }
   static amd_comgr_status_t action_info_set_bundle_entry_ids(amd_comgr_action_info_t action_info,
     const char* bundle_entry_ids[], size_t count) {
