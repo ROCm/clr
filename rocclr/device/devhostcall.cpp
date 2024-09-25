@@ -334,15 +334,14 @@ void HostcallListener::consumePackets() {
 }
 
 void HostcallListener::terminate() {
-  if (thread_.state() < Thread::FINISHED && !amd::Os::isThreadAlive(thread_)) {
-    return;
-  }
-  kHostThreadActive.state = Init::State::kExit;
-  doorbell_->Reset(SIGNAL_DONE);
+  if (thread_.state() >= Thread::FINISHED || amd::Os::isThreadAlive(thread_)) {
+    kHostThreadActive.state = Init::State::kExit;
+    doorbell_->Reset(SIGNAL_DONE);
 
-  // FIXME_lmoriche: fix termination handshake
-  while (thread_.state() < Thread::FINISHED) {
-    amd::Os::yield();
+    // FIXME_lmoriche: fix termination handshake
+    while (thread_.state() < Thread::FINISHED) {
+      amd::Os::yield();
+    }
   }
 
 #if defined(__clang__)
