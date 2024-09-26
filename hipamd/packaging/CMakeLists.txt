@@ -244,13 +244,16 @@ configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
 # Dev/devel package dependencies
 set(HIP_DEV_ROCM_PKG_DEPENDENCIES "hip-runtime-amd, rocm-llvm, rocm-core")
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, liburi-perl, libc6, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-dev")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS
+    "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl,
+     libfile-which-perl, liburi-perl, libc6, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-dev, hipcc")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-devel")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES
+    "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-devel, hipcc")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
@@ -319,13 +322,15 @@ if(NOT BUILD_SHARED_LIBS)
 
    set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-devel" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?hipcc-devel" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
    string(REGEX REPLACE ",? ?hip-runtime-amd" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
-   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, rocminfo-static-devel, comgr-static-devel")
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, hipcc-static-devel, rocminfo-static-devel, comgr-static-devel")
 
    set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-dev" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
+   string(REGEX REPLACE ",? ?hipcc-dev" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
    string(REGEX REPLACE ",? ?hip-runtime-amd" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
-   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, rocminfo-static-dev, comgr-static-dev")
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, hipcc-static-dev, rocminfo-static-dev, comgr-static-dev")
 endif()
 include(CPack)
 #static package generation
