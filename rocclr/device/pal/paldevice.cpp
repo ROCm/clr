@@ -2196,7 +2196,7 @@ void Device::ScratchBuffer::destroyMemory() {
 }
 
 bool Device::allocScratch(uint regNum, const VirtualGPU* vgpu, uint vgprs) {
-  if (regNum > 0) {
+  if (regNum > 0 && vgprs > 0) {
     // Serialize the scratch buffer allocation code
     amd::ScopedLock lk(scratchAlloc_);
     uint sb = vgpu->hwRing();
