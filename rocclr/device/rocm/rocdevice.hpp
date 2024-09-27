@@ -78,6 +78,8 @@ class PrintfDbg;
 
 class ProfilingSignal : public amd::ReferenceCountedObject {
 public:
+  bool track;
+  int id;
   hsa_signal_t  signal_;  //!< HSA signal to track profiling information
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
@@ -95,16 +97,7 @@ public:
 
   Flags flags_;
 
-  ProfilingSignal()
-    : ts_(nullptr)
-    , engine_(HwQueueEngine::Compute)
-    , lock_("Signal Ops Lock", true)
-    , isPacketDispatch_(false)
-    {
-      signal_.handle = 0;
-      flags_.done_ = true;
-      flags_.forceHostWait_ = true;
-    }
+  ProfilingSignal();
 
   virtual ~ProfilingSignal();
   amd::Monitor& LockSignalOps() { return lock_; }

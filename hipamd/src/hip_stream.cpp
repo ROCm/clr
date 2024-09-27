@@ -27,6 +27,9 @@
 
 namespace hip {
 
+std::atomic<int> stream_counter(0);
+std::atomic<int> stream_free_counter(0);
+
 // ================================================================================================
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
                const std::vector<uint32_t>& cuMask, hipStreamCaptureStatus captureStatus)
@@ -43,7 +46,22 @@ Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
       captureID_(0)
       {
         device_->AddStream(this);
+        //if (!((stream_counter++) % 100)) 
+        stream_counter++;
+        {
+          printf("%d streams created\n", int(stream_counter));
+        }
       }
+
+Stream::~Stream()
+{
+  //if (!((stream_free_counter++) % 100)) 
+  stream_free_counter++;
+  {
+    printf("%d streams destroyed\n", int(stream_free_counter));
+  }
+}
+
 
 // ================================================================================================
 hipError_t Stream::EndCapture() {

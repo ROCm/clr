@@ -3616,7 +3616,34 @@ void Device::resetSDMAMask(const device::BlitManager* handle) const {
 }
 
 // ================================================================================================
+
+int profiling_counter = 0;
+int profiling_objects_created=0, profiling_objects_destroyed=0;
+ProfilingSignal::ProfilingSignal()
+  : ts_(nullptr)
+  , engine_(HwQueueEngine::Compute)
+  , lock_(true) /* Signal Ops Lock */
+  , isPacketDispatch_(false)
+  {
+    signal_.handle = 0;
+    flags_.done_ = true;
+    flags_.forceHostWait_ = true;
+    profiling_counter++;
+    track = (!(profiling_counter % 100000)) || (profiling_counter<100000 && !(profiling_counter % 10000));
+    id = profiling_counter;
+    profiling_objects_created++;
+    if (track) {
+      printf("Object %d created: %d created, %d destroyed\n", id, profiling_objects_created, profiling_objects_destroyed);
+      fflush(stdout);
+    }
+  }
+
 ProfilingSignal::~ProfilingSignal() {
+  if (track) {
+    printf("Object %d destroyed: %d created, %d destroyed\n", id, profiling_objects_created, profiling_objects_destroyed);
+    fflush(stdout);
+  }
+  profiling_objects_destroyed++;
   if (signal_.handle != 0) {
     if (hsa_signal_load_relaxed(signal_) > 0) {
       LogError("Runtime shouldn't destroy a signal that is still busy!");

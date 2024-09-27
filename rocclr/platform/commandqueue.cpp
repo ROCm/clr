@@ -33,6 +33,18 @@
 
 namespace amd {
 
+std::atomic<int> host_queue_counter(0);
+std::atomic<int> host_queue_free_counter(0);
+
+HostQueue::~HostQueue()
+{
+  host_queue_free_counter++;
+  //if (!((host_queue_free_counter++) % 100))
+  {
+    //printf("%d host queues destroyed\n", int(host_queue_free_counter));
+  }
+}
+
 HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properties props,
                      uint queueRTCUs, Priority priority, const std::vector<uint32_t>& cuMask)
     : CommandQueue(context, device, props, device.info().queueProperties_, queueRTCUs,
@@ -40,10 +52,21 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
       tail_(nullptr),
-      isActive_(false) {
+      isActive_(false),
+      isCreated_(false) {
+      host_queue_counter++;
+  //if (!((host_queue_counter++) % 100)) 
+  {
+    //printf("%d host queues created\n", int(host_queue_counter));
+  }
   if (GPU_FORCE_QUEUE_PROFILING) {
     properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
+  deferredCreate();
+}
+
+void HostQueue::deferredCreate() {
+  isCreated_ = true;
   if (AMD_DIRECT_DISPATCH) {
     // Initialize the queue
     thread_.Init(this);
@@ -251,6 +274,8 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
 }
 
 void HostQueue::append(Command& command) {
+  //if (!isCreated_)
+  //  deferredCreate();
   // We retain the command here. It will be released when its status
   // changes to CL_COMPLETE
   if ((command.getWaitBits() & 0x1) != 0) {

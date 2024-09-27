@@ -235,6 +235,9 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Reset last used SDMA engine mask
   ts->gpu()->setLastUsedSdmaEngine(0);
 
+  //printf("HsaAmdSignalHandler(%p)<2>\n", ts);
+  //fflush(stdout);
+
   // Update the batch, since signal is complete
   ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
 
@@ -426,6 +429,12 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   }
 
   if (signal_list_[current_id_]->referenceCount() > 1) {
+    //printf("HwQueueTracker::ActiveSignal must create a new signal\n");
+    //printf("current_id_ %d\n", current_id_);
+    //for(int i=0; i<signal_list_.size(); i++) {
+    //  printf("signal_list_[%d] id %d, referenceCount %d\n", i, signal_list_[i]->id, signal_list_[i]->referenceCount());
+    //}
+    //signal_list_[current_id_]->track = true;
     // The signal was assigned to the global marker's event, hence runtime can't reuse it
     // and needs a new signal
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
@@ -476,6 +485,8 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         }
         hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
             HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
+        //printf("<517> Created with callback timestamp %p\n", ts);
+        //fflush(stdout);
         if (HSA_STATUS_SUCCESS != result) {
           LogError("hsa_amd_signal_async_handler() failed to set the handler!");
         } else {
@@ -1325,8 +1336,12 @@ VirtualGPU::~VirtualGPU() {
 }
 
 // ================================================================================================
+
+//std::atomic<int> vgpu_counter(0);
 bool VirtualGPU::create() {
   // Pick a reasonable queue size
+  //vgpu_counter++;
+  //printf("%d vgpus created\n", int(vgpu_counter));
   uint32_t queue_size = ROC_AQL_QUEUE_SIZE;
   gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_, cuMask_, priority_);
   if (!gpu_queue_) return false;
@@ -1566,6 +1581,7 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
   // with the COMPLETE (end) timestamp of the previous command, A. This is
   // also true for any command B, which falls between A and C.
   current = list;
+  int counter = 0;
   while (current != nullptr) {
       if (current->profilingInfo().enabled_) {
       if (!current->data().empty()) {
@@ -1597,7 +1613,10 @@ void VirtualGPU::updateCommandsState(amd::Command* list) const {
     next = current->getNext();
     current->release();
     current = next;
+    //counter++;
   }
+  //if (counter > 50)
+  //  printf("VirtualGPU::updateCommandsState: %d commands in the list\n", counter);
 }
 
 // ================================================================================================

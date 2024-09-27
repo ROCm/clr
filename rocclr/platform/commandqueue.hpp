@@ -214,7 +214,7 @@ class HostQueue : public CommandQueue {
   HostQueue(Context& context, Device& device, cl_command_queue_properties properties,
             uint queueRTCUs = 0, Priority priority = Priority::Normal,
             const std::vector<uint32_t>& cuMask = {});
-
+  ~HostQueue();
   //! Returns TRUE if this command queue can accept commands.
   virtual bool create() { return thread_.acceptingCommands_; }
 
@@ -298,6 +298,8 @@ private:
 
   //! True if this command queue is active
   bool isActive_;
+  bool isCreated_;
+  void deferredCreate();
 };
 
 class DeviceQueue : public CommandQueue {
