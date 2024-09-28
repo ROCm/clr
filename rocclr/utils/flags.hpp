@@ -28,6 +28,10 @@ release(int, AMD_LOG_LEVEL, 0,                                                \
         "The default log level")                                              \
 release(uint, AMD_LOG_MASK, 0X7FFFFFFF,                                       \
         "The mask to enable specific kinds of logs")                          \
+release(cstring, AMD_LOG_LEVEL_FILE, "",                                      \
+        "Set output file for AMD_LOG_LEVEL, Default is stderr")               \
+release(size_t, AMD_LOG_LEVEL_SIZE, 2048,                                     \
+        "The max size of AMD_LOG generated in MB if printed to a file")       \
 debug(uint, DEBUG_GPU_FLAGS, 0,                                               \
         "The debug options for GPU device")                                   \
 release(size_t, CQ_THREAD_STACK_SIZE, 256*Ki, /* @todo: that much! */         \
@@ -207,8 +211,6 @@ release(bool, PAL_EMBED_KERNEL_MD, false,                                     \
 release(cstring, ROC_GLOBAL_CU_MASK, "",                                      \
         "Sets a global CU mask (entered as hex value) for all queues,"        \
         "Each active bit represents using one CU (e.g., 0xf enables only 4 CUs)") \
-release(cstring, AMD_LOG_LEVEL_FILE, "",                                      \
-        "Set output file for AMD_LOG_LEVEL, Default is stderr")               \
 release(size_t, PAL_PREPINNED_MEMORY_SIZE, 64,                                \
         "Size in KBytes of prepinned memory")                                 \
 release(bool, AMD_CPU_AFFINITY, false,                                        \
