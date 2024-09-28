@@ -3658,7 +3658,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     attributes->isManaged = false;
     attributes->allocationFlags = 0;
     attributes->device = hipInvalidDeviceId;
-    LogPrintfError("Cannot get amd_mem_obj for ptr: 0x%x", ptr);
+    LogPrintfError("Cannot get amd_mem_obj for ptr: %p", ptr);
   }
   HIP_RETURN(hipSuccess);
 }

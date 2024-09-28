@@ -40,15 +40,33 @@
 namespace amd {
 
 FILE* outFile = stderr;
+const size_t maxLogSize = AMD_LOG_LEVEL_SIZE * Mi;
 
 // ================================================================================================
-void report_warning(const char* message) { fprintf(outFile, "Warning: %s\n", message); }
+void truncate_log_file() {
+  if (outFile != stderr) {
+    fseek(outFile, 0, SEEK_END);
+    long size = ftell(outFile);
+    if (size > maxLogSize) {
+      if (nullptr == freopen(NULL, "w", outFile)) {
+        outFile = stderr;
+      }
+    }
+  }
+}
+
+// ================================================================================================
+void report_warning(const char* message) {
+  truncate_log_file();
+  fprintf(outFile, "Warning: %s\n", message);
+}
 
 // ================================================================================================
 void log_entry(LogLevel level, const char* file, int line, const char* message) {
   if (level == LOG_NONE) {
     return;
   }
+  truncate_log_file();
   fprintf(outFile, ":%d:%s:%d: %s\n", level, file, line, message);
   fflush(outFile);
 }
@@ -67,12 +85,10 @@ void log_timestamped(LogLevel level, const char* file, int line, const char* mes
   if (level == LOG_NONE) {
     return;
   }
-#if 0
-    fprintf(outFile, ":%d:%s:%d: (%010lld) %s\n", level, file, line, time, message);
-#else  // if you prefer fixed-width fields
+
+  truncate_log_file();
   fprintf(outFile, ":% 2d:%15s:% 5d: (%010lld) us %s\n", level, file, line, time / 1000ULL,
           message);
-#endif
   fflush(outFile);
 }
 
@@ -91,7 +107,8 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
 
-  fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
+  truncate_log_file();
+  fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s\n", level, file, line,
     timeUs, pidtid.str().c_str(),message);
 
   fflush(outFile);
@@ -111,6 +128,8 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
   vsnprintf(message, sizeof(message), format, ap);
   va_end(ap);
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
+
+  truncate_log_file();
 
   if (start == 0 || *start == 0) {
     fprintf(outFile, ":%d:%-25s:%-4d: %010lud us: %s %s\n", level, file, line,
