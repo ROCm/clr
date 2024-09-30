@@ -836,6 +836,12 @@ bool Device::create() {
     return false;
   }
 
+  if (AMD_LOG_LEVEL >= LOG_EXTRA_DEBUG) {
+    uint8_t logMask[8] = { 0 };
+    hsa_flag_set64(logMask, HSA_AMD_LOG_FLAG_BLIT_KERNEL_PKTS);
+    hsa_amd_enable_logging(logMask, outFile);
+  }
+
   return true;
 }
 
