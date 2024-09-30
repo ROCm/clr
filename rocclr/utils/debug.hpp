@@ -35,7 +35,14 @@
 
 namespace amd { /*@{*/
 
-enum LogLevel { LOG_NONE = 0, LOG_ERROR = 1, LOG_WARNING = 2, LOG_INFO = 3, LOG_DEBUG = 4 };
+enum LogLevel {
+  LOG_NONE           = 0,
+  LOG_ERROR          = 1,
+  LOG_WARNING        = 2,
+  LOG_INFO           = 3,
+  LOG_DEBUG          = 4,
+  LOG_EXTRA_DEBUG    = 5
+};
 
 enum LogMask {
   LOG_API       = 1,      //!< (0x1)     API call
