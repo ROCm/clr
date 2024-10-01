@@ -82,7 +82,6 @@ void Stream::Destroy(hip::Stream* stream) {
 // ================================================================================================
 bool Stream::terminate() {
   HostQueue::terminate();
-  ReleaseGraphExec(this);
   return true;
 }
 // ================================================================================================
@@ -368,12 +367,6 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   }
   // Wait for the current host queue
   hip_stream->finish(wait_for_cpu);
-  if (stream == nullptr) {
-    // null stream will sync with other streams.
-    ReleaseGraphExec(hip_stream->DeviceId());
-  } else {
-    ReleaseGraphExec(hip_stream);
-  }
   // Release freed memory for all memory pools on the device
   hip_stream->GetDevice()->ReleaseFreedMemory();
   return hipSuccess;

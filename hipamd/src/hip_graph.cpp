@@ -27,8 +27,6 @@
 #include "hip_mempool_impl.hpp"
 
 namespace hip {
-extern std::unordered_map<GraphExec*, std::pair<hip::Stream*, bool>> GraphExecStatus_;
-extern amd::Monitor GraphExecStatusLock_;
 
 std::vector<hip::Stream*> g_captureStreams;
 // StreamCaptureGlobalList lock
@@ -1422,16 +1420,8 @@ hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
   if (pGraphExec == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  amd::ScopedLock lock(GraphExecStatusLock_);
   hip::GraphExec* ge = reinterpret_cast<hip::GraphExec*>(pGraphExec);
-  // bool found = false;
-  if (GraphExecStatus_.find(ge) == GraphExecStatus_.end()) {
-    ge->release();
-  } else {
-    // graph execution is under progress. destroy graphExec during next sync point
-    auto pair = GraphExecStatus_[ge];
-    GraphExecStatus_[ge] = std::make_pair(pair.first, true);
-  }
+  ge->release();
   HIP_RETURN(hipSuccess);
 }
 

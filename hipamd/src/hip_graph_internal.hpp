@@ -160,11 +160,12 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::Gr
   GraphKernelArgManager() : amd::ReferenceCountedObject() {}
   ~GraphKernelArgManager() {
     //! Release the kernel arg pools
-    auto device = g_devices[ihipGetDevice()]->devices()[0];
-    for (auto& element : kernarg_graph_) {
-      device->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
+    if (device_ != nullptr) {
+      for (auto& element : kernarg_graph_) {
+        device_->hostFree(element.kernarg_pool_addr_, element.kernarg_pool_size_);
+      }
+      kernarg_graph_.clear();
     }
-    kernarg_graph_.clear();
   }
 
   // Allocate kernel arg pool for the given size.
@@ -185,7 +186,8 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::Gr
     size_t kernarg_pool_size_;    //! Size of the pool
     size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
   };
-  bool device_kernarg_pool_ = false;               //! Indicate if kernel pool in device mem
+  bool device_kernarg_pool_ = false;  //! Indicate if kernel pool in device mem
+  amd::Device* device_ = nullptr;     //! Device from where kernel arguments are allocated
   std::vector<KernelArgPoolGraph> kernarg_graph_;  //! Vector of allocated kernarg pool
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
@@ -828,6 +830,7 @@ struct GraphExec : public amd::ReferenceCountedObject {
   GraphKernelArgManager* GetKernelArgManager() {
     return kernArgManager_;
   }
+  static void DecrementRefCount(cl_event event, cl_int command_exec_status, void* user_data);
 };
 
 struct ChildGraphNode : public GraphNode {
