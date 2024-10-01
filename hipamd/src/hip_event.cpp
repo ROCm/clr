@@ -448,8 +448,6 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   hipError_t status = e->synchronize();
   // Release freed memory for all memory pools on the device
   g_devices[e->deviceId()]->ReleaseFreedMemory();
-  // Release all graph exec objects destroyed by user.
-  ReleaseGraphExec(e->deviceId());
   HIP_RETURN(status);
 }
 

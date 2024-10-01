@@ -89,8 +89,6 @@ struct GraphNode;
 struct GraphExec;
 struct UserObject;
 class Stream;
-extern void ReleaseGraphExec(int deviceId);
-extern void ReleaseGraphExec(hip::Stream* stream);
 typedef struct ihipIpcMemHandle_st {
   char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
   size_t psize;
