@@ -69,7 +69,6 @@ bool HostQueue::terminate() {
         // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
         // after lastCommand->awaitCompletion() is called.
         if (lastEnqueueCommand_ != nullptr) {
-          device_.removeFromActiveQueues(this);
           lastEnqueueCommand_ ->release(); // lastEnqueueCommand_ should be a marker
           lastEnqueueCommand_ = nullptr;
         }
@@ -118,6 +117,8 @@ bool HostQueue::terminate() {
   if (Agent::shouldPostCommandQueueEvents()) {
     Agent::postCommandQueueFree(as_cl(this->asCommandQueue()));
   }
+
+  device_.removeFromActiveQueues(this);
 
   return true;
 }
