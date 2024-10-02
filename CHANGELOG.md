@@ -40,9 +40,6 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 * Soft hang when use AMD_SERIALIZE_KERNEL.
 * Memory leak in hipIpcCloseMemHandle.
 
-### Added
-- Added new HIP APIs
-  - `hipDeviceGetTexture1DLinearMaxWidth` returns the maximum number of elements allocatable in a 1D linear texture for a given element size.
 
 ## HIP 6.2 (For ROCm 6.2)
 
