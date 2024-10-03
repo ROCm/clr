@@ -89,11 +89,9 @@ DeviceVar::DeviceVar(std::string name,
 }
 
 DeviceVar::~DeviceVar() {
-  if (amd_mem_obj_ != nullptr) {
-    amd::MemObjMap::RemoveMemObj(device_ptr_);
-    amd_mem_obj_->release();
-  }
-
+  // device_ptr_ is being removed and its amd:Memory obj is being released/deleted during
+  // ihipFree in hip::StatCO::removeFatBinary.
+  assert(amd::MemObjMap::FindMemObj(device_ptr_) == nullptr);
   if (shadowVptr != nullptr) {
     textureReference* texRef = reinterpret_cast<textureReference*>(shadowVptr);
     hipError_t err = ihipUnbindTexture(texRef);
