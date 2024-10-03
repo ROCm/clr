@@ -41,6 +41,11 @@ THE SOFTWARE.
 #define __HIP_SURFACE_OBJECT_PARAMETERS_INIT                                                            \
     unsigned int ADDRESS_SPACE_CONSTANT* i = (unsigned int ADDRESS_SPACE_CONSTANT*)surfObj;
 
+/**
+ *  @defgroup SurfaceAPI Surface API
+ *  @{
+ */
+
 // CUDA is using byte address, need map to pixel address for HIP
 static __HOST_DEVICE__ __forceinline__ int __hipGetPixelAddr(int x, int format, int order) {
     /*
@@ -371,6 +376,11 @@ static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfa
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
     __ockl_image_store_lod_CM(i, int2(x, y).data, face, layer, tmp);
 }
+
+// Doxygen end group SurfaceAPI
+/**
+* @}
+*/
 
 #endif
 
