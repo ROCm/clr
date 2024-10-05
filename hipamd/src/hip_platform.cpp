@@ -88,8 +88,13 @@ void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunctio
     return var ? atoi(var) : 1;
   }()};
   hipError_t hip_error = hipSuccess;
-  hip::Function* func = new hip::Function(std::string(deviceName), modules);
-  hip_error = PlatformState::instance().registerStatFunction(hostFunction, func);
+  // Compiler might share same hostFunction and hence it's needless to have another
+  // hip::Function and hip::Function is stored in map with hostFunction as key.
+  // Creating hip::Function in such case, Leaks it.
+  if (PlatformState::instance().getStatFuncName(hostFunction) == nullptr) {
+    hip::Function* func = new hip::Function(std::string(deviceName), modules);
+    hip_error = PlatformState::instance().registerStatFunction(hostFunction, func);
+  }
   guarantee((hip_error == hipSuccess), "Cannot register Static function, error: %d", hip_error);
 
   if (!enable_deferred_loading) {

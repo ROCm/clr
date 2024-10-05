@@ -308,6 +308,11 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
         e = new hip::Event(flags);
       }
     }
+    // App might have used combination of flags i.e. hipEventInterprocess|hipEventDisableTiming
+    // However based on hipEventInterprocess flag, IPCEvent creates even with
+    // JUST hipEventInterprocess and hence, Actual hipEventInterprocess|hipEventDisableTiming
+    // flag is getting supressed with hipEventInterprocess
+    e->flags_ = flags;
     if (e == nullptr) {
       return hipErrorOutOfMemory;
     }
