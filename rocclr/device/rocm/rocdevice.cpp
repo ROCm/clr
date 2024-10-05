@@ -427,27 +427,26 @@ Memory& Device::XferBuffers::acquire() {
   size_t listSize;
 
   // Lock the operations with the staged buffer list
-  amd::ScopedLock l(lock_);
-  listSize = freeBuffers_.size();
-
-  // If the list is empty, then attempt to allocate a staged buffer
-  if (listSize == 0) {
-    // Allocate memory
-    xferBuf = new Buffer(dev(), bufSize_);
-
-    // Allocate memory for the transfer buffer
-    if ((nullptr == xferBuf) || !xferBuf->create()) {
-      delete xferBuf;
-      xferBuf = nullptr;
-      LogError("Couldn't allocate a transfer buffer!");
-    } else {
+  {
+    amd::ScopedLock l(lock_);
+    listSize = freeBuffers_.size();
+    if (listSize > 0) {
+      xferBuf = *(freeBuffers_.begin());
+      freeBuffers_.erase(freeBuffers_.begin());
       ++acquiredCnt_;
+      return *xferBuf;
     }
   }
 
-  if (xferBuf == nullptr) {
-    xferBuf = *(freeBuffers_.begin());
-    freeBuffers_.erase(freeBuffers_.begin());
+  // If the list is empty, then attempt to allocate a staged buffer
+  xferBuf = new Buffer(dev(), bufSize_);
+
+  // Allocate memory for the transfer buffer
+  if ((nullptr == xferBuf) || !xferBuf->create()) {
+    delete xferBuf;
+    xferBuf = nullptr;
+    LogError("Couldn't allocate a transfer buffer!");
+  } else {
     ++acquiredCnt_;
   }
 
