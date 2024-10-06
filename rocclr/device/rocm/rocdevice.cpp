@@ -1208,6 +1208,11 @@ bool Device::populateOCLDeviceConstants() {
   }
   assert(info_.globalMemCacheLineSize_ > 0);
 
+  // override cache line size to 256 for gfx12, as it is used for kern arg alignment.
+  if ((isa().versionMajor() >= 12) && (info_.globalMemCacheLineSize_ < 256)) {
+    info_.globalMemCacheLineSize_ = 256;
+  }
+
   uint32_t cachesize[4] = {0};
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(bkendDevice_, HSA_AGENT_INFO_CACHE_SIZE, cachesize)) {
