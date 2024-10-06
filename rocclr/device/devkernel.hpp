@@ -500,7 +500,7 @@ class Kernel : public amd::HeapObject {
   const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   void SetKernargSegmentByteSize(uint32_t size) { kernargSegmentByteSize_ = size; }
 
-  const uint8_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
+  const uint32_t KernargSegmentAlignment() const { return kernargSegmentAlignment_; }
   void SetKernargSegmentAlignment(uint32_t align) { kernargSegmentAlignment_ = align; }
 
   void SetSymbolName(const std::string& name) { symbolName_ = name; }
