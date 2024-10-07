@@ -27,6 +27,11 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p);
 
 hipError_t ihipDrvMemcpy3D_validate(const HIP_MEMCPY3D* pCopy);
 
+hipError_t hipMemcpy2DValidateArray(hipArray_const_t arr, size_t wOffset, size_t hOffset,
+                                    size_t width, size_t height);
+
+hipError_t hipMemcpy2DValidateBuffer(const void* buf, size_t pitch, size_t width);
+
 hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes, hipMemcpyKind kind);
 
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,

@@ -2667,8 +2667,8 @@ hipError_t ihipMemcpy3D_validate(const hipMemcpy3DParms* p) {
   }
 
   if (p->dstArray == nullptr && p->srcArray == nullptr) {
-    if ((p->extent.width + p->dstPos.x > p->dstPtr.pitch) ||
-        (p->extent.width + p->srcPos.x > p->srcPtr.pitch)) {
+    if ((p->dstPtr.pitch != 0 && (p->extent.width + p->dstPos.x > p->dstPtr.pitch)) ||
+        (p->srcPtr.pitch != 0 && (p->extent.width + p->srcPos.x > p->srcPtr.pitch))) {
       return hipErrorInvalidValue;
     }
     auto totalExtentBytes = p->extent.width * p->extent.height * p->extent.depth;
