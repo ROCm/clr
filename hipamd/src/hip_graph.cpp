@@ -1016,6 +1016,11 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
   // If capture was invalidated, due to a violation of the rules of stream capture
   if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
     *pGraph = nullptr;
+    // When capture is invalidated, graph should be deleted, otherwise it leaks
+    hip::Graph* graph = s->GetCaptureGraph();
+    delete graph;
+    s->ResetCaptureGraph();
+
     return hipErrorStreamCaptureInvalidated;
   }
 
