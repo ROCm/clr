@@ -269,8 +269,12 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   size_t GetKerArgSize() const { return alignedKernArgSize_; }
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
-  void CaptureAndFormPacket(hip::Stream* capture_stream, GraphKernelArgManager* kernArgMgr) {
+  hipError_t CaptureAndFormPacket(hip::Stream* capture_stream, GraphKernelArgManager* kernArgMgr) {
     hipError_t status = CreateCommand(capture_stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+
     gpuPackets_.clear();
     for (auto& command : commands_) {
       command->setPktCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
@@ -281,6 +285,8 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     }
     // Commands are captured and released. Clear them from the object.
     commands_.clear();
+
+    return status;
   }
   hip::Stream* GetQueue() const { return stream_; }
 

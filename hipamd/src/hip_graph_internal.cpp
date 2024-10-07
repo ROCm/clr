@@ -403,7 +403,7 @@ hipError_t GraphExec::AllocKernelArgForGraphNode() {
       }
     }
     if (node->GraphCaptureEnabled()) {
-      node->CaptureAndFormPacket(capture_stream_, GetKernelArgManager());
+      status = node->CaptureAndFormPacket(capture_stream_, GetKernelArgManager());
     } else if (node->GetType() == hipGraphNodeTypeGraph) {
       auto childNode = reinterpret_cast<hip::ChildGraphNode*>(node);
       if (childNode->GetChildGraph()->max_streams_ == 1) {
@@ -444,9 +444,9 @@ hipError_t GraphExec::CaptureAQLPackets() {
 hipError_t GraphExec::UpdateAQLPacket(hip::GraphNode* node) {
   hipError_t status = hipSuccess;
   if (max_streams_ == 1) {
-    node->CaptureAndFormPacket(capture_stream_, kernArgManager_);
+    status = node->CaptureAndFormPacket(capture_stream_, kernArgManager_);
   }
-  return hipSuccess;
+  return status;
 }
 
 // ================================================================================================

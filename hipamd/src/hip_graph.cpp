@@ -415,6 +415,12 @@ hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*&
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
+
+  // Skip zero-sized copies
+  if (p->extent.width == 0 || p->extent.height == 0 || p->extent.depth == 0) {
+    return hipSuccess;
+  }
+
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::GraphNode* pGraphNode;
   hipError_t status =
@@ -435,6 +441,16 @@ hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpit
   if (dst == nullptr || src == nullptr) {
     return hipErrorInvalidValue;
   }
+
+  // Skip zero-sized copies
+  if (width == 0 || height == 0) {
+    return hipSuccess;
+  }
+
+  if ((width > dpitch) || (width > spitch)) {
+    return hipErrorInvalidPitchValue;
+  }
+
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -470,9 +486,15 @@ hipError_t capturehipMemcpy2DFromArrayAsync(hipStream_t& stream, void*& dst, siz
                                             hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr) {
-    return hipErrorInvalidValue;
+
+  // Skip zero-sized copies
+  if (width == 0 || height == 0) {
+    return hipSuccess;
   }
+
+  HIP_RETURN_ONFAIL(hipMemcpy2DValidateArray(src, wOffsetSrc, hOffsetSrc, width, height));
+  HIP_RETURN_ONFAIL(hipMemcpy2DValidateBuffer(dst, dpitch, width));
+
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -541,6 +563,21 @@ hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
+
+  if ((pCopy->srcDevice == nullptr && pCopy->srcMemoryType == hipMemoryTypeDevice) ||
+      (pCopy->dstDevice == nullptr && pCopy->dstMemoryType == hipMemoryTypeDevice) ||
+      (pCopy->srcHost == nullptr && pCopy->srcMemoryType == hipMemoryTypeHost) ||
+      (pCopy->dstHost == nullptr && pCopy->dstMemoryType == hipMemoryTypeHost) ||
+      (pCopy->srcArray == nullptr && pCopy->srcMemoryType == hipMemoryTypeArray) ||
+      (pCopy->dstArray == nullptr && pCopy->dstMemoryType == hipMemoryTypeArray)) {
+    return hipErrorInvalidValue;
+  }
+
+  /// Skip zero-sized copies
+  if (pCopy->WidthInBytes == 0 || pCopy->Height == 0) {
+    return hipSuccess;
+  }
+
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::GraphNode* pGraphNode;
   hipMemcpy3DParms p = {};
@@ -563,14 +600,25 @@ hipError_t capturehipMemcpyParam2DAsync(hipStream_t& stream, const hip_Memcpy2D*
   if (pCopy->dstHost != nullptr) {
     p.dstPtr.ptr = const_cast<void*>(pCopy->dstHost);
   }
+
+
+  // If array is participating in the copy, the extent is defined in terms of that array's elements.
+  // If no array is participating in the copy then the extents are defined in elements of unsigned
+  // char.
   p.extent = {pCopy->WidthInBytes, pCopy->Height, 1};
-  if (pCopy->srcMemoryType == hipMemoryTypeHost && pCopy->dstMemoryType == hipMemoryTypeDevice) {
+  if (pCopy->srcArray != nullptr) {
+    p.extent.width /= getElementSize(pCopy->srcArray);
+  } else if (pCopy->dstArray != nullptr) {
+    p.extent.width /= getElementSize(pCopy->dstArray);
+  }
+
+  if (pCopy->srcMemoryType == hipMemoryTypeHost && pCopy->dstMemoryType == hipMemoryTypeHost) {
+    p.kind = hipMemcpyHostToHost;
+  } else if (pCopy->srcMemoryType == hipMemoryTypeHost) {
     p.kind = hipMemcpyHostToDevice;
-  } else if (pCopy->srcMemoryType == hipMemoryTypeDevice &&
-             pCopy->dstMemoryType == hipMemoryTypeHost) {
+  } else if (pCopy->dstMemoryType == hipMemoryTypeHost) {
     p.kind = hipMemcpyDeviceToHost;
-  } else if (pCopy->srcMemoryType == hipMemoryTypeDevice &&
-             pCopy->dstMemoryType == hipMemoryTypeDevice) {
+  } else {
     p.kind = hipMemcpyDeviceToDevice;
   }
   hipError_t status =
@@ -601,6 +649,7 @@ hipError_t capturehipMemcpyAtoHAsync(hipStream_t& stream, void*& dstHost, hipArr
   p.srcPos = {srcOffset, 0, 0};
   p.dstPtr.ptr = dstHost;
   p.extent = {ByteCount / hip::getElementSize(p.srcArray), 1, 1};
+  p.kind = hipMemcpyDeviceToHost;
   hipError_t status =
       ihipGraphAddMemcpyNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                              s->GetLastCapturedNodes().size(), &p);
