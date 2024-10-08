@@ -680,6 +680,13 @@ class Device : public NullDevice {
     return heaps_[Pal::GpuHeapInvisible];
   }
 
+  Pal::gpusize TotalAlloc() const {
+    Pal::gpusize local = allocedMem[Pal::GpuHeapLocal] - resourceCache().persistentCacheSize();
+    Pal::gpusize invisible = allocedMem[Pal::GpuHeapInvisible] - resourceCache().lclCacheSize();
+    Pal::gpusize total_alloced = local + invisible;
+    return total_alloced;
+  }
+
  private:
   static void PAL_STDCALL PalDeveloperCallback(void* pPrivateData, const Pal::uint32 deviceIndex,
                                                Pal::Developer::CallbackType type, void* pCbData);

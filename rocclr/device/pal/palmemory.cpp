@@ -113,18 +113,21 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
         dev().info().largeBar_) {
       memType = Persistent;
     }
+
+    if (dev().settings().apuSystem_) {
+      const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
+      Pal::gpusize totalAlloc = dev().TotalAlloc();
+      if (invisibleHeap.logicalSize > 0 && memType == Local &&
+          (totalAlloc > (invisibleHeap.logicalSize * 0.75))) {
+        memType = RemoteUSWC;
+      }
+    }
     // Create a resource in PAL
     result = Resource::create(memType, params, forceLinear);
     if (!result) {
       size_t freeMemory[2];
       // if requested memory is greater than available then exit the loop
       dev().globalFreeMemory(freeMemory);
-
-      const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
-      if (dev().settings().apuSystem_ && (size() > (invisibleHeap.logicalSize * 2))) {
-        memType = RemoteUSWC;
-        break;
-      }
       // Local to Persistent
       if (memoryType() == Local) {
         // For dgpu freeMemory[0] reports a sum of visible+invisible fb
