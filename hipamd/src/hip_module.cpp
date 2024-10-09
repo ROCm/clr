@@ -26,8 +26,10 @@
 #include "platform/program.hpp"
 #include "hip_event.hpp"
 #include "hip_platform.hpp"
+#include "hip_comgr_helper.hpp"
 
 namespace hip {
+
 hipError_t ihipModuleLoadData(hipModule_t* module, const void* mmap_ptr, size_t mmap_size);
 
 extern hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
@@ -944,4 +946,135 @@ hipError_t hipModuleGetTexRef(textureReference** texRef, hipModule_t hmod, const
 
   HIP_RETURN(err);
 }
+
+
+hipError_t hipLinkAddData(hipLinkState_t hip_link_state, hipJitInputType input_type, void* image,
+                          size_t image_size, const char* name, unsigned int num_options,
+                          hipJitOption* options_ptr, void** option_values) {
+
+  HIP_INIT_API(hipLinkAddData, hip_link_state, image, image_size, name, num_options, options_ptr, option_values);
+
+  if (image == nullptr || image_size <= 0) {
+    HIP_RETURN(hipErrorInvalidImage);
+  }
+
+  if (input_type == hipJitInputCubin || input_type == hipJitInputPtx ||
+      input_type == hipJitInputFatBinary || input_type == hipJitInputObject ||
+      input_type ==  hipJitInputLibrary || input_type == hipJitInputNvvm ||
+      input_type == hipJitInputLLVMBitcode || input_type == hipJitInputLLVMBundledBitcode ||
+      input_type == hipJitInputLLVMArchivesOfBundledBitcode ) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  std::string input_name;
+  if (name) {
+    input_name = name;
+  }
+
+  LinkProgram* hip_link_prog_ptr =
+      reinterpret_cast<LinkProgram*>(hip_link_state);
+
+  if (!LinkProgram::isLinkerValid(hip_link_prog_ptr)) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
+  if (!hip_link_prog_ptr->AddLinkerData(image, image_size, input_name, input_type)) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipLinkAddFile(hipLinkState_t hip_link_state, hipJitInputType input_type, const char* file_path,
+                          unsigned int num_options, hipJitOption* options_ptr, void** option_values) {
+  HIP_INIT_API(hipLinkAddFile, hip_link_state, input_type, file_path, num_options, options_ptr, option_values);
+
+  if (hip_link_state == nullptr) {
+    HIP_RETURN(hipErrorInvalidHandle);
+  }
+
+  if (input_type == hipJitInputCubin || input_type == hipJitInputPtx ||
+      input_type == hipJitInputFatBinary || input_type == hipJitInputObject ||
+      input_type ==  hipJitInputLibrary || input_type == hipJitInputNvvm ||
+      input_type == hipJitInputLLVMBitcode || input_type == hipJitInputLLVMBundledBitcode ||
+      input_type == hipJitInputLLVMArchivesOfBundledBitcode ) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  LinkProgram* hip_link_prog_ptr =
+      reinterpret_cast<LinkProgram*>(hip_link_state);
+
+  if (!LinkProgram::isLinkerValid(hip_link_prog_ptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip_link_prog_ptr->AddLinkerFile(std::string(file_path), input_type)) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipLinkCreate(unsigned int num_options, hipJitOption* options_ptr,
+                              void** options_vals_pptr, hipLinkState_t* hip_link_state_ptr) {
+  HIP_INIT_API(hipLinkCreate, num_options, options_ptr, options_vals_pptr, hip_link_state_ptr);
+
+  if (hip_link_state_ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (num_options != 0) {
+    for (int i = 0; i < num_options; i++) {
+      if (options_ptr == nullptr || options_vals_pptr == nullptr) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+    }
+  }
+
+  std::string name("LinkerProgram");
+  LinkProgram* hip_link_prog_ptr = new LinkProgram(name);
+  if (!hip_link_prog_ptr->AddLinkerOptions(num_options, options_ptr, options_vals_pptr)) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  *hip_link_state_ptr = reinterpret_cast<hipLinkState_t>(hip_link_prog_ptr);
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipLinkComplete(hipLinkState_t hip_link_state, void** bin_out, size_t* size_out) {
+  HIP_INIT_API(hipLinkComplete, hip_link_state, bin_out, size_out);
+
+  if (bin_out == nullptr || size_out == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  LinkProgram* hip_link_prog_ptr =
+      reinterpret_cast<LinkProgram*>(hip_link_state);
+
+  if (!LinkProgram::isLinkerValid(hip_link_prog_ptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip_link_prog_ptr->LinkComplete(bin_out, size_out)) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipLinkDestroy(hipLinkState_t hip_link_state) {
+  HIP_INIT_API(hipLinkDestroy, hip_link_state);
+
+  LinkProgram* hip_link_prog_ptr =
+      reinterpret_cast<LinkProgram*>(hip_link_state);
+
+  if (!LinkProgram::isLinkerValid(hip_link_prog_ptr)) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  delete hip_link_prog_ptr;
+  HIP_RETURN(hipSuccess);
+}
+
 }  // namespace hip

@@ -485,3 +485,8 @@ hipGraphBatchMemOpNodeGetParams
 hipGraphBatchMemOpNodeSetParams
 hipGraphExecBatchMemOpNodeSetParams
 hipEventRecordWithFlags
+hipLinkAddData
+hipLinkAddFile
+hipLinkComplete
+hipLinkCreate
+hipLinkDestroy

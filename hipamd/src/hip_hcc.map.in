@@ -588,6 +588,11 @@ global:
     hipGraphBatchMemOpNodeSetParams;
     hipGraphExecBatchMemOpNodeSetParams;
     hipEventRecordWithFlags;
+    hipLinkAddData;
+    hipLinkAddFile;
+    hipLinkComplete;
+    hipLinkCreate;
+    hipLinkDestroy;
 local:
     *;
 } hip_6.2;

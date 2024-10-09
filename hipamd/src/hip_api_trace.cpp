@@ -537,6 +537,15 @@ hipError_t hipModuleLoad(hipModule_t* module, const char* fname);
 hipError_t hipModuleLoadData(hipModule_t* module, const void* image);
 hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOptions,
                                hipJitOption* options, void** optionValues);
+hipError_t hipLinkAddData(hipLinkState_t state, hipJitInputType type, void* data, size_t size,
+                                const char* name, unsigned int numOptions, hipJitOption* options,
+                                void** optionValues);
+hipError_t hipLinkAddFile(hipLinkState_t state, hipJitInputType type, const char* path, unsigned int numOptions,
+                            hipJitOption* options, void** optionValues);
+hipError_t hipLinkComplete(hipLinkState_t state, void** hipBinOut, size_t* sizeOut);
+hipError_t hipLinkCreate(unsigned int numOptions, hipJitOption* options,
+                            void** optionValues, hipLinkState_t* stateOut);
+hipError_t hipLinkDestroy(hipLinkState_t state);
 hipError_t hipModuleOccupancyMaxActiveBlocksPerMultiprocessor(int* numBlocks, hipFunction_t f,
                                                               int blockSize,
                                                               size_t dynSharedMemPerBlk);
@@ -1166,6 +1175,11 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipModuleLoad_fn = hip::hipModuleLoad;
   ptrDispatchTable->hipModuleLoadData_fn = hip::hipModuleLoadData;
   ptrDispatchTable->hipModuleLoadDataEx_fn = hip::hipModuleLoadDataEx;
+  ptrDispatchTable->hipLinkAddData_fn = hip::hipLinkAddData;
+  ptrDispatchTable->hipLinkAddFile_fn = hip::hipLinkAddFile;
+  ptrDispatchTable->hipLinkComplete_fn = hip::hipLinkComplete;
+  ptrDispatchTable->hipLinkCreate_fn = hip::hipLinkCreate;
+  ptrDispatchTable->hipLinkDestroy_fn = hip::hipLinkDestroy;
   ptrDispatchTable->hipModuleOccupancyMaxActiveBlocksPerMultiprocessor_fn =
       hip::hipModuleOccupancyMaxActiveBlocksPerMultiprocessor;
   ptrDispatchTable->hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_fn =
@@ -1952,13 +1966,19 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphBatchMemOpNodeSetParams_fn, 466);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecBatchMemOpNodeSetParams_fn, 467);
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
 HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecordWithFlags_fn, 468)
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddData_fn , 469)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddFile_fn , 470)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkComplete_fn , 471)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkCreate_fn , 472)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 473)
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 469)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 474)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 9,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

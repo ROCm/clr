@@ -656,6 +656,16 @@ typedef hipError_t (*t_hipModuleLoadData)(hipModule_t* module, const void* image
 typedef hipError_t (*t_hipModuleLoadDataEx)(hipModule_t* module, const void* image,
                                             unsigned int numOptions, hipJitOption* options,
                                             void** optionValues);
+typedef hipError_t (*t_hipLinkAddData)(hipLinkState_t state, hipJitInputType type, void* data,
+                                        size_t size, const char* name, unsigned int numOptions,
+                                        hipJitOption* options, void** optionValues);
+typedef hipError_t (*t_hipLinkAddFile)(hipLinkState_t state, hipJitInputType type, const char* path,
+                          unsigned int numOptions, hipJitOption* options, void** optionValues);
+typedef hipError_t (*t_hipLinkComplete)(hipLinkState_t state, void** hipBinOut, size_t* sizeOut);
+typedef hipError_t (*t_hipLinkCreate)(unsigned int numOptions, hipJitOption* options,
+                                      void** optionValues, hipLinkState_t* stateOut);
+typedef hipError_t (*t_hipLinkDestroy)(hipLinkState_t state);
+
 typedef hipError_t (*t_hipModuleOccupancyMaxActiveBlocksPerMultiprocessor)(
     int* numBlocks, hipFunction_t f, int blockSize, size_t dynSharedMemPerBlk);
 typedef hipError_t (*t_hipModuleOccupancyMaxActiveBlocksPerMultiprocessorWithFlags)(
@@ -1554,8 +1564,15 @@ struct HipDispatchTable {
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
   t_hipEventRecordWithFlags hipEventRecordWithFlags_fn;
 
-  // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
+  t_hipLinkAddData hipLinkAddData_fn;
+  t_hipLinkAddFile hipLinkAddFile_fn;
+  t_hipLinkComplete hipLinkComplete_fn;
+  t_hipLinkCreate hipLinkCreate_fn;
+  t_hipLinkDestroy hipLinkDestroy_fn;
+
+  // DO NOT EDIT ABOVE!
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 11
 
   // ******************************************************************************************* //
   //

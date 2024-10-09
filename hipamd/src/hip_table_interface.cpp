@@ -1261,6 +1261,31 @@ hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned 
   return hip::GetHipDispatchTable()->hipModuleLoadDataEx_fn(module, image, numOptions, options,
                                                             optionValues);
 }
+
+hipError_t hipLinkAddData(hipLinkState_t state, hipJitInputType type, void* data, size_t size, const char* name,
+                          unsigned int numOptions, hipJitOption* options, void** optionValues) {
+  return hip::GetHipDispatchTable()->hipLinkAddData_fn(state, type, data, size, name, numOptions,
+                                                       options, optionValues);
+}
+
+hipError_t hipLinkAddFile(hipLinkState_t state, hipJitInputType type, const char* path,
+                          unsigned int numOptions, hipJitOption* options, void** optionValues) {
+ return hip::GetHipDispatchTable()->hipLinkAddFile_fn(state, type, path, numOptions, options,
+                                                      optionValues);
+}
+
+hipError_t hipLinkComplete(hipLinkState_t state, void** hipBinOut, size_t* sizeOut) {
+  return hip::GetHipDispatchTable()->hipLinkComplete_fn(state, hipBinOut, sizeOut);
+}
+
+hipError_t hipLinkCreate(unsigned int numOptions, hipJitOption* options, void** optionValues, hipLinkState_t* stateOut) {
+  return hip::GetHipDispatchTable()->hipLinkCreate_fn(numOptions, options, optionValues, stateOut);
+}
+
+hipError_t hipLinkDestroy(hipLinkState_t state) {
+  return hip::GetHipDispatchTable()->hipLinkDestroy_fn(state);
+}
+
 extern "C" hipError_t hipModuleOccupancyMaxActiveBlocksPerMultiprocessor(
     int* numBlocks, hipFunction_t f, int blockSize, size_t dynSharedMemPerBlk) {
   return hip::GetHipDispatchTable()->hipModuleOccupancyMaxActiveBlocksPerMultiprocessor_fn(

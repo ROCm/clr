@@ -431,7 +431,12 @@ enum hip_api_id_t {
   HIP_API_ID_hipGraphBatchMemOpNodeSetParams = 411,
   HIP_API_ID_hipGraphExecBatchMemOpNodeSetParams = 412,
   HIP_API_ID_hipEventRecordWithFlags = 413,
-  HIP_API_ID_LAST = 413,
+  HIP_API_ID_hipLinkAddData = 414,
+  HIP_API_ID_hipLinkAddFile = 415,
+  HIP_API_ID_hipLinkComplete = 416,
+  HIP_API_ID_hipLinkCreate = 417,
+  HIP_API_ID_hipLinkDestroy = 418,
+  HIP_API_ID_LAST = 418,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -699,6 +704,11 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipLaunchCooperativeKernelMultiDevice: return "hipLaunchCooperativeKernelMultiDevice";
     case HIP_API_ID_hipLaunchHostFunc: return "hipLaunchHostFunc";
     case HIP_API_ID_hipLaunchKernel: return "hipLaunchKernel";
+    case HIP_API_ID_hipLinkAddData: return "hipLinkAddData";
+    case HIP_API_ID_hipLinkAddFile: return "hipLinkAddFile";
+    case HIP_API_ID_hipLinkComplete: return "hipLinkComplete";
+    case HIP_API_ID_hipLinkCreate: return "hipLinkCreate";
+    case HIP_API_ID_hipLinkDestroy: return "hipLinkDestroy";
     case HIP_API_ID_hipMalloc: return "hipMalloc";
     case HIP_API_ID_hipMalloc3D: return "hipMalloc3D";
     case HIP_API_ID_hipMalloc3DArray: return "hipMalloc3DArray";
@@ -1107,6 +1117,11 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipLaunchCooperativeKernelMultiDevice", name) == 0) return HIP_API_ID_hipLaunchCooperativeKernelMultiDevice;
   if (strcmp("hipLaunchHostFunc", name) == 0) return HIP_API_ID_hipLaunchHostFunc;
   if (strcmp("hipLaunchKernel", name) == 0) return HIP_API_ID_hipLaunchKernel;
+  if (strcmp("hipLinkAddData", name) == 0) return HIP_API_ID_hipLinkAddData;
+  if (strcmp("hipLinkAddFile", name) == 0) return HIP_API_ID_hipLinkAddFile;
+  if (strcmp("hipLinkComplete", name) == 0) return HIP_API_ID_hipLinkComplete;
+  if (strcmp("hipLinkCreate", name) == 0) return HIP_API_ID_hipLinkCreate;
+  if (strcmp("hipLinkDestroy", name) == 0) return HIP_API_ID_hipLinkDestroy;
   if (strcmp("hipMalloc", name) == 0) return HIP_API_ID_hipMalloc;
   if (strcmp("hipMalloc3D", name) == 0) return HIP_API_ID_hipMalloc3D;
   if (strcmp("hipMalloc3DArray", name) == 0) return HIP_API_ID_hipMalloc3DArray;
@@ -2592,6 +2607,49 @@ typedef struct hip_api_data_s {
       size_t sharedMemBytes;
       hipStream_t stream;
     } hipLaunchKernel;
+    struct {
+      hipLinkState_t state;
+      hipJitInputType type;
+      void* data;
+      size_t size;
+      const char* name;
+      char name__val;
+      unsigned int numOptions;
+      hipJitOption* options;
+      hipJitOption options__val;
+      void** optionValues;
+      void* optionValues__val;
+    } hipLinkAddData;
+    struct {
+      hipLinkState_t state;
+      hipJitInputType type;
+      const char* path;
+      char path__val;
+      unsigned int numOptions;
+      hipJitOption* options;
+      hipJitOption options__val;
+      void** optionValues;
+      void* optionValues__val;
+    } hipLinkAddFile;
+    struct {
+      hipLinkState_t state;
+      void** hipBinOut;
+      void* hipBinOut__val;
+      size_t* sizeOut;
+      size_t sizeOut__val;
+    } hipLinkComplete;
+    struct {
+      unsigned int numOptions;
+      hipJitOption* options;
+      hipJitOption options__val;
+      void** optionValues;
+      void* optionValues__val;
+      hipLinkState_t* stateOut;
+      hipLinkState_t stateOut__val;
+    } hipLinkCreate;
+    struct {
+      hipLinkState_t state;
+    } hipLinkDestroy;
     struct {
       void** ptr;
       void* ptr__val;
@@ -4991,6 +5049,43 @@ typedef struct hip_api_data_s {
   cb_data.args.hipLaunchKernel.sharedMemBytes = (size_t)sharedMemBytes; \
   cb_data.args.hipLaunchKernel.stream = (hipStream_t)stream; \
 };
+// hipLinkAddData[('hipLinkState_t', 'state'), ('hipJitInputType', 'type'), ('void*', 'data'), ('size_t', 'size'), ('const char*', 'name'), ('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues')]
+#define INIT_hipLinkAddData_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLinkAddData.state = (hipLinkState_t)hip_link_state; \
+  cb_data.args.hipLinkAddData.type = (hipJitInputType)input_type; \
+  cb_data.args.hipLinkAddData.data = (void*)image; \
+  cb_data.args.hipLinkAddData.size = (size_t)image_size; \
+  cb_data.args.hipLinkAddData.name = (name) ? strdup(name) : NULL; \
+  cb_data.args.hipLinkAddData.numOptions = (unsigned int)num_options; \
+  cb_data.args.hipLinkAddData.options = (hipJitOption*)options_ptr; \
+  cb_data.args.hipLinkAddData.optionValues = (void**)option_values; \
+};
+// hipLinkAddFile[('hipLinkState_t', 'state'), ('hipJitInputType', 'type'), ('const char*', 'path'), ('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues')]
+#define INIT_hipLinkAddFile_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLinkAddFile.state = (hipLinkState_t)hip_link_state; \
+  cb_data.args.hipLinkAddFile.type = (hipJitInputType)input_type; \
+  cb_data.args.hipLinkAddFile.path = (file_path) ? strdup(file_path) : NULL; \
+  cb_data.args.hipLinkAddFile.numOptions = (unsigned int)num_options; \
+  cb_data.args.hipLinkAddFile.options = (hipJitOption*)options_ptr; \
+  cb_data.args.hipLinkAddFile.optionValues = (void**)option_values; \
+};
+// hipLinkComplete[('hipLinkState_t', 'state'), ('void**', 'hipBinOut'), ('size_t*', 'sizeOut')]
+#define INIT_hipLinkComplete_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLinkComplete.state = (hipLinkState_t)hip_link_state; \
+  cb_data.args.hipLinkComplete.hipBinOut = (void**)bin_out; \
+  cb_data.args.hipLinkComplete.sizeOut = (size_t*)size_out; \
+};
+// hipLinkCreate[('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues'), ('hipLinkState_t*', 'stateOut')]
+#define INIT_hipLinkCreate_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLinkCreate.numOptions = (unsigned int)num_options; \
+  cb_data.args.hipLinkCreate.options = (hipJitOption*)options_ptr; \
+  cb_data.args.hipLinkCreate.optionValues = (void**)options_vals_pptr; \
+  cb_data.args.hipLinkCreate.stateOut = (hipLinkState_t*)hip_link_state_ptr; \
+};
+// hipLinkDestroy[('hipLinkState_t', 'state')]
+#define INIT_hipLinkDestroy_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipLinkDestroy.state = (hipLinkState_t)hip_link_state; \
+};
 // hipMalloc[('void**', 'ptr'), ('size_t', 'size')]
 #define INIT_hipMalloc_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMalloc.ptr = (void**)ptr; \
@@ -7081,6 +7176,32 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipLaunchKernel[('const void*', 'function_address'), ('dim3', 'numBlocks'), ('dim3', 'dimBlocks'), ('void**', 'args'), ('size_t', 'sharedMemBytes'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipLaunchKernel:
       if (data->args.hipLaunchKernel.args) data->args.hipLaunchKernel.args__val = *(data->args.hipLaunchKernel.args);
+      break;
+// hipLinkAddData[('hipLinkState_t', 'state'), ('hipJitInputType', 'type'), ('void*', 'data'), ('size_t', 'size'), ('const char*', 'name'), ('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues')]
+    case HIP_API_ID_hipLinkAddData:
+      if (data->args.hipLinkAddData.name) data->args.hipLinkAddData.name__val = *(data->args.hipLinkAddData.name);
+      if (data->args.hipLinkAddData.options) data->args.hipLinkAddData.options__val = *(data->args.hipLinkAddData.options);
+      if (data->args.hipLinkAddData.optionValues) data->args.hipLinkAddData.optionValues__val = *(data->args.hipLinkAddData.optionValues);
+      break;
+// hipLinkAddFile[('hipLinkState_t', 'state'), ('hipJitInputType', 'type'), ('const char*', 'path'), ('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues')]
+    case HIP_API_ID_hipLinkAddFile:
+      if (data->args.hipLinkAddFile.path) data->args.hipLinkAddFile.path__val = *(data->args.hipLinkAddFile.path);
+      if (data->args.hipLinkAddFile.options) data->args.hipLinkAddFile.options__val = *(data->args.hipLinkAddFile.options);
+      if (data->args.hipLinkAddFile.optionValues) data->args.hipLinkAddFile.optionValues__val = *(data->args.hipLinkAddFile.optionValues);
+      break;
+// hipLinkComplete[('hipLinkState_t', 'state'), ('void**', 'hipBinOut'), ('size_t*', 'sizeOut')]
+    case HIP_API_ID_hipLinkComplete:
+      if (data->args.hipLinkComplete.hipBinOut) data->args.hipLinkComplete.hipBinOut__val = *(data->args.hipLinkComplete.hipBinOut);
+      if (data->args.hipLinkComplete.sizeOut) data->args.hipLinkComplete.sizeOut__val = *(data->args.hipLinkComplete.sizeOut);
+      break;
+// hipLinkCreate[('unsigned int', 'numOptions'), ('hipJitOption*', 'options'), ('void**', 'optionValues'), ('hipLinkState_t*', 'stateOut')]
+    case HIP_API_ID_hipLinkCreate:
+      if (data->args.hipLinkCreate.options) data->args.hipLinkCreate.options__val = *(data->args.hipLinkCreate.options);
+      if (data->args.hipLinkCreate.optionValues) data->args.hipLinkCreate.optionValues__val = *(data->args.hipLinkCreate.optionValues);
+      if (data->args.hipLinkCreate.stateOut) data->args.hipLinkCreate.stateOut__val = *(data->args.hipLinkCreate.stateOut);
+      break;
+// hipLinkDestroy[('hipLinkState_t', 'state')]
+    case HIP_API_ID_hipLinkDestroy:
       break;
 // hipMalloc[('void**', 'ptr'), ('size_t', 'size')]
     case HIP_API_ID_hipMalloc:
@@ -9523,6 +9644,59 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", args="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.args__val); }
       oss << ", sharedMemBytes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.sharedMemBytes);
       oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLaunchKernel.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLinkAddData:
+      oss << "hipLinkAddData(";
+      oss << "state="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.state);
+      oss << ", type="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.type);
+      oss << ", data="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.data);
+      oss << ", size="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.size);
+      if (data->args.hipLinkAddData.name == NULL) oss << ", name=NULL";
+      else { oss << ", name="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.name__val); }
+      oss << ", numOptions="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.numOptions);
+      if (data->args.hipLinkAddData.options == NULL) oss << ", options=NULL";
+      else { oss << ", options="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.options__val); }
+      if (data->args.hipLinkAddData.optionValues == NULL) oss << ", optionValues=NULL";
+      else { oss << ", optionValues="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddData.optionValues__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLinkAddFile:
+      oss << "hipLinkAddFile(";
+      oss << "state="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.state);
+      oss << ", type="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.type);
+      if (data->args.hipLinkAddFile.path == NULL) oss << ", path=NULL";
+      else { oss << ", path="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.path__val); }
+      oss << ", numOptions="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.numOptions);
+      if (data->args.hipLinkAddFile.options == NULL) oss << ", options=NULL";
+      else { oss << ", options="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.options__val); }
+      if (data->args.hipLinkAddFile.optionValues == NULL) oss << ", optionValues=NULL";
+      else { oss << ", optionValues="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkAddFile.optionValues__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLinkComplete:
+      oss << "hipLinkComplete(";
+      oss << "state="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkComplete.state);
+      if (data->args.hipLinkComplete.hipBinOut == NULL) oss << ", hipBinOut=NULL";
+      else { oss << ", hipBinOut="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkComplete.hipBinOut__val); }
+      if (data->args.hipLinkComplete.sizeOut == NULL) oss << ", sizeOut=NULL";
+      else { oss << ", sizeOut="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkComplete.sizeOut__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLinkCreate:
+      oss << "hipLinkCreate(";
+      oss << "numOptions="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkCreate.numOptions);
+      if (data->args.hipLinkCreate.options == NULL) oss << ", options=NULL";
+      else { oss << ", options="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkCreate.options__val); }
+      if (data->args.hipLinkCreate.optionValues == NULL) oss << ", optionValues=NULL";
+      else { oss << ", optionValues="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkCreate.optionValues__val); }
+      if (data->args.hipLinkCreate.stateOut == NULL) oss << ", stateOut=NULL";
+      else { oss << ", stateOut="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkCreate.stateOut__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipLinkDestroy:
+      oss << "hipLinkDestroy(";
+      oss << "state="; roctracer::hip_support::detail::operator<<(oss, data->args.hipLinkDestroy.state);
       oss << ")";
     break;
     case HIP_API_ID_hipMalloc:

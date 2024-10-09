@@ -19,6 +19,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
+
+#pragma once
+
 #include <hip/hip_runtime.h>
 #include <hip/hiprtc.h>
 #include <hip/hip_version.h>
@@ -36,6 +39,10 @@ THE SOFTWARE.
 #include "rocclr/utils/debug.hpp"
 #include "rocclr/utils/flags.hpp"
 #include "rocclr/utils/macros.hpp"
+#include "vdi_common.hpp"
+#include "device/comgrctx.hpp"
+#include "../hip_comgr_helper.hpp"
+
 
 #ifdef __HIP_ENABLE_RTC
 extern "C" {
@@ -43,8 +50,6 @@ extern const char __hipRTC_header[];
 extern unsigned __hipRTC_header_size;
 }
 #endif
-
-#include "hiprtcComgrHelper.hpp"
 
 namespace hiprtc {
 namespace internal {
@@ -112,29 +117,7 @@ struct Settings {
   bool offloadArchProvided{false};
 };
 
-class RTCProgram {
- protected:
-  // Lock and control variables
-  static amd::Monitor lock_;
-  static std::once_flag initialized_;
-
-  RTCProgram(std::string name);
-  ~RTCProgram() { amd::Comgr::destroy_data_set(exec_input_); }
-
-  // Member Functions
-  bool findIsa();
-  static void AppendOptions(std::string app_env_var, std::vector<std::string>* options);
-
-  // Data Members
-  std::string name_;
-  std::string isa_;
-  std::string build_log_;
-  std::vector<char> executable_;
-
-  amd_comgr_data_set_t exec_input_;
-};
-
-class RTCCompileProgram : public RTCProgram {
+class RTCCompileProgram : public hip::RTCProgram {
   // Private Data Members
   Settings settings_;
 
@@ -193,103 +176,6 @@ class RTCCompileProgram : public RTCProgram {
   size_t getExecSize() const { return executable_.size(); }
   const std::string& getLog() const { return build_log_; }
   size_t getLogSize() const { return build_log_.size(); }
-};
-
-// Linker Arguments passed via hipLinkCreate
-struct LinkArguments {
-  unsigned int max_registers_;
-  unsigned int threads_per_block_;
-  float wall_time_;
-  size_t info_log_size_;
-  char* info_log_;
-  size_t error_log_size_;
-  char* error_log_;
-  unsigned int optimization_level_;
-  unsigned int target_from_hip_context_;
-  unsigned int jit_target_;
-  unsigned int fallback_strategy_;
-  int generate_debug_info_;
-  long log_verbose_;
-  int generate_line_info_;
-  unsigned int cache_mode_;
-  bool sm3x_opt_;
-  bool fast_compile_;
-  const char** global_symbol_names_;
-  void** global_symbol_addresses_;
-  unsigned int global_symbol_count_;
-  int lto_;
-  int ftz_;
-  int prec_div_;
-  int prec_sqrt_;
-  int fma_;
-  const char** linker_ir2isa_args_;
-  size_t linker_ir2isa_args_count_;
-
-  LinkArguments()
-      : max_registers_{0},
-        threads_per_block_{0},
-        wall_time_{0.0f},
-        info_log_size_{0},
-        info_log_{nullptr},
-        error_log_size_{0},
-        error_log_{nullptr},
-        optimization_level_{3},
-        target_from_hip_context_{0},
-        jit_target_{0},
-        fallback_strategy_{0},
-        generate_debug_info_{0},
-        log_verbose_{0},
-        generate_line_info_{0},
-        cache_mode_{0},
-        sm3x_opt_{false},
-        fast_compile_{false},
-        global_symbol_names_{nullptr},
-        global_symbol_addresses_{nullptr},
-        global_symbol_count_{0},
-        lto_{0},
-        ftz_{0},
-        prec_div_{1},
-        prec_sqrt_{1},
-        fma_{1},
-        linker_ir2isa_args_{nullptr},
-        linker_ir2isa_args_count_{0} {}
-};
-
-class RTCLinkProgram : public RTCProgram {
-  // Private Member Functions (forbid these function calls)
-  RTCLinkProgram() = delete;
-  RTCLinkProgram(RTCLinkProgram&) = delete;
-  RTCLinkProgram& operator=(RTCLinkProgram&) = delete;
-
-  amd_comgr_data_kind_t GetCOMGRDataKind(hiprtcJITInputType input_type);
-
-  // Linker Argumenets at hipLinkCreate
-  LinkArguments link_args_;
-
-  // Private Data Members
-  amd_comgr_data_set_t link_input_;
-  std::vector<std::string> link_options_;
-  static std::unordered_set<RTCLinkProgram*> linker_set_;
-
-  bool AddLinkerDataImpl(std::vector<char>& link_data, hiprtcJITInputType input_type,
-                         std::string& link_file_name);
-
- public:
-  RTCLinkProgram(std::string name);
-  ~RTCLinkProgram() {
-    amd::ScopedLock lock(lock_);
-    linker_set_.erase(this);
-    amd::Comgr::destroy_data_set(link_input_);
-  }
-  // Public Member Functions
-  bool AddLinkerOptions(unsigned int num_options, hiprtcJIT_option* options_ptr,
-                        void** options_vals_ptr);
-  bool AddLinkerFile(std::string file_path, hiprtcJITInputType input_type);
-  bool AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
-                     hiprtcJITInputType input_type);
-  bool LinkComplete(void** bin_out, size_t* size_out);
-  void AppendLinkerOptions() { AppendOptions(HIPRTC_LINK_OPTIONS_APPEND, &link_options_); }
-  static bool isLinkerValid(RTCLinkProgram* link_program);
 };
 
 // Thread Local Storage Variables Aggregator Class

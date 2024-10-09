@@ -73,7 +73,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+target_sources(hiprtc PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
 
 set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
@@ -243,7 +243,7 @@ target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
 if(NOT WIN32)
   if (BUILD_SHARED_LIBS)
-    target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+    target_sources(amdhip64 PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
   endif()
 endif()
 
