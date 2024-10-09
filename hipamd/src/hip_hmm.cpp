@@ -64,6 +64,7 @@ static_assert(static_cast<uint32_t>(hipMemRangeAttributeLastPrefetchLocation) ==
 // ================================================================================================
 hipError_t hipMallocManaged(void** dev_ptr, size_t size, unsigned int flags) {
   HIP_INIT_API(hipMallocManaged, dev_ptr, size, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED();
 
   if ((dev_ptr == nullptr) || (size == 0) ||
       ((flags != hipMemAttachGlobal) && (flags != hipMemAttachHost))) {
