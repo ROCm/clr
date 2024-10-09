@@ -3279,14 +3279,14 @@ hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize,
     return hipErrorInvalidValue;
   }
 
-  // In case of vmm sub object, validate using parents vaddr mem object.
-  if (memory->parent() && (memory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
-    memory = memory->parent();
-  }
-
   // Validate Mem Access in case of VMM Memory
   if (!memory->ValidateMemAccess(*hip::getCurrentDevice()->devices()[0], true)) {
     return hipErrorUnknown;
+  }
+
+  // In case of vmm sub object, validate using parents vaddr mem object.
+  if (memory->parent() && (memory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
+    memory = memory->parent();
   }
 
   // Return error if sizeBytes passed to memcpy is more than the actual size allocated
