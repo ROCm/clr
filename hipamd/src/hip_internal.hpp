@@ -595,7 +595,7 @@ public:
 
     void destroyAllStreams();
 
-    void SyncAllStreams( bool cpu_wait = true);
+    void SyncAllStreams( bool cpu_wait = true, bool wait_blocking_streams_only = false);
 
     bool StreamCaptureBlocking();
 

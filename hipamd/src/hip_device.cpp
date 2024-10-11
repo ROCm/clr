@@ -257,15 +257,30 @@ void Device::destroyAllStreams() {
 }
 
 // ================================================================================================
-void Device::SyncAllStreams( bool cpu_wait) {
+void Device::SyncAllStreams(bool cpu_wait, bool wait_blocking_streams_only) {
   // Make a local copy to avoid stalls for GPU finish with multiple threads
   std::vector<hip::Stream*> streams;
   streams.reserve(streamSet.size());
   {
     amd::ScopedLock lock(streamSetLock);
-    for (auto it : streamSet) {
-      streams.push_back(it);
-      it->retain();
+    if (wait_blocking_streams_only) {
+      auto null_stream = GetNullStream();
+      for (auto it : streamSet) {
+        if (it != null_stream && (it->Flags() & hipStreamNonBlocking) == 0) {
+          streams.push_back(it);
+          it->retain();
+        }
+      }
+      // Add null stream to the end of the list so that wait happens after all blocking streams.
+      if (null_stream != nullptr) {
+        streams.push_back(null_stream);
+        null_stream->retain();
+      }
+    } else {
+      for (auto it : streamSet) {
+        streams.push_back(it);
+        it->retain();
+      }
     }
   }
   for (auto it : streams) {

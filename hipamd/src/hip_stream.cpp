@@ -357,13 +357,23 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
       HIP_RETURN(hipErrorStreamCaptureUnsupported);
     }
   }
-  bool wait = (stream == nullptr || stream == hipStreamLegacy) ? true : false;
-  auto hip_stream = hip::getStream(stream, wait);
 
-  // Wait for the current host queue
-  hip_stream->finish();
-  // Release freed memory for all memory pools on the device
-  hip_stream->GetDevice()->ReleaseFreedMemory();
+  if (stream == nullptr) {
+    // Do cpu wait on null stream and only on blocking streams
+    constexpr bool WaitblockingStreamOnly = true;
+    getCurrentDevice()->SyncAllStreams(true, WaitblockingStreamOnly);
+
+    // Release freed memory for all memory pools on the device
+    getCurrentDevice()->ReleaseFreedMemory();
+  } else {
+    constexpr bool wait = false;
+    auto hip_stream = hip::getStream(stream, wait);
+
+    // Wait for the current host queue
+    hip_stream->finish();
+    // Release freed memory for all memory pools on the device
+    hip_stream->GetDevice()->ReleaseFreedMemory();
+  }
   return hipSuccess;
 }
 
