@@ -197,15 +197,23 @@ class SysmemPool {
 public:
   SysmemPool(): chunk_access_(true) /* Sysmem Pool Lock */ {}
   ~SysmemPool() {
-    // Release current chunk
-    if (chunks_.size() == 1) {
-      auto it = chunks_.begin();
-      auto idx = kAllocChunkSize - (current_alloc_.load() % kAllocChunkSize);
-      // Make sure all allocations were released
-      if (idx  == (*it)->free_) {
-        delete [] (*it)->allocs_;
-        delete (*it);
-        chunks_.erase(it);
+    if (free_chunk_num_ != max_chunk_idx_) {
+      for (int i = 0; i < kActiveAllocSize; ++i) {
+        // Free any active chunks
+        if (active_allocs_[i] != nullptr) {
+          auto chunk = active_allocs_[i]->base_;
+          // Check if this chunk contains unreleased memory objects
+          if ((chunk->busy_ + chunk->free_) != kAllocChunkSize) {
+            LogPrintfError("Unreleased slots in sysmem pool %ld",
+              kAllocChunkSize - (chunk->busy_ + chunk->free_));
+          }
+          delete chunk;
+          free_chunk_num_++;
+        }
+      }
+      // Validate if sysmempool released all memory
+      if (free_chunk_num_ != max_chunk_idx_) {
+        LogPrintfError("Unreleased chunk in sysmem pool %ld",  max_chunk_idx_ - free_chunk_num_);
       }
     }
   }
@@ -217,53 +225,87 @@ public:
       ScopedLock lock(chunk_access_);
       // Second check in a case of multiple waiters
       if (idx == max_chunk_idx_) {
-        auto allocs = new T[kAllocChunkSize];
-        chunks_.emplace(new AllocChunk(allocs));
+        auto allocs = new MemoryObject[kAllocChunkSize];
+        // Save the base in the first slot of all allocations
+        allocs[0].base_ = new AllocChunk(allocs);
+        // Check if the overwritten chunk has still empty slots
+        if (active_allocs_[idx % kActiveAllocSize] != nullptr) {
+          auto stale = active_allocs_[idx % kActiveAllocSize]->base_;
+          if (stale->busy_ != kAllocChunkSize) {
+            // The pool contains the stale slots, hence make sure it's marked as free
+            auto freed = stale->free_ - stale->busy_;
+            if (freed == 0) {
+              delete stale;
+              free_chunk_num_++;
+            }
+          }
+        }
+        // Keep the chunk in the list of active chunks
         active_allocs_[idx % kActiveAllocSize] = allocs;
         max_chunk_idx_++;
+      } else if ((idx < max_chunk_idx_) && ((max_chunk_idx_ - idx) >= kActiveAllocSize)) {
+        // If a wait was very long, then drop the old slot and find a more recent one
+        current = current_alloc_++;
+        idx = current / kAllocChunkSize;
       }
     }
-    return &active_allocs_[idx % kActiveAllocSize][current % kAllocChunkSize];
+
+    // Find a slot in the active pool of allocations
+    auto chunk_idx = idx % kActiveAllocSize;
+    MemoryObject* obj = &active_allocs_[chunk_idx][current % kAllocChunkSize];
+    // Save the chunk allocation
+    obj->base_ = active_allocs_[chunk_idx]->base_;
+    obj->base_->busy_++;
+    assert((reinterpret_cast<address>(&obj->object_) -
+            reinterpret_cast<address>(obj)) == sizeof(AllocChunk*) && "Incorrect mem obj offset!");
+    return &obj->object_;
   }
 
   void Free(void* ptr) {
-    ScopedLock lock(chunk_access_);
-    bool found = false;
-    // Search for the pointer in all valid chunks
-    for (auto it : chunks_) {
-      if (reinterpret_cast<uintptr_t>(ptr) >= reinterpret_cast<uintptr_t>(it->allocs_) &&
-          reinterpret_cast<uintptr_t>(ptr) <
-          (reinterpret_cast<uintptr_t>(it->allocs_) + sizeof(T) * kAllocChunkSize)) {
-        it->free_--;
-        found = true;
-        // Destory current chunk if all allocations are freed
-        if (it->free_ == 0) {
-          delete [] it->allocs_;
-          delete it;
-          chunks_.erase(it);
+    auto obj = reinterpret_cast<MemoryObject*>(
+      reinterpret_cast<address>(ptr) - sizeof(MemoryObject*));
+    auto freed = --obj->base_->free_;
+    // If it's the last slot in the chunk, then release memory
+    if (freed == 0) {
+      auto base = obj->base_;
+      {
+        // Make sure active chunks don't have a stale pointer
+        ScopedLock lock(chunk_access_);
+        for (int i = 0; i < kActiveAllocSize; ++i) {
+          if (base->allocs_ == active_allocs_[i]) {
+            active_allocs_[i] = nullptr;
+            break;
+          }
         }
-        break;
       }
-    }
-    if (!found) {
-      guarantee(true, "Mempool releases incorrect memory!\n");
+      delete base;
+      free_chunk_num_++;
     }
   }
 
 private:
-  static constexpr size_t kAllocChunkSize = 1024;  //!< The total number of allocations in a chunk
+  static constexpr size_t kAllocChunkSize = 2048;  //!< The total number of allocations in a chunk
   static constexpr size_t kActiveAllocSize = 32;   //!< The number of active chunks
-  struct AllocChunk {
-    T*        allocs_;  //! Array of allocations
-    uint32_t  free_;    //! The number of commands still available for usage
-    AllocChunk(T* alloc): allocs_(alloc), free_(kAllocChunkSize) {}
+  struct AllocChunk;
+  struct MemoryObject {
+    AllocChunk* base_;      //!< The chunk information for this memory object
+    T   object_;            //!< Allocated user object
+    MemoryObject() {}
   };
+  struct AllocChunk {
+    MemoryObject* allocs_;        //! Array of allocations
+    std::atomic<uint32_t> busy_;  //! The number of commands still available for usage
+    std::atomic<uint32_t> free_;  //! The number of commands still available for usage
+    AllocChunk(MemoryObject* alloc): allocs_(alloc), busy_(0), free_(kAllocChunkSize) {}
+    ~AllocChunk() { delete [] allocs_; }
+  };
+
 
   std::atomic<uint64_t> current_alloc_ = 0; //!< Current allocation, global index
   std::atomic<size_t> max_chunk_idx_ = 0;   //!< Current max chunk index
+  size_t  free_chunk_num_ = 0;              //!< The number of freed chunks
   amd::Monitor  chunk_access_;              //!< Lock for the chunk list access
-  std::set<AllocChunk*> chunks_;            //!< List of allocated memory chunks
-  T* active_allocs_[kActiveAllocSize] = {}; //!< Active chunks for fast access
+  MemoryObject* active_allocs_[kActiveAllocSize] = {}; //!< Active chunks for fast access
 };
 
 }  // namespace amd
