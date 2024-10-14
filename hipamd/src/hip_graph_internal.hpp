@@ -489,6 +489,7 @@ struct Graph {
   unsigned int id_;
   static int nextID;
   int max_streams_ = 0;       //!< Maximum number of extra streams used in the graph launch
+  uint32_t memalloc_nodes_ = 0; //!< Count of unreleased Memalloc nodes
   std::vector<Node> roots_;   //!< Root nodes, used in parallel launches
   std::vector<Node> leafs_;   //!< The list of leaf nodes on every parallel stream
   //!< Used as a temporary storage for the waiting nodes
@@ -733,6 +734,10 @@ struct Graph {
   void SetGraphInstantiated(bool graphInstantiate) {
     graphInstantiated_ = graphInstantiate;
   }
+
+  // returns count of unreleased memalloc nodes
+  uint32_t GetMemAllocNodeCount() const { return memalloc_nodes_; }
+
 };
 struct GraphKernelNode;
 
@@ -2416,6 +2421,7 @@ class GraphMemAllocNode final : public GraphNode {
       queue()->device().SetMemAccess(vaddr_sub_obj->getSvmPtr(), aligned_size,
                                      amd::Device::VmmAccess::kReadWrite);
       va_->retain();
+      graph_->memalloc_nodes_++; // Increment count of unreleased mem alloc nodes
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL,
               "Graph MemAlloc execute [%p-%p], %p", vaddr_sub_obj->getSvmPtr(),
               reinterpret_cast<char*>(vaddr_sub_obj->getSvmPtr()) + aligned_size, memory());
@@ -2521,11 +2527,6 @@ class GraphMemAllocNode final : public GraphNode {
     return node_params_.dptr;
   }
 
-  bool IsActiveMem() {
-    auto graph = GetParentGraph();
-    return graph->ProbeMemory(node_params_.dptr);
-  }
-
   void GetParams(hipMemAllocNodeParams* params) const {
     std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));
   }
@@ -2563,6 +2564,7 @@ class GraphMemFreeNode : public GraphNode {
       // Release the allocation back to graph's pool
       graph_->FreeMemory(phys_mem_obj->getSvmPtr(), static_cast<hip::Stream*>(queue()));
       amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
+      graph_->memalloc_nodes_--; // Decrement count of unreleased memalloc nodes
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
           ptr(), vaddr_sub_obj);
     }

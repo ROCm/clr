@@ -837,13 +837,10 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
 
   // If this is a repeat launch, make sure corresponding MemFreeNode exists for a MemAlloc node
   if (repeatLaunch_ == true) {
-    for (auto& node : topoOrder_) {
-      if (node->GetType() == hipGraphNodeTypeMemAlloc &&
-          static_cast<GraphMemAllocNode*>(node)->IsActiveMem() == true) {
-        return hipErrorInvalidValue;
-      }
+    if (topoOrder_[0]->GetParentGraph()->GetMemAllocNodeCount() > 0) {
+       return hipErrorInvalidValue;
     }
-  } else {
+  }  else {
     repeatLaunch_ = true;
   }
 
