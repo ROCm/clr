@@ -55,6 +55,11 @@ else()
       ${CMAKE_CURRENT_BINARY_DIR}/../../../../../../OpenCL-ICD-Loader #for ocltst modules
       # pure cmake method
       /opt/rocm/lib
+      # centos/sles
+      /usr/lib64
+      /usr/lib
+      # ubuntu
+      /usr/lib/x86_64-linux-gnu
     NO_DEFAULT_PATH)
 endif()
 
