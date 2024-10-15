@@ -203,7 +203,7 @@ hipError_t hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int valu
                   *(hip::getCurrentDevice()->devices()[0])));
 
   if (attr == hipFuncAttributeMaxDynamicSharedMemorySize) {
-    if ((value < 0) || (value > (d_kernel->workGroupInfo()->availableLDSSize_ - 
+    if ((value < 0) || (value > (d_kernel->workGroupInfo()->availableLDSSize_ -
                                  d_kernel->workGroupInfo()->localMemSize_))) {
       HIP_RETURN(hipErrorInvalidValue);
     }
@@ -420,8 +420,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
-
-  amd::ScopedLock lock (DEBUG_HIP_KERNARG_COPY_OPT ? &function->dflock_ : nullptr);
+  amd::ScopedLock lock (DEBUG_HIP_KERNARG_COPY_OPT ? nullptr : &function->dflock_);
 
   hipError_t status = ihipLaunchKernel_validate(
       f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ, blockDimX, blockDimY, blockDimZ,
@@ -734,7 +733,7 @@ hipError_t hipLaunchKernel_common(const void* hostFunction, dim3 gridDim, dim3 b
 hipError_t hipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDim,
                                       void** args, size_t sharedMemBytes, hipStream_t stream) {
   HIP_INIT_API(hipLaunchKernel, hostFunction, gridDim, blockDim, args, sharedMemBytes, stream);
-  HIP_RETURN(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
+  HIP_RETURN_DURATION(hipLaunchKernel_common(hostFunction, gridDim, blockDim, args, sharedMemBytes, stream));
 }
 
 hipError_t hipLaunchKernel_spt(const void* hostFunction, dim3 gridDim, dim3 blockDim,
