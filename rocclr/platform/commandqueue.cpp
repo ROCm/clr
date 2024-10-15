@@ -66,7 +66,7 @@ bool HostQueue::terminate() {
       Command* lastCommand = getLastQueuedCommand(true);
       if (lastCommand != nullptr) {
         // Check if CPU batch wasn't flushed for completion with the last command
-        if (GetSubmittionBatch() != nullptr) {
+        if (GetSubmissionBatch() != nullptr) {
             auto command = new Marker(*this, false);
             if (command != nullptr) {
               ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
@@ -137,13 +137,13 @@ void HostQueue::finish(bool cpu_wait) {
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
     if (command == nullptr) {
-      assert(GetSubmittionBatch() == nullptr &&
+      assert(GetSubmissionBatch() == nullptr &&
         "Can't claim the queue is finished with the active batch!");
       return;
     }
   }
   // Force marker if the batch wasn't sent for CPU update or fence is dirty
-  if (nullptr == command || (GetSubmittionBatch() != nullptr) || vdev()->isFenceDirty()) {
+  if (nullptr == command || (GetSubmissionBatch() != nullptr) || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }

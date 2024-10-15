@@ -373,7 +373,7 @@ void Command::enqueue() {
       EnableProfiling();
       // Update batch head for the current marker. Hence the status of all commands can be
       // updated upon the marker completion
-      SetBatchHead(queue_->GetSubmittionBatch());
+      SetBatchHead(queue_->GetSubmissionBatch());
 
       submit(*queue_->vdev());
 
@@ -381,6 +381,7 @@ void Command::enqueue() {
       queue_->ResetSubmissionBatch();
     } else {
       submit(*queue_->vdev());
+      queue_->FlushSubmissionBatch(this);
     }
   } else {
     queue_->append(*this);
