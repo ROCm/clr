@@ -128,8 +128,8 @@ class CommandQueue : public RuntimeObject {
       : properties_(propMask, properties),
         rtCUs_(rtCUs),
         priority_(priority),
-        queueLock_("CommandQueue::queueLock"),
-        lastCmdLock_("LastQueuedCommand"),
+        queueLock_(),
+        lastCmdLock_(),
         device_(device),
         context_(context),
         cuMask_(cuMask) {}

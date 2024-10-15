@@ -265,7 +265,7 @@ release(bool, DEBUG_CLR_SYSMEM_POOL, false,                                   \
         "Use sysmem pool implementation in runtime for amd commands")         \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
-release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
+release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, true,                    \
         "Use std::mutex in amd::monitor")                                     \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
