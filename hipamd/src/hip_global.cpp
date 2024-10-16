@@ -90,8 +90,13 @@ DeviceVar::DeviceVar(std::string name,
 
 DeviceVar::~DeviceVar() {
   // device_ptr_ is being removed and its amd:Memory obj is being released/deleted during
-  // ihipFree in hip::StatCO::removeFatBinary.
-  assert(amd::MemObjMap::FindMemObj(device_ptr_) == nullptr);
+  // ihipFree in hip::StatCO::removeFatBinary however in DynCO path, it seems to bypass 
+  // ihipFree and hence it needs to be removed+released here. In order to avoid issue with
+  // StatCO, It is better to check if mem obj is found.
+  if (amd::MemObjMap::FindMemObj(device_ptr_) !=  nullptr && amd_mem_obj_ != nullptr) {
+    amd::MemObjMap::RemoveMemObj(device_ptr_);
+    amd_mem_obj_->release();
+  }
   if (shadowVptr != nullptr) {
     textureReference* texRef = reinterpret_cast<textureReference*>(shadowVptr);
     hipError_t err = ihipUnbindTexture(texRef);
