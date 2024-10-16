@@ -825,7 +825,9 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
 #ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
   __CG_QUALIFIER__ unsigned long long build_mask() const {
     unsigned long long mask = ~0ull >> (64 - numThreads);
-    return mask << ((internal::workgroup::thread_rank() / numThreads) * numThreads);
+    // thread_rank() gives thread id from 0..thread launch size.
+    return mask << (((internal::workgroup::thread_rank() % warpSize) / numThreads) *
+                    numThreads);
   }
 #endif
 
