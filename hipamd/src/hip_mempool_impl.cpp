@@ -216,6 +216,8 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
     }
   } else {
     dev_ptr = memory->getSvmPtr();
+    if (!amd::MemObjMap::FindMemObj(dev_ptr))
+      amd::MemObjMap::AddMemObj(dev_ptr, memory);
   }
   // Place the allocated memory into the busy heap
   ts.AddSafeStream(stream);

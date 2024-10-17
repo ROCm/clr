@@ -2335,6 +2335,10 @@ class GraphMemAllocNode final : public GraphNode {
       memory_ = getMemoryObject(dptr, offset);
       // Retain memory object because command release will release it
       memory_->retain();
+
+      // Remove because the entry is not needed in MemObjMap after the memory_ has been saved.
+      // The Phy mem obj will be saved in virtual memory object during VirtualMapCommand::submit.
+      amd::MemObjMap::RemoveMemObj(dptr);
       size_ = aligned_size;
       // Execute the original mapping command
       VirtualMapCommand::submit(device);
