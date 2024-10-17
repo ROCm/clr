@@ -2293,7 +2293,12 @@ bool Device::validateKernel(const amd::Kernel& kernel, const device::VirtualDevi
   // Find the number of scratch registers used in the kernel
   const device::Kernel* devKernel = kernel.getDeviceKernel(*this);
   uint32_t regNum = static_cast<uint32_t>(devKernel->workGroupInfo()->scratchRegs_);
-  regNum = std::max<uint32_t>(static_cast<uint32_t>(stack_size_) / sizeof(uint32_t), regNum);
+  // OCL does not have API to set dynamic stack size i.e. hipDeviceSetLimit and hence there
+  // is no need for OCL to refresh value here and even for HIP, Update should be only if
+  // compiler notifies use of stack size.
+  if (IS_HIP && (devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+    regNum = std::max<uint32_t>(static_cast<uint32_t>(stack_size_) / sizeof(uint32_t), regNum);
+  }
   const VirtualGPU* vgpu = static_cast<const VirtualGPU*>(vdev);
 
   if (!allocScratch(regNum, vgpu, devKernel->workGroupInfo()->usedVGPRs_)) {
