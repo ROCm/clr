@@ -171,8 +171,8 @@ hipError_t ihipGraphAddMemcpyNode1D(hip::GraphNode** pGraphNode, hip::Graph* gra
 
 hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph,
                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
-                                  const hipMemsetParams* pMemsetParams,
-                                  bool capture = true, size_t depth = 1) {
+                                  const hipMemsetParams* pMemsetParams, bool capture = true,
+                                  size_t depth = 1, size_t arrWidth = 1, size_t arrHeight = 1) {
   if (pGraphNode == nullptr || graph == nullptr || pMemsetParams == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pMemsetParams->height == 0) {
     return hipErrorInvalidValue;
@@ -208,7 +208,7 @@ hipError_t ihipGraphAddMemsetNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   if (status != hipSuccess) {
     return status;
   }
-  *pGraphNode = new hip::GraphMemsetNode(pMemsetParams, depth);
+  *pGraphNode = new hip::GraphMemsetNode(pMemsetParams, depth, arrWidth, arrHeight);
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
   return status;
 }
@@ -747,10 +747,16 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
                                    hipExtent& extent) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Current capture node Memset3D on stream : %p",
           stream);
-  hipMemsetParams memsetParams = {0};
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
+
+  // In this case no work should be done
+  if (extent.width == 0 || extent.height == 0 || extent.depth == 0) {
+    return hipSuccess;
+  }
+
+  hipMemsetParams memsetParams = {0};
   memsetParams.dst = pitchedDevPtr.ptr;
   memsetParams.value = value;
   memsetParams.width = extent.width;
@@ -761,7 +767,8 @@ hipError_t capturehipMemset3DAsync(hipStream_t& stream, hipPitchedPtr& pitchedDe
   hip::GraphNode* pGraphNode;
   hipError_t status =
       ihipGraphAddMemsetNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &memsetParams, true, extent.depth);
+                             s->GetLastCapturedNodes().size(), &memsetParams, true, extent.depth,
+                             pitchedDevPtr.xsize, pitchedDevPtr.ysize);
   if (status != hipSuccess) {
     return status;
   }

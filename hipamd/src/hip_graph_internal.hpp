@@ -1979,11 +1979,16 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
 class GraphMemsetNode : public GraphNode {
   hipMemsetParams memsetParams_;
   size_t depth_ = 1;
+  size_t arrWidth_ = 1;
+  size_t arrHeight_ = 1;
  public:
-  GraphMemsetNode(const hipMemsetParams* pMemsetParams, size_t depth = 1)
+  GraphMemsetNode(const hipMemsetParams* pMemsetParams, size_t depth = 1, size_t arrWidth = 1,
+                  size_t arrHeight = 1)
       : GraphNode(hipGraphNodeTypeMemset, "solid", "invtrapezium", "MEMSET") {
     memsetParams_ = *pMemsetParams;
     depth_ = depth;
+    arrWidth_ = arrWidth;
+    arrHeight_ = arrHeight;
     size_t sizeBytes = 0;
     if (memsetParams_.height == 1) {
       sizeBytes = memsetParams_.width * memsetParams_.elementSize;
@@ -1997,6 +2002,8 @@ class GraphMemsetNode : public GraphNode {
   GraphMemsetNode(const GraphMemsetNode& memsetNode) : GraphNode(memsetNode) {
     memsetParams_ = memsetNode.memsetParams_;
     depth_ = memsetNode.depth_;
+    arrWidth_ = memsetNode.arrWidth_;
+    arrHeight_ = memsetNode.arrHeight_;
   }
 
   GraphNode* clone() const override {
@@ -2040,15 +2047,15 @@ class GraphMemsetNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-    if (memsetParams_.height == 1) {
+    if (memsetParams_.height == 1 && depth_ == 1) {
       size_t sizeBytes = memsetParams_.width * memsetParams_.elementSize;
       hipError_t status = ihipMemsetCommand(commands_, memsetParams_.dst, memsetParams_.value,
                                             memsetParams_.elementSize, sizeBytes, stream);
     } else {
       hipError_t status = ihipMemset3DCommand(
           commands_,
-          {memsetParams_.dst, memsetParams_.pitch, memsetParams_.width * memsetParams_.elementSize,
-           memsetParams_.height},
+          {memsetParams_.dst, memsetParams_.pitch, arrWidth_ * memsetParams_.elementSize,
+           arrHeight_},
           memsetParams_.value,
           {memsetParams_.width * memsetParams_.elementSize, memsetParams_.height, depth_}, stream,
           memsetParams_.elementSize);
