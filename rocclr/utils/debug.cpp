@@ -108,8 +108,9 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
   uint64_t timeUs = Os::timeNanos() / 1000ULL;
 
   truncate_log_file();
-  fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s\n", level, file, line,
-    timeUs, pidtid.str().c_str(),message);
+
+  fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s\n", level, file, line,
+    timeUs, pidtid.str().c_str(), message);
 
   fflush(outFile);
 }
@@ -132,10 +133,10 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
   truncate_log_file();
 
   if (start == 0 || *start == 0) {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s\n", level, file, line,
+    fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s\n", level, file, line,
       timeUs, pidtid.str().c_str(), message);
   } else {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010lu us: %s %s: duration: %lu us\n",
+    fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s: duration: %llu us\n",
       level, file, line, timeUs, pidtid.str().c_str(), message, timeUs - *start);
   }
   fflush(outFile);
