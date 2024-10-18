@@ -261,6 +261,8 @@ release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
         "Blocks synchronization on CPU until the callback processing is done")\
 release(uint, DEBUG_CLR_MAX_BATCH_SIZE, 1000,                                 \
         "Forces the callback to clean-up CPU submission queue")               \
+release(bool, DEBUG_CLR_SYSMEM_POOL, true,                                    \
+        "Use sysmem pool implementation in runtime for amd commands")         \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
 release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
