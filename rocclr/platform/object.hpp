@@ -256,14 +256,17 @@ public:
     // Save the chunk allocation
     obj->base_ = active_allocs_[chunk_idx]->base_;
     obj->base_->busy_++;
-    assert((reinterpret_cast<address>(&obj->object_) -
-            reinterpret_cast<address>(obj)) == sizeof(AllocChunk*) && "Incorrect mem obj offset!");
     return &obj->object_;
   }
 
   void Free(void* ptr) {
+#if IS_WINDOWS
     auto obj = reinterpret_cast<MemoryObject*>(
-      reinterpret_cast<address>(ptr) - sizeof(MemoryObject*));
+      reinterpret_cast<address>(ptr) - offsetof(MemoryObject, object_));
+#else
+    auto obj = reinterpret_cast<MemoryObject*>(
+      reinterpret_cast<address>(ptr) - sizeof(AllocChunk*));
+#endif
     auto freed = --obj->base_->free_;
     // If it's the last slot in the chunk, then release memory
     if (freed == 0) {
@@ -299,7 +302,6 @@ private:
     AllocChunk(MemoryObject* alloc): allocs_(alloc), busy_(0), free_(kAllocChunkSize) {}
     ~AllocChunk() { delete [] allocs_; }
   };
-
 
   std::atomic<uint64_t> current_alloc_ = 0; //!< Current allocation, global index
   std::atomic<size_t> max_chunk_idx_ = 0;   //!< Current max chunk index
