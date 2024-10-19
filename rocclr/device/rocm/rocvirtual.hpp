@@ -46,7 +46,7 @@ constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 // Active wait time out incase same sdma engine is used again,
 // then just wait instead of adding dependency wait signal.
-constexpr static uint64_t kForcedTimeout10us = 10;
+constexpr static uint64_t kForcedTimeout1us = 1;
 
 template <bool active_wait_timeout = false>
 inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
@@ -56,8 +56,8 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
       timeout = kUnlimitedWait;
     }
     if (active_wait_timeout) {
-      // If forced wait is set, then wait for 10us, else dont wait. (ns * K = us)
-      timeout = (forced_wait ? kForcedTimeout10us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
+      // If forced wait is set, then wait for 1us, else dont wait. (ns * K = us)
+      timeout = (forced_wait ? kForcedTimeout1us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
       if (timeout == 0) {
         return false;
       }
