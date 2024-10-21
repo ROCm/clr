@@ -61,7 +61,7 @@ Settings::Settings() {
   // Initialize transfer buffer size to 1MB by default
   xferBufSize_ = 1024 * Ki;
 
-  pinnedXferSize_ = GPU_PINNED_MIN_XFER_SIZE * Mi;
+  pinnedXferSize_ = GPU_PINNED_XFER_SIZE * Mi;
   pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
     ? 1 * Mi : GPU_PINNED_MIN_XFER_SIZE * Mi;
 
