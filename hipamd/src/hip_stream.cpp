@@ -609,6 +609,18 @@ hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t c
   if (callback == nullptr || flags != 0) {
     return hipErrorInvalidValue;
   }
+
+  if (stream != nullptr) {
+    // Not supported while stream is capturing
+    if (hip::Stream::StreamCaptureOngoing(stream) == true) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  } else if (Stream::StreamCaptureBlocking() == true) {
+    // If any of the blocking streams is capturing, return error for implicit capture and invalidate
+    // capture for all capturing streams
+    CHECK_STREAM_CAPTURING();
+  }
+
   StreamCallback* cbo = new StreamAddCallback(stream, callback, userData);
   return streamCallback_common(stream, cbo, userData);
 }
