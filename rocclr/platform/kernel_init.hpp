@@ -36,7 +36,8 @@ const amd::Kernel::ArgFieldMapType amd::Kernel::kArgFieldMap[] = {
   {"IsConst",       ArgField::IsConst},
   {"IsRestrict",    ArgField::IsRestrict},
   {"IsVolatile",    ArgField::IsVolatile},
-  {"IsPipe",        ArgField::IsPipe}
+  {"IsPipe",        ArgField::IsPipe},
+  {"Offset",        ArgField::Offset}
 };
 
 const amd::Kernel::ArgValueKindType amd::Kernel::kArgValueKind[] = {
@@ -130,7 +131,7 @@ const amd::Kernel::KernelFieldMapV3Type amd::Kernel::kKernelFieldMapV3[] = {
   {".vgpr_spill_count",           KernelField::NumSpilledVGPRs},
   {".kind",                       KernelField::Kind},
   {".workgroup_processor_mode",   KernelField::WgpMode},
-  {".uniform_work_group_size",    KernelField::UniformWrokGroupSize},
+  {".uniform_work_group_size",    KernelField::UniformWrokGroupSize}
 };
 
 const amd::Kernel::ArgValueKindV3Type amd::Kernel::kArgValueKindV3[] = {
@@ -164,14 +165,13 @@ const amd::Kernel::ArgValueKindV3Type amd::Kernel::kArgValueKindV3[] = {
   {"hidden_private_base",       amd::KernelParameterDescriptor::HiddenPrivateBase},
   {"hidden_shared_base",        amd::KernelParameterDescriptor::HiddenSharedBase},
   {"hidden_queue_ptr",          amd::KernelParameterDescriptor::HiddenQueuePtr},
-  {"hidden_dynamic_lds_size",   amd::KernelParameterDescriptor::HiddenDynamicLdsSize},
+  {"hidden_dynamic_lds_size",   amd::KernelParameterDescriptor::HiddenDynamicLdsSize}
 };
 
 const amd::Kernel::ArgFieldMapV3Type amd::Kernel::kArgFieldMapV3[] = {
   {".name",           ArgField::Name},
   {".type_name",      ArgField::TypeName},
   {".size",           ArgField::Size},
-  {".offset",         ArgField::Offset},
   {".value_kind",     ArgField::ValueKind},
   {".pointee_align",  ArgField::PointeeAlign},
   {".address_space",  ArgField::AddrSpaceQual},
@@ -180,6 +180,8 @@ const amd::Kernel::ArgFieldMapV3Type amd::Kernel::kArgFieldMapV3[] = {
   {".is_const",       ArgField::IsConst},
   {".is_restrict",    ArgField::IsRestrict},
   {".is_volatile",    ArgField::IsVolatile},
+  {".is_pipe",        ArgField::IsPipe},
+  {".offset",         ArgField::Offset}
 };
 
 
