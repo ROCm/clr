@@ -23,6 +23,7 @@
 #include "hip_event.hpp"
 #include "thread/monitor.hpp"
 #include "hip_prof_api.h"
+#include <atomic>
 
 namespace hip {
 
@@ -340,11 +341,15 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
     }
   }
   bool wait = (stream == nullptr) ? true : false;
-  constexpr bool kDontWaitForCpu = false;
-
   auto hip_stream = hip::getStream(stream, wait);
+  bool wait_for_cpu = false;
+  // Force blocking wait if requested. That allows to avoid a build up of unreleased CPU commands
+  if (DEBUG_HIP_BLOCK_SYNC != 0) {
+    static std::atomic<uint64_t> flush = 0;
+    wait_for_cpu = ((++flush % DEBUG_HIP_BLOCK_SYNC) == 0) ? true : false;
+  }
   // Wait for the current host queue
-  hip_stream->finish(kDontWaitForCpu);
+  hip_stream->finish(wait_for_cpu);
   if (stream == nullptr) {
     // null stream will sync with other streams.
     ReleaseGraphExec(hip_stream->DeviceId());

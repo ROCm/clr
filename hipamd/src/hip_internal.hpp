@@ -69,6 +69,21 @@ typedef struct hipArray {
 }hipArray;
 
 namespace hip {
+enum MemcpyType {
+  /// Memcpy from host to host
+  hipHostToHost,
+  /// Memcpy from host to device
+  hipWriteBuffer,
+  /// Memcpy from device to host
+  hipReadBuffer,
+  /// Memcpy from device A to device A
+  /// Memcpy from pinned host buffer to device/device to pinned host buffer
+  hipCopyBuffer,
+  /// Memcpy from device A to device A, user forced to SDMA
+  hipCopyBufferSDMA,
+  /// Memcpy from device A to device B
+  hipCopyBufferP2P,
+};
 struct Graph;
 struct GraphNode;
 struct GraphExec;

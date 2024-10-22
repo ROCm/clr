@@ -246,7 +246,7 @@ class HostQueue : public CommandQueue {
   Command* getLastQueuedCommand(bool retain);
 
   //! Get the submitted batch
-  Command* GetSubmittionBatch() const { return head_; }
+  Command* GetSubmissionBatch() const { return head_; }
 
   //! Insert a command into the linked list of submitted commands
   void FormSubmissionBatch(Command* command) {
@@ -257,6 +257,7 @@ class HostQueue : public CommandQueue {
       tail_->setNext(command);
       tail_ = command;
     }
+    size_++;
     command->setStatus(CL_SUBMITTED);
     command->retain();
     // @note: runtime needs double retain in order to maintain the batch,
@@ -275,8 +276,14 @@ class HostQueue : public CommandQueue {
     lastEnqueueCommand_ = command;
   }
 
+  //! Flushes submitted commands if the batch size significantly grew
+  void FlushSubmissionBatch(Command* command) {
+    if (size_ > DEBUG_CLR_MAX_BATCH_SIZE) {
+      command->notifyCmdQueue();
+    }
+  }
   //! Reset the command batch list
-  void ResetSubmissionBatch() { head_ = nullptr; }
+  void ResetSubmissionBatch() { head_ = nullptr; size_ = 0; }
 
   //! Set queue status
   void SetQueueStatus() { isActive_ = true; }
@@ -285,8 +292,9 @@ class HostQueue : public CommandQueue {
   bool GetQueueStatus() { return isActive_; }
 
 private:
-  Command* head_;   //!< Head of the batch list
-  Command* tail_;   //!< Tail of the batch list
+  Command* head_;     //!< Head of the batch list
+  Command* tail_;     //!< Tail of the batch list
+  size_t   size_ = 0; //!< The current batch size
 
   //! True if this command queue is active
   bool isActive_;

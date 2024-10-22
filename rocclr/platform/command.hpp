@@ -114,6 +114,7 @@ class Event : public RuntimeObject {
     uint64_t correlation_id_;
     bool enabled_;        //!< Profiling enabled for the wave limiter
     bool marker_ts_;      //!< TS marker
+    bool batch_flush_ = true; //!< Command can flush the batch in direct dispatch mode
 
    void clear() {
       queued_ = 0ULL;
@@ -927,6 +928,8 @@ class CopyMemoryCommand : public TwoMemoryArgsCommand {
   const BufferRect& dstRect() const { return dstRect_; }
   //! Return the copy MetaData
   amd::CopyMetadata copyMetadata() const { return copyMetadata_; }
+  //! Updates copy MetaData
+  void SetCopyMetadata(amd::CopyMetadata copyMetadata) { copyMetadata_ = copyMetadata; }
   //! Updates the host memory to read from
   void setSource(Memory& srcMemory) { memory1_ = &srcMemory; }
   //! Updates the memory object to write to.

@@ -121,4 +121,6 @@ hipError_t ihipMemcpyAtoHValidate(hipArray_t srcArray, void* dstHost, amd::Coord
                                   size_t &start);
 
 hipError_t ihipGraphMemsetParams_validate(const hipMemsetParams* pNodeParams);
+
+hip::MemcpyType ihipGetMemcpyType(const void* src, void* dst, hipMemcpyKind kind);
 }  // namespace hip

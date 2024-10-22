@@ -394,6 +394,35 @@ hipError_t ihipMemcpy_validate(void* dst, const void* src, size_t sizeBytes,
   return hipSuccess;
 }
 
+hip::MemcpyType ihipGetMemcpyType(const void* src, void* dst, hipMemcpyKind kind) {
+  size_t sOffset = 0;
+  amd::Memory* srcMemory = getMemoryObject(src, sOffset);
+  size_t dOffset = 0;
+  amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+  hip::MemcpyType type;
+  if(srcMemory == nullptr && dstMemory == nullptr) {
+    type = hipHostToHost;
+  } else if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
+    type = hipWriteBuffer;
+  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
+    type = hipReadBuffer;
+  } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
+    // Check if the queue device doesn't match the device on any memory object.
+    // And any of them are not host allocation.
+    // Hence it's a P2P transfer, because the app has requested access to another GPU
+    if ((srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) &&
+        ((srcMemory->getContext().devices().size() == 1) &&
+         (dstMemory->getContext().devices().size() == 1))) {
+      type = hipCopyBufferP2P;
+    } else if( kind == hipMemcpyDeviceToDeviceNoCU) {
+      type = hipCopyBufferSDMA;
+    } else {
+      type = hipCopyBuffer;
+    }
+  }
+  return type;
+}
+
 // ================================================================================================
 hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src, size_t sizeBytes,
                              hipMemcpyKind kind, hip::Stream& stream, bool isAsync) {
@@ -404,37 +433,37 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
   amd::Device* queueDevice = &stream.device();
   amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
-  if ((srcMemory == nullptr) && (dstMemory != nullptr)) {
-    hip::Stream* pStream = &stream;
-    if (queueDevice != dstMemory->GetDeviceById()) {
-      pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
-      amd::Command* cmd = stream.getLastQueuedCommand(true);
-      if (cmd != nullptr) {
-        waitList.push_back(cmd);
+  hip::MemcpyType type = ihipGetMemcpyType(src, dst, kind);
+  hip::Stream* pStream = &stream;
+  switch (type) {
+    case hipWriteBuffer:
+      if (queueDevice != dstMemory->GetDeviceById()) {
+        pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
+        amd::Command* cmd = stream.getLastQueuedCommand(true);
+        if (cmd != nullptr) {
+          waitList.push_back(cmd);
+        }
       }
-    }
-    command = new amd::WriteMemoryCommand(*pStream, CL_COMMAND_WRITE_BUFFER, waitList,
-              *dstMemory->asBuffer(), dOffset, sizeBytes, src, 0, 0, copyMetadata);
-  } else if ((srcMemory != nullptr) && (dstMemory == nullptr)) {
-    hip::Stream* pStream = &stream;
-    if (queueDevice != srcMemory->GetDeviceById()) {
-      pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
-      amd::Command* cmd = stream.getLastQueuedCommand(true);
-      if (cmd != nullptr) {
-        waitList.push_back(cmd);
+      command = new amd::WriteMemoryCommand(*pStream, CL_COMMAND_WRITE_BUFFER, waitList,
+                                            *dstMemory->asBuffer(), dOffset, sizeBytes, src, 0, 0,
+                                            copyMetadata);
+      break;
+    case hipReadBuffer:
+      if (queueDevice != srcMemory->GetDeviceById()) {
+        pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
+        amd::Command* cmd = stream.getLastQueuedCommand(true);
+        if (cmd != nullptr) {
+          waitList.push_back(cmd);
+        }
       }
-    }
-    command = new amd::ReadMemoryCommand(*pStream, CL_COMMAND_READ_BUFFER, waitList,
-              *srcMemory->asBuffer(), sOffset, sizeBytes, dst, 0, 0, copyMetadata);
-  } else if ((srcMemory != nullptr) && (dstMemory != nullptr)) {
-    // Check if the queue device doesn't match the device on any memory object.
-    // And any of them are not host allocation.
-    // Hence it's a P2P transfer, because the app has requested access to another GPU
-    if ((srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) &&
-        ((srcMemory->getContext().devices().size() == 1) &&
-         (dstMemory->getContext().devices().size() == 1))) {
+      command = new amd::ReadMemoryCommand(*pStream, CL_COMMAND_READ_BUFFER, waitList,
+                                           *srcMemory->asBuffer(), sOffset, sizeBytes, dst, 0, 0,
+                                           copyMetadata);
+      break;
+    case hipCopyBufferP2P:
       command = new amd::CopyMemoryP2PCommand(stream, CL_COMMAND_COPY_BUFFER, waitList,
-          *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, sizeBytes);
+                                              *srcMemory->asBuffer(), *dstMemory->asBuffer(),
+                                              sOffset, dOffset, sizeBytes);
       if (command == nullptr) {
         return hipErrorOutOfMemory;
       }
@@ -444,10 +473,12 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
         delete command;
         return hipErrorInvalidValue;
       }
-    } else {
-      hip::Stream* pStream = &stream;
+      break;
+    case hipCopyBufferSDMA:
+      copyMetadata.copyEnginePreference_ = amd::CopyMetadata::CopyEnginePreference::SDMA;
+    case hipCopyBuffer:
       if ((srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) &&
-          (queueDevice != srcMemory->GetDeviceById())) {
+          queueDevice != srcMemory->GetDeviceById()) {
         pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -462,7 +493,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
           if (cmd != nullptr) {
             waitList.push_back(cmd);
           }
-        // Scenarios such as HtoD where src is pinned memory
+          // Scenarios such as HtoD where src is pinned memory
         } else if ((queueDevice != dstMemory->GetDeviceById()) &&
                    (srcMemory->getContext().devices().size() != 1)) {
           pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
@@ -473,13 +504,10 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
         }
       }
 
-      copyMetadata.copyEnginePreference_ = (kind == hipMemcpyDeviceToDeviceNoCU) ?
-                                            amd::CopyMetadata::CopyEnginePreference::SDMA :
-                                            amd::CopyMetadata::CopyEnginePreference::NONE;
       command = new amd::CopyMemoryCommand(*pStream, CL_COMMAND_COPY_BUFFER, waitList,
-          *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset, dOffset, sizeBytes,
-          copyMetadata);
-    }
+                                           *srcMemory->asBuffer(), *dstMemory->asBuffer(), sOffset,
+                                           dOffset, sizeBytes, copyMetadata);
+      break;
   }
   if (command == nullptr) {
     return hipErrorOutOfMemory;
@@ -489,6 +517,7 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   }
   return hipSuccess;
 }
+
 bool IsHtoHMemcpy(void* dst, const void* src) {
   size_t sOffset = 0;
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
