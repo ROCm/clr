@@ -432,7 +432,7 @@ bool enableHostcalls(const amd::Device &dev, void* bfr, uint32_t numPackets) {
 // For ROCr, create only one signal across all devices (inside hostcallListener->initSignal(dev)) whose pointer is stored in every hostcall buffer
 #if defined(WITH_PAL_DEVICE)
   else if (!hostcallListener->initDevice(dev)) {
-    ClPrint(amd::LOG_INFO, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
+    ClPrint(amd::LOG_ERROR, (amd::LOG_INIT | amd::LOG_QUEUE | amd::LOG_RESOURCE),
             "failed to initialize device for hostcall");
     return false;
   }
