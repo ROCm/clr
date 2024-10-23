@@ -242,6 +242,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       std::string device_name = device->devices()[0]->isa().isaName();
       unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0,0)});
     }
+    unique_isa_names.emplace(std::piecewise_construct,
+                             std::forward_as_tuple("spirv64-amd-amdhsa--amdgcnspirv"),
+                             std::forward_as_tuple(0u, 0u));
 
     // Create a query list using COMGR info for unique ISAs.
     std::vector<amd_comgr_code_object_info_t> query_list_array;
@@ -263,29 +266,35 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
     for (const auto &item : query_list_array) {
       auto unique_it = unique_isa_names.find(item.isa);
-      guarantee(unique_isa_names.cend() != unique_it, "Cannot find unique isa ");
-      unique_it->second = std::pair<size_t, size_t>
-                            (static_cast<size_t>(item.size),
-                             static_cast<size_t>(item.offset));
+      unique_it->second = std::make_pair(item.size, item.offset);
     }
 
     for (auto device : devices) {
       std::string device_name = device->devices()[0]->isa().isaName();
       auto dev_it = unique_isa_names.find(device_name);
-      // If the size is 0, then COMGR API could not find the CO for this GPU device/ISA
-      if (dev_it->second.first == 0) {
+      guarantee(unique_isa_names.cend() != dev_it,
+                "Cannot find the device name in the unique device name");
+      if (dev_it->second.first != 0) {
+        fatbin_dev_info_[device->deviceId()]
+          = new FatBinaryDeviceInfo(reinterpret_cast<address>(const_cast<void*>(image_))
+                                    + dev_it->second.second, dev_it->second.first,
+                                                             dev_it->second.second);
+      } else if (unique_isa_names["spirv64-amd-amdhsa--amdgcnspirv"].first) {
+        LogPrintfError("SPIR-V support is not yet available, even though it "
+                       "is needed for the bundle %s, which does not contain "
+                       "requested ISA: %s",
+                        fname_.c_str(), device_name.c_str());
+        hip_status = hipErrorNoBinaryForGpu;
+        ListAllDeviceWithNoCOFromBundle(unique_isa_names);
+        break;
+      } else {
         LogPrintfError("Cannot find CO in the bundle %s for ISA: %s",
                         fname_.c_str(), device_name.c_str());
         hip_status = hipErrorNoBinaryForGpu;
         ListAllDeviceWithNoCOFromBundle(unique_isa_names);
         break;
       }
-      guarantee(unique_isa_names.cend() != dev_it,
-                "Cannot find the device name in the unique device name");
-      fatbin_dev_info_[device->deviceId()]
-        = new FatBinaryDeviceInfo(reinterpret_cast<address>(const_cast<void*>(image_))
-                                  + dev_it->second.second, dev_it->second.first,
-                                                           dev_it->second.second);
+
       fatbin_dev_info_[device->deviceId()]->program_
         = new amd::Program(*(device->asContext()));
     }
