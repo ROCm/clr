@@ -1384,19 +1384,10 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   if (false == clonedGraph->TopologicalOrder(graphNodes)) {
     return hipErrorInvalidValue;
   }
-  std::vector<std::vector<hip::GraphNode*>> parallelLists;
-  std::unordered_map<hip::GraphNode*, std::vector<hip::GraphNode*>> nodeWaitLists;
-  if (DEBUG_HIP_FORCE_GRAPH_QUEUES == 1) {
-    parallelLists.push_back(graphNodes);
-  } else {
-    clonedGraph->GetRunList(parallelLists, nodeWaitLists);
-  }
   if (DEBUG_HIP_FORCE_GRAPH_QUEUES != 0) {
     clonedGraph->ScheduleNodes();
   }
-  *pGraphExec =
-      new hip::GraphExec(graphNodes, parallelLists, nodeWaitLists, clonedGraph, clonedNodes,
-                         flags);
+  *pGraphExec = new hip::GraphExec(graphNodes, clonedGraph, clonedNodes, flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
