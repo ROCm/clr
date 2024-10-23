@@ -441,7 +441,8 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
         WriteAqlArgAt(hidden_arguments, gpu.hsaQueueMem()->vmAddress(), it.size_, it.offset_);
         break;
       case amd::KernelParameterDescriptor::HiddenDynamicLdsSize:
-        WriteAqlArgAt(hidden_arguments, ldsAddress - ldsSize(), it.size_, it.offset_);
+        WriteAqlArgAt(hidden_arguments, static_cast<uint32_t>(ldsAddress - ldsSize()),
+               it.size_, it.offset_);
         break;
     }
   }

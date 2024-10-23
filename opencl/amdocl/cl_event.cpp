@@ -94,14 +94,17 @@ RUNTIME_ENTRY(cl_int, clWaitForEvents, (cl_uint num_events, const cl_event* even
     }
 
     // Make sure all the events are associated with the same context
-    const amd::Context* context = &as_amd(event)->context();
+    amd::Event* amdEvent = as_amd(event);
+    if (amdEvent->status() == CL_COMPLETE) continue;
+
+    const amd::Context* context = &amdEvent->context();
     if (prevContext != NULL && prevContext != context) {
       return CL_INVALID_CONTEXT;
     }
     prevContext = context;
 
     // Flush the command queues associated with event1...eventN
-    amd::HostQueue* queue = as_amd(event)->command().queue();
+    amd::HostQueue* queue = amdEvent->command().queue();
     if (queue != NULL && prevQueue != queue) {
       queue->flush();
     }
