@@ -96,9 +96,9 @@ void handleSanitizerService(Payload* packt_payload, uint64_t activemask,
   int64_t  loadAddrAdjust = 0;
   auto uri_fd = amd::Os::FDescInit();
   if (uri_locator) {
-    device::UriLocator::UriInfo fileuri_info = uri_locator->lookUpUri(callstack[0]);
-    std::tie(offset, size) = uri_locator->decodeUriAndGetFd(fileuri_info, &uri_fd);
-    loadAddrAdjust = fileuri_info.loadAddressDiff;
+    device::UriLocator::UriInfo uri_info = uri_locator->lookUpUri(callstack[0]);
+    std::tie(offset, size) = uri_locator->decodeUriAndGetFd(uri_info, &uri_fd);
+    loadAddrAdjust = uri_info.loadAddressDiff;
   }
 
 #if defined(__linux__)
