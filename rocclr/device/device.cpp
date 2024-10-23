@@ -305,18 +305,13 @@ Context* Device::glb_ctx_ = nullptr;
 Monitor Device::p2p_stage_ops_(true);
 Memory* Device::p2p_stage_ = nullptr;
 
-Monitor MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101) ("Guards MemObjMap allocation list");
-std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
-std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
-
-size_t MemObjMap::size() {
-  amd::ScopedLock lock(AllocatedLock_);
-  return MemObjMap_.size();
-}
+std::array<MemObjMap::Bin, MemObjMap::kNumBins> MemObjMap::MemObjBin_ ROCCLR_INIT_PRIORITY(101) = {} ;
+std::array<MemObjMap::Bin, MemObjMap::kNumBins> MemObjMap::VirtualMemObjBin_ ROCCLR_INIT_PRIORITY(101) = {} ;
 
 void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
-  amd::ScopedLock lock(AllocatedLock_);
-  auto rval = MemObjMap_.insert({ reinterpret_cast<uintptr_t>(k), v });
+  auto& bin = getMapBin(k, MemObjBin_);
+  std::unique_lock lock(bin.AllocatedLock_);
+  auto rval = bin.map_.insert({ reinterpret_cast<uintptr_t>(k), v });
   if (!rval.second) {
     DevLogPrintfError("Memobj map already has an entry for ptr: 0x%x",
                       reinterpret_cast<uintptr_t>(k));
@@ -324,17 +319,19 @@ void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
 }
 
 void MemObjMap::RemoveMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
-  auto rval = MemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
+  auto& bin = getMapBin(k, MemObjBin_);
+  std::unique_lock lock(bin.AllocatedLock_);
+  auto rval = bin.map_.erase(reinterpret_cast<uintptr_t>(k));
   guarantee(rval == 1, "Memobj map does not have ptr: 0x%x",
                         reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
-  amd::ScopedLock lock(AllocatedLock_);
+  auto& bin = getMapBin(k, MemObjBin_);
+  std::shared_lock lock(bin.AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
-  auto it = MemObjMap_.upper_bound(key);
-  if (it == MemObjMap_.begin()) {
+  auto it = bin.map_.upper_bound(key);
+  if (it == bin.map_.begin()) {
     return nullptr;
   }
 
@@ -350,9 +347,50 @@ amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
     return nullptr;
   }
 }
+
+void MemObjMap::UpdateAccess(amd::Device *peerDev) {
+  if (peerDev == nullptr) {
+    return;
+  }
+  // Provides access to all memory allocated on peerDev but
+  // hsa_amd_agents_allow_access was not called because there was no peer
+  for (auto& bin : MemObjBin_) {
+    std::shared_lock lock(bin.AllocatedLock_);
+    for (auto it : bin.map_) {
+      const std::vector<Device*>& devices = it.second->getContext().devices();
+      if (devices.size() == 1 && devices[0] == peerDev) {
+        device::Memory* devMem = it.second->getDeviceMemory(*devices[0]);
+        if (!devMem->getAllowedPeerAccess()) {
+          peerDev->deviceAllowAccess(reinterpret_cast<void*>(it.first));
+          devMem->setAllowedPeerAccess(true);
+        }
+      }
+    }
+  }
+}
+
+void MemObjMap::Purge(amd::Device* dev) {
+  assert(dev != nullptr);
+  for (auto& bin : MemObjBin_) {
+    std::unique_lock lock(bin.AllocatedLock_);
+    for (auto it = bin.map_.cbegin(); it != bin.map_.cend(); ) {
+      amd::Memory* memObj = it->second;
+      unsigned int flags = memObj->getMemFlags();
+      const std::vector<Device*>& devices = memObj->getContext().devices();
+      if (devices.size() == 1 && devices[0] == dev && !(flags & ROCCLR_MEM_INTERNAL_MEMORY)) {
+        memObj->release();
+        it = bin.map_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+}
+
 void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
-  amd::ScopedLock lock(AllocatedLock_);
-  auto rval = VirtualMemObjMap_.insert({ reinterpret_cast<uintptr_t>(k), v });
+  auto& bin = getMapBin(k, VirtualMemObjBin_);
+  std::unique_lock lock(bin.AllocatedLock_);
+  auto rval = bin.map_.insert({ reinterpret_cast<uintptr_t>(k), v });
   if (!rval.second) {
     DevLogPrintfError("Virtual Memobj map already has an entry for ptr: 0x%x",
                       reinterpret_cast<uintptr_t>(k));
@@ -360,17 +398,19 @@ void MemObjMap::AddVirtualMemObj(const void* k, amd::Memory* v) {
 }
 
 void MemObjMap::RemoveVirtualMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
-  auto rval = VirtualMemObjMap_.erase(reinterpret_cast<uintptr_t>(k));
+  auto& bin = getMapBin(k, VirtualMemObjBin_);
+  std::unique_lock lock(bin.AllocatedLock_);
+  auto rval = bin.map_.erase(reinterpret_cast<uintptr_t>(k));
   guarantee(rval == 1, "Virtual Memobj map does not have ptr: 0x%x",
                        reinterpret_cast<uintptr_t>(k));
 }
 
 amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
-  amd::ScopedLock lock(AllocatedLock_);
+  auto& bin = getMapBin(k, VirtualMemObjBin_);
+  std::shared_lock lock(bin.AllocatedLock_);
   uintptr_t key = reinterpret_cast<uintptr_t>(k);
-  auto it = VirtualMemObjMap_.upper_bound(key);
-  if (it == VirtualMemObjMap_.begin()) {
+  auto it = bin.map_.upper_bound(key);
+  if (it == bin.map_.begin()) {
     return nullptr;
   }
 
@@ -490,43 +530,6 @@ bool Device::DestroyVirtualBuffer(amd::Memory* vaddr_mem_obj) {
   }
 
   return true;
-}
-
-void MemObjMap::UpdateAccess(amd::Device *peerDev) {
-  if (peerDev == nullptr) {
-    return;
-  }
-
-  // Provides access to all memory allocated on peerDev but
-  // hsa_amd_agents_allow_access was not called because there was no peer
-  amd::ScopedLock lock(AllocatedLock_);
-  for (auto it : MemObjMap_) {
-    const std::vector<Device*>& devices = it.second->getContext().devices();
-    if (devices.size() == 1 && devices[0] == peerDev) {
-      device::Memory* devMem = it.second->getDeviceMemory(*devices[0]);
-      if (!devMem->getAllowedPeerAccess()) {
-        peerDev->deviceAllowAccess(reinterpret_cast<void*>(it.first));
-        devMem->setAllowedPeerAccess(true);
-      }
-    }
-  }
-}
-
-void MemObjMap::Purge(amd::Device* dev) {
-  assert(dev != nullptr);
-
-  amd::ScopedLock lock(AllocatedLock_);
-  for (auto it = MemObjMap_.cbegin(); it != MemObjMap_.cend(); ) {
-    amd::Memory* memObj = it->second;
-    unsigned int flags = memObj->getMemFlags();
-    const std::vector<Device*>& devices = memObj->getContext().devices();
-    if (devices.size() == 1 && devices[0] == dev && !(flags & ROCCLR_MEM_INTERNAL_MEMORY)) {
-      memObj->release();
-      it = MemObjMap_.erase(it);
-    } else {
-      ++it;
-    }
-  }
 }
 
 Device::BlitProgram::~BlitProgram() {
