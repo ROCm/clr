@@ -141,6 +141,11 @@ void HostQueue::finish(bool cpu_wait) {
         "Can't claim the queue is finished with the active batch!");
       return;
     }
+    // Force blocking wait if requested. That allows to avoid a build up of unreleased CPU commands
+    if ((DEBUG_HIP_BLOCK_SYNC > 0) &&
+        (vdev()->QueuedAsyncHandlers().load() > DEBUG_HIP_BLOCK_SYNC)) {
+      cpu_wait = true;
+    }
   }
   // Force marker if the batch wasn't sent for CPU update or fence is dirty
   if (nullptr == command || (GetSubmissionBatch() != nullptr) || vdev()->isFenceDirty()) {

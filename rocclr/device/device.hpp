@@ -1332,6 +1332,9 @@ class VirtualDevice : public amd::HeapObject {
                                  const std::string& kernelName,
                                  amd::AccumulateCommand* vcmd = nullptr) = 0;
 
+  //! Returns the number of outstanding HSA async handlers
+  std::atomic<uint64_t>& QueuedAsyncHandlers() const { return queued_async_handlers_; }
+
  private:
   //! Disable default copy constructor
   VirtualDevice& operator=(const VirtualDevice&);
@@ -1347,6 +1350,7 @@ class VirtualDevice : public amd::HeapObject {
 
   amd::Monitor execution_;  //!< Lock to serialise access to all device objects
   uint index_;              //!< The virtual device unique index
+  mutable std::atomic<uint64_t> queued_async_handlers_ = 0; //!< Outstanding HSA async handlers
 };
 
 }  // namespace amd::device

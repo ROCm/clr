@@ -232,11 +232,14 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Save callback signal
   hsa_signal_t callback_signal = ts->GetCallbackSignal();
 
+  auto gpu = ts->gpu();
+  gpu->QueuedAsyncHandlers()--;
+
   // Reset last used SDMA engine mask
-  ts->gpu()->setLastUsedSdmaEngine(0);
+  gpu->setLastUsedSdmaEngine(0);
 
   // Update the batch, since signal is complete
-  ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
+  gpu->updateCommandsState(ts->command().GetBatchHead());
 
   // Reset API callback signal. It will release AQL queue and start commands processing
   if (callback_signal.handle != 0) {
@@ -474,6 +477,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
           hsa_signal_add_relaxed(prof_signal->signal_, 1);
           init_value += 1;
         }
+        gpu_.QueuedAsyncHandlers()++;
         hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,
             HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
         if (HSA_STATUS_SUCCESS != result) {
