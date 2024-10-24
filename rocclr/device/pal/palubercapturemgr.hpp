@@ -21,6 +21,7 @@
 #pragma once
 
 #include "device/pal/palcapturemgr.hpp"
+#include "thread/monitor.hpp"
 
 namespace DevDriver
 {
@@ -80,10 +81,18 @@ class UberTraceCaptureMgr final : public ICaptureMgr {
   bool CreateUberTraceResources(Pal::IPlatform* platform);
   void DestroyUberTraceResources();
 
+  void WriteMarker(const VirtualGPU* gpu, const void* data, size_t data_size) const;
+  void WriteComputeBindMarker(const VirtualGPU* gpu, uint64_t api_hash) const;
+  void WriteEventWithDimsMarker(const VirtualGPU* gpu, RgpSqttMarkerEventType apiType, uint32_t x,
+                                uint32_t y, uint32_t z) const;
+
   const Device&                     device_;
   DevDriver::DevDriverServer*       dev_driver_server_;
   uint64_t                          global_disp_count_;
+  RgpSqttMarkerUserEventWithString* user_event_;
+  mutable uint32_t                  current_event_id_;
 
+  mutable amd::Monitor              trace_mutex_;
   GpuUtil::TraceSession*            trace_session_;
   GpuUtil::RenderOpTraceController* trace_controller_;
   GpuUtil::CodeObjectTraceSource*   code_object_trace_source_;

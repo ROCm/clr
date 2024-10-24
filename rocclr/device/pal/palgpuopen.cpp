@@ -453,7 +453,8 @@ void RgpCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel, size
       WriteComputeBindMarker(gpu, kernel.prog().ApiHash());
 
       WriteUserEventMarker(gpu, RgpSqttMarkerUserEventObjectName, kernel.name());
-      // Write disaptch marker
+
+      // Write dispatch marker
       WriteEventWithDimsMarker(gpu, apiEvent, static_cast<uint32_t>(x), static_cast<uint32_t>(y),
                                static_cast<uint32_t>(z));
     }
