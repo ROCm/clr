@@ -28,6 +28,11 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 ### Resolved issues
 
 
+- The `_sync()` version of crosslane builtins such as `shfl_sync()`,
+  `__all_sync()` and `__any_sync()`, continue to be hidden behind the
+  preprocessor macro `HIP_ENABLE_WARP_SYNC_BUILTINS`, and will be enabled
+  unconditionally in the next ROCm release.
+
 ## HIP 6.2.41134 for ROCm 6.2.1
 
 ### Resolved issues

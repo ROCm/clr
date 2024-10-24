@@ -25,10 +25,8 @@ THE SOFTWARE.
 // Warp sync builtins (with explicit mask argument) introduced in ROCm 6.2 as a
 // preview to allow end-users to adapt to the new interface involving 64-bit
 // masks. These are disabled by default, and can be enabled by setting the macro
-// below. The builtins will be enabled unconditionally in ROCm 6.3.
-//
-// This arrangement also applies to the __activemask() builtin defined in
-// amd_warp_functions.h.
+// "HIP_ENABLE_WARP_SYNC_BUILTINS". This arrangement also applies to the
+// __activemask() builtin defined in amd_warp_functions.h.
 #ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
 
 #if !defined(__HIPCC_RTC__)
