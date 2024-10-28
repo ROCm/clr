@@ -72,8 +72,9 @@ bool Stream::Create() {
 }
 
 // ================================================================================================
-void Stream::Destroy(hip::Stream* stream) {
+void Stream::Destroy(hip::Stream* stream, bool forceDestroy) {
   stream->device_->RemoveStream(stream);
+  stream->SetForceDestroy(forceDestroy);
   stream->release();
   stream = nullptr;
 }
