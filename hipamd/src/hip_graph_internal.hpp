@@ -750,12 +750,10 @@ struct GraphExec : public amd::ReferenceCountedObject, public Graph {
   ~GraphExec() {
     for (auto stream : parallel_streams_) {
       if (stream != nullptr) {
-        stream->finish();
-        hip::Stream::Destroy(stream);
+        constexpr bool kForceDestroy = true;
+        hip::Stream::Destroy(stream, kForceDestroy);
       }
     }
-    amd::ScopedLock lock(graphExecSetLock_);
-    graphExecSet_.erase(this);
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       if (kernArgManager_ != nullptr) {
         kernArgManager_->release();

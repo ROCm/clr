@@ -239,7 +239,7 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   gpu->updateCommandsState(ts->command().GetBatchHead());
 
   // Reset API callback signal. It will release AQL queue and start commands processing
-  if (callback_signal.handle != 0) {
+  if (callback_signal.handle != 0 && ts->GetBlocking()) {
     hsa_signal_subtract_relaxed(callback_signal, 1);
   }
 
@@ -515,10 +515,13 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
         // If API callback is enabled, then use a blocking signal for AQL queue.
         // HSA signal will be acquired in SW and released after HSA signal callback
         if (ts->command().Callback() != nullptr) {
-          ts->SetCallbackSignal(prof_signal->signal_);
+          bool blocking = ts->command().Callback()->blocking_;
+          ts->SetCallbackSignal(prof_signal->signal_, blocking);
           // Blocks AQL queue from further processing
-          hsa_signal_add_relaxed(prof_signal->signal_, 1);
-          init_value += 1;
+          if (blocking) {
+            hsa_signal_add_relaxed(prof_signal->signal_, 1);
+            init_value += 1;
+          }
         }
         gpu_.QueuedAsyncHandlers()++;
         hsa_status_t result = hsa_amd_signal_async_handler(prof_signal->signal_,

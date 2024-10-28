@@ -72,10 +72,10 @@ class Event : public RuntimeObject {
 
     std::atomic<CallBackFunction> callback_;  //!< callback function pointer.
     void* data_;                              //!< user data passed to the callback function.
-    int32_t status_;                           //!< execution status triggering the callback.
-
-    CallBackEntry(int32_t status, CallBackFunction callback, void* data)
-        : callback_(callback), data_(data), status_(status) {}
+    int32_t status_;                          //!< execution status triggering the callback.
+    bool blocking_;                           //!< TRUE if callback is blocking
+    CallBackEntry(int32_t status, CallBackFunction callback, void* data, bool blocking)
+        : callback_(callback), data_(data), status_(status), blocking_(blocking) {}
   };
 
  public:
@@ -173,7 +173,7 @@ class Event : public RuntimeObject {
   int32_t status() const { return status_.load(std::memory_order_relaxed); }
 
   //! Insert the given \a callback into the callback stack.
-  bool setCallback(int32_t status, CallBackFunction callback, void* data);
+  bool setCallback(int32_t status, CallBackFunction callback, void* data, bool blocking = true);
 
   /*! \brief Set the event status.
    *

@@ -112,8 +112,9 @@ class Timestamp : public amd::ReferenceCountedObject {
   std::vector<ProfilingSignal*> signals_; //!< The list of all signals, associated with the TS
   hsa_signal_t callback_signal_;  //!< Signal associated with a callback for possible later update
   amd::Monitor  lock_;            //!< Serialize timestamp update
-  bool        accum_ena_ = false; //!< If TRUE then the accumulation of execution times has started
-  bool        hasHwProfiling_ = false; //!< If TRUE then HwProfiling is enabled for the command
+  bool accum_ena_ = false;        //!< If TRUE then the accumulation of execution times has started
+  bool hasHwProfiling_ = false;   //!< If TRUE then HwProfiling is enabled for the command
+  bool blocking_ = true;          //!< If TRUE callback is blocking
 
   Timestamp(const Timestamp&) = delete;
   Timestamp& operator=(const Timestamp&) = delete;
@@ -177,12 +178,15 @@ class Timestamp : public amd::ReferenceCountedObject {
   VirtualGPU* gpu() const { return gpu_; }
 
   //! Updates the callback signal
-  void SetCallbackSignal(hsa_signal_t callback_signal) {
+  void SetCallbackSignal(hsa_signal_t callback_signal, bool blocking = true) {
     callback_signal_ = callback_signal;
+    blocking_ = blocking;
   }
-
   //! Returns the callback signal
   hsa_signal_t GetCallbackSignal() const { return callback_signal_; }
+
+  //! Return if callback is blocking/non-blocking
+  bool GetBlocking() { return blocking_; }
 };
 
 class VirtualGPU : public device::VirtualDevice {

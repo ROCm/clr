@@ -732,21 +732,11 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   // we may not need to flush any caches.
   CallbackCommand->setEventScope(amd::Device::kCacheStateIgnore);
   amd::Event& event = CallbackCommand->event();
-  if (!event.setCallback(CL_COMPLETE, GraphExec::DecrementRefCount, this)) {
+  constexpr bool kBlocking = false;
+  if (!event.setCallback(CL_COMPLETE, GraphExec::DecrementRefCount, this, kBlocking)) {
     return hipErrorInvalidHandle;
   }
   CallbackCommand->enqueue();
-  // Add the new barrier to stall the stream, until the callback is done
-  amd::Command::EventWaitList eventWaitList;
-  eventWaitList.push_back(CallbackCommand);
-  amd::Command* block_command = new amd::Marker(*launch_stream, kMarkerDisableFlush, eventWaitList);
-  // we may not need to flush any caches.
-  block_command->setEventScope(amd::Device::kCacheStateIgnore);
-  if (block_command == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  block_command->enqueue();
-  block_command->release();
   CallbackCommand->release();
   return status;
 }
