@@ -190,10 +190,11 @@ bool Event::resetStatus(int32_t status) {
 }
 
 // ================================================================================================
-bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* data) {
+bool Event::setCallback(int32_t status, Event::CallBackFunction callback, void* data,
+                        bool blocking) {
   assert(status >= CL_COMPLETE && status <= CL_QUEUED && "invalid status");
 
-  CallBackEntry* entry = new CallBackEntry(status, callback, data);
+  CallBackEntry* entry = new CallBackEntry(status, callback, data, blocking);
   if (entry == NULL) {
     return false;
   }
