@@ -372,7 +372,7 @@ public:
     /// Check whether any blocking stream running
     static bool StreamCaptureBlocking();
 
-    static void Destroy(hip::Stream* stream);
+    static void Destroy(hip::Stream* stream, bool forceDestroy = false);
 
     virtual bool terminate();
 

@@ -57,8 +57,9 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
 }
 
 bool HostQueue::terminate() {
+  // incase of force destroy skip checking on the last command
   if (AMD_DIRECT_DISPATCH) {
-    if (vdev() != nullptr) {
+    if (!forceDestroy_ && vdev() != nullptr) {
       // If the queue still has the last command, then wait and release it
       // We must be in protected way to get last command when calling
       // awaitCompletion() where lastCommand will be released and possibly
