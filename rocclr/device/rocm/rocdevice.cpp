@@ -674,11 +674,6 @@ bool Device::create() {
                    pciDeviceId_);
     return false;
   }
-  if (agent_isas.count != 1) {
-    LogPrintfError("HSA device %s (PCI ID %x) has %u ISAs but can only support a single ISA",
-                   agent_name, pciDeviceId_, agent_isas.count);
-    return false;
-  }
 
   uint32_t isa_name_length = 0;
   if (HSA_STATUS_SUCCESS !=
