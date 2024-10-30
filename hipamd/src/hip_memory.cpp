@@ -43,6 +43,16 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
   return memObj;
 }
 
+hipMemoryType getMemoryType(const amd::Memory* memory) {
+  if (memory == nullptr) {
+    return hipMemoryTypeHost;
+  }
+
+  return ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) & memory->getMemFlags())
+      ? hipMemoryTypeHost
+      : hipMemoryTypeDevice;
+}
+
 // ================================================================================================
 amd::Memory* getMemoryObjectWithOffset(const void* ptr, const size_t size) {
   size_t offset = 0;
@@ -625,23 +635,31 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   amd::Memory* srcMemory = getMemoryObject(src, sOffset);
   size_t dOffset = 0;
   amd::Memory* dstMemory = getMemoryObject(dst, dOffset);
+
+  hipMemoryType srcMemoryType = getMemoryType(srcMemory);
+  hipMemoryType dstMemoryType = getMemoryType(dstMemory);
+
   if (srcMemory == nullptr && dstMemory == nullptr) {
     ihipHtoHMemcpy(dst, src, sizeBytes, stream);
     return hipSuccess;
   } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
              ((srcMemory != nullptr) && (dstMemory == nullptr))) {
-    // Don't wait for unpinned H2D copy if staging is used for copy
-    isHostAsync &= ((srcMemory == nullptr) && (dstMemory != nullptr) && AMD_DIRECT_DISPATCH &&
-      (sizeBytes <= stream.device().settings().stagedXferSize_)) ? true : false;
+    // Don't wait for unpinned H2D copy if staging is used for copy. If dstMemory is not null, it
+    // can still be a pinned host memory, hence the check on dst memory type.
+    isHostAsync &=
+        ((srcMemory == nullptr) && (dstMemory != nullptr && dstMemoryType == hipMemoryTypeDevice) &&
+         AMD_DIRECT_DISPATCH && (sizeBytes <= stream.device().settings().stagedXferSize_))
+        ? true
+        : false;
   } else if (srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) {
-    hipMemoryType srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-        srcMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
-    hipMemoryType dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-        dstMemory->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
     // Device to Device copies do not need to host side synchronization.
     if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice) &&
         (!srcMemory->getUserData().sync_mem_ops_ || !dstMemory->getUserData().sync_mem_ops_)) {
       isHostAsync = true;
+    }
+    // Any Host to any Host need host side synchronization.
+    if ((srcMemoryType == hipMemoryTypeHost) && (dstMemoryType == hipMemoryTypeHost)) {
+      isHostAsync = false;
     }
   }
 
@@ -2380,11 +2398,8 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
   hipMemoryType srcMemoryType = pCopy->srcMemoryType;
   if (srcMemoryType == hipMemoryTypeUnified) {
     amd::Memory* memObj = getMemoryObject(pCopy->srcDevice, offset);
-    if (memObj != nullptr) {
-      srcMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    } else {
-      srcMemoryType = hipMemoryTypeHost;
+    srcMemoryType = getMemoryType(memObj);
+    if (memObj == nullptr) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->srcXInBytes += offset;
     }
 
@@ -2400,11 +2415,8 @@ void ihipCopyMemParamSet(const HIP_MEMCPY3D* pCopy, hipMemoryType& srcMemType,
   hipMemoryType dstMemoryType = pCopy->dstMemoryType;
   if (dstMemoryType == hipMemoryTypeUnified) {
     amd::Memory* memObj = getMemoryObject(pCopy->dstDevice, offset);
-    if (memObj != nullptr) {
-      dstMemoryType = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags()) ? hipMemoryTypeHost : hipMemoryTypeDevice;
-    } else {
-      dstMemoryType = hipMemoryTypeHost;
+    dstMemoryType = getMemoryType(memObj);
+    if (memObj == nullptr) {
       const_cast<HIP_MEMCPY3D*>(pCopy)->dstXInBytes += offset;
     }
 
@@ -3774,8 +3786,7 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
   memset(attributes, 0, sizeof(hipPointerAttribute_t));
 
   if (memObj != nullptr) {
-    attributes->type = ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-        memObj->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
+    attributes->type = getMemoryType(memObj);
     if (attributes->type == hipMemoryTypeHost) {
       if (memObj->getHostMem() != nullptr) {
         attributes->hostPointer = static_cast<char*>(memObj->getHostMem()) + offset;
@@ -3858,9 +3869,7 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
       }
       case HIP_POINTER_ATTRIBUTE_MEMORY_TYPE : {
         if (memObj) { // checks for host type or device type
-          *reinterpret_cast<uint32_t*>(data) =
-          ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) &
-            memObj->getMemFlags())? hipMemoryTypeHost : hipMemoryTypeDevice;
+          *reinterpret_cast<uint32_t*>(data) = getMemoryType(memObj);
         } else { // checks for array type
           // ptr must be a host allocation using malloc since memObj is null and is
           // not found in hipArraySet.
@@ -3902,7 +3911,7 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
       }
       case HIP_POINTER_ATTRIBUTE_HOST_POINTER : {
         if (memObj) {
-          if ((CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR) & memObj->getMemFlags()) {
+          if (getMemoryType(memObj) == hipMemoryTypeHost) {
             if (memObj->getHostMem() != nullptr) {
               // Registered memory
               *reinterpret_cast<char**>(data) =
