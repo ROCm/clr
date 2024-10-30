@@ -1806,11 +1806,24 @@ bool Device::populateOCLDeviceConstants() {
   HIP_MEM_POOL_USE_VM &= info_.virtualMemoryManagement_;
 
   switch (isa().versionMajor()) {
+    case (12):
+      if (isa().versionMinor() == 0) {
+        switch (isa().versionStepping()) {
+          case (0):
+          case (1):
+          default:
+            info_.vgprAllocGranularity_ = 24;
+            info_.vgprsPerSimd_ = 1536;
+            break;
+        }
+      }
+      break;
     case (11):
       if (isa().versionMinor() == 0) {
         switch (isa().versionStepping()) {
           case (0):
           case (1):
+          case (5):
             info_.vgprAllocGranularity_ = 24;
             info_.vgprsPerSimd_ = 1536;
             break;
