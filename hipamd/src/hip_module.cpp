@@ -773,6 +773,9 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
     return hipErrorContextIsDestroyed;
   }
 
+  STREAM_CAPTURE(hipLaunchCooperativeKernel, hStream, f, gridDim, blockDim, kernelParams,
+                 sharedMemBytes);
+
   if (f == nullptr) {
     return hipErrorInvalidDeviceFunction;
   }

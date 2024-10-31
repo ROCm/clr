@@ -992,6 +992,7 @@ class GraphKernelNode : public GraphNode {
   unsigned int kernelAttrInUse_;       //!< Kernel attributes in use
   ihipExtKernelEvents kernelEvents_;   //!< Events for Ext launch kernel
   bool hasHiddenHeap_;                 //!< Kernel has hidden heap(device side allocation)
+  int coopKernel_;                     //!< Launch cooperative kernel
 
  public:
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
@@ -1183,7 +1184,8 @@ class GraphKernelNode : public GraphNode {
     return hipSuccess;
   }
 
-  GraphKernelNode(const hipKernelNodeParams* pNodeParams, const ihipExtKernelEvents* pEvents)
+  GraphKernelNode(const hipKernelNodeParams* pNodeParams, const ihipExtKernelEvents* pEvents,
+                  int coopKernel = 0)
       : GraphNode(hipGraphNodeTypeKernel, "bold", "octagon", "KERNEL") {
     kernelParams_ = *pNodeParams;
     kernelEvents_ = { 0 };
@@ -1196,6 +1198,7 @@ class GraphKernelNode : public GraphNode {
     memset(&kernelAttr_, 0, sizeof(kernelAttr_));
     kernelAttrInUse_ = 0;
     hasHiddenHeap_ = false;
+    coopKernel_ = coopKernel;
   }
 
   ~GraphKernelNode() { freeParams(); }
@@ -1225,6 +1228,7 @@ class GraphKernelNode : public GraphNode {
   GraphKernelNode(const GraphKernelNode& rhs) : GraphNode(rhs) {
     kernelParams_ = rhs.kernelParams_;
     kernelEvents_ = rhs.kernelEvents_;
+    coopKernel_ = rhs.coopKernel_;
     hipError_t status = copyParams(&rhs.kernelParams_);
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to allocate memory to copy params");
@@ -1275,9 +1279,9 @@ class GraphKernelNode : public GraphNode {
         command, func, kernelParams_.gridDim.x * kernelParams_.blockDim.x,
         kernelParams_.gridDim.y * kernelParams_.blockDim.y,
         kernelParams_.gridDim.z * kernelParams_.blockDim.z, kernelParams_.blockDim.x,
-        kernelParams_.blockDim.y, kernelParams_.blockDim.z, kernelParams_.sharedMemBytes,
-        stream, kernelParams_.kernelParams, kernelParams_.extra, kernelEvents_.startEvent_,
-        kernelEvents_.stopEvent_, flags, 0, 0, 0, 0, 0, 0);
+        kernelParams_.blockDim.y, kernelParams_.blockDim.z, kernelParams_.sharedMemBytes, stream,
+        kernelParams_.kernelParams, kernelParams_.extra, kernelEvents_.startEvent_,
+        kernelEvents_.stopEvent_, flags, coopKernel_, 0, 0, 0, 0, 0);
     if (signal_is_required_) {
       // Optimize the barriers by adding a signal into the dispatch packet directly
       command->SetProfiling();

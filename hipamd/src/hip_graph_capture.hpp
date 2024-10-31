@@ -45,6 +45,10 @@ hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, u
 hipError_t capturehipLaunchByPtr(hipStream_t& stream, hipFunction_t func, dim3 blockDim,
                                  dim3 gridDim, unsigned int sharedMemBytes, void** extra);
 
+hipError_t capturehipLaunchCooperativeKernel(hipStream_t& stream, const void*& f, dim3& gridDim,
+                                             dim3& blockDim, void**& kernelParams,
+                                             uint32_t& sharedMemBytes);
+
 hipError_t capturehipMemcpy2DAsync(hipStream_t& stream, void*& dst, size_t& dpitch,
                                    const void*& src, size_t& spitch, size_t& width, size_t& height,
                                    hipMemcpyKind& kind);

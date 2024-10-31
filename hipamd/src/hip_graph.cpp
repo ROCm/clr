@@ -85,7 +85,7 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
                                   const hipKernelNodeParams* pNodeParams,
                                   const ihipExtKernelEvents* pNodeEvents = nullptr,
-                                  bool capture = true) {
+                                  bool capture = true, int coopKernel = 0) {
   if (pGraphNode == nullptr || graph == nullptr ||
       (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr ||
       pNodeParams->func == nullptr) {
@@ -114,7 +114,7 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
     return hipErrorInvalidConfiguration;
   }
 
-  *pGraphNode = new hip::GraphKernelNode(pNodeParams, pNodeEvents);
+  *pGraphNode = new hip::GraphKernelNode(pNodeParams, pNodeEvents, coopKernel);
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
   return status;
 }
@@ -369,6 +369,38 @@ hipError_t capturehipLaunchByPtr(hipStream_t& stream, hipFunction_t func, dim3 b
   hipError_t status =
       ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                              s->GetLastCapturedNodes().size(), &nodeParams);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+
+  return hipSuccess;
+}
+
+hipError_t capturehipLaunchCooperativeKernel(hipStream_t& stream, const void*& f, dim3& gridDim,
+                                             dim3& blockDim, void**& kernelParams,
+                                             uint32_t& sharedMemBytes)
+{
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] Current capture node LaunchCooperativeKernel on stream : %p", stream);
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipKernelNodeParams nodeParams;
+  nodeParams.func = const_cast<void*>(f);
+  nodeParams.blockDim = blockDim;
+  nodeParams.gridDim = gridDim;
+  nodeParams.kernelParams = kernelParams;
+  nodeParams.sharedMemBytes = sharedMemBytes;
+  nodeParams.extra = nullptr;
+
+  hip::GraphNode* pGraphNode;
+  hipError_t status =
+      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true,
+                             amd::NDRangeKernelCommand::CooperativeGroups);
   if (status != hipSuccess) {
     return status;
   }
