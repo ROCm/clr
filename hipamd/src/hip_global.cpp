@@ -229,6 +229,16 @@ Var::~Var() {
   modules_ = nullptr;
 }
 
+hipError_t Var::getDeviceVarPtr(DeviceVar** dvar, int deviceId) {
+  guarantee((deviceId >= 0), "Invalid DeviceId, less than zero");
+  guarantee((static_cast<size_t>(deviceId) < g_devices.size()),
+            "Invalid DeviceId, greater than no of code objects");
+  guarantee((dVar_.size() == g_devices.size()),
+             "Device Var not initialized to size");
+  *dvar = dVar_[deviceId];
+  return hipSuccess;
+}
+
 hipError_t Var::getDeviceVar(DeviceVar** dvar, int deviceId, hipModule_t hmod) {
   guarantee((deviceId >= 0), "Invalid DeviceId, less than zero");
   guarantee((static_cast<size_t>(deviceId) < g_devices.size()),

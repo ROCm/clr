@@ -121,6 +121,9 @@ public:
 
   //Return DeviceVar for module Generate/build if not already done so.
   hipError_t getStatDeviceVar(DeviceVar** dvar, int deviceId);
+
+  hipError_t getDeviceVarPtr(DeviceVar** dvar, int deviceId);
+
   void resize_dVar(size_t size) { dVar_.resize(size); }
 
   FatBinaryInfo** moduleInfo() { return modules_; };

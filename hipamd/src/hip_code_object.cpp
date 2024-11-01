@@ -965,6 +965,19 @@ DynCO::~DynCO() {
       hipError_t err = ihipFree(elem.second->getManagedVarPtr());
       assert(err == hipSuccess);
     }
+
+    if (elem.second->getVarKind() == Var::DVK_Variable) {
+      for (auto dev : g_devices) {
+        DeviceVar* dvar = nullptr;
+        hipError_t err = elem.second->getDeviceVarPtr(&dvar, dev->deviceId());
+        assert(err == hipSuccess);
+        if (dvar != nullptr) {
+          // free also deletes the device ptr
+          err = ihipFree(dvar->device_ptr());
+          assert(err == hipSuccess);
+        }
+      }
+    }
     delete elem.second;
   }
   vars_.clear();
@@ -1179,10 +1192,12 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
       hipError_t err;
       for (auto dev : g_devices) {
         DeviceVar* dvar = nullptr;
-        IHIP_RETURN_ONFAIL((*it)->getStatDeviceVar(&dvar, dev->deviceId()));
-        // free also deletes the device ptr
-        err = ihipFree(dvar->device_ptr());
-        assert(err == hipSuccess);
+        IHIP_RETURN_ONFAIL((*it)->getDeviceVarPtr(&dvar, dev->deviceId())); 
+        if (dvar != nullptr) {
+          // free also deletes the device ptr
+          err = ihipFree(dvar->device_ptr());
+          assert(err == hipSuccess);
+        }
       }
       err = ihipFree(*(static_cast<void**>((*it)->getManagedVarPtr())));
       assert(err == hipSuccess);
