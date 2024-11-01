@@ -1832,10 +1832,8 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
     size_t pinSize = size[0];
 
     // Check if a pinned transfer can be executed with a single pin
-    // If sdmaCopyThreshold is set ignore pinning restrictions and always pin to make sure we use
-    // Blit for copies
-    if (((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) ||
-        (pinSize <= dev().settings().sdmaCopyThreshold_)) {
+
+    if (((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer))) {
       size_t partial;
       amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
 
@@ -1939,10 +1937,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
     size_t pinSize = size[0];
 
     // Check if a pinned transfer can be executed with a single pin
-    // If sdmaCopyThreshold is set ignore pinning restrictions and always pin to make sure we use
-    // Blit for copies
-    if (((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) ||
-        (pinSize <= dev().settings().sdmaCopyThreshold_)) {
+    if ((pinSize <= dev().settings().pinnedXferSize_) && (pinSize > MinSizeForPinnedTransfer)) {
       size_t partial;
       amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
 
