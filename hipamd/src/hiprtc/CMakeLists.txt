@@ -133,8 +133,8 @@ add_to_config(_versionInfo HIP_VERSION_GITHASH)
 # Enable preprocessed hiprtc-builtins library
 include(HIPRTC RESULT_VARIABLE HIPRTC_CMAKE)
 # Requires clang and llvm-mc to create this library.
-find_package(LLVM REQUIRED CONFIG HINTS ${ROCM_PATH}/llvm)
-find_package(Clang REQUIRED CONFIG HINTS ${ROCM_PATH}/llvm)
+find_program(clang clang HINTS ${ROCM_PATH}/llvm/bin ${ROCM_PATH})
+find_program(llvm-mc llvm-mc HINTS ${ROCM_PATH}/llvm/bin ${ROCM_PATH})
 set(HIPRTC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/hip_rtc_gen")
 set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
 set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
@@ -179,13 +179,13 @@ generate_hiprtc_mcin("${HIPRTC_GEN_MCIN}" "${HIPRTC_GEN_PREPROCESSED}")
 # Note: second command appends define macros at build time.
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_PREPROCESSED}
-  COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR} -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -DHIP_VERSION_MAJOR=${HIP_LIB_VERSION_MAJOR} -DHIP_VERSION_MINOR=${HIP_LIB_VERSION_MINOR} -x hip ${HIPRTC_GEN_HEADER} -E -P -o ${HIPRTC_GEN_PREPROCESSED}
+  COMMAND ${clang} -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++17 -nogpulib --hip-version=${HIP_LIB_VERSION_MAJOR}.${HIP_LIB_VERSION_MINOR} -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_SOURCE_DIR}/include -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ -DHIP_VERSION_MAJOR=${HIP_LIB_VERSION_MAJOR} -DHIP_VERSION_MINOR=${HIP_LIB_VERSION_MINOR} -x hip ${HIPRTC_GEN_HEADER} -E -P -o ${HIPRTC_GEN_PREPROCESSED}
   COMMAND ${CMAKE_COMMAND} -DHIPRTC_ADD_MACROS=1 -DHIPRTC_HEADERS="${HIPRTC_HEADERS}" -DHIPRTC_PREPROCESSED_FILE=${HIPRTC_GEN_PREPROCESSED} -P ${HIPRTC_CMAKE}
-  DEPENDS clang ${HIPRTC_GEN_HEADER})
+  DEPENDS ${clang} ${HIPRTC_GEN_HEADER})
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_OBJ}
-  COMMAND $<TARGET_FILE:llvm-mc> -o ${HIPRTC_GEN_OBJ} ${HIPRTC_GEN_MCIN} --filetype=obj
-  DEPENDS llvm-mc ${HIPRTC_GEN_PREPROCESSED} ${HIPRTC_GEN_MCIN})
+  COMMAND ${llvm-mc} -o ${HIPRTC_GEN_OBJ} ${HIPRTC_GEN_MCIN} --filetype=obj
+  DEPENDS ${llvm-mc} ${HIPRTC_GEN_PREPROCESSED} ${HIPRTC_GEN_MCIN})
 
 # Create hiprtc-builtins library.
 add_library(hiprtc-builtins ${HIPRTC_GEN_OBJ})
@@ -219,8 +219,8 @@ endif()
 # Test the header file works with simple compilation.
 add_custom_command(
   OUTPUT ${HIPRTC_GEN_DIR}/tmp.bc
-  COMMAND $<TARGET_FILE:clang> -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
-  DEPENDS clang ${HIPRTC_GEN_PREPROCESSED})
+  COMMAND ${clang} -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
+  DEPENDS ${clang} ${HIPRTC_GEN_PREPROCESSED})
 
 target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
