@@ -108,6 +108,10 @@ RUNTIME_ENTRY_RET(cl_command_queue, clCreateCommandQueueWithProperties,
           // FIXME_lmoriche: See comment above.
           // properties = p->value.properties;
           properties = static_cast<cl_command_queue_properties>(p->value.raw);
+          if (properties == CL_QUEUE_OUT_OF_ORDER_EXEC_MODE_ENABLE) {
+            *not_null(errcode_ret) = CL_INVALID_QUEUE_PROPERTIES;
+            return (cl_command_queue)0;
+          }
           break;
         case CL_QUEUE_SIZE:
           queueSize = p->value.size;
