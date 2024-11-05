@@ -112,7 +112,7 @@ const char* ihipGetErrorName(hipError_t hip_error);
 #define HIP_INIT(noReturn)                                                                         \
   {                                                                                                \
     bool status = true;                                                                            \
-    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                         \
+    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                    \
     if (!status && !noReturn) {                                                                    \
       HIP_RETURN(hipErrorInvalidDevice);                                                           \
     }                                                                                              \
@@ -125,16 +125,16 @@ const char* ihipGetErrorName(hipError_t hip_error);
 #define HIP_INIT_VOID()                                                                            \
   {                                                                                                \
     bool status = true;                                                                            \
-    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                         \
-    if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                           \
-      hip::tls.device_ = hip::g_devices[0];                                                   \
-      amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode()); \
+    std::call_once(hip::g_ihipInitialized, hip::init, &status);                                    \
+    if (hip::tls.device_ == nullptr && hip::g_devices.size() > 0) {                                \
+      hip::tls.device_ = hip::g_devices[0];                                                        \
+      amd::Os::setPreferredNumaNode(hip::g_devices[0]->devices()[0]->getPreferredNumaNode());      \
     }                                                                                              \
   }
 
 
 #define HIP_API_PRINT(...)                                          \
-  uint64_t startTimeUs=0;                                           \
+  uint64_t startTimeUs = 0;                                         \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs,       \
                   "%s %s ( %s ) %s", KGRN,                          \
                   __func__, ToString( __VA_ARGS__ ).c_str(), KNRM);
