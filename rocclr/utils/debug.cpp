@@ -32,7 +32,7 @@
 #include <thread>
 #include <sstream>
 #include <iomanip>
-
+#include <inttypes.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif  // _WIN32
@@ -109,7 +109,7 @@ void log_printf(LogLevel level, const char* file, int line, const char* format, 
 
   truncate_log_file();
 
-  fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s\n", level, file, line,
+  fprintf(outFile, ":%d:%-25s:%-4d: %010" PRIu64 " us: %s %s\n", level, file, line,
     timeUs, pidtid.str().c_str(), message);
 
   fflush(outFile);
@@ -133,10 +133,10 @@ void log_printf(LogLevel level, const char* file, int line, uint64_t* start,
   truncate_log_file();
 
   if (start == 0 || *start == 0) {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s\n", level, file, line,
+    fprintf(outFile, ":%d:%-25s:%-4d: %010" PRIu64 " us: %s %s\n", level, file, line,
       timeUs, pidtid.str().c_str(), message);
   } else {
-    fprintf(outFile, ":%d:%-25s:%-4d: %010llu us: %s %s: duration: %llu us\n",
+    fprintf(outFile, ":%d:%-25s:%-4d: %010" PRIu64 " us: %s %s: duration: %" PRIu64 " us\n",
       level, file, line, timeUs, pidtid.str().c_str(), message, timeUs - *start);
   }
   fflush(outFile);
