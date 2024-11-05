@@ -61,7 +61,7 @@ class PlatformState {
   // Dynamic Code Objects functions
   hipError_t loadModule(hipModule_t* module, const char* fname, const void* image = nullptr);
   hipError_t unloadModule(hipModule_t hmod);
-
+  bool isValidDynFunc(const void* hfunc);
   hipError_t getDynFunc(hipFunction_t* hfunc, hipModule_t hmod, const char* func_name);
   hipError_t getDynGlobalVar(const char* hostVar, hipModule_t hmod, hipDeviceptr_t* dev_ptr,
                              size_t* size_ptr);

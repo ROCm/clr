@@ -150,6 +150,10 @@ hipError_t Function::getDynFunc(hipFunction_t* hfunc, hipModule_t hmod) {
   return hipSuccess;
 }
 
+bool Function::isValidDynFunc(const void* hfunc) {
+  return (hfunc == dFunc_[ihipGetDevice()]->asHipFunction());
+}
+
 hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
   guarantee(modules_ != nullptr, "Module not initialized");
 

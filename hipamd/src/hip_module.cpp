@@ -186,14 +186,21 @@ hipError_t hipFuncSetAttribute(const void* func, hipFuncAttribute attr, int valu
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  hipFunction_t h_func;
-  HIP_RETURN_ONFAIL(PlatformState::instance().getStatFunc(&h_func, func, ihipGetDevice()));
+  hipFunction_t h_func = nullptr;
+  const hip::DeviceFunc* function = nullptr;
 
-  hip::DeviceFunc* function = hip::DeviceFunc::asFunction(h_func);
-  if (function == nullptr) {
-    HIP_RETURN(hipErrorInvalidHandle);
+  hipError_t err = PlatformState::instance().getStatFunc(&h_func, func, ihipGetDevice());
+  if (h_func == nullptr) {
+    if (PlatformState::instance().isValidDynFunc((func))) {
+      function = reinterpret_cast<const hip::DeviceFunc*>(func);
+    } else {
+      HIP_RETURN(hipErrorInvalidDeviceFunction);
+    }
+  } else {
+    function = reinterpret_cast<const hip::DeviceFunc*>(h_func);
   }
-  amd::Kernel* kernel = reinterpret_cast<hip::DeviceFunc*>(function)->kernel();
+
+  amd::Kernel* kernel = function->kernel();
 
   if (kernel == nullptr) {
     HIP_RETURN(hipErrorInvalidDeviceFunction);

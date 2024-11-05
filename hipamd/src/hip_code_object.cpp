@@ -1011,6 +1011,12 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   return it->second->getDynFunc(hfunc, module());
 }
 
+bool DynCO::isValidDynFunc(const void* hfunc) {
+  amd::ScopedLock lock(dclock_);
+  return std::any_of(functions_.begin(), functions_.end(),
+                     [&](auto& it) { return it.second->isValidDynFunc(hfunc); });
+}
+
 hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
   amd::ScopedLock lock(dclock_);
   DeviceVar* dvar;

@@ -805,6 +805,12 @@ hipError_t PlatformState::getDynFunc(hipFunction_t* hfunc, hipModule_t hmod,
   return it->second->getDynFunc(hfunc, func_name);
 }
 
+bool PlatformState::isValidDynFunc(const void* hfunc) {
+  amd::ScopedLock lock(lock_);
+  return std::any_of(dynCO_map_.begin(), dynCO_map_.end(),
+                     [&](auto& it) { return it.second->isValidDynFunc(hfunc); });
+}
+
 hipError_t PlatformState::getDynGlobalVar(const char* hostVar, hipModule_t hmod,
                                           hipDeviceptr_t* dev_ptr, size_t* size_ptr) {
   amd::ScopedLock lock(lock_);

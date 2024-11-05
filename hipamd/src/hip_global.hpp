@@ -84,7 +84,7 @@ public:
 
   //Return DeviceFunc for this this dynamically loaded module
   hipError_t getDynFunc(hipFunction_t* hfunc, hipModule_t hmod);
-
+  bool isValidDynFunc(const void* hfunc);
   //Return Device Func & attr . Generate/build if not already done so.
   hipError_t getStatFunc(hipFunction_t *hfunc, int deviceId);
   hipError_t getStatFuncAttr(hipFuncAttributes* func_attr, int deviceId);
