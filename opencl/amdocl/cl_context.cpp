@@ -471,6 +471,7 @@ CL_API_ENTRY void* CL_API_CALL clGetExtensionFunctionAddress(const char* func_na
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreatePerfCounterAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateThreadTraceAMD);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLBuffer);
+      CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture2D);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLTexture3D);
       CL_EXTENSION_ENTRYPOINT_CHECK(clCreateFromGLRenderbuffer);
