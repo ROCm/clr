@@ -136,7 +136,6 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
 // ================================================================================================
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device) {
   HIP_INIT_API(hipMemAdvise, dev_ptr, count, advice, device);
-  CHECK_STREAM_CAPTURE_SUPPORTED();
 
   bool isAdviseReadMostly = (advice == hipMemAdviseSetReadMostly) ||
                             (advice == hipMemAdviseUnsetReadMostly);
