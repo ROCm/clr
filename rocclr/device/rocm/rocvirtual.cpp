@@ -995,7 +995,7 @@ inline bool VirtualGPU::dispatchAqlPacket(
   vcmd->addKernelName(kernelName);
   amd::ScopedLock lock(execution());
 
-  profilingBegin(*vcmd, true);
+  profilingBegin(*vcmd);
 
   dispatchBlockingWait();
   auto packet = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(aqlpacket);
@@ -3659,7 +3659,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
 void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   const Settings& settings = dev().settings();
   if (settings.barrier_value_packet_) {
