@@ -116,6 +116,7 @@ target_compile_definitions(rocclr PUBLIC
   ${AMD_OPENCL_DEFS})
 
 target_include_directories(rocclr PUBLIC
+  ${ROCCLR_SRC_DIR}/../
   ${ROCCLR_SRC_DIR}
   ${ROCCLR_SRC_DIR}/compiler/lib
   ${ROCCLR_SRC_DIR}/compiler/lib/include

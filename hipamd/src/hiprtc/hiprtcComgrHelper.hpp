@@ -26,7 +26,7 @@ THE SOFTWARE.
 #include <string>
 
 #include "vdi_common.hpp"
-#include "utils/debug.hpp"
+#include "rocclr/utils/debug.hpp"
 #include "device/comgrctx.hpp"
 
 namespace hiprtc {

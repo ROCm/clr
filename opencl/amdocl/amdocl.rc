@@ -17,7 +17,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "winresrc.h"
-#include "utils/versions.hpp"
+#include "rocclr/utils/versions.hpp"
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS

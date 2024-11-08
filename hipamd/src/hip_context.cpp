@@ -22,8 +22,8 @@
 #include "hip_internal.hpp"
 #include "hip_platform.hpp"
 #include "platform/runtime.hpp"
-#include "utils/flags.hpp"
-#include "utils/versions.hpp"
+#include "rocclr/utils/flags.hpp"
+#include "rocclr/utils/versions.hpp"
 
 namespace hip {
 std::once_flag g_ihipInitialized;

@@ -29,7 +29,7 @@ THE SOFTWARE.
 #include <sys/stat.h>
 
 #include "vdi_common.hpp"
-#include "utils/flags.hpp"
+#include "rocclr/utils/flags.hpp"
 
 namespace hiprtc {
 using namespace helpers;

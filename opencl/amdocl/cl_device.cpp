@@ -22,7 +22,7 @@
 #include "vdi_common.hpp"
 #include "device/device.hpp"
 #include "platform/runtime.hpp"
-#include "utils/versions.hpp"
+#include "rocclr/utils/versions.hpp"
 #include "os/os.hpp"
 #include "cl_semaphore_amd.h"
 

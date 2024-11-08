@@ -33,9 +33,9 @@ THE SOFTWARE.
 #include <string>
 
 #include "top.hpp"
-#include "utils/debug.hpp"
-#include "utils/flags.hpp"
-#include "utils/macros.hpp"
+#include "rocclr/utils/debug.hpp"
+#include "rocclr/utils/flags.hpp"
+#include "rocclr/utils/macros.hpp"
 
 #ifdef __HIP_ENABLE_RTC
 extern "C" {
