@@ -30,6 +30,7 @@
 #include "rocprintf.hpp"
 #include "hsa/hsa_ven_amd_aqlprofile.h"
 #include "rocsched.hpp"
+#include "device/device.hpp"
 
 namespace amd::roc {
 class Device;
@@ -270,7 +271,8 @@ class VirtualGPU : public device::VirtualDevice {
     HwQueueEngine GetActiveEngine() const { return engine_; }
 
     //! Returns the last submitted signal for a wait
-    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
+    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute,
+                                             bool forceHostWait = true);
 
     //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
     void ResetCurrentSignal();
@@ -341,8 +343,8 @@ class VirtualGPU : public device::VirtualDevice {
                             void* event_handle,  //!< Handle to OCL event for debugging
                             uint32_t sharedMemBytes = 0, //!< Shared memory size
                             amd::NDRangeKernelCommand* vcmd = nullptr, //!< Original launch command
-                            hsa_kernel_dispatch_packet_t* aql_packet = nullptr  //!< Scheduler launch
-                            );
+                            hsa_kernel_dispatch_packet_t* aql_packet = nullptr,  //!< Scheduler launch
+                            bool attach_signal = false);
   void submitNativeFn(amd::NativeFnCommand& cmd);
   void submitMarker(amd::Marker& cmd);
   void submitAccumulate(amd::AccumulateCommand& cmd);
@@ -420,7 +422,10 @@ class VirtualGPU : public device::VirtualDevice {
 
   void hasPendingDispatch() { hasPendingDispatch_ = true; }
   bool IsPendingDispatch() const { return (hasPendingDispatch_) ? true : false; }
-  void addSystemScope() { addSystemScope_ = true; }
+  void addSystemScope() {
+    addSystemScope_ = true;
+    fence_state_ = amd::Device::CacheState::kCacheStateInvalid;
+  }
   void SetCopyCommandType(cl_command_type type) { copy_command_type_ = type; }
 
   HwQueueTracker& Barriers() { return barriers_; }
@@ -444,11 +449,12 @@ class VirtualGPU : public device::VirtualDevice {
                                 amd::AccumulateCommand* vcmd = nullptr);
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest,
                          bool blocking = true, bool capturing = false,
-                         const uint8_t* aqlPacket = nullptr);
+                         const uint8_t* aqlPacket = nullptr, bool attach_signal = false);
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
-                        uint16_t rest, bool blocking = true);
+                        uint16_t rest, bool blocking = true, bool attach_signal = false);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
-                                                              uint16_t rest, bool blocking);
+                                                              uint16_t rest, bool blocking,
+                                                              bool attach_signal = false);
 
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);

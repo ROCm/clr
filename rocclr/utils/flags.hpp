@@ -85,7 +85,7 @@ release(size_t, GPU_PINNED_MIN_XFER_SIZE, 128,                                \
 release(size_t, GPU_RESOURCE_CACHE_SIZE, 64,                                  \
         "The resource cache size in MB")                                      \
 release(size_t, GPU_MAX_SUBALLOC_SIZE, 4096,                                  \
-        "The maximum size accepted for suballocaitons in KB")                 \
+        "The maximum size accepted for suballocations in KB")                 \
 release(size_t, GPU_NUM_MEM_DEPENDENCY, 256,                                  \
         "Number of memory objects for dependency tracking")                   \
 release(size_t, GPU_XFER_BUFFER_SIZE, 0,                                      \
@@ -105,7 +105,7 @@ release(bool, GPU_USE_DEVICE_QUEUE, false,                                    \
 release(bool, AMD_THREAD_TRACE_ENABLE, true,                                  \
         "Enable thread trace extension")                                      \
 release(uint, OPENCL_VERSION, 200,                                            \
-        "Force GPU opencl verison")                                           \
+        "Force GPU opencl version")                                           \
 release(bool, HSA_LOCAL_MEMORY_ENABLE, true,                                  \
         "Enable HSA device local memory usage")                               \
 release(uint, HSA_KERNARG_POOL_SIZE, 1024 * 1024,                             \
@@ -186,7 +186,7 @@ release(bool, AMD_DIRECT_DISPATCH, false,                                     \
 release(uint, HIP_HIDDEN_FREE_MEM, 0,                                         \
         "Reserve free mem reporting in Mb"                                    \
         "0 = Disable")                                                        \
-release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
+release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 16,                                 \
         "Use Blit until this size(in KB) for copies")                         \
 release(uint, ROC_ACTIVE_WAIT_TIMEOUT, 0,                                     \
         "Forces active wait of GPU interrup for the timeout(us)")             \

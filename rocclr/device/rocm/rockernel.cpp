@@ -57,8 +57,7 @@ bool LightningKernel::postLoad() {
   }
   kernargSegmentAlignment_ =
       amd::alignUp(std::max(kernargSegmentAlignment_, 128u),
-                   device().info().globalMemCacheLineSize_ > 0 ?
-                       device().info().globalMemCacheLineSize_ : 64);
+                   device().info().globalMemCacheLineSize_);
 
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = device().info().localMemSizePerCU_;

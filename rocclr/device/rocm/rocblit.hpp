@@ -231,7 +231,11 @@ class DmaBlitManager : public device::HostBlitManager {
   //! taking into account the Hsail profile supported by Hsa Agent
   bool hsaCopy(const Memory& srcMemory, const Memory& dstMemory, const amd::Coord3D& srcOrigin,
                const amd::Coord3D& dstOrigin, const amd::Coord3D& size,
-               amd::CopyMetadata copyMetadata) const;
+               amd::CopyMetadata& copyMetadata) const;
+
+  inline bool rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
+                             const_address src, hsa_agent_t& srcAgent, size_t size,
+                             amd::CopyMetadata& copyMetadata) const;
 
   const size_t MinSizeForPinnedTransfer;
   bool completeOperation_;                    //!< DMA blit manager must complete operation
@@ -248,33 +252,13 @@ class DmaBlitManager : public device::HostBlitManager {
   //! Disable operator=
   DmaBlitManager& operator=(const DmaBlitManager&);
 
-  //! Reads video memory, using a staged buffer
-  bool readMemoryStaged(Memory& srcMemory,  //!< Source memory object
-                        void* dstHost,      //!< Destination host memory
-                        Memory& xferBuf,    //!< Staged buffer for read
-                        size_t origin,      //!< Original offset in the source memory
-                        size_t& offset,     //!< Offset for the current copy pointer
-                        size_t& totalSize,  //!< Total size for copy region
-                        size_t xferSize     //!< Transfer size
-                        ) const;
-
-  //! Write into video memory, using a staged buffer
-  bool writeMemoryStaged(const void* srcHost,  //!< Source host memory
-                         Memory& dstMemory,    //!< Destination memory object
-                         address staging,      //!< Staged buffer for write
-                         size_t origin,        //!< Original offset in the destination memory
-                         size_t& offset,       //!< Offset for the current copy pointer
-                         size_t& totalSize,    //!< Total size for the copy region
-                         size_t xferSize       //!< Transfer size
-                         ) const;
-
   //! Assits in transferring data from Host to Local or vice versa
   //! taking into account the Hsail profile supported by Hsa Agent
-  bool hsaCopyStaged(const_address hostSrc,  //!< Contains source data to be copied
-                     address hostDst,        //!< Destination buffer address for copying
-                     size_t size,            //!< Size of data to copy in bytes
-                     address staging,        //!< Staging resource
-                     bool hostToDev          //!< True if data is copied from Host To Device
+  bool hsaCopyStaged(const_address hostSrc,           //!< Contains source data to be copied
+                     address hostDst,                 //!< Destination buffer address for copying
+                     size_t size,                     //!< Size of data to copy in bytes
+                     bool hostToDev,                  //!< True if data is copied from H2D
+                     amd::CopyMetadata& copyMetadata  //!< Memory copy MetaData
                      ) const;
 
   bool forceHostWaitFunc(size_t copy_size) const;
@@ -582,6 +566,12 @@ class KernelBlitManager : public DmaBlitManager {
   inline uint32_t NumBlitKernels() {
     return (dev().info().imageSupport_) ? BlitTotal : BlitLinearTotal;
   }
+
+  //! Copies a buffer using the shader path
+  bool shaderCopyBuffer(address dst, address src,
+                        const amd::Coord3D& dstOrigin, const amd::Coord3D& srcOrigin,
+                        const amd::Coord3D& size, bool entire, const uint32_t blitWg,
+                        amd::CopyMetadata copyMetadata, bool attachSignal = false) const;
 
   //! Disable copy constructor
   KernelBlitManager(const KernelBlitManager&);

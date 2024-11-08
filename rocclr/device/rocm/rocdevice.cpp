@@ -1202,7 +1202,8 @@ bool Device::populateOCLDeviceConstants() {
                                                &info_.globalMemCacheLineSize_)) {
     return false;
   }
-  assert(info_.globalMemCacheLineSize_ > 0);
+  info_.globalMemCacheLineSize_ = (info_.globalMemCacheLineSize_ != 0) ?
+                                         info_.globalMemCacheLineSize_ : 64;
 
   uint32_t cachesize[4] = {0};
   if (HSA_STATUS_SUCCESS !=
