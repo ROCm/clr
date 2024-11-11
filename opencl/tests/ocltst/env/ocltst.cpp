@@ -109,7 +109,6 @@ class App {
         m_window(0),
         m_platform(platform) {
     // initialize OCLWrapper reference
-    m_wrapper = new OCLWrapper();
 
     // m_workers = Set of worker objects that are used to run a subtest from a
     // module
@@ -120,7 +119,8 @@ class App {
      * Force caltst to use 1 thread at a time in Windows
      * only contextual calls are thread safe currently
      */
-    m_numDevices = findAdapters(m_platform, m_useCPU, NULL);
+    m_numDevices = findAdapters(m_platform, m_useCPU, &mpform_id);
+    m_wrapper = new OCLWrapper(mpform_id);
     // m_numDevices = 1;
 
     // Report structure used to store the results of the tests

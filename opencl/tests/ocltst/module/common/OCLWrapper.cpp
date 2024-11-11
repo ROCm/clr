@@ -20,7 +20,7 @@
 
 #include "OCLWrapper.h"
 
-OCLWrapper::OCLWrapper() {
+OCLWrapper::OCLWrapper(cl_platform_id platform) {
   clEnqueueWaitSignalAMD_ptr =
       (clEnqueueWaitSignalAMD_fn)clGetExtensionFunctionAddress(
           "clEnqueueWaitSignalAMD");
@@ -40,27 +40,29 @@ OCLWrapper::OCLWrapper() {
       (clGetGLContextInfoKHR_fn)clGetExtensionFunctionAddress(
           "clGetGLContextInfoKHR");
   clCreateFromGLBuffer_ptr =
-      (clCreateFromGLBuffer_fn)clGetExtensionFunctionAddress(
-          "clCreateFromGLBuffer");
+      (clCreateFromGLBuffer_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clCreateFromGLBuffer");
   clCreateFromGLTexture_ptr =
-      (clCreateFromGLTexture_fn)clGetExtensionFunctionAddress(
-          "clCreateFromGLTexture");
+      (clCreateFromGLTexture_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clCreateFromGLTexture");
   clCreateFromGLTexture2D_ptr =
-      (clCreateFromGLTexture2D_fn)clGetExtensionFunctionAddress(
-          "clCreateFromGLTexture2D");
+      (clCreateFromGLTexture2D_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clCreateFromGLTexture2D");
   clCreateFromGLRenderbuffer_ptr =
-      (clCreateFromGLRenderbuffer_fn)clGetExtensionFunctionAddress(
-          "clCreateFromGLRenderbuffer");
+      (clCreateFromGLRenderbuffer_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clCreateFromGLRenderbuffer");
   clGetGLObjectInfo_ptr =
-      (clGetGLObjectInfo_fn)clGetExtensionFunctionAddress("clGetGLObjectInfo");
-  clGetGLTextureInfo_ptr = (clGetGLTextureInfo_fn)clGetExtensionFunctionAddress(
-      "clGetGLTextureInfo");
+      (clGetGLObjectInfo_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clGetGLObjectInfo");
+  clGetGLTextureInfo_ptr =
+      (clGetGLTextureInfo_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clGetGLTextureInfo");
   clEnqueueAcquireGLObjects_ptr =
-      (clEnqueueAcquireGLObjects_fn)clGetExtensionFunctionAddress(
-          "clEnqueueAcquireGLObjects");
+      (clEnqueueAcquireGLObjects_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueAcquireGLObjects");
   clEnqueueReleaseGLObjects_ptr =
-      (clEnqueueReleaseGLObjects_fn)clGetExtensionFunctionAddress(
-          "clEnqueueReleaseGLObjects");
+      (clEnqueueReleaseGLObjects_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueReleaseGLObjects");
 
   // Performance counter function pointers
   clCreatePerfCounterAMD_ptr =

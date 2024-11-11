@@ -103,7 +103,7 @@ typedef CL_API_ENTRY cl_int(CL_API_CALL *clSetDeviceClockModeAMD_fn)(
 
 class OCLWrapper {
  public:
-  OCLWrapper();
+  OCLWrapper(cl_platform_id);
 
   ~OCLWrapper() {}
 
