@@ -832,6 +832,7 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!topoOrder_.empty()) {
       topoOrder_[0]->GetParentGraph()->FreeAllMemory(launch_stream);
+      topoOrder_[0]->GetParentGraph()->memalloc_nodes_ = 0;
     }
   }
 
