@@ -68,6 +68,11 @@ enum LogMask {
   LOG_ALWAYS    = -1      //!< (0xFFFFFFFF) Log always even mask flag is zero
 };
 
+// Flags to support backward incompatible changes before 7.0
+enum BreakingHipChange7 {
+  CHANGE_HIP_GET_LAST_ERROR = 1,              //!< (0x1)     HIP_GET_LAST_ERROR
+};
+
 //! \brief log file output
 extern FILE* outFile;
 

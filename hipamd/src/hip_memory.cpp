@@ -4621,7 +4621,7 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
                                           hip::getNumChannels(mipmapDesc->formatDesc),
                                           mipmapDesc->flags};
   if (!hip::CheckArrayFormat(mipmapDesc->formatDesc)) {
-    return HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,

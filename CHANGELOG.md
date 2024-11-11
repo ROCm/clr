@@ -2,6 +2,12 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
+## HIP 6.4 (For ROCm 6.4)
+
+### Changed
+* Added new environment variable
+    - `DEBUG_HIP_7_PREVIEW` This is used for enabling the backward incompatible changes before the next major ROCm release 7.0. By default this is set to 0. Users can set this variable to 0x1, to match the behavior of hipGetLastError with its corresponding CUDA API.
+
 ## HIP 6.3 for ROCm 6.3
 
 ### Changed

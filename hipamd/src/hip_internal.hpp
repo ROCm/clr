@@ -164,19 +164,36 @@ const char* ihipGetErrorName(hipError_t hip_error);
     HIP_RETURN(hipErrorNoDevice);                                                                  \
   }
 
-#define HIP_INIT_API_NO_RETURN(cid, ...)                     \
+#define HIP_INIT_API_NO_RETURN(cid, ...)                                                           \
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
 
 #define HIP_RETURN_DURATION(ret, ...)                                                              \
-  hip::tls.last_error_ = ret;                                                                      \
+  hip::tls.last_command_error_ = ret;                                                              \
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+    if (hip::tls.last_command_error_ != hipSuccess &&                                              \
+           hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
+      hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
+    }                                                                                              \
+  } else {                                                                                         \
+    hip::tls.last_error_ = hip::tls.last_command_error_;                                           \
+  }                                                                                                \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s", __func__,    \
-                   hip::ihipGetErrorName(hip::tls.last_error_), ToString(__VA_ARGS__).c_str());    \
-  return hip::tls.last_error_;
+                   hip::ihipGetErrorName(hip::tls.last_command_error_),                            \
+                   ToString(__VA_ARGS__).c_str());                                                 \
+  return hip::tls.last_command_error_;
 
-#define HIP_RETURN(ret, ...)                      \
-  hip::tls.last_error_ = ret;                         \
-  HIP_ERROR_PRINT(hip::tls.last_error_, __VA_ARGS__)  \
-  return hip::tls.last_error_;
+#define HIP_RETURN(ret, ...)                                                                       \
+  hip::tls.last_command_error_ = ret;                                                              \
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+    if (hip::tls.last_command_error_ != hipSuccess &&                                              \
+           hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
+      hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
+    }                                                                                              \
+  } else {                                                                                         \
+    hip::tls.last_error_ = hip::tls.last_command_error_;                                           \
+  }                                                                                                \
+  HIP_ERROR_PRINT(hip::tls.last_command_error_, __VA_ARGS__)                                       \
+  return hip::tls.last_command_error_;
 
 #define HIP_RETURN_ONFAIL(func)          \
   do {                                   \
@@ -610,7 +627,7 @@ public:
   public:
     Device* device_;
     std::stack<Device*> ctxt_stack_;
-    hipError_t last_error_;
+    hipError_t last_error_, last_command_error_;
     std::vector<hip::Stream*> capture_streams_;
     hipStreamCaptureMode stream_capture_mode_;
     std::stack<ihipExec_t> exec_stack_;
@@ -618,6 +635,7 @@ public:
 
     TlsAggregator(): device_(nullptr),
       last_error_(hipSuccess),
+      last_command_error_(hipSuccess),
       stream_capture_mode_(hipStreamCaptureModeGlobal) {
     }
     ~TlsAggregator() {
