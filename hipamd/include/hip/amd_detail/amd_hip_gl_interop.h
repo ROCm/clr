@@ -55,10 +55,12 @@ typedef unsigned int GLenum;
 */
 
 /**
- *  @ingroup GL
- *  @{
- *
+ * @defgroup GL OpenGL Interoperability
+ * @ingroup API
+ * @{
+ * This section describes OpenGL interoperability functions of HIP runtime API.
  */
+
 /**
  * @brief Queries devices associated with the current OpenGL context.
  *
