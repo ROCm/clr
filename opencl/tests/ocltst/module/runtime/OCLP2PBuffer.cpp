@@ -58,7 +58,6 @@ void OCLP2PBuffer::open(unsigned int test, char* units, double& conversion,
                         unsigned int deviceId) {
 #ifdef CL_VERSION_2_0
   cl_uint numPlatforms = 0;
-  cl_platform_id platform = NULL;
   cl_uint num_devices = 0;
 
   OCLTestImp::open(test, units, conversion, deviceId);
@@ -108,7 +107,7 @@ void OCLP2PBuffer::open(unsigned int test, char* units, double& conversion,
   }
 
   cl_context_properties props[3] = {CL_CONTEXT_PLATFORM,
-                                    (cl_context_properties)platform, 0};
+                                    (cl_context_properties)platform_, 0};
   context0_ =
       _wrapper->clCreateContext(props, 1, &devices_[0], NULL, 0, &error_);
   CHECK_RESULT((error_ != CL_SUCCESS), "clCreateContext#0 failed");
