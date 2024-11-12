@@ -58,7 +58,6 @@
 #include <unordered_set>
 #include <utility>
 #include <shared_mutex>
-#include <array>
 
 namespace amd {
 class Command;
@@ -1380,22 +1379,14 @@ class MemObjMap : public AllStatic {
   static void RemoveVirtualMemObj(const void* k);
   //!< Same as FindMemObj but for virtual addressing
   static amd::Memory* FindVirtualMemObj(const void* k);
-  struct Bin {
-    std::shared_mutex AllocatedLock_;
-    std::map<uintptr_t, amd::Memory*> map_;
-  };
-  static constexpr size_t kNumBins = 16;
+
  private:
-
   //!< the mem object<->hostptr information container
-  static std::array<Bin, kNumBins> MemObjBin_;
+  static std::map<uintptr_t, amd::Memory*> MemObjMap_;
   //!< the virtual mem object<->hostptr information container
-  static std::array<Bin, kNumBins> VirtualMemObjBin_;
-
-  static Bin& getMapBin(const void* k, std::array<Bin, kNumBins>& bin) {
-    size_t index = std::hash<const void*>{}(k) % kNumBins;
-    return bin.at(index);
-  }
+  static std::map<uintptr_t, amd::Memory*> VirtualMemObjMap_;
+  //!< Shared read/write lock
+  static std::shared_mutex AllocatedLock_;
 };
 
 /// @brief Instruction Set Architecture properties.
