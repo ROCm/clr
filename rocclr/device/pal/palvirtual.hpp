@@ -311,6 +311,7 @@ class VirtualGPU : public device::VirtualDevice {
               amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
   ~VirtualGPU();
 
+  uint64_t getQueueID() { return hwRing_; }
   void submitReadMemory(amd::ReadMemoryCommand& vcmd);
   void submitWriteMemory(amd::WriteMemoryCommand& vcmd);
   void submitCopyMemory(amd::CopyMemoryCommand& vcmd);

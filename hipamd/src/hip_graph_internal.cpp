@@ -413,7 +413,8 @@ hipError_t GraphExec::Init() {
     }
     status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
   } else {
-    status = CreateStreams(clonedGraph_->max_streams_);
+    // create extra stream to avoid queue collision with the default execution stream
+    status = CreateStreams(clonedGraph_->max_streams_ + 1);
   }
   if (status != hipSuccess) {
     return status;
@@ -638,19 +639,23 @@ hipError_t EnqueueGraphWithSingleList(std::vector<hip::Node>& topoOrder, hip::St
 }
 
 // ================================================================================================
-void Graph::UpdateStreams(
-    hip::Stream* launch_stream,
-    const std::vector<hip::Stream*>& parallel_streams) {
+void Graph::UpdateStreams(hip::Stream* launch_stream,
+                          const std::vector<hip::Stream*>& parallel_streams) {
   // Allocate array for parallel streams, based on the graph scheduling + current stream
-  streams_.resize(parallel_streams.size() + 1);
-
+  // We create extra stream to avoid collision
+  streams_.resize(parallel_streams.size());
   // Current stream is the default in the assignment
   streams_[0] = launch_stream;
   // Assign the streams in the array of all streams
-  for (uint32_t i = 0; i < parallel_streams.size(); ++i) {
-    streams_[i + 1] = parallel_streams[i];
+  // Avoid stream that has collision with launch stream
+  for (uint32_t i = 1, j = 0; i < streams_.size(); j++) {
+    assert(j != parallel_streams.size());
+    if (launch_stream->getQueueID() != parallel_streams[j]->getQueueID()) {
+      streams_[i++] = parallel_streams[j];
+    }
   }
 }
+
 
 // ================================================================================================
 bool Graph::RunOneNode(Node node, bool wait) {

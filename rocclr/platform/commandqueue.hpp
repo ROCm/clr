@@ -294,6 +294,10 @@ class HostQueue : public CommandQueue {
   //! Get queue status
   bool GetQueueStatus() { return isActive_; }
 
+  uint64_t getQueueID() {
+    return thread_.vdev()->getQueueID();
+  }
+
 private:
   Command* head_;     //!< Head of the batch list
   Command* tail_;     //!< Tail of the batch list

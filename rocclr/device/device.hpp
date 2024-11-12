@@ -1276,7 +1276,7 @@ class VirtualDevice : public amd::HeapObject {
 
   //! Return the physical device for this virtual device.
   const amd::Device& device() const { return device_(); }
-
+  virtual uint64_t getQueueID() = 0;
   virtual void submitReadMemory(amd::ReadMemoryCommand& cmd) = 0;
   virtual void submitWriteMemory(amd::WriteMemoryCommand& cmd) = 0;
   virtual void submitCopyMemory(amd::CopyMemoryCommand& cmd) = 0;

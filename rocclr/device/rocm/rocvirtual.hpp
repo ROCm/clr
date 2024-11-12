@@ -433,6 +433,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
+  uint64_t getQueueID() { return gpu_queue_->id; }
 
   // } roc OpenCL integration
  private:

@@ -31,7 +31,7 @@ namespace hip {
 Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
                const std::vector<uint32_t>& cuMask, hipStreamCaptureStatus captureStatus)
     : amd::HostQueue(*dev->asContext(), *dev->devices()[0], 0, amd::CommandQueue::RealTimeDisabled,
-        convertToQueuePriority(p), cuMask),
+                     convertToQueuePriority(p), cuMask),
       lock_("Stream Callback lock"),
       device_(dev),
       priority_(p),
@@ -40,10 +40,9 @@ Stream::Stream(hip::Device* dev, Priority p, unsigned int f, bool null_stream,
       cuMask_(cuMask),
       captureStatus_(captureStatus),
       originStream_(false),
-      captureID_(0)
-      {
-        device_->AddStream(this);
-      }
+      captureID_(0) {
+  device_->AddStream(this);
+}
 
 // ================================================================================================
 hipError_t Stream::EndCapture() {
