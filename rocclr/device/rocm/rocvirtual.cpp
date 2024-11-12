@@ -3115,6 +3115,13 @@ static inline void nontemporalMemcpy(
     _mm_stream_si32(reinterpret_cast<int* __restrict&>(dst)++,
                     *reinterpret_cast<const int* __restrict&>(src)++);
   }
+
+  size = size % sizeof(int);
+  // Copy remaining bytes for unaligned size
+  std::memcpy(dst, src, size);
+
+  // Add memory fence
+  _mm_sfence();
 #else
   std::memcpy(dst, src, size);
 #endif
