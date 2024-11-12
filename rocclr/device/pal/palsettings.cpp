@@ -244,7 +244,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Polaris10:
     case Pal::AsicRevision::Polaris11:
     case Pal::AsicRevision::Polaris12:
-    case Pal::AsicRevision::Polaris22:
       // Keep this false even though we have support
       // singleFpDenorm_ = true;
       viPlus_ = true;

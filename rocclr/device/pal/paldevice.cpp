@@ -92,7 +92,6 @@ static constexpr PalDevice supportedPalDevices[] = {
   {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Ellesmere",     Pal::AsicRevision::Polaris10}, // Ellesmere
   {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Baffin",        Pal::AsicRevision::Polaris11}, // Baffin
   {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris12}, // Lexa
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris22},
   {8,  1,  0,  Pal::GfxIpLevel::GfxIp8_1,  "Stoney",        Pal::AsicRevision::Stoney},
   {9,  0,  0,  Pal::GfxIpLevel::GfxIp9,    "gfx900",        Pal::AsicRevision::Vega10},
   {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven},
