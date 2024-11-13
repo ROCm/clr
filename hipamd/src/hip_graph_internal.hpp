@@ -439,7 +439,6 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     bool isGraphCapture = false;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       switch (GetType()) {
-        case hipGraphNodeTypeKernel:
         case hipGraphNodeTypeMemset:
           isGraphCapture = true;
           break;
@@ -1324,6 +1323,17 @@ class GraphKernelNode : public GraphNode {
       return status;
     }
     return hipSuccess;
+  }
+
+  virtual bool GraphCaptureEnabled() override {
+    bool isGraphCapture = false;
+    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+      // Disable capture for cooperative kernels
+      if (!coopKernel_) {
+        isGraphCapture = true;
+      }
+    }
+    return isGraphCapture;
   }
 };
 

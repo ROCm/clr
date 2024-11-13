@@ -572,6 +572,9 @@ hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDi
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  STREAM_CAPTURE(hipModuleLaunchCooperativeKernel, stream, f, gridDimX, gridDimY, gridDimZ,
+                 blockDimX, blockDimY, blockDimZ, sharedMemBytes, kernelParams);
+
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;

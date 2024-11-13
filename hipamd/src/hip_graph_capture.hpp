@@ -42,6 +42,12 @@ hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, u
                                         uint32_t& sharedMemBytes, void**& kernelParams,
                                         void**& extra);
 
+hipError_t capturehipModuleLaunchCooperativeKernel(hipStream_t& stream, hipFunction_t& f,
+                                                   uint32_t& gridDimX, uint32_t& gridDimY,
+                                                   uint32_t& gridDimZ, uint32_t& blockDimX,
+                                                   uint32_t& blockDimY, uint32_t& blockDimZ,
+                                                   uint32_t& sharedMemBytes, void**& kernelParams);
+
 hipError_t capturehipLaunchByPtr(hipStream_t& stream, hipFunction_t func, dim3 blockDim,
                                  dim3 gridDim, unsigned int sharedMemBytes, void** extra);
 

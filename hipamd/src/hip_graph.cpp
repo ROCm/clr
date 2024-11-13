@@ -348,6 +348,40 @@ hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, u
   return hipSuccess;
 }
 
+hipError_t capturehipModuleLaunchCooperativeKernel(hipStream_t& stream, hipFunction_t& f,
+                                                   uint32_t& gridDimX, uint32_t& gridDimY,
+                                                   uint32_t& gridDimZ, uint32_t& blockDimX,
+                                                   uint32_t& blockDimY, uint32_t& blockDimZ,
+                                                   uint32_t& sharedMemBytes, void**& kernelParams) {
+  ClPrint(amd::LOG_INFO, amd::LOG_API,
+          "[hipGraph] Current capture node ModuleLaunchCooperativeKernel on stream : %p", stream);
+
+  if (!hip::isValid(stream)) {
+    return hipErrorContextIsDestroyed;
+  }
+
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+  hipKernelNodeParams nodeParams;
+  nodeParams.func = f;
+  nodeParams.blockDim = {blockDimX, blockDimY, blockDimZ};
+  nodeParams.gridDim = {gridDimX, gridDimY, gridDimZ};
+  nodeParams.kernelParams = kernelParams;
+  nodeParams.sharedMemBytes = sharedMemBytes;
+  nodeParams.extra = nullptr;
+
+  hip::GraphNode* pGraphNode;
+  hipError_t status =
+      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+                             s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true,
+                             amd::NDRangeKernelCommand::CooperativeGroups);
+  if (status != hipSuccess) {
+    return status;
+  }
+  s->SetLastCapturedNode(pGraphNode);
+
+  return hipSuccess;
+}
+
 hipError_t capturehipLaunchByPtr(hipStream_t& stream, hipFunction_t func, dim3 blockDim,
                                  dim3 gridDim, unsigned int sharedMemBytes, void** extra) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Current capture node LaunchByPtr on stream : %p",
