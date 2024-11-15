@@ -655,28 +655,32 @@ hsa_status_t PALHSALoaderContext::SamplerCreate(
       assert(false);
       return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
+
+  // This path works in OCL only, so address_mode is the same in X, Y and Z.
+  uint addressMode[3];
   switch (sampler_descriptor->address_mode) {
     case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_EDGE:
-      state |= amd::Sampler::StateAddressClampToEdge;
+      addressMode[0] = CL_ADDRESS_CLAMP_TO_EDGE;
       break;
     case HSA_EXT_SAMPLER_ADDRESSING_MODE_CLAMP_TO_BORDER:
-      state |= amd::Sampler::StateAddressClamp;
+      addressMode[0] = CL_ADDRESS_CLAMP;
       break;
     case HSA_EXT_SAMPLER_ADDRESSING_MODE_REPEAT:
-      state |= amd::Sampler::StateAddressRepeat;
+      addressMode[0] = CL_ADDRESS_REPEAT;
       break;
     case HSA_EXT_SAMPLER_ADDRESSING_MODE_MIRRORED_REPEAT:
-      state |= amd::Sampler::StateAddressMirroredRepeat;
+      addressMode[0] = CL_ADDRESS_MIRRORED_REPEAT;
       break;
     case HSA_EXT_SAMPLER_ADDRESSING_MODE_UNDEFINED:
-      state |= amd::Sampler::StateAddressNone;
+      addressMode[0] = CL_ADDRESS_NONE;
       break;
     default:
-      assert(false);
       return HSA_STATUS_ERROR_INVALID_ARGUMENT;
   }
+  addressMode[1] = addressMode[2] = addressMode[0];
+
   std::unique_ptr<pal::Sampler> sampler(new pal::Sampler(program_->palDevice()));
-  if (!sampler || !sampler->create(state)) {
+  if (!sampler || !sampler->create(state, addressMode)) {
     return HSA_STATUS_ERROR;
   }
   sampler_handle->handle = sampler->hwSrd();

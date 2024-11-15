@@ -2347,10 +2347,10 @@ void Device::destroyScratchBuffers() {
   }
 }
 
-void Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize, uint32_t mipFilter,
-                           float minLod, float maxLod) const {
+void Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize,
+         const uint* addressMode, uint32_t mipFilter, float minLod, float maxLod) const {
   Pal::SamplerInfo samplerInfo = {};
-
+  assert(addressMode != nullptr);
   samplerInfo.borderColorType = Pal::BorderColorType::TransparentBlack;
 
   samplerInfo.filter.zFilter = Pal::XyFilterPoint;
@@ -2359,33 +2359,6 @@ void Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize, 
   samplerInfo.maxLod = 4096.0f;
 
   state &= ~amd::Sampler::StateNormalizedCoordsMask;
-
-  // Program the sampler address mode
-  switch (state & amd::Sampler::StateAddressMask) {
-    case amd::Sampler::StateAddressRepeat:
-      samplerInfo.addressU = Pal::TexAddressMode::Wrap;
-      samplerInfo.addressV = Pal::TexAddressMode::Wrap;
-      samplerInfo.addressW = Pal::TexAddressMode::Wrap;
-      break;
-    case amd::Sampler::StateAddressClampToEdge:
-      samplerInfo.addressU = Pal::TexAddressMode::Clamp;
-      samplerInfo.addressV = Pal::TexAddressMode::Clamp;
-      samplerInfo.addressW = Pal::TexAddressMode::Clamp;
-      break;
-    case amd::Sampler::StateAddressMirroredRepeat:
-      samplerInfo.addressU = Pal::TexAddressMode::Mirror;
-      samplerInfo.addressV = Pal::TexAddressMode::Mirror;
-      samplerInfo.addressW = Pal::TexAddressMode::Mirror;
-      break;
-    case amd::Sampler::StateAddressClamp:
-    case amd::Sampler::StateAddressNone:
-      samplerInfo.addressU = Pal::TexAddressMode::ClampBorder;
-      samplerInfo.addressV = Pal::TexAddressMode::ClampBorder;
-      samplerInfo.addressW = Pal::TexAddressMode::ClampBorder;
-    default:
-      break;
-  }
-  state &= ~amd::Sampler::StateAddressMask;
 
   // Program texture filter mode
   if (state == amd::Sampler::StateFilterLinear) {
@@ -2399,6 +2372,25 @@ void Device::fillHwSampler(uint32_t state, void* hwState, uint32_t hwStateSize, 
   } else if (mipFilter == CL_FILTER_LINEAR) {
     samplerInfo.filter.mipFilter = Pal::MipFilterLinear;
   }
+
+  auto addessModeMap = [] (const uint addreMode)
+  {
+     switch(addreMode) {
+       case CL_ADDRESS_CLAMP_TO_EDGE:
+         return Pal::TexAddressMode::Clamp;
+       case CL_ADDRESS_REPEAT:
+         return Pal::TexAddressMode::Wrap;
+       case CL_ADDRESS_MIRRORED_REPEAT:
+         return Pal::TexAddressMode::Mirror;
+       case CL_ADDRESS_CLAMP:
+       case CL_ADDRESS_NONE:
+       default:
+         return Pal::TexAddressMode::ClampBorder;
+     }
+  };
+  samplerInfo.addressU = addessModeMap(addressMode[0]);
+  samplerInfo.addressV = addessModeMap(addressMode[1]);
+  samplerInfo.addressW = addessModeMap(addressMode[2]);
 
   iDev()->CreateSamplerSrds(1, &samplerInfo, hwState);
 }
@@ -2656,12 +2648,12 @@ Device::SrdManager::~SrdManager() {
   }
 }
 
-bool Sampler::create(uint32_t oclSamplerState) {
+bool Sampler::create(uint32_t oclSamplerState, const uint addressMode[3]) {
   hwSrd_ = dev_.srds().allocSrdSlot(&hwState_);
   if (0 == hwSrd_) {
     return false;
   }
-  dev_.fillHwSampler(oclSamplerState, hwState_, HsaSamplerObjectSize);
+  dev_.fillHwSampler(oclSamplerState, hwState_, HsaSamplerObjectSize, addressMode);
   return true;
 }
 
@@ -2670,8 +2662,8 @@ bool Sampler::create(const amd::Sampler& owner) {
   if (0 == hwSrd_) {
     return false;
   }
-  dev_.fillHwSampler(owner.state(), hwState_, HsaSamplerObjectSize, owner.mipFilter(),
-                     owner.minLod(), owner.maxLod());
+  dev_.fillHwSampler(owner.state(), hwState_, HsaSamplerObjectSize, owner.addessMode(),
+                     owner.mipFilter(), owner.minLod(), owner.maxLod());
   return true;
 }
 

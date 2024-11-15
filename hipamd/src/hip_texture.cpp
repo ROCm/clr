@@ -173,17 +173,20 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   }
 
   // TODO ROCclr assumes all dimensions have the same addressing mode.
-  cl_addressing_mode addressMode = CL_ADDRESS_NONE;
+  cl_addressing_mode addressMode[3] = { CL_ADDRESS_NONE, CL_ADDRESS_NONE, CL_ADDRESS_NONE};
   // If hipTextureDesc::normalizedCoords is set to zero,
   // hipAddressModeWrap and hipAddressModeMirror won't be supported
   // and will be switched to hipAddressModeClamp.
-  if ((pTexDesc->normalizedCoords == 0) &&
-      ((pTexDesc->addressMode[0] == hipAddressModeWrap) || (pTexDesc->addressMode[0] == hipAddressModeMirror))) {
-    addressMode = hip::getCLAddressingMode(hipAddressModeClamp);
-  }
-  // hipTextureDesc::addressMode is ignored if hipResourceDesc::resType is hipResourceTypeLinear
-  else if (pResDesc->resType != hipResourceTypeLinear) {
-    addressMode = hip::getCLAddressingMode(pTexDesc->addressMode[0]);
+  for (int i = 0; i < 3; i++) {
+    if ((pTexDesc->normalizedCoords == 0) &&
+        ((pTexDesc->addressMode[i] == hipAddressModeWrap) ||
+            (pTexDesc->addressMode[i] == hipAddressModeMirror))) {
+      addressMode[i] = hip::getCLAddressingMode(hipAddressModeClamp);
+    }
+    // hipTextureDesc::addressMode is ignored if hipResourceDesc::resType is hipResourceTypeLinear
+    else if (pResDesc->resType != hipResourceTypeLinear) {
+      addressMode[i] = hip::getCLAddressingMode(pTexDesc->addressMode[i]);
+    }
   }
 
 #ifndef CL_FILTER_NONE
