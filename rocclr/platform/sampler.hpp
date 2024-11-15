@@ -38,13 +38,6 @@ class Sampler : public RuntimeObject {
     StateNormalizedCoordsFalse = 0x00,
     StateNormalizedCoordsTrue = 0x01,
     StateNormalizedCoordsMask = (StateNormalizedCoordsFalse | StateNormalizedCoordsTrue),
-    StateAddressNone = 0x00,
-    StateAddressRepeat = 0x02,
-    StateAddressClampToEdge = 0x04,
-    StateAddressClamp = 0x06,
-    StateAddressMirroredRepeat = 0x08,
-    StateAddressMask = (StateAddressNone | StateAddressRepeat | StateAddressMirroredRepeat |
-                        StateAddressClampToEdge | StateAddressClamp),
     StateFilterNearest = 0x10,
     StateFilterLinear = 0x20,
     StateFilterMask = (StateFilterNearest | StateFilterLinear)
@@ -57,9 +50,10 @@ class Sampler : public RuntimeObject {
   float minLod_;                   //!< min level of detail
   float maxLod_;                   //!< max level of detail
   DeviceSamplers deviceSamplers_;  //!< Container for the device samplers
+  uint addressMode_[3];            //!< address modes in X, Y and Z
 
  public:
-  Sampler(Context& context,    //!< OpenCL context
+  Sampler(Context& context,    //!< context for OCL
           bool normCoords,     //!< normalized coordinates
           uint addrMode,       //!< adressing mode
           uint filterMode,     //!< filter mode
@@ -72,6 +66,7 @@ class Sampler : public RuntimeObject {
         minLod_(minLod),
         maxLod_(maxLod) {  // Packs the sampler state into uint32_t for kernel execution
     state_ = 0;
+    for (int i = 0; i < 3; i++)  addressMode_[i] = addrMode;
 
     // Set normalized state
     if (normCoords) {
@@ -86,27 +81,20 @@ class Sampler : public RuntimeObject {
     } else {
       state_ |= StateFilterNearest;
     }
+  }
 
-    // Program the sampler address mode
-    switch (addrMode) {
-      case CL_ADDRESS_CLAMP_TO_EDGE:
-        state_ |= StateAddressClampToEdge;
-        break;
-      case CL_ADDRESS_REPEAT:
-        state_ |= StateAddressRepeat;
-        break;
-      case CL_ADDRESS_CLAMP:
-        state_ |= StateAddressClamp;
-        break;
-      case CL_ADDRESS_MIRRORED_REPEAT:
-        state_ |= StateAddressMirroredRepeat;
-        break;
-      case CL_ADDRESS_NONE:
-        state_ |= StateAddressNone;
-        break;
-      default:
-        break;
-    }
+  Sampler(Context& context,    //!< context for Hip
+          bool normCoords,     //!< normalized coordinates
+          const uint addrMode[3],    //!< adressing modes in X, Y and Z directions
+          uint filterMode,     //!< filter mode
+          uint mipFilterMode,  //!< mip filter mode
+          float minLod,        //!< min level of detail
+          float maxLod         //!< max level of detail
+          )
+      : Sampler(context, normCoords, addrMode[0], filterMode,
+          mipFilterMode, minLod, maxLod) {
+    addressMode_[1] = addrMode[1];
+    addressMode_[2] = addrMode[2];
   }
 
   virtual ~Sampler() {
@@ -142,33 +130,11 @@ class Sampler : public RuntimeObject {
   uint mipFilter() const { return mipFilter_; }
   float minLod() const { return minLod_; }
   float maxLod() const { return maxLod_; }
-
+  const uint* addessMode() const { return addressMode_; }
   bool normalizedCoords() const { return (state_ & StateNormalizedCoordsTrue) ? true : false; }
 
-  uint addressingMode() const {
-    uint adressing = 0;
-
-    // Program the sampler address mode
-    switch (state_ & StateAddressMask) {
-      case StateAddressRepeat:
-        adressing = CL_ADDRESS_REPEAT;
-        break;
-      case StateAddressClampToEdge:
-        adressing = CL_ADDRESS_CLAMP_TO_EDGE;
-        break;
-      case StateAddressClamp:
-        adressing = CL_ADDRESS_CLAMP;
-        break;
-      case StateAddressMirroredRepeat:
-        adressing = CL_ADDRESS_MIRRORED_REPEAT;
-        break;
-      case StateAddressNone:
-        adressing = CL_ADDRESS_NONE;
-        break;
-      default:
-        break;
-    }
-    return adressing;
+  uint inline addressingMode(const int index = 0) const {
+    return addressMode_[index];
   }
 
   uint filterMode() const {
