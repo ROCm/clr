@@ -50,6 +50,11 @@ endif()
 set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "rocm-opencl")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "rocm-opencl")
 
+# Backward compatibility support for deprecated package: rocm-opencl-icd-loader
+set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "rocm-opencl-icd-loader")
+set(CPACK_DEBIAN_BINARY_PACKAGE_CONFLICTS "rocm-opencl-icd-loader")
+set(CPACK_RPM_BINARY_PACKAGE_OBSOLETES "rocm-opencl-icd-loader")
+
 set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/opencl/postinst;${CMAKE_BINARY_DIR}/opencl/packages/opencl/prerm")
 # RPM CPACK variables
 set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/opencl/rpm_post")
