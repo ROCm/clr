@@ -127,9 +127,6 @@ static unsigned extractAqlBits(unsigned v, unsigned pos, unsigned width) {
 
 // ================================================================================================
 void Timestamp::checkGpuTime() {
-  if (amd::IS_HIP && !amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-    return;
-  }
   amd::ScopedLock s(lock_);
   if (HwProfiling()) {
     uint64_t  start = std::numeric_limits<uint64_t>::max();
