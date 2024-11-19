@@ -92,10 +92,18 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);
   }
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
-    hip::getCurrentDevice()->NullStream() : reinterpret_cast<hip::Stream*>(stream);
+    hip::getCurrentDevice()->NullStream() : s;
   auto device = hip_stream->GetDevice();
   auto mem_pool = device->GetCurrentMemoryPool();
+
+  // Return error if any stream other than the current stream is in capture mode
+  if (device->StreamCaptureBlocking()) {
+    if (s->GetCaptureStatus() != hipStreamCaptureStatusActive) {
+      return hipErrorStreamCaptureUnsupported;
+    }
+  }
 
   STREAM_CAPTURE(hipMallocAsync, stream, reinterpret_cast<hipMemPool_t>(mem_pool), size, dev_ptr);
 
@@ -138,17 +146,28 @@ class FreeAsyncCommand : public amd::Command {
 // ================================================================================================
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   HIP_INIT_API(hipFreeAsync, dev_ptr, stream);
-  if (dev_ptr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
+
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
 
-  STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
-
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
-    hip::getCurrentDevice()->NullStream(): reinterpret_cast<hip::Stream*>(stream);
+    hip::getCurrentDevice()->NullStream(): s;
+
+  auto device = hip_stream->GetDevice();
+  // Return error if any stream other than the current stream is in capture mode
+  if (device->StreamCaptureBlocking()) {
+    if (s->GetCaptureStatus() != hipStreamCaptureStatusActive) {
+      return hipErrorStreamCaptureUnsupported;
+    }
+  }
+
+  if (dev_ptr == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
 
   hip::Event* event = nullptr;
   bool graph_in_use = false;
