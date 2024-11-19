@@ -4,9 +4,19 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ## HIP 6.4 (For ROCm 6.4)
 
-### Changed
-* Added new environment variable
-    - `DEBUG_HIP_7_PREVIEW` This is used for enabling the backward incompatible changes before the next major ROCm release 7.0. By default this is set to 0. Users can set this variable to 0x1, to match the behavior of hipGetLastError with its corresponding CUDA API.
+### Added
+
+
+## HIP 6.3.1 for ROCm 6.3.1
+
+### Added
+
+* An activeQueues set that tracks only the queues that have a command submitted to them, which allows fast iteration in `waitActiveStreams`.
+
+### Resolved issues
+
+* A Deadlock in a specific customer application by preventing hipLaunchKernel latency degradation with number of idle streams.
+
 
 ### Resolved issues
 * Fixed a performance issue where the kernel launch efficiency on the default stream declined
@@ -14,11 +24,7 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ## HIP 6.3 for ROCm 6.3
 
-### Changed
-
-* Un-deprecated HIP APIs
-    - `hipHostAlloc`
-    - `hipFreeHost`
+### Added
 
 * New HIP APIs
     - `hipGraphExecGetFlags`  returns the flags on executable graph.
@@ -30,13 +36,29 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipDrvGraphExecMemcpyNodeSetParams`  sets the parameters for a memcpy node in the given graphExec.
     - `hipDrvGraphExecMemsetNodeSetParams`  sets the parameters for a memset node in the given graphExec.
 
+### Changed
+
+* Un-deprecated HIP APIs
+    - `hipHostAlloc`
+    - `hipFreeHost`
+
+### Optimized
+
+* Disabled CPU wait in device synchronize to avoid idle time in applications such as Hugging Face models and PyTorch.
+* Optimized multi-threaded dispatches to improve performance.
+* Limited the software batch size to control the number of command submissions for runtime to handle efficiently.
+* Optimizes HSA callback performance when a large number of events are recorded by multiple threads and submitted to multiple GPUs.
+
 ### Resolved issues
 
-
-- The `_sync()` version of crosslane builtins such as `shfl_sync()`,
+* Soft hang in runtime wait event when run TensorFlow.
+* Memory leak in the API `hipGraphInstantiate` when kernel is launched using `hipExtLaunchKernelGGL` with event.
+* Memory leak when the API `hipGraphAddMemAllocNode` is called.
+* The `_sync()` version of crosslane builtins such as `shfl_sync()`,
   `__all_sync()` and `__any_sync()`, continue to be hidden behind the
   preprocessor macro `HIP_ENABLE_WARP_SYNC_BUILTINS`, and will be enabled
   unconditionally in the next ROCm release.
+
 
 ## HIP 6.2.41134 for ROCm 6.2.1
 
