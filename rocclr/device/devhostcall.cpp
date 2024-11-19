@@ -334,7 +334,7 @@ void HostcallListener::consumePackets() {
 }
 
 void HostcallListener::terminate() {
-  if (!amd::Os::isThreadAlive(thread_)) {
+  if (thread_.state() < Thread::FINISHED && !amd::Os::isThreadAlive(thread_)) {
     return;
   }
   kHostThreadActive.state = Init::State::kExit;
