@@ -66,9 +66,16 @@ if(NOT WIN32)
   find_dependency(AMDDeviceLibs HINTS ${ROCM_PATH} PATHS "/opt/rocm")
 endif()
 
-# If AMDGPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
+if(DEFINED AMDGPU_TARGETS AND NOT DEFINED GPU_TARGETS)
+  message(AUTHOR_WARNING "AMDGPU_TARGETS is deprecated. Please use GPU_TARGETS instead.")
+
+  # Set GPU_TARGETS to the value of AMDGPU_TARGETS
+  set(GPU_TARGETS "${AMDGPU_TARGETS}")
+endif()
+
+# If GPU_TARGETS is not defined by the app, amdgpu-arch is run to find the gpu archs
 # of all the devices present in the machine
-if(NOT AMDGPU_TARGETS)
+if(NOT GPU_TARGETS)
   if(@BUILD_SHARED_LIBS@)
     if (WIN32)
       set(AMDGPU_ARCH "${HIP_CLANG_ROOT}/bin/amdgpu-arch.exe")
@@ -89,7 +96,7 @@ if(NOT AMDGPU_TARGETS)
 
   if(AMDGPU_ARCH_ERROR)
     message(AUTHOR_WARNING
-        " AMDGPU_TARGETS was not set, and system GPU detection was unsuccsesful.\n \n"
+        " GPU_TARGETS was not set, and system GPU detection was unsuccsesful.\n \n"
         " The amdgpu-arch tool failed:\n"
         " Error: '${AMDGPU_ARCH_ERROR}'\n"
         " Output: '${AMDGPU_ARCH_OUTPUT}'\n \n"
@@ -102,17 +109,17 @@ if(NOT AMDGPU_TARGETS)
     string(REPLACE "gfx000\n" "" AMDGPU_ARCH_OUTPUT "${AMDGPU_ARCH_OUTPUT}")
     if (NOT AMDGPU_ARCH_OUTPUT STREQUAL "")
       string(REPLACE "\n" ";" AMDGPU_ARCH_OUTPUT ${AMDGPU_ARCH_OUTPUT})
-      set(AMDGPU_TARGETS ${AMDGPU_ARCH_OUTPUT} CACHE STRING "AMD GPU targets to compile for")
+      set(GPU_TARGETS ${AMDGPU_ARCH_OUTPUT} CACHE STRING "AMD GPU targets to compile for")
     endif()
   endif()
 endif()
 
-if (NOT AMDGPU_TARGETS AND NOT @BUILD_SHARED_LIBS@)
+if (NOT GPU_TARGETS AND NOT @BUILD_SHARED_LIBS@)
   # The default architecture is gfx942 for static build
-  set(AMDGPU_TARGETS "gfx942" CACHE STRING "AMD GPU targets to compile for")
+  set(GPU_TARGETS "gfx942" CACHE STRING "AMD GPU targets to compile for")
 endif()
 
-set(GPU_TARGETS "${AMDGPU_TARGETS}" CACHE STRING "GPU targets to compile for")
+set(GPU_BUILD_TARGETS "${GPU_TARGETS}" CACHE STRING "GPU targets to compile for")
 if(NOT WIN32)
   find_dependency(amd_comgr HINTS ${ROCM_PATH} PATHS "/opt/rocm")
 endif()
@@ -153,7 +160,7 @@ endif()
 
 hip_add_interface_link_flags(hip::device --hip-link)
 
-foreach(GPU_TARGET ${GPU_TARGETS})
+foreach(GPU_TARGET ${GPU_BUILD_TARGETS})
     if (NOT compilePropIsSet)
       hip_add_interface_compile_flags(hip::device --offload-arch=${GPU_TARGET})
     endif()
