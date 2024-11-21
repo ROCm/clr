@@ -675,6 +675,10 @@ bool Image::validateDimensions(const std::vector<amd::Device*>& devices, cl_mem_
       }
     // Fall through...
     case CL_MEM_OBJECT_IMAGE2D:
+      if ((width == 0) || (height == 0)) {
+        DevLogPrintfError("Invalid dimensions width: %u height: %u \n", width, height);
+        return false;
+      }
       for (const auto dev : devices) {
         if ((dev->info().image2DMaxHeight_ >= height) && (dev->info().image2DMaxWidth_ >= width)) {
           return true;
@@ -710,6 +714,10 @@ bool Image::validateDimensions(const std::vector<amd::Device*>& devices, cl_mem_
       }
       break;
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
+      if (width == 0) {
+        DevLogError("Invalid dimension \n");
+        return false;
+      }
       for (const auto& dev : devices) {
         if (dev->info().imageMaxBufferSize_ >= width) {
           return true;
