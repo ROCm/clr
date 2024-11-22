@@ -745,7 +745,7 @@ class Device : public NullDevice {
   Memory* globalScratchBuf_;             //!< Global scratch buffer
   SrdManager* srdManager_;               //!< SRD manager object
   static AppProfile appProfile_;         //!< application profile
-  mutable bool freeCPUMem_;              //!< flag to mark GPU free SVM CPU mem
+  mutable bool freeCPUMem_ = false;      //!< flag to mark GPU free SVM CPU mem
   Pal::DeviceProperties properties_;     //!< PAL device properties
   Pal::IDevice* device_;                 //!< PAL device object
   mutable std::atomic<Pal::gpusize>
