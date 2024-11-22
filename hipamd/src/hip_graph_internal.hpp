@@ -1129,6 +1129,9 @@ class GraphKernelNode : public GraphNode {
     const amd::KernelSignature& signature = kernel->signature();
     numParams_ = signature.numParameters();
 
+    // Copy gridDim, blockDim, sharedMemBytes and func
+    kernelParams_ = *pNodeParams;
+
     // Allocate/assign memory if params are passed part of 'kernelParams'
     if (pNodeParams->kernelParams != nullptr) {
       kernelParams_.kernelParams = (void**)malloc(numParams_ * sizeof(void*));
@@ -1303,7 +1306,6 @@ class GraphKernelNode : public GraphNode {
       return status;
     }
     freeParams();
-    kernelParams_ = *params;
     status = copyParams(params);
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to set params");
