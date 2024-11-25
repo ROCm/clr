@@ -488,7 +488,7 @@ struct Graph {
   std::unordered_map<UserObject*, int> graphUserObj_;
   unsigned int id_;
   static int nextID;
-  int max_streams_ = 0;       //!< Maximum number of extra streams used in the graph launch
+  int max_streams_ = 0;       //!< Maximum number of streams used in the graph launch
   uint32_t memalloc_nodes_ = 0; //!< Count of unreleased Memalloc nodes
   std::vector<Node> roots_;   //!< Root nodes, used in parallel launches
   std::vector<Node> leafs_;   //!< The list of leaf nodes on every parallel stream

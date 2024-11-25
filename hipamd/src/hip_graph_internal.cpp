@@ -247,7 +247,7 @@ void Graph::ScheduleOneNode(Node node, int stream_id) {
   if (node->stream_id_ == -1) {
     // Assign active stream to the current node
     node->stream_id_ = stream_id;
-    max_streams_ = std::max(max_streams_, stream_id);
+    max_streams_ = std::max(max_streams_, (stream_id + 1));
 
     // Update the dependencies if a signal is required
     for (auto dep: node->GetDependencies()) {
@@ -414,7 +414,7 @@ hipError_t GraphExec::Init() {
     status = CreateStreams(parallelLists_.size() - 1 + min_num_streams);
   } else {
     // create extra stream to avoid queue collision with the default execution stream
-    status = CreateStreams(clonedGraph_->max_streams_ + 1);
+    status = CreateStreams(clonedGraph_->max_streams_);
   }
   if (status != hipSuccess) {
     return status;
