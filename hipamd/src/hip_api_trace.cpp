@@ -36,6 +36,7 @@
 
 ROCPROFILER_REGISTER_DEFINE_IMPORT(hip, HIP_ROCP_REG_VERSION)
 ROCPROFILER_REGISTER_DEFINE_IMPORT(hip_compiler, HIP_ROCP_REG_VERSION)
+ROCPROFILER_REGISTER_DEFINE_IMPORT(hip_tools, HIP_ROCP_REG_VERSION)
 #elif !defined(HIP_ROCPROFILER_REGISTER)
 #define HIP_ROCPROFILER_REGISTER 0
 #endif
@@ -829,6 +830,11 @@ void UpdateDispatchTable(HipCompilerDispatchTable* ptrCompilerDispatchTable) {
   ptrCompilerDispatchTable->__hipUnregisterFatBinary_fn = hip::__hipUnregisterFatBinary;
 }
 
+void UpdateDispatchTable(HipToolsDispatchTable* ptrToolsDispatchTable) {
+  ptrToolsDispatchTable->size = sizeof(HipToolsDispatchTable);
+  ptrToolsDispatchTable->__hipReportDevices_fn = nullptr;
+}
+
 void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->size = sizeof(HipDispatchTable);
   ptrDispatchTable->hipApiName_fn = hip::hipApiName;
@@ -1331,9 +1337,10 @@ constexpr auto ComputeTableSize(size_t num_funcs) {
 
 HIP_DEFINE_DISPATCH_TABLE_INFO(HipDispatchTable, hip)
 HIP_DEFINE_DISPATCH_TABLE_INFO(HipCompilerDispatchTable, hip_compiler)
+HIP_DEFINE_DISPATCH_TABLE_INFO(HipToolsDispatchTable, hip_tools)
 #endif
 
-template <typename Tp> void ToolInit(Tp* table) {
+template <typename Tp> void ToolsInit(Tp* table) {
 #if HIP_ROCPROFILER_REGISTER > 0
   auto table_array = std::array<void*, 1>{static_cast<void*>(table)};
   auto lib_id = rocprofiler_register_library_indentifier_t{};
@@ -1360,7 +1367,7 @@ template <typename Tp> Tp& GetDispatchTableImpl() {
   UpdateDispatchTable(&dispatch_table);
 
   // Profiler Registration, may wrap the function pointers
-  ToolInit(&dispatch_table);
+  ToolsInit(&dispatch_table);
 
   return dispatch_table;
 }
@@ -1383,6 +1390,10 @@ NO_VECTORIZE const HipDispatchTable* GetHipDispatchTable() {
 NO_VECTORIZE const HipCompilerDispatchTable*
 GetHipCompilerDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipCompilerDispatchTable>();
+  return _v;
+}
+const HipToolsDispatchTable* GetHipToolsDispatchTable() {
+  static auto* _v = &GetDispatchTableImpl<HipToolsDispatchTable>();
   return _v;
 }
 }  // namespace hip
@@ -1438,6 +1449,23 @@ HIP_ENFORCE_ABI(HipCompilerDispatchTable, __hipUnregisterFatBinary_fn, 8)
 HIP_ENFORCE_ABI_VERSIONING(HipCompilerDispatchTable, 9)
 
 static_assert(HIP_COMPILER_API_TABLE_MAJOR_VERSION == 0 && HIP_COMPILER_API_TABLE_STEP_VERSION == 0,
+              "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
+              "pointers and then update this check so it is true");
+
+// These ensure that function pointers are not re-ordered
+// HIP_TOOLS_API_TABLE_STEP_VERSION == 0
+HIP_ENFORCE_ABI(HipToolsDispatchTable, __hipReportDevices_fn, 0)
+// HIP_TOOLS_API_TABLE_STEP_VERSION == 1
+
+// if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
+// will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
+//
+//  HIP_ENFORCE_ABI(<table>, <functor>, 8)
+//
+//  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
+HIP_ENFORCE_ABI_VERSIONING(HipToolsDispatchTable, 1)
+
+static_assert(HIP_TOOLS_API_TABLE_MAJOR_VERSION == 0 && HIP_TOOLS_API_TABLE_STEP_VERSION == 0,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 

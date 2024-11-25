@@ -23,6 +23,7 @@
 namespace hip {
 const HipDispatchTable* GetHipDispatchTable();
 const HipCompilerDispatchTable* GetHipCompilerDispatchTable();
+const HipToolsDispatchTable* GetHipToolsDispatchTable();
 }  // namespace hip
 
 extern "C" hipError_t __hipPopCallConfiguration(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
