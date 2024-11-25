@@ -8,12 +8,12 @@ resources:
     type: github
     endpoint: ROCm
     name: ROCm/HIP
-    ref: amd-staging
+    ref: $(Build.SourceBranch)
   - repository: hipother_repo
     type: github
     endpoint: ROCm
     name: ROCm/hipother
-    ref: amd-staging
+    ref: $(Build.SourceBranch)
   pipelines:
   - pipeline: hip_pipeline
     source: \HIP
