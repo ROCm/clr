@@ -52,6 +52,7 @@
 //   DO NOT REMOVE IT.
 #define HIP_API_TABLE_MAJOR_VERSION 0
 #define HIP_COMPILER_API_TABLE_MAJOR_VERSION 0
+#define HIP_TOOLS_API_TABLE_MAJOR_VERSION 0
 #define HIP_RUNTIME_API_TABLE_MAJOR_VERSION 0
 
 // The step version number should be changed whenever the size of the API table struct(s) change.
@@ -61,9 +62,11 @@
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
+#define HIP_TOOLS_API_TABLE_STEP_VERSION 0
 #define HIP_RUNTIME_API_TABLE_STEP_VERSION 8
 
 // HIP API interface
+// HIP compiler dispatch functions
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
                                                   hipStream_t* stream);
 typedef hipError_t (*t___hipPushCallConfiguration)(dim3 gridDim, dim3 blockDim, size_t sharedMem,
@@ -83,6 +86,10 @@ typedef void (*t___hipRegisterVar)(void** modules, void* var, char* hostVar,
                                    char* deviceVar, int ext, size_t size, int constant, int global);
 typedef void (*t___hipUnregisterFatBinary)(void** modules);
 
+// HIP tools dispatch functions
+typedef void (*t___hipReportDevices)(size_t numDevices, const hipUUID* uuids);
+
+// HIP runtime dispatch functions
 typedef const char* (*t_hipApiName)(uint32_t id);
 typedef hipError_t (*t_hipArray3DCreate)(hipArray_t* array,
                                          const HIP_ARRAY3D_DESCRIPTOR* pAllocateArray);
@@ -1544,6 +1551,29 @@ struct HipDispatchTable {
 
   // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7
+
+  // ******************************************************************************************* //
+  //
+  //                                            READ BELOW
+  //
+  // ******************************************************************************************* //
+  // KEEP AT END OF STRUCT
+  // 1) DO NOT REORDER ANY EXIST MEMBERS
+  // 2) INCREASE STEP VERSION DEFINE BEFORE ADDING NEW MEMBERS
+  // 3) INSERT NEW MEMBERS UNDER APPROPRIATE STEP VERSION COMMENT
+  // 4) GENERATE COMMENT FOR NEXT STEP VERSION
+  // 5) ADD "DO NOT EDIT ABOVE!" COMMENT
+  // ******************************************************************************************* //
+};
+
+// HIP Tools dispatch table
+struct HipToolsDispatchTable {
+  // HIP_TOOLS_API_TABLE_STEP_VERSION == 0
+  size_t size;
+  t___hipReportDevices __hipReportDevices_fn;
+
+  // DO NOT EDIT ABOVE!
+  // HIP_TOOLS_API_TABLE_STEP_VERSION == 1
 
   // ******************************************************************************************* //
   //

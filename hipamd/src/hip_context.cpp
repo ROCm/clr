@@ -25,6 +25,11 @@
 #include "rocclr/utils/flags.hpp"
 #include "rocclr/utils/versions.hpp"
 
+#include <hip/amd_detail/hip_api_trace.hpp>
+namespace hip {
+const HipToolsDispatchTable* GetHipToolsDispatchTable();
+}  // namespace hip
+
 namespace hip {
 std::once_flag g_ihipInitialized;
 
@@ -63,6 +68,24 @@ void init(bool* status) {
     }
     g_devices.push_back(device);
     amd::RuntimeTearDown::RegisterObject(device);
+  }
+
+  if (hip::GetHipToolsDispatchTable()->__hipReportDevices_fn != nullptr) {
+    size_t numDevices = g_devices.size();
+
+    std::vector<hipUUID> uuids(numDevices);
+
+    int i = 0;
+    for (const auto& dev : g_devices) {
+      auto* deviceHandle = dev->devices()[0];
+      const auto& info = deviceHandle->info();
+      memcpy(uuids[i].bytes, info.uuid_, sizeof(info.uuid_));
+      // if assert fails, the memcpy bytes param needs to be addressed
+      static_assert(sizeof(info.uuid_) == sizeof(uuids[0].bytes), "error ABI issue");
+      ++i;
+    }
+
+    hip::GetHipToolsDispatchTable()->__hipReportDevices_fn(numDevices, uuids.data());
   }
 
   amd::Context* hContext = new amd::Context(devices, amd::Context::Info());

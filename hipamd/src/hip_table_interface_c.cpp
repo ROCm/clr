@@ -23,6 +23,7 @@
 namespace hip {
 const HipDispatchTable* GetHipDispatchTable();
 const HipCompilerDispatchTable* GetHipCompilerDispatchTable();
+const HipToolsDispatchTable* GetHipToolsDispatchTable();
 }  // namespace hip
 
 #ifdef _WIN32
