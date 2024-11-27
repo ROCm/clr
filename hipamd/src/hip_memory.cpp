@@ -2037,8 +2037,16 @@ hipError_t ihipMemcpyDtoHCommand(amd::Command*& command, void* srcDevice, void* 
     }
     command = copyCommand;
   } else {
+    amd::Command::EventWaitList waitList;
+    auto* pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
+    if (stream != pStream) {
+      amd::Command* cmd = pStream->getLastQueuedCommand(true);
+      if (cmd != nullptr) {
+        waitList.push_back(cmd);
+      }
+    }
     amd::ReadMemoryCommand* readCommand =
-      new amd::ReadMemoryCommand(*stream, CL_COMMAND_READ_BUFFER_RECT, amd::Command::EventWaitList{},
+      new amd::ReadMemoryCommand(*stream, CL_COMMAND_READ_BUFFER_RECT, waitList,
                                  *srcMemory, srcStart, copyRegion, dstHost, srcRect, dstRect,
                                  copyMetadata);
     if (readCommand == nullptr) {
@@ -2521,7 +2529,8 @@ hipError_t ihipGetMemcpyParam3DCommand(amd::Command*& command, const HIP_MEMCPY3
   return hipSuccess;
 }
 
-inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = false) {
+inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = false,
+                                                              hip::Stream* stream = nullptr) {
   hipError_t status = hipSuccess;
   if (command == nullptr) {
     return hipErrorOutOfMemory;
@@ -2529,6 +2538,21 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
   command->enqueue();
   if (!isAsync) {
     command->queue()->finish();
+  } else if (stream != nullptr) {
+    auto* newQueue = command->queue();
+    if (newQueue != stream) {
+      amd::Command::EventWaitList waitList;
+      amd::Command* cmd = newQueue->getLastQueuedCommand(true);
+      if (cmd != nullptr) {
+        waitList.push_back(cmd);
+        amd::Command* depdentMarker = new amd::Marker(*stream, true, waitList);
+        if (depdentMarker != nullptr) {
+          depdentMarker->enqueue();
+          depdentMarker->release();
+        }
+        cmd->release();
+      }
+    }
   }
   command->release();
   return status;
@@ -2582,7 +2606,7 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
       // Device to Device copies dont need to wait for host synchronization
       isAsync = true;
     }
-    return ihipMemcpyCmdEnqueue(command, isAsync);
+    return ihipMemcpyCmdEnqueue(command, isAsync, hip_stream);
   }
 }
 
