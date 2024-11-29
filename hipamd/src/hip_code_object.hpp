@@ -65,7 +65,7 @@ class CodeObject {
 
   static bool IsClangOffloadMagicBundle(const void* data, bool& isCompressed);
 
-  static  unsigned int getGenericVersion(const void* image);
+  static uint32_t getGenericVersion(const void* image);
 
   static bool isGenericTarget(const void* image);
 

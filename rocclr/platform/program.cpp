@@ -612,11 +612,16 @@ bool Program::load(const std::vector<Device*>& devices) {
     }
 
     if (!devProgram.load()) {
+      if (!devProgram.buildLog().empty()) {
+        LogPrintfError("devProgram.load() failed with buildLog=%s\n",
+            devProgram.buildLog().c_str());
+      }
       return false;
     }
 
     // Run kernels marked with init
     if (!devProgram.runInitKernels()) {
+      LogError("runInitKernels() failed\n");
       return false;
     }
   }

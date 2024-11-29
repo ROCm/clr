@@ -200,7 +200,18 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx90c",                 nullptr,     true,  true,    9,  0,  12,   NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack-",          "gfx90c",    true,  true,    9,  0,  12,   NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90c:xnack+",          "gfx90d",    true,  true,    9,  0,  12,   NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx9-generic",           nullptr,     true,  true,    9,  0,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-generic",           nullptr,     true,  true,    9,  0,  0,    NONE,   ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-generic:xnack-",    nullptr,     true,  true,    9,  0,  0,    NONE,   OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-generic:xnack+",    nullptr,     true,  true,    9,  0,  0,    NONE,   ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic",         nullptr,     true,  true,    9,  4,  0,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc-",nullptr,     true,  true,    9,  4,  0,    OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc+",nullptr,     true,  true,    9,  4,  0,    ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:xnack-",  nullptr,     true,  true,    9,  4,  0,    ANY,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:xnack+",  nullptr,     true,  true,    9,  4,  0,    ANY,    ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc-:xnack-",nullptr,true,true,    9,  4,  0,    OFF,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc-:xnack+",nullptr,true,true,    9,  4,  0,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc+:xnack-",nullptr,true,true,    9,  4,  0,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
+    {"gfx9-4-generic:sramecc+:xnack+",nullptr,true,true,    9,  4,  0,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx1010",                "gfx1010",   true,  true,    10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack-",         "gfx1010",   true,  true,    10, 1,  0,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1010:xnack+",         nullptr,     true,  true,    10, 1,  0,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
@@ -213,7 +224,9 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx1013",                "gfx1013",   true,  false,   10, 1,  3,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1013:xnack-",         "gfx1013",   true,  false,   10, 1,  3,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1013:xnack+",         nullptr,     true,  false,   10, 1,  3,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
-    {"gfx10-1-generic",        nullptr,     true,  true,    10, 1,  0,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx10-1-generic",        nullptr,     true,  true,    10, 1,  0,    NONE,   ANY,  2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx10-1-generic:xnack-", nullptr,     true,  true,    10, 1,  0,    NONE,   OFF,  2,    32,   1,    256,    64 * Ki, 32},
+    {"gfx10-1-generic:xnack+", nullptr,     true,  true,    10, 1,  0,    NONE,   ON,   2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1030",                "gfx1030",   true,  true,    10, 3,  0,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1031",                "gfx1031",   true,  true,    10, 3,  1,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
     {"gfx1032",                "gfx1032",   true,  true,    10, 3,  2,    NONE,   NONE, 2,    32,   1,    256,    64 * Ki, 32},
@@ -252,8 +265,11 @@ bool Isa::isCompatible(const Isa &codeObjectIsa, const Isa &agentIsa) {
     if (codeObjectIsa.versionMajor() != agentIsa.versionMajor() ||
         codeObjectIsa.versionMinor() > agentIsa.versionMinor() ||
         (codeObjectIsa.versionMinor() == agentIsa.versionMinor() &&
-         codeObjectIsa.versionStepping() > agentIsa.versionStepping()))
+         codeObjectIsa.versionStepping() > agentIsa.versionStepping())) {
       return false;
+    }
+#ifdef DEBUG
+    // Only check in DEBUG mode
     if (std::strstr(agentIsa.targetId(), "gfx906") != nullptr) {
       // For the generic target of gfx906, codeObjectIsa.isSrameccSupported() == false while
       // agentIsa.isSrameccSupported() = true
@@ -263,6 +279,7 @@ bool Isa::isCompatible(const Isa &codeObjectIsa, const Isa &agentIsa) {
       assert(codeObjectIsa.isSrameccSupported() == agentIsa.isSrameccSupported() &&
              agentIsa.sramecc() != Feature::Any);
     }
+#endif
   } else {
     if (codeObjectIsa.versionMajor() != agentIsa.versionMajor() ||
         codeObjectIsa.versionMinor() != agentIsa.versionMinor() ||

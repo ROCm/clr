@@ -97,7 +97,7 @@ bool CodeObject::IsClangOffloadMagicBundle(const void* data, bool& isCompressed)
   return false;
 }
 
-unsigned int CodeObject::getGenericVersion(const void* image) {
+uint32_t CodeObject::getGenericVersion(const void* image) {
   const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(image);
   return (ehdr->e_machine == EM_AMDGPU && ehdr->e_ident[EI_OSABI] == ELFOSABI_AMDGPU_HSA &&
       ehdr->e_ident[EI_ABIVERSION] == ELFABIVERSION_AMDGPU_HSA_V6) ?
@@ -339,6 +339,11 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       sramEccSupported = false;
       proc_name = "gfx9-generic";
       break;
+    case EF_AMDGPU_MACH_AMDGCN_GFX9_4_GENERIC:
+      xnackSupported = true;
+      sramEccSupported = true;
+      proc_name = "gfx9-4-generic";
+      break;
     case EF_AMDGPU_MACH_AMDGCN_GFX10_1_GENERIC:
       xnackSupported = true;
       sramEccSupported = false;
@@ -455,6 +460,11 @@ static bool isCompatibleWithGenericTarget(std::string& coTarget, std::string& ag
       {"gfx906", "gfx9-generic"},
       {"gfx909", "gfx9-generic"},
       {"gfx90c", "gfx9-generic"},
+      // "gfx9-4-generic"
+      {"gfx940", "gfx9-4-generic"},
+      {"gfx941", "gfx9-4-generic"},
+      {"gfx942", "gfx9-4-generic"},
+      {"gfx950", "gfx9-4-generic"},
       // "gfx10-1-generic"
       {"gfx1010", "gfx10-1-generic"},
       {"gfx1011", "gfx10-1-generic"},
@@ -656,17 +666,17 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
     std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
 
     std::string co_triple_target_id;
-    unsigned int genericVersion = getGenericVersion(image);
+    uint32_t genericVersion = getGenericVersion(image);
     if (!getTripleTargetID(bundleEntryId, image, co_triple_target_id)) continue;
-    LogPrintfInfo("bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%d\n", bundleEntryId.c_str(),
-                   co_triple_target_id.c_str(), genericVersion);
+    LogPrintfInfo("bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%u\n",
+      bundleEntryId.c_str(), co_triple_target_id.c_str(), genericVersion);
 
     for (size_t dev = 0; dev < agent_triple_target_ids.size(); ++dev) {
       if (code_objs[dev].first) {
-        // Specific target already matched, skipped.
-        // But for generic target, we will continue searching for matched specific target.
         if (!isGenericTarget(code_objs[dev].first)) {
-          continue;
+          continue; // Specific target already found
+        } else if(genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
+          continue; // Generic target already found, no need to check another generic
         }
       }
       if (isCodeObjectCompatibleWithDevice(co_triple_target_id, agent_triple_target_ids[dev],
