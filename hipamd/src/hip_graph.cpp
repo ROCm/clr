@@ -1384,9 +1384,7 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
   if (false == clonedGraph->TopologicalOrder(graphNodes)) {
     return hipErrorInvalidValue;
   }
-  if (DEBUG_HIP_FORCE_GRAPH_QUEUES != 0) {
-    clonedGraph->ScheduleNodes();
-  }
+  clonedGraph->ScheduleNodes();
   *pGraphExec = new hip::GraphExec(graphNodes, clonedGraph, clonedNodes, flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
