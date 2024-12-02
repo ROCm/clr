@@ -61,7 +61,7 @@
 // - Reset any of the *_STEP_VERSION defines to zero if the corresponding *_MAJOR_VERSION increases
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 7
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 6
 
 // HIP API interface
 typedef hipError_t (*t___hipPopCallConfiguration)(dim3* gridDim, dim3* blockDim, size_t* sharedMem,
@@ -722,8 +722,6 @@ typedef hipError_t (*t_hipStreamWriteValue32)(hipStream_t stream, void* ptr, uin
                                               unsigned int flags);
 typedef hipError_t (*t_hipStreamWriteValue64)(hipStream_t stream, void* ptr, uint64_t value,
                                               unsigned int flags);
-typedef hipError_t (*t_hipStreamBatchMemOp)(hipStream_t stream, unsigned int count,
-    hipStreamBatchMemOpParams* paramArray, unsigned int flags);
 typedef hipError_t (*t_hipTexObjectCreate)(hipTextureObject_t* pTexObject,
                                            const HIP_RESOURCE_DESC* pResDesc,
                                            const HIP_TEXTURE_DESC* pTexDesc,
@@ -1520,9 +1518,6 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 6
   t_hipDeviceGetTexture1DLinearMaxWidth hipDeviceGetTexture1DLinearMaxWidth_fn;
-
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7
-  t_hipStreamBatchMemOp hipStreamBatchMemOp_fn;
 
   // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 7

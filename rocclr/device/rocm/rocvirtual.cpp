@@ -2715,7 +2715,8 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     else {
     // mask is applied on value before performing
     // the comparision defined by 'condition'
-      bool result = blitMgr().streamOpsWait(*memory, value, offset, sizeBytes, flags, mask);
+      bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWait(*memory, value, offset,
+                                                                              sizeBytes, flags, mask);
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Waiting for value: 0x%lx."
               " Flags: 0x%lx mask: 0x%lx", value, flags, mask);
       if (!result) {
@@ -2728,7 +2729,8 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
     // Ensure memory ordering preceding the write
     dispatchBarrierPacket(kBarrierPacketReleaseHeader);
 
-    bool result = blitMgr().streamOpsWrite(*memory, value, offset, sizeBytes);
+    bool result = static_cast<KernelBlitManager&>(blitMgr()).streamOpsWrite(*memory, value,
+                                                                            offset, sizeBytes);
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Writing value: 0x%lx", value);
     if (!result) {
       LogError("submitStreamOperation: Write failed!");
@@ -2739,18 +2741,6 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   profilingEnd(cmd);
 }
 
-// ================================================================================================
-void VirtualGPU::submitBatchMemoryOperation(amd::BatchMemoryOperationCommand& cmd) {
-  // Make sure VirtualGPU has an exclusive access to the resources
-  amd::ScopedLock lock(execution());
-  profilingBegin(cmd);
-
-  bool result = blitMgr().batchMemOps(cmd.getParamPtr(), cmd.paramSize(), cmd.count());
-  if (!result) {
-    LogError("submitBatchMemoryOperation failed!");
-  }
-  profilingEnd(cmd);
-}
 // ================================================================================================
 void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources

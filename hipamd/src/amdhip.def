@@ -480,4 +480,3 @@ hipGraphExecNodeSetParams
 hipDrvGraphMemcpyNodeSetParams
 hipDrvGraphMemcpyNodeGetParams
 hipExtHostAlloc
-hipStreamBatchMemOp

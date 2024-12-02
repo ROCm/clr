@@ -583,7 +583,6 @@ local:
 hip_6.3 {
 global:
     hipExtHostAlloc;
-    hipStreamBatchMemOp;
 local:
     *;
 } hip_6.2;

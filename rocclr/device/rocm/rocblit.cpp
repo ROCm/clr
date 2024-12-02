@@ -2584,38 +2584,6 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
 }
 
 // ================================================================================================
-bool KernelBlitManager::batchMemOps(const void* paramArray, size_t paramSize,
-                                    uint32_t count) const {
-  amd::ScopedLock k(lockXferOps_);
-  bool result = false;
-  uint blitType = BatchMemOp;
-  size_t dim = 1;
-
-  size_t globalWorkOffset[1] = { 0 };
-  size_t globalWorkSize[1] = { count };
-  size_t localWorkSize[1] = { 1 };
-
-  // Get constant buffer and copy the array of parameters
-  constexpr bool kDirectVa = true;
-  auto constBuf = gpu().allocKernArg((count * paramSize), kCBAlignment);
-  memcpy(constBuf, paramArray, (count * paramSize));
-
-  setArgument(kernels_[blitType], 0, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
-  setArgument(kernels_[blitType], 1, sizeof(cl_mem), &count);
-
-  // Create ND range object for the kernel's execution
-  amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
-
-  // Execute the blit
-  address parameters = captureArguments(kernels_[blitType]);
-  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
-  releaseArguments(parameters);
-  synchronize();
-
-  return result;
-}
-
-// ================================================================================================
 bool KernelBlitManager::initHeap(device::Memory* heap_to_initialize, device::Memory* initial_blocks,
                                  uint heap_size, uint number_of_initial_blocks) const {
   bool result;

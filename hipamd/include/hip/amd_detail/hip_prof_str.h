@@ -425,8 +425,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpyHtoAAsync = 405,
   HIP_API_ID_hipSetValidDevices = 406,
   HIP_API_ID_hipExtHostAlloc = 407,
-  HIP_API_ID_hipStreamBatchMemOp = 408,
-  HIP_API_ID_LAST = 408,
+  HIP_API_ID_LAST = 407,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -546,6 +545,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipEventQuery: return "hipEventQuery";
     case HIP_API_ID_hipEventRecord: return "hipEventRecord";
     case HIP_API_ID_hipEventSynchronize: return "hipEventSynchronize";
+    case HIP_API_ID_hipExtGetLastError: return "hipExtGetLastError";
     case HIP_API_ID_hipExtGetLinkTypeAndHopCount: return "hipExtGetLinkTypeAndHopCount";
     case HIP_API_ID_hipExtLaunchKernel: return "hipExtLaunchKernel";
     case HIP_API_ID_hipExtLaunchMultiKernelMultiDevice: return "hipExtLaunchMultiKernelMultiDevice";
@@ -859,8 +859,6 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipUserObjectRelease: return "hipUserObjectRelease";
     case HIP_API_ID_hipUserObjectRetain: return "hipUserObjectRetain";
     case HIP_API_ID_hipWaitExternalSemaphoresAsync: return "hipWaitExternalSemaphoresAsync";
-    case HIP_API_ID_hipExtGetLastError: return "hipExtGetLastError";
-    case HIP_API_ID_hipStreamBatchMemOp: return "hipStreamBatchMemOp";
   };
   return "unknown";
 };
@@ -1264,7 +1262,6 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipUserObjectRelease", name) == 0) return HIP_API_ID_hipUserObjectRelease;
   if (strcmp("hipUserObjectRetain", name) == 0) return HIP_API_ID_hipUserObjectRetain;
   if (strcmp("hipWaitExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipWaitExternalSemaphoresAsync;
-  if (strcmp("hipStreamBatchMemOp", name) == 0) return HIP_API_ID_hipStreamBatchMemOp;
   return HIP_API_ID_NONE;
 }
 
@@ -3626,13 +3623,6 @@ typedef struct hip_api_data_s {
       unsigned int numExtSems;
       hipStream_t stream;
     } hipWaitExternalSemaphoresAsync;
-    struct {
-      hipStream_t stream;
-      unsigned int count;
-      hipStreamBatchMemOpParams* paramArray;
-      hipStreamBatchMemOpParams paramArray__val;
-      unsigned int flags;
-    } hipStreamBatchMemOp;
   } args;
   uint64_t *phase_data;
 } hip_api_data_t;
@@ -5902,15 +5892,6 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamWriteValue64.value = (uint64_t)value; \
   cb_data.args.hipStreamWriteValue64.flags = (unsigned int)flags; \
 };
-
-// hipStreamBatchMemOp[('hipStream_t', 'stream'), ('unsigned int', 'count'),
-// ('hipStreamBatchMemOpParams*', 'paramArray'), ('unsigned int', 'flags')]
-#define INIT_hipStreamBatchMemOp_CB_ARGS_DATA(cb_data) { \
-  cb_data.args.hipStreamBatchMemOp.stream = (hipStream_t)stream; \
-  cb_data.args.hipStreamBatchMemOp.count = (unsigned int)count; \
-  cb_data.args.hipStreamBatchMemOp.paramArray= (hipStreamBatchMemOpParams*)paramArray; \
-  cb_data.args.hipStreamBatchMemOp.flags = (unsigned int)flags; \
-};
 // hipTexRefGetAddress[('hipDeviceptr_t*', 'dev_ptr'), ('const textureReference*', 'texRef')]
 #define INIT_hipTexRefGetAddress_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipTexRefGetAddress.dev_ptr = (hipDeviceptr_t*)dptr; \
@@ -7545,11 +7526,6 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipStreamWriteValue64[('hipStream_t', 'stream'), ('void*', 'ptr'), ('uint64_t', 'value'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipStreamWriteValue64:
-      break;
-// hipStreamBatchMemOp[('hipStream_t', 'stream'), ('unsigned int', 'count'),
-// ('hipStreamBatchMemOpParams*', 'paramArray'), ('unsigned int', 'flags')]
-    case HIP_API_ID_hipStreamBatchMemOp:
-      if (data->args.hipStreamBatchMemOp.paramArray) data->args.hipStreamBatchMemOp.paramArray__val = *(data->args.hipStreamBatchMemOp.paramArray);
       break;
 // hipTexRefGetAddress[('hipDeviceptr_t*', 'dev_ptr'), ('const textureReference*', 'texRef')]
     case HIP_API_ID_hipTexRefGetAddress:
@@ -10636,15 +10612,6 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.ptr);
       oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.value);
       oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamWriteValue64.flags);
-      oss << ")";
-    break;
-    case HIP_API_ID_hipStreamBatchMemOp:
-      oss << "hipStreamBatchMemOp(";
-      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBatchMemOp.stream);
-      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBatchMemOp.count);
-      if (data->args.hipStreamBatchMemOp.paramArray == NULL) oss << ", paramArray=NULL";
-      else { oss << ", paramArray="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBatchMemOp.paramArray__val); }
-      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamBatchMemOp.flags);
       oss << ")";
     break;
     case HIP_API_ID_hipTexRefGetAddress:
