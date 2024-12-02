@@ -1813,44 +1813,62 @@ hipError_t hipGraphChildGraphNodeGetGraph(hipGraphNode_t node, hipGraph_t* pGrap
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t validateChildGraphNodeSetParams(hip::GraphNode* n,
+                                            hip::Graph* cg, bool exec = true) {
+  if (cg == nullptr || n == nullptr || !hip::GraphNode::isNodeValid(n)  ||
+      !hip::Graph::isGraphValid(cg) || n->GetType() != hipGraphNodeTypeGraph) {
+    return hipErrorInvalidValue;
+  }
+  // compare with parent graph fron cloned and original node
+  if (cg == n->GetParentGraph()->getOriginalGraph()
+      || cg == n->GetParentGraph()) {
+    return hipErrorUnknown;
+  }
+
+  if (exec) { // validation only required for ExecnNodeSetParams
+    // Validate whether the topology of node and childGraph matches
+    std::vector<hip::GraphNode*> childGraphNodes1;
+    n->TopologicalOrder(childGraphNodes1);
+
+    std::vector<hip::GraphNode*> childGraphNodes2;
+    cg->TopologicalOrder(childGraphNodes2);
+
+    if (childGraphNodes1.size() != childGraphNodes2.size()) {
+      return hipErrorUnknown;
+    }
+    // Validate if the node insertion order matches
+    else {
+      for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes1.size(); i++) {
+        if (childGraphNodes1[i]->GetType() != childGraphNodes2[i]->GetType()) {
+          return hipErrorUnknown;
+        }
+      }
+    }
+  }
+  return hipSuccess;
+}
+
 hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t node,
                                                hipGraph_t childGraph) {
   HIP_INIT_API(hipGraphExecChildGraphNodeSetParams, hGraphExec, node, childGraph);
-  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(node);
-  hip::Graph* cg = reinterpret_cast<hip::Graph*>(childGraph);
-  if (hGraphExec == nullptr || !hip::GraphNode::isNodeValid(n) || childGraph == nullptr ||
-      !hip::Graph::isGraphValid(cg) || n->GetType() != hipGraphNodeTypeGraph) {
+
+  if (hGraphExec == nullptr || childGraph == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  if (cg == n->GetParentGraph()) {
-    HIP_RETURN(hipErrorUnknown);
-  }
+  hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(node);
+  hip::Graph* cg = reinterpret_cast<hip::Graph*>(childGraph);
 
-  // Validate whether the topology of node and childGraph matches
-  std::vector<hip::GraphNode*> childGraphNodes1;
-  n->TopologicalOrder(childGraphNodes1);
-
-  std::vector<hip::GraphNode*> childGraphNodes2;
-  cg->TopologicalOrder(childGraphNodes2);
-
-  if (childGraphNodes1.size() != childGraphNodes2.size()) {
-    HIP_RETURN(hipErrorUnknown);
-  }
-  // Validate if the node insertion order matches
-  else {
-    for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes1.size(); i++) {
-      if (childGraphNodes1[i]->GetType() != childGraphNodes2[i]->GetType()) {
-        HIP_RETURN(hipErrorUnknown);
-      }
-    }
+  hipError_t status = validateChildGraphNodeSetParams(n, cg);
+  if (status != hipSuccess) {
+    return status;
   }
 
   hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  hipError_t status = reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->SetParams(cg);
+  status = reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->SetParams(cg);
   if (status != hipSuccess) {
     return status;
   }
@@ -2451,14 +2469,14 @@ hipError_t hipGraphExecEventWaitNodeSetEvent(hipGraphExec_t hGraphExec, hipGraph
     hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
 
   if (hGraphExec == nullptr || hNode == nullptr || event == nullptr ||
-      (n->GetType() != hipGraphNodeTypeWaitEvent) || n->GetType() != hipGraphNodeTypeWaitEvent) {
+      (n->GetType() != hipGraphNodeTypeWaitEvent)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::GraphNode* clonedNode = reinterpret_cast<hip::GraphExec*>(hGraphExec)->GetClonedNode(n);
   if (clonedNode == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(reinterpret_cast<hip::GraphEventRecordNode*>(clonedNode)->SetParams(event));
+  HIP_RETURN(reinterpret_cast<hip::GraphEventWaitNode*>(clonedNode)->SetParams(event));
 }
 
 hipError_t hipGraphAddHostNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
@@ -3319,14 +3337,26 @@ hipError_t hipGraphExecGetFlags(hipGraphExec_t graphExec, unsigned long long* fl
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t ihipGraphNodeSetParams(hip::GraphNode* n, hipGraphNodeParams *nodeParams) {
+hipError_t ihipGraphNodeSetParams(hip::GraphNode* n, hipGraphNodeParams *nodeParams,
+                                  bool exec = false) {
   hipGraphNodeType nodeType = nodeParams->type;
+  std::vector<hip::GraphNode*> childGraphNodes1;
+  std::vector<hip::GraphNode*> childGraphNodes2;
+  hip::Graph* cg;
   hipError_t status = hipSuccess;
   switch(nodeType) {
     case hipGraphNodeTypeKernel:
       status = reinterpret_cast<hip::GraphKernelNode*>(n)->SetParams(&nodeParams->kernel);
       break;
     case hipGraphNodeTypeMemcpy:
+      if (exec) { // this validation is only required for ExecNodeSetParams
+        hipMemcpyKind oldkind =  reinterpret_cast<hip::GraphMemcpyNode*>(n)->GetMemcpyKind();
+        hipMemcpyKind newkind =  nodeParams->memcpy.copyParams.kind;
+        if (oldkind != newkind) {
+          status = hipErrorInvalidValue;
+          break;
+        }
+      }
       status = reinterpret_cast<hip::GraphMemcpyNode*>(n)->SetParams(
                                                 &nodeParams->memcpy.copyParams);
       break;
@@ -3335,18 +3365,35 @@ hipError_t ihipGraphNodeSetParams(hip::GraphNode* n, hipGraphNodeParams *nodePar
       reinterpret_cast<hip::GraphMemsetNode*>(n)->SetParams(&nodeParams->memset);
       break;
     case hipGraphNodeTypeHost:
+      if (nodeParams->host.fn == nullptr || nodeParams->host.userData == nullptr) {
+        status = hipErrorInvalidValue;
+        break;
+      }
       status =
       reinterpret_cast<hip::GraphHostNode*>(n)->SetParams(&nodeParams->host);
       break;
     case hipGraphNodeTypeGraph:
+      cg = reinterpret_cast<hip::Graph*>(nodeParams->graph.graph);
+      status = validateChildGraphNodeSetParams(n, cg, exec);
+      if (status != hipSuccess) {
+        break;
+      }
       status = reinterpret_cast<hip::ChildGraphNode*>(n)->SetParams(
              reinterpret_cast<hip::Graph*>(nodeParams->graph.graph));
       break;
     case hipGraphNodeTypeWaitEvent:
+      if (nodeParams->eventWait.event == nullptr) {
+        status = hipErrorInvalidValue;
+        break;
+      }
       status = reinterpret_cast<hip::GraphEventWaitNode*>(n)->SetParams(
                                                  nodeParams->eventWait.event);
       break;
     case hipGraphNodeTypeEventRecord:
+      if (nodeParams->eventRecord.event == nullptr) {
+        status = hipErrorInvalidValue;
+        break;
+      }
       status = reinterpret_cast<hip::GraphEventRecordNode*>(n)->SetParams(
                                                  nodeParams->eventRecord.event);
       break;
@@ -3377,7 +3424,7 @@ hipError_t hipGraphNodeSetParams(hipGraphNode_t node, hipGraphNodeParams *nodePa
   if (node == nullptr || nodeParams == nullptr || !hip::GraphNode::isNodeValid(n)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  HIP_RETURN(ihipGraphNodeSetParams(n, nodeParams));
+  HIP_RETURN(ihipGraphNodeSetParams(n, nodeParams, false));
 }
 
 hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t node,
@@ -3394,7 +3441,7 @@ hipError_t hipGraphExecNodeSetParams(hipGraphExec_t graphExec, hipGraphNode_t no
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  hipError_t status = ihipGraphNodeSetParams(clonedNode, nodeParams);
+  hipError_t status = ihipGraphNodeSetParams(clonedNode, nodeParams, true);
   if (status != hipSuccess) {
     return status;
   }

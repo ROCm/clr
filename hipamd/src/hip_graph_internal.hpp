@@ -1079,7 +1079,6 @@ class GraphKernelNode : public GraphNode {
   GraphKernelNode(const hipKernelNodeParams* pNodeParams, const ihipExtKernelEvents* pEvents,
                   int coopKernel = 0)
       : GraphNode(hipGraphNodeTypeKernel, "bold", "octagon", "KERNEL") {
-    kernelParams_ = *pNodeParams;
     kernelEvents_ = { 0 };
     if (pEvents != nullptr) {
       kernelEvents_ = *pEvents;
