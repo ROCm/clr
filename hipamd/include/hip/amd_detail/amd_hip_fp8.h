@@ -30,9 +30,8 @@
 #ifndef _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP8_H_
 #define _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP8_H_
 
-#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__) || defined(__gfx1200__) ||  \
-     defined(__gfx1201__)) &&                                                                      \
-    __HIP_DEVICE_COMPILE__
+#if (defined(__gfx94plus_clr__) || defined(__gfx1200__) || defined(__gfx1201__)) && \
+     __HIP_DEVICE_COMPILE__
 #define HIP_FP8_CVT_FAST_PATH 1
 #else
 #define HIP_FP8_CVT_FAST_PATH 0
@@ -3173,4 +3172,4 @@ struct __hip_fp8x4_e5m2 {
   }
 };
 #endif // ENABLE_OCP_HIPRTC
-#endif  // _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP8_H_
+#endif // _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP8_H_
