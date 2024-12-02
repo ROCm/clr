@@ -835,7 +835,7 @@ int __syncthreads_or(int predicate)
   STATE_ID    29:27   State ID (graphics only, not compute).
   ME_ID       31:30   Micro-engine ID.
 
-  XCC_ID Register bit structure for gfx940
+  XCC_ID Register bit structure for gfx940/941/942/950
   XCC_ID      3:0     XCC the wave is assigned to.
  */
 
@@ -871,14 +871,14 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__) || defined(__gfx950__))
+  #define __gfx94plus_clr__
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
   #define XCC_ID_XCC_ID_OFFSET     0
 #endif
 
-#if (!defined(__HIP_NO_IMAGE_SUPPORT) && \
-    (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)))
+#if !defined(__HIP_NO_IMAGE_SUPPORT) && defined(__gfx94plus_clr__)
   #define __HIP_NO_IMAGE_SUPPORT   1
 #endif
 
@@ -913,7 +913,7 @@ unsigned __smid(void)
             GETREG_IMMED(HW_ID_CU_ID_SIZE - 1, HW_ID_CU_ID_OFFSET, HW_ID));
       #endif
     #else
-      #if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+      #if defined(__gfx94plus_clr__)
       unsigned xcc_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(XCC_ID_XCC_ID_SIZE - 1, XCC_ID_XCC_ID_OFFSET, XCC_ID));
       #endif
@@ -929,7 +929,7 @@ unsigned __smid(void)
       #endif
       return temp;
       //TODO : CU Mode impl
-    #elif (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+    #elif defined(__gfx94plus_clr__)
       unsigned temp = xcc_id;
       temp = (temp << HW_ID_SE_ID_SIZE) | se_id;
       temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;

@@ -246,7 +246,7 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const uint32_t gfxipMinor = isa.versionMinor();
   const uint32_t gfxStepping = isa.versionStepping();
 
-  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor == 4 &&
+  const bool isGfx94x = gfxipMajor == 9 && (gfxipMinor == 4 || gfxipMinor == 5) &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isGfx90a = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
   const bool isPreGfx908 =
