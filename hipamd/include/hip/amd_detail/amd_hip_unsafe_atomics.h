@@ -209,8 +209,8 @@ __device__ inline double unsafeAtomicAdd(double* addr, double value) {
  * @return Original value contained at \p addr.
  */
 __device__ inline double unsafeAtomicMax(double* addr, double val) {
-#if (defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)) &&  \
-    __has_builtin(__builtin_amdgcn_flat_atomic_fmax_f64)
+#if (defined(__gfx90a__) || defined(__gfx94plus_clr__)) && \
+  __has_builtin(__builtin_amdgcn_flat_atomic_fmax_f64)
   return __builtin_amdgcn_flat_atomic_fmax_f64(addr, val);
 #else
   #if __has_builtin(__hip_atomic_load) && \
@@ -262,8 +262,8 @@ __device__ inline double unsafeAtomicMax(double* addr, double val) {
  * @return Original value contained at \p addr.
  */
 __device__ inline double unsafeAtomicMin(double* addr, double val) {
-#if (defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)) &&  \
-    __has_builtin(__builtin_amdgcn_flat_atomic_fmin_f64)
+#if (defined(__gfx90a__) || defined(__gfx94plus_clr__)) && \
+  __has_builtin(__builtin_amdgcn_flat_atomic_fmin_f64)
   return __builtin_amdgcn_flat_atomic_fmin_f64(addr, val);
 #else
   #if __has_builtin(__hip_atomic_load) && \
@@ -304,13 +304,13 @@ __device__ inline double unsafeAtomicMin(double* addr, double val) {
  */
 __device__ inline float safeAtomicAdd(float* addr, float value) {
 #if defined(__gfx908__) || defined(__gfx941__)                                \
-    || ((defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx942__))   \
-         && !__has_builtin(__hip_atomic_fetch_add))
+    || ((defined(__gfx90a__) || defined(__gfx940__) || defined(__gfx942__) || \
+    defined(__gfx950__)) && !__has_builtin(__hip_atomic_fetch_add))
   // On gfx908, we can generate unsafe FP32 atomic add that does not follow all
   // IEEE rules when -munsafe-fp-atomics is passed. Do a CAS loop emulation instead.
   // On gfx941, we can generate unsafe FP32 atomic add that may not always happen atomically,
   // so we need to force a CAS loop emulation to ensure safety.
-  // On gfx90a, gfx940 and gfx942 if we do not have the __hip_atomic_fetch_add builtin, we
+  // On gfx90a, gfx940, gfx942 and gfx950 if we do not have the __hip_atomic_fetch_add builtin, we
   // need to force a CAS loop here.
   float old_val;
 #if __has_builtin(__hip_atomic_load)
