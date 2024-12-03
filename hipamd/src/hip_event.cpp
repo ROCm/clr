@@ -175,7 +175,7 @@ hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream)
   command = new amd::Marker(*stream, kMarkerDisableFlush, eventWaitList);
   // Since we only need to have a dependency on an existing event,
   // we may not need to flush any caches.
-  command->setEventScope(amd::Device::kCacheStateIgnore);
+  command->setCommandEntryScope(amd::Device::kCacheStateIgnore);
 
   if (command == NULL) {
     return hipErrorOutOfMemory;

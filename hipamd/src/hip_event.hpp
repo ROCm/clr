@@ -87,7 +87,7 @@ class EventMarker : public amd::Marker {
     profilingInfo_.marker_ts_ = markerTs;
     profilingInfo_.batch_flush_ = batch_flush;
     profilingInfo_.clear();
-    setEventScope(scope);
+    setCommandEntryScope(scope);
   }
 };
 

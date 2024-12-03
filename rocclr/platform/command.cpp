@@ -42,8 +42,8 @@ Event::Event(HostQueue& queue, bool profilingEnabled)
       hw_event_(nullptr),
       notify_event_(nullptr),
       device_(&queue.device()),
-      profilingInfo_(profilingEnabled),
-      event_scope_(Device::kCacheStateInvalid) {
+      profilingInfo_(profilingEnabled) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 
@@ -53,8 +53,8 @@ Event::Event()
       status_(CL_SUBMITTED),
       hw_event_(nullptr),
       notify_event_(nullptr),
-      device_(nullptr),
-      event_scope_(Device::kCacheStateInvalid) {
+      device_(nullptr) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 

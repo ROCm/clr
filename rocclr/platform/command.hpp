@@ -88,10 +88,13 @@ class Event : public RuntimeObject {
   std::atomic<CallBackEntry*> callbacks_;  //!< linked list of callback entries.
   std::atomic<int32_t> status_;            //!< current execution status.
   std::atomic_flag notified_;              //!< Command queue was notified
+
   void*  hw_event_;                        //!< HW event ID associated with SW event
   Event* notify_event_;                    //!< Notify event, which should contain HW signal
   const Device* device_;                   //!< Device, this event associated with
-  int32_t event_scope_;                    //!< 2 - system scope, 1 - device scope,
+
+  std::atomic<int32_t> event_entry_scope_; //!< Command entry scope
+                                           //!< 2 - system scope, 1 - device scope,
                                            //!< 0 - ignore, -1 - invalid
 
  protected:
@@ -219,11 +222,15 @@ class Event : public RuntimeObject {
   //! Returns notify even associated with the current command
   Event* NotifyEvent() const { return notify_event_; }
 
-  //! Get release scope of the event
-  int32_t getEventScope() const { return event_scope_; }
+  //! Get entry scope of the event
+  int32_t getCommandEntryScope() const {
+    return event_entry_scope_.load(std::memory_order_relaxed);
+  }
 
-  //! Set release scope for the event
-  void setEventScope(int32_t scope) { event_scope_ = scope; }
+  //! Set entry scope for the event
+  void setCommandEntryScope(int32_t scope) {
+    event_entry_scope_.store(scope, std::memory_order_relaxed);
+  }
 };
 
 union CopyMetadata {

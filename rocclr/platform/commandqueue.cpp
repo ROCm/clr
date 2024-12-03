@@ -133,6 +133,24 @@ bool HostQueue::terminate() {
   return true;
 }
 
+void HostQueue::finishCommand(Command* command) {
+  if (command == nullptr) {
+    command = getLastQueuedCommand(true);
+    if (command != nullptr) {
+      ClPrint(LOG_DEBUG, LOG_CMD, "No command, awaiting complete status on host");
+      command->awaitCompletion();
+      command->release();
+    }
+    return;
+  }
+  // Check hardware event status for the specific command
+  static constexpr bool kWaitCompletion = true;
+  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+    ClPrint(LOG_DEBUG, LOG_CMD, "No HW event, awaiting complete status on host");
+    command->awaitCompletion();
+  }
+}
+
 void HostQueue::finish(bool cpu_wait) {
   Command* command = nullptr;
   if (IS_HIP) {

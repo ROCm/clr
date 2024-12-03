@@ -664,13 +664,9 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
     return hipSuccess;
   } else if (((srcMemory == nullptr) && (dstMemory != nullptr)) ||
              ((srcMemory != nullptr) && (dstMemory == nullptr))) {
-    // Don't wait for unpinned H2D copy if staging is used for copy. If dstMemory is not null, it
-    // can still be a pinned host memory, hence the check on dst memory type.
-    isHostAsync &=
-        ((srcMemory == nullptr) && (dstMemory != nullptr && dstMemoryType == hipMemoryTypeDevice) &&
-         AMD_DIRECT_DISPATCH && (sizeBytes <= stream.device().settings().stagedXferSize_))
-        ? true
-        : false;
+    // Unpinned copy wait behavior is enforced in the lower copy layers so skip
+    // wait at top level except for MT path
+    isHostAsync &= AMD_DIRECT_DISPATCH ? true : false;
   } else if (srcMemory->GetDeviceById() == dstMemory->GetDeviceById()) {
     // Device to Device copies do not need to host side synchronization.
     if ((srcMemoryType == hipMemoryTypeDevice) && (dstMemoryType == hipMemoryTypeDevice) &&
@@ -690,7 +686,7 @@ hipError_t ihipMemcpy(void* dst, const void* src, size_t sizeBytes, hipMemcpyKin
   }
   command->enqueue();
   if (!isHostAsync) {
-    command->queue()->finish();
+    command->queue()->finishCommand(command);
   } else if (!isGPUAsync) {
     hip::Stream* pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
     amd::Command::EventWaitList waitList;
@@ -1826,7 +1822,7 @@ hipError_t ihipMemcpyDtoHCommand(amd::Command*& command, void* dstHost, amd::Coo
   amd::Memory* dstMemory = getMemoryObject(dstHost, dOffset);
 
   amd::Coord3D srcStart(srcRect.start_, 0, 0);
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if (dstMemory) {
     amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
       *stream, CL_COMMAND_COPY_BUFFER_RECT, amd::Command::EventWaitList{},
@@ -1874,7 +1870,7 @@ hipError_t ihipMemcpyHtoDCommand(amd::Command*& command, void* dstDevice, amd::C
   amd::Memory* srcMemory = getMemoryObject(srcHost, sOffset);
 
   amd::Coord3D dstStart(dstRect.start_, 0, 0);
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if (srcMemory) {
     amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
       *stream, CL_COMMAND_COPY_BUFFER_RECT, amd::Command::EventWaitList{},
@@ -1962,7 +1958,7 @@ hipError_t ihipMemcpyHtoACommand(amd::Command*& command, amd::Image* dstImage,
   size_t start = ihipGetbufferStart(static_cast<size_t*>(srcOrigin),
                                     static_cast<size_t*>(copyRegion), srcRowPitch, srcSlicePitch);
 
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if (srcMemory) {
     amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
       *stream, CL_COMMAND_COPY_BUFFER_TO_IMAGE, amd::Command::EventWaitList{},
@@ -2012,7 +2008,7 @@ hipError_t ihipMemcpyAtoHCommand(amd::Command*& command, void* dstHost, amd::Coo
   size_t start = ihipGetbufferStart(static_cast<size_t*>(dstOrigin),
                                     static_cast<size_t*>(copyRegion), dstRowPitch, dstSlicePitch);
 
-  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::SDMA);
+  amd::CopyMetadata copyMetadata(isAsync, amd::CopyMetadata::CopyEnginePreference::NONE);
   if (dstMemory) {
     amd::CopyMemoryCommand *copyCommand = new amd::CopyMemoryCommand(
       *stream, CL_COMMAND_COPY_IMAGE_TO_BUFFER, amd::Command::EventWaitList{},
@@ -2334,7 +2330,7 @@ inline hipError_t ihipMemcpyCmdEnqueue(amd::Command* command, bool isAsync = fal
   }
   command->enqueue();
   if (!isAsync) {
-    command->queue()->finish();
+    command->queue()->finishCommand(command);
   } else if (stream != nullptr) {
     auto* newQueue = command->queue();
     if (newQueue != stream) {

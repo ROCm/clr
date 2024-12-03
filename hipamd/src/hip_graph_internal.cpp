@@ -739,7 +739,7 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   this->retain();
   amd::Command* CallbackCommand = new amd::Marker(*launch_stream, kMarkerDisableFlush, {});
   // we may not need to flush any caches.
-  CallbackCommand->setEventScope(amd::Device::kCacheStateIgnore);
+  CallbackCommand->setCommandEntryScope(amd::Device::kCacheStateIgnore);
   amd::Event& event = CallbackCommand->event();
   constexpr bool kBlocking = false;
   if (!event.setCallback(CL_COMPLETE, GraphExec::DecrementRefCount, this, kBlocking)) {

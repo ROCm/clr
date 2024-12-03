@@ -472,9 +472,9 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
   if (stopEvent != nullptr) {
     hip::Event* eStop = reinterpret_cast<hip::Event*>(stopEvent);
     if (eStop->flags_ & hipEventDisableSystemFence) {
-      command->setEventScope(amd::Device::kCacheStateIgnore);
+      command->setCommandEntryScope(amd::Device::kCacheStateIgnore);
     } else {
-      command->setEventScope(amd::Device::kCacheStateSystem);
+      command->setCommandEntryScope(amd::Device::kCacheStateSystem);
     }
     // Enqueue Dispatch and bind the stop event
     command->enqueue();

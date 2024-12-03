@@ -502,7 +502,19 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   prof_signal->flags_.done_ = false;
   prof_signal->engine_ = engine_;
   prof_signal->flags_.isPacketDispatch_ = false;
-  if (ts != 0) {
+
+  // Store the HW event
+  amd::Command* cmd = gpu_.command();
+  if (nullptr != cmd) {
+    // Release any existing HwEvent before setting new one for the same command
+    if (cmd->HwEvent() != nullptr) {
+      reinterpret_cast<ProfilingSignal*>(cmd->HwEvent())->release();
+    }
+    cmd->SetHwEvent(prof_signal);
+    prof_signal->retain();
+  }
+
+  if (ts != nullptr) {
     // Save HSA signal earlier to make sure the possible callback will have a valid
     // value for processing
     ts->retain();
@@ -533,13 +545,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
           ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
             prof_signal->signal_.handle, prof_signal);
         }
-        // Update the current command/marker with HW event
-        prof_signal->retain();
-        ts->command().SetHwEvent(prof_signal);
-      } else if (ts->command().profilingInfo().marker_ts_) {
-        // Update the current command/marker with HW event
-        prof_signal->retain();
-        ts->command().SetHwEvent(prof_signal);
       }
     }
   }
@@ -1133,7 +1138,7 @@ inline bool VirtualGPU::dispatchAqlPacket(
   dispatchGenericAqlPacket(packet, packetHeader, packet->setup, false);
   packet->header = packetHeader;
 
-  profilingEnd(*vcmd);
+  profilingEnd();
 
   return true;
 }
@@ -1379,6 +1384,7 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
 
   // Initialize the last signal and dispatch flags
   timestamp_ = nullptr;
+  command_ = nullptr;
   hasPendingDispatch_ = false;
   profiling_ = profiling;
   cooperative_ = cooperative;
@@ -1631,6 +1637,9 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 * and then calls start() to get the current host timestamp.
 */
 void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
+  // Track the current command
+  command_ = &command;
+
   // Disable profiling when command is being captured to prevent memory leak from created timestamp_
   // which won't get freed, since the command is not being executed until graph launch
   if (!command.getPktCapturingState() && command.profilingInfo().enabled_) {
@@ -1669,9 +1678,6 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
       }
     }
   }
-  if (command.getPktCapturingState()) {
-    currCmd_ = &command;
-  }
 }
 
 // ================================================================================================
@@ -1679,8 +1685,8 @@ void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
 * created for whatever command we are running and calls end() to get the
 * current host timestamp if no signal is available.
 */
-void VirtualGPU::profilingEnd(amd::Command& command) {
-  if (!command.getPktCapturingState() && command.profilingInfo().enabled_) {
+void VirtualGPU::profilingEnd(bool clearHwEvent) {
+  if (!command_->getPktCapturingState() && command_->profilingInfo().enabled_) {
     if (timestamp_->HwProfiling() == false) {
       timestamp_->end();
     }
@@ -1689,7 +1695,19 @@ void VirtualGPU::profilingEnd(amd::Command& command) {
   if (AMD_DIRECT_DISPATCH) {
     assert(retainExternalSignals_ || Barriers().IsExternalSignalListEmpty());
   }
-  currCmd_ = nullptr;
+
+  // Certain commands like map/unmap memory may not need hw_events as its not a
+  // queue operation. In such cases clear already set events which may have been for sync
+  // before some memory map/unmap operation
+  if (clearHwEvent) {
+    if (command_->HwEvent() != nullptr) {
+      reinterpret_cast<ProfilingSignal*>(command_->HwEvent())->release();
+      command_->SetHwEvent(nullptr);
+    }
+  }
+
+  // Clear the command tracking
+  command_ = nullptr;
 }
 
 // ================================================================================================
@@ -1877,7 +1895,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& cmd) {
     cmd.setStatus(CL_OUT_OF_RESOURCES);
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
@@ -1973,7 +1991,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& cmd) {
     cmd.destination().signalWrite(&dev());
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -1995,7 +2013,7 @@ void VirtualGPU::submitSvmFreeMemory(amd::SvmFreeMemoryCommand& cmd) {
     cmd.pfnFreeFunc()(as_cl(cmd.queue()->asCommandQueue()), svmPointers.size(),
                       (void**)(&(svmPointers[0])), cmd.userData());
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2018,9 +2036,12 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     hsa_status_t status = hsa_amd_svm_prefetch_async(
         const_cast<void*>(cmd.dev_ptr()), cmd.count(), agent,
         wait_events.size(), wait_events.data(), active);
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
+      "HSA prefetch async dev_ptr=0x%zx, count=%d, wait_event=0x%zx, "
+      "completion_signal=0x%zx", const_cast<void*>(cmd.dev_ptr()), cmd.count(),
+      (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
 
-    // Wait for the prefetch. Should skip wait, but may require extra tracking for kernel execution
-    if ((status != HSA_STATUS_SUCCESS) || !Barriers().WaitCurrent()) {
+    if ((status != HSA_STATUS_SUCCESS)) {
       Barriers().ResetCurrentSignal();
       LogError("hsa_amd_svm_prefetch_async failed");
       cmd.setStatus(CL_INVALID_OPERATION);
@@ -2031,7 +2052,7 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
   } else {
     LogWarning("hsa_amd_svm_prefetch_async is ignored, because no HMM support");
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2145,7 +2166,7 @@ void VirtualGPU::submitCopyMemory(amd::CopyMemoryCommand& cmd) {
     cmd.OverrrideCommandType(copy_command_type_);
     copy_command_type_ = 0;
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2227,7 +2248,7 @@ void VirtualGPU::submitSvmCopyMemory(amd::SvmCopyMemoryCommand& cmd) {
     // direct memcpy for FGS enabled system
     amd::SvmBuffer::memFill(cmd.dst(), cmd.src(), cmd.srcSize(), 1);
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2385,7 +2406,7 @@ void VirtualGPU::submitCopyMemoryP2P(amd::CopyMemoryP2PCommand& cmd) {
 
   cmd.destination().signalWrite(&dstDevMem->dev());
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2423,7 +2444,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& cmd) {
     }
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2463,7 +2484,7 @@ void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd) {
     memory->clearUnmapInfo(cmd.svmPtr());
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2567,7 +2588,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& cmd) {
     }
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2659,7 +2680,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& cmd) {
 
   devMemory->clearUnmapInfo(cmd.mapPtr());
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2735,18 +2756,15 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
 
   bool force_blit = false;
   if (amd::IS_HIP) {
-    constexpr uint32_t kManagedAlloc = (CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR);
-    // In case of HMM, use blit kernel instead of CPU memcpy
-    if ((cmd.memory().getMemFlags() & kManagedAlloc) == kManagedAlloc) {
-      force_blit = true;
-    }
+    // Always use blit for memset for HIP.
+    force_blit = true;
   }
 
   if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
     cmd.surface(), cmd.origin(), cmd.size(), force_blit)) {
     cmd.setStatus(CL_INVALID_OPERATION);
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2825,7 +2843,7 @@ void VirtualGPU::submitStreamOperation(amd::StreamOperationCommand& cmd) {
   } else {
     ShouldNotReachHere();
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2838,8 +2856,9 @@ void VirtualGPU::submitBatchMemoryOperation(amd::BatchMemoryOperationCommand& cm
   if (!result) {
     LogError("submitBatchMemoryOperation failed!");
   }
-  profilingEnd(cmd);
+  profilingEnd();
 }
+
 // ================================================================================================
 void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
@@ -2850,7 +2869,7 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
   // Find the amd::Memory object for virtual ptr. vcmd.ptr() is vaddr.
   amd::Memory* vaddr_base_obj = amd::MemObjMap::FindVirtualMemObj(vcmd.ptr());
   if (vaddr_base_obj == nullptr || !(vaddr_base_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
-    profilingEnd(vcmd);
+    profilingEnd();
     return;
   }
 
@@ -2906,7 +2925,10 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     }
   }
 
-  profilingEnd(vcmd);
+  // Since this is a memory operation, the HW event set for barrier packet
+  // may not encapsulate what the command wants to do. Hence clear the hw_event
+  constexpr bool kClearHwEvent = true;
+  profilingEnd(kClearHwEvent);
 }
 
 // ================================================================================================
@@ -2945,7 +2967,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& cmd) {
     amd::SvmBuffer::memFill(cmd.dst(), cmd.pattern(), cmd.patternSize(), cmd.times());
   }
 
-  profilingEnd(cmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -2976,7 +2998,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
     }
   }
 
-  profilingEnd(vcmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -3264,7 +3286,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-  bool isGraphCapture = currCmd_ != nullptr && currCmd_->getPktCapturingState();
+  bool isGraphCapture = command_ != nullptr && command_->getPktCapturingState();
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
     if (dim != -1) {
@@ -3485,9 +3507,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
       // Allocate buffer to hold kernel arguments
       if (isGraphCapture) {
-        argBuffer = currCmd_->getKernArgOffset(gpuKernel.KernargSegmentByteSize(),
+        argBuffer = command_->getKernArgOffset(gpuKernel.KernargSegmentByteSize(),
                                                gpuKernel.KernargSegmentAlignment());
-        currCmd_->SetKernelName(gpuKernel.name());
+        command_->SetKernelName(gpuKernel.name());
       } else {
         ClPrint(amd::LOG_INFO, amd::LOG_KERN, "KernargSegmentByteSize = %lu "
                 "KernargSegmentAlignment = %lu", gpuKernel.KernargSegmentByteSize(),
@@ -3558,7 +3580,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       aqlHeaderWithOrder &= kAqlHeaderMask;
     }
 
-    if (vcmd != nullptr && vcmd->getEventScope() == amd::Device::kCacheStateSystem) {
+    if (vcmd != nullptr && vcmd->getCommandEntryScope() == amd::Device::kCacheStateSystem) {
       addSystemScope_ = true;
     }
 
@@ -3576,8 +3598,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       // Dispatch the packet
       if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,
                              (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
-                             GPU_FLUSH_ON_EXECUTION, currCmd_->getPktCapturingState(),
-                             currCmd_->getAqlPacket())) {
+                             GPU_FLUSH_ON_EXECUTION, command_->getPktCapturingState(),
+                             command_->getAqlPacket())) {
         return false;
       }
     } else {
@@ -3676,7 +3698,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
     hasPendingDispatch_ = true;
     retainExternalSignals_ = true;
 
-    queue->profilingEnd(vcmd);
+    queue->profilingEnd();
   } else {
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
@@ -3690,7 +3712,7 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
 
-    profilingEnd(vcmd);
+    profilingEnd();
   }
 }
 
@@ -3711,7 +3733,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
       profilingBegin(vcmd);
       if (timestamp_ != nullptr) {
         const Settings& settings = dev().settings();
-        int32_t releaseFlags = vcmd.getEventScope();
+        int32_t releaseFlags = vcmd.getCommandEntryScope();
         if (releaseFlags == Device::CacheState::kCacheStateIgnore) {
           if (settings.barrier_value_packet_ && vcmd.profilingInfo().marker_ts_) {
             dispatchBarrierValuePacket(kBarrierVendorPacketNopScopeHeader, true);
@@ -3728,7 +3750,7 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
           hasPendingDispatch_ = false;
         }
       }
-      profilingEnd(vcmd);
+      profilingEnd();
     }
 
   }
@@ -3747,7 +3769,7 @@ void VirtualGPU::submitAccumulate(amd::AccumulateCommand& vcmd) {
     dispatchBarrierPacket(kNopPacketHeader, false);
   }
 
-  profilingEnd(vcmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -3757,7 +3779,7 @@ void VirtualGPU::submitAcquireExtObjects(amd::AcquireExtObjectsCommand& vcmd) {
 
   profilingBegin(vcmd);
   addSystemScope();
-  profilingEnd(vcmd);
+  profilingEnd();
 }
 
 // ================================================================================================
@@ -3765,7 +3787,7 @@ void VirtualGPU::submitReleaseExtObjects(amd::ReleaseExtObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
   profilingBegin(vcmd);
-  profilingEnd(vcmd);
+  profilingEnd();
 }
 
 // ================================================================================================

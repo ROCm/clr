@@ -309,7 +309,7 @@ bool DmaBlitManager::copyBufferRect(device::Memory& srcMemory, device::Memory& d
 
       // Copy memory line by line
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
-              "HSA Async Copy Rect dst=0x%zx, src=0x%zx, wait_event=0x%zx "
+              "HSA Async Copy Rect dst=0x%zx, src=0x%zx, wait_event=0x%zx, "
               "completion_signal=0x%zx", dstMem.base, srcMem.base,
               (wait_events.size() != 0) ? wait_events[0].handle : 0, active.handle);
 
@@ -1841,11 +1841,17 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
         }
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging H2D copy dst=%p, stg buf=%p, "
                 "dstOrigin=0x%x, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
-        // No cache flush is needed here as we use a staging buffer, and the acquire logic
-        // ensures that the cacheline is different and re-used only when L2 is flushed
+        bool kAttachSignal = false;
+        if (copyMetadata.isAsync_ == false) {
+          // If its a blocking call, attach signal to the packet which we can track for
+          // completion. Also flush caches as we may not need another packet to flush caches.
+          kAttachSignal = true;
+          gpu().addSystemScope();
+        }
         result = shaderCopyBuffer(dstAddr, stagingBuffer,
                                   origin, srcOrigin, copySize,
-                                  entire, dev().settings().limit_blit_wg_, copyMetadata);
+                                  entire, dev().settings().limit_blit_wg_,
+                                  copyMetadata, kAttachSignal);
         if (!result) {
           break;
         }
@@ -2233,19 +2239,23 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   }
 
   if (!result) {
-    // Flush caches for coherency as the MTYPE of the src buffer may be
-    // non-coherent which mean we need to read it again from memory.
-    // Also if its a device to device copy(intra device), we dont need flush
     // Check CL_MEM_SVM_ATOMICS flag to see if we used system_coarse_segment_
     auto memFlags = srcMemory.owner()->getMemFlags();
     bool srcSvmAtomics = (memFlags & CL_MEM_SVM_ATOMICS) != 0;
-    if (!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) {
+    if ((!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) ||
+        (!copyMetadata.isAsync_)) {
+      // Flush caches for coherency as the MTYPE of the src buffer is
+      // non-coherent(ie read it again from memory).
+      // For device to device copy(intra device), we dont need a flush.
+      // If the source is host memory and the copy is blocking(aka memory need
+      // to be coherent), then add system scope. For non blocking rely on the release
+      // scope issued by synchronization packet.
       gpu().addSystemScope();
     }
     result = shaderCopyBuffer(reinterpret_cast<address>(dstMemory.virtualAddress()),
                               reinterpret_cast<address>(srcMemory.virtualAddress()),
                               dstOrigin, srcOrigin, sizeIn,
-                              entire, blitWg, copyMetadata);
+                              entire, blitWg, copyMetadata, !copyMetadata.isAsync_);
   }
 
   synchronize();

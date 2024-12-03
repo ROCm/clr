@@ -327,7 +327,7 @@ class VirtualGPU : public device::VirtualDevice {
   const Device& dev() const { return roc_device_; }
 
   void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
-  void profilingEnd(amd::Command& command);
+  void profilingEnd(bool clearHwEvent = false);
 
   void updateCommandsState(amd::Command* list) const;
 
@@ -428,6 +428,7 @@ class VirtualGPU : public device::VirtualDevice {
   HwQueueTracker& Barriers() { return barriers_; }
 
   Timestamp* timestamp() const { return timestamp_; }
+  amd::Command* command() const { return command_; }
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
@@ -528,6 +529,7 @@ class VirtualGPU : public device::VirtualDevice {
   };
 
   Timestamp* timestamp_;
+  amd::Command* command_;   //!< Current command
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
   hsa_barrier_and_packet_t barrier_packet_;
@@ -579,7 +581,5 @@ class VirtualGPU : public device::VirtualDevice {
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
 
   using KernelArgImpl = device::Settings::KernelArgImpl;
-
-  amd::Command* currCmd_ = nullptr;  //!< Current command under capture
 };
 }
