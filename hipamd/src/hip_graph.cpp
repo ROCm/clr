@@ -1864,8 +1864,9 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
     reinterpret_cast<hip::ChildGraphNode*>(clonedNode)->TopologicalOrder(childGraphNodes);
     for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes.size(); i++) {
       if (childGraphNodes[i]->GraphCaptureEnabled()) {
-        status = reinterpret_cast<hip::GraphExec*>(hGraphExec)
-                     ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
+        status = reinterpret_cast<hip::ChildGraphNode*>(clonedNode)
+                     ->graphExec_.UpdateAQLPacket(
+                         reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
         if (status != hipSuccess) {
           return status;
         }
