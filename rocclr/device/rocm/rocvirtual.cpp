@@ -1279,8 +1279,8 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       schedulerQueue_(nullptr),
       schedulerSignal_({0}),
       barriers_(*this),
-      kernarg_pool_signal_(KernelArgPoolNumSignal),
       managed_buffer_(*this, ManagedBuffer::kPoolNumSignals * device.settings().stagedXferSize_),
+      managed_kernarg_buffer_(*this, device.settings().kernargPoolSize_),
       cuMask_(cuMask),
       priority_(priority),
       copy_command_type_(0),
@@ -1297,10 +1297,6 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
   hasPendingDispatch_ = false;
   profiling_ = profiling;
   cooperative_ = cooperative;
-
-  kernarg_pool_base_ = nullptr;
-  kernarg_pool_size_ = 0;
-  kernarg_pool_cur_offset_ = 0;
 
   if (device.settings().fenceScopeAgent_) {
     dispatchPacketHeaderNoSync_ =
@@ -1340,8 +1336,6 @@ VirtualGPU::~VirtualGPU() {
     // Release the resources of signal
     releaseGpuMemoryFence();
   }
-
-  destroyPool();
 
   releasePinnedMem();
 
@@ -1390,7 +1384,7 @@ bool VirtualGPU::create() {
   gpu_queue_ = roc_device_.acquireQueue(queue_size, cooperative_, cuMask_, priority_);
   if (!gpu_queue_) return false;
 
-  if (!initPool(dev().settings().kernargPoolSize_)) {
+  if (!managed_kernarg_buffer_.Create(Device::MemorySegment::kKernArg)) {
     LogError("Couldn't allocate arguments/signals for the queue");
     return false;
   }
@@ -1433,7 +1427,7 @@ bool VirtualGPU::create() {
     return false;
   }
   // Create managed buffer for staging copies
-  if (!managed_buffer_.Create()) {
+  if (!managed_buffer_.Create(Device::MemorySegment::kNoAtomics)) {
     LogError("Could not create managed buffer for this queue!");
     return false;
   }
@@ -1453,12 +1447,24 @@ VirtualGPU::ManagedBuffer::~ManagedBuffer() {
 }
 
 // ================================================================================================
-bool VirtualGPU::ManagedBuffer::Create() {
+bool VirtualGPU::ManagedBuffer::Create(Device::MemorySegment mem_segment) {
   pool_chunk_end_ = pool_size_ / kPoolNumSignals;
   active_chunk_ = 0;
   // Allocate memory for managed buffer
-  pool_base_ = reinterpret_cast<address>(
-    gpu_.dev().hostAlloc(pool_size_, 0, Device::MemorySegment::kNoAtomics));
+  if (mem_segment == Device::MemorySegment::kKernArg &&
+      (gpu_.dev().settings().kernel_arg_impl_ != KernelArgImpl::HostKernelArgs) &&
+      gpu_.dev().info().largeBar_) {
+    pool_base_ =
+      reinterpret_cast<address>(gpu_.dev().deviceLocalAlloc(pool_size_));
+    if (pool_base_ != nullptr) {
+      // @note Workaround first access penalty.
+      // KFD may update CPU page tables on the first CPU access
+      *pool_base_ = 0;
+    }
+  } else {
+    pool_base_ = reinterpret_cast<address>(
+      gpu_.dev().hostAlloc(pool_size_, 0, mem_segment));
+  }
   if (pool_base_ == nullptr) {
     return false;
   }
@@ -1474,6 +1480,12 @@ bool VirtualGPU::ManagedBuffer::Create() {
 // ================================================================================================
 address VirtualGPU::ManagedBuffer::Acquire(uint32_t size) {
   auto alignment = amd::alignUp(256u, gpu_.dev().info().globalMemCacheLineSize_);
+  return Acquire(size, alignment);
+}
+
+// ================================================================================================
+address VirtualGPU::ManagedBuffer::Acquire(uint32_t size, uint32_t alignment) {
+  assert(alignment != 0);
   address result = nullptr;
   result = amd::alignUp(pool_base_ + pool_cur_offset_, alignment);
   const size_t pool_new_usage = (result + size) - pool_base_;
@@ -1483,6 +1495,7 @@ address VirtualGPU::ManagedBuffer::Acquire(uint32_t size) {
   } else {
     // Reset the signal for the barrier packet
     hsa_signal_silent_store_relaxed(pool_signal_[active_chunk_], kInitSignalValueOne);
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Issue barrier to flush chunk %d", active_chunk_);
     // Currently don't skip wait signal check, because SDMA engine cna be used in staging copy
     constexpr bool kSkipSignal = false;
     // Dispatch a barrier packet into the queue
@@ -1503,80 +1516,17 @@ address VirtualGPU::ManagedBuffer::Acquire(uint32_t size) {
   return result;
 }
 
-// ================================================================================================
-bool VirtualGPU::initPool(size_t kernarg_pool_size) {
-  kernarg_pool_size_ = kernarg_pool_size;
-  kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
-  active_chunk_ = 0;
-  if ((dev().settings().kernel_arg_impl_ != KernelArgImpl::HostKernelArgs) &&
-      roc_device_.info().largeBar_) {
-    kernarg_pool_base_ =
-      reinterpret_cast<address>(roc_device_.deviceLocalAlloc(kernarg_pool_size_));
-    if (kernarg_pool_base_ != nullptr) {
-      // @note Workaround first access penalty.
-      // KFD may update CPU page tables on the first CPU access
-      *kernarg_pool_base_ = 0;
-    }
-  } else {
-    kernarg_pool_base_ = reinterpret_cast<address>(roc_device_.hostAlloc(kernarg_pool_size_, 0,
-                                                   Device::MemorySegment::kKernArg));
-  }
-  if (kernarg_pool_base_ == nullptr) {
-    return false;
-  }
-  hsa_agent_t agent = gpu_device();
-  for (auto& it : kernarg_pool_signal_) {
-    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 1, &agent, &it)) {
-      return false;
-    }
-  }
-  return true;
-}
 
 // ================================================================================================
-void VirtualGPU::destroyPool() {
-  for (auto& it : kernarg_pool_signal_) {
-    if (it.handle != 0) {
-      hsa_signal_destroy(it);
-    }
-  }
-  if (kernarg_pool_base_ != nullptr) {
-    roc_device_.hostFree(kernarg_pool_base_, kernarg_pool_size_);
-  }
+void VirtualGPU::ManagedBuffer::ResetPool() {
+  pool_cur_offset_ = 0;
+  pool_chunk_end_ = pool_size_ / kPoolNumSignals;
+  active_chunk_ = 0;
 }
 
 // ================================================================================================
 void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
-  assert(alignment != 0);
-  address result = nullptr;
-  result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
-  const size_t pool_new_usage = (result + size) - kernarg_pool_base_;
-  if (pool_new_usage <= kernarg_pool_chunk_end_) {
-    kernarg_pool_cur_offset_ = pool_new_usage;
-    return result;
-  } else {
-    //! That means the app didn't call clFlush/clFinish for very long time.
-    // Reset the signal for the barrier packet
-    hsa_signal_silent_store_relaxed(kernarg_pool_signal_[active_chunk_], kInitSignalValueOne);
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "Issue barrier to flush kernel arg chunk %d",
-            active_chunk_);
-    // Dispatch a barrier packet into the queue
-    dispatchBarrierPacket(kBarrierPacketHeader, true, kernarg_pool_signal_[active_chunk_]);
-    // Get the next chunk
-    active_chunk_ = ++active_chunk_ % KernelArgPoolNumSignal;
-    // Make sure the new active chunk is free
-    bool test = WaitForSignal(kernarg_pool_signal_[active_chunk_], ActiveWait());
-    assert(test && "Runtime can't fail a wait for chunk!");
-    // Make sure the current offset matches the new chunk to avoid possible overlaps
-    // between chunks and issues during recycle
-    kernarg_pool_cur_offset_ = (active_chunk_ == 0) ? 0 : kernarg_pool_chunk_end_;
-    kernarg_pool_chunk_end_ = kernarg_pool_cur_offset_ +
-                              kernarg_pool_size_ / KernelArgPoolNumSignal;
-    result = amd::alignUp(kernarg_pool_base_ + kernarg_pool_cur_offset_, alignment);
-    kernarg_pool_cur_offset_ = (result + size) - kernarg_pool_base_;
-  }
-
-  return result;
+  return managed_kernarg_buffer_.Acquire(size, alignment);
 }
 
 // ================================================================================================

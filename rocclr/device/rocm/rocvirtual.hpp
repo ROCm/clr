@@ -198,10 +198,16 @@ class VirtualGPU : public device::VirtualDevice {
     ~ManagedBuffer();
 
     //! Allocates all necessary resources to manage memory
-    bool Create();
+    bool Create(amd::Device::MemorySegment mem_segment);
 
     //! Acquires memory for use on the gpu
     address Acquire(uint32_t size);
+
+    //! Acquires custom aligned memory for use on the gpu
+    address Acquire(uint32_t size, uint32_t alignment);
+
+    //! Reset mem pool
+    void ResetPool();
 
   private:
     VirtualGPU& gpu_;                 //!< Queue object for ROCm device
@@ -478,13 +484,8 @@ class VirtualGPU : public device::VirtualDevice {
   void initializeDispatchPacket(hsa_kernel_dispatch_packet_t* packet,
                                 amd::NDRangeContainer& sizes);
 
-  bool initPool(size_t kernarg_pool_size);
-  void destroyPool();
-
   void resetKernArgPool() {
-    kernarg_pool_cur_offset_ = 0;
-    kernarg_pool_chunk_end_ = kernarg_pool_size_ / KernelArgPoolNumSignal;
-    active_chunk_ = 0;
+    managed_kernarg_buffer_.ResetPool();
   }
 
   uint64_t getVQVirtualAddress();
@@ -564,17 +565,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   HwQueueTracker  barriers_;      //!< Tracks active barriers in ROCr
 
-  //!< The number of chunks the kernel arg pool will be divided
-  static constexpr uint32_t KernelArgPoolNumSignal = 4;
-  address   kernarg_pool_base_;
-  uint32_t  kernarg_pool_size_;
-  uint32_t  kernarg_pool_chunk_end_;    //!< The end offset of the current chunck
-  uint32_t  active_chunk_;              //!< The index of the current active chunk
-  uint32_t  kernarg_pool_cur_offset_;
-  std::vector<hsa_signal_t> kernarg_pool_signal_; //!< Pool of HSA signals to manage
-                                                  //!< multiple chunks
-
   ManagedBuffer managed_buffer_;  //!< Memory manager for staging copies
+  ManagedBuffer managed_kernarg_buffer_; //!< Managed memory for kernel args
 
   friend class Timestamp;
 
