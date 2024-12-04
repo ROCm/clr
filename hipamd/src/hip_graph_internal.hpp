@@ -460,6 +460,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     out << GetLabel(flag);
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "\nStreamId:" << stream_id_;
+      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
     }
     out << "\"";
     out << "];";
@@ -956,6 +957,7 @@ class GraphKernelNode : public GraphNode {
     out << GetLabel(flag);
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "StreamId:" << stream_id_;
+      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
     }
     out << "\"";
     out << "];";
