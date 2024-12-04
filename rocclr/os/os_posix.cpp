@@ -820,8 +820,8 @@ bool amd::Os::FindFileNameFromAddress(const void* image, std::string* fname_ptr,
       tokens >> permissions
              >> std::hex >> offset >> std::dec
              >> device
-             >> inode
-             >> uri_file_path;
+             >> inode;
+      std::getline(tokens >> std::ws, uri_file_path);
 
       if (inode == 0 || uri_file_path.empty()) {
         return ret_value;
