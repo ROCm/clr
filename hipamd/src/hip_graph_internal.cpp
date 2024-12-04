@@ -179,13 +179,6 @@ void Graph::ScheduleOneNode(Node node, int stream_id) {
     node->stream_id_ = stream_id;
     max_streams_ = std::max(max_streams_, (stream_id + 1));
 
-    // Update the dependencies if a signal is required
-    for (auto dep: node->GetDependencies()) {
-      // Check if the stream ID doesn't match and enable signal
-      if (dep->stream_id_ != node->stream_id_) {
-        dep->signal_is_required_ |= true;
-      }
-    }
     // Process child graph separately, since, there is no connection
     if (node->GetType() == hipGraphNodeTypeGraph) {
       auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->childGraph_;
@@ -236,6 +229,14 @@ bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
   std::queue<Node> q;
   std::unordered_map<Node, int> inDegree;
   for (auto entry : vertices_) {
+    // Update the dependencies if a signal is required
+    for (auto dep: entry->GetDependencies()) {
+      // Check if the stream ID doesn't match and enable signal
+      if (dep->stream_id_ != entry->stream_id_) {
+        dep->signal_is_required_ = true;
+      }
+    }
+
     if (entry->GetInDegree() == 0) {
       q.push(entry);
     }

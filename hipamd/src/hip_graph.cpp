@@ -1381,10 +1381,10 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
     return hipErrorInvalidValue;
   }
   std::vector<hip::GraphNode*> graphNodes;
+  clonedGraph->ScheduleNodes();
   if (false == clonedGraph->TopologicalOrder(graphNodes)) {
     return hipErrorInvalidValue;
   }
-  clonedGraph->ScheduleNodes();
   *pGraphExec = new hip::GraphExec(graphNodes, clonedGraph, clonedNodes, flags);
   if (*pGraphExec != nullptr) {
     graph->SetGraphInstantiated(true);
