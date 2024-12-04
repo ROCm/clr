@@ -40,6 +40,20 @@ amd::Memory* getMemoryObject(const void* ptr, size_t& offset, size_t size) {
     memObj = (hip::getCurrentDevice()->asContext()->svmDevices()[0])->GetArenaMemObj(
         ptr, offset, size);
   }
+
+  // On Windows, when using hipHostRegister, the map may contain a single memory object for
+  // multiple devices. This is because device addresses can overlap.
+  // The offset needs to be calculated relative to the memory of the current device.
+  if (IS_WINDOWS && (memObj != nullptr) && (memObj->getMemFlags() & CL_MEM_USE_HOST_PTR)) {
+    device::Memory* currentDevMem =
+            memObj->getDeviceMemory(*hip::getCurrentDevice()->devices()[0], false);
+    if (currentDevMem != nullptr) {
+      size_t currentDevOffset = reinterpret_cast<uint64_t>(ptr) - currentDevMem->virtualAddress();
+      if (currentDevOffset < memObj->getSize()) {
+        offset = currentDevOffset;
+      }
+    }
+  }
   return memObj;
 }
 
