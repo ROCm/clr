@@ -82,13 +82,14 @@ public:
   Timestamp*    ts_;      //!< Timestamp object associated with the signal
   HwQueueEngine engine_;  //!< Engine used with this signal
   amd::Monitor  lock_;    //!< Signal lock for update
-  bool isPacketDispatch_; //!< True if the packet associated with the signal is dispatch
 
   typedef union {
     struct {
       uint32_t          done_            :  1; //!< True if signal is done
       uint32_t          forceHostWait_   :  1; //!< Force Host Wait for dependency signals
-      uint32_t          reserved_        : 30;
+      uint32_t          isPacketDispatch_:  1; //!< True if the packet associated with the signal is dispatch
+      uint32_t          interrupt_       :  1; //!< True if the signal will trigger an interrupt
+      uint32_t          reserved_        : 28;
     };
     uint32_t data_;
   } Flags;
@@ -99,9 +100,9 @@ public:
     : ts_(nullptr)
     , engine_(HwQueueEngine::Compute)
     , lock_(true) /* Signal Ops Lock */
-    , isPacketDispatch_(false)
     {
       signal_.handle = 0;
+      flags_.data_ = 0;
       flags_.done_ = true;
       flags_.forceHostWait_ = true;
     }

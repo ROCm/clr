@@ -158,7 +158,7 @@ void Timestamp::checkGpuTime() {
         start = std::min(time.start, start);
         end = std::max(time.end, end);
 
-        if ((command().type() == CL_COMMAND_TASK) && (it->isPacketDispatch_ == true)) {
+        if ((command().type() == CL_COMMAND_TASK) && (it->flags_.isPacketDispatch_ == true)) {
           static_cast<amd::AccumulateCommand&>(command()).addTimestamps(time.start, time.end);
         }
 
@@ -361,26 +361,63 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
     CpuWaitForSignal(signal);
     signal->release();
   }
+  // Destroy all extra signals. Note: these signals must be idle already
+  while (signal_pool_.size() != 0) {
+    signal_pool_.top()->release();
+    signal_pool_.pop();
+  }
+  while (signal_pool_irq_.size() != 0) {
+    signal_pool_irq_.top()->release();
+    signal_pool_irq_.pop();
+  }
 }
 
 // ================================================================================================
-bool VirtualGPU::HwQueueTracker::Create() {
-  uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
-
-  signal_list_.resize(kSignalListSize);
-
+bool VirtualGPU::HwQueueTracker::CreateSignal(ProfilingSignal* signal, bool interrupt) const {
   hsa_agent_t agent = gpu_.gpu_device();
   const Settings& settings = gpu_.dev().settings();
   hsa_agent_t* agents = (settings.system_scope_signal_) ? nullptr : &agent;
   uint32_t num_agents = (settings.system_scope_signal_) ? 0 : 1;
 
+  // MT path will still have interrupts to avoid extra polling in the queue thread.
+  // Also runtime will still use interrupts if active wait was disabled
+  interrupt |= !AMD_DIRECT_DISPATCH || !gpu_.dev().ActiveWait();
+  // Check if the interrupt was requested for the signal
+  if (interrupt) {
+    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, num_agents, agents, &signal->signal_)) {
+      return false;
+    }
+    signal->flags_.interrupt_ = true;
+  } else {
+    if (HSA_STATUS_SUCCESS != hsa_amd_signal_create(0, num_agents, agents,
+                                HSA_AMD_SIGNAL_AMD_GPU_ONLY, &signal->signal_)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// ================================================================================================
+bool VirtualGPU::HwQueueTracker::Create() {
+  const uint kSignalListSize = ROC_SIGNAL_POOL_SIZE;
+  signal_list_.resize(kSignalListSize);
   for (uint i = 0; i < kSignalListSize; ++i) {
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
-    if ((signal == nullptr) ||
-        (HSA_STATUS_SUCCESS != hsa_signal_create(0, num_agents, agents, &signal->signal_))) {
+    if ((signal == nullptr) || !CreateSignal(signal.get())) {
       return false;
     }
     signal_list_[i] = signal.release();
+  }
+  // Add extra signals with the interrupts for the callbacks
+  if (AMD_DIRECT_DISPATCH && gpu_.dev().ActiveWait()) {
+    for (uint32_t i = 0; i < 5; ++i) {
+      std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
+      constexpr bool kEnableInterrupt = true;
+      if ((signal == nullptr) || !CreateSignal(signal.get(), kEnableInterrupt)) {
+        return false;
+      }
+      signal_pool_irq_.push(signal.release());
+    }
   }
   return true;
 }
@@ -395,19 +432,12 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   // If GPU is still busy with processing, then add more signals to avoid more frequent stalls
   if (hsa_signal_load_relaxed(signal_list_[temp_id]->signal_) > 0) {
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
-    if (signal != nullptr) {
-      hsa_agent_t agent = gpu_.gpu_device();
-      const Settings& settings = gpu_.dev().settings();
-      hsa_agent_t* agents = (settings.system_scope_signal_) ? nullptr : &agent;
-      uint32_t num_agents = (settings.system_scope_signal_) ? 0 : 1;
-
-      if (HSA_STATUS_SUCCESS == hsa_signal_create(0, num_agents, agents, &signal->signal_)) {
-        // Find valid new index
-        ++current_id_ %= signal_list_.size();
-        // Insert the new signal into the current slot and ignore any wait
-        signal_list_.insert(signal_list_.begin() + current_id_, signal.release());
-        new_signal = true;
-      }
+    if ((signal != nullptr) && CreateSignal(signal.get())) {
+      // Find valid new index
+      ++current_id_ %= signal_list_.size();
+      // Insert the new signal into the current slot and ignore any wait
+      signal_list_.insert(signal_list_.begin() + current_id_, signal.release());
+      new_signal = true;
     }
   }
 
@@ -429,20 +459,41 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     // The signal was assigned to the global marker's event, hence runtime can't reuse it
     // and needs a new signal
     std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
-    if (signal != nullptr) {
-      hsa_agent_t agent = gpu_.gpu_device();
-      const Settings& settings = gpu_.dev().settings();
-      hsa_agent_t* agents = (settings.system_scope_signal_) ? nullptr : &agent;
-      uint32_t num_agents = (settings.system_scope_signal_) ? 0 : 1;
-
-      if (HSA_STATUS_SUCCESS == hsa_signal_create(0, num_agents, agents, &signal->signal_)) {
+    if ((signal != nullptr) && CreateSignal(signal.get())) {
         signal_list_[current_id_]->release();
         signal_list_[current_id_] = signal.release();
-      } else {
-        assert(!"ProfilingSignal reallocation failed! Marker has a conflict with signal reuse!");
-      }
     } else {
       assert(!"ProfilingSignal reallocation failed! Marker has a conflict with signal reuse!");
+    }
+  }
+
+  bool enqueHandler = false;
+  if (AMD_DIRECT_DISPATCH) {
+    if (ts != nullptr) {
+      enqueHandler = (ts->command().Callback() != nullptr ||
+                      ts->command().GetBatchHead() != nullptr )  &&
+                      !ts->command().CpuWaitRequested();
+    }
+    // Check if the signal doesn't match the requested one.
+    // Note: runtime needs the interrupts for the callbacks in DD mode
+    if ((signal_list_[current_id_]->flags_.interrupt_ != enqueHandler) && gpu_.dev().ActiveWait()) {
+      // Use different stacks if interrupt is required
+      auto& stack_pop   = (enqueHandler) ? signal_pool_irq_ : signal_pool_;
+      auto& stack_push  = (enqueHandler) ? signal_pool_ : signal_pool_irq_;
+
+      // Check if a free signal in the pop stack isn't available
+      if (stack_pop.empty()) {
+        std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
+        if ((signal != nullptr) && CreateSignal(signal.get(), enqueHandler)) {
+          stack_pop.push(signal.release());
+        }
+      }
+      // Make sure a free signal exists and replace it in the current slot
+      if (!stack_pop.empty()) {
+        stack_push.push(signal_list_[current_id_]);
+        signal_list_[current_id_] = stack_pop.top();
+        stack_pop.pop();
+      }
     }
   }
   ProfilingSignal* prof_signal = signal_list_[current_id_];
@@ -458,10 +509,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     prof_signal->ts_ = ts;
     ts->AddProfilingSignal(prof_signal);
     if (AMD_DIRECT_DISPATCH) {
-      bool enqueHandler = false;
-      enqueHandler = (ts->command().Callback() != nullptr ||
-                      ts->command().GetBatchHead() != nullptr )  &&
-                      !ts->command().CpuWaitRequested();
       // If direct dispatch is enabled and the batch head isn't null, then it's a marker and
       // requires the batch update upon HSA signal completion
       if (enqueHandler) {
@@ -884,7 +931,7 @@ bool VirtualGPU::dispatchGenericAqlPacket(
       }
 
       ProfilingSignal* current_signal = Barriers().GetLastSignal();
-      current_signal->isPacketDispatch_ = true;
+      current_signal->flags_.isPacketDispatch_ = true;
 
     }
   }
