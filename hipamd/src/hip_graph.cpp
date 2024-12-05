@@ -1497,6 +1497,9 @@ hipError_t hipGraphLaunch_common(hip::GraphExec* graphExec, hipStream_t stream) 
   if (graphExec == nullptr || !hip::GraphExec::isGraphExecValid(graphExec)) {
     return hipErrorInvalidValue;
   }
+  if (graphExec->clonedNodes_.empty()) {
+    return hipSuccess;
+  }
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
