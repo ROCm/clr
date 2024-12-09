@@ -344,9 +344,6 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
     }
     parallel_streams_.push_back(stream);
   }
-  // Don't wait for other streams to finish.
-  // Capture stream is to capture AQL packet.
-  capture_stream_ = hip::getNullStream(false);
   return hipSuccess;
 }
 
@@ -354,13 +351,20 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
 hipError_t GraphExec::Init() {
   hipError_t status = hipSuccess;
   // create extra stream to avoid queue collision with the default execution stream
-  status = CreateStreams(max_streams_);
+  if (max_streams_ > 1) {
+    status = CreateStreams(max_streams_);
+  }
   if (status != hipSuccess) {
     return status;
   }
   if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-    // For graph nodes capture AQL packets to dispatch them directly during graph launch.
-    status = CaptureAQLPackets();
+    if (max_streams_ == 1) {
+      // Don't wait for other streams to finish.
+      // Capture stream is to capture AQL packet.
+      capture_stream_ = hip::getNullStream(false);
+      // For graph nodes capture AQL packets to dispatch them directly during graph launch.
+      status = CaptureAQLPackets();
+    }
   }
   instantiateDeviceId_ = hip::getCurrentDevice()->deviceId();
   static_cast<ReferenceCountedObject*>( hip::getCurrentDevice())->retain();
@@ -422,22 +426,20 @@ hipError_t GraphExec::AllocKernelArgForGraphNode() {
 // ================================================================================================
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
-  if (max_streams_ == 1) {
-    size_t kernArgSizeForGraph = 0;
-    GetKernelArgSizeForGraph(kernArgSizeForGraph);
-    auto device = g_devices[ihipGetDevice()]->devices()[0];
-    // Add a larger initial pool to accomodate for any updates to kernel args
-    bool bStatus = kernArgManager_->AllocGraphKernargPool(kernArgSizeForGraph + kKernArgChunkSize);
-    if (bStatus != true) {
-      return hipErrorMemoryAllocation;
-    }
-
-    status = AllocKernelArgForGraphNode();
-    if (status != hipSuccess) {
-      return status;
-    }
-    kernArgManager_->ReadBackOrFlush();
+  size_t kernArgSizeForGraph = 0;
+  GetKernelArgSizeForGraph(kernArgSizeForGraph);
+  auto device = g_devices[ihipGetDevice()]->devices()[0];
+  // Add a larger initial pool to accomodate for any updates to kernel args
+  bool bStatus = kernArgManager_->AllocGraphKernargPool(kernArgSizeForGraph + kKernArgChunkSize);
+  if (bStatus != true) {
+    return hipErrorMemoryAllocation;
   }
+
+  status = AllocKernelArgForGraphNode();
+  if (status != hipSuccess) {
+    return status;
+  }
+  kernArgManager_->ReadBackOrFlush();
   return status;
 }
 
@@ -494,7 +496,7 @@ void Graph::UpdateStreams(hip::Stream* launch_stream,
                           const std::vector<hip::Stream*>& parallel_streams) {
   // Allocate array for parallel streams, based on the graph scheduling + current stream
   // We create extra stream to avoid collision
-  streams_.resize(parallel_streams.size());
+  streams_.resize(max_streams_);
   // Current stream is the default in the assignment
   streams_[0] = launch_stream;
   // Assign the streams in the array of all streams
