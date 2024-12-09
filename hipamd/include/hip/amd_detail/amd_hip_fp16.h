@@ -1679,8 +1679,9 @@ THE SOFTWARE.
             __HOST_DEVICE__
             bool __hisinf(__half x)
             {
-                // +Inf/-Inf
-                return x == HIPRT_INF_FP16 || x == __ushort_as_half((unsigned short)0xFC00U);
+                __half_raw hr = x;
+                // +/-Inf
+                return hr.x == 0x7C00U || hr.x == 0xFC00U;
             }
             inline
             __HOST_DEVICE__
