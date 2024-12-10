@@ -52,6 +52,10 @@ THE SOFTWARE.
 #define _CG_STATIC_CONST_DECL_ static constexpr
 #endif
 
+#if defined(__SPIRV__) && !defined(__AMDGCN_WAVEFRONT_SIZE)
+#error "TEMPORARY LIMITATION: when targeting AMDGCN SPIR-V"
+       "__AMDGCN_WAVEFRONT_SIZE is not defined, and must be defined by the user"
+#endif
 #if __AMDGCN_WAVEFRONT_SIZE == 32
 using lane_mask = unsigned int;
 #else
@@ -94,7 +98,7 @@ typedef enum {
  *  @ingroup CooperativeG
  *  @{
  *  This section describes the cooperative groups functions of HIP runtime API.
- *  
+ *
  *  The cooperative groups provides flexible thread parallel programming algorithms, threads
  *  cooperate and share data to perform collective computations.
  *
@@ -118,7 +122,7 @@ namespace helper {
 __CG_STATIC_QUALIFIER__ unsigned long long adjust_mask(
     unsigned long long base_mask, unsigned long long input_mask) {
   unsigned long long out = 0;
-  for (unsigned int i = 0, index = 0; i < __AMDGCN_WAVEFRONT_SIZE; i++) {
+  for (unsigned int i = 0, index = 0; i < warpSize; i++) {
     auto lane_active = base_mask & (1ull << i);
     if (lane_active) {
       auto result = input_mask & (1ull << i);
@@ -245,14 +249,14 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 // have i-th bit of x set and come before the current thread.
 __CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
   unsigned int counter=0;
-    #if __AMDGCN_WAVEFRONT_SIZE == 32
+  if (warpSize == 32) {
       counter = __builtin_amdgcn_mbcnt_lo(x, add);
-    #else
-      counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
-      counter = __builtin_amdgcn_mbcnt_hi(static_cast<lane_mask>(x >> 32), counter);
-    #endif
+  } else {
+    counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
+    counter = __builtin_amdgcn_mbcnt_hi(static_cast<lane_mask>(x >> 32), counter);
+  }
 
-    return counter;
+  return counter;
 }
 
 }  // namespace coalesced_group

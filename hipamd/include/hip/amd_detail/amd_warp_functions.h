@@ -83,8 +83,18 @@ __device__ static inline int __hip_move_dpp_N(int src) {
                                     bound_ctrl);
 }
 
-__device__
-static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
+#if defined(__SPIRV__)
+    inline __device__ const struct final {
+        __device__
+        __attribute__((always_inline, const))
+        operator int() const noexcept {
+            return __builtin_amdgcn_wavefrontsize();
+        }
+    } warpSize{};
+#else
+    __device__
+    static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
+#endif
 
 // warp vote function __all __any __ballot
 __device__
@@ -123,6 +133,7 @@ unsigned long long __activemask() {
 #endif // HIP_ENABLE_WARP_SYNC_BUILTINS
 
 __device__ static inline unsigned int __lane_id() {
+    if (warpSize == 32) return __builtin_amdgcn_mbcnt_lo(-1, 0);
     return  __builtin_amdgcn_mbcnt_hi(
         -1, __builtin_amdgcn_mbcnt_lo(-1, 0));
 }

@@ -230,7 +230,7 @@ unsigned long long __match_all_sync(MaskT mask, T value, int* pred) {
 template <typename MaskT, typename T>
 __device__ inline
 T __shfl_sync(MaskT mask, T var, int srcLane,
-              int width = __AMDGCN_WAVEFRONT_SIZE) {
+              int width = warpSize) {
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
@@ -243,7 +243,7 @@ T __shfl_sync(MaskT mask, T var, int srcLane,
 template <typename MaskT, typename T>
 __device__ inline
 T __shfl_up_sync(MaskT mask, T var, unsigned int delta,
-                                   int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                   int width = warpSize) {
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
@@ -256,7 +256,7 @@ T __shfl_up_sync(MaskT mask, T var, unsigned int delta,
 template <typename MaskT, typename T>
 __device__ inline
 T __shfl_down_sync(MaskT mask, T var, unsigned int delta,
-                                     int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                     int width = warpSize) {
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "
@@ -269,7 +269,7 @@ T __shfl_down_sync(MaskT mask, T var, unsigned int delta,
 template <typename MaskT, typename T>
 __device__ inline
 T __shfl_xor_sync(MaskT mask, T var, int laneMask,
-                                    int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                    int width = warpSize) {
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
       "The mask must be a 64-bit integer. "

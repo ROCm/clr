@@ -685,7 +685,7 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __ushort_as_bfloat16(const unsigned s
 __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_down_sync(const unsigned long long mask,
                                                        const __hip_bfloat16 in,
                                                        const unsigned int delta,
-                                                       const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                       const int width = warpSize) {
   return __ushort_as_bfloat16(__shfl_down_sync(mask, __bfloat16_as_ushort(in), delta, width));
 }
 
@@ -696,7 +696,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_down_sync(const unsigned long long 
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_down_sync(const unsigned long long mask,
                                                         const __hip_bfloat162 in,
                                                         const unsigned int delta,
-                                                        const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                        const int width = warpSize) {
   static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
   union {
     __hip_bfloat162 bf162;
@@ -712,7 +712,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_down_sync(const unsigned long long
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_sync(const unsigned long long mask,
                                                   const __hip_bfloat16 in, const int delta,
-                                                  const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                  const int width = warpSize) {
   return __ushort_as_bfloat16(__shfl_sync(mask, __bfloat16_as_ushort(in), delta, width));
 }
 
@@ -722,7 +722,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_sync(const unsigned long long mask,
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_sync(const unsigned long long mask,
                                                    const __hip_bfloat162 in, const int delta,
-                                                   const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                   const int width = warpSize) {
   static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
   union {
     __hip_bfloat162 bf162;
@@ -739,7 +739,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_sync(const unsigned long long mask
 __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_up_sync(const unsigned long long mask,
                                                      const __hip_bfloat16 in,
                                                      const unsigned int delta,
-                                                     const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                     const int width = warpSize) {
   return __ushort_as_bfloat16(__shfl_up_sync(mask, __bfloat16_as_ushort(in), delta, width));
 }
 
@@ -750,7 +750,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_up_sync(const unsigned long long ma
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_up_sync(const unsigned long long mask,
                                                       const __hip_bfloat162 in,
                                                       const unsigned int delta,
-                                                      const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                      const int width = warpSize) {
   static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
   union {
     __hip_bfloat162 bf162;
@@ -766,7 +766,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_up_sync(const unsigned long long m
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_xor_sync(const unsigned long long mask,
                                                       const __hip_bfloat16 in, const int delta,
-                                                      const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                      const int width = warpSize) {
   return __ushort_as_bfloat16(__shfl_xor_sync(mask, __bfloat16_as_ushort(in), delta, width));
 }
 
@@ -776,7 +776,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_xor_sync(const unsigned long long m
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_xor_sync(const unsigned long long mask,
                                                        const __hip_bfloat162 in, const int delta,
-                                                       const int width = __AMDGCN_WAVEFRONT_SIZE) {
+                                                       const int width = warpSize) {
   static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
   union {
     __hip_bfloat162 bf162;
