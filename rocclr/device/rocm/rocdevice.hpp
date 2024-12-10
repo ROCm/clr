@@ -85,11 +85,11 @@ public:
 
   typedef union {
     struct {
-      uint32_t          done_            :  1; //!< True if signal is done
-      uint32_t          forceHostWait_   :  1; //!< Force Host Wait for dependency signals
-      uint32_t          isPacketDispatch_:  1; //!< True if the packet associated with the signal is dispatch
-      uint32_t          interrupt_       :  1; //!< True if the signal will trigger an interrupt
-      uint32_t          reserved_        : 28;
+      uint32_t  done_            :  1; //!< True if signal is done
+      uint32_t  forceHostWait_   :  1; //!< Force Host Wait for dependency signals
+      uint32_t  isPacketDispatch_:  1; //!< True if the packet, used with the signal, is dispatch
+      uint32_t  interrupt_       :  1; //!< True if the signal will trigger an interrupt
+      uint32_t  reserved_        : 28;
     };
     uint32_t data_;
   } Flags;

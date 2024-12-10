@@ -374,26 +374,22 @@ VirtualGPU::HwQueueTracker::~HwQueueTracker() {
 
 // ================================================================================================
 bool VirtualGPU::HwQueueTracker::CreateSignal(ProfilingSignal* signal, bool interrupt) const {
-  hsa_agent_t agent = gpu_.gpu_device();
   const Settings& settings = gpu_.dev().settings();
-  hsa_agent_t* agents = (settings.system_scope_signal_) ? nullptr : &agent;
-  uint32_t num_agents = (settings.system_scope_signal_) ? 0 : 1;
-
   // MT path will still have interrupts to avoid extra polling in the queue thread.
   // Also runtime will still use interrupts if active wait was disabled
   interrupt |= !AMD_DIRECT_DISPATCH || !gpu_.dev().ActiveWait();
   // Check if the interrupt was requested for the signal
-  if (interrupt) {
-    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, num_agents, agents, &signal->signal_)) {
+  if (interrupt && settings.system_scope_signal_) {
+    if (HSA_STATUS_SUCCESS != hsa_signal_create(0, 0, nullptr, &signal->signal_)) {
       return false;
     }
-    signal->flags_.interrupt_ = true;
   } else {
-    if (HSA_STATUS_SUCCESS != hsa_amd_signal_create(0, num_agents, agents,
+    if (HSA_STATUS_SUCCESS != hsa_amd_signal_create(0, 0, nullptr,
                                 HSA_AMD_SIGNAL_AMD_GPU_ONLY, &signal->signal_)) {
       return false;
     }
   }
+  signal->flags_.interrupt_ = interrupt;
   return true;
 }
 
@@ -477,22 +473,24 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
     // Check if the signal doesn't match the requested one.
     // Note: runtime needs the interrupts for the callbacks in DD mode
     if ((signal_list_[current_id_]->flags_.interrupt_ != enqueHandler) && gpu_.dev().ActiveWait()) {
-      // Use different stacks if interrupt is required
-      auto& stack_pop   = (enqueHandler) ? signal_pool_irq_ : signal_pool_;
-      auto& stack_push  = (enqueHandler) ? signal_pool_ : signal_pool_irq_;
+      // Use different stacks if an interrupt is required or not.
+      // @note: if runtime needs an interrupt, then the tracking list replaces the original signal
+      // with the interrupt signal and saves the signal without interrupt, or vise versa
+      auto& pool_get   = (enqueHandler) ? signal_pool_irq_ : signal_pool_;
+      auto& pool_save  = (enqueHandler) ? signal_pool_ : signal_pool_irq_;
 
       // Check if a free signal in the pop stack isn't available
-      if (stack_pop.empty()) {
+      if (pool_get.empty()) {
         std::unique_ptr<ProfilingSignal> signal(new ProfilingSignal());
         if ((signal != nullptr) && CreateSignal(signal.get(), enqueHandler)) {
-          stack_pop.push(signal.release());
+          pool_get.push(signal.release());
         }
       }
       // Make sure a free signal exists and replace it in the current slot
-      if (!stack_pop.empty()) {
-        stack_push.push(signal_list_[current_id_]);
-        signal_list_[current_id_] = stack_pop.top();
-        stack_pop.pop();
+      if (!pool_get.empty()) {
+        pool_save.push(signal_list_[current_id_]);
+        signal_list_[current_id_] = pool_get.top();
+        pool_get.pop();
       }
     }
   }
