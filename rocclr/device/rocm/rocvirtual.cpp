@@ -1140,7 +1140,8 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "SWq=0x%zx, HWq=0x%zx, id=%d, BarrierAND Header = 0x%x (type=%d, barrier=%d, acquire=%d,"
           " release=%d), "
-          "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
+          "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx, "
+          "rptr=%u, wptr=%u",
           gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, packetHeader,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE,
                          HSA_PACKET_HEADER_WIDTH_TYPE),
@@ -1152,7 +1153,8 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
                          HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
           barrier_packet_.dep_signal[0], barrier_packet_.dep_signal[1],
           barrier_packet_.dep_signal[2], barrier_packet_.dep_signal[3],
-          barrier_packet_.dep_signal[4], barrier_packet_.completion_signal);
+          barrier_packet_.dep_signal[4], barrier_packet_.completion_signal,
+          read, index);
 
   // Clear dependent signals for the next packet
   barrier_packet_.dep_signal[0] = hsa_signal_t{};
@@ -1208,6 +1210,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   }
 
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
+  uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
+
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_amd_barrier_value_packet_t* aql_loc = &(reinterpret_cast<hsa_amd_barrier_value_packet_t*>(
       gpu_queue_->base_address))[index & queueMask];
@@ -1219,7 +1223,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "SWq=0x%zx, HWq=0x%zx, id=%d, BarrierValue Header = 0x%x AmdFormat = 0x%x "
           "(type=%d, barrier=%d, acquire=%d, release=%d), "
-          "signal=0x%zx, value = 0x%llx mask = 0x%llx cond: %s, completion_signal=0x%zx",
+          "signal=0x%zx, value = 0x%llx mask = 0x%llx cond: %s, completion_signal=0x%zx, "
+          "rptr=%u, wptr=%u",
           gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, packetHeader, rest,
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE),
           extractAqlBits(packetHeader, HSA_PACKET_HEADER_BARRIER, HSA_PACKET_HEADER_WIDTH_BARRIER),
@@ -1231,7 +1236,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
           barrier_value_packet_.mask,
           barrier_value_packet_.cond == 0 ? "EQ" : barrier_value_packet_.cond == 1 ?
                                         "NE" : barrier_value_packet_.cond == 2 ? "LT" : "GTE",
-          barrier_value_packet_.completion_signal);
+          barrier_value_packet_.completion_signal,
+          read, index);
   // Clear dependent signals for the next packet
   barrier_value_packet_.signal = hsa_signal_t{};
 }
