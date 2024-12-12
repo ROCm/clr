@@ -1374,37 +1374,30 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
       }
     }
   }
-  std::unordered_map<hip::GraphNode*, hip::GraphNode*> clonedNodes;
-  hip::Graph* clonedGraph = graph->clone(clonedNodes);
-  clonedGraph->memAllocNodePtrs_ = graph->memAllocNodePtrs_;
-  if (clonedGraph == nullptr) {
-    return hipErrorInvalidValue;
-  }
-  std::vector<hip::GraphNode*> graphNodes;
-  clonedGraph->ScheduleNodes();
-  if (false == clonedGraph->TopologicalOrder(graphNodes)) {
-    return hipErrorInvalidValue;
-  }
-  *pGraphExec = new hip::GraphExec(graphNodes, clonedGraph, clonedNodes, flags);
-  if (*pGraphExec != nullptr) {
-    graph->SetGraphInstantiated(true);
-    if (DEBUG_HIP_GRAPH_DOT_PRINT) {
-      static int i = 1;
-      std::string filename =
-          "graph_" + std::to_string(amd::Os::getProcessId()) + "_dot_print_" + std::to_string(i++);
-      hipError_t status =
-          ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(clonedGraph), filename.c_str(), 0);
-      if (status == hipSuccess) {
-        LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
-      }
-    }
-    if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      (*pGraphExec)->SetKernelArgManager(new hip::GraphKernelArgManager());
-    }
-    return (*pGraphExec)->Init();
-  } else {
+  *pGraphExec = new hip::GraphExec(flags);
+  if (*pGraphExec == nullptr) {
     return hipErrorOutOfMemory;
   }
+  graph->clone(*pGraphExec, true);
+  (*pGraphExec)->ScheduleNodes();
+  if (false == (*pGraphExec)->TopologicalOrder()) {
+    return hipErrorInvalidValue;
+  }
+  graph->SetGraphInstantiated(true);
+  if (DEBUG_HIP_GRAPH_DOT_PRINT) {
+    static int i = 1;
+    std::string filename =
+        "graph_" + std::to_string(amd::Os::getProcessId()) + "_dot_print_" + std::to_string(i++);
+    hipError_t status =
+        ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(*pGraphExec), filename.c_str(), 0);
+    if (status == hipSuccess) {
+      LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
+    }
+  }
+  if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
+    (*pGraphExec)->SetKernelArgManager(new hip::GraphKernelArgManager());
+  }
+  return (*pGraphExec)->Init();
 }
 
 hipError_t hipGraphInstantiate(hipGraphExec_t* pGraphExec, hipGraph_t graph,
@@ -1865,8 +1858,7 @@ hipError_t hipGraphExecChildGraphNodeSetParams(hipGraphExec_t hGraphExec, hipGra
     for (std::vector<hip::GraphNode*>::size_type i = 0; i != childGraphNodes.size(); i++) {
       if (childGraphNodes[i]->GraphCaptureEnabled()) {
         status = reinterpret_cast<hip::ChildGraphNode*>(clonedNode)
-                     ->graphExec_.UpdateAQLPacket(
-                         reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
+                     ->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(childGraphNodes[i]));
         if (status != hipSuccess) {
           return status;
         }
