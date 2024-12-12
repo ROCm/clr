@@ -499,6 +499,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   hsa_signal_silent_store_relaxed(prof_signal->signal_, init_val);
   prof_signal->flags_.done_ = false;
   prof_signal->engine_ = engine_;
+  prof_signal->flags_.isPacketDispatch_ = false;
   prof_signal->flags_.forceHostWait_ = forceHostWait;
   if (ts != 0) {
     // Save HSA signal earlier to make sure the possible callback will have a valid
