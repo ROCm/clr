@@ -193,7 +193,7 @@ void Graph::ScheduleOneNode(Node node, int stream_id) {
       child->ScheduleNodes();
       max_streams_ = std::max(max_streams_, child->max_streams_);
       if (child->max_streams_ == 1) {
-        reinterpret_cast<hip::ChildGraphNode*>(node)->TopologicalOrder();
+        reinterpret_cast<hip::ChildGraphNode*>(node)->GraphExec::TopologicalOrder();
       }
     }
     for (auto edge: node->GetEdges()) {
@@ -269,13 +269,13 @@ bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
 }
 
 // ================================================================================================
-Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
-  Graph* newGraph = new Graph(device_, this);
-  for (auto entry : vertices_) {
+void Graph::clone(Graph* newGraph, bool cloneNodes) const {
+  newGraph->pOriginalGraph_ = this;
+  for (hip::GraphNode* entry : vertices_) {
     GraphNode* node = entry->clone();
     node->SetParentGraph(newGraph);
     newGraph->vertices_.push_back(node);
-    clonedNodes[entry] = node;
+    newGraph->clonedNodes_[entry] = node;
   }
 
   std::vector<Node> clonedEdges;
@@ -284,17 +284,17 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
     const std::vector<Node>& edges = node->GetEdges();
     clonedEdges.clear();
     for (auto edge : edges) {
-      clonedEdges.push_back(clonedNodes[edge]);
+      clonedEdges.push_back(newGraph->clonedNodes_[edge]);
     }
-    clonedNodes[node]->SetEdges(clonedEdges);
+    newGraph->clonedNodes_[node]->SetEdges(clonedEdges);
   }
   for (auto node : vertices_) {
     const std::vector<Node>& dependencies = node->GetDependencies();
     clonedDependencies.clear();
     for (auto dep : dependencies) {
-      clonedDependencies.push_back(clonedNodes[dep]);
+      clonedDependencies.push_back(newGraph->clonedNodes_[dep]);
     }
-    clonedNodes[node]->SetDependencies(clonedDependencies);
+    newGraph->clonedNodes_[node]->SetDependencies(clonedDependencies);
   }
   for (auto& userObj : graphUserObj_) {
     userObj.first->retain();
@@ -307,13 +307,17 @@ Graph* Graph::clone(std::unordered_map<Node, Node>& clonedNodes) const {
   if (roots_.size() > 0) {
     memcpy(&newGraph->roots_[0], &roots_[0], sizeof(Node) * roots_.size());
   }
-  return newGraph;
+  newGraph->memAllocNodePtrs_ = memAllocNodePtrs_;
+  if(!cloneNodes) {
+    newGraph->clonedNodes_.clear();
+  }
 }
 
 // ================================================================================================
 Graph* Graph::clone() const {
-  std::unordered_map<Node, Node> clonedNodes;
-  return clone(clonedNodes);
+  Graph* newGraph = new Graph(device_);
+  clone(newGraph);
+  return newGraph;
 }
 
 // ================================================================================================
@@ -350,7 +354,7 @@ hipError_t GraphExec::CreateStreams(uint32_t num_streams) {
 hipError_t GraphExec::Init() {
   hipError_t status = hipSuccess;
   // create extra stream to avoid queue collision with the default execution stream
-  status = CreateStreams(clonedGraph_->max_streams_);
+  status = CreateStreams(max_streams_);
   if (status != hipSuccess) {
     return status;
   }
@@ -376,11 +380,11 @@ void GraphExec::GetKernelArgSizeForGraph(size_t& kernArgSizeForGraph) {
       // Child graph shares same kernel arg manager
       GraphKernelArgManager* KernelArgManager = GetKernelArgManager();
       KernelArgManager->retain();
-      childNode->graphExec_.SetKernelArgManager(KernelArgManager);
+      childNode->SetKernelArgManager(KernelArgManager);
       // Set capture stream for child graph
-      childNode->graphExec_.capture_stream_ = capture_stream_;
+      childNode->capture_stream_ = capture_stream_;
       if (childNode->GetChildGraph()->max_streams_ == 1) {
-        childNode->graphExec_.GetKernelArgSizeForGraph(kernArgSizeForGraph);
+        childNode->GetKernelArgSizeForGraph(kernArgSizeForGraph);
       }
     }
   }
@@ -404,7 +408,7 @@ hipError_t GraphExec::AllocKernelArgForGraphNode() {
       auto childNode = reinterpret_cast<hip::ChildGraphNode*>(node);
       if (childNode->GetChildGraph()->max_streams_ == 1) {
         childNode->SetGraphCaptureStatus(true);
-        status = childNode->graphExec_.AllocKernelArgForGraphNode();
+        status = childNode->AllocKernelArgForGraphNode();
         if (status != hipSuccess) {
           return status;
         }
@@ -417,7 +421,7 @@ hipError_t GraphExec::AllocKernelArgForGraphNode() {
 // ================================================================================================
 hipError_t GraphExec::CaptureAQLPackets() {
   hipError_t status = hipSuccess;
-  if (clonedGraph_->max_streams_ == 1) {
+  if (max_streams_ == 1) {
     size_t kernArgSizeForGraph = 0;
     GetKernelArgSizeForGraph(kernArgSizeForGraph);
     auto device = g_devices[ihipGetDevice()]->devices()[0];
@@ -439,7 +443,7 @@ hipError_t GraphExec::CaptureAQLPackets() {
 // ================================================================================================
 hipError_t GraphExec::UpdateAQLPacket(hip::GraphNode* node) {
   hipError_t status = hipSuccess;
-  if (clonedGraph_->max_streams_ == 1) {
+  if (max_streams_ == 1) {
     node->CaptureAndFormPacket(capture_stream_, kernArgManager_);
   }
   return hipSuccess;
@@ -696,7 +700,7 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
     repeatLaunch_ = true;
   }
 
-  if (clonedGraph_->max_streams_ == 1 && instantiateDeviceId_ == launch_stream->DeviceId()) {
+  if (max_streams_ == 1 && instantiateDeviceId_ == launch_stream->DeviceId()) {
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       // If the graph has kernels that does device side allocation,  during packet capture, heap is
       // allocated because heap pointer has to be added to the AQL packet, and initialized during
@@ -708,7 +712,7 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
       }
     }
     status = EnqueueGraphWithSingleList(launch_stream);
-  } else if (clonedGraph_->max_streams_ == 1 && instantiateDeviceId_ != launch_stream->DeviceId()) {
+  } else if (max_streams_ == 1 && instantiateDeviceId_ != launch_stream->DeviceId()) {
     for (int i = 0; i < topoOrder_.size(); i++) {
       topoOrder_[i]->SetStream(launch_stream);
       status = topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
@@ -716,9 +720,9 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
     }
   } else {
     // Update streams for the graph execution
-    clonedGraph_->UpdateStreams(launch_stream, parallel_streams_);
+    UpdateStreams(launch_stream, parallel_streams_);
     // Execute all nodes in the graph
-    if (!clonedGraph_->RunNodes()) {
+    if (!RunNodes()) {
       LogError("Failed to launch nodes!");
       return hipErrorOutOfMemory;
     }
@@ -744,7 +748,6 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
   block_command->enqueue();
   block_command->release();
   CallbackCommand->release();
-  ResetQueueIndex();
   return status;
 }
 

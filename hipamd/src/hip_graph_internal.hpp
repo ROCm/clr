@@ -491,6 +491,7 @@ struct Graph {
   std::unordered_set<GraphNode*> capturedNodes_;
   bool graphInstantiated_;
   std::unordered_set<void*> memAllocNodePtrs_;
+  std::unordered_map<Node, Node> clonedNodes_;
  public:
   Graph(hip::Device* device, const Graph* original = nullptr)
       : pOriginalGraph_(original)
@@ -636,7 +637,7 @@ struct Graph {
 
   bool TopologicalOrder(std::vector<Node>& TopoOrder);
 
-  Graph* clone(std::unordered_map<Node, Node>& clonedNodes) const;
+  void clone(Graph* newGraph, bool cloneNodes = false) const;
   Graph* clone() const;
   void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
     fout << "subgraph cluster_" << GetID() << " {" << std::endl;
@@ -724,14 +725,11 @@ struct Graph {
 };
 struct GraphKernelNode;
 
-struct GraphExec : public amd::ReferenceCountedObject {
+struct GraphExec : public amd::ReferenceCountedObject, public Graph {
   //! Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
-  struct Graph* clonedGraph_;
   std::vector<hip::Stream*> parallel_streams_;
   hip::Stream* capture_stream_;
-  uint currentQueueIndex_;
-  std::unordered_map<Node, Node> clonedNodes_;
   static std::unordered_set<GraphExec*> graphExecSet_;
   static amd::Monitor graphExecSetLock_;
   uint64_t flags_ = 0;
@@ -741,19 +739,10 @@ struct GraphExec : public amd::ReferenceCountedObject {
   bool repeatLaunch_ = false;
 
  public:
-  GraphExec(std::vector<Node>& topoOrder, struct Graph*& clonedGraph,
-            std::unordered_map<Node, Node>& clonedNodes, uint64_t flags = 0)
+  GraphExec(uint64_t flags = 0)
       : ReferenceCountedObject(),
-        topoOrder_(topoOrder),
-        clonedGraph_(clonedGraph),
-        clonedNodes_(clonedNodes),
-        currentQueueIndex_(0),
+        Graph(hip::getCurrentDevice()),
         flags_(flags) {
-    amd::ScopedLock lock(graphExecSetLock_);
-    graphExecSet_.insert(this);
-  }
-
-  GraphExec() : ReferenceCountedObject() {
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.insert(this);
   }
@@ -767,7 +756,6 @@ struct GraphExec : public amd::ReferenceCountedObject {
     }
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.erase(this);
-    delete clonedGraph_;
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
       if (kernArgManager_ != nullptr) {
         kernArgManager_->release();
@@ -793,15 +781,6 @@ struct GraphExec : public amd::ReferenceCountedObject {
   //! Check executable graphs validity
   static bool isGraphExecValid(GraphExec* pGraphExec);
   std::vector<Node>& GetNodes() { return topoOrder_; }
-
-  hip::Stream* GetAvailableStreams() {
-    if (currentQueueIndex_ < parallel_streams_.size()) {
-      return parallel_streams_[currentQueueIndex_++];
-    }
-    return nullptr;
-  }
-
-  void ResetQueueIndex() { currentQueueIndex_ = 0; }
   uint64_t GetFlags() const { return flags_; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
@@ -822,19 +801,19 @@ struct GraphExec : public amd::ReferenceCountedObject {
   hipError_t AllocKernelArgForGraphNode();
   void GetKernelArgSizeForGraph(size_t& kernArgSizeForGraph);
   hipError_t EnqueueGraphWithSingleList(hip::Stream* hip_stream);
+  bool TopologicalOrder() { return Graph::TopologicalOrder(topoOrder_); }
 };
 
-struct ChildGraphNode : public GraphNode {
-  struct GraphExec graphExec_;
+struct ChildGraphNode : public GraphNode, public GraphExec {
   bool graphCaptureStatus_;
  public:
-  ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle") {
-    graphExec_.clonedGraph_ = g->clone();
+  ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle"), GraphExec() {
+    g->clone(this);
     graphCaptureStatus_ = false;
   }
 
-  ChildGraphNode(const ChildGraphNode& rhs) : GraphNode(rhs) {
-    graphExec_.clonedGraph_ = rhs.graphExec_.clonedGraph_->clone();
+  ChildGraphNode(const ChildGraphNode& rhs) : GraphNode(rhs), GraphExec() {
+    rhs.Graph::clone(this);
     graphCaptureStatus_ = rhs.graphCaptureStatus_;
   }
 
@@ -842,14 +821,14 @@ struct ChildGraphNode : public GraphNode {
     return new ChildGraphNode(static_cast<ChildGraphNode const&>(*this));
   }
 
-  Graph* GetChildGraph() override { return graphExec_.clonedGraph_; }
+  Graph* GetChildGraph() override { return this; }
 
   void SetGraphCaptureStatus(bool status) { graphCaptureStatus_ = status; }
 
   bool GetGraphCaptureStatus() { return graphCaptureStatus_; }
 
   std::vector<Node>& GetChildGraphNodeOrder() {
-    return graphExec_.topoOrder_;
+    return topoOrder_;
   }
 
   void SetStream(hip::Stream* stream) override {
@@ -857,27 +836,25 @@ struct ChildGraphNode : public GraphNode {
   }
 
   bool TopologicalOrder(std::vector<Node>& TopoOrder) override {
-    return graphExec_.clonedGraph_->TopologicalOrder(TopoOrder);
+    return Graph::TopologicalOrder(TopoOrder);
   }
-
-  bool TopologicalOrder() { return graphExec_.clonedGraph_->TopologicalOrder(graphExec_.topoOrder_); }
 
   void EnqueueCommands(hip::Stream* stream) override {
     if (graphCaptureStatus_) {
-      hipError_t status = graphExec_.EnqueueGraphWithSingleList(stream);
-    } else if (graphExec_.clonedGraph_->max_streams_ == 1) {
-      for (int i = 0; i < graphExec_.topoOrder_.size(); i++) {
-        graphExec_.topoOrder_[i]->SetStream(stream_);
+      hipError_t status = EnqueueGraphWithSingleList(stream);
+    } else if (max_streams_ == 1) {
+      for (int i = 0; i < topoOrder_.size(); i++) {
+        topoOrder_[i]->SetStream(stream_);
         hipError_t status =
-            graphExec_.topoOrder_[i]->CreateCommand(graphExec_.topoOrder_[i]->GetQueue());
-        graphExec_.topoOrder_[i]->EnqueueCommands(stream_);
+            topoOrder_[i]->CreateCommand(topoOrder_[i]->GetQueue());
+        topoOrder_[i]->EnqueueCommands(stream_);
       }
     }
   }
 
   hipError_t SetParams(const Graph* childGraph) {
     const std::vector<Node>& newNodes = childGraph->GetNodes();
-    const std::vector<Node>& oldNodes = graphExec_.clonedGraph_->GetNodes();
+    const std::vector<Node>& oldNodes = Graph::GetNodes();
     for (std::vector<Node>::size_type i = 0; i != newNodes.size(); i++) {
       hipError_t status = oldNodes[i]->SetParams(newNodes[i]);
       if (status != hipSuccess) {
@@ -889,15 +866,15 @@ struct ChildGraphNode : public GraphNode {
 
   hipError_t SetParams(GraphNode* node) override {
     const ChildGraphNode* childGraphNode = static_cast<ChildGraphNode const*>(node);
-    return SetParams(childGraphNode->graphExec_.clonedGraph_);
+    return SetParams((Graph*)this);
   }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
-    return std::to_string(GetID()) + "\n" + "graph_" + std::to_string(graphExec_.clonedGraph_->GetID());
+    return std::to_string(GraphNode::GetID()) + "\n" + "graph_" + std::to_string(Graph::GetID());
   }
 
   virtual void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) override {
-    graphExec_.clonedGraph_->GenerateDOT(fout, flag);
+    Graph::GenerateDOT(fout, flag);
   }
 };
 
