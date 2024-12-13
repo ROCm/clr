@@ -28,7 +28,7 @@
 namespace hip {
 
 // Guards global event set
-static amd::Monitor eventSetLock{};
+static std::shared_mutex eventSetLock{};
 static std::unordered_set<hipEvent_t> eventSet;
 
 bool Event::ready() {
@@ -268,7 +268,7 @@ bool isValid(hipEvent_t event) {
     return true;
   }
 
-  amd::ScopedLock lock(eventSetLock);
+  std::shared_lock lock(eventSetLock);
   if (eventSet.find(event) == eventSet.end()) {
     return false;
   }
@@ -315,7 +315,7 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
       return hipErrorOutOfMemory;
     }
     *event = reinterpret_cast<hipEvent_t>(e);
-    amd::ScopedLock lock(hip::eventSetLock);
+    std::unique_lock lock(hip::eventSetLock);
     hip::eventSet.insert(*event);
   } else {
     return hipErrorInvalidValue;
@@ -350,7 +350,7 @@ hipError_t hipEventDestroy(hipEvent_t event) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
 
-  amd::ScopedLock lock(hip::eventSetLock);
+  std::unique_lock lock(hip::eventSetLock);
   if (hip::eventSet.erase(event) == 0 ) {
     return hipErrorContextIsDestroyed;
   }
