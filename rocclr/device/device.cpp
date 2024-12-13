@@ -938,12 +938,7 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  // Amount of space used by each wave is in units of 256 dwords.
-  // As per COMPUTE_TMPRING_SIZE.WAVE_SIZE 24:12
-  // The field size supports a range of 0->(2M-256) dwords per wave64.
-  // Per lane this works out to 131056 bytes or 128K - 16
-  uint64_t kStackSize = ((128 * Ki) - 16);
-  if (stackSize > kStackSize) {
+  if (stackSize > kMaxStackSize) {
     return false;
   }
   stack_size_ = amd::alignUp(stackSize, 16);

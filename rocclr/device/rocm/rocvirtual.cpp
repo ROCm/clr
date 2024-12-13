@@ -3479,11 +3479,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
 
     if ((devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
-      dispatchPacket.private_segment_size =
-              std::max<uint64_t>(dev().StackSize(), dispatchPacket.private_segment_size);
-      if (dispatchPacket.private_segment_size > 16 * Ki) {
-        dispatchPacket.private_segment_size = 16 * Ki;
-      }
+      dispatchPacket.private_segment_size = std::min<uint64_t>(
+          std::max<uint64_t>(dev().StackSize(), dispatchPacket.private_segment_size),
+          Device::kMaxStackSize);
     }
 
     // Pass the header accordingly
