@@ -90,7 +90,7 @@ DeviceVar::DeviceVar(std::string name,
 
 DeviceVar::~DeviceVar() {
   // device_ptr_ is being removed and its amd:Memory obj is being released/deleted during
-  // ihipFree in hip::StatCO::removeFatBinary however in DynCO path, it seems to bypass 
+  // ihipFree in hip::StatCO::removeFatBinary however in DynCO path, it seems to bypass
   // ihipFree and hence it needs to be removed+released here. In order to avoid issue with
   // StatCO, It is better to check if mem obj is found.
   if (amd::MemObjMap::FindMemObj(device_ptr_) !=  nullptr && amd_mem_obj_ != nullptr) {
@@ -155,21 +155,24 @@ bool Function::isValidDynFunc(const void* hfunc) {
 }
 
 hipError_t Function::getStatFunc(hipFunction_t* hfunc, int deviceId) {
-  guarantee(modules_ != nullptr, "Module not initialized");
-
-  if (dFunc_.size() != g_devices.size()) {
+  if (deviceId >= dFunc_.size()) {
     return hipErrorNoBinaryForGpu;
   }
-
+  if (dFunc_[deviceId] != nullptr) {
+    *hfunc = dFunc_[deviceId]->asHipFunction();
+    return hipSuccess;
+  }
+  amd::ScopedLock lock(fc_lock_);
+  // Check for the compiled kernel again, to make sure only one thread does compilation
+  if (dFunc_[deviceId] != nullptr) {
+    *hfunc = dFunc_[deviceId]->asHipFunction();
+    return hipSuccess;
+  }
   hipModule_t hmod = nullptr;
   IHIP_RETURN_ONFAIL((*modules_)->BuildProgram(deviceId));
   IHIP_RETURN_ONFAIL((*modules_)->GetModule(deviceId, &hmod));
-
-  if (dFunc_[deviceId] == nullptr) {
-    dFunc_[deviceId] = new DeviceFunc(name_, hmod);
-  }
+  dFunc_[deviceId] = new DeviceFunc(name_, hmod);
   *hfunc = dFunc_[deviceId]->asHipFunction();
-
   return hipSuccess;
 }
 
