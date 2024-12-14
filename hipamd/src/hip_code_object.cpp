@@ -1379,13 +1379,10 @@ const char* StatCO::getStatFuncName(const void* hostFunction) {
 }
 
 hipError_t StatCO::getStatFunc(hipFunction_t* hfunc, const void* hostFunction, int deviceId) {
-  amd::ScopedLock lock(sclock_);
-
   const auto it = functions_.find(hostFunction);
   if (it == functions_.end()) {
     return hipErrorInvalidSymbol;
   }
-
   return it->second->getStatFunc(hfunc, deviceId);
 }
 
