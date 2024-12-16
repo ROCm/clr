@@ -26,6 +26,7 @@ THE SOFTWARE.
 #include "amd_device_functions.h"
 #endif
 
+
 #if __has_builtin(__hip_atomic_compare_exchange_strong)
 
 template<bool B, typename T, typename F> struct Cond_t;
@@ -112,6 +113,25 @@ T hip_cas_extrema_expander(T* p, T x, Cmp cmp, F f) noexcept
 
   return reinterpret_cast<const T&>(tmp);
 }
+
+__device__
+inline
+unsigned short int atomicCAS(unsigned short int* address, unsigned short int compare,
+                              unsigned short int val) {
+  __hip_atomic_compare_exchange_strong(address, &compare, val, __ATOMIC_RELAXED, __ATOMIC_RELAXED,
+                                       __HIP_MEMORY_SCOPE_AGENT);
+  return compare;
+}
+
+__device__
+inline
+unsigned short int atomicCAS_system(unsigned short int* address, unsigned short int compare,
+                              unsigned short int val) {
+  __hip_atomic_compare_exchange_strong(address, &compare, val, __ATOMIC_RELAXED, __ATOMIC_RELAXED,
+                                       __HIP_MEMORY_SCOPE_SYSTEM);
+  return compare;
+}
+
 
 __device__
 inline
@@ -1328,6 +1348,16 @@ unsigned long long atomicXor_system(unsigned long long* address, unsigned long l
 }
 
 #else // __hip_atomic_compare_exchange_strong
+__device__
+inline
+unsigned short int atomicCAS(unsigned short int* address, unsigned short int compare,
+                             unsigned short int val)
+{
+    __atomic_compare_exchange_n(
+        address, &compare, val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+
+    return compare;
+}
 
 __device__
 inline

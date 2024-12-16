@@ -111,13 +111,10 @@
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
 #include <hip/amd_detail/amd_warp_functions.h>  // Sync functions
-#include "amd_hip_vector_types.h"               // float2 etc
-#include "device_library_decls.h"               // ocml conversion functions
-#if defined(__clang__) && defined(__HIP__)
-#include "amd_hip_atomic.h"
-#endif                 // defined(__clang__) && defined(__HIP__)
+#include "amd_hip_vector_types.h"  // float2 etc
+#include "device_library_decls.h"  // ocml conversion functions
 #include "math_fwd.h"  // ocml device functions
-#endif                 // !defined(__HIPCC_RTC__)
+#endif                // !defined(__HIPCC_RTC__)
 
 #define __BF16_DEVICE__ __device__
 #if defined(__HIPCC_RTC__)
@@ -1859,6 +1856,30 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
                                                  __HIP_MEMORY_SCOPE_AGENT));
   return old_val.h2r;
 #endif
+}
+__BF16_DEVICE_STATIC__ __hip_bfloat16 unsafeAtomicAdd(__hip_bfloat16 *address,
+                                                      __hip_bfloat16 value) {
+  static_assert(sizeof(unsigned short int) == sizeof(__hip_bfloat16_raw));
+  unsigned short int* address_as_short = reinterpret_cast<unsigned short int *>(address);
+  // Align to 4 bytes
+  unsigned int* aligned_addr = __builtin_bit_cast(unsigned int*,
+                               __builtin_bit_cast(unsigned long long int, address_as_short) &
+                               (unsigned long long int)(~0x3));
+
+  bool is_lower = __builtin_bit_cast(unsigned long long int, aligned_addr) ==
+                  __builtin_bit_cast(unsigned long long int, address);
+
+  __hip_bfloat162 fval;
+  if (is_lower)
+    fval = __halves2bfloat162(value, 0);
+  else
+    fval = __halves2bfloat162(0, value);
+
+  __hip_bfloat162 *in = (__hip_bfloat162 *)(aligned_addr);
+  __hip_bfloat162 out =  unsafeAtomicAdd(in , fval);
+  if (is_lower)
+    return __low2bfloat16(out);
+  return __high2bfloat16(out);
 }
 #endif  // defined(__clang__) && defined(__HIP__)
 #endif
