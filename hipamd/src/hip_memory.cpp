@@ -385,7 +385,7 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   }
 
   *ptr = nullptr;
-  const unsigned int coherentFlags = hipExtHostAllocCoherent | hipExtHostAllocNonCoherent;
+  const unsigned int coherentFlags = hipHostMallocCoherent | hipHostMallocNonCoherent;
 
   // can't have both Coherent and NonCoherent flags set at the same time
   if ((flags & coherentFlags) == coherentFlags) {
@@ -398,16 +398,16 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
 
   unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
   if (flags == 0 ||
-      flags & (hipExtHostAllocCoherent | hipHostAllocMapped | hipExtHostAllocNumaUser) ||
-      (!(flags & hipExtHostAllocNonCoherent) && HIP_HOST_COHERENT)) {
+      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
+      (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
     ihipFlags |= CL_MEM_SVM_ATOMICS;
   }
 
-  if (flags & hipExtHostAllocNumaUser) {
+  if (flags & hipHostMallocNumaUser) {
     ihipFlags |= CL_MEM_FOLLOW_USER_NUMA_POLICY;
   }
 
-  if (flags & hipExtHostAllocNonCoherent) {
+  if (flags & hipHostMallocNonCoherent) {
     ihipFlags &= ~CL_MEM_SVM_ATOMICS;
   }
 
@@ -760,16 +760,6 @@ hipError_t hipMalloc(void** ptr, size_t sizeBytes) {
 
 hipError_t hipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   HIP_INIT_API(hipHostMalloc, ptr, sizeBytes, flags);
-  CHECK_STREAM_CAPTURE_SUPPORTED();
-  if (ptr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
-  hipError_t status = ihipHostMalloc(ptr, sizeBytes, flags);
-  HIP_RETURN_DURATION(status, ReturnPtrValue(ptr));
-}
-
-hipError_t hipExtHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
-  HIP_INIT_API(hipExtHostAlloc, ptr, sizeBytes, flags);
   CHECK_STREAM_CAPTURE_SUPPORTED();
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);

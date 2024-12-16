@@ -350,7 +350,6 @@ hipError_t hipHostFree(void* ptr);
 hipError_t hipHostGetDevicePointer(void** devPtr, void* hstPtr, unsigned int flags);
 hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr);
 hipError_t hipHostMalloc(void** ptr, size_t size, unsigned int flags);
-hipError_t hipExtHostAlloc(void** ptr, size_t size, unsigned int flags);
 hipError_t hipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags);
 hipError_t hipHostUnregister(void* hostPtr);
 hipError_t hipImportExternalMemory(hipExternalMemory_t* extMem_out,
@@ -1041,7 +1040,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipHostGetDevicePointer_fn = hip::hipHostGetDevicePointer;
   ptrDispatchTable->hipHostGetFlags_fn = hip::hipHostGetFlags;
   ptrDispatchTable->hipHostMalloc_fn = hip::hipHostMalloc;
-  ptrDispatchTable->hipExtHostAlloc_fn = hip::hipExtHostAlloc;
+  ptrDispatchTable->hipExtHostAlloc_fn = nullptr;
   ptrDispatchTable->hipHostRegister_fn = hip::hipHostRegister;
   ptrDispatchTable->hipHostUnregister_fn = hip::hipHostUnregister;
   ptrDispatchTable->hipImportExternalMemory_fn = hip::hipImportExternalMemory;

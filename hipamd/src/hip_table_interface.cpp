@@ -1820,9 +1820,6 @@ hipError_t hipDrvGraphMemcpyNodeSetParams(hipGraphNode_t hNode, const HIP_MEMCPY
 hipError_t hipGraphNodeSetParams(hipGraphNode_t node, hipGraphNodeParams *nodeParams) {
   return hip::GetHipDispatchTable()->hipGraphNodeSetParams_fn(node, nodeParams);
 }
-hipError_t hipExtHostAlloc(void** ptr, size_t size, unsigned int flags) {
-  return hip::GetHipDispatchTable()->hipExtHostAlloc_fn(ptr, size, flags);
-}
 hipError_t hipGraphAddBatchMemOpNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
                                      const hipGraphNode_t* dependencies, size_t numDependencies,
                                      const hipBatchMemOpNodeParams* nodeParams) {

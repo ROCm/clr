@@ -25,7 +25,6 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipDrvGraphAddMemFreeNode`  creates a memory free node and adds it to a graph.
     - `hipDrvGraphExecMemcpyNodeSetParams`  sets the parameters for a memcpy node in the given graphExec.
     - `hipDrvGraphExecMemsetNodeSetParams`  sets the parameters for a memset node in the given graphExec.
-    - `hipExtHostAlloc` preserves the functionality of `hipHostMalloc`.
 
 ### Resolved issues
 
