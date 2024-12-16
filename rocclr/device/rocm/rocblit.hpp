@@ -619,9 +619,10 @@ inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
       reinterpret_cast<Memory**>(kernel->parameters().values() +
         kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = nullptr;
     } else {
-      // convert cl_mem to amd::Memory*, return false if invalid.
-      amd::Memory* mem = as_amd(*static_cast<const cl_mem*>(value));
       if (!writeVAImmediate) {
+        // convert cl_mem to amd::Memory*, return false if invalid.
+        amd::Memory* mem = as_amd(*static_cast<const cl_mem*>(value));
+
         reinterpret_cast<amd::Memory**>(kernel->parameters().values() +
           kernel->parameters().memoryObjOffset())[desc.info_.arrayIndex_] = mem;
         if (dev_mem == nullptr) {
