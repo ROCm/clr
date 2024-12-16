@@ -357,7 +357,7 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   // There is a possibility that stream destroy be called first
   hipStream_t s = e->GetCaptureStream();
   if (hip::isValid(s)) {
-    if (e->GetCaptureStream() != nullptr) {
+    if (s != nullptr && s != hipStreamLegacy) {
       reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->EraseCaptureEvent(event);
     }
   }
@@ -399,7 +399,8 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   e->SetCaptureStream(stream);
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+  if ((stream != nullptr && stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     ClPrint(amd::LOG_INFO, amd::LOG_API,
         "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
@@ -434,12 +435,14 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
-      s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
-      HIP_RETURN(hipErrorCapturedEvent);
+  auto hip_stream = e->GetCaptureStream();
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hip_stream);
+  if ((hip_stream != nullptr && hip_stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+    s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+    HIP_RETURN(hipErrorCapturedEvent);
   }
-  if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream()) == true) {
+  if (hip::Stream::StreamCaptureOngoing(hip_stream) == true) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
@@ -455,8 +458,10 @@ hipError_t ihipEventQuery(hipEvent_t event) {
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+  auto hip_stream = e->GetCaptureStream();
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hip_stream);
+  if ((hip_stream != nullptr && hip_stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
     HIP_RETURN(hipErrorCapturedEvent);
   }
