@@ -56,6 +56,10 @@
  *   OPTION(type, attr, sn, ln, var, ideft, imix, imax, sdeft, desc)
  *  NOPTION(type, attr, sn, ln, var, ideft, imix, imax, sdeft, desc)
  *
+ * Note: As mentioned above, NOPTION is for component options or alias runtime options so
+ * when using it make sure that either the option group is not OA_RUNTIME or that you
+ * have OA_MISC_ALIAS set.
+ *
  *  For convenience,  FLAG marco is provided as well. FLAG macro is very close to a flag
  *  used in flags.hpp.  It is define as below:
  *     FLAG(type, vis, sn, var, deft, desc)
@@ -1277,7 +1281,7 @@ OPTION(OT_UINT32, \
 
 // -fsanitze=tool
 NOPTION(OT_CSTRING, \
-       OA_RUNTIME|OVA_REQUIRED|OA_SEPARATOR_EQUAL|OFA_PREFIX_F, \
+       OA_CLC|OVA_REQUIRED|OA_SEPARATOR_EQUAL|OFA_PREFIX_F, \
        "sanitize", NULL, \
        FSanitize, \
        0, 0, 0, "address", \
