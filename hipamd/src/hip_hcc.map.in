@@ -582,6 +582,7 @@ local:
 
 hip_6.4 {
 global:
+    hipStreamBatchMemOp;
     hipGraphAddBatchMemOpNode;
     hipGraphBatchMemOpNodeGetParams;
     hipGraphBatchMemOpNodeSetParams;
