@@ -41,19 +41,6 @@ THE SOFTWARE.
 #include <stdint.h>
 #endif // !defined(__HIPCC_RTC__)
 
-#if _LIBCPP_VERSION && __HIP__
-namespace std {
-template <>
-struct __numeric_type<_Float16>
-{
-   static _Float16 __test(_Float16);
-
-   typedef _Float16 type;
-   static const bool value = true;
-};
-}
-#endif // _LIBCPP_VERSION
-
 #pragma push_macro("__DEVICE__")
 #pragma push_macro("__RETURN_TYPE")
 
