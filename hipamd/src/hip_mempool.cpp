@@ -59,7 +59,11 @@ hipError_t hipDeviceSetMemPool(int device, hipMemPool_t mem_pool) {
   if ((mem_pool == nullptr) || (device >= g_devices.size())) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_STREAM_CAPTURE_API) {
+    if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
   auto poolDevice = reinterpret_cast<hip::MemoryPool*>(mem_pool)->Device();
   if (poolDevice->deviceId() != device) {
     HIP_RETURN(hipErrorInvalidDevice);
@@ -328,7 +332,11 @@ hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_
   if (IS_WINDOWS && pool_props->handleTypes == hipMemHandleTypePosixFileDescriptor) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_STREAM_CAPTURE_API) {
+    if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
   auto device = g_devices[pool_props->location.id];
   auto pool = new hip::MemoryPool(device, pool_props);
   if (pool == nullptr) {
@@ -343,6 +351,11 @@ hipError_t hipMemPoolDestroy(hipMemPool_t mem_pool) {
   HIP_INIT_API(hipMemPoolDestroy, mem_pool);
   if (mem_pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_STREAM_CAPTURE_API) {
+    if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
   }
   hip::MemoryPool* hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
 
