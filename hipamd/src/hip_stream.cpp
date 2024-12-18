@@ -487,7 +487,8 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
         // If stream is capturing but event is not recorded on event's stream.
         return hipErrorStreamCaptureIsolation;
       }
-      if ((waitStream != nullptr) && (eventStream->DeviceId() == waitStream->DeviceId())) {
+      if ((waitStream != nullptr && stream != hipStreamLegacy) &&
+          (eventStream->DeviceId() == waitStream->DeviceId())) {
         eventStream->GetDevice()->AddSafeStream(eventStream, waitStream);
       }
     }
