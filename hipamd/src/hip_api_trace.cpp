@@ -1366,11 +1366,22 @@ template <typename Tp> Tp& GetDispatchTableImpl() {
 }
 }  // namespace
 
-const HipDispatchTable* GetHipDispatchTable() {
+// At the -O3 optimization level, these functions are vectorized (gcc 11.4.1),
+// resulting in extra code to preload the dispatch table onto the stack using vector registers.
+// This preloading occurs before verifying if the table has been initialized.
+// Since the table is typically already initialized, this adds unnecessary overhead to the critical
+// path.
+#if defined(__GNUC__) || defined(__clang__)
+#define NO_VECTORIZE __attribute__((optimize("no-tree-vectorize")))
+#else
+#define NO_VECTORIZE
+#endif
+NO_VECTORIZE const HipDispatchTable* GetHipDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipDispatchTable>();
   return _v;
 }
-const HipCompilerDispatchTable* GetHipCompilerDispatchTable() {
+NO_VECTORIZE const HipCompilerDispatchTable*
+GetHipCompilerDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipCompilerDispatchTable>();
   return _v;
 }
