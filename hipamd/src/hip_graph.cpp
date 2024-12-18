@@ -2174,12 +2174,15 @@ hipError_t hipGraphNodeFindInClone(hipGraphNode_t* pNode, hipGraphNode_t origina
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::Graph* iClonedGraph = reinterpret_cast<hip::Graph*>(clonedGraph);
-  if (iClonedGraph->getOriginalGraph() == nullptr) {
+  hip::GraphNode* iGraphnode = reinterpret_cast<hip::GraphNode*>(originalNode);
+  if (iClonedGraph->getOriginalGraph() == nullptr ||
+      // parent graph of orig node and original graph of cloned node should be same.
+      iClonedGraph->getOriginalGraph() != iGraphnode->GetParentGraph()) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   for (auto node : iClonedGraph->GetNodes()) {
-    if (node->GetID() == reinterpret_cast<hip::GraphNode*>(originalNode)->GetID()) {
+    if (node->GetID() == iGraphnode->GetID()) {
       *pNode = reinterpret_cast<hipGraphNode_t>(node);
       HIP_RETURN(hipSuccess);
     }
