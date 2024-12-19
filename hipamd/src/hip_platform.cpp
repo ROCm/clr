@@ -760,7 +760,7 @@ hipError_t PlatformState::loadModule(hipModule_t* module, const char* fname, con
     return hip_error;
   }
 
-  *module = dynCo->module();
+  *module = dynCo->getModule();
   assert(*module != nullptr);
 
   amd::ScopedLock lock(lock_);
