@@ -643,6 +643,22 @@ hipError_t ihipModuleLaunchCooperativeKernelMultiDevice(hipFunctionLaunchParams*
     }
   }
 
+  // Grid and Block dimensions should match across devices, as well as sharedMemBytes
+  for (uint32_t i = 1; i < numDevices; ++i) {
+    if (launchParamsList[i - 1].gridDimX != launchParamsList[i].gridDimX ||
+        launchParamsList[i - 1].gridDimY != launchParamsList[i].gridDimY ||
+        launchParamsList[i - 1].gridDimZ != launchParamsList[i].gridDimZ ||
+        launchParamsList[i - 1].blockDimX != launchParamsList[i].blockDimX ||
+        launchParamsList[i - 1].blockDimY != launchParamsList[i].blockDimY ||
+        launchParamsList[i - 1].blockDimZ != launchParamsList[i].blockDimZ) {
+      return hipErrorInvalidValue;
+    }
+
+    if (launchParamsList[i - 1].sharedMemBytes != launchParamsList[i].sharedMemBytes) {
+      return hipErrorInvalidValue;
+    }
+  }
+
   for (int i = 0; i < numDevices; ++i) {
     const hipFunctionLaunchParams& launch = launchParamsList[i];
     hip::Stream* hip_stream = reinterpret_cast<hip::Stream*>(launch.hStream);

@@ -1068,6 +1068,8 @@ hipError_t DynCO::loadCodeObject(const char* fname, const void* image) {
   // No Lazy loading for DynCO
   IHIP_RETURN_ONFAIL(fb_info_->BuildProgram(ihipGetDevice()));
 
+  module_ = fb_info_->Module(device_id_);
+
   // Define Global variables
   IHIP_RETURN_ONFAIL(populateDynGlobalVars());
 
@@ -1114,22 +1116,18 @@ DynCO::~DynCO() {
 hipError_t DynCO::getDeviceVar(DeviceVar** dvar, std::string var_name) {
   amd::ScopedLock lock(dclock_);
 
-  CheckDeviceIdMatch();
-
   auto it = vars_.find(var_name);
   if (it == vars_.end()) {
     LogPrintfError("Cannot find the Var: %s ", var_name.c_str());
     return hipErrorNotFound;
   }
 
-  hipError_t err = it->second->getDeviceVar(dvar, device_id_, module());
+  hipError_t err = it->second->getDeviceVar(dvar, device_id_, module_);
   return err;
 }
 
 hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   amd::ScopedLock lock(dclock_);
-
-  CheckDeviceIdMatch();
 
   if (hfunc == nullptr) {
     return hipErrorInvalidValue;
@@ -1142,7 +1140,7 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   }
 
   /* See if this could be solved */
-  return it->second->getDynFunc(hfunc, module());
+  return it->second->getDynFunc(hfunc, module_);
 }
 
 bool DynCO::isValidDynFunc(const void* hfunc) {
@@ -1214,7 +1212,7 @@ hipError_t DynCO::populateDynGlobalVars() {
                                      ->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
 
   if (!dev_program->getGlobalVarFromCodeObj(&var_names)) {
-    LogPrintfError("Could not get Global vars from Code Obj for Module: 0x%x", module());
+    LogPrintfError("Could not get Global vars from Code Obj for Module: 0x%x", module_);
     return hipErrorSharedObjectSymbolNotFound;
   }
 
@@ -1242,7 +1240,7 @@ hipError_t DynCO::populateDynGlobalFuncs() {
 
   // Get all the global func names from COMGR
   if (!dev_program->getGlobalFuncFromCodeObj(&func_names)) {
-    LogPrintfError("Could not get Global Funcs from Code Obj for Module: 0x%x", module());
+    LogPrintfError("Could not get Global Funcs from Code Obj for Module: 0x%x", module_);
     return hipErrorSharedObjectSymbolNotFound;
   }
 
@@ -1316,7 +1314,7 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
       hipError_t err;
       for (auto dev : g_devices) {
         DeviceVar* dvar = nullptr;
-        IHIP_RETURN_ONFAIL((*it)->getDeviceVarPtr(&dvar, dev->deviceId())); 
+        IHIP_RETURN_ONFAIL((*it)->getDeviceVarPtr(&dvar, dev->deviceId()));
         if (dvar != nullptr) {
           // free also deletes the device ptr
           err = ihipFree(dvar->device_ptr());
