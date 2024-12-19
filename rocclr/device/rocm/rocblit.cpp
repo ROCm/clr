@@ -1707,7 +1707,7 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
           copySize = std::min(totalSize, maxStagedXferSize);
           srcAddr += stagedCopyOffset;
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging D2H copy stg buf=%p, src=%p, "
-                  "dstOrigin=%zu, size=%zu", xferBufAddr, srcAddr, dstOrigin[0], copySize);
+                  "dstOrigin=0x%x, size=%zu", xferBufAddr, srcAddr, dstOrigin[0], copySize);
           // Flush caches for coherency after the copy as we need to std::memcpy
           // from staging buffer to unpinned dst. Also attach a signal to the dispatch packet
           // itself that we can wait on without extra barrier packet.
@@ -1865,7 +1865,9 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
                   stagingBuffer, (void*)(srcAddr + stagedCopyOffset), copySize);
           memcpy(stagingBuffer, srcAddr + stagedCopyOffset, copySize);
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging H2D copy dst=%p, stg buf=%p, "
-                  "dstOrigin=%zu, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
+                  "dstOrigin=0x%x, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
+          // No cache flush is needed here as we use a staging buffer, and the acquire logic
+          // ensures that the cacheline is different and re-used only when L2 is flushed
           result = shaderCopyBuffer(dstAddr, stagingBuffer,
                                     origin, srcOrigin, copySize,
                                     entire, dev().settings().limit_blit_wg_, copyMetadata);
@@ -2253,6 +2255,15 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   }
 
   if (!result) {
+    // Flush caches for coherency as the MTYPE of the src buffer may be
+    // non-coherent which mean we need to read it again from memory.
+    // Also if its a device to device copy(intra device), we dont need flush
+    // Check CL_MEM_SVM_ATOMICS flag to see if we used system_coarse_segment_
+    auto memFlags = srcMemory.owner()->getMemFlags();
+    bool srcSvmAtomics = (memFlags & CL_MEM_SVM_ATOMICS) != 0;
+    if (!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) {
+      gpu().addSystemScope();
+    }
     result = shaderCopyBuffer(reinterpret_cast<address>(dstMemory.virtualAddress()),
                               reinterpret_cast<address>(srcMemory.virtualAddress()),
                               dstOrigin, srcOrigin, sizeIn,
