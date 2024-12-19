@@ -53,13 +53,11 @@ amd::Memory* Heap::FindMemory(size_t size, Stream* stream, bool opportunistic,
       check_address = true;
     }
     // Runtime can accept an allocation with 12.5% on the size threshold
-    bool opp_mode = opportunistic;
     if (it->first.first > (size / 8.0) * 9) {
-      // Disable opportunistic mode for more aggressive search
-      opp_mode = false;
+      return nullptr;
     }
     // Check if size can match and it's safe to use this resource.
-    if (check_address && (it->second.IsSafeFind(stream, opp_mode))) {
+    if (check_address && (it->second.IsSafeFind(stream, opportunistic))) {
       memory = it->first.second;
       total_size_ -= memory->getSize();
       // Preserve event, since the logic could skip GPU wait on reuse
