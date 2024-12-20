@@ -505,7 +505,7 @@ class KernelBlitManager : public DmaBlitManager {
   ) const;
 
   //! Batch memory ops- Submits batch of streamWaits and streamWrite operations.
-  virtual bool batchMemOps(const void* paramArray, size_t paramSize, uint32_t count) const;
+  virtual bool batchMemOps(const void* paramArray, size_t paramSize, uint64_t count) const;
 
   virtual amd::Monitor* lockXfer() const { return &lockXferOps_; }
 
