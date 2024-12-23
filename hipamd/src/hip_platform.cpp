@@ -185,10 +185,14 @@ void __hipRegisterTexture(
 }
 
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
-  // By calling hipDeviceSynchronize ensure that all HSA signal handlers
-  // complete before removeFatBinary
   static std::once_flag unregister_device_sync;
-  std::call_once(unregister_device_sync, hipDeviceSynchronize);
+  std::call_once(unregister_device_sync, [](){
+    for (auto& hipDevice : g_devices) {
+      // By synchronizing devices ensure that all HSA signal handlers
+      // complete before removeFatBinary
+      hipDevice->SyncAllStreams(true);
+    }
+  });
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }
