@@ -2958,38 +2958,6 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 }
 
 // ================================================================================================
-static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
-  if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
-    Device* dev = reinterpret_cast<Device*>(data);
-    for (auto it : dev->vgpus()) {
-      roc::VirtualGPU* vgpu = reinterpret_cast<roc::VirtualGPU*>(it);
-      if (vgpu->gpu_queue() == queue) {
-        vgpu->AnalyzeAqlQueue();
-      }
-    }
-    // Abort on device exceptions.
-    const char* errorMsg = 0;
-    hsa_status_string(status, &errorMsg);
-    if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
-      size_t global_available_mem = 0;
-      if (HSA_STATUS_SUCCESS != hsa_agent_get_info(dev->getBackendDevice(),
-                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
-                         &global_available_mem)) {
-        LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
-      }
-      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
-              "Callback: Queue %p Aborting with error : %s Code: 0x%x Available Free mem : %zu MB",
-              queue->base_address, errorMsg, status, global_available_mem/Mi);
-    } else {
-      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
-        "Callback: Queue %p aborting with error : %s code: 0x%x", queue->base_address,
-        errorMsg, status);
-    }
-    abort();
-  }
-}
-
-// ================================================================================================
 hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
   // Check if queue with refCount 0 is available to use
   if (queuePool_[qIndex].size() < GPU_MAX_HW_QUEUES) {
@@ -3630,6 +3598,39 @@ ProfilingSignal::~ProfilingSignal() {
   }
 }
 
+// ================================================================================================
+void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
+  if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
+    Device* dev = reinterpret_cast<Device*>(data);
+    for (auto it : dev->vgpus()) {
+      roc::VirtualGPU* vgpu = reinterpret_cast<roc::VirtualGPU*>(it);
+      if (vgpu->gpu_queue() == queue) {
+        vgpu->AnalyzeAqlQueue();
+      }
+    }
+    // Abort on device exceptions.
+    const char* errorMsg = 0;
+    hsa_status_string(status, &errorMsg);
+    if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
+      size_t global_available_mem = 0;
+      if (HSA_STATUS_SUCCESS != hsa_agent_get_info(dev->getBackendDevice(),
+                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
+                         &global_available_mem)) {
+        LogError("HSA_AMD_AGENT_INFO_MEMORY_AVAIL query failed.");
+      }
+      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
+              "Callback: Queue %p Aborting with error : %s Code: 0x%x Available Free mem : %zu MB",
+              queue->base_address, errorMsg, status, global_available_mem/Mi);
+    } else {
+      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
+        "Callback: Queue %p aborting with error : %s code: 0x%x", queue->base_address,
+        errorMsg, status);
+    }
+    abort();
+  }
+}
+
+// ================================================================================================
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
 device::UriLocator* Device::createUriLocator() const {

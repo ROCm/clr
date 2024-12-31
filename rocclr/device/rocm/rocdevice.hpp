@@ -701,6 +701,9 @@ class Device : public NullDevice {
 #endif
 #endif
 };                                // class roc::Device
+
+void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data);
+
 }  // namespace amd::roc
 
 /**
