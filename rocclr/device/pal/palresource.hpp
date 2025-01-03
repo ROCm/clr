@@ -535,7 +535,8 @@ typedef Util::BuddyAllocator<Device> MemBuddyAllocator;
 
 class MemorySubAllocator : public amd::HeapObject {
  public:
-  MemorySubAllocator(Device* device) : device_(device) {}
+  MemorySubAllocator(Device* device, bool retain_final_chunk = false)
+      : device_(device), retain_final_chunk_(retain_final_chunk) {}
 
   ~MemorySubAllocator();
 
@@ -553,6 +554,7 @@ class MemorySubAllocator : public amd::HeapObject {
 
   Device* device_;
   std::unordered_map<GpuMemoryReference*, MemBuddyAllocator*> heaps_;
+  bool retain_final_chunk_;
 };
 
 class CoarseMemorySubAllocator : public MemorySubAllocator {
@@ -564,7 +566,8 @@ class CoarseMemorySubAllocator : public MemorySubAllocator {
 
 class FineMemorySubAllocator : public MemorySubAllocator {
  public:
-  FineMemorySubAllocator(Device* device) : MemorySubAllocator(device) {}
+  FineMemorySubAllocator(Device* device)
+      : MemorySubAllocator(device, true /*retain_final_chunk*/) {}
 
   bool CreateChunk(const Pal::IGpuMemory* reserved_va) override;
 };
