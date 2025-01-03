@@ -2207,7 +2207,8 @@ bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pa
 
     it->second->Free(offset);
     // If this suballocator empty, then release memory chunk
-    if (it->second->IsEmpty()) {
+    // while keeping at least one chunk available, if retain_final_chunk is true
+    if (it->second->IsEmpty() && !(retain_final_chunk_ && heaps_.size() == 1)) {
       delete it->second;
       heaps_.erase(it);
       release_mem = true;
