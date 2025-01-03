@@ -6,6 +6,9 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ### Added
 
+### Resolved issues
+
+* Out of memory error on Windows. When the user calls the API hipMalloc for device memory allocation specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). The fix is not available on Linux.
 
 ## HIP 6.3.1 for ROCm 6.3.1
 
