@@ -2513,7 +2513,7 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
 
 // ================================================================================================
 bool KernelBlitManager::batchMemOps(const void* paramArray, size_t paramSize,
-                                    uint64_t count) const {
+                                    uint32_t count) const {
   amd::ScopedLock k(lockXferOps_);
   bool result = false;
   uint blitType = BatchMemOp;
