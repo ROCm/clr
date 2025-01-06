@@ -478,7 +478,7 @@ class KernelBlitManager : public DmaBlitManager {
   //! Batch memory ops- Submits batch of streamWaits and streamWrite operations.
   virtual bool batchMemOps(const void* paramArray,
                            size_t paramSize,
-                           uint64_t count) const {
+                           uint32_t count) const {
     assert(!"Unimplemented");
     return false;
   }

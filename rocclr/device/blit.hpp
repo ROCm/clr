@@ -236,7 +236,7 @@ class BlitManager : public amd::HeapObject {
   //! Stream batch memory operation
   virtual bool batchMemOps(const void* paramArray,
                            size_t paramSize,
-                           uint64_t count
+                           uint32_t count
   ) const = 0;
 
   //! Enables synchronization on blit operations
