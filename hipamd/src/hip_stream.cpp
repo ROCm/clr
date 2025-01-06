@@ -360,10 +360,7 @@ hipError_t hipStreamSynchronize_common(hipStream_t stream) {
   if (stream == nullptr) {
     // Do cpu wait on null stream and only on blocking streams
     constexpr bool WaitblockingStreamOnly = true;
-    getCurrentDevice()->SyncAllStreams(true, WaitblockingStreamOnly);
-
-    // Release freed memory for all memory pools on the device
-    getCurrentDevice()->ReleaseFreedMemory();
+    getCurrentDevice()->SyncAllStreams(false, WaitblockingStreamOnly);
   } else {
     constexpr bool wait = false;
     auto hip_stream = hip::getStream(stream, wait);
