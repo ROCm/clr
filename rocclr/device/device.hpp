@@ -673,8 +673,6 @@ class Settings : public amd::HeapObject {
       uint customHostAllocator_ : 1;  //!< True if device has custom host allocator
                                       //  that replaces generic OS allocation routines
       uint supportDepthsRGB_ : 1;     //!< Support DEPTH and sRGB channel order format
-      uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
-      uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
       uint hsailExplicitXnack_ : 1;   //!< Xnack in hsail path for this device
       uint useLightning_ : 1;         //!< Enable LC path for this device
@@ -689,7 +687,7 @@ class Settings : public amd::HeapObject {
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
       uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
       uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation
-      uint reserved_ : 7;
+      uint reserved_ : 12;
     };
     uint value_;
   };

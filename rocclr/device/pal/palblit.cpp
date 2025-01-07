@@ -1066,7 +1066,7 @@ bool KernelBlitManager::copyBufferToImageKernel(device::Memory& srcMemory,
   bool result = false;
   amd::Image::Format newFormat(gpuMem(dstMemory).desc().format_);
   bool swapLayer =
-      (dstView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
+      dstView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY;
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1388,7 +1388,7 @@ bool KernelBlitManager::copyImageToBufferKernel(device::Memory& srcMemory,
   bool result = false;
   amd::Image::Format newFormat(gpuMem(srcMemory).desc().format_);
   bool swapLayer =
-      (srcView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
+      srcView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY;
 
   // Find unsupported formats
   for (uint i = 0; i < RejectedFormatDataTotal; ++i) {
@@ -1655,16 +1655,14 @@ bool KernelBlitManager::copyImage(device::Memory& srcMemory, device::Memory& dst
 
   // Program source origin
   int32_t srcOrg[4] = {(int32_t)srcOrigin[0], (int32_t)srcOrigin[1], (int32_t)srcOrigin[2], 0};
-  if ((gpuMem(srcMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-      dev().settings().gfx10Plus_) {
+  if (gpuMem(srcMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
     srcOrg[3] = 1;
   }
   setArgument(kernels_[blitType], 2, sizeof(srcOrg), srcOrg);
 
   // Program destinaiton origin
   int32_t dstOrg[4] = {(int32_t)dstOrigin[0], (int32_t)dstOrigin[1], (int32_t)dstOrigin[2], 0};
-  if ((gpuMem(dstMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) &&
-      dev().settings().gfx10Plus_) {
+  if (gpuMem(dstMemory).desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) {
     dstOrg[3] = 1;
   }
   setArgument(kernels_[blitType], 3, sizeof(dstOrg), dstOrg);
@@ -2329,7 +2327,7 @@ bool KernelBlitManager::fillImage(device::Memory& memory, const void* pattern,
   Memory* memView = &gpuMem(memory);
   amd::Image::Format newFormat(gpuMem(memory).owner()->asImage()->getImageFormat());
   bool swapLayer =
-      (memView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY) && dev().settings().gfx10Plus_;
+      memView->desc().topology_ == CL_MEM_OBJECT_IMAGE1D_ARRAY;
 
   // Program the kernels workload depending on the fill dimensions
   fillType = FillImage;

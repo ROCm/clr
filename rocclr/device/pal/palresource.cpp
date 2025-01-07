@@ -1043,12 +1043,7 @@ bool Resource::CreateInterop(CreateParams* params) {
     //! and OGL decompresses 24bit DEPTH into D24S8 for OGL compatibility
     if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
         (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
-      if (dev().settings().gfx10Plus_) {
-        hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
-      } else {
-        hwState_[1] &= ~0x3c000000;
-        hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
-      }
+      hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
     }
     hwState_[8] = GetHSAILImageFormatType(desc().format_);
     hwState_[9] = GetHSAILImageOrderType(desc().format_);
@@ -1253,7 +1248,7 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
 
   // Force remote allocation if it was requested in the settings
   if (dev().settings().remoteAlloc_ && ((memoryType() == Local) || (memoryType() == Persistent))) {
-    if (dev().settings().apuSystem_ && dev().settings().viPlus_) {
+    if (dev().settings().apuSystem_) {
       desc_.type_ = Remote;
     } else {
       desc_.type_ = RemoteUSWC;
@@ -1512,7 +1507,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     // Make sure linear pitch in bytes is 4 bytes aligned
     if (((gpuMemoryRowPitch % 4) != 0) ||
         // another DRM restriciton... SI has 4 pixels
-        (gpuMemoryOffset % 4 != 0) || (dev().settings().sdamPageFaultWar_ && (imageOffsetx != 0))) {
+        (gpuMemoryOffset % 4 != 0) || (imageOffsetx != 0)) {
       return false;
     }
   }

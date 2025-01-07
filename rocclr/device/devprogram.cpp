@@ -1926,12 +1926,8 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
 
     // Set options for the standard device specific options
     // All our devices support these options now
-    if (device().settings().reportFMAF_) {
-      optionsVec.push_back("-DFP_FAST_FMAF=1");
-    }
-    if (device().settings().reportFMA_) {
-      optionsVec.push_back("-DFP_FAST_FMA=1");
-    }
+    optionsVec.push_back("-DFP_FAST_FMAF=1");
+    optionsVec.push_back("-DFP_FAST_FMA=1");
   } else {
 
     if (!isHIP()) {

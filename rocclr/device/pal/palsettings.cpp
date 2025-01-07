@@ -67,10 +67,6 @@ Settings::Settings() {
   pinnedMinXferSize_ = flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)
     ? defaultMinXferSize * Mi : GPU_PINNED_MIN_XFER_SIZE * Mi;
 
-  // Disable FP_FAST_FMA defines by default
-  reportFMAF_ = false;
-  reportFMA_ = false;
-
   // GPU device by default
   apuSystem_ = false;
 
@@ -93,11 +89,6 @@ Settings::Settings() {
   // Use image DMA if requested
   imageDMA_ = GPU_IMAGE_DMA;
 
-  // Disable ASIC specific features by default
-  viPlus_ = false;
-  aiPlus_ = false;
-  gfx10Plus_ = false;
-
   // Number of compute rings.
   numComputeRings_ = 0;
 
@@ -115,9 +106,6 @@ Settings::Settings() {
 
   // Don't support Denormals for single precision by default
   singleFpDenorm_ = false;
-
-  // Disable SDMA workaround by default
-  sdamPageFaultWar_ = false;
 
   // SQTT buffer size in bytes
   rgpSqttDispCount_ = PAL_RGP_DISP_COUNT;
@@ -201,8 +189,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi14:
     case Pal::AsicRevision::Navi12:
     case Pal::AsicRevision::Navi10:
-    case Pal::AsicRevision::Navi10_A0:
-      gfx10Plus_ = true;
       useLightning_ = GPU_ENABLE_LC;
       enableWgpMode_ = GPU_ENABLE_WGP_MODE;
       if (useLightning_) {
@@ -219,51 +205,14 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
         // GFX10.1 HW doesn't support custom pitch. Enable double copy workaround
         imageBufferWar_ = GPU_IMAGE_BUFFER_WAR;
       }
-      // Fall through to AI (gfx9) ...
-    case Pal::AsicRevision::Vega20:
-      // Enable HW P2P path for Vega20+. Runtime still relies on KMD/PAL for support
       enableHwP2P_ = true;
-    case Pal::AsicRevision::Vega12:
-    case Pal::AsicRevision::Vega10:
-    case Pal::AsicRevision::Raven:
-    case Pal::AsicRevision::Raven2:
-    case Pal::AsicRevision::Renoir:
-      aiPlus_ = true;
       enableCoopGroups_ = IS_LINUX;
       enableCoopMultiDeviceGroups_ = IS_LINUX;
       if (useLightning_) {
         singleFpDenorm_ = true;
       }
-    // Fall through to VI ...
-    case Pal::AsicRevision::Carrizo:
-    case Pal::AsicRevision::Bristol:
-    case Pal::AsicRevision::Stoney:
-    case Pal::AsicRevision::Iceland:
-    case Pal::AsicRevision::Tonga:
-    case Pal::AsicRevision::Fiji:
-    case Pal::AsicRevision::Polaris10:
-    case Pal::AsicRevision::Polaris11:
-    case Pal::AsicRevision::Polaris12:
-      // Keep this false even though we have support
-      // singleFpDenorm_ = true;
-      viPlus_ = true;
-      // SDMA may have memory access outside of
-      // the valid buffer range and cause a page fault
-      sdamPageFaultWar_ = true;
       enableExtension(ClKhrFp16);
-    // Fall through to CI ...
-    case Pal::AsicRevision::Kalindi:
-    case Pal::AsicRevision::Godavari:
-    case Pal::AsicRevision::Spectre:
-    case Pal::AsicRevision::Spooky:
-    case Pal::AsicRevision::Bonaire:
-    case Pal::AsicRevision::Hawaii:
-    case Pal::AsicRevision::HawaiiPro:
       threadTraceEnable_ = AMD_THREAD_TRACE_ENABLE;
-      reportFMAF_ = false;
-      if ((palProp.revision == Pal::AsicRevision::Hawaii) || aiPlus_) {
-        reportFMAF_ = true;
-      }
       // Cache line size is 64 bytes
       cacheLineSize_ = 64;
       // L1 cache size is 16KB
@@ -293,13 +242,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
       } else {
         maxAllocSize_ = 3ULL * Gi;
       }
-
-      // Note: More than 4 command buffers may cause a HW hang
-      // with HWSC on pre-gfx9 devices in OCLPerfKernelArguments
-      if (!aiPlus_) {
-        maxCmdBuffers_ = 4;
-      }
-
       supportRA_ = false;
       numMemDependencies_ = GPU_NUM_MEM_DEPENDENCY;
       break;
@@ -345,7 +287,7 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
 
   if (hwLDSSize_ == 0) {
     // Use hardcoded values for now, since PAL properties aren't available with offline devices
-    hwLDSSize_ = (IS_LINUX || amd::IS_HIP || gfx10Plus_) ? 64 * Ki: 32 * Ki;
+    hwLDSSize_ = (IS_LINUX || amd::IS_HIP) ? 64 * Ki: 32 * Ki;
   }
 
   imageSupport_ = true;
@@ -356,10 +298,6 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
   hostMemDirectAccess_ |= HostMemBuffer;
   // HW doesn't support untiled image writes
   // hostMemDirectAccess_ |= HostMemImage;
-
-  // Report FP_FAST_FMA define if double precision HW
-  reportFMA_ = true;
-  reportFMAF_ = true;
 
   if (doublePrecision_) {
     // Enable KHR double precision extension

@@ -84,21 +84,6 @@ struct PalDevice {
 
 static constexpr PalDevice supportedPalDevices[] = {
 // GFX Version PAL GFX IP Level            PAL Name         PAL ASIC Revision
-  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Carrizo",       Pal::AsicRevision::Carrizo},
-  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Bristol Ridge", Pal::AsicRevision::Bristol},
-  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Iceland",       Pal::AsicRevision::Iceland},
-  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Tonga",         Pal::AsicRevision::Tonga}, // Also Tongapro (generated code is for Tonga)
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Fiji",          Pal::AsicRevision::Fiji},
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Ellesmere",     Pal::AsicRevision::Polaris10}, // Ellesmere
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Baffin",        Pal::AsicRevision::Polaris11}, // Baffin
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris12}, // Lexa
-  {8,  1,  0,  Pal::GfxIpLevel::GfxIp8_1,  "Stoney",        Pal::AsicRevision::Stoney},
-  {9,  0,  0,  Pal::GfxIpLevel::GfxIp9,    "gfx900",        Pal::AsicRevision::Vega10},
-  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven},
-  {9,  0,  4,  Pal::GfxIpLevel::GfxIp9,    "gfx904",        Pal::AsicRevision::Vega12},
-  {9,  0,  6,  Pal::GfxIpLevel::GfxIp9,    "gfx906",        Pal::AsicRevision::Vega20},
-  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven2},
-  {9,  0, 12,  Pal::GfxIpLevel::GfxIp9,    "gfx90c",        Pal::AsicRevision::Renoir},
   {10, 1,  0,  Pal::GfxIpLevel::GfxIp10_1, "gfx1010",       Pal::AsicRevision::Navi10},
   {10, 1,  1,  Pal::GfxIpLevel::GfxIp10_1, "gfx1011",       Pal::AsicRevision::Navi12},
   {10, 1,  2,  Pal::GfxIpLevel::GfxIp10_1, "gfx1012",       Pal::AsicRevision::Navi14},
@@ -391,10 +376,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   if (settings().checkExtension(ClKhrFp64)) {
     info_.doubleFPConfig_ = info_.singleFPConfig_ | CL_FP_DENORM;
   }
-
-  if (settings().reportFMA_) {
-    info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
-  }
+  info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
 
   if (settings().checkExtension(ClKhrFp16)) {
     info_.halfFPConfig_ = info_.singleFPConfig_;
@@ -587,7 +569,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (settings().svmFineGrainSystem_) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
-    if (amd::IS_HIP && ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
+    if (amd::IS_HIP) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
     }
 
