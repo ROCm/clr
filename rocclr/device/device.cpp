@@ -1092,9 +1092,14 @@ Settings::Settings() : value_(0) {
   waitCommand_ = AMD_OCL_WAIT_COMMAND;
   supportDepthsRGB_ = false;
   fenceScopeAgent_ = AMD_OPT_FLUSH;
-  if (amd::IS_HIP) {
+
+  // Amend certain flags for OpenCL
+  if (!amd::IS_HIP) {
     if (flagIsDefault(GPU_SINGLE_ALLOC_PERCENT)) {
-      GPU_SINGLE_ALLOC_PERCENT = 100;
+      GPU_SINGLE_ALLOC_PERCENT = 85;
+    }
+    if (flagIsDefault(GPU_FORCE_BLIT_COPY_SIZE)) {
+      GPU_FORCE_BLIT_COPY_SIZE = 0;
     }
   }
 
