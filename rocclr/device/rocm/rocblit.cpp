@@ -2540,7 +2540,7 @@ bool KernelBlitManager::batchMemOps(const void* paramArray, size_t paramSize,
   memcpy(constBuf, paramArray, (count * paramSize));
 
   setArgument(kernels_[blitType], 0, sizeof(cl_mem), constBuf, 0, nullptr, kDirectVa);
-  setArgument(kernels_[blitType], 1, sizeof(cl_mem), &count);
+  setArgument(kernels_[blitType], 1, sizeof(uint32_t), &count);
 
   // Create ND range object for the kernel's execution
   amd::NDRangeContainer ndrange(dim, globalWorkOffset, globalWorkSize, localWorkSize);
