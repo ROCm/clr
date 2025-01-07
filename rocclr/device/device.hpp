@@ -1981,12 +1981,6 @@ class Device : public RuntimeObject {
     return false;
   };
 
-  // Returns the status of HW event, associated with amd::Event
-  virtual bool IsHwEventReadyForcedWait(
-      const amd::Event& event) const {  //!< AMD event for HW status validation
-    return false;
-  };
-
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const {};
 
   virtual const uint32_t getPreferredNumaNode() const { return 0; }

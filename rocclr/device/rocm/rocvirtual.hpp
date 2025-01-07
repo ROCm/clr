@@ -46,23 +46,11 @@ constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
-// Active wait time out incase same sdma engine is used again,
-// then just wait instead of adding dependency wait signal.
-constexpr static uint64_t kForcedTimeout10us = 10;
-
-template <bool active_wait_timeout = false>
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
   if (hsa_signal_load_relaxed(signal) > 0) {
     uint64_t timeout = kTimeout100us;
     if (active_wait) {
       timeout = kUnlimitedWait;
-    }
-    if (active_wait_timeout) {
-      // If forced wait is set, then wait for 10us, else dont wait. (ns * K = us)
-      timeout = (forced_wait ? kForcedTimeout10us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
-      if (timeout == 0) {
-        return false;
-      }
     }
 
     ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
@@ -71,9 +59,6 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
     // Active wait with a timeout
     if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                   timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-      if (active_wait_timeout) {
-        return false;
-      }
       ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
               signal.handle);
 
@@ -269,7 +254,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Finds a free signal for the upcomming operation
     hsa_signal_t ActiveSignal(hsa_signal_value_t init_val = kInitSignalValueOne,
-                              Timestamp* ts = nullptr, bool forceHostWait = true);
+                              Timestamp* ts = nullptr);
 
     //! Wait for the curent active signal. Can idle the queue
     bool WaitCurrent() {
@@ -282,8 +267,7 @@ class VirtualGPU : public device::VirtualDevice {
     HwQueueEngine GetActiveEngine() const { return engine_; }
 
     //! Returns the last submitted signal for a wait
-    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute,
-                                             bool forceHostWait = true);
+    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
 
     //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
     void ResetCurrentSignal();

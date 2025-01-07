@@ -2915,18 +2915,6 @@ bool Device::SetClockMode(const cl_set_device_clock_mode_input_amd setClockModeI
 }
 
 // ================================================================================================
-bool Device::IsHwEventReadyForcedWait(const amd::Event& event) const {
-  void* hw_event =
-      (event.NotifyEvent() != nullptr) ? event.NotifyEvent()->HwEvent() : event.HwEvent();
-  if (hw_event == nullptr) {
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "No HW event");
-    return false;
-  }
-  static constexpr bool Timeout = true;
-  return WaitForSignal<Timeout>(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, false, true);
-}
-
-// ================================================================================================
 bool Device::IsHwEventReady(const amd::Event& event, bool wait, uint32_t hip_event_flags) const {
   void* hw_event =
       (event.NotifyEvent() != nullptr) ? event.NotifyEvent()->HwEvent() : event.HwEvent();
