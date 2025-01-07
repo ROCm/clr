@@ -532,7 +532,7 @@ unsigned int atomicMin_system(unsigned int* address, unsigned int val) {
 
 __device__
 inline
-unsigned long long atomicMin(unsigned long* address, unsigned long val) {
+unsigned long atomicMin(unsigned long* address, unsigned long val) {
 #if defined(__gfx941__)
   return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
     address,
