@@ -422,7 +422,7 @@ bool VirtualGPU::HwQueueTracker::Create() {
 
 // ================================================================================================
 hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
-    hsa_signal_value_t init_val, Timestamp* ts, bool forceHostWait) {
+    hsa_signal_value_t init_val, Timestamp* ts) {
   bool new_signal = false;
 
   // Peep signal +2 ahead to see if its done
@@ -502,7 +502,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   prof_signal->flags_.done_ = false;
   prof_signal->engine_ = engine_;
   prof_signal->flags_.isPacketDispatch_ = false;
-  prof_signal->flags_.forceHostWait_ = forceHostWait;
   if (ts != 0) {
     // Save HSA signal earlier to make sure the possible callback will have a valid
     // value for processing
@@ -548,8 +547,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
 }
 
 // ================================================================================================
-std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine,
-                                                                     bool forceHostWait) {
+std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngine engine) {
   bool explicit_wait = false;
   // Reset all current waiting signals
   waiting_signals_.clear();
@@ -595,17 +593,12 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
     // Early signal status check
     if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
       const Settings& settings = gpu_.dev().settings();
-      // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
-      // For small copies set forced wait
-      if (!WaitForSignal<true>(external_signals_[i]->signal_, false, forceHostWait ?
-                               external_signals_[i]->flags_.forceHostWait_ : false)) {
-        if (settings.cpu_wait_for_signal_) {
-          // Wait on CPU for completion if requested
-          CpuWaitForSignal(external_signals_[i]);
-        } else {
-          // Add HSA signal for tracking on GPU
-          waiting_signals_.push_back(external_signals_[i]->signal_);
-        }
+      if (settings.cpu_wait_for_signal_) {
+        // Wait on CPU for completion if requested
+        CpuWaitForSignal(external_signals_[i]);
+      } else {
+        // Add HSA signal for tracking on GPU
+        waiting_signals_.push_back(external_signals_[i]->signal_);
       }
     }
   }

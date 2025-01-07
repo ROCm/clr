@@ -518,14 +518,8 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   }
 
   gpu().Barriers().SetActiveEngine(engine);
-  // Check if host wait has to be forced
-  bool forceHostWait = forceHostWaitFunc(size);
-
-  constexpr bool kIgnoreHostWait = false;
-  // Ignore waiting on any previous kernel dispatch and queue a signal to ROCr copy api instead
-  auto wait_events = gpu().Barriers().WaitingSignal(engine, kIgnoreHostWait);
-  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp(),
-                                                      forceHostWait);
+  auto wait_events = gpu().Barriers().WaitingSignal(engine);
+  hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
     if (copyMask == 0) {
@@ -2633,26 +2627,6 @@ amd::Memory* DmaBlitManager::pinHostMemory(const void* hostMem, size_t pinSize,
   }
 
   return amdMemory;
-}
-
-bool DmaBlitManager::forceHostWaitFunc(size_t copy_size) const {
-  // 10us wait is true for all other targets.
-  bool forceHostWait = true;
-  // Based on the profiled results, do not wait for copy size > 24 KB.
-  static constexpr size_t kGfx90aCopyThreshold = 24;
-
-  if ((dev().isa().versionMajor() == 9 && dev().isa().versionMinor() == 0
-       && dev().isa().versionStepping() == 10) && (copy_size >= kGfx90aCopyThreshold * Ki)) {
-    // Check if this is gfx90a and restrict small copy to 24K.
-    forceHostWait = false;
-  } else if ((dev().isa().versionMajor() == 9) && (dev().isa().versionMinor() == 4)
-              && (dev().isa().versionStepping() == 0 || dev().isa().versionStepping() == 1
-                  || dev().isa().versionStepping() == 2)) {
-    // for gfx940, gfx941, gfx942, dependency signal resolution is fast, so no Host wait at all.
-    forceHostWait = false;
-  }
-
-  return forceHostWait;
 }
 
 Memory* KernelBlitManager::createView(const Memory& parent, cl_image_format format,

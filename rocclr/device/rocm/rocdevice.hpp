@@ -86,10 +86,9 @@ public:
   typedef union {
     struct {
       uint32_t  done_            :  1; //!< True if signal is done
-      uint32_t  forceHostWait_   :  1; //!< Force Host Wait for dependency signals
       uint32_t  isPacketDispatch_:  1; //!< True if the packet, used with the signal, is dispatch
       uint32_t  interrupt_       :  1; //!< True if the signal will trigger an interrupt
-      uint32_t  reserved_        : 28;
+      uint32_t  reserved_        : 29;
     };
     uint32_t data_;
   } Flags;
@@ -104,7 +103,6 @@ public:
       signal_.handle = 0;
       flags_.data_ = 0;
       flags_.done_ = true;
-      flags_.forceHostWait_ = true;
     }
 
   virtual ~ProfilingSignal();
@@ -298,7 +296,6 @@ class NullDevice : public amd::Device {
     return false;
   }
 
-  bool IsHwEventReadyForcedWait(const amd::Event& event) const override { return false; }
   void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const override{};
   void ReleaseGlobalSignal(void* signal) const override {}
 
@@ -498,7 +495,6 @@ class Device : public NullDevice {
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false,
                               uint32_t hip_event_flags = 0) const;
-  virtual bool IsHwEventReadyForcedWait(const amd::Event& event) const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
   virtual void ReleaseGlobalSignal(void* signal) const;
 

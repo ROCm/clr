@@ -260,8 +260,6 @@ class DmaBlitManager : public device::HostBlitManager {
                      bool hostToDev,                  //!< True if data is copied from H2D
                      amd::CopyMetadata& copyMetadata  //!< Memory copy MetaData
                      ) const;
-
-  bool forceHostWaitFunc(size_t copy_size) const;
 };
 
 //! Kernel Blit Manager
