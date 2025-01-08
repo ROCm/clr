@@ -1869,7 +1869,7 @@ bool Device::populateOCLDeviceConstants() {
       break;
     case (9):
       if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
-          (isa().versionMinor() == 4)) {
+          isa().versionMinor() == 4 || isa().versionMinor() == 5) {
         info_.vgprAllocGranularity_ = 8;
         info_.vgprsPerSimd_ = 512;
       } else {
