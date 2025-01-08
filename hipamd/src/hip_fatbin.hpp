@@ -109,6 +109,9 @@ public:
     return hipSuccess;
   }
 
+  //! Returns the lock for this fatbinary access
+  amd::Monitor& FatBinaryLock() { return fb_lock_; }
+
 private:
   std::string fname_;        //!< File name
   amd::Os::FileDesc fdesc_;  //!< File descriptor
@@ -126,6 +129,7 @@ private:
   std::vector<FatBinaryDeviceInfo*> fatbin_dev_info_;
 
   std::shared_ptr<UniqueFD> ufd_; //!< Unique file descriptor
+  amd::Monitor fb_lock_{true};    //!< Lock for the fat binary access
 };
 
 }; // namespace hip

@@ -96,7 +96,6 @@ private:
   std::vector<DeviceFunc*> dFunc_;  //!< DeviceFuncObj per Device
   std::string name_;                //!< name of the func(not unique identifier)
   FatBinaryInfo** modules_;         //!< static module where it is referenced
-  amd::Monitor fc_lock_{true};      //!< Lock for the function create
 };
 
 class Var {
