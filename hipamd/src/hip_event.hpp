@@ -106,7 +106,6 @@ class Event {
 
   Event(uint32_t flags) : flags_(flags), lock_(true) /* hipEvent_t lock*/,
                               event_(nullptr), unrecorded_(false), stream_(nullptr) {
-    // No need to init event_ here as addMarker does that
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
   }
 

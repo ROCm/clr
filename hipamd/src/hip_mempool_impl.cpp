@@ -97,7 +97,7 @@ Heap::SortedMap::iterator Heap::EraseAllocaton(Heap::SortedMap::iterator& it) {
   const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
   void* dev_mem_vaddr = reinterpret_cast<void*>(dev_mem->virtualAddress());
   total_size_ -= it->first.first;
-  
+
   if (dev_mem_vaddr != nullptr) {
     amd::SvmBuffer::free(memory->getContext(), dev_mem_vaddr);
   } else {

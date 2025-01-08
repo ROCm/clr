@@ -237,7 +237,9 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
 // ================================================================================================
 hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
   command->enqueue();
-  if (event_ == &command->event()) return hipSuccess;
+  if (event_ == &command->event()) {
+    return hipSuccess;
+  }
   if (event_ != nullptr) {
     event_->release();
   }
@@ -250,7 +252,9 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
 // ================================================================================================
 hipError_t Event::addMarker(hipStream_t stream, amd::Command* command,
                             bool record, bool batch_flush) {
-  hip::Stream* hip_stream = hip::getStream(stream);
+  // Skip wait as we should not be resolving stream in this sub
+  constexpr bool kSkipWait = true;
+  hip::Stream* hip_stream = hip::getStream(stream, kSkipWait);
   // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
   amd::ScopedLock lock(lock_);
   hipError_t status = recordCommand(command, hip_stream, 0, batch_flush);
