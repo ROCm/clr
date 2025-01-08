@@ -734,12 +734,6 @@ void PlatformState::init() {
     return;
   }
   initialized_ = true;
-  for (auto& it : statCO_.modules_) {
-    hipError_t err = digestFatBinary(it.first, it.second);
-    if (err != hipSuccess) {
-      HIP_ERROR_PRINT(err, "continue parsing remaining modules");
-    }
-  }
   for (auto& it : statCO_.vars_) {
     it.second->resize_dVar(g_devices.size());
   }

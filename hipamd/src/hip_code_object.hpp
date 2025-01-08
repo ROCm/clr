@@ -190,7 +190,11 @@ private:
   //Populated during __hipRegisterVars
   std::unordered_map<const void*, Var*> vars_;
   //Populated during __hipRegisterManagedVar
-  std::vector<Var*> managedVars_;
+  std::unordered_map<FatBinaryInfo**, std::vector<Var*> > managedVars_;
+  //Reverse mapping of modules to speed up removal
+  std::unordered_map<FatBinaryInfo**, const void*> module_to_hostModule_;
+  std::unordered_map<FatBinaryInfo**, std::vector<const void*> > module_to_hostFunctions_;
+  std::unordered_map<FatBinaryInfo**, std::vector<const void*> > module_to_hostVars_;
   std::unordered_map<int, bool> managedVarsDevicePtrInitalized_;
 };
 
