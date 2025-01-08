@@ -569,6 +569,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 }
 
 hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devices) {
+  amd::ScopedLock lock(FatBinaryLock());
   if (!HIP_USE_RUNTIME_UNBUNDLER) {
     bool containGenericTarget = false;
     hipError_t status = ExtractFatBinaryUsingCOMGR(devices, containGenericTarget);
