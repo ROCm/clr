@@ -2261,7 +2261,8 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     // Check CL_MEM_SVM_ATOMICS flag to see if we used system_coarse_segment_
     auto memFlags = srcMemory.owner()->getMemFlags();
     bool srcSvmAtomics = (memFlags & CL_MEM_SVM_ATOMICS) != 0;
-    if (!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) {
+    if ((!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) ||
+        (dstMemory.isHostMemDirectAccess())) {
       gpu().addSystemScope();
     }
     result = shaderCopyBuffer(reinterpret_cast<address>(dstMemory.virtualAddress()),
