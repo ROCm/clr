@@ -283,8 +283,9 @@ __FP8_HOST_DEVICE_STATIC__ __hip_fp8_storage_t cast_to_f8(T _x, int wm, int we, 
   }
   // Deal with inf and NaNs
   if ((x & fInf) == fInf) {
-    if (is_fnuz) return signed_inf;
-    return mantissa != 0 ? nan : signed_inf;
+    if (is_fnuz || we == 4) return nan;  // funz and OCP E4M3 has no INF
+    if (mantissa != 0) return nan;       // NaN
+    return sign == 0 ? 0x7C : 0xFC;      // E5M2 Inf
   }
 
   if ((x & mask) > ifmax) {
@@ -467,8 +468,8 @@ __FP8_HOST_DEVICE_STATIC__ T cast_from_f8(__hip_fp8_storage_t x, int wm, int we,
       if ((x & 0x7F) == 0x7F) {
         return fNaN;
       }
-    } else if ((x & 0x7C) == 0x7C) {  // e5m2
-      if ((x & 0x3) == 0) {
+    } else if ((x & 0x7C) == 0x7C) {  // e5m2 NaN/Inf
+      if ((x & 0x3) == 0) { // Inf
         if (clip) {
           return sign ? fmin : fmax;
         }
@@ -2736,8 +2737,7 @@ struct __hip_fp8_e5m2 {
 #if HIP_FP8_CVT_FAST_PATH
     return internal::cast_to_f32_from_f8(__x, __default_interpret);
 #else
-    return internal::cast_from_f8<float, false>(__x, __wm, __we,
-                                                __default_saturation == __HIP_SATFINITE);
+    return internal::cast_from_f8<float, false>(__x, __wm, __we);
 #endif
   }
 
