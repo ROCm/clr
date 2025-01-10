@@ -10,6 +10,37 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 * Out of memory error on Windows. When the user calls the API hipMalloc for device memory allocation specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). The fix is not available on Linux.
 
+
+## HIP 6.3.2 for ROCm 6.3.2
+
+### Added
+
+* Tracking of Heterogeneous System Architecture (HSA) handlers:
+    - Adds an atomic counter to track the outstanding HSA handlers.
+    - Waits on CPU for the callbacks if the number exceeds the defined value.
+* Codes to capture Architected Queueing Language (AQL) packets for HIP graph memory copy node between host and device. HIP enqueues AQL packets during graph launch.
+* Control to use system pool implementation in runtime commands handling. By default, it is disabled.
+* A new path to avoid `WaitAny` calls in `AsyncEventsLoop`. The new path is selected by default.
+* Runtime control on decrement counter only if event is popped. There is a new way to restore dead signals cleanup for the old path.
+* A new logic in runtime to track the age of events from the kernel mode driver.
+
+### Optimized
+
+* HSA callback performance. The HIP runtime creates and submits commands in the queue and interacts with HSA through a callback function. HIP waits for the CPU status from HSA to optimize handling of events, profiling, commands, and HSA signals for higher performance.
+* Runtime optimisation which combines all logic of `WaitAny` in a single processing loop and avoids extra memory allocations or reference counting. The runtime won't spin on the CPU if all events are busy.
+* Multi-threaded dispatches for performance improvement.
+* Command submissions and processing between CPU and GPU by introducing a way to limit the software batch size.
+* Switch to `std::shared_mutex` in book/keep logic in streams from multiple threads simultaneously, for performance improvement in specific customer applications.
+* `std::shared_mutex` is used in memory object mapping, for performance improvement.
+
+### Resolved issues
+
+* Race condition in multi-threaded producer/consumer scenario with `hipMallocFromPoolAsync`.
+* Segmentation fault with `hipStreamLegacy` while using the API `hipStreamWaitEvent`.
+* Usage of `hipStreamLegacy` in HIP event record.
+* A soft hang in graph execution process from HIP user object. The fix handles the release of graph execution object properly considering synchronization on the device/stream. The user application now behaves the same with  hipUserObject  on both the AMD ROCm and NVIDIA CUDA platforms.
+
+
 ## HIP 6.3.1 for ROCm 6.3.1
 
 ### Added
@@ -20,10 +51,6 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 * A Deadlock in a specific customer application by preventing hipLaunchKernel latency degradation with number of idle streams.
 
-
-### Resolved issues
-* Fixed a performance issue where the kernel launch efficiency on the default stream declined
-  with increasing number of user-created streams.
 
 ## HIP 6.3 for ROCm 6.3
 
