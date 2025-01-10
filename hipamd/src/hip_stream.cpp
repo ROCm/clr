@@ -394,7 +394,7 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   if (stream == nullptr) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
-  if (stream == hipStreamPerThread) {
+  if (stream == hipStreamPerThread || stream == hipStreamLegacy) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
   }
   if (!hip::isValid(stream)) {
