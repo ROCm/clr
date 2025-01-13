@@ -42,7 +42,7 @@ namespace amd {
 class Thread;
 
 //! \brief Counting semaphore
-class alignas(64) Semaphore : public HeapObject {
+class Semaphore : public HeapObject {
  private:
   std::atomic_int state_;  //!< This semaphore's value.
 
@@ -66,9 +66,6 @@ public:
   //! \brief Reset this semaphore.
   void reset() { state_.store(0, std::memory_order_release); }
 };
-
-static_assert(sizeof(Semaphore) == 64 ,
-              "unexpected total size of Semaphore");
 
 /*! @}
  *  @}
