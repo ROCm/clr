@@ -132,7 +132,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
   Device& rootDev = device;
 
   // if the rootDev is already associated with a program
-  if (devicePrograms_[&rootDev] != NULL) {
+  if (getDeviceProgram(rootDev) != NULL) {
     return CL_SUCCESS;
   }
 
