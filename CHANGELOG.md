@@ -6,6 +6,14 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ### Added
 
+* New HIP APIs
+    - `hipDeviceGetTexture1DLinearMaxWidth`  returns the maximum width of elements in a 1D linear texture, that can be allocated on the specified device.
+    - `hipStreamBatchMemOp`  enqueues an array of batch memory operations in the stream, for stream synchronization.
+    - `hipGraphAddBatchMemOpNode`  creates a batch memory operation node and adds it to a graph.
+    - `hipGraphBatchMemOpNodeGetParams`  returns the pointer of parameters from the batch memory operation node.
+    - `hipGraphBatchMemOpNodeSetParams`  sets parameters for the batch memory operation node.
+    - `hipGraphExecBatchMemOpNodeSetParams`  sets the parameters for a batch memory operation node in the given executable graph.
+
 ### Resolved issues
 
 * Out of memory error on Windows. When the user calls the API hipMalloc for device memory allocation specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). The fix is not available on Linux.
