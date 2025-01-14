@@ -1227,8 +1227,20 @@ bool Program::linkImplLC(amd::option::Options* options) {
   codegenOptions.push_back(optLevel.str());
 
   // Pass clang options
-  codegenOptions.insert(codegenOptions.end(),
-      options->clangOptions.begin(), options->clangOptions.end());
+  if (continueCompileFrom != FILE_TYPE_ASM_TEXT) {
+    std::copy_if(
+      options->clangOptions.begin(),
+      options->clangOptions.end(),
+      std::back_inserter(codegenOptions),
+      [](const std::string& opt) {
+        return opt.rfind("-I", 0) != 0;
+      }
+    );
+  } else {
+    codegenOptions.insert(codegenOptions.end(),
+                          options->clangOptions.begin(),
+                          options->clangOptions.end());
+  }
 
   // Temporarily disable problematic pass for some Adobe apps.
   {
