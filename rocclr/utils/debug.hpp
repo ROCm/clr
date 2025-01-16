@@ -70,7 +70,12 @@ enum LogMask {
 
 // Flags to support backward incompatible changes before 7.0
 enum BreakingHipChange7 {
-  CHANGE_HIP_GET_LAST_ERROR = 1,              //!< (0x1)     HIP_GET_LAST_ERROR
+  CHANGE_HIP_GET_LAST_ERROR         = 1 << 0,        //!< (0x1)     HIP_GET_LAST_ERROR
+  CHANGE_HIP_POINTER_GET_ATTRIBUTES = 1 << 1,        //!< (0x2)     HIP_POINTER_GET_ATTRIBUTES
+  CHANGE_HIP_LAUNCH_KERNEL          = 1 << 2,        //!< (0x4)     HIP_LAUNCH_KERNEL
+  CHANGE_HIP_MODULE_LOAD            = 1 << 3,        //!< (0x8)     HIP_MODULE_LOAD
+  CHANGE_HIP_TEXTURE_API            = 1 << 4,        //!< (0x10)    HIP_TEXTURE_API
+  CHANGE_HIP_STREAM_CAPTURE_API     = 1 << 5,        //!< (0x20)    HIP_STREAM_CAPTURE_API
 };
 
 //! \brief log file output
