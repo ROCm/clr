@@ -63,6 +63,7 @@ bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
   } else {
     size_t copySize = size[0];
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned read path");
     if (0 != copySize) {
       const_address addrSrc = gpuMem(srcMemory).getDeviceMemory() + origin[0];
       address addrDst = reinterpret_cast<address>(dstHost);
@@ -516,6 +517,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
     copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
+  gpu().Barriers().SetActiveEngine(engine);
   // Check if host wait has to be forced
   bool forceHostWait = forceHostWaitFunc(size);
 
