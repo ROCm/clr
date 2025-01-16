@@ -1871,9 +1871,9 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 unsafeAtomicAdd(__hip_bfloat16 *address,
 
   __hip_bfloat162 fval;
   if (is_lower)
-    fval = __halves2bfloat162(value, 0);
+    fval = __halves2bfloat162(value, __float2bfloat16(0.0f));
   else
-    fval = __halves2bfloat162(0, value);
+    fval = __halves2bfloat162(__float2bfloat16(0.0f), value);
 
   __hip_bfloat162 *in = (__hip_bfloat162 *)(aligned_addr);
   __hip_bfloat162 out =  unsafeAtomicAdd(in , fval);

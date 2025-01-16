@@ -1567,9 +1567,9 @@ THE SOFTWARE.
                                 __builtin_bit_cast(unsigned long long int, address);
                 __half2 fval;
                 if (is_lower)
-                  fval = __halves2half2(value, 0);
+                  fval = __halves2half2(value, __float2half(0.0f));
                 else
-                  fval = __halves2half2(0, value);
+                  fval = __halves2half2(__float2half(0.0f), value);
 
                 __half2 *in = (__half2 *)(aligned_addr);
                 __half2 out =  unsafeAtomicAdd(in , fval);
