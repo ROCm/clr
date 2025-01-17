@@ -1601,7 +1601,7 @@ hipError_t hipGraphLaunch_common(hip::GraphExec* graphExec, hipStream_t stream) 
   if (graphExec == nullptr || !hip::GraphExec::isGraphExecValid(graphExec)) {
     return hipErrorInvalidValue;
   }
-  if (graphExec->clonedNodes_.empty()) {
+  if (graphExec->GetNodeCount() == 0) {
     return hipSuccess;
   }
   if (!hip::isValid(stream)) {
@@ -2286,7 +2286,7 @@ hipError_t hipGraphClone(hipGraph_t* pGraphClone, hipGraph_t originalGraph) {
   if (!hip::Graph::isGraphValid(g)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  for (auto n : g->vertices_) {
+  for (auto n : g->GetNodes()) {
     if (n->GetType() == hipGraphNodeTypeMemAlloc ||
         n->GetType() == hipGraphNodeTypeMemFree) {
       HIP_RETURN(hipErrorNotSupported);
@@ -2664,8 +2664,8 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
     if (newGraphNodes[i]->GetType() == oldGraphExecNodes[i]->GetType()) {
       if (newGraphNodes[i]->GetType() != hipGraphNodeTypeHost &&
           newGraphNodes[i]->GetType() != hipGraphNodeTypeEmpty) {
-        if (newGraphNodes[i]->GetParentGraph()->device_ !=
-            oldGraphExecNodes[i]->GetParentGraph()->device_) {
+        if (newGraphNodes[i]->GetParentGraph()->Device() !=
+            oldGraphExecNodes[i]->GetParentGraph()->Device()) {
           *updateResult_out = hipGraphExecUpdateErrorUnsupportedFunctionChange;
           *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
           return hipErrorGraphExecUpdateFailure;
