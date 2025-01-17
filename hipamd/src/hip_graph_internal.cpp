@@ -551,7 +551,7 @@ bool Graph::RunOneNode(Node node, bool wait) {
     if (node->GetType() == hipGraphNodeTypeGraph) {
       // Process child graph separately, since, there is no connection
       auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->GetChildGraph();
-      if (!reinterpret_cast<hip::ChildGraphNode*>(node)->graphCaptureStatus_) {
+      if (!reinterpret_cast<hip::ChildGraphNode*>(node)->GetGraphCaptureStatus()) {
         child->RunNodes(node->stream_id_, &streams_, &waitList);
       }
     } else {

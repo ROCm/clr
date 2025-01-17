@@ -41,20 +41,22 @@ typedef struct ihipExtKernelEvents {
 } ihipExtKernelEvents;
 
 namespace hip {
-struct Graph;
-struct GraphNode;
-struct GraphExec;
-struct UserObject;
+class Graph;
+class GraphNode;
+class GraphExec;
+class UserObject;
+class GraphKernelNode;
 typedef GraphNode* Node;
-struct UserObject : public amd::ReferenceCountedObject {
+
+class UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
-  static std::unordered_set<UserObject*> ObjectSet_;
-  static amd::Monitor UserObjectLock_;
+
+ public:
   // Graphs owns this user object.
   // In case if User object is about to be deleted (last release()), Pointer refering to it
   // should be cleared from Graph's list of user object.
   std::unordered_set<Graph*> owning_graphs_;
- public:
+
   UserObject(UserCallbackDestructor callback, void* data, unsigned int flags)
       : ReferenceCountedObject(), callback_(callback), data_(data), flags_(flags) {
     amd::ScopedLock lock(UserObjectLock_);
@@ -108,9 +110,11 @@ struct UserObject : public amd::ReferenceCountedObject {
   UserObject& operator=(const UserObject&) = delete;
   //! Disable copy constructor
   UserObject(const UserObject& obj) = delete;
+  static std::unordered_set<UserObject*> ObjectSet_;
+  static amd::Monitor UserObjectLock_;
 };
 
-struct hipGraphNodeDOTAttribute {
+class hipGraphNodeDOTAttribute {
  protected:
   std::string style_;
   std::string shape_;
@@ -147,7 +151,8 @@ struct hipGraphNodeDOTAttribute {
   virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {}
 };
 
-class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::GraphKernelArgManager  {
+class GraphKernelArgManager : public amd::ReferenceCountedObject,
+                              public amd::GraphKernelArgManager {
  public:
   GraphKernelArgManager() : amd::ReferenceCountedObject() {}
   ~GraphKernelArgManager() {
@@ -184,38 +189,10 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject, public amd::Gr
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
-struct GraphNode : public hipGraphNodeDOTAttribute {
- protected:
-  // Declare Graph and GraphExec as friends of node for simpler access to GraphNode fields
-  friend class Graph;
-  friend class GraphExec;
-  hip::Stream* stream_ = nullptr;
-  unsigned int id_;
-  hipGraphNodeType type_;
-  std::vector<amd::Command*> commands_;
-  std::vector<Node> edges_;
-  std::vector<Node> dependencies_;
-  bool visited_;
-  size_t inDegree_;     //!< count of in coming edges (@todo: remove, it's dependencies_.size())
-  size_t outDegree_;    //!< count of outgoing edges (@todo: remove, it's edges_.size())
-  int32_t stream_id_ = -1;  //! Stream ID on which this node will be executed
-  int32_t launch_id_ = -1;  //! Launch ID of this node in the entire graph execution sequence
-  static int nextID;
-  struct Graph* parentGraph_;
-  static std::unordered_set<GraphNode*> nodeSet_;
-  static amd::Monitor nodeSetLock_;
-  static amd::Monitor WorkerThreadLock_;
-  unsigned int isEnabled_;
-  bool signal_is_required_ = false; //!< This node requires a signal on the command
-  std::vector<uint8_t *> gpuPackets_; //!< GPU Packet to enqueue during graph launch
-  std::string capturedKernelName_;
-  size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
-  size_t kernargSegmentByteSize_ = 512;   //!< Kernel arg segment byte size
-  size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
-
+class GraphNode : public hipGraphNodeDOTAttribute {
  public:
   GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
-               std::string label = "")
+            std::string label = "")
       : type_(type),
         visited_(false),
         inDegree_(0),
@@ -263,7 +240,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     return true;
   }
   // Return gpu packet address to update with actual packet under capture.
-  std::vector<uint8_t *>& GetAqlPackets() { return gpuPackets_; }
+  std::vector<uint8_t*>& GetAqlPackets() { return gpuPackets_; }
   void SetKernelName(const std::string& kernelName) { capturedKernelName_ = kernelName; }
   const std::string& GetKernelName() const { return capturedKernelName_; }
   size_t GetKerArgSize() const { return alignedKernArgSize_; }
@@ -290,9 +267,7 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
   }
   hip::Stream* GetQueue() const { return stream_; }
 
-  virtual void SetStream(hip::Stream* stream) {
-    stream_ = stream;
-  }
+  virtual void SetStream(hip::Stream* stream) { stream_ = stream; }
   //! Updates the grpah node with the execution stream
   void SetStream(
     const std::vector<hip::Stream*>& streams  //!< A pool of streams to use in graph's execution
@@ -468,40 +443,44 @@ struct GraphNode : public hipGraphNodeDOTAttribute {
     out << "\"";
     out << "];";
   }
+
+ protected:
+  // Declare Graph and GraphExec as friends of node for simpler access to GraphNode fields
+  friend class Graph;
+  friend class GraphExec;
+  hip::Stream* stream_ = nullptr;
+  unsigned int id_;
+  hipGraphNodeType type_;
+  std::vector<amd::Command*> commands_;
+  std::vector<Node> edges_;
+  std::vector<Node> dependencies_;
+  bool visited_;
+  size_t inDegree_;         //!< count of in coming edges (@todo: remove, it's dependencies_.size())
+  size_t outDegree_;        //!< count of outgoing edges (@todo: remove, it's edges_.size())
+  int32_t stream_id_ = -1;  //! Stream ID on which this node will be executed
+  int32_t launch_id_ = -1;  //! Launch ID of this node in the entire graph execution sequence
+  static int nextID;
+  Graph* parentGraph_;
+  static std::unordered_set<GraphNode*> nodeSet_;
+  static amd::Monitor nodeSetLock_;
+  static amd::Monitor WorkerThreadLock_;
+  unsigned int isEnabled_;
+  bool signal_is_required_ = false;   //!< This node requires a signal on the command
+  std::vector<uint8_t*> gpuPackets_;  //!< GPU Packet to enqueue during graph launch
+  std::string capturedKernelName_;
+  size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
+  size_t kernargSegmentByteSize_ = 512;   //!< Kernel arg segment byte size
+  size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
 };
 
-struct Graph {
-  // Mark GraphExec as friend for faster access to the Graph fields.
-  // (@todo GrpahExec should be derived from Graph)
-  friend class GraphExec;
-  std::vector<Node> vertices_;
-  const Graph* pOriginalGraph_ = nullptr;
+class Graph {
+ public:
+  //!< Contains mem alloc dptrs whose corresponding free node is not added to the graph.
+  std::unordered_set<void*> memAllocNodePtrs_;
   static std::unordered_set<Graph*> graphSet_;
   static amd::Monitor graphSetLock_;
-  //!<graphUserObj_.second stores refcount owned by this graph for user object,
-  std::unordered_map<UserObject*, int> graphUserObj_;
-  unsigned int id_;
-  static int nextID;
-  int max_streams_ = 0;       //!< Maximum number of streams used in the graph launch
-  uint32_t memalloc_nodes_ = 0; //!< Count of unreleased Memalloc nodes
-  std::vector<Node> roots_;   //!< Root nodes, used in parallel launches
-  std::vector<Node> leafs_;   //!< The list of leaf nodes on every parallel stream
-  //!< Used as a temporary storage for the waiting nodes
-  //!< to reduce the stack pressure in recursion
-  std::vector<Node> wait_order_;
-  std::vector<hip::Stream*> streams_; //!< The list of streams, used in the execution
-  int32_t current_id_ = 0;    //!< The current node ID in the graph execution sequence
-  hip::Device* device_;       //!< HIP device object
-  hip::MemoryPool* mem_pool_; //!< Memory pool, associated with this graph
-  std::unordered_set<GraphNode*> capturedNodes_;
-  bool graphInstantiated_;
-  std::unordered_set<void*> memAllocNodePtrs_;
-  std::unordered_map<Node, Node> clonedNodes_;
- public:
   Graph(hip::Device* device, const Graph* original = nullptr)
-      : pOriginalGraph_(original)
-      , id_(nextID++)
-      , device_(device) {
+      : pOriginalGraph_(original), id_(nextID++), device_(device) {
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.insert(this);
     mem_pool_ = device->GetGraphMemoryPool();
@@ -720,30 +699,47 @@ struct Graph {
     graphInstantiated_ = graphInstantiate;
   }
 
-  // returns count of unreleased memalloc nodes
+  //! returns count of unreleased memalloc nodes
   uint32_t GetMemAllocNodeCount() const { return memalloc_nodes_; }
+  //! Increments the graph memory alloc node count
+  void IncrementMemAllocNodeCount() { memalloc_nodes_++; }
+  //! Decrements the graph memory alloc node count
+  void DecrementMemAllocNodeCount() { memalloc_nodes_--; }
+  //! returns device object
+  hip::Device* Device() { return device_; }
 
+ protected:
+  int max_streams_ = 0;  //!< Maximum number of streams used in the graph launch
+
+ private:
+  friend class GraphExec;
+  std::vector<Node> vertices_;
+  const Graph* pOriginalGraph_ = nullptr;
+  //!< graphUserObj_.second stores refcount owned by this graph for user object,
+  std::unordered_map<UserObject*, int> graphUserObj_;
+  unsigned int id_;
+  static int nextID;
+  uint32_t memalloc_nodes_ = 0;  //!< Count of unreleased Memalloc nodes
+  std::vector<Node> roots_;      //!< Root nodes, used in parallel launches
+  std::vector<Node> leafs_;      //!< The list of leaf nodes on every parallel stream
+  //!< Used as a temporary storage for the waiting nodes
+  //!< to reduce the stack pressure in recursion
+  std::vector<Node> wait_order_;
+  std::vector<hip::Stream*> streams_;  //!< The list of streams, used in the execution
+  int32_t current_id_ = 0;             //!< The current node ID in the graph execution sequence
+  hip::Device* device_;                //!< HIP device object
+  hip::MemoryPool* mem_pool_;          //!< Memory pool, associated with this graph
+  std::unordered_set<GraphNode*> capturedNodes_;
+  bool graphInstantiated_;
+  std::unordered_map<Node, Node> clonedNodes_;
 };
-struct GraphKernelNode;
 
-struct GraphExec : public amd::ReferenceCountedObject, public Graph {
-  //! Topological order of the graph doesn't include nodes embedded as part of the child graph
-  std::vector<Node> topoOrder_;
-  std::vector<hip::Stream*> parallel_streams_;
-  hip::Stream* capture_stream_;
+class GraphExec : public amd::ReferenceCountedObject, public Graph {
+ public:
   static std::unordered_set<GraphExec*> graphExecSet_;
   static amd::Monitor graphExecSetLock_;
-  uint64_t flags_ = 0;
-  GraphKernelArgManager* kernArgManager_ = nullptr; //!< Kernel Arg manager for graph.
-  int instantiateDeviceId_ = -1;
-  bool hasHiddenHeap_ = false;  //!< Hidden heap indicator for Kernel node
-  bool repeatLaunch_ = false;
-
- public:
   GraphExec(uint64_t flags = 0)
-      : ReferenceCountedObject(),
-        Graph(hip::getCurrentDevice()),
-        flags_(flags) {
+      : ReferenceCountedObject(), Graph(hip::getCurrentDevice()), flags_(flags) {
     amd::ScopedLock lock(graphExecSetLock_);
     graphExecSet_.insert(this);
   }
@@ -804,10 +800,20 @@ struct GraphExec : public amd::ReferenceCountedObject, public Graph {
   void GetKernelArgSizeForGraph(size_t& kernArgSizeForGraph);
   hipError_t EnqueueGraphWithSingleList(hip::Stream* hip_stream);
   bool TopologicalOrder() { return Graph::TopologicalOrder(topoOrder_); }
+
+ protected:
+  //! Topological order of the graph doesn't include nodes embedded as part of the child graph
+  std::vector<Node> topoOrder_;
+  std::vector<hip::Stream*> parallel_streams_;
+  hip::Stream* capture_stream_;
+  uint64_t flags_ = 0;
+  GraphKernelArgManager* kernArgManager_ = nullptr;  //!< Kernel Arg manager for graph.
+  int instantiateDeviceId_ = -1;
+  bool hasHiddenHeap_ = false;  //!< Hidden heap indicator for Kernel node
+  bool repeatLaunch_ = false;
 };
 
-struct ChildGraphNode : public GraphNode, public GraphExec {
-  bool graphCaptureStatus_;
+class ChildGraphNode : public GraphNode, public GraphExec {
  public:
   ChildGraphNode(Graph* g) : GraphNode(hipGraphNodeTypeGraph, "solid", "rectangle"), GraphExec() {
     g->clone(this);
@@ -878,6 +884,9 @@ struct ChildGraphNode : public GraphNode, public GraphExec {
   virtual void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) override {
     Graph::GenerateDOT(fout, flag);
   }
+
+ private:
+  bool graphCaptureStatus_;
 };
 
 class GraphKernelNode : public GraphNode {
@@ -2337,7 +2346,7 @@ class GraphMemAllocNode final : public GraphNode {
       queue()->device().SetMemAccess(vaddr_sub_obj->getSvmPtr(), aligned_size,
                                      amd::Device::VmmAccess::kReadWrite);
       va_->retain();
-      graph_->memalloc_nodes_++; // Increment count of unreleased mem alloc nodes
+      graph_->IncrementMemAllocNodeCount(); // Increment count of unreleased mem alloc nodes
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL,
               "Graph MemAlloc execute [%p-%p], %p", vaddr_sub_obj->getSvmPtr(),
               reinterpret_cast<char*>(vaddr_sub_obj->getSvmPtr()) + aligned_size, memory());
@@ -2483,7 +2492,7 @@ class GraphMemFreeNode : public GraphNode {
         LogError("Memory didn't belong to any pool!");
       }
       amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
-      graph_->memalloc_nodes_--; // Decrement count of unreleased memalloc nodes
+      graph_->DecrementMemAllocNodeCount(); // Decrement count of unreleased memalloc nodes
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
           ptr(), vaddr_sub_obj);
     }
