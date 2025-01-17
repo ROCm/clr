@@ -3225,7 +3225,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s", gpuKernel.name().c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s",
+            gpuKernel.getDemangledName().c_str());
 
     amd::NDRange local(sizes.local());
     address hidden_arguments = const_cast<address>(parameters);

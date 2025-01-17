@@ -21,6 +21,7 @@
 #pragma once
 
 #include <memory>
+#include <cxxabi.h>
 #include "rocprogram.hpp"
 #include "top.hpp"
 #include "rocprintf.hpp"
@@ -32,6 +33,19 @@ namespace amd::roc {
 #define MAX_INFO_STRING_LEN 0x40
 
 class Kernel : public device::Kernel {
+ private:
+  //! Cache demangled name
+  std::string demangled_name_;
+
+  void initDemangledName() {
+    if (demangled_name_.empty()) {
+      int status = 0;
+      char* demangled = abi::__cxa_demangle(name().c_str(), nullptr, nullptr, &status);
+      demangled_name_ = (status == 0 && demangled != nullptr) ? demangled : name().c_str();
+      free(demangled);
+    }
+  }
+
  public:
   Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
          const uint32_t workgroupGroupSegmentByteSize,
@@ -46,6 +60,14 @@ class Kernel : public device::Kernel {
   virtual bool init() = 0;
 
   const Program* program() const { return static_cast<const Program*>(&prog_); }
+
+  // Pull demangled name, used only for logging
+  const std::string& getDemangledName() {
+    if (demangled_name_.empty()) {
+      initDemangledName();
+    }
+    return demangled_name_;
+  }
 };
 
 class HSAILKernel : public roc::Kernel {
