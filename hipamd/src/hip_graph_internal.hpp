@@ -825,9 +825,7 @@ class ChildGraphNode : public GraphNode, public GraphExec {
     graphCaptureStatus_ = rhs.graphCaptureStatus_;
   }
 
-  GraphNode* clone() const override {
-    return new ChildGraphNode(static_cast<ChildGraphNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new ChildGraphNode(*this); }
 
   Graph* GetChildGraph() override { return this; }
 
@@ -1145,9 +1143,7 @@ class GraphKernelNode : public GraphNode {
     }
   }
 
-  GraphNode* clone() const override {
-    return new GraphKernelNode(static_cast<GraphKernelNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphKernelNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     int devID = hip::getDeviceID(stream->context());
@@ -1362,9 +1358,7 @@ class GraphMemcpyNode : public GraphNode {
     copyParams_ = rhs.copyParams_;
   }
 
-  GraphNode* clone() const override {
-    return new GraphMemcpyNode(static_cast<GraphMemcpyNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphMemcpyNode(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
     if ((copyParams_.kind == hipMemcpyHostToHost || copyParams_.kind == hipMemcpyDefault)
@@ -1530,9 +1524,14 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
 
   ~GraphMemcpyNode1D() {}
 
-  GraphNode* clone() const override {
-    return new GraphMemcpyNode1D(static_cast<GraphMemcpyNode1D const&>(*this));
+  GraphMemcpyNode1D(const GraphMemcpyNode1D& rhs) : GraphMemcpyNode(rhs) {
+    dst_ = rhs.dst_;
+    src_ = rhs.src_;
+    count_ = rhs.count_;
+    kind_ = rhs.kind_;
   }
+
+  GraphNode* clone() const override { return new GraphMemcpyNode1D(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
     if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
@@ -1725,10 +1724,12 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
 
   ~GraphMemcpyNodeFromSymbol() {}
 
-  GraphNode* clone() const override {
-    return new GraphMemcpyNodeFromSymbol(
-        static_cast<GraphMemcpyNodeFromSymbol const&>(*this));
+  GraphMemcpyNodeFromSymbol(const GraphMemcpyNodeFromSymbol& rhs) : GraphMemcpyNode1D(rhs) {
+     symbol_ = rhs.symbol_;
+     offset_ = rhs.offset_;
   }
+
+  GraphNode* clone() const override { return new GraphMemcpyNodeFromSymbol(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -1818,9 +1819,12 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
 
   ~GraphMemcpyNodeToSymbol() {}
 
-  GraphNode* clone() const override {
-    return new GraphMemcpyNodeToSymbol(static_cast<GraphMemcpyNodeToSymbol const&>(*this));
+  GraphMemcpyNodeToSymbol(const GraphMemcpyNodeToSymbol& rhs) : GraphMemcpyNode1D(rhs) {
+     symbol_ = rhs.symbol_;
+     offset_ = rhs.offset_;
   }
+
+  GraphNode* clone() const override { return new GraphMemcpyNodeToSymbol(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -1932,9 +1936,7 @@ class GraphMemsetNode : public GraphNode {
     arrHeight_ = memsetNode.arrHeight_;
   }
 
-  GraphNode* clone() const override {
-    return new GraphMemsetNode(static_cast<GraphMemsetNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphMemsetNode(*this); }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
     std::string label;
@@ -2099,9 +2101,11 @@ class GraphEventRecordNode : public GraphNode {
         event_(event) {}
   ~GraphEventRecordNode() {}
 
-  GraphNode* clone() const override {
-    return new GraphEventRecordNode(static_cast<GraphEventRecordNode const&>(*this));
+  GraphEventRecordNode(const GraphEventRecordNode& rhs) : GraphNode(rhs) {
+    event_ = rhs.event_;
   }
+
+  GraphNode* clone() const override { return new GraphEventRecordNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2151,11 +2155,14 @@ class GraphEventWaitNode : public GraphNode {
   GraphEventWaitNode(hipEvent_t event)
       : GraphNode(hipGraphNodeTypeWaitEvent, "solid", "rectangle", "EVENT_WAIT"),
         event_(event) {}
+
   ~GraphEventWaitNode() {}
 
-  GraphNode* clone() const override {
-    return new GraphEventWaitNode(static_cast<GraphEventWaitNode const&>(*this));
+  GraphEventWaitNode(const GraphEventWaitNode& rhs) : GraphNode(rhs) {
+    event_ = rhs.event_;
   }
+
+  GraphNode* clone() const override { return new GraphEventWaitNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2211,9 +2218,7 @@ class GraphHostNode : public GraphNode {
     NodeParams_ = hostNode.NodeParams_;
   }
 
-  GraphNode* clone() const override {
-    return new GraphHostNode(static_cast<GraphHostNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphHostNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2272,9 +2277,7 @@ class GraphEmptyNode : public GraphNode {
   GraphEmptyNode() : GraphNode(hipGraphNodeTypeEmpty, "solid", "rectangle", "EMPTY") {}
   ~GraphEmptyNode() {}
 
-  GraphNode* clone() const override {
-    return new GraphEmptyNode(static_cast<GraphEmptyNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphEmptyNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2386,9 +2389,7 @@ class GraphMemAllocNode final : public GraphNode {
     }
   }
 
-  virtual GraphNode* clone() const final {
-    return new GraphMemAllocNode(static_cast<GraphMemAllocNode const&>(*this));
-  }
+  virtual GraphNode* clone() const final { return new GraphMemAllocNode(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
@@ -2510,9 +2511,7 @@ class GraphMemFreeNode : public GraphNode {
     device_ptr_ = rhs.device_ptr_;
   }
 
-  virtual GraphNode* clone() const final {
-    return new GraphMemFreeNode(static_cast<GraphMemFreeNode const&>(*this));
-  }
+  virtual GraphNode* clone() const final { return new GraphMemFreeNode(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
@@ -2560,9 +2559,7 @@ class GraphDrvMemcpyNode : public GraphNode {
     copyParams_ = rhs.copyParams_;
   }
 
-  GraphNode* clone() const override {
-    return new GraphDrvMemcpyNode(static_cast<GraphDrvMemcpyNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new GraphDrvMemcpyNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
     if(copyParams_.srcMemoryType == hipMemoryTypeHost &&
@@ -2640,10 +2637,7 @@ class hipGraphExternalSemSignalNode : public GraphNode {
 
   ~hipGraphExternalSemSignalNode() {}
 
-  GraphNode* clone() const {
-    return new hipGraphExternalSemSignalNode(
-                static_cast<hipGraphExternalSemSignalNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new hipGraphExternalSemSignalNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2696,9 +2690,7 @@ class hipGraphExternalSemWaitNode : public GraphNode {
   }
   ~hipGraphExternalSemWaitNode() {}
 
-  GraphNode* clone() const {
-    return new hipGraphExternalSemWaitNode(static_cast<hipGraphExternalSemWaitNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new hipGraphExternalSemWaitNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) {
     hipError_t status = GraphNode::CreateCommand(stream);
@@ -2751,9 +2743,7 @@ class hipGraphBatchMemOpNode : public GraphNode {
   }
   ~hipGraphBatchMemOpNode() {}
 
-  GraphNode* clone() const {
-    return new hipGraphBatchMemOpNode(static_cast<hipGraphBatchMemOpNode const&>(*this));
-  }
+  GraphNode* clone() const override { return new hipGraphBatchMemOpNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) {
     hipError_t status = GraphNode::CreateCommand(stream);
