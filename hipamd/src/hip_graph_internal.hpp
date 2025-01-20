@@ -2479,7 +2479,10 @@ class GraphMemFreeNode : public GraphNode {
       vaddr_sub_obj->release();
       vaddr_mem_obj->release();
       // Release the allocation back to graph's pool
-      graph_->FreeMemory(phys_mem_obj->getSvmPtr(), static_cast<hip::Stream*>(queue()));
+      auto device_id = phys_mem_obj->getUserData().deviceId;
+      if (!g_devices[device_id]->FreeMemory(phys_mem_obj, static_cast<hip::Stream*>(queue()))) {
+        LogError("Memory didn't belong to any pool!");
+      }
       amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
       graph_->memalloc_nodes_--; // Decrement count of unreleased memalloc nodes
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
