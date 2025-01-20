@@ -53,6 +53,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <memory>
 #ifdef ROCCLR_SUPPORT_NUMA_POLICY
 #include <numa.h>
@@ -3088,7 +3089,7 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
 
 
     for (int i = mask.size() - 1; i >= 0; i--) {
-      ss << mask[i];
+      ss << std::setfill('0') << std::setw(4) << mask[i];
     }
     ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Setting CU mask 0x%s for hardware queue %p",
             ss.str().c_str(), queue->base_address);
