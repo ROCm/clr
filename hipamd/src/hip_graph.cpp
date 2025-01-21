@@ -561,9 +561,15 @@ hipError_t capturehipMemcpy2DToArrayAsync(hipStream_t& stream, hipArray_t& dst, 
                                           size_t& width, size_t& height, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node Memcpy2DFromArray on stream : %p", stream);
-  if (src == nullptr || dst == nullptr) {
-    return hipErrorInvalidValue;
+
+  // Skip zero-sized copies
+  if (width == 0 || height == 0) {
+    return hipSuccess;
   }
+
+  HIP_RETURN_ONFAIL(hipMemcpy2DValidateArray(dst, wOffset, hOffset, width, height));
+  HIP_RETURN_ONFAIL(hipMemcpy2DValidateBuffer(src, spitch, width));
+
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -789,6 +795,16 @@ hipError_t capturehipMemcpyFromSymbolAsync(hipStream_t& stream, void*& dst, cons
                                            size_t& sizeBytes, size_t& offset, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node MemcpyFromSymbolNode on stream : %p", stream);
+
+  if (kind != hipMemcpyDeviceToHost && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
+
+  if (dst == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
@@ -815,6 +831,16 @@ hipError_t capturehipMemcpyToSymbolAsync(hipStream_t& stream, const void*& symbo
                                          size_t& sizeBytes, size_t& offset, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node MemcpyToSymbolNode on stream : %p", stream);
+
+  if (kind != hipMemcpyHostToDevice && kind != hipMemcpyDeviceToDevice &&
+      kind != hipMemcpyDeviceToDeviceNoCU) {
+    return hipErrorInvalidMemcpyDirection;
+  }
+
+  if (src == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
