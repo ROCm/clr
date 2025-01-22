@@ -181,6 +181,23 @@ if ( PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "" )
 endif()
 message(STATUS "CPACK_RPM_PACKAGE_RELEASE: ${CPACK_RPM_PACKAGE_RELEASE}")
 
+set (DEB10_DISTRO "FALSE")
+execute_process( COMMAND sh "-c" "cat /etc/os-release | grep \"^NAME=\""
+                 RESULT_VARIABLE PROC_RESULT_NAME
+                 OUTPUT_VARIABLE OS_NAME_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+execute_process( COMMAND sh "-c" "cat /etc/os-release | grep \"^VERSION_ID=\""
+                 RESULT_VARIABLE PROC_RESULT_VERSION
+                 OUTPUT_VARIABLE OS_VERSION_ID_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+
+if ( PROC_RESULT_NAME EQUAL "0" AND NOT OS_NAME_RESULT STREQUAL "" AND
+     PROC_RESULT_VERSION EQUAL "0" AND NOT OS_VERSION_ID_RESULT STREQUAL "")
+  if ( "${OS_NAME_RESULT}" STREQUAL "NAME=\"Debian GNU/Linux\"" AND "${OS_VERSION_ID_RESULT}" STREQUAL "VERSION_ID=\"10\"")
+     set ( DEB10_DISTRO "TRUE" )
+  endif()
+endif()
+
 add_to_config(_versionInfo HIP_PACKAGING_VERSION_PATCH)
 add_to_config(_versionInfo CPACK_DEBIAN_PACKAGE_RELEASE)
 add_to_config(_versionInfo CPACK_RPM_PACKAGE_RELEASE)
