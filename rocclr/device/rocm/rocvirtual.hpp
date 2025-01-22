@@ -383,11 +383,6 @@ class VirtualGPU : public device::VirtualDevice {
   void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd);
 
-  // { roc OpenCL integration
-  // Added these stub (no-ops) implementation of pure virtual methods,
-  // when integrating HSA and OpenCL branches.
-  // TODO: After inegration, whoever is working on VirtualGPU should write
-  // actual implementation.
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 
@@ -458,7 +453,9 @@ class VirtualGPU : public device::VirtualDevice {
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
   uint64_t getQueueID() { return gpu_queue_->id; }
 
-  // } roc OpenCL integration
+  //! Analyzes a crashed AQL queue to find a broken AQL packet
+  void AnalyzeAqlQueue() const;
+
  private:
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();

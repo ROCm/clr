@@ -270,7 +270,7 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
 
   for (const auto &kernelMeta : kernelMetadataMap_) {
     const std::string kernelName = kernelMeta.first;
-    Kernel* aKernel = new roc::LightningKernel(kernelName, this);
+    Kernel* aKernel = new roc::Kernel(kernelName, this);
     if (!aKernel->init()) {
       return false;
     }
@@ -334,7 +334,7 @@ bool LightningProgram::setKernels(void* binary, size_t binSize,
   }
 
   for (auto& kit : kernels()) {
-    LightningKernel* kernel = static_cast<LightningKernel*>(kit.second);
+    Kernel* kernel = static_cast<Kernel*>(kit.second);
     if (!kernel->postLoad()) {
       return false;
     }
