@@ -37,6 +37,7 @@
 #include "device/rocm/rocblit.hpp"
 #include "device/rocm/rocvirtual.hpp"
 #include "device/rocm/rocprogram.hpp"
+#include "device/rocm/rockernel.hpp"
 #include "device/rocm/rocmemory.hpp"
 #include "device/rocm/rocglinterop.hpp"
 #include "device/rocm/rocsignal.hpp"
@@ -854,38 +855,6 @@ device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Opt
   }
 
   return program;
-}
-
-bool Device::AcquireExclusiveGpuAccess() {
-  // Lock the virtual GPU list
-  vgpusAccess().lock();
-
-  // Find all available virtual GPUs and lock them
-  // from the execution of commands
-  for (uint idx = 0; idx < vgpus().size(); ++idx) {
-    vgpus()[idx]->execution().lock();
-    // Make sure a wait is done
-    vgpus()[idx]->releaseGpuMemoryFence();
-  }
-  if (!hsa_exclusive_gpu_access_) {
-    // @todo call rocr
-    hsa_exclusive_gpu_access_ = true;
-  }
-  return true;
-}
-
-void Device::ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const {
-  // Make sure the operation is done
-  vgpu.releaseGpuMemoryFence();
-
-  // Find all available virtual GPUs and unlock them
-  // for the execution of commands
-  for (uint idx = 0; idx < vgpus().size(); ++idx) {
-    vgpus()[idx]->execution().unlock();
-  }
-
-  // Unock the virtual GPU list
-  vgpusAccess().unlock();
 }
 
 bool Device::createBlitProgram() {
@@ -2991,12 +2960,18 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 // ================================================================================================
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
+    Device* dev = reinterpret_cast<Device*>(data);
+    for (auto it : dev->vgpus()) {
+      roc::VirtualGPU* vgpu = reinterpret_cast<roc::VirtualGPU*>(it);
+      if (vgpu->gpu_queue() == queue) {
+        vgpu->AnalyzeAqlQueue();
+      }
+    }
     // Abort on device exceptions.
     const char* errorMsg = 0;
     hsa_status_string(status, &errorMsg);
     if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
       size_t global_available_mem = 0;
-      Device* dev = reinterpret_cast<Device*>(data);
       if (HSA_STATUS_SUCCESS != hsa_agent_get_info(dev->getBackendDevice(),
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
                          &global_available_mem)) {
@@ -3620,6 +3595,24 @@ void Device::resetSDMAMask(const device::BlitManager* handle) const {
     if (it.second == handle) {
       it.second = 0;
       break;
+    }
+  }
+}
+
+// ================================================================================================
+void Device::AddKernel(Kernel& gpuKernel) const {
+  amd::ScopedLock lock(vgpusAccess());
+  kernel_map_.insert({gpuKernel.KernelCodeHandle(), gpuKernel});
+}
+
+// ================================================================================================
+void Device::RemoveKernel(Kernel& gpuKernel) const {
+  if (gpuKernel.KernelCodeHandle() != 0) {
+    amd::ScopedLock lock(vgpusAccess());
+    auto it = kernel_map_.find(gpuKernel.KernelCodeHandle());
+    if (it != kernel_map_.end()) {
+      // Remove the old mapping
+      kernel_map_.erase(it);
     }
   }
 }

@@ -30,13 +30,35 @@
 
 namespace amd::roc {
 
-#define MAX_INFO_STRING_LEN 0x40
-
 class Kernel : public device::Kernel {
- private:
-  //! Cache demangled name
-  std::string demangled_name_;
+ public:
+  Kernel(std::string name, Program* prog)
+   : device::Kernel(prog->device(), name, *prog) {}
 
+  virtual ~Kernel() {
+    if (program() != nullptr) {
+      // Add kernel to the map of all kernels on the device
+      program()->rocDevice().RemoveKernel(*this);
+    }
+  }
+
+  //! Initializes the metadata required for this kernel
+  virtual bool init() final;
+
+  //! Setup after code object loading
+  bool postLoad();
+
+  const Program* program() const { return static_cast<const Program*>(&prog_); }
+
+  //! Pull demangled name, used only for logging
+  const std::string& getDemangledName() {
+    if (demangled_name_.empty()) {
+      initDemangledName();
+    }
+    return demangled_name_;
+  }
+
+ private:
   void initDemangledName() {
     if (demangled_name_.empty()) {
       int status = 0;
@@ -46,64 +68,7 @@ class Kernel : public device::Kernel {
     }
   }
 
- public:
-  Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
-         const uint32_t workgroupGroupSegmentByteSize,
-         const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
-         const uint32_t kernargSegmentAlignment);
-
-  Kernel(std::string name, Program* prog);
-
-  ~Kernel() {}
-
-  //! Initializes the metadata required for this kernel
-  virtual bool init() = 0;
-
-  const Program* program() const { return static_cast<const Program*>(&prog_); }
-
-  // Pull demangled name, used only for logging
-  const std::string& getDemangledName() {
-    if (demangled_name_.empty()) {
-      initDemangledName();
-    }
-    return demangled_name_;
-  }
-};
-
-class HSAILKernel : public roc::Kernel {
- public:
-  HSAILKernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
-              const uint32_t workgroupGroupSegmentByteSize,
-              const uint32_t workitemPrivateSegmentByteSize,
-              const uint32_t kernargSegmentByteSize,
-              const uint32_t kernargSegmentAlignment)
-   : roc::Kernel(name, prog, kernelCodeHandle, workgroupGroupSegmentByteSize,
-                 workitemPrivateSegmentByteSize, kernargSegmentByteSize, kernargSegmentAlignment) {
-  }
-
-  //! Initializes the metadata required for this kernel
-  virtual bool init() final;
-};
-
-class LightningKernel : public roc::Kernel {
- public:
-  LightningKernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
-                  const uint32_t workgroupGroupSegmentByteSize,
-                  const uint32_t workitemPrivateSegmentByteSize,
-                  const uint32_t kernargSegmentByteSize,
-                  const uint32_t kernargSegmentAlignment)
-   : roc::Kernel(name, prog, kernelCodeHandle, workgroupGroupSegmentByteSize,
-                 workitemPrivateSegmentByteSize, kernargSegmentByteSize, kernargSegmentAlignment) {
-  }
-
-  LightningKernel(std::string name, Program* prog)
-   : roc::Kernel(name, prog) {}
-
-  //! Initializes the metadata required for this kernel
-  virtual bool init() final;
-
-  //! Setup after code object loading
-  bool postLoad();
+  std::string demangled_name_;  //!< Cache demangled name
 };
 
 }  // namespace amd::roc

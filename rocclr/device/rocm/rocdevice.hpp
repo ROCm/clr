@@ -543,9 +543,6 @@ class Device : public NullDevice {
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
 
-  bool AcquireExclusiveGpuAccess();
-  void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;
-
   //! Returns the lock object for the virtual gpus list
   amd::Monitor& vgpusAccess() const { return vgpusAccess_; }
 
@@ -606,6 +603,13 @@ class Device : public NullDevice {
   void resetSDMAMask(const device::BlitManager* handle) const;
   void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;
   bool isXgmi() const { return isXgmi_; }
+
+  //! Returns the map of code objects to kernels
+  const auto& KernelMap() const { return kernel_map_; }
+  //! Adds a kernel to the kernel map
+  void AddKernel(Kernel& gpuKernel) const;
+  //! Removes a kernel from the kernel map
+  void RemoveKernel(Kernel& gpuKernel) const;
 
  private:
   bool create();
@@ -681,6 +685,9 @@ class Device : public NullDevice {
   //! Map of SDMA engineId<->stream
   mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
   bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
+
+  //! Code object to kernel info map (used in the crash dump analysis)
+  mutable std::map<uint64_t, Kernel&> kernel_map_;
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index

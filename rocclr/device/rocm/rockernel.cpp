@@ -27,28 +27,12 @@
 
 namespace amd::roc {
 
-Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
-               const uint32_t workgroupGroupSegmentByteSize,
-               const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
-               const uint32_t kernargSegmentAlignment)
-    : device::Kernel(prog->device(), name, *prog) {
-  kernelCodeHandle_ = kernelCodeHandle;
-  workgroupGroupSegmentByteSize_ = workgroupGroupSegmentByteSize;
-  workitemPrivateSegmentByteSize_ = workitemPrivateSegmentByteSize;
-  kernargSegmentByteSize_ = kernargSegmentByteSize;
-  kernargSegmentAlignment_ = kernargSegmentAlignment;
-}
-
-Kernel::Kernel(std::string name, Program* prog)
-    : device::Kernel(prog->device(), name, *prog) {
-}
-
 #if defined(USE_COMGR_LIBRARY)
-bool LightningKernel::init() {
+bool Kernel::init() {
   return GetAttrCodePropMetadata();
 }
 
-bool LightningKernel::postLoad() {
+bool Kernel::postLoad() {
   // Set the kernel symbol name and size/alignment based on the kernel metadata
   // NOTE: kernel name is used to get the kernel code handle in V2,
   //       but kernel symbol name is used in V3
@@ -202,6 +186,8 @@ bool LightningKernel::postLoad() {
   if (!printfStr.empty()) {
     InitPrintf(printfStr);
   }
+  // Add kernel to the map of all kernels on the device
+  program()->rocDevice().AddKernel(*this);
   return true;
 }
 #endif  // defined(USE_COMGR_LIBRARY)
