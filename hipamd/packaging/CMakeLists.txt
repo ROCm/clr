@@ -210,12 +210,19 @@ if(FILE_REORG_BACKWARD_COMPATIBILITY)
    set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
 endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
+
 if(EL7_DISTRO)
   # centos: In centos using parenthesis is causing error. So set the specific dependencies
   set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, numactl-libs, libstdc++, libgcc")
 else()
   # RHEL/SLES
-  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, (numactl-libs or libnuma1), (libstdc++ or libstdc++6), (libgcc or libgcc_s1)")
+  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, (numactl-libs or libnuma1), (libstdc++ or libstdc++6)")
+  if(DEB10_DISTRO)
+    # On Debian Buster only: libgcc_s.so.1 is in the package libgcc1
+    set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}, libgcc1")
+  else()
+    set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}, (libgcc or libgcc_s1)" )
+  endif()
 endif()
 set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
 
