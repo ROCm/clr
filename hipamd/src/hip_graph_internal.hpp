@@ -499,7 +499,6 @@ struct Graph {
     amd::ScopedLock lock(graphSetLock_);
     graphSet_.insert(this);
     mem_pool_ = device->GetGraphMemoryPool();
-    mem_pool_->retain();
     graphInstantiated_ = false;
     roots_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
     leafs_.resize(DEBUG_HIP_FORCE_GRAPH_QUEUES);
@@ -537,9 +536,6 @@ struct Graph {
       }
     }
     graphUserObj_.clear();
-    if (mem_pool_ != nullptr) {
-      mem_pool_->release();
-    }
     memAllocNodePtrs_.clear();
   }
 
@@ -770,6 +766,9 @@ struct GraphExec : public amd::ReferenceCountedObject {
       if (kernArgManager_ != nullptr) {
         kernArgManager_->release();
       }
+    }
+    if (instantiateDeviceId_ != -1) {
+      static_cast<ReferenceCountedObject*>(g_devices[instantiateDeviceId_])->release();
     }
   }
 
