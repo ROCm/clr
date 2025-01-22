@@ -18,6 +18,10 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 * Out of memory error on Windows. When the user calls the API hipMalloc for device memory allocation specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). The fix is not available on Linux.
 
+### Changed
+  - roc-obj* tools are being deprecated, and will be removed in an upcoming release.
+    - Perl package dependencies are now RECOMENDS or SUGGESTS.  Users will need to install these themselves.
+    - Support for ROCm Object tooling has moved into llvm-objdump provided by package rocm-llvm.
 
 ## HIP 6.3.2 for ROCm 6.3.2
 
