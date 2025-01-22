@@ -235,11 +235,13 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Reset last used SDMA engine mask
   gpu->setLastUsedSdmaEngine(0);
 
+  bool isBlocking = ts->GetBlocking();
+
   // Update the batch, since signal is complete
   gpu->updateCommandsState(ts->command().GetBatchHead());
 
   // Reset API callback signal. It will release AQL queue and start commands processing
-  if (callback_signal.handle != 0 && ts->GetBlocking()) {
+  if (callback_signal.handle != 0 && isBlocking) {
     hsa_signal_subtract_relaxed(callback_signal, 1);
   }
 

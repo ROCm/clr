@@ -363,6 +363,7 @@ hipError_t GraphExec::Init() {
     status = CaptureAQLPackets();
   }
   instantiateDeviceId_ = hip::getCurrentDevice()->deviceId();
+  static_cast<ReferenceCountedObject*>( hip::getCurrentDevice())->retain();
   return status;
 }
 
