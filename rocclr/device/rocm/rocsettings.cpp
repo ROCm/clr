@@ -117,7 +117,6 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
     apuSystem_ = true;
   } else {
     pinnedXferSize_ = std::max(pinnedXferSize_, pinnedMinXferSize_);
-    stagedXferSize_ = std::max(stagedXferSize_, pinnedMinXferSize_ + 4 * Ki);
   }
   enableXNACK_ = enableXNACK;
   hsailExplicitXnack_ = enableXNACK;
@@ -207,10 +206,6 @@ void Settings::override() {
 
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
     xferBufSize_ = GPU_XFER_BUFFER_SIZE * Ki;
-  }
-
-  if (!flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)) {
-    pinnedMinXferSize_ = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
   }
 
   if (!flagIsDefault(AMD_GPU_FORCE_SINGLE_FP_DENORM)) {
