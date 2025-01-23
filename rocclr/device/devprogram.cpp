@@ -1964,13 +1964,6 @@ std::vector<std::string> Program::ProcessOptions(amd::option::Options* options) 
     std::vector<std::string> extensions(sit, end);
 
     if (isLC()) {
-      // FIXME_lmoriche: opencl-c.h defines 'cl_khr_depth_images', so
-      // remove it from the command line. Should we fix opencl-c.h?
-      auto found = std::find(extensions.begin(), extensions.end(), "cl_khr_depth_images");
-      if (found != extensions.end()) {
-        extensions.erase(found);
-      }
-
       if (!extensions.empty()) {
         std::ostringstream clext;
 
