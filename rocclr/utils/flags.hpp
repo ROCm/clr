@@ -202,6 +202,8 @@ release(bool, HIP_MEM_POOL_SUPPORT, true,                                     \
         "Enables memory pool support in HIP")                                 \
 release(bool, HIP_MEM_POOL_USE_VM, true,                                      \
         "Enables memory pool support in HIP")                                 \
+release(bool, DEBUG_HIP_MEM_POOL_VMHEAP, false,                               \
+        "Enables virtual memory for memory pools")                            \
 release(bool, PAL_HIP_IPC_FLAG, true,                                         \
         "Enable interprocess flag for device allocation in PAL HIP")          \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \

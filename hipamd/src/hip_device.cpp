@@ -315,7 +315,7 @@ bool Device::existsActiveStreamForDevice() {
 
 // ================================================================================================
 Device::~Device() {
-  if (default_mem_pool_ != nullptr) {
+  if ((IS_LINUX || !DEBUG_HIP_MEM_POOL_VMHEAP) && (default_mem_pool_ != nullptr)) {
     default_mem_pool_->release();
   }
 

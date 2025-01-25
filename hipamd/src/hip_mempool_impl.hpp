@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2022-2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -23,6 +23,7 @@
 #include <hip/hip_runtime.h>
 #include "hip_event.hpp"
 #include "hip_internal.hpp"
+#include "platform/vmheap.hpp"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -101,8 +102,12 @@ class Heap : public amd::EmbeddedObject {
 public:
   typedef std::map<std::pair<size_t, amd::Memory*>, MemoryTimestamp> SortedMap;
 
-  Heap(hip::Device* device):
-    total_size_(0), max_total_size_(0), release_threshold_(0), device_(device) {}
+  Heap(hip::Device* device, amd::VmHeap& vm_heap)
+    : total_size_(0)
+    , max_total_size_(0)
+    , release_threshold_(0)
+    , device_(device)
+    , vm_heap_(vm_heap) {}
   ~Heap() {}
 
   /// Adds allocation into the heap on a specific stream
@@ -134,7 +139,10 @@ public:
   bool IsEmpty() const { return (allocations_.size() == 0) ? true : false; }
 
   /// Set the memory release threshold
-  void SetReleaseThreshold(uint64_t value) { release_threshold_ = value; }
+  void SetReleaseThreshold(uint64_t value) {
+    release_threshold_ = value;
+    vm_heap_.SetUnmapThreshold(value);
+  }
 
   /// Set the memory release threshold
   uint64_t GetReleaseThreshold() const { return release_threshold_; }
@@ -149,7 +157,7 @@ public:
   void SetMaxTotalSize(uint64_t value) { max_total_size_ = value; }
 
   /// Erases single allocation form the heap's map
-  SortedMap::iterator EraseAllocaton(SortedMap::iterator& it);
+  SortedMap::iterator EraseAllocation(SortedMap::iterator& it);
 
   /// Add a safe stream for  quick looks-ups in all allocations
   void AddSafeStream(Stream* event_stream, Stream* wait_stream) {
@@ -162,6 +170,13 @@ public:
   bool IsActiveMemory(amd::Memory* memory) const {
     return (allocations_.find({memory->getSize(), memory}) != allocations_.end());
   }
+
+  /// Enabled VM heap for memory, instead of direct allocations
+  void EnableVmHeap() { use_vm_heap_ = true; }
+
+  /// Returns true if heap uses virtual memory
+  bool UseVmHeap() const { return use_vm_heap_; }
+
   const auto& Allocations() { return allocations_; }
 
 private:
@@ -174,14 +189,16 @@ private:
   uint64_t max_total_size_;     //!< Maximum heap allocation size
   uint64_t release_threshold_;  //!< Threshold size in bytes for memory release from heap, default 0
 
-  hip::Device*  device_;    //!< Hip device the allocations will reside
+  hip::Device*  device_;        //!< Hip device the allocations will reside
+  amd::VmHeap&  vm_heap_;       //!< Managed heap for memory allocaitons
+  bool use_vm_heap_ = false;    //!< Use virtual heap or direct allocations
 };
 
 /// Allocates memory in the pool on the specified stream and places the allocation into busy_heap_
 /// @note: the logic also will look in free_heap for possible reuse.
 /// hipMemPoolReuseAllowOpportunistic option will validate if HIP event,
 /// associated with memory is done, then reuse can be performed.
-class MemoryPool : public amd::ReferenceCountedObject {
+class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
  public:
   struct SharedAccess {
     int device_id_;             //!< Device ID for access with a specified shared resource
@@ -197,9 +214,10 @@ class MemoryPool : public amd::ReferenceCountedObject {
   };
 
   MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr, bool phys_mem = false)
-      : busy_heap_(device),
-        free_heap_(device),
-        lock_pool_ops_(true), /* Pool operations */
+      : VmHeap(device->asContext()->devices()[0], *device->NullStream()),
+        busy_heap_(device, *this),
+        free_heap_(device, *this),
+        lock_pool_ops_(true),
         device_(device),
         shared_(nullptr),
         max_total_size_(0) {
@@ -220,9 +238,15 @@ class MemoryPool : public amd::ReferenceCountedObject {
                      .reserved = {}};
     }
     state_.interprocess_ = properties_.handleTypes != hipMemHandleTypeNone;
+    // Check if VM heap can be enabled
+    if (DEBUG_HIP_MEM_POOL_VMHEAP && !state_.phys_mem_ && !state_.interprocess_) {
+      state_.use_vm_heap_ = true;
+      busy_heap_.EnableVmHeap();
+      free_heap_.EnableVmHeap();
+    }
   }
 
-  virtual ~MemoryPool() {
+  virtual ~MemoryPool() override {
     if (!busy_heap_.IsEmpty()) {
       LogError("Shouldn't destroy pool with busy allocations!");
     }
@@ -320,6 +344,7 @@ class MemoryPool : public amd::ReferenceCountedObject {
       uint32_t interprocess_ : 1;   //!< Memory pool can be used in interprocess communications
       uint32_t graph_in_use_ : 1;   //!< Memory pool was used in a graph execution
       uint32_t phys_mem_ : 1;       //!< Mempool is used for graphs and will have physical allocations
+      uint32_t use_vm_heap_ : 1;    //!< Use VM heap or direct allocations
     };
     uint32_t value_;
   } state_;
@@ -327,7 +352,8 @@ class MemoryPool : public amd::ReferenceCountedObject {
   hipMemPoolProps properties_;  //!< Properties of the memory pool
   amd::Monitor lock_pool_ops_;  //!< Access to the pool must be lock protected
   std::map<hip::Device*, hipMemAccessFlags> access_map_;  //!< Map of access to the pool from devices
-  hip::Device*  device_;    //!< Hip device the heap will reside
+
+  hip::Device* device_;     //!< Hip device the heap will reside
   SharedMemPool* shared_;   //!< Pointer to shared memory for IPC
   uint64_t max_total_size_; //!< Max of total reserved memory in the pool since last reset
 };

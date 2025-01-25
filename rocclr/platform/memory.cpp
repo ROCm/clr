@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -192,12 +192,12 @@ void Memory::operator delete(void* p, const Context& context) { Memory::operator
 
 void Memory::addSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.push_back(view);
+  subBuffers_.emplace(view);
 }
 
 void Memory::removeSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.remove(view);
+  subBuffers_.erase(view);
 }
 
 bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) {

@@ -82,7 +82,8 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-  if (!createInfo.flags.sdiExternal) {
+  memRef->va_range_ = createInfo.flags.virtualAlloc;
+  if (!createInfo.flags.sdiExternal && !createInfo.flags.virtualAlloc) {
     // Update free memory size counters
     dev.updateAllocedMemory(memRef->gpuMem_->Desc().heaps[0], memRef->gpuMem_->Desc().size, false);
   }
@@ -280,7 +281,7 @@ GpuMemoryReference::~GpuMemoryReference() {
     iMem()->Unmap();
   }
   if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
-        iMem()->Desc().flags.isExternPhys)) {
+        iMem()->Desc().flags.isExternPhys || va_range_)) {
     // Update free memory size counters
     device_.updateAllocedMemory(iMem()->Desc().heaps[0], iMem()->Desc().size, true);
   }

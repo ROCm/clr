@@ -70,6 +70,7 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   const Device& device_;     //!< GPU device
   //! @note: This field is necessary for the thread safe release only
   VirtualGPU* gpu_;  //!< Resource will be used only on this queue
+  bool va_range_ = false; //!< Resource is a VA range(@note: PAL doesn't provide this info)
 
  protected:
   //! Default destructor

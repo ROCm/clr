@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2023 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifndef MEMORY_H_
-#define MEMORY_H_
+#pragma once
 
 #include "top.hpp"
 #include "utils/flags.hpp"
@@ -226,7 +225,7 @@ class Memory : public amd::RuntimeObject {
   Memory(const Memory&);
 
   Monitor lockMemoryOps_;          //!< Lock to serialize memory operations
-  std::list<Memory*> subBuffers_;  //!< List of all subbuffers for this memory object
+  std::set<Memory*> subBuffers_;   //!< List of all subbuffers for this memory object
   device::Memory* svmBase_;        //!< svmBase allocation for MGPU case
 
  protected:
@@ -286,7 +285,7 @@ class Memory : public amd::RuntimeObject {
   void removeSubBuffer(Memory* item);
 
   //! Returns the list of all subbuffers
-  std::list<Memory*>& subBuffers() { return subBuffers_; }
+  std::set<Memory*>& subBuffers() { return subBuffers_; }
 
   //! Returns the number of devices
   size_t numDevices() const { return numDevices_; }
@@ -711,7 +710,5 @@ class IpcBuffer : public Buffer {
   const void* handle_;  //!< Ipc handle, associated with this memory object
 };
 
-
 }  // namespace amd
 
-#endif  // MEMORY_H_
