@@ -147,8 +147,8 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   if ((pResDesc->resType == hipResourceTypePitch2D) &&
       ((pResDesc->res.pitch2D.devPtr == nullptr) ||
        (!amd::isMultipleOf(pResDesc->res.pitch2D.devPtr, info.imageBaseAddressAlignment_)) ||
-       (pResDesc->res.pitch2D.width >= info.image2DMaxWidth_) ||
-       (pResDesc->res.pitch2D.height >= info.image2DMaxHeight_) ||
+       (pResDesc->res.pitch2D.width > info.image2DMaxWidth_) ||
+       (pResDesc->res.pitch2D.height > info.image2DMaxHeight_) ||
        (!amd::isMultipleOf(pResDesc->res.pitch2D.pitchInBytes, info.imagePitchAlignment_)))) {
     // TODO check pitch limits.
     return hipErrorInvalidValue;
