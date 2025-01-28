@@ -189,7 +189,7 @@ hipError_t hipDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
 hipError_t hipMemcpyPeer(void* dst, int dstDevice, const void* src, int srcDevice,
                          size_t sizeBytes) {
   HIP_INIT_API(hipMemcpyPeer, dst, dstDevice, src, srcDevice, sizeBytes);
-
+  CHECK_STREAM_CAPTURING();
   if (srcDevice >= static_cast<int>(g_devices.size()) ||
       dstDevice >= static_cast<int>(g_devices.size()) ||
       srcDevice < 0 || dstDevice < 0) {
