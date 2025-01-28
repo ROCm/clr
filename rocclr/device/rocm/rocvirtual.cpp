@@ -1259,13 +1259,21 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   // Dependent signal and external signal cant be true at the same time
   assert(resolveDepSignal & (signal.handle != 0) == 0);
   if (resolveDepSignal) {
-    auto wait_signal = Barriers().WaitingSignal();
-    if (wait_signal.size() > 0) {
-      assert(wait_signal.size() == 1 && "Only one dep signal allowed for BarrierValue");
-      barrier_value_packet_.signal = wait_signal[0];
+    auto wait_signals = Barriers().WaitingSignal();
+    if (wait_signals.size() > 0) {
+      barrier_value_packet_.signal = wait_signals[0];
       barrier_value_packet_.value = kInitSignalValueOne;
       barrier_value_packet_.mask = std::numeric_limits<int64_t>::max();
       barrier_value_packet_.cond = HSA_SIGNAL_CONDITION_LT;
+      for (uint32_t i = 1; i < wait_signals.size(); ++i) {
+        uint32_t j = (i - 1) % 5;
+        barrier_packet_.dep_signal[j] = wait_signals[i];
+        constexpr bool kSkipSignal = true;
+        // If runtime reached the packet limit or the count limit, then flush the barrier
+        if ((j == 4) || ((i + 1) == wait_signals.size())) {
+          dispatchBarrierPacket(kNopPacketHeader, kSkipSignal);
+        }
+      }
     }
   }
 

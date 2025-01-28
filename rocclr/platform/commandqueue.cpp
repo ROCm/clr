@@ -158,13 +158,13 @@ void HostQueue::finish(bool cpu_wait) {
     if (command == NULL) {
       return;
     }
-    ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
+    ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to %p for finish", this);
     command->enqueue();
   }
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
   if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
-    ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
+    ClPrint(LOG_DEBUG, LOG_CMD, "No HW event || cpu wait=%d, await command completion", cpu_wait);
     command->awaitCompletion();
 
     if (IS_HIP) {
@@ -181,7 +181,7 @@ void HostQueue::finish(bool cpu_wait) {
   }
 
   command->release();
-  ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
+  ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished for host queue : %p", this);
 }
 
 void HostQueue::loop(device::VirtualDevice* virtualDevice) {
