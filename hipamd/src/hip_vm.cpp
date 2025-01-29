@@ -366,12 +366,6 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
-  vaddr_sub_obj->release();
-
-  // restore the original pa of the generic allocation
-  hip::GenericAllocation* ga
-    = reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
-  ga->release();
 
   HIP_RETURN(hipSuccess);
 }

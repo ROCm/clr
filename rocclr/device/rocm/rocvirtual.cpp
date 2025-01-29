@@ -2880,21 +2880,29 @@ void VirtualGPU::submitVirtualMap(amd::VirtualMapCommand& vcmd) {
     dispatchBarrierPacket(kBarrierPacketHeader, false);
     Barriers().WaitCurrent();
 
-    amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(vcmd.ptr());
-    assert(vaddr_sub_obj != nullptr);
-
-    // Unmap the object, since the physical addr is set.
-    if ((hsa_status = hsa_amd_vmem_unmap(vaddr_sub_obj->getSvmPtr(), vcmd.size()))
-                        == HSA_STATUS_SUCCESS) {
-      // assert the va is mapped and needs to be removed
-      vaddr_sub_obj->getContext().devices()[0]->DestroyVirtualBuffer(vaddr_sub_obj);
-      amd::MemObjMap::RemoveMemObj(vcmd.ptr());
-      if (vaddr_sub_obj->getUserData().phys_mem_obj != nullptr) {
-        vaddr_sub_obj->getUserData().phys_mem_obj->getUserData().vaddr_mem_obj = nullptr;
-        vaddr_sub_obj->getUserData().phys_mem_obj = nullptr;
+    size_t total_unmapped_buffers_size = 0;
+    auto sub_buffers = vaddr_base_obj->subBuffers();
+    for (auto buffer : sub_buffers) {
+      if (total_unmapped_buffers_size + buffer->getSize() <= vcmd.size()) {
+        // Unmap the object, since the physical addr is set.
+        if ((hsa_status = hsa_amd_vmem_unmap(buffer->getSvmPtr(), buffer->getSize())) ==
+            HSA_STATUS_SUCCESS) {
+          buffer->getContext().devices()[0]->DestroyVirtualBuffer(buffer);
+          amd::MemObjMap::RemoveMemObj(buffer->getSvmPtr());
+          if (buffer->getUserData().phys_mem_obj != nullptr) {
+            auto& phys_mem_user_data = buffer->getUserData().phys_mem_obj->getUserData();
+            phys_mem_user_data.vaddr_mem_obj = nullptr;
+            if (phys_mem_user_data.data != nullptr) {
+              reinterpret_cast<amd::RuntimeObject*>(phys_mem_user_data.data)->release();
+            }
+            buffer->getUserData().phys_mem_obj = nullptr;
+            total_unmapped_buffers_size += buffer->getSize();
+          }
+          buffer->release();
+        } else {
+          LogError("HSA Command: hsa_amd_vmem_unmap failed");
+        }
       }
-    } else {
-      LogError("HSA Command: hsa_amd_vmem_unmap failed");
     }
   }
 
