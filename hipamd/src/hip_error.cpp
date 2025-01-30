@@ -26,8 +26,8 @@ namespace hip {
 hipError_t hipExtGetLastError()
 {
   HIP_INIT_API(hipExtGetLastError);
-  hipError_t err = hip::tls.last_error_;
-  hip::tls.last_error_ = hipSuccess;
+  hipError_t err = hip::tls.last_command_error_;
+  hip::tls.last_command_error_ = hipSuccess;
   return err;
 }
 
