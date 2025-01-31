@@ -595,8 +595,6 @@ class Device : public NullDevice {
   void HiddenHeapAlloc(const VirtualGPU& gpu);
   //! Init hidden heap for device memory allocations
   void HiddenHeapInit(const VirtualGPU& gpu);
-  uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
-  void resetSDMAMask(const device::BlitManager* handle) const;
   void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;
   bool isXgmi() const { return isXgmi_; }
 
@@ -678,8 +676,6 @@ class Device : public NullDevice {
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;
   uint32_t maxSdmaWriteMask_;
-  //! Map of SDMA engineId<->stream
-  mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
   bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
 
   //! Code object to kernel info map (used in the crash dump analysis)
