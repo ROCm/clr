@@ -494,27 +494,20 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
-    if (copyMask == 0) {
-      // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
-      // and using it everytime can cause contention. When the count exceeds the threshold,
-      // reset it so as to check the engine status and fetch the new mask.
-      sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
-                               ? 0 : sdmaEngineRetainCount_++;
-    }
+    // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
+    // and using it everytime can cause contention. When the count exceeds the threshold,
+    // reset it so as to check the engine status and fetch the new mask.
+    sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
+                              ? 0 : sdmaEngineRetainCount_++;
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
-    if (copyMask == 0 && sdmaEngineRetainCount_ > 0) {
-      // Track the DtoH copies and decrement the count.
-      sdmaEngineRetainCount_--;
-    }
+    // Track the DtoH copies and decrement the count.
+    sdmaEngineRetainCount_--;
   }
 
   if (engine == HwQueueEngine::Unknown && forceSDMA) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
   gpu().Barriers().SetActiveEngine(engine);
@@ -522,23 +515,21 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
+    if (sdmaEngineRetainCount_) {
+      // Check if there a recently used SDMA engine for the stream
+      copyMask = gpu().getLastUsedSdmaEngine();
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
+      copyMask &= (engine == HwQueueEngine::SdmaRead ?
+                   sdmaEngineReadMask_ : sdmaEngineWriteMask_);
+    }
     if (copyMask == 0) {
-      if (sdmaEngineRetainCount_) {
-        // Check if there a recently used SDMA engine for the stream
-        copyMask = gpu().getLastUsedSdmaEngine();
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
-        copyMask &= (engine == HwQueueEngine::SdmaRead ?
-                    sdmaEngineReadMask_ : sdmaEngineWriteMask_);
-      }
-      if (copyMask == 0) {
-        // Check SDMA engine status
-        status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, "
-                "free_engine mask 0x%x", status, freeEngineMask);
-        // Return a mask with the rightmost bit set
-        copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
-        gpu().setLastUsedSdmaEngine(copyMask);
-      }
+      // Check SDMA engine status
+      status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, "
+              "free_engine mask 0x%x", status, freeEngineMask);
+      // Return a mask with the rightmost bit set
+      copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
+      gpu().setLastUsedSdmaEngine(copyMask);
     }
 
     if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
@@ -705,8 +696,6 @@ KernelBlitManager::~KernelBlitManager() {
       kernels_[i]->release();
     }
   }
-
-  dev().resetSDMAMask(this);
 
   if (nullptr != program_) {
     program_->release();

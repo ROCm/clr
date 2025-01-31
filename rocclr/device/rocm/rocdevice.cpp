@@ -1240,11 +1240,6 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
 
-  for (uint32_t i = 0; i < info_.numSDMAengines_; i++) {
-    engineAssignMap_[1 << i] = 0;
-  }
-
-
   checkAtomicSupport();
 
   assert(system_segment_.handle != 0);
@@ -3516,43 +3511,9 @@ void Device::HiddenHeapInit(const VirtualGPU& gpu) {
 }
 
 // ================================================================================================
-uint32_t Device::fetchSDMAMask(const device::BlitManager* handle, bool readEngine) const {
-  uint32_t engine = 0;
-  {
-    amd::ScopedLock lock(vgpusAccess());
-    for (auto it = engineAssignMap_.rbegin(); it != engineAssignMap_.rend(); ++it) {
-      // If blitManager handle is in the map return the engine ID else
-      // add to the map
-      if (it->second == handle) {
-        engine = it->first;
-        break;
-      } else if (it->second == 0) {
-        it->second = handle;
-        engine = it->first;
-        break;
-      }
-    }
-  }
-
-  return (readEngine ? maxSdmaReadMask_ : maxSdmaWriteMask_) & engine;
-}
-
-// ================================================================================================
 void Device::getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const {
   *readMask = maxSdmaReadMask_;
   *writeMask = maxSdmaWriteMask_;
-}
-
-// ================================================================================================
-void Device::resetSDMAMask(const device::BlitManager* handle) const {
-  amd::ScopedLock lock(vgpusAccess());
-
-  for (auto& it : engineAssignMap_) {
-    if (it.second == handle) {
-      it.second = 0;
-      break;
-    }
-  }
 }
 
 // ================================================================================================
