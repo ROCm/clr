@@ -224,7 +224,9 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
       releaseFlags = amd::Device::kCacheStateInvalid;
     }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*stream, !kMarkerDisableFlush, true, releaseFlags, batch_flush);
+    constexpr bool kMarkerTs = true;
+    command =
+        new hip::EventMarker(*stream, !kMarkerDisableFlush, kMarkerTs, releaseFlags, batch_flush);
   }
   return hipSuccess;
 }

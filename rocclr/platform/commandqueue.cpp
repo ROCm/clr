@@ -251,7 +251,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
     // Submit to the device queue.
     command->submit(*virtualDevice);
 
-    // if this is a user invisible marker command, then flush
+    // if this is a user invisible marker with a waiting event, then flush
     if (0 == command->type()) {
       virtualDevice->flush(head);
       tail = head = NULL;

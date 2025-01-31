@@ -137,7 +137,7 @@ class VirtualGPU : public device::VirtualDevice {
     Pal::Result UpdateAppPowerProfile();
 
     // ibReuse forces event wait without polling, to make sure event occured
-    template <bool ibReuse> bool waifForFence(uint cbId) const {
+    template <bool ibReuse> bool waitForFence(uint cbId) const {
       Pal::Result result = Pal::Result::Success;
       uint64_t start;
       uint64_t end;
@@ -394,9 +394,7 @@ class VirtualGPU : public device::VirtualDevice {
   void addConstBuffer(ConstantBuffer* cb) { constBufs_.push_back(cb); }
 
   //! Start the command profiling
-  void profilingBegin(amd::Command& command,     //!< Command queue object
-                      bool drmProfiling = false  //!< Measure DRM time
-  );
+  void profilingBegin(amd::Command& command);  //!< Command queue object
 
   //! End the command profiling
   void profilingEnd(amd::Command& command);

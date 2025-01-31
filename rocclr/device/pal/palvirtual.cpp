@@ -433,7 +433,7 @@ bool VirtualGPU::Queue::flush() {
   // Make sure the slot isn't busy
   constexpr bool IbReuse = true;
   if (GPU_FLUSH_ON_EXECUTION) {
-    waifForFence<!IbReuse>(cmdBufIdSlot_);
+    waitForFence<!IbReuse>(cmdBufIdSlot_);
   }
 
   // Reset the counter of commands
@@ -444,7 +444,7 @@ bool VirtualGPU::Queue::flush() {
 
   if (cmdBufIdCurrent_ == GpuEvent::InvalidID) {
     // Wait for the last one
-    waifForFence<!IbReuse>(cmdBufIdSlot_);
+    waitForFence<!IbReuse>(cmdBufIdSlot_);
     cmdBufIdCurrent_ = 1;
     cmbBufIdRetired_ = 0;
   }
@@ -452,7 +452,7 @@ bool VirtualGPU::Queue::flush() {
   // Wrap current slot
   cmdBufIdSlot_ = cmdBufIdCurrent_ % max_command_buffers_;
 
-  waifForFence<IbReuse>(cmdBufIdSlot_);
+  waitForFence<IbReuse>(cmdBufIdSlot_);
 
   // Progress retired TS
   if ((cmdBufIdCurrent_ > max_command_buffers_) &&
@@ -511,7 +511,7 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
 
   uint slotId = id % max_command_buffers_;
   constexpr bool IbReuse = true;
-  bool result = waifForFence<!IbReuse>(slotId);
+  bool result = waitForFence<!IbReuse>(slotId);
   cmbBufIdRetired_ = id;
   return result;
 }
@@ -1170,7 +1170,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
   // Find if virtual address is a CL allocation
   device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.destination(), &offset);
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   memory->syncCacheFromHost(*this);
   cl_command_type type = vcmd.type();
@@ -1297,7 +1297,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd) {
   // Find if virtual address is a CL allocation
   device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.source(), &offset);
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   bool entire = vcmd.isEntireMemory();
 
@@ -1613,7 +1613,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   pal::Memory* memory = dev().getGpuMemory(&vcmd.memory());
 
@@ -1708,7 +1708,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
       LogError("Unmap without map call");
       return;
     }
-    profilingBegin(vcmd, true);
+    profilingBegin(vcmd);
 
     // Check if image is a mipmap and assign a saved view
     amdImage = owner->asImage();
@@ -1874,7 +1874,7 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd, true);
+  profilingBegin(cmd);
   if (cmd.type() == CL_COMMAND_FILL_IMAGE) {
     if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
         cmd.origin(), cmd.size())) {
@@ -2064,7 +2064,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem()) {
@@ -2103,7 +2103,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
 void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem()) {
@@ -2139,7 +2139,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   if (!dev().isFineGrainedSystem()) {
     size_t patternSize = vcmd.patternSize();
@@ -2171,7 +2171,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   for (const auto& it : vcmd.memObjects()) {
     // Find device memory
@@ -2855,6 +2855,17 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     if (!foundEvent) {
       state_.forceWait_ = true;
     }
+  } else if (amd::IS_HIP) {
+    // Use GPU based timing for HIP events
+
+    // Make sure VirtualGPU has an exclusive access to the resources
+    amd::ScopedLock lock(execution());
+    GpuEvent event;
+    profilingBegin(vcmd);
+    eventBegin(MainEngine);
+    eventEnd(MainEngine, event);
+    setGpuEvent(event);
+    profilingEnd(vcmd);
   }
 }
 
@@ -3361,6 +3372,8 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
     amd::ScopedLock lock(execution());
     earlyDone = waitAllEngines(cb);
   }
+  // Get timestamp, incase readjustTimeGPU_ needs to be updated
+  uint64_t endTimeStampCPU = amd::Os::timeNanos();
 
   // Free resource cache if we have too many entries
   //! \note we do it here, when all engines are idle,
@@ -3384,7 +3397,6 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
       // Get the timestamp value of the last command in the batch
       cb->lastTS_->value(&startTimeStampGPU, &endTimeStampGPU);
 
-      uint64_t endTimeStampCPU = amd::Os::timeNanos();
       // Adjust the base time by the execution time
       readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
     }
@@ -3413,7 +3425,7 @@ bool VirtualGPU::allocConstantBuffers() {
   return true;
 }
 
-void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
+void VirtualGPU::profilingBegin(amd::Command& command) {
   // Is profiling enabled?
   if (command.profilingInfo().enabled_) {
     // Allocate a timestamp object from the cache
