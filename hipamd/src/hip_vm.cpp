@@ -91,8 +91,8 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  if (prop->requestedHandleType != hipMemHandleTypeNone
-      && prop->requestedHandleType != hipMemHandleTypePosixFileDescriptor) {
+  if (prop->requestedHandleTypes != hipMemHandleTypeNone
+      && prop->requestedHandleTypes != hipMemHandleTypePosixFileDescriptor) {
     HIP_RETURN(hipErrorNotSupported);
   }
 
@@ -150,9 +150,9 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle,
     HIP_RETURN(hipErrorNotInitialized);
   }
 
-  if (ga->GetProperties().requestedHandleType != handleType) {
-    LogPrintfError("HandleType mismatch memoryHandleType: %d, requestedHandleType: %d",
-                    ga->GetProperties().requestedHandleType, handleType);
+  if (ga->GetProperties().requestedHandleTypes != handleType) {
+    LogPrintfError("HandleType mismatch memoryHandleType: %d, requestedHandleTypes: %d",
+                    ga->GetProperties().requestedHandleTypes, handleType);
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -236,7 +236,7 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   prop.type = hipMemAllocationTypePinned;
   prop.location.type = hipMemLocationTypeDevice;
   prop.location.id = hip::getCurrentDevice()->deviceId();
-  prop.requestedHandleType = shHandleType;
+  prop.requestedHandleTypes = shHandleType;
 
   phys_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, 0, prop);
