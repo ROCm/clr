@@ -284,7 +284,7 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     case hipDeviceAttributePciDeviceId:
       *pi = prop.pciDeviceID;
       break;
-    case hipDeviceAttributePciDomainID:
+    case hipDeviceAttributePciDomainId:
       *pi = prop.pciDomainID;
       break;
     case hipDeviceAttributePersistingL2CacheMaxSize:
