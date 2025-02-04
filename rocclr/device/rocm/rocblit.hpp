@@ -277,13 +277,13 @@ class KernelBlitManager : public DmaBlitManager {
     Scheduler,
     GwsInit,
     InitHeap,
+    BatchMemOp,
     BlitLinearTotal,
     FillImage = BlitLinearTotal,
     BlitCopyImage,
     BlitCopyImage1DA,
     BlitCopyImageToBuffer,
     BlitCopyBufferToImage,
-    BatchMemOp,
     BlitTotal
   };
 
@@ -593,10 +593,10 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyBufferRect",    "__amd_rocclr_copyBufferRectAligned",
     "__amd_rocclr_streamOpsWrite",    "__amd_rocclr_streamOpsWait",
     "__amd_rocclr_scheduler",         "__amd_rocclr_gwsInit",
-    "__amd_rocclr_initHeap",          "__amd_rocclr_fillImage",
-    "__amd_rocclr_copyImage",         "__amd_rocclr_copyImage1DA",
-    "__amd_rocclr_copyImageToBuffer", "__amd_rocclr_copyBufferToImage",
-    "__amd_rocclr_batchMemOp"};
+    "__amd_rocclr_initHeap",          "__amd_rocclr_batchMemOp",
+    "__amd_rocclr_fillImage",         "__amd_rocclr_copyImage",
+    "__amd_rocclr_copyImage1DA",      "__amd_rocclr_copyImageToBuffer",
+    "__amd_rocclr_copyBufferToImage"};
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
                                            size_t size, const void* value, size_t offset,
