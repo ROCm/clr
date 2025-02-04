@@ -28,8 +28,9 @@ THE SOFTWARE.
   #define __HOST_DEVICE__ __device__
 #else
   #define __HOST_DEVICE__ __host__ __device__
-  #include <hip/amd_detail/amd_hip_common.h>
-  #include "hip/amd_detail/host_defines.h"
+  #include "amd_hip_common.h"
+  #include "host_defines.h"
+  #include "amd_hip_vector_types.h"
   #include <assert.h>
   #if defined(__cplusplus)
     #include <algorithm>
@@ -73,7 +74,6 @@ THE SOFTWARE.
     #if defined(__cplusplus)
       #if !defined(__HIPCC_RTC__)
         #include "hip_fp16_math_fwd.h"
-        #include "amd_hip_vector_types.h"
         #include "host_defines.h"
         #include "amd_device_functions.h"
         #include "amd_warp_functions.h"

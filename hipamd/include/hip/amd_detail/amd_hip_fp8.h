@@ -188,9 +188,15 @@ template <typename T, bool is_fnuz>
 __FP8_HOST_DEVICE_STATIC__ __hip_fp8_storage_t cast_to_f8(T _x, int wm, int we, bool clip = false,
                                                           bool stoch = false,
                                                           unsigned int rng = 0) {
+#if defined(__clang__) and defined(__HIP__)
   constexpr bool is_half = __hip_internal::is_same<T, _Float16>::value;
   constexpr bool is_float = __hip_internal::is_same<T, float>::value;
   constexpr bool is_double = __hip_internal::is_same<T, double>::value;
+#else   // compiling for host
+  constexpr bool is_half = std::is_same<T, _Float16>::value;
+  constexpr bool is_float = std::is_same<T, float>::value;
+  constexpr bool is_double = std::is_same<T, double>::value;
+#endif  // defined(__clang__) and defined(__HIP__)
   static_assert(is_half || is_float || is_double, "Only half, float and double can be cast to f8");
 
   const int mfmt = (sizeof(T) == 8) ? 52 : ((sizeof(T) == 4) ? 23 : 10);
@@ -395,9 +401,15 @@ after shift right by 4 bits, it would look like midpoint.
 template <typename T, bool is_fnuz>
 __FP8_HOST_DEVICE_STATIC__ T cast_from_f8(__hip_fp8_storage_t x, int wm, int we,
                                           bool clip = false) {
+#if defined(__clang__) and defined(__HIP__)
   constexpr bool is_half = __hip_internal::is_same<T, _Float16>::value;
   constexpr bool is_float = __hip_internal::is_same<T, float>::value;
   constexpr bool is_double = __hip_internal::is_same<T, double>::value;
+#else
+  constexpr bool is_half = std::is_same<T, _Float16>::value;
+  constexpr bool is_float = std::is_same<T, float>::value;
+  constexpr bool is_double = std::is_same<T, double>::value;
+#endif // defined(__clang__) and defined(__HIP__)
   static_assert(is_half || is_float || is_double, "only half, float and double are supported");
 
   constexpr int weo = is_half ? 5 : (is_float ? 8 : 11);
@@ -478,10 +490,16 @@ __FP8_HOST_DEVICE_STATIC__ T cast_from_f8(__hip_fp8_storage_t x, int wm, int we,
     }
   }
 
+#if defined(__clang__) and defined(__HIP__)
   typename __hip_internal::conditional<
       sizeof(T) == 2, unsigned short int,
       typename __hip_internal::conditional<sizeof(T) == 4, unsigned int,
                                            unsigned long long>::type>::type retval;
+#else
+  typename std::conditional<sizeof(T) == 2, unsigned short int,
+                            typename std::conditional<sizeof(T) == 4, unsigned int,
+                                                      unsigned long long>::type>::type retval;
+#endif
 
   if (we == 5 && is_half && !is_fnuz) {
     retval = x << 8;

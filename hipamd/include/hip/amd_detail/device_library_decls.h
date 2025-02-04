@@ -33,6 +33,11 @@ THE SOFTWARE.
 
 #if !defined(__HIPCC_RTC__)
 #include "hip/amd_detail/host_defines.h"
+#if __cplusplus
+#include <cstdint>
+#else
+#include <stdint.h>
+#endif
 #endif
 
 typedef unsigned char uchar;
