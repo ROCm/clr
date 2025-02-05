@@ -1252,6 +1252,7 @@ bool Image::create(bool alloc_local) {
     permission_      = orgImage->permission_;
     deviceMemory_    = orgImage->deviceMemory_;
     hsaImageObject_  = orgImage->hsaImageObject_;
+    ownsHsaImageObject_ = false;
     return true;
   }
 
@@ -1490,7 +1491,7 @@ void Image::destroy() {
 
   delete copyImageBuffer_;
 
-  if (hsaImageObject_.handle != 0) {
+  if (hsaImageObject_.handle != 0 && ownsHsaImageObject_) {
     hsa_status_t status = hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
     assert(status == HSA_STATUS_SUCCESS);
   }
