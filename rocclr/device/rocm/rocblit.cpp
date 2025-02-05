@@ -52,18 +52,15 @@ inline Memory& DmaBlitManager::gpuMem(device::Memory& mem) const {
 bool DmaBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
                                 const amd::Coord3D& origin, const amd::Coord3D& size,
                                 bool entire, amd::CopyMetadata copyMetadata) const {
-  // HSA copy functionality with a possible async operation
-  gpu().releaseGpuMemoryFence(kSkipCpuWait);
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBuffer_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
-    gpu().Barriers().WaitCurrent();
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::readBuffer(srcMemory, dstHost, origin, size, entire, copyMetadata);
   } else {
     size_t copySize = size[0];
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned read path");
+
     if (0 != copySize) {
       const_address addrSrc = gpuMem(srcMemory).getDeviceMemory() + origin[0];
       address addrDst = reinterpret_cast<address>(dstHost);
@@ -84,15 +81,13 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
                                     const amd::BufferRect& hostRect,
                                     const amd::Coord3D& size, bool entire,
                                     amd::CopyMetadata copyMetadata) const {
-  // HSA copy functionality with a possible async operation
-  gpu().releaseGpuMemoryFence();
-
   // Use host copy if memory has direct access
   if (setup_.disableReadBufferRect_ ||
       (srcMemory.isHostMemDirectAccess() && !srcMemory.isCpuUncached())) {
     // Stall GPU before CPU access
-    gpu().Barriers().WaitCurrent();
-    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect, hostRect, size, entire, copyMetadata);
+    gpu().releaseGpuMemoryFence();
+    return HostBlitManager::readBufferRect(srcMemory, dstHost, bufRect,
+                                          hostRect, size, entire, copyMetadata);
   } else {
     const_address src = gpuMem(srcMemory).getDeviceMemory();
 
@@ -106,7 +101,8 @@ bool DmaBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
 
         // Copy data from device to host - line by line
         address dst = reinterpret_cast<address>(dstHost) + dstOffset;
-        bool retval = hsaCopyStaged(src + srcOffset, dst, size[0], false, copyMetadata);
+        bool retval = hsaCopyStaged(src + srcOffset, dst, size[0],
+                                    false, copyMetadata);
         if (!retval) {
           return retval;
         }
@@ -172,12 +168,11 @@ bool DmaBlitManager::writeBufferRect(const void* srcHost, device::Memory& dstMem
                                      const amd::BufferRect& hostRect,
                                      const amd::BufferRect& bufRect, const amd::Coord3D& size,
                                      bool entire, amd::CopyMetadata copyMetadata) const {
-  // HSA copy functionality with a possible async operation
-  gpu().releaseGpuMemoryFence();
 
   // Use host copy if memory has direct access
   if (setup_.disableWriteBufferRect_ || dstMemory.isHostMemDirectAccess() ||
       gpuMem(dstMemory).IsPersistentDirectMap()) {
+    gpu().releaseGpuMemoryFence();
     return HostBlitManager::writeBufferRect(srcHost, dstMemory, hostRect, bufRect, size, entire,
                                             copyMetadata);
   } else {
@@ -498,7 +493,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
     // and using it everytime can cause contention. When the count exceeds the threshold,
     // reset it so as to check the engine status and fetch the new mask.
     sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
-                              ? 0 : sdmaEngineRetainCount_++;
+                              ? 0 : (sdmaEngineRetainCount_ + 1);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
@@ -515,7 +510,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
-    if (sdmaEngineRetainCount_) {
+    if (sdmaEngineRetainCount_ > 0) {
       // Check if there a recently used SDMA engine for the stream
       copyMask = gpu().getLastUsedSdmaEngine();
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
@@ -606,8 +601,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
 // ================================================================================================
 bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_t size,
                                    bool hostToDev, amd::CopyMetadata& copyMetadata)  const {
-  // Stall GPU, sicne CPU copy is possible
-  gpu().releaseGpuMemoryFence(hostToDev);
+  gpu().releaseGpuMemoryFence(kSkipCpuWait);
 
   size_t totalSize = size;
   size_t stagedCopyOffset = 0;
@@ -1638,7 +1632,8 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
     return result;
   } else {
     size_t totalSize = size[0];
-
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned read path, Async = %d",
+            copyMetadata.isAsync_);
     // Check if a pinned transfer can be executed with a single pin
     if (((totalSize <= dev().settings().pinnedXferSize_) &&
          (totalSize > MinSizeForPinnedTransfer))) {
@@ -1740,6 +1735,8 @@ bool KernelBlitManager::readBufferRect(device::Memory& srcMemory, void* dstHost,
     synchronize();
     return result;
   } else {
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned read rect path, Async = %d",
+            copyMetadata.isAsync_);
     size_t pinSize = hostRect.start_ + hostRect.end_;
     size_t partial;
     amd::Memory* amdMemory = pinHostMemory(dstHost, pinSize, partial);
@@ -1791,7 +1788,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
     return result;
   } else {
     size_t totalSize = size[0];
-    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned write path");
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned write path, Async = %d",
+            copyMetadata.isAsync_);
     // If size > min pinned size, do a pinning copy, since we are limited by staging buffer size
     // Check if a pinned transfer can be executed with a single pin
     if ((totalSize <= dev().settings().pinnedXferSize_) &&
@@ -1889,6 +1887,8 @@ bool KernelBlitManager::writeBufferRect(const void* srcHost, device::Memory& dst
     synchronize();
     return result;
   } else {
+    ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Unpinned write rect path, Async = %d",
+            copyMetadata.isAsync_);
     size_t pinSize = hostRect.start_ + hostRect.end_;
     size_t partial;
     amd::Memory* amdMemory = pinHostMemory(srcHost, pinSize, partial);
@@ -2246,8 +2246,7 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
     // Check CL_MEM_SVM_ATOMICS flag to see if we used system_coarse_segment_
     auto memFlags = srcMemory.owner()->getMemFlags();
     bool srcSvmAtomics = (memFlags & CL_MEM_SVM_ATOMICS) != 0;
-    if ((!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) ||
-        (dstMemory.isHostMemDirectAccess())) {
+    if (!srcSvmAtomics && srcMemory.isHostMemDirectAccess()) {
       gpu().addSystemScope();
     }
     result = shaderCopyBuffer(reinterpret_cast<address>(dstMemory.virtualAddress()),
