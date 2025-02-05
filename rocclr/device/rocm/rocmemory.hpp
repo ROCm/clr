@@ -250,6 +250,7 @@ class Image : public roc::Memory {
   hsa_access_permission_t permission_;
   hsa_ext_image_data_info_t deviceImageInfo_;
   hsa_ext_image_t hsaImageObject_;
+  bool ownsHsaImageObject_ = true;
 
   void* originalDeviceMemory_;
   amd::Image* copyImageBuffer_ = nullptr;
