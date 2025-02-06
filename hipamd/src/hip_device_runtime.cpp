@@ -578,6 +578,11 @@ hipError_t hipDeviceSetCacheConfig(hipFuncCache_t cacheConfig) {
       cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_STREAM_CAPTURE_API) {
+    if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+      HIP_RETURN(hipErrorStreamCaptureUnsupported);
+    }
+  }
 
   // No way to set cache config yet.
 
