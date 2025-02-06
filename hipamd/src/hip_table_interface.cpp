@@ -1841,3 +1841,6 @@ hipError_t hipGraphExecBatchMemOpNodeSetParams(hipGraphExec_t hGraphExec,
   return hip::GetHipDispatchTable()->hipGraphExecBatchMemOpNodeSetParams_fn(hGraphExec, hNode,
                                                                             nodeParams);
 }
+hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  return hip::GetHipDispatchTable()->hipEventRecordWithFlags_fn(event, stream, flags);
+}

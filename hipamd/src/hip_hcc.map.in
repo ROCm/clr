@@ -587,6 +587,7 @@ global:
     hipGraphBatchMemOpNodeGetParams;
     hipGraphBatchMemOpNodeSetParams;
     hipGraphExecBatchMemOpNodeSetParams;
+    hipEventRecordWithFlags;
 local:
     *;
 } hip_6.2;

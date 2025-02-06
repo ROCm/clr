@@ -388,7 +388,10 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
 }
 
-hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
+hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  if (!(flags == hipEventRecordDefault || flags == hipEventRecordExternal)){
+    return hipErrorInvalidValue;
+  }
   hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
@@ -410,6 +413,17 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
     if (!lastCapturedNodes.empty()) {
       e->SetNodesPrevToRecorded(lastCapturedNodes);
     }
+    if (flags == hipEventRecordExternal) {
+      hip::GraphNode* pGraphNode;
+      status = hipGraphAddEventRecordNode((hipGraphNode_t*) pGraphNode, (hipGraph_t) s->GetCaptureGraph(),
+                                          (hipGraphNode_t*) s->GetLastCapturedNodes().data(),
+                                          s->GetLastCapturedNodes().size(), (hipEvent_t) e);
+      if (status != hipSuccess) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "hipEventRecord add external event node failed");
+        return status;
+      }
+      s->SetLastCapturedNode(pGraphNode);
+    }
   } else {
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
@@ -421,13 +435,18 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
 
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
+}
+
+hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  HIP_INIT_API(hipEventRecordWithFlags, event, stream, flags);
+  HIP_RETURN(hipEventRecord_common(event, stream, flags));
 }
 
 hipError_t hipEventSynchronize(hipEvent_t event) {
