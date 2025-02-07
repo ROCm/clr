@@ -119,7 +119,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
       const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
       Pal::gpusize totalAlloc = dev().TotalAlloc();
       if (invisibleHeap.logicalSize > 0 && memType == Local &&
-          (totalAlloc > (invisibleHeap.logicalSize * 0.75))) {
+          (totalAlloc > invisibleHeap.logicalSize)) {
         memType = RemoteUSWC;
       }
     }
