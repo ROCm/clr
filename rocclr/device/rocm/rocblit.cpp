@@ -32,8 +32,7 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr),
-      sdmaEngineRetainCount_(0) {
+      context_(nullptr) {
         dev().getSdmaRWMasks(&sdmaEngineReadMask_, &sdmaEngineWriteMask_);
       }
 
@@ -489,16 +488,9 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
-    // and using it everytime can cause contention. When the count exceeds the threshold,
-    // reset it so as to check the engine status and fetch the new mask.
-    sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
-                              ? 0 : (sdmaEngineRetainCount_ + 1);
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    // Track the DtoH copies and decrement the count.
-    sdmaEngineRetainCount_--;
   }
 
   if (engine == HwQueueEngine::Unknown && forceSDMA) {
@@ -510,13 +502,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp());
 
   if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
-    if (sdmaEngineRetainCount_ > 0) {
-      // Check if there a recently used SDMA engine for the stream
-      copyMask = gpu().getLastUsedSdmaEngine();
-      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
-      copyMask &= (engine == HwQueueEngine::SdmaRead ?
-                   sdmaEngineReadMask_ : sdmaEngineWriteMask_);
-    }
+    copyMask = gpu().getLastUsedSdmaEngine();
     if (copyMask == 0) {
       // Check SDMA engine status
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
