@@ -26,6 +26,7 @@
 #include "device/device.hpp"
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palblit.hpp"
+#include "utils/flags.hpp"
 
 #ifdef _WIN32
 #include <d3d10_1.h>
@@ -114,7 +115,7 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
       memType = Persistent;
     }
 
-    if (dev().settings().apuSystem_) {
+    if (amd::IS_HIP && dev().settings().apuSystem_) {
       const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
       Pal::gpusize totalAlloc = dev().TotalAlloc();
       if (invisibleHeap.logicalSize > 0 && memType == Local &&
