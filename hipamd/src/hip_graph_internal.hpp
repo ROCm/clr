@@ -2121,7 +2121,7 @@ class GraphEventRecordNode : public GraphNode {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
       // command release during enqueueRecordCommand
       hipError_t status = e->enqueueRecordCommand(
-            reinterpret_cast<hipStream_t>(stream), commands_[0], true);
+            reinterpret_cast<hipStream_t>(stream), commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue event record command failed for node %p - status %d", this,

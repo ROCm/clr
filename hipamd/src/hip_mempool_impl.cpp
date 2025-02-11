@@ -284,7 +284,7 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
         // Add a marker to the stream to trace availability of this memory
         Event* e = new hip::Event(0);
         if (e != nullptr) {
-          if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
+          if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr)) {
             ts.SetEvent(e);
             // Make sure runtime sends a notification
             auto result = e->ready();

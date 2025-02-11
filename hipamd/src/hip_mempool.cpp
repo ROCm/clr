@@ -206,7 +206,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
       event = new hip::Event(0);
       if (event != nullptr) {
         if (hipSuccess !=
-            event->addMarker(reinterpret_cast<hipStream_t>(hip_stream), nullptr, true)) {
+            event->addMarker(reinterpret_cast<hipStream_t>(hip_stream), nullptr)) {
           delete event;
           event = nullptr;
         } else {

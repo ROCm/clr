@@ -138,12 +138,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     // Hence for now make sure CPU status is updated by calling awaitCompletion();
     awaitEventCompletion();
     eStop.awaitEventCompletion();
-    if (unrecorded_ && eStop.isUnRecorded()) {
-      // Both the events are not recorded, just need the end and start of stop event
-      ms = static_cast<float>(eStop.time(false) - eStop.time(true)) / 1000000.f;
-    } else {
-      ms = static_cast<float>(eStop.time(false) - time(false)) / 1000000.f;
-    }
+    ms = static_cast<float>(eStop.time(false) - time(false)) / 1000000.f;
   }
   return hipSuccess;
 }
@@ -235,7 +230,7 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
 }
 
 // ================================================================================================
-hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
+hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command) {
   command->enqueue();
   if (event_ == &command->event()) {
     return hipSuccess;
@@ -244,14 +239,13 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
     event_->release();
   }
   event_ = &command->event();
-  unrecorded_ = !record;
 
   return hipSuccess;
 }
 
 // ================================================================================================
 hipError_t Event::addMarker(hipStream_t stream, amd::Command* command,
-                            bool record, bool batch_flush) {
+                            bool batch_flush) {
   // Skip wait as we should not be resolving stream in this sub
   constexpr bool kSkipWait = true;
   hip::Stream* hip_stream = hip::getStream(stream, kSkipWait);
@@ -261,7 +255,7 @@ hipError_t Event::addMarker(hipStream_t stream, amd::Command* command,
   if (status != hipSuccess) {
     return hipSuccess;
   }
-  status = enqueueRecordCommand(stream, command, record);
+  status = enqueueRecordCommand(stream, command);
   return status;
 }
 
@@ -417,7 +411,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
     }
-    status = e->addMarker(stream, nullptr, true, !hip::Event::kBatchFlush);
+    status = e->addMarker(stream, nullptr, !hip::Event::kBatchFlush);
   }
   return status;
 }

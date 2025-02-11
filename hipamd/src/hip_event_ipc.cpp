@@ -142,49 +142,41 @@ hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
 // ================================================================================================
 hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                    uint32_t flags, bool batch_flush) {
-  bool unrecorded = isUnRecorded();
-  if (unrecorded) {
-    command = new amd::Marker(*stream, kMarkerDisableFlush);
-  } else {
-    return Event::recordCommand(command, stream, batch_flush);
-  }
+  command = new amd::Marker(*stream, kMarkerDisableFlush);
   return hipSuccess;
 }
 
 // ================================================================================================
-hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
-  bool unrecorded = isUnRecorded();
-  if (unrecorded) {
-    amd::Event& tEvent = command->event();
-    createIpcEventShmemIfNeeded();
-    int write_index = ipc_evt_.ipc_shmem_->write_index++;
-    int offset = write_index % IPC_SIGNALS_PER_EVENT;
-    while (ipc_evt_.ipc_shmem_->signal[offset] != 0) {
-      amd::Os::sleep(1);
-    }
-    // Lock signal.
-    ipc_evt_.ipc_shmem_->signal[offset] = 1;
-    ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
-    command->enqueue();
+hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command) {
 
-    // device writes 0 to signal after the hipEventRecord command is completed
-    // the signal value is checked by WaitThenDecrementSignal cb
-    hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WRITE_VALUE,
-                                 &(ipc_evt_.ipc_shmem_->signal[offset]),
-                                 0,
-                                 0, 0, sizeof(uint32_t));
-    if (status != hipSuccess) {
-      return status;
-    }
-
-    // Update read index to indicate new signal.
-    int expected = write_index - 1;
-    while (!ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
-      amd::Os::sleep(1);
-    }
-  } else {
-    return Event::enqueueRecordCommand(stream, command, record);
+  amd::Event& tEvent = command->event();
+  createIpcEventShmemIfNeeded();
+  int write_index = ipc_evt_.ipc_shmem_->write_index++;
+  int offset = write_index % IPC_SIGNALS_PER_EVENT;
+  while (ipc_evt_.ipc_shmem_->signal[offset] != 0) {
+    amd::Os::sleep(1);
   }
+  // Lock signal.
+  ipc_evt_.ipc_shmem_->signal[offset] = 1;
+  ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
+  command->enqueue();
+
+  // device writes 0 to signal after the hipEventRecord command is completed
+  // the signal value is checked by WaitThenDecrementSignal cb
+  hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WRITE_VALUE,
+                                &(ipc_evt_.ipc_shmem_->signal[offset]),
+                                0,
+                                0, 0, sizeof(uint32_t));
+  if (status != hipSuccess) {
+    return status;
+  }
+
+  // Update read index to indicate new signal.
+  int expected = write_index - 1;
+  while (!ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
+    amd::Os::sleep(1);
+  }
+  
   return hipSuccess;
 }
 

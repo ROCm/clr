@@ -461,7 +461,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 
   if (startEvent != nullptr) {
     hip::Event* eStart = reinterpret_cast<hip::Event*>(startEvent);
-    status = eStart->addMarker(hStream, nullptr, false);
+    status = eStart->addMarker(hStream, nullptr);
     if (status != hipSuccess) {
       return status;
     }
@@ -476,7 +476,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
     }
     // Enqueue Dispatch and bind the stop event
     command->enqueue();
-    eStop->BindCommand(*command, false);
+    eStop->BindCommand(*command);
   } else {
     command->enqueue();
   }
