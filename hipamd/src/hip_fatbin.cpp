@@ -384,11 +384,26 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       (void)amd::Comgr::destroy_data_set(spirv_data_set);
       (void)amd::Comgr::destroy_action_info(action);
 
+      // System might report multiple devices of same name, we do not want to recompile for all
+      // these. store code objects after compiling them to reuse.
+      std::unordered_map<std::string, std::pair<char*, size_t>> compiled_co;
+
       for (auto device : devices) {
-        LogPrintfInfo("Creating ISA for: %s from spir-v", device->devices()[0]->isa().targetId());
+        std::string target_id = device->devices()[0]->isa().targetId();
+        if (auto code_iter = compiled_co.find(target_id); code_iter != compiled_co.end()) {
+          // We have already compiled for it, lets reuse the code object
+          char* co = new char[code_iter->second.second];
+          std::memcpy(co, code_iter->second.first, code_iter->second.second);
+          LogPrintfInfo("reusing code object for: %s", target_id.c_str());
+          fatbin_dev_info_[device->deviceId()] =
+              new FatBinaryDeviceInfo(co, code_iter->second.second, 0);
+          fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+          continue;
+        }
+
+        LogPrintfInfo("Creating ISA for: %s from spirv", target_id.c_str());
         amd_comgr_action_info_t reloc_action;
-        std::string isa =
-            std::string{"amdgcn-amd-amdhsa--"} + device->devices()[0]->isa().targetId();
+        std::string isa = "amdgcn-amd-amdhsa--" + target_id;
         if (comgr_status = amd::Comgr::create_action_info(&reloc_action);
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create action");
@@ -524,9 +539,11 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           return hipErrorInvalidValue;
         }
 
-        fatbin_dev_info_[device->deviceId()] =
-            new FatBinaryDeviceInfo(co, CodeObject::ElfSize(co), 0);
+        auto elf_size = CodeObject::ElfSize(co);
+        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(co, elf_size, 0);
         fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+        // Save the compiled code object
+        compiled_co[target_id] = std::make_pair(co, elf_size);
 
         // cleanup
         (void)amd::Comgr::release_data(exe_data);
@@ -534,8 +551,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         (void)amd::Comgr::destroy_action_info(reloc_action);
         (void)amd::Comgr::destroy_data_set(exe_output);
         (void)amd::Comgr::destroy_data_set(reloc_data);
-        (void)amd::Comgr::destroy_data_set(bc_data_set);
       }
+      (void)amd::Comgr::destroy_data_set(bc_data_set);
     }
   } while (0);
 
