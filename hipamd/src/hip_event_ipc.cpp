@@ -101,42 +101,14 @@ hipError_t IPCEvent::synchronize() {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
-  command = new amd::Marker(*stream, false);
-  if (command == NULL) {
-    return hipErrorOutOfMemory;
-  }
-  return hipSuccess;
-}
-
-hipError_t IPCEvent::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
-  auto t{new CallbackData{ipc_evt_.ipc_shmem_->read_index, ipc_evt_.ipc_shmem_}};
-  StreamCallback* cbo = new StreamAddCallback(
-      stream, reinterpret_cast<hipStreamCallback_t>(WaitThenDecrementSignal), t);
-  if (!command->setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
-    command->release();
-    return hipErrorInvalidHandle;
-  }
-  command->enqueue();
-  command->release();
-  command->awaitCompletion();
-  return hipSuccess;
-}
-
 hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
-  hip::Stream* hip_stream = hip::getStream(stream);
 
-  amd::ScopedLock lock(lock_);
-  if(query() != hipSuccess) {
-    amd::Command* command;
-    hipError_t status = streamWaitCommand(command, hip_stream);
-    if (status != hipSuccess) {
-      return status;
-    }
-    status = enqueueStreamWaitCommand(stream, command);
-    return status;
-  }
-  return hipSuccess;
+  int offset = ipc_evt_.ipc_shmem_->read_index;
+  hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WAIT_VALUE,
+                              &(ipc_evt_.ipc_shmem_->signal[offset]),
+                              0,
+                              1, 1, sizeof(uint32_t));
+  return status;
 }
 
 // ================================================================================================

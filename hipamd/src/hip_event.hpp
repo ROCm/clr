@@ -210,8 +210,6 @@ class IPCEvent : public Event {
   hipError_t synchronize();
   hipError_t query();
 
-  hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
-  hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   hipError_t streamWait(hipStream_t stream, uint flags);
 
   hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue,
