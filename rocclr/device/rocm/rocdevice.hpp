@@ -655,12 +655,18 @@ class Device : public NullDevice {
   static address mg_sync_;  //!< MGPU grid launch sync memory (SVM location)
 
   struct QueueInfo {
-    int refCount;
-    void* hostcallBuffer_;
+    int refCount;           //! Reference counter. Shows how many time the queue was shared
+    void* hostcallBuffer_;  //! Host call buffer for the HSA queue
   };
 
+  struct QueueCompare {
+    // Customized queue compare operator to make sure the queues are sorted in the creation order
+    bool operator()(hsa_queue_t* lhs, hsa_queue_t* rhs) const {
+        return (lhs->id < rhs->id) ? true : false;
+    }
+  };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queuePool_;
 
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
   hsa_queue_t* getQueueFromPool(const uint qIndex);
@@ -671,7 +677,7 @@ class Device : public NullDevice {
                             std::vector<LinkAttrType>* link_attr);
 
   //! Pool of HSA queues with custom CU masks
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queueWithCUMaskPool_;
 
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;

@@ -2945,16 +2945,18 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
   // Check if queue with refCount 0 is available to use
   if (queuePool_[qIndex].size() < GPU_MAX_HW_QUEUES) {
-    for (auto it = queuePool_[qIndex].begin(); it != queuePool_[qIndex].end(); it++) {
-      if (it->second.refCount == 0) {
-        it->second.refCount++;
+    for (auto& it : queuePool_[qIndex]) {
+      if (it.second.refCount == 0) {
+        it.second.refCount++;
         ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "Selected queue refCount: %p (%d)",
-                it->first->base_address, it->second.refCount);
-        return it->first;
+                it.first->base_address, it.second.refCount);
+        return it.first;
       }
     }
   } else {
     if (qIndex < QueuePriority::Total && queuePool_[qIndex].size() > 0) {
+      // Search through all available queues for the lowest counter.
+      // Note: the map is sorted in the allocation order for possible round-robin selection
       typedef decltype(queuePool_)::value_type::const_reference PoolRef;
       auto lowest = std::min_element(
           queuePool_[qIndex].begin(), queuePool_[qIndex].end(),
@@ -2968,6 +2970,7 @@ hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
   return nullptr;
 }
 
+// ================================================================================================
 hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
                                   const std::vector<uint32_t>& cuMask,
                                   amd::CommandQueue::Priority priority) {
