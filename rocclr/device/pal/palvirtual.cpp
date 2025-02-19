@@ -891,6 +891,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
       VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
+  if (dev().captureMgr() != nullptr) {
+    createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize += 512;
+  }
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
       dev().settings().maxCmdBuffers_ * createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize;
 
@@ -2510,7 +2513,6 @@ void VirtualGPU::PostDeviceEnqueue(const amd::Kernel& kernel, const HSAILKernel&
   param->releaseHostCP = 0;
   param->parentAQL = vmParentWrap;
   param->dedicatedQueue = dev().settings().useDeviceQueue_;
-  param->useATC = dev().settings().svmFineGrainSystem_;
 
   // Fill the scratch buffer information
   if (hsaKernel.prog().maxScratchRegs() > 0) {
@@ -2772,7 +2774,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     } else {
       dispatchParam.wavesPerSh = 0;
     }
-    dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
     dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
     dispatchParam.aqlPacketIndex = aql_index;
     // Run AQL dispatch in HW
