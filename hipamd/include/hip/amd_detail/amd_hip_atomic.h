@@ -26,7 +26,6 @@ THE SOFTWARE.
 #include "amd_device_functions.h"
 #endif
 
-
 #if __has_builtin(__hip_atomic_compare_exchange_strong)
 
 template<bool B, typename T, typename F> struct Cond_t;
@@ -131,7 +130,6 @@ unsigned short int atomicCAS_system(unsigned short int* address, unsigned short 
                                        __HIP_MEMORY_SCOPE_SYSTEM);
   return compare;
 }
-
 
 __device__
 inline
@@ -489,7 +487,6 @@ __device__
 inline
 unsigned int atomicMin(unsigned int* address, unsigned int val) {
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-
 }
 
 __device__
@@ -540,20 +537,7 @@ float atomicMin(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x80000000U == u.b;
-
-  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  }
-  return value;
+  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 #endif
 }
 
@@ -563,20 +547,7 @@ float atomicMin_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x80000000U == u.b;
-
-  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  }
-  return value;
+  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 #endif
 }
 
@@ -586,20 +557,7 @@ double atomicMin(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-
-  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0)))  {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  }
-  return value;
+  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 #endif
 }
 
@@ -609,20 +567,7 @@ double atomicMin_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-
-  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0)))  {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  }
-  return value;
+  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 #endif
 }
 
@@ -673,7 +618,6 @@ inline
 unsigned long long atomicMax_system(unsigned long long* address, unsigned long long val) {
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
-
 __device__
 inline
 long long atomicMax(long long* address, long long val) {
@@ -692,21 +636,7 @@ float atomicMax(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool neg_zero = 0x80000000U == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-    neg_zero = 0x80000000U == u.b;
-  }
-  return u.a;
+  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 #endif
 }
 
@@ -716,21 +646,7 @@ float atomicMax_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool neg_zero = 0x80000000U == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-    neg_zero = 0x80000000U == u.b;
-  }
-  return u.a;
+  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 #endif
 }
 
@@ -740,21 +656,7 @@ double atomicMax(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-    neg_zero = 0x8000000000000000ULL == u.b;
-  }
-  return u.a;
+  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 #endif
 }
 
@@ -764,21 +666,7 @@ double atomicMax_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-    neg_zero = 0x8000000000000000ULL == u.b;
-  }
-  return u.a;
+  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 #endif
 }
 
