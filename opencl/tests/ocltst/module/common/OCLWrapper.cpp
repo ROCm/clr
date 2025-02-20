@@ -22,18 +22,18 @@
 
 OCLWrapper::OCLWrapper(cl_platform_id platform) {
   clEnqueueWaitSignalAMD_ptr =
-      (clEnqueueWaitSignalAMD_fn)clGetExtensionFunctionAddress(
-          "clEnqueueWaitSignalAMD");
+      (clEnqueueWaitSignalAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueWaitSignalAMD");
   clEnqueueWriteSignalAMD_ptr =
-      (clEnqueueWriteSignalAMD_fn)clGetExtensionFunctionAddress(
-          "clEnqueueWriteSignalAMD");
+      (clEnqueueWriteSignalAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueWriteSignalAMD");
   clEnqueueMakeBuffersResidentAMD_ptr =
-      (clEnqueueMakeBuffersResidentAMD_fn)clGetExtensionFunctionAddress(
-          "clEnqueueMakeBuffersResidentAMD");
+      (clEnqueueMakeBuffersResidentAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueMakeBuffersResidentAMD");
 
   clUnloadPlatformAMD_ptr =
-      (clUnloadPlatformAMD_fn)clGetExtensionFunctionAddress(
-          "clUnloadPlatformAMD");
+      (clUnloadPlatformAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clUnloadPlatformAMD");
 
   // CL-GL function pointers
   clGetGLContextInfoKHR_ptr =
@@ -66,26 +66,26 @@ OCLWrapper::OCLWrapper(cl_platform_id platform) {
 
   // Performance counter function pointers
   clCreatePerfCounterAMD_ptr =
-      (clCreatePerfCounterAMD_fn)clGetExtensionFunctionAddress(
-          "clCreatePerfCounterAMD");
+      (clCreatePerfCounterAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clCreatePerfCounterAMD");
   clEnqueueBeginPerfCounterAMD_ptr =
-      (clEnqueueBeginPerfCounterAMD_fn)clGetExtensionFunctionAddress(
-          "clEnqueueBeginPerfCounterAMD");
+      (clEnqueueBeginPerfCounterAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueBeginPerfCounterAMD");
   clEnqueueEndPerfCounterAMD_ptr =
-      (clEnqueueEndPerfCounterAMD_fn)clGetExtensionFunctionAddress(
-          "clEnqueueEndPerfCounterAMD");
+      (clEnqueueEndPerfCounterAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clEnqueueEndPerfCounterAMD");
   clGetPerfCounterInfoAMD_ptr =
-      (clGetPerfCounterInfoAMD_fn)clGetExtensionFunctionAddress(
-          "clGetPerfCounterInfoAMD");
+      (clGetPerfCounterInfoAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clGetPerfCounterInfoAMD");
   clReleasePerfCounterAMD_ptr =
-      (clReleasePerfCounterAMD_fn)clGetExtensionFunctionAddress(
-          "clReleasePerfCounterAMD");
+      (clReleasePerfCounterAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clReleasePerfCounterAMD");
   clRetainPerfCounterAMD_ptr =
-      (clRetainPerfCounterAMD_fn)clGetExtensionFunctionAddress(
-          "clRetainPerfCounterAMD");
+      (clRetainPerfCounterAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clRetainPerfCounterAMD");
   clSetDeviceClockModeAMD_ptr =
-      (clSetDeviceClockModeAMD_fn)clGetExtensionFunctionAddress(
-          "clSetDeviceClockModeAMD");
+      (clSetDeviceClockModeAMD_fn)clGetExtensionFunctionAddressForPlatform(
+          platform, "clSetDeviceClockModeAMD");
 }
 
 cl_int OCLWrapper::clGetPlatformIDs(cl_uint num_entries,
