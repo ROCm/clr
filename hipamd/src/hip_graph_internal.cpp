@@ -691,6 +691,12 @@ hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
     if (!topoOrder_.empty()) {
       topoOrder_[0]->GetParentGraph()->FreeAllMemory(launch_stream);
       topoOrder_[0]->GetParentGraph()->memalloc_nodes_ = 0;
+      if (!AMD_DIRECT_DISPATCH) {
+        // The MemoryPool::FreeAllMemory queues a memory unmap command that for !AMD_DIRECT_DISPATCH
+        // runs asynchonously. Make sure that freeAllMemory is complete before creating new commands
+        // to prevent races to the MemObjMap.
+        launch_stream->finish();
+      }
     }
   }
 
