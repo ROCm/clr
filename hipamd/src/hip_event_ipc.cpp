@@ -75,6 +75,7 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
   return true;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::query() {
   if (ipc_evt_.ipc_shmem_) {
     int prev_read_idx = ipc_evt_.ipc_shmem_->read_index;
@@ -87,6 +88,7 @@ hipError_t IPCEvent::query() {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::synchronize() {
   if (ipc_evt_.ipc_shmem_) {
     int prev_read_idx = ipc_evt_.ipc_shmem_->read_index;
@@ -101,6 +103,7 @@ hipError_t IPCEvent::synchronize() {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
 
   int offset = ipc_evt_.ipc_shmem_->read_index;
@@ -152,6 +155,7 @@ hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* comm
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
   if (!createIpcEventShmemIfNeeded()) {
     return hipErrorInvalidValue;
@@ -163,6 +167,7 @@ hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
   ipc_evt_.ipc_name_ = handle->shmem_name;
   if (!amd::Os::MemoryMapFileTruncated(ipc_evt_.ipc_name_.c_str(),
@@ -186,7 +191,6 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
 }
 
 // ================================================================================================
-
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
   HIP_INIT_API(hipIpcGetEventHandle, handle, event);
 

@@ -2180,13 +2180,7 @@ class GraphEventWaitNode : public GraphNode {
   void EnqueueCommands(hip::Stream* stream) override {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
-      hipError_t status =
-        e->enqueueStreamWaitCommand(reinterpret_cast<hipStream_t>(stream), commands_[0]);
-      if (status != hipSuccess) {
-        ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
-                "[hipGraph] Enqueue stream wait command failed for node %p - status %d", this,
-                status);
-      }
+      commands_[0]->enqueue();
       commands_[0]->release();
     }
   }

@@ -121,7 +121,6 @@ class Event {
   hipError_t elapsedTime(Event& eStop, float& ms);
 
   virtual hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
-  virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
   virtual hipError_t streamWait(hipStream_t stream, uint flags);
 
   virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* stream,

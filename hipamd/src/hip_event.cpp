@@ -166,7 +166,7 @@ int64_t EventDD::time(bool getStartTs) const {
     return static_cast<int64_t>(end);
   }
 }
-
+// ================================================================================================
 hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
   amd::Command::EventWaitList eventWaitList;
   if (event_ != nullptr) {
@@ -182,12 +182,7 @@ hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream)
   }
   return hipSuccess;
 }
-
-hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
-  command->enqueue();
-  return hipSuccess;
-}
-
+// ================================================================================================
 hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   hip::Stream* hip_stream = hip::getStream(stream);
   // Access to event_ object must be lock protected
@@ -203,10 +198,7 @@ hipError_t Event::streamWait(hipStream_t stream, uint flags) {
   if (status != hipSuccess) {
     return status;
   }
-  status = enqueueStreamWaitCommand(stream, command);
-  if (status != hipSuccess) {
-    return status;
-  }
+  command->enqueue();
   command->release();
   return hipSuccess;
 }
@@ -323,6 +315,7 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   HIP_INIT_API(hipEventCreateWithFlags, event, flags);
 
@@ -333,6 +326,7 @@ hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   HIP_RETURN(ihipEventCreateWithFlags(event, flags), *event);
 }
 
+// ================================================================================================
 hipError_t hipEventCreate(hipEvent_t* event) {
   HIP_INIT_API(hipEventCreate, event);
 
@@ -343,6 +337,7 @@ hipError_t hipEventCreate(hipEvent_t* event) {
   HIP_RETURN(ihipEventCreateWithFlags(event, 0), *event);
 }
 
+// ================================================================================================
 hipError_t hipEventDestroy(hipEvent_t event) {
   HIP_INIT_API(hipEventDestroy, event);
 
@@ -367,6 +362,7 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_INIT_API(hipEventElapsedTime, ms, start, stop);
 
@@ -388,6 +384,7 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
 }
 
+// ================================================================================================
 hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned int flags) {
   if (!(flags == hipEventRecordDefault || flags == hipEventRecordExternal)){
     return hipErrorInvalidValue;
@@ -433,22 +430,26 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
   return status;
 }
 
+// ================================================================================================
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
   HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
+// ================================================================================================
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
+// ================================================================================================
 hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
   HIP_INIT_API(hipEventRecordWithFlags, event, stream, flags);
   HIP_RETURN(hipEventRecord_common(event, stream, flags));
 }
 
+// ================================================================================================
 hipError_t hipEventSynchronize(hipEvent_t event) {
   HIP_INIT_API(hipEventSynchronize, event);
 
@@ -473,6 +474,7 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   HIP_RETURN(status);
 }
 
+// ================================================================================================
 hipError_t ihipEventQuery(hipEvent_t event) {
   if (event == nullptr) {
     return hipErrorInvalidHandle;
