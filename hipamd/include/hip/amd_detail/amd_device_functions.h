@@ -828,14 +828,14 @@ int __syncthreads_or(int predicate)
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
   SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a
-              14:13   Shader Engine the wave is assigned to for gfx940-942
+              14:13   Shader Engine the wave is assigned to for 942
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
   QUEUE_ID    26:24   Queue from which this wave was dispatched.
   STATE_ID    29:27   State ID (graphics only, not compute).
   ME_ID       31:30   Micro-engine ID.
 
-  XCC_ID Register bit structure for gfx940/941/942/950
+  XCC_ID Register bit structure for 942/950
   XCC_ID      3:0     XCC the wave is assigned to.
  */
 
@@ -860,7 +860,7 @@ int __syncthreads_or(int predicate)
 #if (defined(__gfx908__) || defined(__gfx90a__) || \
      defined(__GFX11__))
   #define HW_ID_SE_ID_SIZE    3
-#else //4 SEs/XCC for gfx940-942
+#else //4 SEs/XCC for 942
   #define HW_ID_SE_ID_SIZE    2
 #endif
 #if (defined(__GFX10__) || defined(__GFX11__))
@@ -871,7 +871,7 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__) || defined(__gfx950__))
+#if (defined(__gfx942__) || defined(__gfx950__))
   #define __gfx94plus_clr__
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
