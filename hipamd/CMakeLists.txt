@@ -44,7 +44,7 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 # Options
 #############################
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
-option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" ON)
+option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
 option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
