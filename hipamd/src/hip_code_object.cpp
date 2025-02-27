@@ -389,12 +389,12 @@ static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string
 
   switch (ehdr->e_ident[EI_ABIVERSION]) {
     case ELFABIVERSION_AMDGPU_HSA_V2: {
-      LogPrintfInfo("[Code Object V2, target id:%s]", target_id.c_str());
+      ClPrint(amd::LOG_INFO, amd::LOG_COMGR, "[Code Object V2, target id:%s]", target_id.c_str());
       return false;
     }
 
     case ELFABIVERSION_AMDGPU_HSA_V3: {
-      LogPrintfInfo("[Code Object V3, target id:%s]", target_id.c_str());
+      ClPrint(amd::LOG_INFO, amd::LOG_COMGR, "[Code Object V3, target id:%s]", target_id.c_str());
       if (isSramEccSupported) {
         if (ehdr->e_flags & EF_AMDGPU_FEATURE_SRAMECC_V3)
           target_id += ":sramecc+";
@@ -432,7 +432,8 @@ static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string
 
       else if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_ON_V4)
         target_id += ":xnack+";
-      LogPrintfInfo("[Code Object %s, target id: %s]", vstr, target_id.c_str());
+      ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
+        "[Code Object %s, target id: %s]", vstr, target_id.c_str());
       break;
     }
 
@@ -646,7 +647,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
     std::vector<std::pair<const void*, size_t>>& code_objs) {
   bool isCompressed = false;
   if (!IsClangOffloadMagicBundle(data, isCompressed) || isCompressed) {
-    LogPrintfInfo("IsClangOffloadMagicBundle(%p) return false or isCompressed is true", data);
+    LogPrintfError("IsClangOffloadMagicBundle(%p) return false or isCompressed is true", data);
     return hipErrorInvalidKernelFile;
   }
 
@@ -673,7 +674,8 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
     std::string co_triple_target_id;
     uint32_t genericVersion = getGenericVersion(image);
     if (!getTripleTargetID(bundleEntryId, image, co_triple_target_id)) continue;
-    LogPrintfInfo("bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%u\n",
+    ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
+      "bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%u\n",
       bundleEntryId.c_str(), co_triple_target_id.c_str(), genericVersion);
 
     for (size_t dev = 0; dev < agent_triple_target_ids.size(); ++dev) {
@@ -754,7 +756,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
   size_t num_code_objs = num_devices;
   bool isCompressed = false;
   if (!IsClangOffloadMagicBundle(data, isCompressed)) {
-    LogPrintfInfo("IsClangOffloadMagicBundle(%p) return false", data);
+    ClPrint(amd::LOG_INFO, amd::LOG_COMGR, "IsClangOffloadMagicBundle(%p) return false", data);
     // hipModuleLoadData() will possibly call here
     return hipErrorInvalidKernelFile;
   }
@@ -912,8 +914,9 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
       if (!consume(bundleEntryId, kOffloadHipV4FatBinName_)) {
         // This is behavour in comgr unbundling which is subject to change.
         // So just give info.
-        LogPrintfInfo("bundleEntryId=%s isn't prefixed with %s", bundleEntryId.c_str(),
-                      kOffloadHipV4FatBinName_);
+        ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
+                "bundleEntryId=%s isn't prefixed with %s", bundleEntryId.c_str(),
+                kOffloadHipV4FatBinName_);
       }
       trimNameTail(bundleEntryId, '.');  // Remove .fileExtention
 
@@ -938,7 +941,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
               // If there isn't a code object for this device,
               // amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE) still returns item with
               // valid name but no data. We need continue searching for other devices
-              LogPrintfInfo(
+              ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
                   "amd::Comgr::get_data() return 0 size for agent_triple_target_ids[%zu]=%s", dev,
                   agent_triple_target_ids[dev].c_str());
               continue;
@@ -963,7 +966,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
           }
           code_objs[dev] = std::make_pair(reinterpret_cast<const void*>(itemData), itemSize);
           --num_code_objs;
-          LogPrintfInfo(
+          ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
               "Found agent_triple_target_ids[%zu]=%s: item: Data=%p(%s), "
               "Size=%zu, num_code_objs=%zu",
               dev, agent_triple_target_ids[dev].c_str(), itemData,
