@@ -2537,9 +2537,10 @@ bool KernelBlitManager::initHeap(device::Memory* heap_to_initialize, device::Mem
   setArgument(kernels_[blitType], 2, sizeof(uint), &heap_size);
   setArgument(kernels_[blitType], 3, sizeof(uint), &number_of_initial_blocks);
   address parameters = captureArguments(kernels_[blitType]);
-  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters, nullptr);
+  result = gpu().submitKernelInternal(ndrange, *kernels_[blitType], parameters,
+                                      nullptr, 0, nullptr, nullptr, true);
   releaseArguments(parameters);
-  gpu().releaseGpuMemoryFence();
+  gpu().Barriers().WaitCurrent();
   return result;
 }
 
