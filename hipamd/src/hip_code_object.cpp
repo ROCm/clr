@@ -1296,43 +1296,50 @@ FatBinaryInfo** StatCO::addFatBinary(const void* data, bool initialized, bool& s
 hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
   amd::ScopedLock lock(sclock_);
 
-  auto hostVarsIter = module_to_hostVars_.find(module);
-  if (hostVarsIter != module_to_hostVars_.end()) {
-    for (auto& hostVar : hostVarsIter->second) {
-      auto varIter = vars_.find(hostVar);
-      if (varIter == vars_.end()) {
-        LogPrintfError("removeFatBinary: Unable to find module 0x%x hostVar 0x%x",
-                        module, hostVar);
-      } else {
-        delete varIter->second;
-        vars_.erase(varIter);
-      }
-    }
-    module_to_hostVars_.erase(hostVarsIter);
-  } else {
-    LogPrintfError("removeFatBinary: Unable to find module 0x%x hostVars", module);
-  }
-
-  auto managedVarsIter = managedVars_.find(module);
-  if (managedVarsIter != managedVars_.end()) {
-    for (auto& managedVar : managedVarsIter->second) {
-      hipError_t err;
-      for (auto dev : g_devices) {
-        DeviceVar* dvar = nullptr;
-        IHIP_RETURN_ONFAIL(managedVar->getDeviceVarPtr(&dvar, dev->deviceId()));
-        if (dvar != nullptr) {
-          // free also deletes the device ptr
-          err = ihipFree(dvar->device_ptr());
-          assert(err == hipSuccess);
+  if (!module_to_hostVars_.empty()) {
+    auto hostVarsIter = module_to_hostVars_.find(module);
+    if (hostVarsIter != module_to_hostVars_.end()) {
+      for (auto& hostVar : hostVarsIter->second) {
+        auto varIter = vars_.find(hostVar);
+        if (varIter == vars_.end()) {
+          LogPrintfError(
+            "removeFatBinary: Unable to find module 0x%x hostVar 0x%x",
+            module, hostVar);
+        } else {
+          delete varIter->second;
+          vars_.erase(varIter);
         }
       }
-      err = ihipFree(*(static_cast<void**>(managedVar->getManagedVarPtr())));
-      assert(err == hipSuccess);
-      delete managedVar;
+      module_to_hostVars_.erase(hostVarsIter);
+    } else {
+      LogPrintfError(
+        "removeFatBinary: Unable to find module 0x%x hostVars", module);
     }
-    managedVars_.erase(managedVarsIter);
-  } else {
-    LogPrintfError("removeFatBinary: Unable to find module 0x%x managedVars", module);
+  }
+
+  if (!managedVars_.empty()) {
+    auto managedVarsIter = managedVars_.find(module);
+    if (managedVarsIter != managedVars_.end()) {
+      for (auto& managedVar : managedVarsIter->second) {
+        hipError_t err;
+        for (auto dev : g_devices) {
+          DeviceVar* dvar = nullptr;
+          IHIP_RETURN_ONFAIL(managedVar->getDeviceVarPtr(&dvar, dev->deviceId()));
+          if (dvar != nullptr) {
+            // free also deletes the device ptr
+            err = ihipFree(dvar->device_ptr());
+            assert(err == hipSuccess);
+          }
+        }
+        err = ihipFree(*(static_cast<void**>(managedVar->getManagedVarPtr())));
+        assert(err == hipSuccess);
+        delete managedVar;
+      }
+      managedVars_.erase(managedVarsIter);
+    } else {
+      LogPrintfError("removeFatBinary: Unable to find module 0x%x managedVars",
+                     module);
+    }
   }
 
   auto hostFuncsIter = module_to_hostFunctions_.find(module);
