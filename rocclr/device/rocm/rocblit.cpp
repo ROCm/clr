@@ -650,21 +650,20 @@ bool DmaBlitManager::hsaCopyStagedOrPinned(const_address hostSrc, address hostDs
   hsa_agent_t dstAgent = hostToDev ? dev().getBackendDevice() : dev().getCpuAgent();
   bool firstTx = true;
   while(totalSize > 0) {
-    size_t outsize = totalSize;
     const_address hostmem = hostToDev ? hostSrc : hostDst;
     // Get Pinned Host Memory or Staging buffer based on copy size
-    BufferState buffer{0};
-    getBuffer(static_cast<const_address>(hostmem + copyOffset), outsize,
-              enablePin, firstTx, buffer);
-    size_t copysize = buffer.copySize_;
-    address stagingBuffer = buffer.buffer_;
+    BufferState outBuffer = {0};
+    getBuffer(static_cast<const_address>(hostmem + copyOffset), totalSize,
+              enablePin, firstTx, outBuffer);
+    size_t copysize = outBuffer.copySize_;
+    address stagingBuffer = outBuffer.buffer_;
     if (stagingBuffer == 0) {
       LogWarning("DmaBlitManager::hsaCopyStagedOrPinned Buffer creation failed!");
       status = false;
       break;
     }
     if (hostToDev) { // H2D Path
-      if (buffer.pinnedMem_ == nullptr) { // Copy to Staging Buffer
+      if (outBuffer.pinnedMem_ == nullptr) { // Copy to Staging Buffer
         memcpy(stagingBuffer, hostSrc + copyOffset, copysize);
       }
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "HSA Async Copy staged H2D");
@@ -678,7 +677,8 @@ bool DmaBlitManager::hsaCopyStagedOrPinned(const_address hostSrc, address hostDs
       const_address src = static_cast<const_address>(hostSrc) + copyOffset;
       status = rocrCopyBuffer(stagingBuffer, dstAgent, src , srcAgent, copysize, copyMetadata);
       if (status ) {
-        if (buffer.pinnedMem_ == nullptr) { // Blocking copy from Staging Buffer
+        // Wait for current signal of previous rocr copy if its not pinned mem
+        if (outBuffer.pinnedMem_ == nullptr) {
           gpu().Barriers().WaitCurrent();
           memcpy(hostDst + copyOffset, stagingBuffer, copysize);
         }
@@ -686,8 +686,8 @@ bool DmaBlitManager::hsaCopyStagedOrPinned(const_address hostSrc, address hostDs
         break;
       }
     }
-    // Release Pinned Memory back to pool
-    releaseBuffer(buffer);
+    // Release Pinned Memory back to pool if any
+    releaseBuffer(outBuffer);
     // Update Offset and Transfer Size
     copyOffset += copysize;
     totalSize -= copysize;
@@ -1683,13 +1683,16 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
       amd::Coord3D dstOrigin(0, 0, 0);
       size_t copySize = 0;
       size_t stagedCopyOffset = 0;
-      size_t maxStagedXferSize = dev().settings().stagedXferSize_;
-      Memory& xferBuf = dev().xferRead().acquire();
-      address xferBufAddr = xferBuf.getDeviceMemory();
-
       constexpr bool kAttachSignal = true;
+
       while (totalSize > 0) {
-        copySize = std::min(totalSize, maxStagedXferSize);
+        BufferState outBuffer = {0};
+        constexpr bool kEnablePin = true;
+        constexpr bool kFirstTx = false;
+        getBuffer(static_cast<const_address>(dstAddr + stagedCopyOffset), totalSize,
+                  kEnablePin, kFirstTx, outBuffer);
+        copySize = outBuffer.copySize_;
+        address xferBufAddr = outBuffer.buffer_;
         srcAddr += stagedCopyOffset;
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging D2H copy stg buf=%p, src=%p, "
                 "dstOrigin=0x%x, size=%zu", xferBufAddr, srcAddr, dstOrigin[0], copySize);
@@ -1703,16 +1706,20 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
         if (!result) {
           break;
         }
-        // Wait on current signal of previous blit copy
-        gpu().Barriers().WaitCurrent();
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy host dst=%p, stg buf=%p, size=%zu",
-                (void*)(dstAddr + stagedCopyOffset), xferBufAddr, copySize);
-        memcpy(dstAddr + stagedCopyOffset, xferBufAddr, copySize);
+        // Wait for current signal of previous blit copy if its not pinned mem
+        if (outBuffer.pinnedMem_ == nullptr) {
+          gpu().Barriers().WaitCurrent();
+          ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy host dst=%p, stg buf=%p, size=%zu",
+                  (void*)(dstAddr + stagedCopyOffset), xferBufAddr, copySize);
+          memcpy(dstAddr + stagedCopyOffset, xferBufAddr, copySize);
+        }
         totalSize -= copySize;
         stagedCopyOffset += copySize;
+        // Release Pinned Memory back to pool
+        releaseBuffer(outBuffer);
       }
 
-      dev().xferRead().release(gpu(), xferBuf);
+
     }
   }
 
@@ -1814,16 +1821,24 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
       amd::Coord3D srcOrigin(0, 0, 0);
       size_t copySize = 0;
       size_t stagedCopyOffset = 0;
-      size_t maxStagedXferSize = dev().settings().stagedXferSize_;
 
       while (totalSize > 0) {
-        copySize = std::min(totalSize, maxStagedXferSize);
+        BufferState outBuffer = {0};
+        // Disable pinned writes
+        constexpr bool kEnablePin = false;
+        constexpr bool kFirstTx = false;
+        // Do not enable pinning for uploads. Always use staging buffer
+        getBuffer(static_cast<const_address>(srcAddr + stagedCopyOffset), totalSize,
+                  kEnablePin, kFirstTx, outBuffer);
         // Get an address from managed staging buffer
-        address stagingBuffer = gpu().Staging().Acquire(std::min(copySize, maxStagedXferSize));
+        address stagingBuffer = outBuffer.buffer_;
+        copySize = outBuffer.copySize_;
         dstAddr += stagedCopyOffset;
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy stg buf=%p, host src=%p, size=%zu",
-                stagingBuffer, (void*)(srcAddr + stagedCopyOffset), copySize);
-        memcpy(stagingBuffer, srcAddr + stagedCopyOffset, copySize);
+        if (outBuffer.pinnedMem_ == nullptr) {
+          ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy stg buf=%p, host src=%p, size=%zu",
+                  stagingBuffer, (void*)(srcAddr + stagedCopyOffset), copySize);
+          memcpy(stagingBuffer, srcAddr + stagedCopyOffset, copySize);
+        }
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging H2D copy dst=%p, stg buf=%p, "
                 "dstOrigin=0x%x, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
         // No cache flush is needed here as we use a staging buffer, and the acquire logic
@@ -1836,6 +1851,8 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
         }
         totalSize -= copySize;
         stagedCopyOffset += copySize;
+        // Release pinned memory if any
+        releaseBuffer(outBuffer);
       }
     }
   }

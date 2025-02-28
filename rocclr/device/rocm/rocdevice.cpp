@@ -180,7 +180,6 @@ Device::Device(hsa_agent_t bkendDevice)
     , gpuvm_segment_max_alloc_(0)
     , alloc_granularity_(0)
     , xferQueue_(nullptr)
-    , xferRead_(nullptr)
     , freeMem_(0)
     , vgpusAccess_(true) /* Virtual GPU List Ops Lock */
     , hsa_exclusive_gpu_access_(false)
@@ -289,9 +288,6 @@ Device::~Device() {
   }
   queuePool_.clear();
 
-  // Destroy temporary buffers for read/write
-  delete xferRead_;
-
   // Destroy transfer queue
   delete xferQueue_;
 
@@ -389,76 +385,6 @@ hsa_status_t Device::loaderQueryHostAddress(const void* device, const void** hos
   return amd_loader_ext_table.hsa_ven_amd_loader_query_host_address
       ? amd_loader_ext_table.hsa_ven_amd_loader_query_host_address(device, host)
       : HSA_STATUS_ERROR;
-}
-
-Device::XferBuffers::~XferBuffers() {
-  // Destroy temporary buffer for reads
-  for (const auto& buf : freeBuffers_) {
-    delete buf;
-  }
-  freeBuffers_.clear();
-}
-
-bool Device::XferBuffers::create() {
-  Memory* xferBuf = nullptr;
-  bool result = false;
-
-  // Create a buffer object
-  xferBuf = new Buffer(dev(), bufSize_);
-
-  // Try to allocate memory for the transfer buffer
-  if ((nullptr == xferBuf) || !xferBuf->create()) {
-    delete xferBuf;
-    xferBuf = nullptr;
-    LogError("Couldn't allocate a transfer buffer!");
-  } else {
-    result = true;
-    freeBuffers_.push_back(xferBuf);
-  }
-
-  return result;
-}
-
-Memory& Device::XferBuffers::acquire() {
-  Memory* xferBuf = nullptr;
-  size_t listSize;
-
-  // Lock the operations with the staged buffer list
-  amd::ScopedLock l(lock_);
-  listSize = freeBuffers_.size();
-
-  // If the list is empty, then attempt to allocate a staged buffer
-  if (listSize == 0) {
-    // Allocate memory
-    xferBuf = new Buffer(dev(), bufSize_);
-
-    // Allocate memory for the transfer buffer
-    if ((nullptr == xferBuf) || !xferBuf->create()) {
-      delete xferBuf;
-      xferBuf = nullptr;
-      LogError("Couldn't allocate a transfer buffer!");
-    } else {
-      ++acquiredCnt_;
-    }
-  }
-
-  if (xferBuf == nullptr) {
-    xferBuf = *(freeBuffers_.begin());
-    freeBuffers_.erase(freeBuffers_.begin());
-    ++acquiredCnt_;
-  }
-
-  return *xferBuf;
-}
-
-void Device::XferBuffers::release(VirtualGPU& gpu, Memory& buffer) {
-  // Make sure buffer isn't busy on the current VirtualGPU, because
-  // the next aquire can come from different queue
-  //    buffer.wait(gpu);
-  // Lock the operations with the staged buffer list
-  amd::ScopedLock l(lock_);
-  freeBuffers_.push_back(&buffer);
-  --acquiredCnt_;
 }
 
 // ================================================================================================
@@ -816,17 +742,6 @@ bool Device::create() {
   }
   // Use just 1 entry by default for the map cache
   mapCache_->push_back(nullptr);
-
-  if (settings().stagedXferSize_ != 0) {
-    // Initialize staged read buffers
-    if (settings().stagedXferRead_) {
-      xferRead_ = new XferBuffers(*this, amd::alignUp(settings().stagedXferSize_, 4 * Ki));
-      if ((xferRead_ == nullptr) || !xferRead_->create()) {
-        LogError("Couldn't allocate transfer buffer objects for write");
-        return false;
-      }
-    }
-  }
 
   // Create signal for HMM prefetch operation on device
   if (HSA_STATUS_SUCCESS != hsa_signal_create(kInitSignalValueOne, 0, nullptr, &prefetch_signal_)) {

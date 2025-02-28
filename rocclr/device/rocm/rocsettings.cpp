@@ -53,8 +53,6 @@ Settings::Settings() {
   // Disable image DMA by default (ROCM runtime doesn't support it)
   imageDMA_ = false;
 
-  stagedXferRead_ = true;
-  stagedXferWrite_ = true;
   stagedXferSize_ = flagIsDefault(GPU_STAGING_BUFFER_SIZE)
       ? 1 * Mi : GPU_STAGING_BUFFER_SIZE * Mi;
 

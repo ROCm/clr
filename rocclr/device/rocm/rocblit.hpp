@@ -208,7 +208,11 @@ class DmaBlitManager : public device::HostBlitManager {
   }
 
  protected:
-
+  struct BufferState{
+    address buffer_;         //!< Staging Buffer or Pinned Host Mem Address
+    amd::Memory* pinnedMem_; //!< Pinned Memory
+    size_t copySize_;        //!< last copy size
+  };
   //! Synchronizes the blit operations if necessary
   inline void synchronize() const;
 
@@ -236,6 +240,26 @@ class DmaBlitManager : public device::HostBlitManager {
                              const_address src, hsa_agent_t& srcAgent, size_t size,
                              amd::CopyMetadata& copyMetadata) const;
 
+  // Get Pinned Host Memory or Staging Buffer
+  void getBuffer(const_address hostMem,         //!< Host Mem Address
+                 size_t size,            //!< Transfer Size
+                 bool enablePin,         //!< True when Pinning is enabled
+                 bool first_tx,          //!< True for first copy
+                 BufferState &buffer     //!< State of Buffer
+                ) const;
+
+  // Release Pinned host memory
+  void releaseBuffer(BufferState &buff //!< True if last copy used Pinned resource
+                    ) const;
+
+  bool hsaCopyStagedOrPinned(const_address hostSrc,             //!< Src buffer address
+                             address hostDst,                   //!< Dst Buffer address
+                             size_t size,                       //!< Size in bytes
+                             bool hostToDev,                    //!< True for H2D copy
+                             amd::CopyMetadata& copyMetadata,   //!< copy MetaData
+                             bool enPinning = false             //!< True if pinning required
+                            ) const;
+
   const size_t PinXferSize;                   //!< Copy size for Pinned Copy
   const size_t MinSizeForPinnedXfer;          //!< Mininum copy size for Pinned Copy
   const size_t StagingXferSize;               //!< Copy size for Staging Buffer Copy
@@ -251,31 +275,6 @@ class DmaBlitManager : public device::HostBlitManager {
 
   //! Disable operator=
   DmaBlitManager& operator=(const DmaBlitManager&);
-
-  bool hsaCopyStagedOrPinned(const_address hostSrc,             //!< Src buffer address
-                             address hostDst,                   //!< Dst Buffer address
-                             size_t size,                       //!< Size of copy data in bytes
-                             bool hostToDev,                    //!< True for H2D copy
-                             amd::CopyMetadata& copyMetadata,   //!< copy MetaData
-                             bool enPinning = false             //!< True if pinning required
-                             ) const;
-  struct BufferState{
-    address buffer_;         //!< Staging Buffer or Pinned Host Mem Address
-    amd::Memory* pinnedMem_; //!< Pinned Memory
-    size_t copySize_;        //!< last copy size
-  };
-
-  // Get Pinned Host Memory or Staging Buffer
-  void getBuffer(const_address hostMem,         //!< Host Mem Address
-                        size_t size,            //!< Transfer Size
-                        bool enablePin,         //!< True when Pinning is enabled
-                        bool first_tx,          //!< True for first copy
-                        BufferState &buffer     //!< State of Buffer
-                        ) const;
-
-  // Release Pinned host memory
-  void releaseBuffer(BufferState &buff //!< True if last copy used Pinned resource
-                    ) const;
 };
 
 //! Kernel Blit Manager

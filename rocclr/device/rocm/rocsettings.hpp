@@ -45,14 +45,12 @@ class Settings : public device::Settings {
       uint enableLocalMemory_ : 1;      //!< Enable GPUVM memory
       uint enableNCMode_ : 1;           //!< Enable Non Coherent mode for system memory
       uint imageDMA_ : 1;               //!< Enable direct image DMA transfers
-      uint stagedXferRead_ : 1;         //!< Uses a staged buffer read
-      uint stagedXferWrite_ : 1;        //!< Uses a staged buffer write
       uint imageBufferWar_ : 1;         //!< Image buffer workaround for Gfx10
       uint cpu_wait_for_signal_ : 1;    //!< Wait for HSA signal on CPU
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint reserved_ : 21;
+      uint reserved_ : 23;
     };
     uint value_;
   };
