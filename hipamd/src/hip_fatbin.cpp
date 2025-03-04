@@ -200,12 +200,12 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     if (isCompressed || HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
       size_t major = 0, minor = 0;
       amd::Comgr::get_version(&major, &minor);
-      if (major >= 2 && minor >= 8) {
+      if ((major == 2 && minor >= 8) || major > 2) {
         hip_status = ExtractFatBinaryUsingCOMGR(image_, devices);
         break;
       } else if (isCompressed) {
-        LogPrintfError("comgr %zu.%zu cannot support commpressed mode which need comgr 2.8+", major,
-                       minor);
+        LogPrintfError("comgr %zu.%zu cannot support compressed mode which requires comgr 2.8+",
+                       major, minor);
         hip_status = hipErrorNotSupported;
         break;
       } else if (HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
