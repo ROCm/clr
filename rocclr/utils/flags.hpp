@@ -269,6 +269,8 @@ release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
         "Use std::mutex in amd::monitor")                                     \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
+release(bool, DEBUG_HIP_DYNAMIC_QUEUES, true,                                 \
+        "Forces dynamic queue management")                                    \
 
 namespace amd {
 
