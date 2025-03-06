@@ -561,7 +561,7 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   address src = reinterpret_cast<address>(srcMemory.getDeviceMemory());
   address dst = reinterpret_cast<address>(dstMemory.getDeviceMemory());
 
-  gpu().releaseGpuMemoryFence(kSkipCpuWait);
+  bool skipCpuWait = true;
 
   src += srcOrigin[0];
   dst += dstOrigin[0];
@@ -580,6 +580,15 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     srcAgent = srcMemory.dev().getBackendDevice();
     dstAgent = dstMemory.dev().getBackendDevice();
   }
+
+  // Blocking D2H copies need a wait anyways so better wait here
+  // than having to wait on the device for dependent signals for SDMA which is slow
+  if (!copyMetadata.isAsync_ && !srcMemory.isHostMemDirectAccess()
+      && dstMemory.isHostMemDirectAccess()) {
+    skipCpuWait = false;
+  }
+
+  gpu().releaseGpuMemoryFence(skipCpuWait);
 
   return rocrCopyBuffer(dst, dstAgent, src, srcAgent, size[0], copyMetadata);
 }
@@ -636,7 +645,8 @@ void DmaBlitManager::releaseBuffer(BufferState &buffer) const {
 bool DmaBlitManager::hsaCopyStagedOrPinned(const_address hostSrc, address hostDst,
                 size_t size, bool hostToDev, amd::CopyMetadata& copyMetadata,
                 bool enablePin) const {
-  gpu().releaseGpuMemoryFence(kSkipCpuWait);
+  // Do not skip wait here for D2H. Resolving dependent signals for SDMA engine is slow
+  gpu().releaseGpuMemoryFence(hostToDev);
   // If Pinning is enabled, Pin host Memory for copy size > MinSizeForPinnedTransfer
   // For 16KB < size <= MinSizeForPinnedTransfer Use staging buffer without pinning
   bool status = true;
@@ -697,8 +707,6 @@ bool DmaBlitManager::hsaCopyStagedOrPinned(const_address hostSrc, address hostDs
   if(!status) {
     return false;
   }
-
-  gpu().addSystemScope();
 
   return true;
 }
