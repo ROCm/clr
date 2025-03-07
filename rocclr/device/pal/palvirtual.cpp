@@ -890,10 +890,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.flags.autoMemoryReuse = false;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
-      VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
-  if (dev().captureMgr() != nullptr) {
-    createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize += 512;
-  }
+      VirtualGPU::Queue::MaxCommands * (320 +
+                                        ((profiling) ? 96 : 0) +
+                                        ((dev().captureMgr() != nullptr)? 512 : 0));
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
       dev().settings().maxCmdBuffers_ * createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize;
 
