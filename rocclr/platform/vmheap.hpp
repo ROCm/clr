@@ -68,15 +68,14 @@ class VmHeap {
 public:
   static const size_t kChunkSize = 32 * Mi; //!< Chunk size, must be power of 2
   static const size_t kMinBlockAlignment = 256;
-  VmHeap(Device* device,    //!< GPU device object
-         HostQueue& queue   //!< Queue, used for map/unmap of physical memory
-         )
-      : VmHeap(device, queue, device->info().globalMemSize_ / 8, kChunkSize) {}
 
-  VmHeap(Device* device,    //!< GPU device object
-         HostQueue& queue,  //!< Queue, usde for map/unmap of physical memory
-         size_t  va_size,   //!< The size of the allocated heap (bytes).Virtual address space
-         size_t  chunk_size //!< The size of single chunk for physical memory growth
+  VmHeap(Device* device      //!< GPU device object
+         )
+      : VmHeap(device, device->info().globalMemSize_ / 8, kChunkSize) {}
+
+  VmHeap(Device* device,        //!< GPU device object
+         size_t  va_size,       //!< The size of the allocated heap (bytes).Virtual address space
+         size_t  chunk_size     //!< The size of single chunk for physical memory growth
          );
 
   //! Ceates heap object. Reserves virtual address range for the heap operation
@@ -84,6 +83,9 @@ public:
 
   //! Heap destructor
   virtual ~VmHeap();
+
+  //! Returns a queue for VM map/unmap operations
+  virtual amd::HostQueue& GetVmQueue() = 0;
 
   //! Returns a pointer to the allocated device memory from a heap
   address Alloc(
@@ -163,7 +165,6 @@ private:
   bool          created_ = false;         //!< Used for deferred VM heap allocation
   amd::Monitor  lock_;                    //!< Lock to serialise heap accesses
   Device*       device_;                  //!< Device that owns this heap
-  HostQueue&    map_queue_;               //!< Queue, used to map/unmap
 
   std::vector<bool> mapped_mem_;  //!< A map of mapped memory, the size is total_size/chunk_size
 };

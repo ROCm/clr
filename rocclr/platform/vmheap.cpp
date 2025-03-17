@@ -68,7 +68,7 @@ bool VmHeap::CommitMemory(void* addr, size_t size) {
 
   // Map the physical memory to a virtual address
   Command* cmd = new VirtualMapCommand(
-      map_queue_, Command::EventWaitList{}, addr, padded_size, phys_mem_obj);
+    GetVmQueue(), Command::EventWaitList{}, addr, padded_size, phys_mem_obj);
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
@@ -86,7 +86,8 @@ bool VmHeap::UncommitMemory(void* addr, size_t size) {
   Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
 
   // Unmap the physical memory from a virtual address
-  Command* cmd = new VirtualMapCommand(map_queue_, Command::EventWaitList{}, addr, size, nullptr);
+  Command* cmd = new VirtualMapCommand(
+    GetVmQueue(), Command::EventWaitList{}, addr, size, nullptr);
   cmd->enqueue();
   cmd->awaitCompletion();
   cmd->release();
@@ -96,12 +97,11 @@ bool VmHeap::UncommitMemory(void* addr, size_t size) {
 }
 
 // ================================================================================================
-VmHeap::VmHeap(Device* device, HostQueue& queue, size_t va_size, size_t chunk_size)
+VmHeap::VmHeap(Device* device, size_t va_size, size_t chunk_size)
   : block_alignment_(kMinBlockAlignment)
   , chunk_size_(chunk_size)
   , lock_(true)
-  , device_(device)
-  , map_queue_(queue) {
+  , device_(device) {
   va_size_ = alignUp(va_size, chunk_size);
 }
 
