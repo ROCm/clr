@@ -511,10 +511,15 @@ class Device : public NullDevice {
   //! share previously created
   hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false,
                             const std::vector<uint32_t>& cuMask = {},
-                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
+                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal,
+                            bool managed = false);
 
   //! Release HSA queue
-  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {}, bool coop_queue = false);
+  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {},
+                    bool coop_queue = false, bool managed = false);
+
+  hsa_queue_t* AcquireActiveNormalQueue();
+  bool ReleaseActiveNormalQueue(hsa_queue_t* queue);
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
@@ -620,6 +625,8 @@ class Device : public NullDevice {
   };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
   std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queuePool_;
+  amd::Monitor active_queue_access_;                //!< Lock to serialise virtual gpu list access
+  std::atomic<uint32_t> num_normal_queues_{0};      //!< The total number of allocated normal queues
 
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
   hsa_queue_t* getQueueFromPool(const uint qIndex);

@@ -2877,9 +2877,20 @@ hsa_queue_t* Device::getQueueFromPool(const uint qIndex) {
 }
 
 // ================================================================================================
+hsa_queue_t* Device::AcquireActiveNormalQueue() {
+  uint32_t queue_size = ROC_AQL_QUEUE_SIZE;
+  auto queue = acquireQueue(
+    queue_size, false, std::vector<uint32_t>{}, amd::CommandQueue::Priority::Normal, true);
+  return queue;
+}
+
+// ================================================================================================
 hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
                                   const std::vector<uint32_t>& cuMask,
-                                  amd::CommandQueue::Priority priority) {
+                                  amd::CommandQueue::Priority priority,
+                                  bool managed) {
+  amd::ScopedLock l(active_queue_access_);
+
   assert(queuePool_[QueuePriority::Low].size() <= GPU_MAX_HW_QUEUES ||
          queuePool_[QueuePriority::Normal].size() <= GPU_MAX_HW_QUEUES ||
          queuePool_[QueuePriority::High].size() <= GPU_MAX_HW_QUEUES);
@@ -2916,6 +2927,9 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
       ((queuePool_[qIndex].size() == GPU_MAX_HW_QUEUES) || queuePool_[qIndex].size() > 0)) {
     hsa_queue_t* queue = getQueueFromPool(qIndex);
     if (queue != nullptr) {
+      if (!managed && (qIndex  == QueuePriority::Normal)) {
+        num_normal_queues_++;
+      }
       return queue;
     }
   }
@@ -3057,13 +3071,33 @@ hsa_queue_t* Device::acquireQueue(uint32_t queue_size_hint, bool coop_queue,
   qInfo.refCount = 1;
   ClPrint(amd::LOG_INFO, amd::LOG_QUEUE, "acquireQueue refCount: %p (%d)",
           result.first->first->base_address, result.first->second.refCount);
+  if (!managed && (cuMask.size() == 0) && (qIndex = QueuePriority::Normal)) {
+    num_normal_queues_++;
+  }
   return queue;
 }
 
-void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMask, bool coop_queue) {
+// ================================================================================================
+bool Device::ReleaseActiveNormalQueue(hsa_queue_t* queue) {
+  // Release a queue if the total number of allocated queues exceeds the max possible
+  if (num_normal_queues_.load() > GPU_MAX_HW_QUEUES) {
+    releaseQueue(queue, std::vector<uint32_t>{}, false, true);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// ================================================================================================
+void Device::releaseQueue(hsa_queue_t* queue, const std::vector<uint32_t>& cuMask,
+    bool coop_queue, bool managed) {
+  amd::ScopedLock l(active_queue_access_);
   for (auto& it : cuMask.size() == 0 ? queuePool_ : queueWithCUMaskPool_) {
     auto qIter = it.find(queue);
     if (qIter != it.end()) {
+      if (!managed && (cuMask.size() == 0) && (&it == &queuePool_[QueuePriority::Normal])) {
+        num_normal_queues_--;
+      }
       auto &qInfo = qIter->second;
       assert(qInfo.refCount > 0);
       qInfo.refCount--;

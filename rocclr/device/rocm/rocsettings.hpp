@@ -50,7 +50,8 @@ class Settings : public device::Settings {
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint reserved_ : 23;
+      uint dynamic_queues_ : 1;         //!< Dynamic queues management
+      uint reserved_ : 22;
     };
     uint value_;
   };

@@ -376,6 +376,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd){}
 
   virtual address allocKernelArguments(size_t size, size_t alignment) final;
+  virtual void ReleaseHwQueue() final;
 
   /**
    * @brief Waits on an outstanding kernel without regard to how
@@ -436,7 +437,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
-  uint64_t getQueueID() { return gpu_queue_->id; }
+  uint64_t getQueueID();
 
   //! Analyzes a crashed AQL queue to find a broken AQL packet
   void AnalyzeAqlQueue() const;
@@ -531,7 +532,7 @@ class VirtualGPU : public device::VirtualDevice {
   Timestamp* timestamp_;
   amd::Command* command_;   //!< Current command
   hsa_agent_t gpu_device_;  //!< Physical device
-  hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
+  hsa_queue_t* gpu_queue_;  //!< Active queue associated with a vgpu
   hsa_barrier_and_packet_t barrier_packet_;
   hsa_amd_barrier_value_packet_t barrier_value_packet_;
 

@@ -197,6 +197,8 @@ void HostQueue::finish(bool cpu_wait) {
       }
     }
   }
+  // Release HW queue to the pool for dynamic management if enabled
+  vdev()->ReleaseHwQueue();
 
   command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished for host queue : %p", this);
