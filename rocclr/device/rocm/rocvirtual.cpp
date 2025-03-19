@@ -884,6 +884,15 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 }
 
 // ================================================================================================
+uint64_t VirtualGPU::getQueueID() {
+  amd::ScopedLock lock(execution());
+  if (gpu_queue_ == nullptr) {
+    gpu_queue_ = roc_device_.AcquireActiveNormalQueue();
+  }
+  return gpu_queue_->id;
+}
+
+// ================================================================================================
 static inline void packet_store_release(uint32_t* packet, uint16_t header, uint16_t rest) {
   __atomic_store_n(packet, header | (rest << 16), __ATOMIC_RELEASE);
 }
@@ -1463,7 +1472,7 @@ VirtualGPU::~VirtualGPU() {
     roc_device_.vgpus()[idx]->index_--;
   }
 
-  if (gpu_queue_) {
+  if (gpu_queue_ != nullptr) {
     roc_device_.releaseQueue(gpu_queue_, cuMask_, cooperative_);
   }
 }
@@ -1522,6 +1531,8 @@ bool VirtualGPU::create() {
     LogError("Could not create managed buffer for this queue!");
     return false;
   }
+  // Release HW queue until the first usage
+  ReleaseHwQueue();
   return true;
 }
 
@@ -1607,7 +1618,6 @@ address VirtualGPU::ManagedBuffer::Acquire(uint32_t size, uint32_t alignment) {
   return result;
 }
 
-
 // ================================================================================================
 void VirtualGPU::ManagedBuffer::ResetPool() {
   pool_cur_offset_ = 0;
@@ -1632,11 +1642,26 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 }
 
 // ================================================================================================
+void VirtualGPU::ReleaseHwQueue() {
+  // Try to release normal queue to the pool of active queues
+  if (roc_device_.settings().dynamic_queues_ &&
+      (priority_ == amd::CommandQueue::Priority::Normal)) {
+    amd::ScopedLock lock(execution());
+    if ((gpu_queue_ != nullptr) && roc_device_.ReleaseActiveNormalQueue(gpu_queue_)) {
+      gpu_queue_ = nullptr;
+    }
+  }
+}
+
+// ================================================================================================
 /* profilingBegin, when profiling is enabled, creates a timestamp to save in
 * virtualgpu's timestamp_, saves the pointer timestamp_ to the command's data
 * and then calls start() to get the current host timestamp.
 */
 void VirtualGPU::profilingBegin(amd::Command& command, bool sdmaProfiling) {
+  if (gpu_queue_ == nullptr) {
+    gpu_queue_ = roc_device_.AcquireActiveNormalQueue();
+  }
   // Track the current command
   command_ = &command;
 

@@ -214,7 +214,7 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
   };
 
   MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr, bool phys_mem = false)
-      : VmHeap(device->asContext()->devices()[0], *device->NullStream()),
+      : VmHeap(device->devices()[0]),
         busy_heap_(device, *this),
         free_heap_(device, *this),
         lock_pool_ops_(true),
@@ -258,6 +258,9 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
       amd::Os::CloseIpcMemory(0, shared_, sizeof(SharedMemPool));
     }
   }
+
+  /// Returns a queue for virtual memory map/unmap operations
+  virtual amd::HostQueue& GetVmQueue() final { return *device_->NullStream(); }
 
   /// The same stream can reuse memory without HIP event validation
   void* AllocateMemory(size_t size, Stream* stream, void* dptr = nullptr);
