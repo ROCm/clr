@@ -29,6 +29,70 @@ THE SOFTWARE.
 
 namespace hip {
 
+namespace comgr_helper {
+
+template <typename comgr_T> class ComgrUniqueHandle {
+ public:
+  ComgrUniqueHandle() = default;
+  // constructor which takes ownership of a correctly initialzed handle
+  ComgrUniqueHandle(comgr_T& handle) : comgr_obj_(handle) { handle = {0}; };
+
+  template <typename T = comgr_T,
+            std::enable_if_t<std::is_same_v<T, amd_comgr_data_set_t> ||
+                                 std::is_same_v<T, amd_comgr_action_info_t>,
+                             bool> = true>
+  [[nodiscard]] amd_comgr_status_t Create() {
+    if constexpr (std::is_same_v<T, amd_comgr_data_set_t>) {
+      return amd::Comgr::create_data_set(&comgr_obj_);
+    } else if constexpr (std::is_same_v<T, amd_comgr_action_info_t>) {
+      return amd::Comgr::create_action_info(&comgr_obj_);
+    }
+
+    // Unreachable code
+    return AMD_COMGR_STATUS_SUCCESS;
+  }
+
+  template <typename T = comgr_T,
+            std::enable_if_t<std::is_same_v<T, amd_comgr_data_t>, bool> = true>
+  [[nodiscard]] amd_comgr_status_t Create(amd_comgr_data_kind_t kind) {
+    return amd::Comgr::create_data(kind, &comgr_obj_);
+  }
+
+  ~ComgrUniqueHandle() {
+    if (comgr_obj_.handle != 0) {
+      if constexpr (std::is_same_v<comgr_T, amd_comgr_data_set_t>) {
+        amd::Comgr::destroy_data_set(comgr_obj_);
+      } else if constexpr (std::is_same_v<comgr_T, amd_comgr_action_info_t>) {
+        amd::Comgr::destroy_action_info(comgr_obj_);
+      } else if constexpr (std::is_same_v<comgr_T, amd_comgr_data_t>) {
+        amd::Comgr::release_data(comgr_obj_);
+      }
+    }
+  }
+
+  // Delete all copy and move operators
+  ComgrUniqueHandle(ComgrUniqueHandle&) = delete;
+  ComgrUniqueHandle(ComgrUniqueHandle&&) = delete;
+  ComgrUniqueHandle& operator=(ComgrUniqueHandle&) = delete;
+  ComgrUniqueHandle& operator=(ComgrUniqueHandle&&) = delete;
+
+  // Method to access data
+  comgr_T get() const {
+    assert(comgr_obj_.handle != 0);
+    return comgr_obj_;
+  }
+
+ private:
+  comgr_T comgr_obj_{0};
+};
+
+
+typedef ComgrUniqueHandle<amd_comgr_data_set_t> ComgrDataSetUniqueHandle;
+typedef ComgrUniqueHandle<amd_comgr_action_info_t> ComgrActionInfoUniqueHandle;
+typedef ComgrUniqueHandle<amd_comgr_data_t> ComgrDataUniqueHandle;
+
+}  // namespace comgr_helper
+
 FatBinaryDeviceInfo::~FatBinaryDeviceInfo() {
   if (program_ != nullptr) {
     program_->unload();
@@ -309,80 +373,58 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     } else {
       LogPrintfDebug("%s", "SPIRV isa found");
 
-      amd_comgr_data_set_t spirv_data_set, bc_data_set;
-      amd_comgr_data_t spirv_data;
-      amd_comgr_action_info_t action;
+      comgr_helper::ComgrDataSetUniqueHandle spirv_data_set, bc_data_set;
+      comgr_helper::ComgrDataUniqueHandle spirv_data;
+      comgr_helper::ComgrActionInfoUniqueHandle action;
 
-      if (comgr_status = amd::Comgr::create_data_set(&spirv_data_set);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+      if (comgr_status = spirv_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data set");
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_SPIRV, &spirv_data);
+      if (comgr_status = spirv_data.Create(AMD_COMGR_DATA_KIND_SPIRV);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data");
-        amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::set_data(spirv_data, spirv_isa_handle->second.first /* size */,
-                                              reinterpret_cast<char*>(const_cast<void*>(image_)) +
-                                                  spirv_isa_handle->second.second /* buffer */);
+      if (comgr_status =
+              amd::Comgr::set_data(spirv_data.get(), spirv_isa_handle->second.first /* size */,
+                                   reinterpret_cast<char*>(const_cast<void*>(image_)) +
+                                       spirv_isa_handle->second.second /* buffer */);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to assign data in comgr");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::set_data_name(spirv_data, "hip_code_object.spv");
+      if (comgr_status = amd::Comgr::set_data_name(spirv_data.get(), "hip_code_object.spv");
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to set data name");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::data_set_add(spirv_data_set, spirv_data);
+      if (comgr_status = amd::Comgr::data_set_add(spirv_data_set.get(), spirv_data.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to add spir data");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::create_action_info(&action);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+      if (comgr_status = action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create action");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::create_data_set(&bc_data_set);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+      if (comgr_status = bc_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create bitcode data set");
-        (void)amd::Comgr::destroy_action_info(action);
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
 
-      if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action,
-                                               spirv_data_set, bc_data_set);
+      if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action.get(),
+                                               spirv_data_set.get(), bc_data_set.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to compile to ll");
-        (void)amd::Comgr::destroy_action_info(action);
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        (void)amd::Comgr::destroy_data_set(bc_data_set);
-        return hipErrorInvalidValue;
+        break;
       }
-
-      (void)amd::Comgr::release_data(spirv_data);
-      (void)amd::Comgr::destroy_data_set(spirv_data_set);
-      (void)amd::Comgr::destroy_action_info(action);
 
       // System might report multiple devices of same name, we do not want to recompile for all
       // these. store code objects after compiling them to reuse.
@@ -402,141 +444,97 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         }
 
         LogPrintfInfo("Creating ISA for: %s from spirv", target_id.c_str());
-        amd_comgr_action_info_t reloc_action;
+        comgr_helper::ComgrActionInfoUniqueHandle reloc_action;
         std::string isa = "amdgcn-amd-amdhsa--" + target_id;
-        if (comgr_status = amd::Comgr::create_action_info(&reloc_action);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+        if (comgr_status = reloc_action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create action");
-          return hipErrorInvalidValue;
+          break;
         }
 
         // TODO: do this for all devices
-        if (comgr_status = amd::Comgr::action_info_set_isa_name(reloc_action, isa.c_str());
+        if (comgr_status = amd::Comgr::action_info_set_isa_name(reloc_action.get(), isa.c_str());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set ISA name");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        if (comgr_status = amd::Comgr::action_info_set_device_lib_linking(reloc_action, true);
+        if (comgr_status = amd::Comgr::action_info_set_device_lib_linking(reloc_action.get(), true);
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set device lib linking");
-          return hipErrorInvalidValue;
+          break;
         }
 
         if (comgr_status = amd::Comgr::action_info_set_option_list(
-                reloc_action, nullptr /* options list */, 0 /* options size */);
+                reloc_action.get(), nullptr /* options list */, 0 /* options size */);
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set option list");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        amd_comgr_data_set_t reloc_data;
-        if (comgr_status = amd::Comgr::create_data_set(&reloc_data);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        comgr_helper::ComgrDataSetUniqueHandle reloc_data;
+        if (comgr_status = reloc_data.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create reloc data set");
-          return hipErrorInvalidValue;
-        }
-
-        if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
-                                                 reloc_action, bc_data_set, reloc_data);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          LogError("Failed to compile to reloc");
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
-          LogError("Failed to do action: codegen bc ot reloc");
-          return hipErrorInvalidValue;
-        }
-
-        amd_comgr_action_info_t exe_action;
-        amd_comgr_data_set_t exe_output;
-
-        if (comgr_status = amd::Comgr::create_action_info(&exe_action);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          LogError("Failed to create action");
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
-          LogError("Failed to create exe action");
-          return hipErrorInvalidValue;
+          break;
         }
 
         if (comgr_status =
-                amd::Comgr::action_info_set_isa_name(exe_action, isa.c_str());
+                amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
+                                      reloc_action.get(), bc_data_set.get(), reloc_data.get());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+          LogError("Failed to compile to reloc");
+          LogError("Failed to do action: codegen bc ot reloc");
+          break;
+        }
+
+        comgr_helper::ComgrActionInfoUniqueHandle exe_action;
+        comgr_helper::ComgrDataSetUniqueHandle exe_output;
+
+        if (comgr_status = exe_action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+          LogError("Failed to create action");
+          LogError("Failed to create exe action");
+          break;
+        }
+
+        if (comgr_status = amd::Comgr::action_info_set_isa_name(exe_action.get(), isa.c_str());
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to set exe action isa name");
-          return hipErrorInvalidValue;
         }
 
-        if (comgr_status = amd::Comgr::create_data_set(&exe_output);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = exe_output.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create exe output");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
-                                                 exe_action, reloc_data, exe_output);
+        if (comgr_status =
+                amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
+                                      exe_action.get(), reloc_data.get(), exe_output.get());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to do action: reloc to exe");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        amd_comgr_data_t exe_data;
-        if (auto res = amd::Comgr::action_data_get_data(exe_output, AMD_COMGR_DATA_KIND_EXECUTABLE,
-                                                        0, &exe_data);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        amd_comgr_data_t exe_data_handle;
+        if (comgr_status = amd::Comgr::action_data_get_data(
+                exe_output.get(), AMD_COMGR_DATA_KIND_EXECUTABLE, 0, &exe_data_handle);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to action get exe data");
-          return hipErrorInvalidValue;
+          break;
         }
+        // Move ownership of exe_data_handle to exe_data
+        comgr_helper::ComgrDataUniqueHandle exe_data(exe_data_handle);
 
         size_t co_size;
-        if (auto res = amd::Comgr::get_data(exe_data, &co_size, NULL);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = amd::Comgr::get_data(exe_data.get(), &co_size, NULL);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to get exe size");
-          return hipErrorInvalidValue;
+          break;
         }
 
         char* co = new char[co_size];
-        if (auto res = amd::Comgr::get_data(exe_data, &co_size, co);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = amd::Comgr::get_data(exe_data.get(), &co_size, co);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to get exe data");
-          return hipErrorInvalidValue;
+          break;
         }
 
         auto elf_size = CodeObject::ElfSize(co);
@@ -544,17 +542,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
         // Save the compiled code object
         compiled_co[target_id] = std::make_pair(co, elf_size);
-
-        // cleanup
-        (void)amd::Comgr::release_data(exe_data);
-        (void)amd::Comgr::destroy_action_info(exe_action);
-        (void)amd::Comgr::destroy_action_info(reloc_action);
-        (void)amd::Comgr::destroy_data_set(exe_output);
-        (void)amd::Comgr::destroy_data_set(reloc_data);
       }
-      (void)amd::Comgr::destroy_data_set(bc_data_set);
     }
   } while (0);
+
+  if (comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+    hip_status = hipErrorInvalidValue;
+  }
 
   // Clean up file and memory resouces if hip_status failed for some reason.
   if (hip_status != hipSuccess && hip_status != hipErrorInvalidKernelFile) {
