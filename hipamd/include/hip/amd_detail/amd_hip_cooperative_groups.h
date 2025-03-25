@@ -462,7 +462,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     srcRank = srcRank % static_cast<int>(size());
 
@@ -489,7 +488,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl_down(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     // Note: The cuda implementation appears to use the remainder of lane_delta
     // and WARP_SIZE as the shift value rather than lane_delta itself.
@@ -530,7 +528,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl_up(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     // Note: The cuda implementation appears to use the remainder of lane_delta
     // and WARP_SIZE as the shift value rather than lane_delta itself.
@@ -838,22 +835,18 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
   }
 
   template <class T> __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl(var, srcRank, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_down(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_down(var, lane_delta, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_up(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_up(var, lane_delta, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_xor(T var, unsigned int laneMask) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_xor(var, laneMask, numThreads));
   }
 

@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2019 - 2024 Advanced Micro Devices, Inc. All rights reserved.
+ * Copyright (c) 2019 - 2025 Advanced Micro Devices, Inc. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -129,6 +129,13 @@
 #endif
 #define __BF16_DEVICE_STATIC__ __BF16_DEVICE__ static inline
 #define __BF16_HOST_DEVICE_STATIC__ __BF16_HOST_DEVICE__ static inline
+
+#pragma push_macro("MAYBE_UNDEF")
+#if defined(__has_attribute) && __has_attribute(maybe_undef)
+#define MAYBE_UNDEF __attribute__((maybe_undef))
+#else
+#define MAYBE_UNDEF
+#endif
 
 #define HIPRT_ONE_BF16 __ushort_as_bfloat16((unsigned short)0x3F80U)
 #define HIPRT_ZERO_BF16 __ushort_as_bfloat16((unsigned short)0x0000U)
@@ -590,6 +597,52 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __ushort_as_bfloat16(const unsigned s
     __hip_bfloat16 bf16;
   } u{a};
   return u.bf16;
+}
+
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_SHFL
+ * \brief shfl warp intrinsic for bfloat16
+ */
+__BF16_DEVICE_STATIC__
+__hip_bfloat16 __shfl(MAYBE_UNDEF __hip_bfloat16 var, int src_lane, int width = warpSize) {
+    union { int i; __hip_bfloat16 f; } tmp; tmp.f = var;
+    tmp.i = __shfl(tmp.i, src_lane, width);
+    return tmp.f;
+}
+
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_SHFL
+ * \brief shfl up warp intrinsic for bfloat16
+ */
+__BF16_DEVICE_STATIC__
+__hip_bfloat16 __shfl_up(MAYBE_UNDEF __hip_bfloat16 var,
+                         unsigned int lane_delta, int width = warpSize) {
+    union { int i; __hip_bfloat16 f; } tmp; tmp.f = var;
+    tmp.i = __shfl_up(tmp.i, lane_delta, width);
+    return tmp.f;
+}
+
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_SHFL
+ * \brief shfl down warp intrinsic for bfloat16
+ */
+__BF16_DEVICE_STATIC__
+__hip_bfloat16 __shfl_down(MAYBE_UNDEF __hip_bfloat16 var,
+                           unsigned int lane_delta, int width = warpSize) {
+    union { int i; __hip_bfloat16 f; } tmp; tmp.f = var;
+    tmp.i = __shfl_down(tmp.i, lane_delta, width);
+    return tmp.f;
+}
+
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_SHFL
+ * \brief shfl xor warp intrinsic for bfloat16
+ */
+__BF16_DEVICE_STATIC__
+__hip_bfloat16 __shfl_xor(MAYBE_UNDEF __hip_bfloat16 var, int lane_mask, int width = warpSize) {
+    union { int i; __hip_bfloat16 f; } tmp; tmp.f = var;
+    tmp.i = __shfl_xor(tmp.i, lane_mask, width);
+    return tmp.f;
 }
 
 #ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
@@ -1787,4 +1840,5 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 unsafeAtomicAdd(__hip_bfloat16 *address,
   return __high2bfloat16(out);
 }
 #endif  // defined(__clang__) && defined(__HIP__)
+#pragma pop_macro("MAYBE_UNDEF")
 #endif
