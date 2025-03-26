@@ -2754,8 +2754,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       // Validate privateMemSize is more than max allowed.
       size_t maxStackSize = device().MaxStackSize();
       if (privateMemSize > maxStackSize) {
-        LogError("Scratch size (%zu) exceeds max allowed (%zu) for kernel : %s", privateMemSize,
-                                                         maxStackSize, hsaKernel.name().c_str());
+        ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+          "Scratch size (%zu) exceeds max allowed (%zu) for kernel : %s",
+          privateMemSize, maxStackSize, hsaKernel.name().c_str());
+        LogError("Scratch size exceeds max allowed.");
         return false;
       }
     }

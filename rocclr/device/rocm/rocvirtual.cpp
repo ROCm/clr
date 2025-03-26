@@ -3203,7 +3203,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s", gpuKernel.name().c_str());
+    ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s",
+            gpuKernel.getDemangledName().c_str());
 
     amd::NDRange local(sizes.local());
     address hidden_arguments = const_cast<address>(parameters);
@@ -3474,6 +3475,16 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     if ((devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
       dispatchPacket.private_segment_size = std::max<uint64_t>(dev().StackSize(),
                                              dispatchPacket.private_segment_size);
+      // Validate privateMemSize is more than max allowed.
+      size_t maxStackSize = dev().MaxStackSize();
+      if (dispatchPacket.private_segment_size > maxStackSize) {
+        ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+          "Scratch size (%u) exceeds max allowed (%zu) for kernel : %s",
+          dispatchPacket.private_segment_size, maxStackSize,
+                gpuKernel.getDemangledName().c_str());
+        LogError("Scratch size exceeds max allowed.");
+        return false;
+      }
     }
 
     // Pass the header accordingly
