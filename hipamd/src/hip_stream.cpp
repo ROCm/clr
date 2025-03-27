@@ -73,6 +73,7 @@ bool Stream::Create() {
 
 // ================================================================================================
 void Stream::Destroy(hip::Stream* stream) {
+  stream->device_->devices()[0]->removeFromActiveQueues(stream); // Now it isn't in active queue on the device
   stream->device_->RemoveStream(stream);
   stream->release();
   stream = nullptr;

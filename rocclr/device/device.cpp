@@ -1094,6 +1094,13 @@ bool Device::IpcDetach(void* dev_ptr) const {
   return true;
 }
 
+std::vector<amd::CommandQueue*> Device::getActiveQueues() {
+  amd::ScopedLock lock(activeQueuesLock_);
+  for (auto& queue: activeQueues) {
+    queue->retain(); // Increase reference count in case it's destroyed in different threads
+  }
+  return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
+}
 }  // namespace amd
 
 namespace amd::device {
