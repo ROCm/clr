@@ -373,42 +373,6 @@ static bool consume(std::string& input, std::string consume_) {
   return true;
 }
 
-// Is agent target compatible with generic code object target?
-static bool isCompatibleWithGenericTarget(std::string& coTarget, std::string& agentTarget) {
-  // The map is subject to change per removing policy
-  static std::map<std::string, std::string> genericTargetMap{
-      // "gfx9-generic"
-      {"gfx900", "gfx9-generic"},
-      {"gfx902", "gfx9-generic"},
-      {"gfx904", "gfx9-generic"},
-      {"gfx906", "gfx9-generic"},
-      {"gfx909", "gfx9-generic"},
-      {"gfx90c", "gfx9-generic"},
-      // "gfx10-1-generic"
-      {"gfx1010", "gfx10-1-generic"},
-      {"gfx1011", "gfx10-1-generic"},
-      {"gfx1012", "gfx10-1-generic"},
-      {"gfx1013", "gfx10-1-generic"},
-      // "gfx10-3-generic"
-      {"gfx1030", "gfx10-3-generic"},
-      {"gfx1031", "gfx10-3-generic"},
-      {"gfx1032", "gfx10-3-generic"},
-      {"gfx1033", "gfx10-3-generic"},
-      {"gfx1034", "gfx10-3-generic"},
-      {"gfx1035", "gfx10-3-generic"},
-      {"gfx1036", "gfx10-3-generic"},
-      // "gfx11-generic"
-      {"gfx1100", "gfx11-generic"},
-      {"gfx1101", "gfx11-generic"},
-      {"gfx1102", "gfx11-generic"},
-      {"gfx1103", "gfx11-generic"},
-      {"gfx1150", "gfx11-generic"},
-      {"gfx1151", "gfx11-generic"},
-  };
-  auto search = genericTargetMap.find(agentTarget);
-  return search != genericTargetMap.end() && coTarget == search->second;
-}
-
 // Trim String till character, will be used to get gpuname
 // example: input is gfx908:sram-ecc+ and trim char is :
 // input will become sram-ecc+.
@@ -494,7 +458,7 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   // Check for compatibility
   if (genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
     // co_processor is generic target
-    if (!isCompatibleWithGenericTarget(co_processor, agent_isa_processor))
+    if (!IsCompatibleWithGenericTarget(co_processor, agent_isa_processor))
     return false;
   } else if (agent_isa_processor != co_processor) {
     return false;
@@ -1244,6 +1208,51 @@ bool fillMangledNames(std::vector<char>& dataVec, std::map<std::string, std::str
   return true;
 }
 
+const std::map<std::string, std::string>& GenericTargetMapping() {
+  // The map is subject to change per removing policy
+  static const std::map<std::string, std::string> genericTargetMap{
+    // "gfx9-generic"
+    {"gfx900", "gfx9-generic"},
+    {"gfx902", "gfx9-generic"},
+    {"gfx904", "gfx9-generic"},
+    {"gfx906", "gfx9-generic"},
+    {"gfx909", "gfx9-generic"},
+    {"gfx90c", "gfx9-generic"},
+    // "gfx9-4-generic"
+    {"gfx942", "gfx9-4-generic"},
+    {"gfx950", "gfx9-4-generic"},
+    // "gfx10-1-generic"
+    {"gfx1010", "gfx10-1-generic"},
+    {"gfx1011", "gfx10-1-generic"},
+    {"gfx1012", "gfx10-1-generic"},
+    {"gfx1013", "gfx10-1-generic"},
+    // "gfx10-3-generic"
+    {"gfx1030", "gfx10-3-generic"},
+    {"gfx1031", "gfx10-3-generic"},
+    {"gfx1032", "gfx10-3-generic"},
+    {"gfx1033", "gfx10-3-generic"},
+    {"gfx1034", "gfx10-3-generic"},
+    {"gfx1035", "gfx10-3-generic"},
+    {"gfx1036", "gfx10-3-generic"},
+    // "gfx11-generic"
+    {"gfx1100", "gfx11-generic"},
+    {"gfx1101", "gfx11-generic"},
+    {"gfx1102", "gfx11-generic"},
+    {"gfx1103", "gfx11-generic"},
+    {"gfx1150", "gfx11-generic"},
+    {"gfx1151", "gfx11-generic"},
+    // "gfx12-generic"
+    {"gfx1200", "gfx12-generic"},
+    {"gfx1201", "gfx12-generic"},
+  };
+  return genericTargetMap;
+}
+
+bool IsCompatibleWithGenericTarget(const std::string& coTarget, const std::string& agentTarget) {
+  auto& map = GenericTargetMapping();
+  auto search = map.find(agentTarget);
+  return search != map.end() && coTarget == search->second;
+}
 }  // namespace helpers
 
 std::vector<std::string> getLinkOptions(const LinkArguments& args) {
@@ -1265,7 +1274,6 @@ std::vector<std::string> getLinkOptions(const LinkArguments& args) {
   }
   return res;
 }
-
 
 // RTC Program Member Functions
 RTCProgram::RTCProgram(std::string name) : name_(name) {

@@ -74,6 +74,13 @@ bool UnbundleUsingComgr(std::vector<char>& source, const std::string& isa,
                         std::vector<std::string>& linkOptions, std::string& buildLog,
                         std::vector<char>& unbundled_spirv_bitcode, const char* bundleEntryIDs,
                         size_t bundleEntryIDsCount);
+
+// Mapping from targets to generic targets
+const std::map<std::string, std::string>& GenericTargetMapping();
+
+// Return true if agent target compatible with generic code object target, false otherwise.
+// Both targets should not have any feature.
+bool IsCompatibleWithGenericTarget(const std::string& coTarget, const std::string& agentTarget);
 }  // namespace helpers
 
 struct LinkArguments {
