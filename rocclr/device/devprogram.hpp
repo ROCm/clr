@@ -194,7 +194,7 @@ class Program : public amd::HeapObject {
 
   //! Build the device program.
   int32_t build(const std::string& sourceCode, const char* origOptions,
-                amd::option::Options* options, const std::vector<std::string>& preCompiledHeaders);
+                amd::option::Options* options);
 
   //! Load the device program.
   bool load();
@@ -319,11 +319,10 @@ class Program : public amd::HeapObject {
   *
   *  \return True if we successefully compiled a GPU program
   */
-  virtual bool compileImpl(
-      const std::string& sourceCode,  //!< the program's source code
-      const std::vector<const std::string*>& headers, const char** headerIncludeNames,
-      amd::option::Options* options,                      //!< compile options's object
-      const std::vector<std::string>& preCompiledHeaders  //!< precompiled headers
+  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
+                           const std::vector<const std::string*>& headers,
+                           const char** headerIncludeNames,
+                           amd::option::Options* options  //!< compile options's object
   );
 
   //! Link the device program.
@@ -406,8 +405,7 @@ class Program : public amd::HeapObject {
 
   //! Compile the device program with LC path
   bool compileImplLC(const std::string& sourceCode, const std::vector<const std::string*>& headers,
-                     const char** headerIncludeNames, amd::option::Options* options,
-                     const std::vector<std::string>& preCompiledHeaders);
+                     const char** headerIncludeNames, amd::option::Options* options);
 
   //! Compile the device program with HSAIL path
   bool compileImplHSAIL(const std::string& sourceCode,
@@ -446,10 +444,6 @@ class Program : public amd::HeapObject {
   amd_comgr_status_t addCodeObjData(const char *source,
     const size_t size, const amd_comgr_data_kind_t type,
     const char* name, amd_comgr_data_set_t* dataSet);
-
-  //! Add precompiled headers to the data set
-  amd_comgr_status_t addPreCompiledHeader(amd_comgr_data_set_t* dataSet,
-                                          const std::vector<std::string>& preCompiledHeaders);
 
   //! Create action for the specified language, target and options
   amd_comgr_status_t createAction(const amd_comgr_language_t oclver,
