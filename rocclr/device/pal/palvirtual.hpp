@@ -353,6 +353,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   void profilerAttach(bool enable = false) {}
 
+  uint64_t getGpuQueueSignature();
+  
   bool isFenceDirty() const { return false; }
 
   void HiddenHeapInit() {}

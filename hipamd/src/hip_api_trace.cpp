@@ -585,6 +585,7 @@ hipError_t hipStreamGetCaptureInfo_v2(hipStream_t stream, hipStreamCaptureStatus
                                       size_t* numDependencies_out);
 hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device);
 hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags);
+hipError_t hipStreamGetHwQueueSignature(hipStream_t stream, uint64_t* signature);
 hipError_t hipStreamGetPriority(hipStream_t stream, int* priority);
 hipError_t hipStreamIsCapturing(hipStream_t stream, hipStreamCaptureStatus* pCaptureStatus);
 hipError_t hipStreamQuery(hipStream_t stream);
@@ -706,6 +707,7 @@ hipError_t hipStreamSynchronize_spt(hipStream_t stream);
 hipError_t hipStreamGetPriority_spt(hipStream_t stream, int* priority);
 hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned int flags);
 hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags);
+hipError_t hipStreamGetHwQueueSignature_spt(hipStream_t stream, uint64_t* signature);
 hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback,
                                     void* userData, unsigned int flags);
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream = NULL);
@@ -1181,6 +1183,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipStreamGetCaptureInfo_v2_fn = hip::hipStreamGetCaptureInfo_v2;
   ptrDispatchTable->hipStreamGetDevice_fn = hip::hipStreamGetDevice;
   ptrDispatchTable->hipStreamGetFlags_fn = hip::hipStreamGetFlags;
+  ptrDispatchTable->hipStreamGetHwQueueSignature_fn = hip::hipStreamGetHwQueueSignature;
   ptrDispatchTable->hipStreamGetPriority_fn = hip::hipStreamGetPriority;
   ptrDispatchTable->hipStreamIsCapturing_fn = hip::hipStreamIsCapturing;
   ptrDispatchTable->hipStreamQuery_fn = hip::hipStreamQuery;
@@ -1255,6 +1258,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipStreamGetPriority_spt_fn = hip::hipStreamGetPriority_spt;
   ptrDispatchTable->hipStreamWaitEvent_spt_fn = hip::hipStreamWaitEvent_spt;
   ptrDispatchTable->hipStreamGetFlags_spt_fn = hip::hipStreamGetFlags_spt;
+  ptrDispatchTable->hipStreamGetHwQueueSignature_spt_fn = hip::hipStreamGetHwQueueSignature_spt;
   ptrDispatchTable->hipStreamAddCallback_spt_fn = hip::hipStreamAddCallback_spt;
   ptrDispatchTable->hipEventRecord_spt_fn = hip::hipEventRecord_spt;
   ptrDispatchTable->hipLaunchCooperativeKernel_spt_fn = hip::hipLaunchCooperativeKernel_spt;
@@ -1878,13 +1882,16 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipExternalMemoryGetMappedMipmappedArray_fn, 4
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeGetParams_fn, 459)
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeSetParams_fn, 460)
 
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetHwQueueSignature_fn, 461)
+HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetHwQueueSignature_spt_fn, 462)
+
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 461)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 463)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 4,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

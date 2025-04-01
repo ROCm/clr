@@ -1322,6 +1322,8 @@ class VirtualDevice : public amd::HeapObject {
   //! Returns true if device has active wait setting
   bool ActiveWait() const;
 
+  // return a signature of the VirtualGPU queue
+  virtual uint64_t getGpuQueueSignature() = 0;
   //! Returns fence state of the VirtualGPU
   virtual bool isFenceDirty() const = 0;
   //! Init hidden heap for device memory allocations

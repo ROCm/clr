@@ -575,6 +575,8 @@ global:
     hipGraphExecGetFlags;
     hipGraphNodeSetParams;
     hipGraphExecNodeSetParams;
+    hipStreamGetHwQueueSignature;
+    hipStreamGetHwQueueSignature_spt;
 local:
     *;
 } hip_6.1;

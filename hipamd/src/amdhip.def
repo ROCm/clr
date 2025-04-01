@@ -199,6 +199,7 @@ hipStreamCreateWithPriority
 hipStreamDestroy
 hipStreamGetDevice
 hipStreamGetFlags
+hipStreamGetHwQueueSignature
 hipStreamQuery
 hipStreamSynchronize
 hipStreamWaitEvent
@@ -401,6 +402,7 @@ hipMemset2D_spt
 hipMemset3D_spt
 hipStreamQuery_spt
 hipStreamGetFlags_spt
+hipStreamGetHwQueueSignature_spt
 hipStreamGetPriority_spt
 hipStreamWaitEvent_spt
 hipEventRecord_spt

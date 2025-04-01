@@ -703,6 +703,7 @@ typedef hipError_t (*t_hipStreamGetCaptureInfo_v2)(
     hipGraph_t* graph_out, const hipGraphNode_t** dependencies_out, size_t* numDependencies_out);
 typedef hipError_t (*t_hipStreamGetDevice)(hipStream_t stream, hipDevice_t* device);
 typedef hipError_t (*t_hipStreamGetFlags)(hipStream_t stream, unsigned int* flags);
+typedef hipError_t (*t_hipStreamGetHwQueueSignature)(hipStream_t stream, uint64_t* signature);
 typedef hipError_t (*t_hipStreamGetPriority)(hipStream_t stream, int* priority);
 typedef hipError_t (*t_hipStreamIsCapturing)(hipStream_t stream,
                                              hipStreamCaptureStatus* pCaptureStatus);
@@ -866,6 +867,8 @@ typedef hipError_t (*t_hipStreamWaitEvent_spt)(hipStream_t stream, hipEvent_t ev
                                                unsigned int flags);
 
 typedef hipError_t (*t_hipStreamGetFlags_spt)(hipStream_t stream, unsigned int* flags);
+
+typedef hipError_t (*t_hipStreamGetHwQueueSignature_spt)(hipStream_t stream, uint64_t* signature);
 
 typedef hipError_t (*t_hipStreamAddCallback_spt)(hipStream_t stream, hipStreamCallback_t callback,
                                                  void* userData, unsigned int flags);
@@ -1506,6 +1509,9 @@ struct HipDispatchTable {
   t_hipExternalMemoryGetMappedMipmappedArray hipExternalMemoryGetMappedMipmappedArray_fn;
   t_hipDrvGraphMemcpyNodeGetParams hipDrvGraphMemcpyNodeGetParams_fn;
   t_hipDrvGraphMemcpyNodeSetParams hipDrvGraphMemcpyNodeSetParams_fn;
+
+  t_hipStreamGetHwQueueSignature hipStreamGetHwQueueSignature_fn;
+  t_hipStreamGetHwQueueSignature_spt hipStreamGetHwQueueSignature_spt_fn;
 
   // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 5

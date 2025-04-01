@@ -63,6 +63,7 @@ THE SOFTWARE.
     #define hipStreamSynchronize          __HIP_API_SPT(hipStreamSynchronize)
     #define hipStreamQuery                __HIP_API_SPT(hipStreamQuery)
     #define hipStreamGetFlags             __HIP_API_SPT(hipStreamGetFlags)
+    #define hipStreamGetHwQueueSignature  __HIP_API_SPT(hipStreamGetHwQueueSignature)
     #define hipStreamGetPriority          __HIP_API_SPT(hipStreamGetPriority)
     #define hipStreamWaitEvent            __HIP_API_SPT(hipStreamWaitEvent)
     #define hipStreamAddCallback          __HIP_API_SPT(hipStreamAddCallback)
@@ -164,6 +165,8 @@ hipError_t hipStreamGetPriority_spt(hipStream_t stream, int* priority);
 hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned int flags __dparm(0));
 
 hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags);
+
+hipError_t hipStreamGetHwQueueSignature_spt(hipStream_t stream, uint64_t* signature);
 
 hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback, void* userData,
                                 unsigned int flags);

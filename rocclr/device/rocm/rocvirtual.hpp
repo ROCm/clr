@@ -405,6 +405,8 @@ class VirtualGPU : public device::VirtualDevice {
 
   Timestamp* timestamp() const { return timestamp_; }
 
+  uint64_t getGpuQueueSignature();
+
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
   void HiddenHeapInit();

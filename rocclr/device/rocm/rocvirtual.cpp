@@ -1427,6 +1427,13 @@ void VirtualGPU::destroyPool() {
 }
 
 // ================================================================================================
+uint64_t VirtualGPU::getGpuQueueSignature() {
+  auto base_ptr = reinterpret_cast<uint64_t>(gpu_queue_->base_address);
+  auto queue_id = gpu_queue_->id;
+  return ((queue_id << 56) & ~((1ULL << 56) - 1)) | (base_ptr & 0x00FFFFFFFFFFFFFF);
+}
+
+// ================================================================================================
 void* VirtualGPU::allocKernArg(size_t size, size_t alignment) {
   assert(alignment != 0);
   address result = nullptr;

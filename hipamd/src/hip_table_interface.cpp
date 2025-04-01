@@ -1377,6 +1377,9 @@ hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
 hipError_t hipStreamGetFlags(hipStream_t stream, unsigned int* flags) {
   return hip::GetHipDispatchTable()->hipStreamGetFlags_fn(stream, flags);
 }
+hipError_t hipStreamGetHwQueueSignature(hipStream_t stream, uint64_t* signature)   {
+  return hip::GetHipDispatchTable()->hipStreamGetHwQueueSignature_fn(stream, signature);
+}
 hipError_t hipStreamGetPriority(hipStream_t stream, int* priority) {
   return hip::GetHipDispatchTable()->hipStreamGetPriority_fn(stream, priority);
 }
@@ -1677,6 +1680,9 @@ hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned
 }
 hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags) {
   return hip::GetHipDispatchTable()->hipStreamGetFlags_spt_fn(stream, flags);
+}
+hipError_t hipStreamGetHwQueueSignature_spt(hipStream_t stream, uint64_t* signature) {
+  return hip::GetHipDispatchTable()->hipStreamGetHwQueueSignature_spt_fn(stream, signature);
 }
 hipError_t hipStreamAddCallback_spt(hipStream_t stream, hipStreamCallback_t callback,
                                     void* userData, unsigned int flags) {

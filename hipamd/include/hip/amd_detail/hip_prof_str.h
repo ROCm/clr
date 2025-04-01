@@ -424,7 +424,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpyDtoA = 404,
   HIP_API_ID_hipMemcpyHtoAAsync = 405,
   HIP_API_ID_hipSetValidDevices = 406,
-  HIP_API_ID_LAST = 406,
+  HIP_API_ID_hipStreamGetHwQueueSignature = 407,
+  HIP_API_ID_LAST = 408,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -822,6 +823,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamGetCaptureInfo_v2: return "hipStreamGetCaptureInfo_v2";
     case HIP_API_ID_hipStreamGetDevice: return "hipStreamGetDevice";
     case HIP_API_ID_hipStreamGetFlags: return "hipStreamGetFlags";
+    case HIP_API_ID_hipStreamGetHwQueueSignature: return "hipStreamGetHwQueueSignature";
     case HIP_API_ID_hipStreamGetPriority: return "hipStreamGetPriority";
     case HIP_API_ID_hipStreamIsCapturing: return "hipStreamIsCapturing";
     case HIP_API_ID_hipStreamQuery: return "hipStreamQuery";
@@ -1224,6 +1226,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamGetCaptureInfo_v2", name) == 0) return HIP_API_ID_hipStreamGetCaptureInfo_v2;
   if (strcmp("hipStreamGetDevice", name) == 0) return HIP_API_ID_hipStreamGetDevice;
   if (strcmp("hipStreamGetFlags", name) == 0) return HIP_API_ID_hipStreamGetFlags;
+  if (strcmp("hipStreamGetHwQueueSignature", name) == 0) return HIP_API_ID_hipStreamGetHwQueueSignature;
   if (strcmp("hipStreamGetPriority", name) == 0) return HIP_API_ID_hipStreamGetPriority;
   if (strcmp("hipStreamIsCapturing", name) == 0) return HIP_API_ID_hipStreamIsCapturing;
   if (strcmp("hipStreamQuery", name) == 0) return HIP_API_ID_hipStreamQuery;
@@ -3411,6 +3414,11 @@ typedef struct hip_api_data_s {
       unsigned int* flags;
       unsigned int flags__val;
     } hipStreamGetFlags;
+    struct {
+      hipStream_t stream;
+      uint64_t* signature;
+      uint64_t signature__val;
+    } hipStreamGetHwQueueSignature;
     struct {
       hipStream_t stream;
       int* priority;
@@ -5804,6 +5812,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamGetFlags.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamGetFlags.flags = (unsigned int*)flags; \
 };
+// hipStreamGetHwQueueSignature[('hipStream_t', 'stream'), ('uint64_t*', 'signature')]
+#define INIT_hipStreamGetHwQueueSignature_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipStreamGetHwQueueSignature.stream = (hipStream_t)stream; \
+  cb_data.args.hipStreamGetHwQueueSignature.signature = (uint64_t*)signature; \
+};
 // hipStreamGetPriority[('hipStream_t', 'stream'), ('int*', 'priority')]
 #define INIT_hipStreamGetPriority_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamGetPriority.stream = (hipStream_t)stream; \
@@ -7460,6 +7473,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipStreamGetFlags[('hipStream_t', 'stream'), ('unsigned int*', 'flags')]
     case HIP_API_ID_hipStreamGetFlags:
       if (data->args.hipStreamGetFlags.flags) data->args.hipStreamGetFlags.flags__val = *(data->args.hipStreamGetFlags.flags);
+      break;
+// hipStreamGetHwQueueSignature[('hipStream_t', 'stream'), ('unsigned int*', 'signature')]
+    case HIP_API_ID_hipStreamGetHwQueueSignature:
+      if (data->args.hipStreamGetHwQueueSignature.signature) data->args.hipStreamGetHwQueueSignature.signature__val = *(data->args.hipStreamGetHwQueueSignature.signature);
       break;
 // hipStreamGetPriority[('hipStream_t', 'stream'), ('int*', 'priority')]
     case HIP_API_ID_hipStreamGetPriority:
@@ -10498,6 +10515,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipStreamGetFlags.flags == NULL) oss << ", flags=NULL";
       else { oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetFlags.flags__val); }
       oss << ")";
+    break;
+    case HIP_API_ID_hipStreamGetHwQueueSignature:
+      oss << " hipStreamGetHwQueueSignature(";
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetHwQueueSignature.stream);
+      if (data->args.hipStreamGetHwQueueSignature.Signature == NULL) oss << ", Signature=NULL";
+      else { oss << ", Signature="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetHwQueueSignature.Signature__val); }
+    oss << ")";
     break;
     case HIP_API_ID_hipStreamGetPriority:
       oss << "hipStreamGetPriority(";

@@ -307,6 +307,27 @@ hipError_t hipDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPrio
   HIP_RETURN(hipSuccess);
 }
 
+//================================================================================================
+hipError_t hipStreamGetHwQueueSignature_common(hipStream_t stream, uint64_t* signature) {
+  if ((signature != nullptr) && (stream != nullptr)) {
+    if (!hip::isValid(stream)) {
+      return hipErrorContextIsDestroyed;
+    }
+    auto hip_stream = reinterpret_cast<hip::Stream*>(stream);
+    *signature = hip_stream->vdev()->getGpuQueueSignature();
+  } else {
+    return hipErrorInvalidValue;
+  }
+
+  return hipSuccess;
+}
+
+// ================================================================================================
+hipError_t hipStreamGetHwQueueSignature(hipStream_t stream, uint64_t* signature) {
+  HIP_INIT_API(hipStreamGetHwQueueSignature, stream, signature);
+  HIP_RETURN(hipStreamGetHwQueueSignature_common(stream, signature));
+}
+
 // ================================================================================================
 hipError_t hipStreamGetFlags_common(hipStream_t stream, unsigned int* flags) {
   if ((flags != nullptr) && (stream != nullptr)) {
@@ -332,6 +353,13 @@ hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags) {
   HIP_INIT_API(hipStreamGetFlags, stream, flags);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipStreamGetFlags_common(stream, flags));
+}
+
+// ================================================================================================
+hipError_t hipStreamGetHwQueueSignature_spt(hipStream_t stream, uint64_t* signature) {
+  HIP_INIT_API(hipStreamGetHwQueueSignature, stream, signature);
+  PER_THREAD_DEFAULT_STREAM(stream);
+  HIP_RETURN(hipStreamGetHwQueueSignature_common(stream, signature));
 }
 
 // ================================================================================================

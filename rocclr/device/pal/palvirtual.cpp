@@ -1160,6 +1160,12 @@ VirtualGPU::~VirtualGPU() {
   }
 }
 
+uint64_t getGpuQueueSignature() {
+  auto base_ptr = reinterpret_cast<uint64_t>(queue_[engineID_]);
+  auto queue_id = engineID_;
+  return ((queue_id << 56) & ~((1ULL << 56) - 1)) & (base_ptr & 0x00FFFFFFFFFFFFFF);
+}
+
 void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
