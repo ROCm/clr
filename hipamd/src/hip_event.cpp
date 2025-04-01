@@ -407,9 +407,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
         "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
-    if (!lastCapturedNodes.empty()) {
-      e->SetNodesPrevToRecorded(lastCapturedNodes);
-    }
+    e->SetNodesPrevToRecorded(lastCapturedNodes);
   } else {
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
