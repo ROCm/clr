@@ -77,7 +77,8 @@ void HostMemoryReference::deallocateMemory(const Context& context) {
   }
 }
 
-Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr)
+Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr,
+               size_t alignment)
     : numDevices_(0),
       deviceMemories_(NULL),
       destructorCallbacks_(NULL),
@@ -96,7 +97,8 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       svmHostAddress_(svmPtr),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_(true) /* Memory Ops Lock */ {
+      lockMemoryOps_(true),
+      alignment_(alignment) /* Memory Ops Lock */ {
   svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
   canBeCached_ = true;
 }

@@ -105,7 +105,9 @@ class Resource : public amd::HeapObject {
     VirtualGPU* gpu_;          //!< Resource won't be shared between multiple queues
     const Resource* svmBase_;  //!< SVM base for MGPU allocations
     bool interprocess_;        //!< Ressource can be used in the interprocess communication
-    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr), interprocess_(false) {}
+    size_t alignment_;         //!< allocation address alignment
+    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr), interprocess_(false),
+                     alignment_(0) {}
   };
 
   struct PinnedParams : public CreateParams {

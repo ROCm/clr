@@ -1750,8 +1750,8 @@ class Device : public RuntimeObject {
   //! Allocate a chunk of device memory as a cache for a CL memory object
   virtual device::Memory* createMemory(Memory& owner) const = 0;
 
-  //! Allocate a chunk of device memory without owner class
-  virtual device::Memory* createMemory(size_t size) const = 0;
+  //! Allocate a chunk of device memory with address alignment
+  virtual device::Memory* createMemory(size_t size, size_t alignment = 0) const = 0;
 
   //! Allocate a device sampler object
   virtual bool createSampler(const Sampler&, device::Sampler**) const = 0;

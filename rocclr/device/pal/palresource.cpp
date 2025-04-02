@@ -1323,7 +1323,9 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = desc().width_ * elementSize_;
   createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-  createInfo.alignment = desc().scratch_ ? 64 * Ki : MaxGpuAlignment;
+  createInfo.alignment = (params && params->alignment_ != 0)
+                         ? params->alignment_
+                         : (desc().scratch_ ? 64 * Ki : MaxGpuAlignment);
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
 

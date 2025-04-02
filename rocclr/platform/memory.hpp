@@ -216,7 +216,6 @@ class Memory : public amd::RuntimeObject {
   uint32_t uniqueId_ = 0;
   //! used to save the user data during memory allocation.
   UserData userData_;
-
  private:
   //! Disable default assignment operator
   Memory& operator=(const Memory&);
@@ -227,6 +226,7 @@ class Memory : public amd::RuntimeObject {
   Monitor lockMemoryOps_;          //!< Lock to serialize memory operations
   std::set<Memory*> subBuffers_;   //!< List of all subbuffers for this memory object
   device::Memory* svmBase_;        //!< svmBase allocation for MGPU case
+  size_t alignment_ = 0;           //!< alignment for allocation address
 
  protected:
   //! The constructor creates a memory object but does not allocate either host memory
@@ -235,7 +235,8 @@ class Memory : public amd::RuntimeObject {
          Type type,           //!< Memory type
          Flags flags,         //!< Object's flags
          size_t size,         //!< Memory size
-         void* svmPtr = NULL  //!< svm host memory address, NULL if no SVM mem object
+         void* svmPtr = NULL, //!< svm host memory address, NULL if no SVM mem object
+         size_t alignment = 0 //!< allocation addr alignment
   );
   Memory(Memory& parent,  //!< Context object
          Flags flags,     //!< Object's flags
@@ -419,6 +420,9 @@ class Memory : public amd::RuntimeObject {
 
   //! Validate memory access for vmm memory
   bool ValidateMemAccess(const Device& dev, bool read_write);
+
+  //! Get alignment_
+  size_t getAlignment() const { return alignment_; }
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,
@@ -436,8 +440,8 @@ class Buffer : public Memory {
       : Memory(context, type, flags, size) {}
 
  public:
-  Buffer(Context& context, Flags flags, size_t size, void* svmPtr = NULL)
-      : Memory(context, CL_MEM_OBJECT_BUFFER, flags, size, svmPtr) {}
+  Buffer(Context& context, Flags flags, size_t size, void* svmPtr = NULL, size_t alignment = 0)
+      : Memory(context, CL_MEM_OBJECT_BUFFER, flags, size, svmPtr, alignment) {}
   Buffer(Memory& parent, Flags flags, size_t origin, size_t size)
       : Memory(parent, flags, origin, size) {}
 

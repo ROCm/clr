@@ -1687,6 +1687,7 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
     if (owner.ipcShared()) {
       type = Resource::IpcMemory;
     }
+    params.alignment_ = owner.getAlignment();
     // Create memory object
     result = gpuMemory->create(type, &params);
 
@@ -1887,9 +1888,11 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 }
 
 // ================================================================================================
-device::Memory* Device::createMemory(size_t size) const {
+device::Memory* Device::createMemory(size_t size, size_t alignment) const {
   auto buffer = new pal::Memory(*this, size);
-  if ((buffer == nullptr) || !buffer->create(Resource::Local)) {
+  Resource::CreateParams params {};
+  params.alignment_ = alignment;
+  if ((buffer == nullptr) || !buffer->create(Resource::Local, &params)) {
     LogError("Couldn't allocate memory on device!");
     return nullptr;
   }
@@ -2607,7 +2610,7 @@ void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
     heap_buffer_ = createMemory(HeapBufferSize);
     if (initial_heap_size_ != 0) {
       initial_heap_size_ = amd::alignUp(initial_heap_size_, 2 * Mi);
-      initial_heap_buffer_ = createMemory(initial_heap_size_);
+      initial_heap_buffer_ = createMemory(initial_heap_size_, 2 * Mi);
     }
     if (heap_buffer_ == nullptr) {
       LogError("Heap buffer allocation failed!");

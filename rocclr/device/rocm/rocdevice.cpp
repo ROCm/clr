@@ -2044,7 +2044,7 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 }
 
 // ================================================================================================
-device::Memory* Device::createMemory(size_t size) const {
+device::Memory* Device::createMemory(size_t size, size_t alignment) const {
   auto buffer = new roc::Buffer(*this, size);
   static constexpr bool LocalAlloc = true;
   if ((buffer == nullptr) || !buffer->create(LocalAlloc)) {
