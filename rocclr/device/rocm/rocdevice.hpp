@@ -159,6 +159,10 @@ class NullDevice : public amd::Device {
   device::Program* createProgram(amd::Program& owner,
                                  amd::option::Options* options = nullptr) override;
 
+  virtual bool setCallback(hipDeviceQueueCallback_t cbo, void* userData) {
+    ShouldNotReachHere();
+    return false;
+  }
   // List of dummy functions which are disabled for NullDevice
 
   //! Create a new virtual device environment.
@@ -369,6 +373,14 @@ class Device : public NullDevice {
     const Device& gpuDevice_;         //!< GPU device object
   };
 
+  struct QueueCallBackEntry : public HeapObject {
+    struct QueueCallBackEntry* next_;                            //!< the next entry in the callback list.
+    std::atomic<hipDeviceQueueCallback_t> queueCallback_;  //!< callback function pointer.
+    void* data_;                              //!< user data passed to the callback function.
+
+    QueueCallBackEntry(hipDeviceQueueCallback_t callback, void* data): queueCallback_(callback), data_(data) {}
+  };
+
   //! Initialise the whole HSA device subsystem (CAL init, device enumeration, etc).
   static bool init();
   static void tearDown();
@@ -401,6 +413,9 @@ class Device : public NullDevice {
   // TODO: Below are all mocked up virtual functions from amd::Device, they may
   // need real implementation.
   ///////////////////////////////////////////////////////////////////////////////
+
+  virtual bool setCallback(hipDeviceQueueCallback_t cbo, void* userData);
+  void processQueueCallback(hsa_status_t status, hsa_queue_t* queue);
 
   //! Instantiate a new virtual device
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr);
@@ -614,6 +629,8 @@ class Device : public NullDevice {
   static constexpr hsa_signal_value_t InitSignalValue = 1;
 
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
+
+  std::atomic<QueueCallBackEntry*> queueCallbacks_;
 
   amd::Monitor* mapCacheOps_;            //!< Lock to serialise cache for the map resources
   std::vector<amd::Memory*>* mapCache_;  //!< Map cache info structure

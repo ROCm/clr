@@ -563,6 +563,7 @@ hipError_t hipProfilerStop();
 hipError_t hipRuntimeGetVersion(int* runtimeVersion);
 hipError_t hipSetDevice(int deviceId);
 hipError_t hipSetDeviceFlags(unsigned flags);
+hipError_t hipSetDeviceQueueCallback(hipDeviceQueueCallback_t callback, void* userData);
 hipError_t hipSetupArgument(const void* arg, size_t size, size_t offset);
 hipError_t hipSignalExternalSemaphoresAsync(const hipExternalSemaphore_t* extSemArray,
                                             const hipExternalSemaphoreSignalParams* paramsArray,
@@ -1169,6 +1170,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipRuntimeGetVersion_fn = hip::hipRuntimeGetVersion;
   ptrDispatchTable->hipSetDevice_fn = hip::hipSetDevice;
   ptrDispatchTable->hipSetDeviceFlags_fn = hip::hipSetDeviceFlags;
+  ptrDispatchTable->hipSetDeviceQueueCallback_fn = hip::hipSetDeviceQueueCallback;
   ptrDispatchTable->hipSetupArgument_fn = hip::hipSetupArgument;
   ptrDispatchTable->hipSignalExternalSemaphoresAsync_fn = hip::hipSignalExternalSemaphoresAsync;
   ptrDispatchTable->hipStreamAddCallback_fn = hip::hipStreamAddCallback;
@@ -1885,13 +1887,15 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipDrvGraphMemcpyNodeSetParams_fn, 460)
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetHwQueueSignature_fn, 461)
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetHwQueueSignature_spt_fn, 462)
 
+HIP_ENFORCE_ABI(HipDispatchTable, hipSetDeviceQueueCallback_fn, 463)
+
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 463)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 464)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 4,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

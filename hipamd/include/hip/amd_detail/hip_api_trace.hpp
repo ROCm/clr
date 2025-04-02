@@ -680,6 +680,7 @@ typedef hipError_t (*t_hipProfilerStop)();
 typedef hipError_t (*t_hipRuntimeGetVersion)(int* runtimeVersion);
 typedef hipError_t (*t_hipSetDevice)(int deviceId);
 typedef hipError_t (*t_hipSetDeviceFlags)(unsigned flags);
+typedef hipError_t (*t_hipSetDeviceQueueCallback)(hipDeviceQueueCallback_t callback, void* userData);
 typedef hipError_t (*t_hipSetupArgument)(const void* arg, size_t size, size_t offset);
 typedef hipError_t (*t_hipSignalExternalSemaphoresAsync)(
     const hipExternalSemaphore_t* extSemArray, const hipExternalSemaphoreSignalParams* paramsArray,
@@ -1513,6 +1514,7 @@ struct HipDispatchTable {
   t_hipStreamGetHwQueueSignature hipStreamGetHwQueueSignature_fn;
   t_hipStreamGetHwQueueSignature_spt hipStreamGetHwQueueSignature_spt_fn;
 
+  t_hipSetDeviceQueueCallback hipSetDeviceQueueCallback_fn;
   // DO NOT EDIT ABOVE!
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 5
 

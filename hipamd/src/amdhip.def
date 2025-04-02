@@ -191,6 +191,7 @@ hipRuntimeGetVersion
 hipGetDeviceFlags
 hipSetDevice
 hipSetDeviceFlags
+hipSetDeviceQueueCallback
 hipStreamAddCallback
 hipStreamAttachMemAsync
 hipStreamCreate

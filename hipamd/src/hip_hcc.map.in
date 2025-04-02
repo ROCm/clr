@@ -577,6 +577,7 @@ global:
     hipGraphExecNodeSetParams;
     hipStreamGetHwQueueSignature;
     hipStreamGetHwQueueSignature_spt;
+    hipSetDeviceQueueCallback;
 local:
     *;
 } hip_6.1;

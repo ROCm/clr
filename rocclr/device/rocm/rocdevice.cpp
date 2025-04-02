@@ -1963,6 +1963,31 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   return true;
 }
 
+bool Device::setCallback(hipDeviceQueueCallback_t cbo, void* userData) {
+  QueueCallBackEntry* entry = new QueueCallBackEntry(cbo, userData);
+  if (entry == NULL) {
+    return false;
+  }
+  
+  entry->next_ = queueCallbacks_;
+  while (!queueCallbacks_.compare_exchange_weak(entry->next_, entry));
+  
+  return true;
+}
+
+void Device::processQueueCallback(hsa_status_t status, hsa_queue_t* queue) {
+  QueueCallBackEntry* entry;
+  for (entry = queueCallbacks_; entry != NULL; entry = entry->next_) {
+    if (entry->queueCallback_ != hipDeviceQueueCallback_t(0)) {
+      hipDeviceQueueCallback_t callback = entry->queueCallback_.exchange(NULL);
+      auto base_ptr = reinterpret_cast<uint64_t>(queue->base_address);
+      auto queue_id = queue->id;
+      uint64_t signature = ((queue_id << 56) & ~((1ULL << 56) - 1)) | (base_ptr & 0x00FFFFFFFFFFFFFF);
+      callback(signature, entry->data_);
+    }
+  }
+}
+
 bool Device::bindExternalDevice(uint flags, void* const gfxDevice[], void* gfxContext,
                                 bool validateOnly) {
 #if defined(_WIN32)
@@ -3001,11 +3026,11 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
 static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     // Abort on device exceptions.
+    Device* dev = reinterpret_cast<Device*>(data);
     const char* errorMsg = 0;
     hsa_status_string(status, &errorMsg);
     if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {
       size_t global_available_mem = 0;
-      Device* dev = reinterpret_cast<Device*>(data);
       if (HSA_STATUS_SUCCESS != hsa_agent_get_info(dev->getBackendDevice(),
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_AVAIL),
                          &global_available_mem)) {
@@ -3019,6 +3044,7 @@ static void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
         "Callback: Queue %p aborting with error : %s code: 0x%x", queue->base_address,
         errorMsg, status);
     }
+    dev->processQueueCallback(status, queue);
     abort();
   }
 }

@@ -1733,6 +1733,10 @@ class Device : public RuntimeObject {
   //! Return this device's type.
   cl_device_type type() const { return info().type_ & ~(CL_DEVICE_TYPE_DEFAULT); }
 
+  // setup device queue call back 
+  using hipDeviceQueueCallback_t  = void(*)(uint64_t, void*);
+  virtual bool setCallback(hipDeviceQueueCallback_t cbo, void* userData) = 0;
+
   //! Create a new virtual device environment.
   virtual device::VirtualDevice* createVirtualDevice(CommandQueue* queue = NULL) = 0;
 

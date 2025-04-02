@@ -81,6 +81,11 @@ class NullDevice : public amd::Device {
               Pal::AsicRevision asicRevision   //!< PAL ASIC revision
   );
 
+  virtual bool setCallback(hipDeviceQueueCallback_t cbo, void* userData) {
+    ShouldNotReachHere();
+    return false;
+  }
+
   //! Instantiate a new virtual device
   virtual device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = nullptr) {
     return nullptr;
@@ -392,6 +397,11 @@ class Device : public NullDevice {
 
   //! Destructor for the physical GPU device
   virtual ~Device();
+
+  virtual bool setCallback(hipDeviceQueueCallback_t cbo, void* userData) {
+    ShouldNotReachHere();
+    return false;
+  }
 
   //! Instantiate a new virtual device
   device::VirtualDevice* createVirtualDevice(amd::CommandQueue* queue = NULL);

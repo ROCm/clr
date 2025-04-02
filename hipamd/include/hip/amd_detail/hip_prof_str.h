@@ -425,7 +425,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpyHtoAAsync = 405,
   HIP_API_ID_hipSetValidDevices = 406,
   HIP_API_ID_hipStreamGetHwQueueSignature = 407,
-  HIP_API_ID_LAST = 408,
+  HIP_API_ID_hipSetDeviceQueueCallback = 408,
+  HIP_API_ID_LAST = 409,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -807,6 +808,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipRuntimeGetVersion: return "hipRuntimeGetVersion";
     case HIP_API_ID_hipSetDevice: return "hipSetDevice";
     case HIP_API_ID_hipSetDeviceFlags: return "hipSetDeviceFlags";
+    case HIP_API_ID_hipSetDeviceQueueCallback: return "hipSetDeviceQueueCallback";
     case HIP_API_ID_hipSetValidDevices: return "hipSetValidDevices";
     case HIP_API_ID_hipSetupArgument: return "hipSetupArgument";
     case HIP_API_ID_hipSignalExternalSemaphoresAsync: return "hipSignalExternalSemaphoresAsync";
@@ -1210,6 +1212,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipRuntimeGetVersion", name) == 0) return HIP_API_ID_hipRuntimeGetVersion;
   if (strcmp("hipSetDevice", name) == 0) return HIP_API_ID_hipSetDevice;
   if (strcmp("hipSetDeviceFlags", name) == 0) return HIP_API_ID_hipSetDeviceFlags;
+  if (strcmp("hipSetDeviceQueueCallback", name) == 0) return HIP_API_ID_hipSetDeviceQueueCallback;
   if (strcmp("hipSetValidDevices", name) == 0) return HIP_API_ID_hipSetValidDevices;
   if (strcmp("hipSetupArgument", name) == 0) return HIP_API_ID_hipSetupArgument;
   if (strcmp("hipSignalExternalSemaphoresAsync", name) == 0) return HIP_API_ID_hipSignalExternalSemaphoresAsync;
@@ -3317,6 +3320,10 @@ typedef struct hip_api_data_s {
     struct {
       unsigned int flags;
     } hipSetDeviceFlags;
+    struct {
+      hipDeviceQueueCallback_t callback;
+      void* userData;
+    } hipSetDeviceQueueCallback;
     struct {
       int* device_arr;
       int device_arr__val;
@@ -5717,6 +5724,11 @@ typedef struct hip_api_data_s {
 #define INIT_hipSetDeviceFlags_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipSetDeviceFlags.flags = (unsigned int)flags; \
 };
+// hipSetDeviceQueueCallback[('hipDeviceQueueCallback_t', 'callbacl'), ('void*', 'userData')]
+#define INIT_hipSetDeviceQueueCallback_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipSetDeviceQueueCallback.callback = (hipDeviceQueueCallback_t)callback; \
+  cb_data.args.hipSetDeviceQueueCallback.userData = (void*)userData; \
+};
 // hipSetValidDevices[('int*', 'device_arr'), ('int', 'len')]
 #define INIT_hipSetValidDevices_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipSetValidDevices.device_arr = (int*)device_arr; \
@@ -7407,6 +7419,8 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipSetDeviceFlags[('unsigned int', 'flags')]
     case HIP_API_ID_hipSetDeviceFlags:
+      break;
+    case HIP_API_ID_hipSetDeviceQueueCallback:
       break;
 // hipSetValidDevices[('int*', 'device_arr'), ('int', 'len')]
     case HIP_API_ID_hipSetValidDevices:
@@ -10385,6 +10399,12 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipSetDeviceFlags:
       oss << "hipSetDeviceFlags(";
       oss << "flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetDeviceFlags.flags);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipSetDeviceQueueCallback:
+      oss << "hipSetDeviceQueueCallback(";
+      oss << "hipDeviceQueueCallback_t="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetDeviceQueueCallback.callback;
+      oss << ", userData="; roctracer::hip_support::detail::operator<<(oss, data->args.hipSetDeviceQueueCallback.userData);
       oss << ")";
     break;
     case HIP_API_ID_hipSetValidDevices:

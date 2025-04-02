@@ -720,6 +720,18 @@ hipError_t hipSetDeviceFlags(unsigned int flags) {
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipSetDeviceQueueCallback(hipDeviceQueueCallback_t callback, void* userData) {
+  HIP_INIT_API(hipSetDeviceQueueCallback, callback, userData);
+  if (g_devices.empty()) {
+    HIP_RETURN(hipErrorNoDevice);
+  }
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  if(!device->setCallback(callback, userData)) {
+    HIP_RETURN(hipErrorNotReady);
+  }
+  HIP_RETURN(hipSuccess);
+}
+
 hipError_t hipSetValidDevices(int* device_arr, int len) {
   HIP_INIT_API(hipSetValidDevices, device_arr, len);
 

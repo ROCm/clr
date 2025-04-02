@@ -1325,6 +1325,9 @@ hipError_t hipSetDevice(int deviceId) {
 hipError_t hipSetDeviceFlags(unsigned flags) {
   return hip::GetHipDispatchTable()->hipSetDeviceFlags_fn(flags);
 }
+hipError_t hipSetDeviceQueueCallback(hipDeviceQueueCallback_t callback, void* userData) {
+  return hip::GetHipDispatchTable()->hipSetDeviceQueueCallback_fn(callback, userData);
+}
 extern "C" hipError_t hipSetupArgument(const void* arg, size_t size, size_t offset) {
   return hip::GetHipDispatchTable()->hipSetupArgument_fn(arg, size, offset);
 }
