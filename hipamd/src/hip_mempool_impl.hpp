@@ -102,7 +102,7 @@ class Heap : public amd::EmbeddedObject {
 public:
   typedef std::map<std::pair<size_t, amd::Memory*>, MemoryTimestamp> SortedMap;
 
-  Heap(hip::Device* device, amd::VmHeap& vm_heap)
+  Heap(hip::Device* device, amd::VmHeapArray& vm_heap)
     : total_size_(0)
     , max_total_size_(0)
     , release_threshold_(0)
@@ -190,7 +190,7 @@ private:
   uint64_t release_threshold_;  //!< Threshold size in bytes for memory release from heap, default 0
 
   hip::Device*  device_;        //!< Hip device the allocations will reside
-  amd::VmHeap&  vm_heap_;       //!< Managed heap for memory allocaitons
+  amd::VmHeapArray&  vm_heap_;  //!< Managed heap for memory allocaitons
   bool use_vm_heap_ = false;    //!< Use virtual heap or direct allocations
 };
 
@@ -198,7 +198,7 @@ private:
 /// @note: the logic also will look in free_heap for possible reuse.
 /// hipMemPoolReuseAllowOpportunistic option will validate if HIP event,
 /// associated with memory is done, then reuse can be performed.
-class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
+class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeapArray {
  public:
   struct SharedAccess {
     int device_id_;             //!< Device ID for access with a specified shared resource
@@ -214,7 +214,8 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
   };
 
   MemoryPool(hip::Device* device, const hipMemPoolProps* props = nullptr, bool phys_mem = false)
-      : VmHeap(device->devices()[0]),
+      : VmHeapArray(device->devices()[0],
+                    [this]()->amd::HostQueue&{ return *device_->NullStream(); }),
         busy_heap_(device, *this),
         free_heap_(device, *this),
         lock_pool_ops_(true),
@@ -258,9 +259,6 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeap {
       amd::Os::CloseIpcMemory(0, shared_, sizeof(SharedMemPool));
     }
   }
-
-  /// Returns a queue for virtual memory map/unmap operations
-  virtual amd::HostQueue& GetVmQueue() final { return *device_->NullStream(); }
 
   /// The same stream can reuse memory without HIP event validation
   void* AllocateMemory(size_t size, Stream* stream, void* dptr = nullptr);

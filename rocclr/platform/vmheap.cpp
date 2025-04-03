@@ -97,41 +97,45 @@ bool VmHeap::UncommitMemory(void* addr, size_t size) {
 }
 
 // ================================================================================================
-VmHeap::VmHeap(Device* device, size_t va_size, size_t chunk_size)
+VmHeap::VmHeap(Device* device, size_t va_size, size_t chunk_size, GetQueueFunc get_queue)
   : block_alignment_(kMinBlockAlignment)
   , chunk_size_(chunk_size)
   , lock_(true)
-  , device_(device) {
+  , device_(device)
+  , get_vm_queue_(get_queue) {
   va_size_ = alignUp(va_size, chunk_size);
+  free_size_ = va_size_;
 }
 
 // ================================================================================================
 VmHeap::~VmHeap() {
-  ScopedLock k(lock_);
+  if (created_) {
+    ScopedLock k(lock_);
 
-  // Release all heap blocks
-  HeapBlock* walk, * next;
-  walk = busy_list_;
-  while (walk) {
-    next = walk->next_;
-    FreeBlock(walk);
-    walk = next;
-  }
+    // Release all heap blocks
+    HeapBlock* walk, * next;
+    walk = busy_list_;
+    while (walk) {
+      next = walk->next_;
+      FreeBlock(walk);
+      walk = next;
+    }
 
-  walk = free_list_;
-  while (walk) {
-    next = walk->next_;
-    delete walk;
-    walk = next;
-  }
+    walk = free_list_;
+    while (walk) {
+      next = walk->next_;
+      delete walk;
+      walk = next;
+    }
 
-  if (mapped_mem_.size() > 0) {
-    // Unmap the entire memory range
-    UnmapPhysMemory(0, va_size_);
-  }
-  // Destroy virtual address space
-  if (base_address_ != nullptr) {
-    ReleaseAddressRange(base_address_);
+    if (mapped_mem_.size() > 0) {
+      // Unmap the entire memory range
+      UnmapPhysMemory(0, va_size_);
+    }
+    // Destroy virtual address space
+    if (base_address_ != nullptr) {
+      ReleaseAddressRange(base_address_);
+    }
   }
 }
 
@@ -211,6 +215,7 @@ void VmHeap::UnmapPhysMemory(size_t offset, size_t size) {
 
 // ================================================================================================
 void VmHeap::TrimPhysMemory(size_t unmap_threshold) {
+  ScopedLock k(lock_);
   auto current = free_list_;
   auto unmap_org = unmap_threshold_;
   unmap_threshold_ = unmap_threshold;
@@ -413,6 +418,108 @@ void VmHeap::MergeBlock(HeapBlock** head, HeapBlock* blk) {
   // Merge with predecessor if possible
   if ((blk->prev_ != nullptr) && (blk->prev_->offset_ + blk->prev_->size_ == blk->offset_)) {
       Join2Blocks(blk->prev_, blk);
+  }
+}
+
+// ================================================================================================
+address VmHeapArray::Alloc(size_t size) {
+  address addr = nullptr;
+  for (uint32_t i = 0; i < kMaxArraySize; ++i) {
+    if (vm_heaps_[i]->free_size_ > (size + VmHeap::kChunkSize)) {
+      addr = vm_heaps_[i]->Alloc(size);
+      if (addr != nullptr) {
+        break;
+      }
+    }
+  }
+  return addr;
+}
+
+// ================================================================================================
+void VmHeapArray::Free(amd::Memory* memory) {
+  const device::Memory* dev_mem = memory->getDeviceMemory(*device_);
+  void* addr = reinterpret_cast<void*>(dev_mem->virtualAddress());
+  if (addr == nullptr) {
+    addr = memory->getSvmPtr();
+  }
+  for (uint32_t i = 0; i < kMaxArraySize; ++i) {
+    if (vm_heaps_[i]->created_ && vm_heaps_[i]->InRange(addr)) {
+      vm_heaps_[i]->Free(memory);
+      break;
+    }
+  }
+  uint64_t freed = 0;
+  for (uint32_t i = 0; i < kMaxArraySize; ++i) {
+    freed += vm_heaps_[i]->FreeMappedSize();
+  }
+  if (freed > unmap_threshold_) {
+    uint64_t extra = freed - unmap_threshold_;
+    uint64_t trim = (extra < unmap_threshold_) ? (unmap_threshold_ - extra) : 0;
+    TrimPhysMemory(trim);
+  }
+}
+
+// ================================================================================================
+void VmHeapArray::TrimPhysMemory(size_t unmap_threshold) {
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    // Check the threshold against the accumulated sizes in all heaps
+    if (vm_heaps_[i]->created_ && [this]() {
+      uint64_t size = 0;
+      for (uint i = 0; i < kMaxArraySize; ++i) {
+        size += vm_heaps_[i]->FreeMappedSize();
+      }
+      return size;
+     }() > unmap_threshold) {
+      vm_heaps_[i]->TrimPhysMemory(unmap_threshold);
+    } else {
+      break;
+    }
+  }
+}
+
+// ================================================================================================
+void VmHeapArray::SetUnmapThreshold(uint64_t threshold) {
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    // Note: it's not precisely correct to use the same threshold in all heaps,
+    // but the logic will trim heaps in Free()
+    if (vm_heaps_[i]->created_) {
+      vm_heaps_[i]->SetUnmapThreshold(threshold);
+    }
+  }
+  unmap_threshold_ = threshold;
+}
+
+// ================================================================================================
+uint64_t VmHeapArray::MappedSize() const {
+  uint64_t size = 0;
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    size += vm_heaps_[i]->MappedSize();
+  }
+  return size;
+}
+
+// ================================================================================================
+uint64_t VmHeapArray::FreeMappedSize() const {
+  uint64_t size = 0;
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    size += vm_heaps_[i]->FreeMappedSize();
+  }
+  return size;
+}
+
+// ================================================================================================
+uint64_t VmHeapArray::MaxMappedSize() const {
+  uint64_t size = 0;
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    size += vm_heaps_[i]->max_mapped_size_;
+  }
+  return size;
+}
+
+// ================================================================================================
+void VmHeapArray::ResetMaxMappedSize() {
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    vm_heaps_[i]->max_mapped_size_ = 0;
   }
 }
 

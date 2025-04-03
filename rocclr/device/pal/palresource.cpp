@@ -2231,7 +2231,7 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   // Check if runtime can free suballocation
   if (desc->type_ == Resource::VaRange) {
     // We do no sub allocate VA Range.
-    result = true;
+    result = false;
   } else if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
     result = mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {

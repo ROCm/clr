@@ -378,6 +378,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
         return hipErrorInvalidValue;
       }
       max_total_size_ = reset;
+      ResetMaxMappedSize();
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
@@ -424,7 +425,8 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       break;
     case hipMemPoolAttrReservedMemHigh:
       // High watermark of all allocated memory in OS, since the last reset
-      *reinterpret_cast<uint64_t*>(value) = max_total_size_;
+      *reinterpret_cast<uint64_t*>(value) = (state_.use_vm_heap_)
+          ? MaxMappedSize() : max_total_size_;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Total currently used memory by the pool
