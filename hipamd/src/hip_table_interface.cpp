@@ -1869,3 +1869,12 @@ hipError_t hipGraphExecBatchMemOpNodeSetParams(hipGraphExec_t hGraphExec,
 hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
   return hip::GetHipDispatchTable()->hipEventRecordWithFlags_fn(event, stream, flags);
 }
+
+hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args) {
+  return hip::GetHipDispatchTable()->hipLaunchKernelExC_fn(config, fPtr, args);
+}
+
+hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f, void** kernel,
+                                void** extra) {
+  return hip::GetHipDispatchTable()->hipDrvLaunchKernelEx_fn(config, f, kernel, extra);
+}

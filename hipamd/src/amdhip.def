@@ -490,3 +490,5 @@ hipLinkAddFile
 hipLinkComplete
 hipLinkCreate
 hipLinkDestroy
+hipLaunchKernelExC
+hipDrvLaunchKernelEx

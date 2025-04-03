@@ -596,3 +596,11 @@ global:
 local:
     *;
 } hip_6.2;
+
+hip_6.5 {
+global:
+    hipLaunchKernelExC;
+    hipDrvLaunchKernelEx;
+local:
+    *;
+} hip_6.4;

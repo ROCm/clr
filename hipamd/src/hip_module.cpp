@@ -1077,4 +1077,65 @@ hipError_t hipLinkDestroy(hipLinkState_t hip_link_state) {
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args) {
+  HIP_INIT_API(hipLaunchKernelExC, config, fPtr, args);
+
+  if (fPtr == nullptr || config == nullptr || config->numAttrs == 0) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  for (size_t attr_idx = 0; attr_idx < config->numAttrs; ++attr_idx) {
+    hipLaunchAttribute& attr = config->attrs[attr_idx];
+    switch (attr.id) {
+      case hipLaunchAttributeCooperative:
+        if (attr.val.cooperative != 0) {
+          HIP_RETURN_DURATION(
+              hipLaunchCooperativeKernel_common(fPtr, config->gridDim, config->blockDim, args,
+                                                config->dynamicSmemBytes, config->stream));
+        }
+        break;
+      default:
+        LogPrintfError("Attribute %u not supported", attr.id);
+        break;
+    }
+  }
+  HIP_RETURN(hipErrorInvalidConfiguration);
+}
+
+hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f,
+                                void** kernelParams, void** extra) {
+  HIP_INIT_API(hipDrvLaunchKernelEx, config, f, kernelParams, extra);
+
+  if (f == nullptr || config == nullptr || config->numAttrs == 0) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  size_t globalWorkSizeX = static_cast<size_t>(config->gridDimX) * config->blockDimX;
+  size_t globalWorkSizeY = static_cast<size_t>(config->gridDimY) * config->blockDimY;
+  size_t globalWorkSizeZ = static_cast<size_t>(config->gridDimZ) * config->blockDimZ;
+  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+    HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  for (size_t attr_idx = 0; attr_idx < config->numAttrs; ++attr_idx) {
+    hipLaunchAttribute& attr = config->attrs[attr_idx];
+    switch (attr.id) {
+      case hipLaunchAttributeCooperative:
+        if (attr.value.cooperative != 0) {
+          HIP_RETURN(ihipModuleLaunchKernel(
+              f, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
+              static_cast<uint32_t>(globalWorkSizeZ), config->blockDimX, config->blockDimY,
+              config->blockDimZ, config->sharedMemBytes, config->hStream, kernelParams, nullptr,
+              nullptr, nullptr, 0, amd::NDRangeKernelCommand::CooperativeGroups));
+        }
+        break;
+      default:
+        LogPrintfError("Attribute %u not supported", attr.id);
+        break;
+    }
+  }
+  HIP_RETURN(hipErrorInvalidConfiguration)
+}
 }  // namespace hip
