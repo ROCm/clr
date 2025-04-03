@@ -409,9 +409,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
         "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
-    if (!lastCapturedNodes.empty()) {
-      e->SetNodesPrevToRecorded(lastCapturedNodes);
-    }
+    e->SetNodesPrevToRecorded(lastCapturedNodes);
     if (flags == hipEventRecordExternal) {
       hip::GraphNode* pGraphNode;
       status = hipGraphAddEventRecordNode((hipGraphNode_t*) pGraphNode, (hipGraph_t) s->GetCaptureGraph(),
