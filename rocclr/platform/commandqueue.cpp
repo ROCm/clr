@@ -156,8 +156,6 @@ void HostQueue::finish(bool cpu_wait) {
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
     if (command == nullptr) {
-      assert(GetSubmissionBatch() == nullptr &&
-        "Can't claim the queue is finished with the active batch!");
       return;
     }
     // Force blocking wait if requested. That allows to avoid a build up of unreleased CPU commands
