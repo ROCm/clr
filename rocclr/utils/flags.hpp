@@ -271,6 +271,8 @@ release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
 release(bool, DEBUG_HIP_DYNAMIC_QUEUES, true,                                 \
         "Forces dynamic queue management")                                    \
+release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
+         "Force use of SPIRV instead of device specific code object.")        \
 
 namespace amd {
 
