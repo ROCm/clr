@@ -126,6 +126,16 @@ enum MemRangeAttribute : uint32_t {
 constexpr int CpuDeviceId = static_cast<int>(-1);
 constexpr int InvalidDeviceId = static_cast<int>(-2);
 
+// Max scratch size is device dependent.
+constexpr size_t kWave32 = 32;
+constexpr size_t kWave64 = 64;
+constexpr size_t kScratchBits12X = 18;
+constexpr size_t kScratchBits9X = 15;
+constexpr size_t kCompilerRequired = 64;
+constexpr size_t kMaxStackSize12X = (((1 << kScratchBits12X) - 1) * 256 / kWave32) - kCompilerRequired;
+constexpr size_t kMaxStackSize11X = (((1 << kScratchBits9X) - 1) * 256 / kWave32) - kCompilerRequired;
+constexpr size_t kMaxStackSize9X = (((1 << kScratchBits9X) - 1) * 256 / kWave64) - kCompilerRequired;
+
 enum class ExternalSemaphoreHandleType : uint32_t {
   OpaqueFd = 1,        // Handle is an opaque file descriptor
   OpaqueWin32 = 2,     // Handle is an opaque shared NT handle
@@ -1652,11 +1662,9 @@ class Device : public RuntimeObject {
   static constexpr size_t kMGInfoSizePerDevice = kMGSyncDataSize + sizeof(MGSyncInfo);
   static constexpr size_t kSGInfoSize = kMGSyncDataSize;
 
-  // Amount of space used by each wave is in units of 256 dwords.
-  // As per COMPUTE_TMPRING_SIZE.WAVE_SIZE 24:12
-  // The field size supports a range of 0->(2M-256) dwords per wave64.
-  // Per lane this works out to 131056 bytes or 128K - 16
-  static constexpr size_t kMaxStackSize = ((128 * Ki) - 16);
+  // Max Scratch size is based on ISA and thus per device.
+  // Def value is as per GFX9 being the least among supported devices.
+  size_t maxStackSize_ = kMaxStackSize9X;
 
   typedef std::list<CommandQueue*> CommandQueues;
 
@@ -2130,6 +2138,9 @@ class Device : public RuntimeObject {
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0) {
     return nullptr;
   }
+
+  //! Returns stack size set for the device
+  size_t MaxStackSize() const { return maxStackSize_; }
 
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)

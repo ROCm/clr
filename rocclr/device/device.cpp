@@ -739,6 +739,18 @@ bool Device::ValidateHsail() {
   return true;
 }
 
+size_t GetMaxStackSize(const std::string& procName) {
+  if (procName.find("gfx9") != std::string::npos || procName.find("gfx8")
+                                                    != std::string::npos) {
+    return kMaxStackSize9X;
+  } else if (procName.find("gfx11") != std::string::npos || procName.find("gfx10")
+                                                            != std::string::npos) {
+    return kMaxStackSize11X;
+  } else {
+    return kMaxStackSize12X;
+  }
+}
+
 bool Device::create(const Isa &isa) {
   assert(!vaCacheAccess_ && !vaCacheMap_);
   isa_ = &isa;
@@ -755,6 +767,7 @@ bool Device::create(const Isa &isa) {
   if (!amd::IS_HIP) {
     stack_size_ = 16 * Ki;
   }
+  maxStackSize_ = GetMaxStackSize(isa_->processorName());
   return true;
 }
 
@@ -930,7 +943,7 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  if (stackSize > kMaxStackSize) {
+  if (stackSize > maxStackSize_) {
     return false;
   }
   stack_size_ = amd::alignUp(stackSize, 16);
