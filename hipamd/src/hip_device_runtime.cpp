@@ -759,6 +759,6 @@ hipError_t hipSetValidDevices(int* device_arr, int len) {
 }
 } //namespace hip
 
-extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties) {
-  return hip::hipChooseDeviceR0000(device, properties);
+extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0600* properties) {
+  return hip::hipChooseDeviceR0600(device, properties);
 }

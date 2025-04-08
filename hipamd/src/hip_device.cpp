@@ -800,6 +800,6 @@ hipError_t hipGetProcAddress(const char* symbol, void** pfn, int hipVersion, uin
 
 }  // namespace hip
 
-extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_tR0000* props, hipDevice_t device) {
-  return hip::hipGetDevicePropertiesR0000(props, device);
+extern "C" hipError_t hipGetDeviceProperties(hipDeviceProp_tR0600* props, hipDevice_t device) {
+  return hip::hipGetDevicePropertiesR0600(props, device);
 }
