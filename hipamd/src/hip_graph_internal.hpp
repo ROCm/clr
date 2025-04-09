@@ -1193,6 +1193,9 @@ class GraphKernelNode : public GraphNode {
     status = ihipLaunchKernelCommand(
         command, func, launch_params, stream, kernelParams_.kernelParams, kernelParams_.extra,
         kernelEvents_.startEvent_, kernelEvents_.stopEvent_, flags, coopKernel_, 0, 0, 0, 0, 0);
+    if (status != hipSuccess) {
+      return status;
+    }
     if (signal_is_required_) {
       // Optimize the barriers by adding a signal into the dispatch packet directly
       command->SetProfiling();
@@ -1390,7 +1393,10 @@ class GraphMemcpyNode : public GraphNode {
     commands_.reserve(1);
     amd::Command* command;
     status = ihipMemcpy3DCommand(command, &copyParams_, stream);
-    commands_.emplace_back(command);
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
+    }
+    
     return status;
   }
 
@@ -1568,6 +1574,10 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
       WorkerThreadLock_.lock();
     }
     status = ihipMemcpyCommand(command, dst_, src_, count_, kind_, *stream);
+    if (status != hipSuccess) {
+      return status;
+    }
+
     hip::MemcpyType type = ihipGetMemcpyType(src_, dst_, kind_);
     if (type == hipCopyBuffer) {
       amd::CopyMemoryCommand* cpycmd = reinterpret_cast<amd::CopyMemoryCommand*>(command);
@@ -1767,10 +1777,10 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
       return status;
     }
     status = ihipMemcpyCommand(command, dst_, device_ptr, count_, kind_, *stream);
-    if (status != hipSuccess) {
-      return status;
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
     }
-    commands_.emplace_back(command);
+
     return status;
   }
 
@@ -1862,10 +1872,10 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
       return status;
     }
     status = ihipMemcpyCommand(command, device_ptr, src_, count_, kind_, *stream);
-    if (status != hipSuccess) {
-      return status;
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
     }
-    commands_.emplace_back(command);
+
     return status;
   }
 
@@ -2118,7 +2128,10 @@ class GraphEventRecordNode : public GraphNode {
     commands_.reserve(1);
     amd::Command* command = nullptr;
     status = e->recordCommand(command, stream);
-    commands_.emplace_back(command);
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
+    }
+
     return status;
   }
 
@@ -2174,7 +2187,10 @@ class GraphEventWaitNode : public GraphNode {
     commands_.reserve(1);
     amd::Command* command;
     status = e->streamWaitCommand(command, stream);
-    commands_.emplace_back(command);
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
+    }
+
     return status;
   }
 
@@ -2223,6 +2239,9 @@ class GraphHostNode : public GraphNode {
     amd::Command::EventWaitList waitList;
     commands_.reserve(1);
     amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+    if (command == nullptr) {
+      return hipErrorOutOfMemory;
+    }
     commands_.emplace_back(command);
     return hipSuccess;
   }
@@ -2284,6 +2303,9 @@ class GraphEmptyNode : public GraphNode {
       amd::Command::EventWaitList waitList;
       commands_.reserve(1);
       amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+      if (command == nullptr) {
+        return hipErrorOutOfMemory;
+      }
       commands_.emplace_back(command);
     }
     return hipSuccess;
@@ -2565,7 +2587,10 @@ class GraphDrvMemcpyNode : public GraphNode {
     commands_.reserve(1);
     amd::Command* command;
     status = ihipGetMemcpyParam3DCommand(command, &copyParams_, stream);
-    commands_.emplace_back(command);
+    if (status == hipSuccess) {
+      commands_.emplace_back(command);
+    }
+
     return status;
   }
 
