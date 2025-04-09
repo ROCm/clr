@@ -1434,8 +1434,6 @@ bool VirtualGPU::create() {
     LogError("Could not create managed buffer for this queue!");
     return false;
   }
-  // Release HW queue until the first usage
-  ReleaseHwQueue();
   return true;
 }
 
