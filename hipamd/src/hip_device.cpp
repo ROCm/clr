@@ -464,6 +464,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   }
   auto* deviceHandle = g_devices[device]->devices()[0];
 
+  constexpr auto pixel_size_max = 16;
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
   constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
   hipDeviceProp_tR0600 deviceProps = {0};
@@ -531,7 +532,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
   deviceProps.maxTexture1DLinear =
-      std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
+      std::min(pixel_size_max * info.imageMaxBufferSize_, int32_max);
   deviceProps.maxTexture1DMipmap = std::min(16 * info.imageMaxBufferSize_, int32_max);
   deviceProps.maxTexture1D = deviceProps.maxSurface1D = std::min(info.image1DMaxWidth_, int32_max);
   deviceProps.maxTexture2D[0] = deviceProps.maxSurface2D[0] =
@@ -618,9 +619,9 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.maxTexture2DGather[0] = 0;
   deviceProps.maxTexture2DGather[1] = 0;
   // Textures bound to pitch memory
-  deviceProps.maxTexture2DLinear[0] = 0;
-  deviceProps.maxTexture2DLinear[1] = 0;
-  deviceProps.maxTexture2DLinear[2] = 0;
+  deviceProps.maxTexture2DLinear[0] = std::min(info.image2DMaxWidth_, int32_max);
+  deviceProps.maxTexture2DLinear[1] = std::min(info.image2DMaxHeight_, int32_max);
+  deviceProps.maxTexture2DLinear[2] = std::min(pixel_size_max * info.image2DMaxWidth_, int32_max);
   // Alternate 3D texture
   deviceProps.maxTexture3DAlt[0] = 0;
   deviceProps.maxTexture3DAlt[1] = 0;
