@@ -1309,8 +1309,8 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
         (nullptr != params->owner_->getSvmPtr())) {
       svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
       desc_.SVMRes_ = true;
-      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
       desc_.reserved_va_ = (svmPtr == 1) ? false : true;
+      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
       if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
         desc_.gl2CacheDisabled_ = true;
       }
