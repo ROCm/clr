@@ -339,6 +339,7 @@ Memory* Device::p2p_stage_ = nullptr;
 std::shared_mutex MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
+std::unordered_map<uintptr_t, amd::Memory*> MemObjMap::IpcHandleMemObjMap_ ROCCLR_INIT_PRIORITY(101);
 
 void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
   std::unique_lock lock(AllocatedLock_);
@@ -444,6 +445,38 @@ amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
   } else {
     return nullptr;
   }
+}
+
+void MemObjMap::AddIpcHandleMemObj(const void* k, amd::Memory* v) {
+  std::unique_lock lock(AllocatedLock_);
+  auto rval = IpcHandleMemObjMap_.insert({reinterpret_cast<uintptr_t>(k), v});
+  if (!rval.second) {
+    DevLogPrintfError("IpcHandle Memobj map already has an entry for ptr: 0x%x",
+                      reinterpret_cast<uintptr_t>(k));
+  }
+}
+
+void MemObjMap::RemoveIpcHandleMemObj(amd::Memory* v) {
+  std::unique_lock lock(AllocatedLock_);
+
+  for (const auto it : IpcHandleMemObjMap_) {
+    if (it.second == v) {
+      IpcHandleMemObjMap_.erase(it.first);
+      break;
+    }
+  }
+}
+
+amd::Memory* MemObjMap::FindIpcHandleMemObj(const void* k) {
+  std::shared_lock lock(AllocatedLock_);
+  uintptr_t key = reinterpret_cast<uintptr_t>(k);
+
+  auto it = IpcHandleMemObjMap_.find(key);
+  if (it == IpcHandleMemObjMap_.cend()) {
+    return nullptr;
+  }
+
+  return it->second;
 }
 
 //==================================================================================================
@@ -1056,17 +1089,8 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, u
 }
 
 // ================================================================================================
-bool Device::IpcDetach(void* dev_ptr) const {
+void Device::IpcDetach(void* dev_ptr) const {
   amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
-  if (amd_mem_obj == nullptr) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
-    return false;
-  }
-
-  if (!amd_mem_obj->ipcShared()) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
-    return false;
-  }
 
   // Get the original pointer from the amd::Memory object
   void* orig_dev_ptr = nullptr;
@@ -1081,8 +1105,6 @@ bool Device::IpcDetach(void* dev_ptr) const {
   if (amd_mem_obj->release() == 0) {
     amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
   }
-
-  return true;
 }
 
 }  // namespace amd

@@ -3274,14 +3274,24 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
     HIP_RETURN(hipErrorInvalidContext);
   }
 
-  if(!device->IpcAttach(&(ihandle->ipc_handle), ihandle->psize,
-                        ihandle->poffset, flags, dev_ptr)) {
-    LogPrintfError("Cannot attach ipc_handle: with ipc_size: %u"
-                      "ipc_offset: %u flags: %u", ihandle->psize, flags);
-    HIP_RETURN(hipErrorInvalidDevicePointer);
+  amd_mem_obj = amd::MemObjMap::FindIpcHandleMemObj(ihandle);
+  if (amd_mem_obj == nullptr) {
+    if (!device->IpcAttach(&(ihandle->ipc_handle), ihandle->psize, ihandle->poffset, flags,
+                           dev_ptr)) {
+      LogPrintfError(
+          "Cannot attach ipc_handle: with ipc_size: %u"
+          "ipc_offset: %u flags: %u",
+          ihandle->psize, flags);
+      HIP_RETURN(hipErrorInvalidDevicePointer);
+    }
+    amd_mem_obj = getMemoryObject(*dev_ptr, offset);
+    amd::MemObjMap::AddIpcHandleMemObj(ihandle, amd_mem_obj);
+  } else {
+    // Handle was already opened by the same process
+    *dev_ptr = amd_mem_obj->getSvmPtr();
+    amd_mem_obj->retain();
   }
 
-  amd_mem_obj = getMemoryObject(*dev_ptr, offset);
   amd_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
 
   HIP_RETURN(hipSuccess, ReturnPtrValue(dev_ptr));
@@ -3299,21 +3309,34 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
-  if (amd_mem_obj != nullptr) {
-    auto device_id = amd_mem_obj->getUserData().deviceId;
-    g_devices[device_id]->SyncAllStreams();
-  }
-
   /* Call IPC Detach from Device class */
   device = hip::getCurrentDevice()->devices()[0];
   if (device == nullptr) {
     HIP_RETURN(hipErrorNoDevice);
   }
 
-  /* detach the memory */
-  if (!device->IpcDetach(dev_ptr)){
+  amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!amd_mem_obj->ipcShared()) {
+    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // If handle is opened more than once, do detach on last release call
+  if (amd_mem_obj->referenceCount() == 1) {
+    auto device_id = amd_mem_obj->getUserData().deviceId;
+    g_devices[device_id]->SyncAllStreams();
+
+    // Remove entry from the map
+    amd::MemObjMap::RemoveIpcHandleMemObj(amd_mem_obj);
+    /* detach the memory */
+    device->IpcDetach(dev_ptr);
+  } else {
+    amd_mem_obj->release();
   }
 
   HIP_RETURN(hipSuccess);

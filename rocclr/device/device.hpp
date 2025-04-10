@@ -1393,6 +1393,13 @@ class MemObjMap : public AllStatic {
   //!< Same as FindMemObj but for virtual addressing
   static amd::Memory* FindVirtualMemObj(const void* k);
 
+  //!< Same as AddMemObj but for virtual ipc handle to MemObj mapping
+  static void AddIpcHandleMemObj(const void* k, amd::Memory* v);
+  //!< Remove entry from the map by searching values
+  static void RemoveIpcHandleMemObj(amd::Memory* v);
+  //!< Same as FindMemObj but for ipc handle to MemObj mapping
+  static amd::Memory* FindIpcHandleMemObj(const void* k);
+
  private:
   //!< the mem object<->hostptr information container
   static std::map<uintptr_t, amd::Memory*> MemObjMap_;
@@ -1400,6 +1407,8 @@ class MemObjMap : public AllStatic {
   static std::map<uintptr_t, amd::Memory*> VirtualMemObjMap_;
   //!< Shared read/write lock
   static std::shared_mutex AllocatedLock_;
+  //!< the ipc handle<->mem object information container
+  static std::unordered_map<uintptr_t, amd::Memory*> IpcHandleMemObjMap_;
 };
 
 /// @brief Instruction Set Architecture properties.
@@ -2065,7 +2074,7 @@ class Device : public RuntimeObject {
   bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
                  void** dev_ptr) const;
 
-  bool IpcDetach(void* dev_ptr) const;
+  void IpcDetach(void* dev_ptr) const;
 
   //! Return context
   amd::Context& context() const { return *context_; }
