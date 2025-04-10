@@ -285,7 +285,9 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   }
   // Make sure dispatch doesn't exceed max workgroup size limit
   if (blockDimX * blockDimY * blockDimZ > info.maxWorkGroupSize_) {
-    return hipErrorInvalidValue;
+    return (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_LAUNCH_KERNEL) ?
+                                  hipErrorInvalidConfiguration :
+                                  hipErrorInvalidValue;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
