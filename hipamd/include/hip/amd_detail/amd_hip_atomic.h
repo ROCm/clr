@@ -531,13 +531,21 @@ long long atomicMin_system(long long* address, long long val) {
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
 
+#if defined(__has_extension) && __has_extension(clang_atomic_attributes)
+#define __HIP_FINE_GRAINED_MEMORY [[clang::atomic(fine_grained_memory)]]
+#else
+#define __HIP_FINE_GRAINED_MEMORY
+#endif
+
 __device__
 inline
 float atomicMin(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -547,7 +555,9 @@ float atomicMin_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  }
 #endif
 }
 
@@ -557,7 +567,9 @@ double atomicMin(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -567,7 +579,9 @@ double atomicMin_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  }
 #endif
 }
 
@@ -636,7 +650,9 @@ float atomicMax(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -646,7 +662,9 @@ float atomicMax_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  }
 #endif
 }
 
@@ -656,7 +674,9 @@ double atomicMax(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -666,7 +686,9 @@ double atomicMax_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  }
 #endif
 }
 
