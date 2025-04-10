@@ -2,6 +2,40 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
+## HIP 6.5 for ROCm 6.5
+
+### Added
+
+* New support for Open Compute Project (OCP) floating-point `FP4`/`FP6`/`FP8` as the following. For details, see [Low precision floating point document](https://rocm.docs.amd.com/projects/HIP/en/latest/reference/low_fp_types.html).
+    - Data types for `FP4`/`FP6`/`FP8`.
+    - HIP APIs for `FP4`/`FP6`/`FP8`, which are compatible with corresponding CUDA APIs.
+    - HIP Extensions APIs for microscaling formats, which are supported on AMD GPUs.
+* New `wptr` and `rptr` values in `ClPrint`, for better logging in dispatch barrier methods.
+* New debug mask, to print precise code object information for logging.
+
+### Changed
+
+* Some unsupported GPUs such as gfx8, gfx8 and gfx7 are deprecated on Microsoft Windows.
+
+### Optimized
+
+HIP runtime has the following functional improvements which greatly improve runtime performance and user experience.
+
+* Reduced usage of the lock scope in events and kernel handling.
+    - Switches to `shared_mutex` for event validation, uses `std::unique_lock` in HIP runtime to create/destroy event, instead of `scopedLock`.
+    - Reduces the `scopedLock` in handling of kernel execution. HIP runtime now calls `scopedLock` during kernel binary creation/initialization,
+    doesn't call it again during kernel vector iteration before launch.
+* Implementation of unifying managed buffer and kernel argument buffer so HIP runtime doesn't need to create/load a separate kernel argument buffer.
+* Refactored memory validation, creates a unique function to validate a variety of memory copy operations.
+* Improved kernel logging using demangling shader names.
+* Advanced support for SPIRV, now kernel compilation caching is enabled by default. This feature is controlled by the environment variable `AMD_COMGR_CACHE`, for details, see [hip_rtc document](https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_rtc.html).
+* Programmatic support for scratch limit on GPU device. Developer can now use the environment variable `HSA_SCRATCH_SINGLE_LIMIT` to change the default allocation size with expected scratch limit.
+
+### Resolved issues
+
+* Error of "unable to find modules" in HIP clean up for code object module.
+
+
 ## HIP 6.4 (For ROCm 6.4)
 
 ### Added
@@ -13,15 +47,75 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipGraphBatchMemOpNodeGetParams`  returns the pointer of parameters from the batch memory operation node.
     - `hipGraphBatchMemOpNodeSetParams`  sets parameters for the batch memory operation node.
     - `hipGraphExecBatchMemOpNodeSetParams`  sets the parameters for a batch memory operation node in the given executable graph.
+    - `hipLinkAddData` adds SPIRV code object data to linker instance with options.
+    - `hipLinkAddFile` adds SPIRV code object file to linker instance with options.
+    - `hipLinkCreate`  creates linker instance at runtime with options.
+    - `hipLinkComplete` completes linking of program and output linker binary to use with hipModuleLoadData.
+    - `hipLinkDestroy`  deletes linker instance.
+
+### Changed
+
+* roc-obj* tools are being deprecated, and will be removed in an upcoming release.
+    - Perl package dependencies are now RECOMMENDS or SUGGESTS.  Users will need to install these themselves.
+    - Support for ROCm Object tooling has moved into llvm-objdump provided by package rocm-llvm.
+* SDMA retainer logic is removed for engine selection in operation of runtime buffer copy.
+
+### Optimized
+
+* `hipGraphLaunch` parallelism is improved for complex data-parallel graphs.
+* Round-robin queue mechanism is updated for command scheduling. For multi-streams execution, HSA queue from null stream lock is freed and won't occupy the queue ID after the kernel in the stream is finished.
+* The HIP runtime doesn't free bitcode object before code generation. It adds a cache, which allows compiled code objects to be reused instead of recompiling. This improves performance on multi-GPU systems.
+* Runtime uses unified copy approach
+    - Unpinned `H2D`copies are no longer blocking until the size of 1MB.
+    - Kernel copy path is enabled for unpinned `H2D`/`D2H` methods.
+    - The default environment variable `GPU_FORCE_BLIT_COPY_SIZE` is set to `16`, which limits the kernel copy to sizes less than 16 KB, while copies about that would be handled by `SDMA` engine.
+    - Blit code is refactored and ASAN instrumentation is cleaned up.
 
 ### Resolved issues
 
-* Out of memory error on Windows. When the user calls the API hipMalloc for device memory allocation specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). The fix is not available on Linux.
+* Out of memory error on Windows. When the user calls `hipMalloc` for device memory allocation while specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory).
+* Error of dependency on libgcc-s1 during rocm-dev install on Debian Buster. HIP runtime now uses libgcc1 for this distros.
+* Stack corruption during kernel execution. HIP runtime now adds maximum stack size limit based on the GPU device feature.
 
-### Changed
-  - roc-obj* tools are being deprecated, and will be removed in an upcoming release.
-    - Perl package dependencies are now RECOMENDS or SUGGESTS.  Users will need to install these themselves.
-    - Support for ROCm Object tooling has moved into llvm-objdump provided by package rocm-llvm.
+### Upcoming changes
+
+The following are the list of backwards incompatible changes planned for the upcoming major ROCm release.
+
+* Signature changes in APIs to match corresponding CUDA APIs,
+    - `hiprtcCreatreProgram`
+    - `hiprtcCompileProgram`
+    - `hipCtxGetApiVersion`
+* Behaviour of `hipPointerGetAttributes` is changed to match corresponding CUDA API in version 11 and later releases.
+* Return error/value codes update in the following hip APIs, they now match the corresponding CUDA APIs,
+    - `hipModuleLaunchKernel`
+    - `hipExtModuleLaunchKernel`
+    - `hipModuleLaunchCooperativeKernel`
+    - `hipGetTextureAlignmentOffset`
+    - `hipTexObjectCreate`
+    - `hipBindTexture2D`
+    - `hipBindTextureToArray`
+    - `hipModuleLoad`
+    - `hipLaunchCooperativeKernelMultiDevice`
+    - `hipExtLaunchCooperativeKernelMultiDevice`
+ 
+* HIPRTC implementation, the compilation of hiprtc now uses  namespace ` __hip_internal`, instead of the standard headers `std`.
+* Stream capture mode update in the following hip APIs. Stream can only be captured in relax mode, to match the behavior of the corresponding CUDA APIs,
+   - `hipMallocManaged`
+   - `hipMemAdvise`
+   - `hipLaunchCooperativeKernelMultiDevice`
+   - `hipDeviceSetCacheConfig`
+   - `hipDeviceSetSharedMemConfig`
+   - `hipMemPoolCreate`
+   - `hipMemPoolDestory`
+   - `hipDeviceSetMemPool`
+   - `hipEventQuery`
+* The implementation of `hipStreamAddCallback` is updated, to match the behaviour of CUDA.
+* Removal of hiprtc symbols from hip library.
+    - hiprtc will be a independent library, all symbols supported in hip library are removed.
+    - Any application using hiprtc APIs should link explicitly with hiprtc library.
+    - This change makes the usage of hiprtc library on Linux the same as on Windows, and matches the behaviour of CUDA nvrtc.
+* Removal of deprecated struct `HIP_MEMSET_NODE_PARAMS`, developers can use definition `hipMemsetParams` instead.
+
 
 ## HIP 6.3.2 for ROCm 6.3.2
 
