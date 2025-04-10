@@ -39,6 +39,7 @@ hip::Stream* Device::NullStream(bool wait) {
       // Stream creation might be failed from rcor and in that case, vdev is null.
       if (null_stream_->vdev() == nullptr) {
         Stream::Destroy(null_stream_);
+        null_stream_ = nullptr;
       }
     }
   }
