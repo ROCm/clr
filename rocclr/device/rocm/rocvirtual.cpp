@@ -1645,7 +1645,8 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 void VirtualGPU::ReleaseHwQueue() {
   // Try to release normal queue to the pool of active queues
   if (roc_device_.settings().dynamic_queues_ &&
-      (priority_ == amd::CommandQueue::Priority::Normal)) {
+      (priority_ == amd::CommandQueue::Priority::Normal) &&
+      !cooperative_ && (cuMask_.size() == 0)) {
     amd::ScopedLock lock(execution());
     if ((gpu_queue_ != nullptr) && roc_device_.ReleaseActiveNormalQueue(gpu_queue_)) {
       gpu_queue_ = nullptr;
