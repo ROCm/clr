@@ -3405,6 +3405,10 @@ bool Device::IsValidAllocation(const void* dev_ptr, size_t size, hsa_amd_pointer
     LogError("hsa_amd_pointer_info() failed");
   }
 
+  if (ptr_info->type == HSA_EXT_POINTER_TYPE_RESERVED_ADDR) {
+    return false;
+  }
+
   // Return false for pinned memory. A true return may result in a race because
   // ROCclr may attempt to do a pin/copy/unpin underneath in a multithreaded environment
   if (ptr_info->type == HSA_EXT_POINTER_TYPE_LOCKED) {
