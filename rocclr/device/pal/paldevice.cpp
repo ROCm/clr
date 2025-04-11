@@ -866,6 +866,8 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
+
+constexpr int TrapHandlerABIVersion = 10;
 extern const char* TrapHandlerCode;
 
 // ================================================================================================
@@ -1146,6 +1148,14 @@ bool Device::initializeHeapResources() {
     if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
       return false;
     }
+
+    // Override the _amdgpu_r_debug.r_version field with the trap handler
+    // version.  We can't import the definition of r_debug here as it would
+    // conflict with ELF related definitions pulled-in by platform/program.hpp.
+    // The layout of r_debug is a stable ABI, so we are guaranteed the
+    // r_version field will always be at offset 0.
+    *reinterpret_cast<int *> (_amdgpu_r_debug_ptr) = TrapHandlerABIVersion;
+
     Pal::HipRuntimeSetup setup {.pRdebug = _amdgpu_r_debug_ptr,
                                 .runtimeState = 1,    // Always valid debug state
                                 .ttmpSetupHint = GPU_DEBUG_ENABLE};
