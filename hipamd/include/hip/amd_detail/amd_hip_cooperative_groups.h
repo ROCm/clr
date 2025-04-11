@@ -390,7 +390,7 @@ class coalesced_group : public thread_group {
       int lanes_to_skip = ((thread_rank()) / tile_size) * tile_size;
 
       for (unsigned int i = 0; i < warpSize; i++) {
-        lane_mask active = coalesced_info.member_mask & (1 << i);
+        lane_mask active = coalesced_info.member_mask & (static_cast<lane_mask>(1) << i);
         // Make sure the lane is active
         if (active) {
           if (lanes_to_skip <= 0 && tile_rank < tile_size) {
