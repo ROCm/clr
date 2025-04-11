@@ -28,54 +28,54 @@ THE SOFTWARE.
 // "HIP_ENABLE_WARP_SYNC_BUILTINS". This arrangement also applies to the
 // __activemask() builtin defined in amd_warp_functions.h.
 #ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
-
 #if !defined(__HIPCC_RTC__)
 #include "amd_warp_functions.h"
+#include "amd_device_functions.h"
 #include "hip_assert.h"
-#include "amd_hip_fp16.h"
 #include <functional>
 #include <algorithm>
-#include <cstring>
 #endif
 
 extern "C" __device__ __attribute__((const)) int __ockl_wfred_add_i32(int);
 extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_add_u32(unsigned int);
+extern "C" __device__ __attribute__((const)) int __ockl_wfred_min_i32(int);
+extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_min_u32(unsigned int);
+extern "C" __device__ __attribute__((const)) int __ockl_wfred_max_i32(int);
+extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_max_u32(unsigned int);
+extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_and_u32(unsigned int);
+extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_or_u32(unsigned int);
+extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_xor_u32(unsigned int);
+
+#ifdef HIP_ENABLE_EXTRA_WARP_SYNC_TYPES
+// this macro enable types that are not in CUDA
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_add_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_add_u64(unsigned long long);
-extern "C" __device__ __attribute__((const)) __half __ockl_wfred_add_f16(__half);
 extern "C" __device__ __attribute__((const)) float __ockl_wfred_add_f32(float);
 extern "C" __device__ __attribute__((const)) double __ockl_wfred_add_f64(double);
 
-extern "C" __device__ __attribute__((const)) int __ockl_wfred_min_i32(int);
-extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_min_u32(unsigned int);
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_min_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_min_u64(unsigned long long);
-extern "C" __device__ __attribute__((const)) __half __ockl_wfred_min_f16(__half);
 extern "C" __device__ __attribute__((const)) float __ockl_wfred_min_f32(float);
 extern "C" __device__ __attribute__((const)) double __ockl_wfred_min_f64(double);
 
-extern "C" __device__ __attribute__((const)) int __ockl_wfred_max_i32(int);
-extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_max_u32(unsigned int);
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_max_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_max_u64(unsigned long long);
-extern "C" __device__ __attribute__((const)) __half __ockl_wfred_max_f16(__half);
 extern "C" __device__ __attribute__((const)) float __ockl_wfred_max_f32(float);
 extern "C" __device__ __attribute__((const)) double __ockl_wfred_max_f64(double);
 
 extern "C" __device__ __attribute__((const)) int __ockl_wfred_and_i32(int);
-extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_and_u32(unsigned int);
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_and_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_and_u64(unsigned long long);
 
 extern "C" __device__ __attribute__((const)) int __ockl_wfred_or_i32(int);
-extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_or_u32(unsigned int);
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_or_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_or_u64(unsigned long long);
 
 extern "C" __device__ __attribute__((const)) int __ockl_wfred_xor_i32(int);
-extern "C" __device__ __attribute__((const)) unsigned int __ockl_wfred_xor_u32(unsigned int);
 extern "C" __device__ __attribute__((const)) long long __ockl_wfred_xor_i64(long long);
 extern "C" __device__ __attribute__((const)) unsigned long long __ockl_wfred_xor_u64(unsigned long long);
+
+#endif
 
 template <typename T>
 __device__ inline
@@ -325,6 +325,7 @@ T __shfl_xor_sync(MaskT mask, T var, int laneMask,
 template <typename MaskT, typename T, typename BinaryOp, typename WfReduce>
 __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wfReduce)
 {
+  using permuteType = __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int>::type;
   static constexpr auto kMaskNumBits = sizeof(MaskT) * 8;
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
@@ -343,9 +344,9 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
   int lastLane = kMaskNumBits - leadingZeroes - 1;
   int maskNumBits;
   int numIterations;
-  // int[2] is used when T is 64-bit wide
-  typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int[2]>::type result, permuteResult;
-  auto backwardPermute = [](auto index, auto val) {
+  // unsigned int[2] is used when T is 64-bit wide
+  typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, permuteType, permuteType[2]>::type result, permuteResult;
+  auto backwardPermute = [](int index, permuteType val) {
     if constexpr (std::is_integral<T>::value || std::is_same<T, double>::value)
       return __hip_ds_bpermute(index, val);
     else
@@ -402,8 +403,8 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
       }
     }
 
-    if constexpr (std::is_same<T, __half>::value) {
-      union { int i; __half f; } tmp;
+    if constexpr (sizeof(T) == 2) {
+      union { int i; T f; } tmp;
 
       tmp.f = result;
       tmp.i = __hip_ds_bpermute(nextBit << 2, tmp.i);
@@ -434,8 +435,8 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
     numIterations--;
   }
 
-  if constexpr (std::is_same<T, __half>::value) {
-    union { int i; __half f; } tmp;
+  if constexpr (sizeof(T) == 2) {
+    union { int i; T f; } tmp;
     tmp.f = result;
     tmp.i = __hip_ds_bpermute(firstLane << 2, tmp.i);
     return tmp.f;
@@ -452,7 +453,7 @@ template <typename MaskT>
 __device__ inline int __reduce_add_sync(MaskT mask, int val)
 {
   // although C++ has std::plus and other functors, we do not use them because
-  // the they are header <functional> and they were causing problem with hipRTC
+  // they are in the header <functional> and they were causing problem with hipRTC
   // at this time
   auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
   auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_i32(v); };
@@ -465,51 +466,6 @@ __device__ inline unsigned int __reduce_add_sync(MaskT mask, unsigned int val)
 {
   auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
   auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_u32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline long long __reduce_add_sync(MaskT mask, long long val)
-{
-  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_i64(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline unsigned long long __reduce_add_sync(MaskT mask, unsigned long long val)
-{
-  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_u64(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline __half __reduce_add_sync(MaskT mask, __half val)
-{
-  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f16(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline float __reduce_add_sync(MaskT mask, float val)
-{
-  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline double __reduce_add_sync(MaskT mask, double val)
-{
-  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f64(v); };
 
   return __reduce_op_sync(mask, val, op, wfReduce);
 }
@@ -533,6 +489,88 @@ __device__ inline unsigned int __reduce_min_sync(MaskT mask, unsigned int val)
 }
 
 template <typename MaskT>
+__device__ inline int __reduce_max_sync(MaskT mask, int val)
+{
+  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_i32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline unsigned int __reduce_max_sync(MaskT mask, unsigned int val)
+{
+  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_u32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline unsigned int __reduce_or_sync(MaskT mask, unsigned int val)
+{
+  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs || rhs; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_or_u32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline unsigned int __reduce_and_sync(MaskT mask, unsigned int val)
+{
+  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs && rhs; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_and_u32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline unsigned int __reduce_xor_sync(MaskT mask, unsigned int val)
+{
+  auto op = [](decltype(val) lhs, decltype(val) rhs) { return (!lhs) != (!rhs) == 1; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_xor_u32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+#ifdef HIP_ENABLE_EXTRA_WARP_SYNC_TYPES
+template <typename MaskT>
+__device__ inline long long __reduce_add_sync(MaskT mask, long long val)
+{
+  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_i64(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline unsigned long long __reduce_add_sync(MaskT mask, unsigned long long val)
+{
+  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_u64(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline float __reduce_add_sync(MaskT mask, float val)
+{
+  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f32(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
+__device__ inline double __reduce_add_sync(MaskT mask, double val)
+{
+  auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f64(v); };
+
+  return __reduce_op_sync(mask, val, op, wfReduce);
+}
+
+template <typename MaskT>
 __device__ inline long long __reduce_min_sync(MaskT mask, long long val)
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return rhs < lhs? rhs : lhs; };
@@ -546,15 +584,6 @@ __device__ inline unsigned long long __reduce_min_sync(MaskT mask, unsigned long
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return rhs < lhs? rhs : lhs; };
   auto wfReduce = [](decltype(val) v) { return __ockl_wfred_min_u64(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline __half __reduce_min_sync(MaskT mask, __half val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return rhs < lhs? rhs : lhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_min_f16(v); };
 
   return __reduce_op_sync(mask, val, op, wfReduce);
 }
@@ -578,24 +607,6 @@ __device__ inline double __reduce_min_sync(MaskT mask, double val)
 }
 
 template <typename MaskT>
-__device__ inline int __reduce_max_sync(MaskT mask, int val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_i32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline unsigned int __reduce_max_sync(MaskT mask, unsigned int val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_u32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
 __device__ inline long long __reduce_max_sync(MaskT mask, long long val)
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
@@ -609,15 +620,6 @@ __device__ inline unsigned long long __reduce_max_sync(MaskT mask, unsigned long
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
   auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_u64(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline __half __reduce_max_sync(MaskT mask, __half val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_f16(v); };
 
   return __reduce_op_sync(mask, val, op, wfReduce);
 }
@@ -650,15 +652,6 @@ __device__ inline int __reduce_and_sync(MaskT mask, int val)
 }
 
 template <typename MaskT>
-__device__ inline unsigned int __reduce_and_sync(MaskT mask, unsigned int val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs && rhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_and_u32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
 __device__ inline long long __reduce_and_sync(MaskT mask, long long val)
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs && rhs; };
@@ -681,15 +674,6 @@ __device__ inline int __reduce_or_sync(MaskT mask, int val)
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs || rhs; };
   auto wfReduce = [](decltype(val) v) { return __ockl_wfred_or_i32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
-__device__ inline unsigned int __reduce_or_sync(MaskT mask, unsigned int val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs || rhs; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_or_u32(v); };
 
   return __reduce_op_sync(mask, val, op, wfReduce);
 }
@@ -722,15 +706,6 @@ __device__ inline int __reduce_xor_sync(MaskT mask, int val)
 }
 
 template <typename MaskT>
-__device__ inline unsigned int __reduce_xor_sync(MaskT mask, unsigned int val)
-{
-  auto op = [](decltype(val) lhs, decltype(val) rhs) { return (!lhs) != (!rhs) == 1; };
-  auto wfReduce = [](decltype(val) v) { return __ockl_wfred_xor_u32(v); };
-
-  return __reduce_op_sync(mask, val, op, wfReduce);
-}
-
-template <typename MaskT>
 __device__ inline long long __reduce_xor_sync(MaskT mask, long long val)
 {
   auto op = [](decltype(val) lhs, decltype(val) rhs) { return (!lhs) != (!rhs) == 1; };
@@ -748,8 +723,5 @@ __device__ inline unsigned long long __reduce_xor_sync(MaskT mask, unsigned long
   return __reduce_op_sync(mask, val, op, wfReduce);
 }
 
-#undef __hip_do_sync
-#undef __hip_check_mask
-#undef __hip_adjust_mask_for_wave32
-
+#endif  // HIP_ENABLE_EXTRA_WARP_SYNC_TYPES
 #endif // HIP_ENABLE_WARP_SYNC_BUILTINS

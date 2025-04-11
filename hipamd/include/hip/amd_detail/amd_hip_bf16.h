@@ -696,7 +696,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_sync(const unsigned long long mask
     __hip_bfloat162 bf162;
     unsigned int ui;
   } u{in};
-  u.ui = __shfl_sync(mask, u.ui, delta, width);
+  u.ui = __shfl_sync<unsigned long long, unsigned int>(mask, u.ui, delta, width);
   return u.bf162;
 }
 
@@ -724,7 +724,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_up_sync(const unsigned long long m
     __hip_bfloat162 bf162;
     unsigned int ui;
   } u{in};
-  u.ui = __shfl_up_sync(mask, u.ui, delta, width);
+  u.ui = __shfl_up_sync<unsigned long long, unsigned int>(mask, u.ui, delta, width);
   return u.bf162;
 }
 
@@ -750,7 +750,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_xor_sync(const unsigned long long 
     __hip_bfloat162 bf162;
     unsigned int ui;
   } u{in};
-  u.ui = __shfl_xor_sync(mask, u.ui, delta, width);
+  u.ui = __shfl_xor_sync<unsigned long long, unsigned int>(mask, u.ui, delta, width);
   return u.bf162;
 }
 #endif  // HIP_DISABLE_WARP_SYNC_BUILTINS

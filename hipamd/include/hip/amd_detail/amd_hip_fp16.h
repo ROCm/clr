@@ -1870,6 +1870,41 @@ THE SOFTWARE.
              tmp.i = __shfl_xor(tmp.i, lane_mask, width);
              return tmp.h;
          }
+
+         #if defined(HIP_ENABLE_EXTRA_WARP_SYNC_TYPES) && !defined(__HIP_NO_HALF_OPERATORS__)
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_add_f16(__half);
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_min_f16(__half);
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_max_f16(__half);
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_add_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_min_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val) lhs, decltype(val) rhs) { return rhs < lhs? rhs : lhs; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_min_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_max_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         #endif  // __HIP_NO_HALF_OPERATORS__
+
     #endif // defined(__cplusplus)
 #elif defined(__GNUC__) || defined(_MSC_VER)
     #if !defined(__HIPCC_RTC__)
