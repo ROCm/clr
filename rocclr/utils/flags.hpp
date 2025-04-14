@@ -278,6 +278,8 @@ release(bool, DEBUG_HIP_DYNAMIC_QUEUES, true,                                 \
 release(uint, DEBUG_HIP_7_PREVIEW, 0,                                         \
         "Enables specific backward incompatible changes support before 7.0,"  \
         "using the mask. By default the changes are disabled and is set to 0")\
+release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
+         "Force use of SPIRV instead of device specific code object.")        \
 
 namespace amd {
 

@@ -317,9 +317,15 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       std::string device_name = device->devices()[0]->isa().isaName();
       unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0, 0)});
     }
-    // Add the spirv target
-    const std::string spirv_isa_name = "spirv64-amd-amdhsa--amdgcnspirv";
-    unique_isa_names.insert({spirv_isa_name, std::make_pair<size_t, size_t>(0, 0)});
+
+    // there are two spirv targets, spirv64-amd-amdhsa--amdgcnspirv and
+    // spirv64-amd-amdhsa-unknown-amdgcnspirv.
+    // eventually we will remove spirv64-amd-amdhsa--amdgcnspirv
+    const std::vector<std::string> spirv_isa_names = {"spirv64-amd-amdhsa--amdgcnspirv",
+                                                      "spirv64-amd-amdhsa-unknown-amdgcnspirv"};
+    for (const auto& spirv_isa_name : spirv_isa_names) {
+      unique_isa_names.insert({spirv_isa_name, std::make_pair<size_t, size_t>(0, 0)});
+    }
 
     // Create a query list using COMGR info for unique ISAs.
     std::vector<amd_comgr_code_object_info_t> query_list_array;
@@ -347,45 +353,36 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                                     static_cast<size_t>(item.offset));
     }
 
-    // if we have SPIRV isa, we will use Comgr to create isa for all devices.
-    auto spirv_isa_handle = unique_isa_names.find(spirv_isa_name);
-    bool spirv_isa_found = spirv_isa_handle->second.first != 0;
-
-    if (!spirv_isa_found) {
-      for (auto device : devices) {
-        std::string device_name = device->devices()[0]->isa().isaName();
-        auto dev_it = unique_isa_names.find(device_name);
-        // If the size is 0, then Comgr API could not find the CO for this GPU device/ISA
-        if (dev_it->second.first == 0) {
-          LogPrintfError("Cannot find CO in the bundle %s for ISA: %s", fname_.c_str(),
-                         device_name.c_str());
-          hip_status = hipErrorNoBinaryForGpu;
-          ListAllDeviceWithNoCOFromBundle(unique_isa_names);
-          break;
-        }
-        guarantee(unique_isa_names.cend() != dev_it,
-                  "Cannot find the device name in the unique device name");
-        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(
-            reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
-            dev_it->second.first, dev_it->second.second);
-        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+    bool spirv_isa_found = false;
+    decltype(unique_isa_names.begin()) spirv_isa_handle;
+    for (const auto& spirv_isa_name : spirv_isa_names) {
+      auto iter = unique_isa_names.find(spirv_isa_name);
+      if (iter->second.first != 0) {
+        spirv_isa_found = true;
+        spirv_isa_handle = iter;
       }
-    } else {
-      LogPrintfDebug("%s", "SPIRV isa found");
+    }
 
-      comgr_helper::ComgrDataSetUniqueHandle spirv_data_set, bc_data_set;
+    bool compile_spv_bitcode_res = false;
+    std::once_flag spirv_to_bc_flag;
+
+    comgr_helper::ComgrDataSetUniqueHandle bc_data_set;
+    std::unordered_map<std::string, std::pair<char*, size_t>> compiled_co;  // code object cache
+
+    auto compile_spv_bitcode = [&]() {
+      comgr_helper::ComgrDataSetUniqueHandle spirv_data_set;
       comgr_helper::ComgrDataUniqueHandle spirv_data;
       comgr_helper::ComgrActionInfoUniqueHandle action;
 
       if (comgr_status = spirv_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data set");
-        break;
+        return;
       }
 
       if (comgr_status = spirv_data.Create(AMD_COMGR_DATA_KIND_SPIRV);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data");
-        break;
+        return;
       }
 
       if (comgr_status =
@@ -394,43 +391,64 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                        spirv_isa_handle->second.second /* buffer */);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to assign data in comgr");
-        break;
+        return;
       }
 
       if (comgr_status = amd::Comgr::set_data_name(spirv_data.get(), "hip_code_object.spv");
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to set data name");
-        break;
+        return;
       }
 
       if (comgr_status = amd::Comgr::data_set_add(spirv_data_set.get(), spirv_data.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to add spir data");
-        break;
+        return;
       }
 
       if (comgr_status = action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create action");
-        break;
+        return;
       }
 
       if (comgr_status = bc_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create bitcode data set");
-        break;
+        return;
       }
 
       if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action.get(),
                                                spirv_data_set.get(), bc_data_set.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to compile to ll");
-        break;
+        return;
       }
+      compile_spv_bitcode_res = true;
+    };
 
-      // System might report multiple devices of same name, we do not want to recompile for all
-      // these. store code objects after compiling them to reuse.
-      std::unordered_map<std::string, std::pair<char*, size_t>> compiled_co;
+    LogPrintfInfo("Searching for code objects, HIP_FORCE_SPIRV_CODEOBJECT: %d",
+                  HIP_FORCE_SPIRV_CODEOBJECT);
 
-      for (auto device : devices) {
+    for (auto device : devices) {
+      std::string device_name = device->devices()[0]->isa().isaName();
+      auto dev_it = unique_isa_names.find(device_name);
+      // If the size is not 0, that means we found the native isa code object
+      if (dev_it->second.first != 0 && !HIP_FORCE_SPIRV_CODEOBJECT) {
+        LogPrintfInfo("Using Native code object: %s", device->devices()[0]->isa().targetId());
+        guarantee(unique_isa_names.cend() != dev_it,
+                  "Cannot find the device name in the unique device name");
+        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(
+            reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
+            dev_it->second.first, dev_it->second.second);
+        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+      } else if (spirv_isa_found) {
+        // Compile to bitcode once
+        std::call_once(spirv_to_bc_flag, compile_spv_bitcode);
+
+        if(!compile_spv_bitcode_res) {
+          hip_status = hipErrorInvalidValue;
+          break;
+        }
+
         std::string target_id = device->devices()[0]->isa().targetId();
         if (auto code_iter = compiled_co.find(target_id); code_iter != compiled_co.end()) {
           // We have already compiled for it, lets reuse the code object
@@ -451,7 +469,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           break;
         }
 
-        // TODO: do this for all devices
         if (comgr_status = amd::Comgr::action_info_set_isa_name(reloc_action.get(), isa.c_str());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to set ISA name");
@@ -540,13 +557,22 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         auto elf_size = CodeObject::ElfSize(co);
         fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(co, elf_size, 0);
         fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+
         // Save the compiled code object
         compiled_co[target_id] = std::make_pair(co, elf_size);
+      } else {
+        // We found neither a compatible code object nor SPIRV
+        LogPrintfError(
+            "No compatible code objects found for: %s, value of HIP_FORCE_SPIRV_CODEOBJECT: %d",
+            device->devices()[0]->isa().targetId(), HIP_FORCE_SPIRV_CODEOBJECT);
+        hip_status = hipErrorInvalidValue;
+        break;
       }
     }
   } while (0);
 
   if (comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+    LogError("comgr API call failed");
     hip_status = hipErrorInvalidValue;
   }
 
