@@ -2222,6 +2222,8 @@ bool KernelBlitManager::fillBuffer(device::Memory& memory, const void* pattern, 
       setArgument(kernels_[kFillType], 4, sizeof(end_ptr), &end_ptr);
       uint32_t next_chunk = globalWorkSize * kpattern_size;
       setArgument(kernels_[kFillType], 5, sizeof(uint32_t), &next_chunk);
+      uint32_t lws = localWorkSize;
+      setArgument(kernels_[kFillType], 6, sizeof(lws), &lws);
 
       // Create ND range object for the kernel's execution
       amd::NDRangeContainer ndrange(1, globalWorkOffset, &globalWorkSize, &localWorkSize);
@@ -2285,6 +2287,8 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
 
     uint32_t next_chunk = globalWorkSize;
     setArgument(kernels_[kBlitType], 6, sizeof(next_chunk), &next_chunk);
+    uint32_t lws = localWorkSize;
+    setArgument(kernels_[kBlitType], 7, sizeof(lws), &lws);
 
     // Create ND range object for the kernel's execution
     amd::NDRangeContainer ndrange(1, nullptr, &globalWorkSize, &localWorkSize);

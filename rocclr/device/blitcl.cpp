@@ -51,8 +51,10 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
 
   __kernel void __amd_rocclr_fillBufferAligned(
     __global void* buf, __constant uchar* pattern,
-    uint pattern_size, uint alignment, ulong end_ptr, uint next_chunk) {
-    int id = get_global_id(0);
+    uint pattern_size, uint alignment, ulong end_ptr, uint next_chunk, uint workgroup_size) {
+    uint l = __builtin_amdgcn_workitem_id_x();
+    uint g = __builtin_amdgcn_workgroup_id_x();
+    ulong id = (g * workgroup_size + l);
     long cur_id = id * pattern_size;
     if (alignment == sizeof(ulong2)) {
       __global ulong2* bufULong2 = (__global ulong2*)buf;
@@ -122,9 +124,12 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
   }
 
   __kernel void __amd_rocclr_copyBuffer(__global uchar* src, __global uchar* dst,
-                                          ulong size, uint remainder,
-                                          uint aligned_size, ulong end_ptr, uint next_chunk) {
-    ulong id = get_global_id(0);
+                                        ulong size, uint remainder,
+                                        uint aligned_size, ulong end_ptr,
+                                        uint next_chunk, uint workgroup_size) {
+    uint l = __builtin_amdgcn_workitem_id_x();
+    uint g = __builtin_amdgcn_workgroup_id_x();
+    ulong id = (g * workgroup_size + l);
     ulong id_remainder = id;
 
     if (aligned_size == sizeof(ulong2)) {
