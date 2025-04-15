@@ -1,10 +1,3 @@
-cmake_minimum_required(VERSION 3.5.1)
-
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-  set(PROJ_VERSION VERSION 1.5.0)
-endif()
-
 project(opencl)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
