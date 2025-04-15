@@ -491,31 +491,29 @@ class VirtualGPU : public device::VirtualDevice {
 
   void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::MemDependency,
                   BarrierType type = BarrierType::KernelToKernel) const {
-    Pal::BarrierInfo barrier = {};
-    barrier.pipePointWaitCount = 1;
-    Pal::HwPipePoint point = Pal::HwPipePostCs;
-    barrier.pPipePoints = &point;
-    barrier.transitionCount = 1;
-    Pal::BarrierTransition trans = {};
-    trans.srcCacheMask = Pal::CoherShader;
-    trans.dstCacheMask = Pal::CoherShader;
-    trans.imageInfo.oldLayout.usages = Pal::LayoutShaderRead;
-    trans.imageInfo.oldLayout.engines = Pal::LayoutComputeEngine;
-    trans.imageInfo.newLayout.usages = Pal::LayoutShaderRead;
-    trans.imageInfo.newLayout.engines = Pal::LayoutComputeEngine;
+    Pal::AcquireReleaseInfo barrier = {
+      .srcGlobalStageMask = Pal::PipelineStageCs,
+      .dstGlobalStageMask = Pal::PipelineStageCs,
+      .srcGlobalAccessMask = Pal::CoherShader,
+      .dstGlobalAccessMask = Pal::CoherShader,
+      .memoryBarrierCount = 0,
+      .pMemoryBarriers = nullptr,
+      .imageBarrierCount = 0,
+      .pImageBarriers = nullptr,
+      .reason = static_cast<uint32_t>(reason)
+    };
+
     if (type == BarrierType::KernelToCopy) {
-      trans.dstCacheMask = Pal::CoherCopy;
+      barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToKernel) {
-      trans.srcCacheMask = Pal::CoherCopy;
+      barrier.srcGlobalAccessMask  = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToCopy) {
-      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy;
+      barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::FlushL2) {
-      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy | Pal::CoherCpu;
+      barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy | Pal::CoherCpu;
     }
-    barrier.pTransitions = &trans;
-    barrier.waitPoint = Pal::HwPipePreCs;
-    barrier.reason = static_cast<uint32_t>(reason);
-    iCmd()->CmdBarrier(barrier);
+
+    iCmd()->CmdReleaseThenAcquire(barrier);
     queues_[engineID_]->submit<true>(false);
   }
 
