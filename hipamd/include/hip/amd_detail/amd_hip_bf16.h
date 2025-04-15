@@ -114,6 +114,7 @@
 #include "device_library_decls.h"  // ocml conversion functions
 #include "math_fwd.h"  // ocml device functions
 #if defined(__clang__) and defined(__HIP__)
+#include <hip/amd_detail/amd_warp_functions.h>       // define warpSize
 #include <hip/amd_detail/amd_warp_sync_functions.h>  // Sync functions
 #endif
 #endif                // !defined(__HIPCC_RTC__)
