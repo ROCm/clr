@@ -206,7 +206,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
   // If file name & path are available (or it is passed to you), then get the file desc to use
   // COMGR file slice APIs.
-  if (fname_.size() > 0) {
+  if (image_ == nullptr && fname_.size() > 0) {
     // Get File Handle & size of the file.
     ufd_ = PlatformState::instance().GetUniqueFileHandle(fname_.c_str());
     if (ufd_ == nullptr) {
@@ -219,14 +219,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     }
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
-    if (image_ == nullptr) {
-      if (!amd::Os::MemoryMapFileDesc(ufd_->fdesc_, ufd_->fsize_, foffset_, &image_)) {
-        LogError("Cannot map the file descriptor");
-        PlatformState::instance().CloseUniqueFileHandle(ufd_);
-        return hipErrorInvalidValue;
-      }
-      image_mapped_ = true;
+    if (!amd::Os::MemoryMapFileDesc(ufd_->fdesc_, ufd_->fsize_, foffset_, &image_)) {
+      LogError("Cannot map the file descriptor");
+      PlatformState::instance().CloseUniqueFileHandle(ufd_);
+      return hipErrorInvalidValue;
     }
+
+    image_mapped_ = true;
   }
 
   // At this line, image should be a valid ptr.
