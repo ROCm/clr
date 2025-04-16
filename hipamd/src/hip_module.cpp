@@ -877,6 +877,11 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
       return hipErrorInvalidDeviceFunction;
     }
 
+    // functions should match across all devices
+    if (i > 0 && launch.func != launchParamsList[i - 1].func) {
+      return hipErrorInvalidValue;
+    }
+
     functionLaunchParamsList[i].function = func;
     functionLaunchParamsList[i].gridDimX = launch.gridDim.x;
     functionLaunchParamsList[i].gridDimY = launch.gridDim.y;
