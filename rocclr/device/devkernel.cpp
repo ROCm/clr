@@ -582,7 +582,9 @@ static amd_comgr_status_t populateKernelMetaV3(const amd_comgr_metadata_node_t k
       kernel->SetKernelKind(buf);
       break;
     case KernelField::WgpMode:
-      kernel->SetWGPMode(buf.compare("true") == 0);
+      // The compiler currently serializes this boolean field as "0"/"1" instead
+      // of "false"/"true"; consider both "true" and "1" truthy values.
+      kernel->SetWGPMode(buf.compare("true") == 0 || buf.compare("1") == 0);
       break;
     case KernelField::UniformWrokGroupSize:
       kernel->setUniformWorkGroupSize(buf.compare("1") == 0);
