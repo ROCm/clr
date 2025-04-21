@@ -80,7 +80,8 @@ class Context;
 //! A collection of binaries for devices in the associated context.
 class Program : public RuntimeObject {
  public:
-  typedef std::tuple<const uint8_t* /*image*/, size_t /*size*/,  bool /*allocated*/> binary_t;
+  typedef std::tuple<const uint8_t* /*image*/, std::pair<size_t /*size*/, size_t /* file_offset */>,
+                     bool /*allocated*/> binary_t;
   typedef std::set<Device const*> devicelist_t;
   typedef std::unordered_map<Device const*, binary_t> devicebinary_t;
   typedef std::unordered_map<Device const*, device::Program*> deviceprograms_t;
@@ -236,6 +237,11 @@ class Program : public RuntimeObject {
 
   //! Actions to perform during program unload
   void unload();
+
+  //! Returns the program built status
+  bool IsProgramBuilt(const Device& device) {
+    return CL_BUILD_SUCCESS == devicePrograms_[&device]->buildStatus();
+  }
 };
 
 /*! @}

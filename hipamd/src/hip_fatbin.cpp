@@ -93,14 +93,6 @@ typedef ComgrUniqueHandle<amd_comgr_data_t> ComgrDataUniqueHandle;
 
 }  // namespace comgr_helper
 
-FatBinaryDeviceInfo::~FatBinaryDeviceInfo() {
-  if (program_ != nullptr) {
-    program_->unload();
-    program_->release();
-    program_ = nullptr;
-  }
-}
-
 FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image)
     : fdesc_(amd::Os::FDescInit()),
       fsize_(0),
@@ -114,19 +106,22 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image)
     fname_ = std::string();
   }
 
-  fatbin_dev_info_.resize(g_devices.size(), nullptr);
+  dev_programs_.resize(g_devices.size(), nullptr);
 }
 
 FatBinaryInfo::~FatBinaryInfo() {
   // Different devices in the same model have the same binary_image_
   std::set<const void*> toDelete;
   // Release per device fat bin info.
-  for (auto* fbd : fatbin_dev_info_) {
-    if (fbd != nullptr) {
-      if (fbd->binary_image_ && fbd->binary_offset_ == 0 && fbd->binary_image_ != image_) {
-        toDelete.insert(fbd->binary_image_);
+  for (int dev_id = 0; dev_id < dev_programs_.size(); dev_id++) {
+    if (dev_programs_[dev_id] != nullptr) {
+      auto& binaryInfo = dev_programs_[dev_id]->binary(*g_devices[dev_id]->devices()[0]);
+      if (std::get<0>(binaryInfo) && std::get<1>(binaryInfo).second == 0 &&
+          std::get<0>(binaryInfo) != image_) {
+        toDelete.insert(std::get<0>(binaryInfo));
       }
-      delete fbd;
+      dev_programs_[dev_id]->release();
+      dev_programs_[dev_id] = nullptr;
     }
   }
   for (auto itemData : toDelete) {
@@ -242,12 +237,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           hip_status = hipErrorInvalidImage;
           break;
         }
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(image_, elf_size, 0);
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
-          hip_status = hipErrorOutOfMemory;
+        hip_status = AddDevProgram(devices[dev_idx], image_, elf_size, 0);
+        if (hip_status != hipSuccess) {
           break;
         }
       }
@@ -435,10 +426,12 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         LogPrintfInfo("Using Native code object: %s", device->devices()[0]->isa().targetId());
         guarantee(unique_isa_names.cend() != dev_it,
                   "Cannot find the device name in the unique device name");
-        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(
-            reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
+        hip_status = AddDevProgram(
+            device, reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
             dev_it->second.first, dev_it->second.second);
-        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+        if (hip_status != hipSuccess) {
+          break;
+        }
       } else if (spirv_isa_found) {
         // Compile to bitcode once
         std::call_once(spirv_to_bc_flag, compile_spv_bitcode);
@@ -454,9 +447,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           char* co = new char[code_iter->second.second];
           std::memcpy(co, code_iter->second.first, code_iter->second.second);
           LogPrintfInfo("reusing code object for: %s", target_id.c_str());
-          fatbin_dev_info_[device->deviceId()] =
-              new FatBinaryDeviceInfo(co, code_iter->second.second, 0);
-          fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+          hip_status = AddDevProgram(device, co, code_iter->second.second, 0);
+          if (hip_status != hipSuccess) {
+            break;
+          }
           continue;
         }
 
@@ -554,9 +548,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         }
 
         auto elf_size = CodeObject::ElfSize(co);
-        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(co, elf_size, 0);
-        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
-
+        hip_status = AddDevProgram(device, co, elf_size, 0);
+        if (hip_status != hipSuccess) {
+          break;
+        }
         // Save the compiled code object
         compiled_co[target_id] = std::make_pair(co, elf_size);
       } else {
@@ -657,13 +652,9 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
         // Calculate the offset wrt binary_image and the original image
         size_t offset_l = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
                            reinterpret_cast<address>(const_cast<void*>(image_)));
-
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
-
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
+        hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
+                                  code_objs[dev_idx].second, offset_l);
+        if (hip_error != hipSuccess) {
           break;
         }
       }
@@ -671,54 +662,45 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
 
     return hip_error;
   }
+  const void* binary_image;
+  size_t binary_size;
+  size_t binary_offset;
 
   if (hip_error == hipErrorInvalidKernelFile) {
     for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      // the image type is no CLANG_OFFLOAD_BUNDLER, image for current device directly passed
-      fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-          new FatBinaryDeviceInfo(image_, CodeObject::ElfSize(image_), 0);
+      hip_error = AddDevProgram(devices[dev_idx], image_, CodeObject::ElfSize(image_), 0);
+      if (hip_error != hipSuccess) {
+        return hip_error;
+      }
     }
   } else if (hip_error == hipSuccess) {
     for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
       // Calculate the offset wrt binary_image and the original image
-      size_t offset_l = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
+      binary_offset = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
                          reinterpret_cast<address>(const_cast<void*>(image_)));
-
-      fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-          new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
+      hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
+                                code_objs[dev_idx].second, binary_offset);
+      if (hip_error != hipSuccess) {
+        return hip_error;
+      }
     }
   }
-
-  for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-    fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-        new amd::Program(*devices[dev_idx]->asContext());
-    if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
-      return hipErrorOutOfMemory;
-    }
-  }
-
   return hipSuccess;
 }
 
-hipError_t FatBinaryInfo::AddDevProgram(const int device_id) {
-  // Device Id bounds Check
-  DeviceIdCheck(device_id);
-
-  FatBinaryDeviceInfo* fbd_info = fatbin_dev_info_[device_id];
-  if (fbd_info == nullptr) {
-    return hipErrorInvalidKernelFile;
+hipError_t FatBinaryInfo::AddDevProgram(hip::Device* device, const void* binary_image,
+                                        size_t binary_size, size_t binary_offset) {
+  int devID = device->deviceId();
+  amd::Context* ctx = device->asContext();
+  amd::Program* program = new amd::Program(*ctx);
+  dev_programs_[devID] = program;
+  if (program == nullptr) {
+    return hipErrorOutOfMemory;
   }
-
-  // If fat binary was already added, skip this step and return success
-  if (fbd_info->add_dev_prog_ == false) {
-    amd::Context* ctx = g_devices[device_id]->asContext();
-    if (CL_SUCCESS !=
-        fbd_info->program_->addDeviceProgram(*ctx->devices()[0], fbd_info->binary_image_,
-                                             fbd_info->binary_size_, false, nullptr, nullptr,
-                                             fdesc_, fbd_info->binary_offset_, uri_)) {
-      return hipErrorInvalidKernelFile;
-    }
-    fbd_info->add_dev_prog_ = true;
+  if (CL_SUCCESS !=
+      program->addDeviceProgram(*ctx->devices()[0], binary_image, binary_size, false, nullptr,
+                                nullptr, fdesc_, binary_offset, uri_)) {
+    return hipErrorInvalidKernelFile;
   }
   return hipSuccess;
 }
@@ -726,21 +708,17 @@ hipError_t FatBinaryInfo::AddDevProgram(const int device_id) {
 hipError_t FatBinaryInfo::BuildProgram(const int device_id) {
   // Device Id Check and Add DeviceProgram if not added so far
   DeviceIdCheck(device_id);
-  IHIP_RETURN_ONFAIL(AddDevProgram(device_id));
 
   // If Program was already built skip this step and return success
-  FatBinaryDeviceInfo* fbd_info = fatbin_dev_info_[device_id];
-  if (fbd_info->prog_built_ == false) {
+  if (dev_programs_[device_id]->IsProgramBuilt(*g_devices[device_id]->devices()[0]) == false) {
     if (CL_SUCCESS !=
-        fbd_info->program_->build(g_devices[device_id]->devices(), nullptr, nullptr, nullptr,
-                                  kOptionChangeable, kNewDevProg)) {
+        dev_programs_[device_id]->build(g_devices[device_id]->devices(), nullptr, nullptr, nullptr,
+                                        kOptionChangeable, kNewDevProg)) {
       return hipErrorNoBinaryForGpu;
     }
-    fbd_info->prog_built_ = true;
-  }
-
-  if (!fbd_info->program_->load()) {
-    return hipErrorNoBinaryForGpu;
+    if (!dev_programs_[device_id]->load()) {
+      return hipErrorNoBinaryForGpu;
+    }
   }
   return hipSuccess;
 }
@@ -766,13 +744,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
     if (hip_status == hipErrorNoBinaryForGpu || hip_status == hipSuccess) {
       for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
         if (code_objs[dev_idx].first) {
-          fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-              new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, 0);
-
-          fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-              new amd::Program(*devices[dev_idx]->asContext());
-          if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
-            break;
+          hip_status =
+              AddDevProgram(devices[dev_idx], code_objs[dev_idx].first, code_objs[dev_idx].second, 0);
+          if (hip_status != hipSuccess) {
+            return hip_status;
           }
         } else {
           // This is the case of hipErrorNoBinaryForGpu which will finally fail app on device
@@ -785,13 +760,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
       hip_status = hipSuccess;
       // If the image ptr is not clang offload bundle then just directly point the image.
       for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(data, CodeObject::ElfSize(data), 0);
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
-          hip_status = hipErrorOutOfMemory;
-          break;
+        hip_status = AddDevProgram(devices[dev_idx], data, CodeObject::ElfSize(data), 0);
+        if (hip_status != hipSuccess) {
+          return hip_status;
         }
       }
     } else {

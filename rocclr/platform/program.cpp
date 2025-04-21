@@ -73,6 +73,7 @@ static void remove_g_option(std::string &option)
 }
 
 Program::~Program() {
+  unload();
   // Destroy all device programs
   for (const auto& it : devicePrograms_) {
     delete it.second;
@@ -196,7 +197,7 @@ int32_t Program::addDeviceProgram(Device& device, const void* image, size_t leng
       }
 
       // Save the original image
-      binary_[&rootDev] = std::make_tuple(memory, length, make_copy);
+      binary_[&rootDev] = std::make_tuple(memory, std::make_pair(length, foffset), make_copy);
     }
 
     const device::Program* same_dev_prog = nullptr;
@@ -278,7 +279,8 @@ int32_t Program::compile(const std::vector<Device*>& devices, size_t numHeaders,
     device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
       const binary_t& bin = binary(*it);
-      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
+      retval =
+          addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin).first, false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
@@ -397,7 +399,8 @@ int32_t Program::link(const std::vector<Device*>& devices, size_t numInputs,
     device::Program* devProgram = getDeviceProgram(*it);
     if (devProgram == NULL) {
       const binary_t& bin = binary(*it);
-      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
+      retval =
+          addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin).first, false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
@@ -531,7 +534,8 @@ int32_t Program::build(const std::vector<Device*>& devices, const char* options,
         retval = false;
         continue;
       }
-      retval = addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin), false, &parsedOptions);
+      retval =
+          addDeviceProgram(*it, std::get<0>(bin), std::get<1>(bin).first, false, &parsedOptions);
       if (retval != CL_SUCCESS) {
         return retval;
       }
