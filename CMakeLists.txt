@@ -33,6 +33,14 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         add_compile_options(-D_ALLOW_ITERATOR_DEBUG_LEVEL_MISMATCH)
     endif()
 endif()
+
+if (AMD_COMPUTE_WIN)
+    add_compile_options("/MT")
+    set(AMD_LIBELF_PATH "${AMD_COMPUTE_WIN}/hsail-compiler/lib/loaders/elf/utils/libelf")
+    set(AMD_SC_PATH "${AMD_COMPUTE_WIN}/sc")
+    message("Public Compute Windows build path: ${AMD_COMPUTE_WIN}, SC: ${AMD_SC_PATH}, LibElf: ${AMD_LIBELF_PATH}")
+endif()
+
 option(CLR_BUILD_HIP "Build HIP" OFF)
 option(CLR_BUILD_OCL "Build OCL" OFF)
 
