@@ -373,6 +373,7 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
     // the number of bits in the mask is a power of 2
     numIterations -= 1;
 
+  maskIdx = __popcll(((1ul << laneId) - 1) & mask);
   mask >>= laneId;
   mask >>= 1ul;
 
@@ -380,8 +381,6 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
     result = val;
   else
     __builtin_memcpy(&result, &val, sizeof(T));
-
-  maskIdx = __ockl_activelane_u32();
 
   // add the values from the lanes using a reduction tree (first the threads with even-numbered
   // lanes, then multiples of 4, then 8, ...
