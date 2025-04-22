@@ -824,6 +824,10 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
     return hipErrorCooperativeLaunchTooLarge;
   }
 
+  if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0) {
+    return hipErrorInvalidConfiguration;
+  }
+
   return ihipModuleLaunchKernel(func, static_cast<uint32_t>(globalWorkSizeX),
                                 static_cast<uint32_t>(globalWorkSizeY),
                                 static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y,
@@ -1086,9 +1090,17 @@ hipError_t hipLinkDestroy(hipLinkState_t hip_link_state) {
 
 hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args) {
   HIP_INIT_API(hipLaunchKernelExC, config, fPtr, args);
+  if (fPtr == nullptr) {
+    HIP_RETURN(hipErrorInvalidDeviceFunction);
+  }
 
-  if (fPtr == nullptr || config == nullptr || config->numAttrs == 0) {
+  if (config == nullptr) {
     HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  if (config->numAttrs == 0) {
+    HIP_RETURN_DURATION(hipLaunchKernel_common(fPtr, config->gridDim, config->blockDim, args,
+      config->dynamicSmemBytes, config->stream));
   }
 
   for (size_t attr_idx = 0; attr_idx < config->numAttrs; ++attr_idx) {
@@ -1112,9 +1124,12 @@ hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr,
 hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f,
                                 void** kernelParams, void** extra) {
   HIP_INIT_API(hipDrvLaunchKernelEx, config, f, kernelParams, extra);
+  if (f == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
 
-  if (f == nullptr || config == nullptr || config->numAttrs == 0) {
-    HIP_RETURN(hipErrorInvalidConfiguration);
+  if (config == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   size_t globalWorkSizeX = static_cast<size_t>(config->gridDimX) * config->blockDimX;
@@ -1124,6 +1139,14 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
       globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
       globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
     HIP_RETURN(hipErrorInvalidConfiguration);
+  }
+
+  if (config->numAttrs == 0) {
+    HIP_RETURN(ihipModuleLaunchKernel(
+      f, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
+      static_cast<uint32_t>(globalWorkSizeZ), config->blockDimX, config->blockDimY,
+      config->blockDimZ, config->sharedMemBytes, config->hStream, kernelParams, nullptr,
+      nullptr, nullptr, 0));
   }
 
   for (size_t attr_idx = 0; attr_idx < config->numAttrs; ++attr_idx) {

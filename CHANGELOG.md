@@ -6,6 +6,10 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ### Added
 
+* New HIP APIs
+    - `hipLaunchKernelEx`  dispatches the provided kernel with the given launch configuration and forwards the kernel arguments.
+    - `hipLaunchKernelExC`  launches a HIP kernel using a generic function pointer and the specified configuration.
+    - `hipDrvLaunchKernelEx`  dispatches the device kernel represented by a HIP function object
 * New support for Open Compute Project (OCP) floating-point `FP4`/`FP6`/`FP8` as the following. For details, see [Low precision floating point document](https://rocm.docs.amd.com/projects/HIP/en/latest/reference/low_fp_types.html).
     - Data types for `FP4`/`FP6`/`FP8`.
     - HIP APIs for `FP4`/`FP6`/`FP8`, which are compatible with corresponding CUDA APIs.
@@ -34,7 +38,6 @@ HIP runtime has the following functional improvements which greatly improve runt
 ### Resolved issues
 
 * Error of "unable to find modules" in HIP clean up for code object module.
-
 
 ## HIP 6.4 (For ROCm 6.4)
 
