@@ -223,9 +223,7 @@ class Monitor {
     // fast path
     c = 0;
     while (c < maxCount_ &&
-      (notifyState_.load(std::memory_order_acquire) != notifyState::allNotified &&
-      !notifyState_.compare_exchange_weak(expextedNotifyState, notifyState::notNotified,
-                   std::memory_order_acq_rel,  std::memory_order_acquire))) {
+      (notifyState_.load(std::memory_order_acquire) == notifyState::notNotified)) {
       // First, be SMT friendly
       if (c < maxReadSpinIter_) {
         Os::spinPause();
@@ -261,10 +259,8 @@ class Monitor {
     // the mutex is locked again before exiting...
     lk.release();  // Release the ownership so that the caller should unlock the mutex
     if (waits_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
-      if (notifyState_.load(std::memory_order_acquire) == notifyState::allNotified) {
-        // No waiter indicates that notifyAll() processing has ended
-        notifyState_.store(notifyState::notNotified, std::memory_order_release);
-      }
+      // No waiter indicates that notify() or notifyAll() processing has ended
+      notifyState_.store(notifyState::notNotified, std::memory_order_release);
     }
   }
 
