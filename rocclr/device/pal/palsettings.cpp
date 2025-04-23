@@ -167,6 +167,8 @@ bool Settings::create(const Pal::DeviceProperties& palProp,
     case Pal::AsicRevision::Navi31:
       gwsInitSupported_ = false;
     // Fall through for Navi2x ...
+    case Pal::AsicRevision::StrixHalo:
+    case Pal::AsicRevision::Strix1:
     case Pal::AsicRevision::Phoenix1:
     case Pal::AsicRevision::Phoenix2:
     case Pal::AsicRevision::HawkPoint1:
