@@ -2119,10 +2119,7 @@ class Device : public RuntimeObject {
   }
 
   //! Returns the queues that have at least one submitted command
-  std::vector<amd::CommandQueue*> getActiveQueues() {
-     amd::ScopedLock lock(activeQueuesLock_);
-     return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
-  }
+  std::vector<amd::CommandQueue*> getActiveQueues();
 
   //! Adds the queue to the set of active command queues
   void addToActiveQueues(amd::CommandQueue* commandQueue) {

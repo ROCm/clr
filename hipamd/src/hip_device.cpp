@@ -201,6 +201,7 @@ void Device::WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stre
         // Get the last valid command
         waitForStream(active_stream);
       }
+      command->release();
     }
   }
 
