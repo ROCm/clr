@@ -60,7 +60,7 @@ if (defined $options{h}) {
 }
 
 # this tool has been deprecated
-print("Warning:  This tool has been DEPRECATED. Similar functionality is provided by llvm-objdump in the rocm-llvm package.\n";
+print("Warning:  This tool has been DEPRECATED. Similar functionality is provided by llvm-objdump in the rocm-llvm package.\n");
 
 my $verbose = $options{v};
 my $debug = $options{d};
