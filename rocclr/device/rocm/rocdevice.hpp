@@ -431,7 +431,8 @@ class Device : public NullDevice {
                                 amd::MemoryAdvice advice, bool use_cpu = false) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
-
+  virtual size_t ScratchLimitCurrent() const final;
+  virtual bool UpdateScratchLimitCurrent(size_t limit) const final;
   virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
   virtual bool virtualFree(void* addr);
 

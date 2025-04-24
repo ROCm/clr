@@ -1156,6 +1156,16 @@ bool Device::populateOCLDeviceConstants() {
     return false;
   }
 
+  uint64_t scratchLimitMax = 0;
+  if (HSA_STATUS_SUCCESS !=
+      hsa_agent_get_info(bkendDevice_, (hsa_agent_info_t)HSA_AMD_AGENT_INFO_SCRATCH_LIMIT_MAX ,
+          &scratchLimitMax)) {
+    LogWarning("HSA_AMD_AGENT_INFO_SCRATCH_LIMIT_MAX cannot be queried!");
+    return false;
+  }
+  info_.scratchLimitMin = 0;
+  info_.scratchLimitMax = scratchLimitMax;
+
   checkAtomicSupport();
 
   assert(system_segment_.handle != 0);
@@ -2748,6 +2758,28 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
 
   return true;
 }
+
+size_t Device::ScratchLimitCurrent() const {
+  uint64_t scratchLimitCurrent = 0;
+  hsa_status_t ret = hsa_agent_get_info(bkendDevice_,
+      (hsa_agent_info_t)HSA_AMD_AGENT_INFO_SCRATCH_LIMIT_CURRENT, &scratchLimitCurrent);
+  if (HSA_STATUS_SUCCESS != ret) {
+    LogPrintfError("HSA_AMD_AGENT_INFO_SCRATCH_LIMIT_CURRENT cannot be queried! Err: 0x%xh",
+       ret);
+    return 0;
+  }
+  return static_cast<size_t>(scratchLimitCurrent);
+};
+
+bool Device::UpdateScratchLimitCurrent(size_t limit) const {
+  hsa_status_t ret = hsa_amd_agent_set_async_scratch_limit(bkendDevice_, limit);
+  if (HSA_STATUS_SUCCESS != ret) {
+    LogPrintfError("hsa_amd_agent_set_async_scratch_limit(%zu) failed with err 0x%xh",
+       limit, ret);
+    return false;
+  }
+  return true;
+};
 
 // ================================================================================================
 bool Device::SvmAllocInit(void* memory, size_t size) const {

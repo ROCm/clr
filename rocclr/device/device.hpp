@@ -658,6 +658,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t luidLowPart_;        //!< Luid low 4 bytes, available in Windows only
   uint32_t luidHighPart_;       //!< Luid high 4 bytes, available in Windows only
   uint32_t luidDeviceNodeMask_; //!< Luid node mask
+
+  size_t scratchLimitMin; //! Minimum size of scratch limit of this device memory in bytes.
+  size_t scratchLimitMax; //! Maximum size of scratch limit of this device memory in bytes.
 };
 
 //! Device settings
@@ -1975,6 +1978,12 @@ class Device : public RuntimeObject {
     ShouldNotCallThis();
     return false;
   }
+
+  //! Returns current scratch limit of the device. Valid only on rocm device.
+  virtual size_t ScratchLimitCurrent() const { return 0; }
+
+  //! Sets the current scratch limit of the device. Valid only on rocm device.
+  virtual bool UpdateScratchLimitCurrent(size_t limit) const { return true; }
 
   //! Validate kernel
   virtual bool validateKernel(const amd::Kernel& kernel,

@@ -519,6 +519,15 @@ hipError_t hipDeviceGetLimit(size_t* pValue, hipLimit_t limit) {
     case hipLimitStackSize:
       *pValue = hip::getCurrentDevice()->devices()[0]->StackSize();
       break;
+    case hipExtLimitScratchMin:
+      *pValue = hip::getCurrentDevice()->devices()[0]->info().scratchLimitMin;
+      break;
+    case hipExtLimitScratchMax:
+      *pValue = hip::getCurrentDevice()->devices()[0]->info().scratchLimitMax;;
+      break;
+    case hipExtLimitScratchCurrent:
+      *pValue = hip::getCurrentDevice()->devices()[0]->ScratchLimitCurrent();
+      break;
     default:
       LogPrintfError("UnsupportedLimit = %d is passed", limit);
       HIP_RETURN(hipErrorUnsupportedLimit);
@@ -598,6 +607,11 @@ hipError_t hipDeviceSetLimit(hipLimit_t limit, size_t value) {
       break;
     case hipLimitMallocHeapSize:
       if (!hip::getCurrentDevice()->devices()[0]->UpdateInitialHeapSize(value)) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      break;
+    case hipExtLimitScratchCurrent:
+      if (!hip::getCurrentDevice()->devices()[0]->UpdateScratchLimitCurrent(value)) {
         HIP_RETURN(hipErrorInvalidValue);
       }
       break;
