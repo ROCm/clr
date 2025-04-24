@@ -1245,19 +1245,23 @@ hipError_t hipStreamEndCapture_common(hipStream_t stream, hip::Graph** pGraph) {
 
 hipError_t hipStreamEndCapture(hipStream_t stream, hipGraph_t* pGraph) {
   HIP_INIT_API(hipStreamEndCapture, stream, pGraph);
-  if (pGraph == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
-  }
   hip::Graph* graph;
   hipError_t status = hipStreamEndCapture_common(stream, &graph);
-  *pGraph = reinterpret_cast<hipGraph_t>(graph);
+  if (pGraph != nullptr) {
+    *pGraph = reinterpret_cast<hipGraph_t>(graph);
+  }
   HIP_RETURN(status);
 }
 
 hipError_t hipStreamEndCapture_spt(hipStream_t stream, hipGraph_t* pGraph) {
   HIP_INIT_API(hipStreamEndCapture, stream, pGraph);
   PER_THREAD_DEFAULT_STREAM(stream);
-  HIP_RETURN_DURATION(hipStreamEndCapture_common(stream, reinterpret_cast<hip::Graph**>(pGraph)));
+  hip::Graph* graph;
+  hipError_t status = hipStreamEndCapture_common(stream, &graph);
+  if (pGraph != nullptr) {
+    *pGraph = reinterpret_cast<hipGraph_t>(graph);
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t hipGraphCreate(hipGraph_t* pGraph, unsigned int flags) {
