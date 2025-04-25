@@ -764,9 +764,10 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         uint32_t index = desc.info_.arrayIndex_;
         mem = memories[index];
         const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
-        ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-            "Arg%d: %s %s = ptr:%p", i, desc.typeName_.c_str(), desc.name_.c_str(), globalAddress);
         if (mem == nullptr) {
+          ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+            "Arg%d: %s %s = ptr:%p ", i, desc.typeName_.c_str(), desc.name_.c_str(),
+            globalAddress);
           //! This condition is for SVM fine-grain
           if (dev().isFineGrainedSystem(true)) {
             // Sync AQL packets
@@ -775,14 +776,14 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
             const static bool All = true;
             memoryDependency().clear(!All);
           }
-        }
-        else {
+        } else {
           gpuMem = static_cast<Memory*>(mem->getDeviceMemory(dev()));
 
-          const void* globalAddress = *reinterpret_cast<const void* const*>(params + desc.offset_);
+          const void* globalAddress =
+            *reinterpret_cast<const void* const*>(params + desc.offset_);
           ClPrint(amd::LOG_INFO, amd::LOG_KERN,
             "Arg%d: %s %s = ptr:%p obj:[%p-%p]", i, desc.typeName_.c_str(),
-             desc.name_.c_str(), globalAddress, gpuMem->getDeviceMemory(),
+            desc.name_.c_str(), globalAddress, gpuMem->getDeviceMemory(),
             reinterpret_cast<address>(gpuMem->getDeviceMemory()) + mem->getSize());
 
           // Validate memory for a dependency in the queue
@@ -790,7 +791,7 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
 
           assert((desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_GLOBAL ||
                   desc.addressQualifier_ == CL_KERNEL_ARG_ADDRESS_CONSTANT) &&
-                 "Unsupported address qualifier");
+                "Unsupported address qualifier");
 
           const bool readOnly =
 #if defined(USE_COMGR_LIBRARY)
@@ -855,10 +856,34 @@ bool VirtualGPU::processMemObjects(const amd::Kernel& kernel, const_address para
         const auto it = hsaKernel.patch().find(desc.offset_);
         WriteAqlArgAt(const_cast<address>(params), mem, sizeof(void*), it->second);
       }
-      ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-        "Arg%d: %s %s = val:0x%lx", i, desc.typeName_.c_str(), desc.name_.c_str(),
-        (desc.size_ == 4) ? *reinterpret_cast<const int*>(srcArgPtr) :
-        (desc.size_ == 8) ? *reinterpret_cast<const long long*>(srcArgPtr) : 0LL);
+
+      if (IsLogEnabled(amd::LOG_INFO, amd::LOG_KERN)) {
+        if (desc.size_ > 8) {
+          std::string bytes = "0x";
+          constexpr size_t kMaxBytes = 64;
+          for (size_t j = 0; j < std::min(desc.size_, kMaxBytes); j++) {
+            char byteStr[4];
+            snprintf(byteStr, sizeof(byteStr), "%02x ",
+                     reinterpret_cast<const uint8_t*>(srcArgPtr)[j]);
+            bytes += byteStr;
+          }
+          if (desc.size_ > kMaxBytes) {
+            bytes += "...";
+          }
+          ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+            "Arg%d: %s %s = %s (size:0x%x)", i, desc.typeName_.c_str(), desc.name_.c_str(),
+            bytes.c_str(), desc.size_);
+        } else {
+          ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+            "Arg%d: %s %s = val:0x%lx (size:0x%x)", i, desc.typeName_.c_str(),
+            desc.name_.c_str(),
+            (desc.size_ == 1) ? *reinterpret_cast<const uint8_t*>(srcArgPtr) :
+            (desc.size_ == 2) ? *reinterpret_cast<const uint16_t*>(srcArgPtr) :
+            (desc.size_ == 4) ? *reinterpret_cast<const uint32_t*>(srcArgPtr) :
+            (desc.size_ == 8) ? *reinterpret_cast<const uint64_t*>(srcArgPtr) :
+            0LL, desc.size_);
+        }
+      }
     }
     else if (desc.type_ == T_SAMPLER) {
       uint32_t index = desc.info_.arrayIndex_;
