@@ -213,7 +213,7 @@ class Event : public RuntimeObject {
   //! Returns the callback for this event
   const CallBackEntry* Callback() const { return callbacks_; }
 
-  // Saves HW event, associated with the current command
+  //! Saves HW event, associated with the current command
   void SetHwEvent(void* hw_event) { hw_event_ = hw_event; }
 
   //! Returns HW event, associated with the current command

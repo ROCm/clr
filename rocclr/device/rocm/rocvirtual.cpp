@@ -422,7 +422,20 @@ bool VirtualGPU::HwQueueTracker::Create() {
 
 // ================================================================================================
 hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
-    hsa_signal_value_t init_val, Timestamp* ts) {
+    hsa_signal_value_t init_val, Timestamp* ts, bool attach_signal) {
+
+  amd::Command* cmd = gpu_.command();
+  // If no signal is needed, decrement the refcount and clear the hw_event of current command
+  if (!attach_signal) {
+    if (nullptr != cmd) {
+      if (cmd->HwEvent() != nullptr) {
+        reinterpret_cast<ProfilingSignal*>(cmd->HwEvent())->release();
+      }
+      cmd->SetHwEvent(nullptr);
+    }
+    return hsa_signal_t {0};
+  }
+
   bool new_signal = false;
 
   // Peep signal +2 ahead to see if its done
@@ -503,8 +516,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
   prof_signal->engine_ = engine_;
   prof_signal->flags_.isPacketDispatch_ = false;
 
-  // Store the HW event
-  amd::Command* cmd = gpu_.command();
+
   if (nullptr != cmd) {
     // Release any existing HwEvent before setting new one for the same command
     if (cmd->HwEvent() != nullptr) {
@@ -1026,23 +1038,24 @@ bool VirtualGPU::dispatchGenericAqlPacket(
 
   fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
 
-  if (timestamp_ != nullptr || attach_signal) {
-    // Get active signal for current dispatch if profiling is necessary
-    packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
+  bool attachSignal = timestamp_ != nullptr || attach_signal;
+  // Get active signal for current dispatch if profiling is necessary
+  packet->completion_signal = Barriers().ActiveSignal(kInitSignalValueOne,
+                                                      timestamp_, attachSignal);
 
-    if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value) {
-      // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
-      // retrieve this correlation ID to attribute waves to specific dispatch locations.
-      if (amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
-        auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
-        dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
-      }
-
-      ProfilingSignal* current_signal = Barriers().GetLastSignal();
-      current_signal->flags_.isPacketDispatch_ = true;
-
+  if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value
+      && timestamp_ != nullptr) {
+    // If profiling is enabled, store the correlation ID in the dispatch packet. The profiler can
+    // retrieve this correlation ID to attribute waves to specific dispatch locations.
+    if (amd::activity_prof::IsEnabled(OP_ID_DISPATCH) ) {
+      auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
+      dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
     }
+
+    ProfilingSignal* current_signal = Barriers().GetLastSignal();
+    current_signal->flags_.isPacketDispatch_ = true;
   }
+
 
   // Make sure the slot is free for usage
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= sw_queue_size) {

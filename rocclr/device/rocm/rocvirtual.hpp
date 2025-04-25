@@ -254,7 +254,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Finds a free signal for the upcomming operation
     hsa_signal_t ActiveSignal(hsa_signal_value_t init_val = kInitSignalValueOne,
-                              Timestamp* ts = nullptr);
+                              Timestamp* ts = nullptr, bool attach_signal = true);
 
     //! Wait for the curent active signal. Can idle the queue
     bool WaitCurrent() {

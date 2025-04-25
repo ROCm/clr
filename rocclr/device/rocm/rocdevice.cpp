@@ -2863,7 +2863,11 @@ bool Device::IsHwEventReady(const amd::Event& event, bool wait, uint32_t hip_eve
     bool active_wait = !(hip_event_flags & kHipEventBlockingSync) && ActiveWait();
     return WaitForSignal(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, active_wait);
   }
-  return (hsa_signal_load_relaxed(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_) == 0);
+
+  auto signal = reinterpret_cast<ProfilingSignal*>(hw_event)->signal_;
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Check HW event = 0x%lx", signal.handle);
+
+  return (hsa_signal_load_relaxed(signal) == 0);
 }
 
 // ================================================================================================
