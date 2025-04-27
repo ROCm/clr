@@ -1312,10 +1312,10 @@ hipError_t StatCO::digestFatBinary(const void* data, FatBinaryInfo*& programs) {
   }
 
   // Create a new fat binary object and extract the fat binary for all devices.
-  programs = new FatBinaryInfo(nullptr, data);
-  IHIP_RETURN_ONFAIL(programs->ExtractFatBinary(g_devices));
-
-  return hipSuccess;
+  FatBinaryInfo* fatBinaryInfo = new FatBinaryInfo(nullptr, data);
+  hipError_t err = fatBinaryInfo->ExtractFatBinary(g_devices);
+  programs = fatBinaryInfo;
+  return err;
 }
 
 FatBinaryInfo** StatCO::addFatBinary(const void* data, bool initialized, bool& success) {
