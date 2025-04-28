@@ -451,7 +451,7 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
   if (event == nullptr || !hip::isValid(stream)) {
     return hipErrorInvalidHandle;
   }
-  hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
+  hip::Stream* waitStream = hip::getStream(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   auto eventStreamHandle = reinterpret_cast<hipStream_t>(e->GetCaptureStream());
   // the stream associated with the device might have been destroyed
@@ -491,7 +491,7 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
         eventStream->GetDevice()->AddSafeStream(eventStream, waitStream);
       }
     }
-    status = e->streamWait(stream, flags);
+    status = e->streamWait(waitStream, flags);
   }
   return status;
 }

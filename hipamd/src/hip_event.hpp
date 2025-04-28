@@ -121,12 +121,12 @@ class Event {
   hipError_t elapsedTime(Event& eStop, float& ms);
 
   virtual hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
-  virtual hipError_t streamWait(hipStream_t stream, uint flags);
+  virtual hipError_t streamWait(hip::Stream* stream, uint flags);
 
   virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                    uint32_t flags = 0, bool batch_flush = true);
-  virtual hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command);
-  hipError_t addMarker(hipStream_t stream, amd::Command* command,
+  virtual hipError_t enqueueRecordCommand(hip::Stream* stream, amd::Command* command);
+  hipError_t addMarker(hip::Stream* stream, amd::Command* command,
                        bool batch_flush = true);
 
   void BindCommand(amd::Command& command) {
@@ -209,11 +209,11 @@ class IPCEvent : public Event {
   hipError_t synchronize();
   hipError_t query();
 
-  hipError_t streamWait(hipStream_t stream, uint flags);
+  hipError_t streamWait(hip::Stream* stream, uint flags);
 
   hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue,
                            uint32_t flags = 0, bool batch_flush = true) override;
-  hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command);
+  hipError_t enqueueRecordCommand(hip::Stream* stream, amd::Command* command);
 };
 
 

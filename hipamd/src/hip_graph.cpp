@@ -1597,7 +1597,8 @@ hipError_t ihipGraphLaunch(hip::GraphExec* graphExec, hipStream_t stream) {
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
   }
-  return graphExec->Run(stream);
+  hip::Stream* launch_stream = hip::getStream(stream);
+  return graphExec->Run(launch_stream);
 }
 
 hipError_t hipGraphLaunch_common(hip::GraphExec* graphExec, hipStream_t stream) {

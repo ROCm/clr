@@ -776,7 +776,7 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
   uint64_t GetFlags() const { return flags_; }
   hipError_t Init();
   hipError_t CreateStreams(uint32_t num_streams);
-  hipError_t Run(hipStream_t stream);
+  hipError_t Run(hip::Stream* stream);
   // Capture GPU Packets from graph commands
   hipError_t CaptureAQLPackets();
   hipError_t UpdateAQLPacket(hip::GraphNode* node);
@@ -2118,8 +2118,7 @@ class GraphEventRecordNode : public GraphNode {
     if (!commands_.empty()) {
       hip::Event* e = reinterpret_cast<hip::Event*>(event_);
       // command release during enqueueRecordCommand
-      hipError_t status = e->enqueueRecordCommand(
-            reinterpret_cast<hipStream_t>(stream), commands_[0]);
+      hipError_t status = e->enqueueRecordCommand(stream, commands_[0]);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
                 "[hipGraph] Enqueue event record command failed for node %p - status %d", this,

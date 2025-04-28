@@ -104,13 +104,11 @@ hipError_t IPCEvent::synchronize() {
 }
 
 // ================================================================================================
-hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
-
+hipError_t IPCEvent::streamWait(hip::Stream* stream, uint flags) {
   int offset = ipc_evt_.ipc_shmem_->read_index;
-  hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WAIT_VALUE,
-                              &(ipc_evt_.ipc_shmem_->signal[offset]),
-                              0,
-                              1, 1, sizeof(uint32_t));
+  hipError_t status =
+      ihipStreamOperation(reinterpret_cast<hipStream_t>(stream), ROCCLR_COMMAND_STREAM_WAIT_VALUE,
+                          &(ipc_evt_.ipc_shmem_->signal[offset]), 0, 1, 1, sizeof(uint32_t));
   return status;
 }
 
@@ -122,7 +120,7 @@ hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* strea
 }
 
 // ================================================================================================
-hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command) {
+hipError_t IPCEvent::enqueueRecordCommand(hip::Stream* stream, amd::Command* command) {
 
   amd::Event& tEvent = command->event();
   createIpcEventShmemIfNeeded();
@@ -136,15 +134,14 @@ hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* comm
   ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
   command->enqueue();
 
-  // device writes 0 to signal after the hipEventRecord command is completed
-  // the signal value is checked by WaitThenDecrementSignal cb
-  hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WRITE_VALUE,
-                                &(ipc_evt_.ipc_shmem_->signal[offset]),
-                                0,
-                                0, 0, sizeof(uint32_t));
-  if (status != hipSuccess) {
-    return status;
-  }
+    // device writes 0 to signal after the hipEventRecord command is completed
+    // the signal value is checked by WaitThenDecrementSignal cb
+    hipError_t status = ihipStreamOperation(
+        reinterpret_cast<hipStream_t>(stream), ROCCLR_COMMAND_STREAM_WRITE_VALUE,
+        &(ipc_evt_.ipc_shmem_->signal[offset]), 0, 0, 0, sizeof(uint32_t));
+    if (status != hipSuccess) {
+      return status;
+    }
 
   // Update read index to indicate new signal.
   int expected = write_index - 1;

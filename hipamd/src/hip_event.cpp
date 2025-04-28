@@ -183,20 +183,17 @@ hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream)
   return hipSuccess;
 }
 // ================================================================================================
-hipError_t Event::streamWait(hipStream_t stream, uint flags) {
-  // Get the stream without any resolution
-  constexpr bool kWait = false;
-  hip::Stream* hip_stream = hip::getStream(stream, kWait);
+hipError_t Event::streamWait(hip::Stream* stream, uint flags) {
   // Access to event_ object must be lock protected
   amd::ScopedLock lock(lock_);
-  if ((event_ == nullptr) || (event_->command().queue() == hip_stream) || ready()) {
+  if ((event_ == nullptr) || (event_->command().queue() == stream) || ready()) {
     return hipSuccess;
   }
   if (!event_->notifyCmdQueue()) {
     return hipErrorLaunchOutOfResources;
   }
   amd::Command* command;
-  hipError_t status = streamWaitCommand(command, hip_stream);
+  hipError_t status = streamWaitCommand(command, stream);
   if (status != hipSuccess) {
     return status;
   }
@@ -226,7 +223,7 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
 }
 
 // ================================================================================================
-hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command) {
+hipError_t Event::enqueueRecordCommand(hip::Stream* stream, amd::Command* command) {
   command->enqueue();
   if (event_ == &command->event()) {
     return hipSuccess;
@@ -240,18 +237,15 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
 }
 
 // ================================================================================================
-hipError_t Event::addMarker(hipStream_t stream, amd::Command* command,
+hipError_t Event::addMarker(hip::Stream* hip_stream, amd::Command* command,
                             bool batch_flush) {
-  // Skip wait as we should not be resolving stream in this sub
-  constexpr bool kWait = false;
-  hip::Stream* hip_stream = hip::getStream(stream, kWait);
   // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
   amd::ScopedLock lock(lock_);
   hipError_t status = recordCommand(command, hip_stream, 0, batch_flush);
   if (status != hipSuccess) {
     return hipSuccess;
   }
-  status = enqueueRecordCommand(stream, command);
+  status = enqueueRecordCommand(hip_stream, command);
   return status;
 }
 
@@ -425,7 +419,7 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
     }
-    status = e->addMarker(stream, nullptr, !hip::Event::kBatchFlush);
+    status = e->addMarker(hip_stream, nullptr, !hip::Event::kBatchFlush);
   }
   return status;
 }

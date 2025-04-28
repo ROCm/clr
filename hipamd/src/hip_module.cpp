@@ -465,7 +465,7 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
 
   if (startEvent != nullptr) {
     hip::Event* eStart = reinterpret_cast<hip::Event*>(startEvent);
-    status = eStart->addMarker(hStream, nullptr);
+    status = eStart->addMarker(hip_stream, nullptr);
     if (status != hipSuccess) {
       return status;
     }

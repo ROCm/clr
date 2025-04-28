@@ -682,10 +682,8 @@ bool Graph::RunNodes(
 }
 
 // ================================================================================================
-hipError_t GraphExec::Run(hipStream_t graph_launch_stream) {
+hipError_t GraphExec::Run(hip::Stream* launch_stream) {
   hipError_t status = hipSuccess;
-
-  hip::Stream* launch_stream = hip::getStream(graph_launch_stream);
 
   if (flags_ & hipGraphInstantiateFlagAutoFreeOnLaunch) {
     if (!topoOrder_.empty()) {
