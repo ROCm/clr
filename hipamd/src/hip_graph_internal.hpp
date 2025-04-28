@@ -116,11 +116,11 @@ class UserObject : public amd::ReferenceCountedObject {
 
 class hipGraphNodeDOTAttribute {
  protected:
-  std::string style_;
-  std::string shape_;
-  std::string label_;
+  const char* style_;
+  const char* shape_;
+  const char* label_;
 
-  hipGraphNodeDOTAttribute(std::string style, std::string shape, std::string label) {
+  hipGraphNodeDOTAttribute(const char* style, const char* shape, const char* label) {
     style_ = style;
     shape_ = shape;
     label_ = label;
@@ -138,13 +138,7 @@ class hipGraphNodeDOTAttribute {
     label_ = node.label_;
   }
 
-  void SetStyle(std::string style) { style_ = style; }
-
-  void SetShape(std::string shape) { shape_ = shape; }
-
-  virtual std::string GetShape(hipGraphDebugDotFlags flag) { return shape_; }
-
-  void SetLabel(std::string label) { label_ = label; }
+  virtual const char* GetShape(hipGraphDebugDotFlags flag) { return shape_; }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) { return label_; }
 
@@ -191,8 +185,8 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
 
 class GraphNode : public hipGraphNodeDOTAttribute {
  public:
-  GraphNode(hipGraphNodeType type, std::string style = "", std::string shape = "",
-            std::string label = "")
+  GraphNode(hipGraphNodeType type, const char* style = "", const char* shape = "",
+            const char* label = "")
       : type_(type),
         visited_(false),
         inDegree_(0),
@@ -956,7 +950,7 @@ class GraphKernelNode : public GraphNode {
               "handle | func handle} | {%p | %p}}\n| {accessPolicyWindow | {base_ptr | num_bytes | "
               "hitRatio | hitProp | missProp} | {%p | %zu | %f | %d | %d}}\n| {cooperative | "
               "%u}\n| {priority | %d}\n}",
-              label_.c_str(), GetID(), function->name().c_str(), kernelParams_.gridDim.x,
+              label_, GetID(), function->name().c_str(), kernelParams_.gridDim.x,
               kernelParams_.gridDim.y, kernelParams_.gridDim.z, kernelParams_.blockDim.x,
               kernelParams_.blockDim.y, kernelParams_.blockDim.z,
               kernelParams_.sharedMemBytes, this, kernelParams_.func,
@@ -972,7 +966,7 @@ class GraphKernelNode : public GraphNode {
               "| {accessPolicyWindow | {base_ptr | num_bytes | "
               "hitRatio | hitProp | missProp} |\n| {%p | %zu | %f | %d | %d}}\n| {cooperative | "
               "%u}\n| {priority | %d}\n}",
-              label_.c_str(), GetID(), function->name().c_str(),
+              label_, GetID(), function->name().c_str(),
               kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
               kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
               kernelAttr_.accessPolicyWindow.missProp, kernelAttr_.cooperative,
@@ -993,7 +987,7 @@ class GraphKernelNode : public GraphNode {
     return label;
   }
 
-  std::string GetShape(hipGraphDebugDotFlags flag) override {
+  const char* GetShape(hipGraphDebugDotFlags flag) override {
     if (flag == hipGraphDebugDotFlagsKernelNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
       return "record";
     } else {
@@ -1471,7 +1465,7 @@ class GraphMemcpyNode : public GraphNode {
           "| %zu}}\n| {{srcPos | {{x | %zu} | {y | %zu} | {z | %zu}}} | {dstPos | {{x | %zu} | {y "
           "| "
           "%zu} | {z | %zu}}} | {Extent | {{Width | %zu} | {Height | %zu} | {Depth | %zu}}}}\n}",
-          label_.c_str(), GetID(), this, memcpyDirection.c_str(), copyParams_.srcPtr.pitch,
+          label_, GetID(), this, memcpyDirection.c_str(), copyParams_.srcPtr.pitch,
           copyParams_.srcPtr.ptr, copyParams_.srcPtr.xsize, copyParams_.srcPtr.ysize,
           copyParams_.dstPtr.pitch, copyParams_.dstPtr.ptr, copyParams_.dstPtr.xsize,
           copyParams_.dstPtr.ysize, copyParams_.srcPos.x, copyParams_.srcPos.y,
@@ -1484,7 +1478,7 @@ class GraphMemcpyNode : public GraphNode {
     }
     return label;
   }
-  std::string GetShape(hipGraphDebugDotFlags flag) override {
+  const char* GetShape(hipGraphDebugDotFlags flag) override {
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
       return "record";
     } else {
@@ -1678,7 +1672,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
           "| %zu}}\n| {{srcPos | {{x | %zu} | {y | %zu} | {z | %zu}}} | {dstPos | {{x | %zu} | {y "
           "| "
           "%zu} | {z | %zu}}} | {Extent | {{Width | %zu} | {Height | %zu} | {Depth | %zu}}}}\n}",
-          label_.c_str(), GetID(), this, memcpyDirection.c_str(), (size_t)0, src_, (size_t)0,
+          label_, GetID(), this, memcpyDirection.c_str(), (size_t)0, src_, (size_t)0,
           (size_t)0, (size_t)0, dst_, (size_t)0, (size_t)0, (size_t)0, (size_t)0, (size_t)0,
           (size_t)0, (size_t)0, (size_t)0, count_, (size_t)1, (size_t)1);
       label = buffer;
@@ -1688,7 +1682,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     return label;
   }
-  std::string GetShape(hipGraphDebugDotFlags flag) override {
+  const char* GetShape(hipGraphDebugDotFlags flag) override {
     if (flag == hipGraphDebugDotFlagsMemcpyNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
       return "record";
     } else {
@@ -1945,7 +1939,7 @@ class GraphMemsetNode : public GraphNode {
       sprintf(buffer,
               "{\n%s\n| {{ID | node handle | dptr | pitch | value | elementSize | width | "
               "height | depth} | {%u | %p | %p | %zu | %u | %u | %zu | %zu | %zu}}}",
-              label_.c_str(), GetID(), this, memsetParams_.dst, memsetParams_.pitch,
+              label_, GetID(), this, memsetParams_.dst, memsetParams_.pitch,
               memsetParams_.value, memsetParams_.elementSize, memsetParams_.width,
               memsetParams_.height, depth_);
       label = buffer;
@@ -1962,7 +1956,7 @@ class GraphMemsetNode : public GraphNode {
     return label;
   }
 
-  std::string GetShape(hipGraphDebugDotFlags flag) override {
+  const char* GetShape(hipGraphDebugDotFlags flag) override {
     if (flag == hipGraphDebugDotFlagsMemsetNodeParams || flag == hipGraphDebugDotFlagsVerbose) {
       return "record";
     } else {

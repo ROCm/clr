@@ -34,7 +34,7 @@ amd::Monitor g_captureStreamsLock{};
 // StreamCaptureset lock
 amd::Monitor g_streamSetLock{};
 std::unordered_set<hip::Stream*> g_allCapturingStreams;
-hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags);
+hipError_t ihipGraphDebugDotPrint(hip::Graph* graph, const char* path, unsigned int flags);
 hipError_t ihipStreamUpdateCaptureDependencies(hipStream_t stream, hipGraphNode_t* dependencies,
                                                size_t numDependencies, unsigned int flags);
 
@@ -1501,8 +1501,7 @@ hipError_t ihipGraphInstantiate(hip::GraphExec** pGraphExec, hip::Graph* graph,
     static int i = 1;
     std::string filename =
         "graph_" + std::to_string(amd::Os::getProcessId()) + "_dot_print_" + std::to_string(i++);
-    hipError_t status =
-        ihipGraphDebugDotPrint(reinterpret_cast<hipGraph_t>(*pGraphExec), filename.c_str(), 0);
+    hipError_t status = ihipGraphDebugDotPrint(*pGraphExec, filename.c_str(), 0);
     if (status == hipSuccess) {
       LogPrintfInfo("[hipGraph] graph dump:%s", filename.c_str());
     }
@@ -3030,7 +3029,7 @@ hipError_t hipGraphKernelNodeCopyAttributes(hipGraphNode_t hSrc, hipGraphNode_t 
       reinterpret_cast<hip::GraphKernelNode*>(hSrc)));
 }
 
-hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned int flags) {
+hipError_t ihipGraphDebugDotPrint(hip::Graph* graph, const char* path, unsigned int flags) {
   std::ofstream fout;
   fout.open(path, std::ios::out);
   if (fout.fail()) {
@@ -3038,7 +3037,8 @@ hipError_t ihipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned i
     return hipErrorOperatingSystem;
   }
   fout << "digraph dot {" << std::endl;
-  reinterpret_cast<hip::Graph*>(graph)->GenerateDOT(fout, (hipGraphDebugDotFlags)flags);
+  hip::Graph* g = reinterpret_cast<hip::Graph*>(graph);
+  g->GenerateDOT(fout, (hipGraphDebugDotFlags)flags);
   fout << "}" << std::endl;
   fout.close();
   return hipSuccess;
@@ -3049,7 +3049,8 @@ hipError_t hipGraphDebugDotPrint(hipGraph_t graph, const char* path, unsigned in
   if (graph == nullptr || path == nullptr) {
     return hipErrorInvalidValue;
   }
-  HIP_RETURN(ihipGraphDebugDotPrint(graph, path, flags));
+  hip::Graph* hip_graph = reinterpret_cast<hip::Graph*>(graph);
+  HIP_RETURN(ihipGraphDebugDotPrint(hip_graph, path, flags));
 }
 
 hipError_t hipGraphNodeSetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
