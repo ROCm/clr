@@ -60,8 +60,6 @@ bool createExecutable(const amd_comgr_data_set_t linkInputs, const std::string& 
 bool convertSPIRVToLLVMBC(const amd_comgr_data_set_t linkInputs, const std::string& isa,
                           std::vector<std::string>& linkOptions, std::string& buildLog,
                           std::vector<char>& linkedSPIRVBitcode);
-bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
-                   std::vector<std::string>& exeOptions, std::string name, std::string& buildLog);
 bool demangleName(const std::string& mangledName, std::string& demangledName);
 std::string handleMangledName(std::string loweredName);
 bool fillMangledNames(std::vector<char>& executable,

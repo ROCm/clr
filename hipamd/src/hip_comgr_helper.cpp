@@ -295,73 +295,6 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
   return true;
 }
 
-static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string& target_id) {
-  if (!code_object) return false;
-  const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(code_object);
-  if (ehdr->e_machine != EM_AMDGPU) return false;
-  if (ehdr->e_ident[EI_OSABI] != ELFOSABI_AMDGPU_HSA) return false;
-
-  bool isXnackSupported{false}, isSramEccSupported{false};
-
-  std::string proc_name;
-  if (!getProcName(ehdr->e_flags, proc_name, isXnackSupported, isSramEccSupported)) return false;
-  target_id = std::string(AMDGCN_TARGET_TRIPLE) + '-' + proc_name;
-
-  switch (ehdr->e_ident[EI_ABIVERSION]) {
-    case ELFABIVERSION_AMDGPU_HSA_V2: {
-      LogPrintfInfo("[Code Object V2, target id:%s]", target_id.c_str());
-      return false;
-    }
-
-    case ELFABIVERSION_AMDGPU_HSA_V3: {
-      LogPrintfInfo("[Code Object V3, target id:%s]", target_id.c_str());
-      if (isSramEccSupported) {
-        if (ehdr->e_flags & EF_AMDGPU_FEATURE_SRAMECC_V3)
-          target_id += ":sramecc+";
-        else
-          target_id += ":sramecc-";
-      }
-      if (isXnackSupported) {
-        if (ehdr->e_flags & EF_AMDGPU_FEATURE_XNACK_V3)
-          target_id += ":xnack+";
-        else
-          target_id += ":xnack-";
-      }
-      break;
-    }
-
-    case ELFABIVERSION_AMDGPU_HSA_V4:
-    case ELFABIVERSION_AMDGPU_HSA_V5:
-    case ELFABIVERSION_AMDGPU_HSA_V6: {
-      if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V4) {
-        LogPrintfInfo("[Code Object V4, target id:%s]", target_id.c_str());
-      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V5) {
-        LogPrintfInfo("[Code Object V5, target id:%s]", target_id.c_str());
-      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V6) {
-        LogPrintfInfo("[Code Object V6, target id:%s]", target_id.c_str());
-      }
-
-      unsigned co_sram_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_SRAMECC_V4;
-      if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_OFF_V4)
-        target_id += ":sramecc-";
-      else if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_ON_V4)
-        target_id += ":sramecc+";
-
-      unsigned co_xnack_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_XNACK_V4;
-      if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_OFF_V4)
-        target_id += ":xnack-";
-      else if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_ON_V4)
-        target_id += ":xnack+";
-      break;
-    }
-
-    default: {
-      return false;
-    }
-  }
-  return true;
-}
-
 // Consumes the string 'consume_' from the starting of the given input
 // eg: input = amdgcn-amd-amdhsa--gfx908 and consume_ is amdgcn-amd-amdhsa--
 // input will become gfx908.
@@ -404,22 +337,6 @@ static bool getTargetIDValue(std::string& input, std::string& processor, char& s
   if (sramecc_value != ' ' && sramecc_value != '+' && sramecc_value != '-') return false;
   xnack_value = getFeatureValue(input, std::string(":xnack"));
   if (xnack_value != ' ' && xnack_value != '+' && xnack_value != '-') return false;
-  return true;
-}
-
-static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
-                       std::string& co_triple_target_id) {
-  std::string offload_kind = trimName(bundled_co_entry_id, '-');
-  if (offload_kind != OFFLOAD_KIND_HIPV4 && offload_kind != OFFLOAD_KIND_HIP &&
-      offload_kind != OFFLOAD_KIND_HCC)
-    return false;
-
-  if (offload_kind != OFFLOAD_KIND_HIPV4)
-    return getTripleTargetIDFromCodeObject(code_object, co_triple_target_id);
-
-  // For code object V4 onwards the bundled code object entry ID correctly
-  // specifies the target triple.
-  co_triple_target_id = bundled_co_entry_id.substr(1);
   return true;
 }
 
@@ -508,7 +425,6 @@ bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::s
     const size_t image_size = desc->size;
     std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
 
-    // Need call getTripleTargetID(...).
     // Check if the device id and code object id are compatible
     unsigned genericVersion = getGenericVersion(image);
     if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa, genericVersion)) {
@@ -1034,63 +950,6 @@ void GenerateUniqueFileName(std::string& name) {
 #endif
 }
 
-bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
-                   std::vector<std::string>& exeOptions, std::string name, std::string& buildLog) {
-  amd_comgr_action_info_t action;
-
-  if (auto res = createAction(action, exeOptions, isa); res != AMD_COMGR_STATUS_SUCCESS) {
-    return false;
-  }
-
-  amd_comgr_data_set_t isaData;
-  if (auto res = amd::Comgr::create_data_set(&isaData); res != AMD_COMGR_STATUS_SUCCESS) {
-    amd::Comgr::destroy_action_info(action);
-    return false;
-  }
-
-  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY, action, isaInputs,
-                                       isaData);
-      res != AMD_COMGR_STATUS_SUCCESS) {
-    extractBuildLog(isaData, buildLog);
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-
-  std::vector<char> isaOutput;
-  if (!extractByteCodeBinary(isaData, AMD_COMGR_DATA_KIND_SOURCE, isaOutput)) {
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-
-  if (name.size() == 0) {
-    // Generate a unique name if the program name is not specified by the user
-    name = std::string("hipXXXXXX");
-    GenerateUniqueFileName(name);
-  }
-  std::string isaName = isa;
-#if defined(_WIN32)
-  // Replace special charaters that are not supported by Windows FS.
-  std::replace(isaName.begin(), isaName.end(), ':', '@');
-#endif
-
-  auto isaFileName = name + std::string("-hip-") + isaName + ".s";
-  std::ofstream f(isaFileName.c_str(), std::ios::trunc | std::ios::binary);
-  if (f.is_open()) {
-    f.write(isaOutput.data(), isaOutput.size());
-    f.close();
-  } else {
-    buildLog += "Warning: writing isa file failed.\n";
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-  amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(isaData);
-  return true;
-}
-
 bool demangleName(const std::string& mangledName, std::string& demangledName) {
   amd_comgr_data_t mangled_data;
   amd_comgr_data_t demangled_data;
@@ -1558,13 +1417,13 @@ bool LinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hipJitInputTyp
   } else if (is_bundled_ && input_type == hipJitInputSpirv) {
     const char* bundleEntryIDs[] = { helpers::SPIRV_BUNDLE_ENTRY_ID };
     size_t bundleEntryIDsCount = sizeof(bundleEntryIDs) / sizeof(bundleEntryIDs[0]);
-    if(!helpers::UnbundleUsingComgr(link_data, isa_, link_options_, build_log_, llvm_code_object, 
+    if(!helpers::UnbundleUsingComgr(link_data, isa_, link_options_, build_log_, llvm_code_object,
                                     bundleEntryIDs, bundleEntryIDsCount)) {
       LogError("Error in hip Linker: Unable to unbundle SPIRV Bitcode");
       return false;
     }
   } else {
-      llvm_code_object.assign(link_data.begin(), link_data.end()); 
+      llvm_code_object.assign(link_data.begin(), link_data.end());
   }
 
   if ((data_kind_ = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
