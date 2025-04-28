@@ -1414,7 +1414,7 @@ bool Device::init() {
     // Make sure the devdriver initialization is done after Pal platform creation
     // to avoid a timeout in RGP server
     platform_->GetDevDriverServer()->GetDriverControlServer()->StartLateDeviceInit();
-    platform_->GetDevDriverServer()->GetDriverControlServer()->FinishDeviceInit();
+
   }
 #endif // PAL_GPUOPEN_OCL
 
@@ -1442,6 +1442,14 @@ bool Device::init() {
     // Create the GPU device object
     Device* d = new Device();
     result = result && (nullptr != d) && d->create(gDeviceList[ordinal]);
+
+#ifdef PAL_GPUOPEN_OCL
+    if ((platform_->GetDevDriverServer() != nullptr) &&
+        (platform_->GetDevDriverServer()->GetDriverControlServer() != nullptr)) {
+        // Finalize DevDriver initialization after device creation
+        platform_->GetDevDriverServer()->GetDriverControlServer()->FinishDeviceInit();
+    }
+#endif // PAL_GPUOPEN_OCL
 
     if (result) {
       foundDevice = true;
