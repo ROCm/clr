@@ -169,7 +169,10 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define HIP_RETURN_DURATION(ret, ...)                                                              \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+  if (amd::Device::IsDeviceNotUsable()) {                                                          \
+    hip::tls.last_error_ = hipErrorNoDevice;                                                       \
+    hip::tls.last_command_error_ = hipErrorNoDevice;                                               \
+  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
@@ -184,7 +187,10 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define HIP_RETURN(ret, ...)                                                                       \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+  if (amd::Device::IsDeviceNotUsable()) {                                                          \
+    hip::tls.last_error_ = hipErrorNoDevice;                                                       \
+    hip::tls.last_command_error_ = hipErrorNoDevice;                                               \
+  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \

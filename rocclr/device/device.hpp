@@ -2162,6 +2162,9 @@ class Device : public RuntimeObject {
   virtual device::UriLocator* createUriLocator() const = 0;
 #endif
 #endif
+
+  static bool IsDeviceNotUsable() { return device_not_usable_; }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -2196,6 +2199,8 @@ class Device : public RuntimeObject {
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
   amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
+  static bool device_not_usable_; //!< If set, we should not launch any commands anymore.
+
  private:
   const Isa *isa_;                //!< Device isa
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

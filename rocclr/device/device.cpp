@@ -336,6 +336,8 @@ Context* Device::glb_ctx_ = nullptr;
 Monitor Device::p2p_stage_ops_(true);
 Memory* Device::p2p_stage_ = nullptr;
 
+bool Device::device_not_usable_ = false;
+
 std::shared_mutex MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);

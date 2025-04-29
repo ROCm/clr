@@ -559,6 +559,10 @@ bool Device::init() {
     }
   }
 
+  if (amd::IS_HIP) {
+    RegisterBackendErrorCb();
+  }
+
   return true;
 }
 
@@ -3393,6 +3397,41 @@ device::Signal* Device::createSignal() const {
 }
 
 // ================================================================================================
+hsa_status_t Device::BackendErrorCallBackHandler(const hsa_amd_event_t* event, void* data) {
+  switch (event->event_type) {
+    case HSA_AMD_GPU_MEMORY_FAULT_EVENT:
+      LogError("Memory Fault Error");
+      break;
+    case HSA_AMD_GPU_HW_EXCEPTION_EVENT:
+      LogError("HW Exception Error");
+      break;
+    case HSA_AMD_GPU_MEMORY_ERROR_EVENT:
+      LogError("GPU Memory Error");
+      break;
+    default:
+      LogError("Unknown Event Type ");
+      break;
+  }
+
+  if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
+    device_not_usable_ = true;
+  } else {
+    abort();
+  }
+
+  return HSA_STATUS_SUCCESS;
+}
+
+// ================================================================================================
+void Device::RegisterBackendErrorCb() {
+  // Register ROCclr Error Callback
+  hsa_status_t hsa_error = HSA_STATUS_SUCCESS;
+  hsa_error = hsa_amd_register_system_event_handler(BackendErrorCallBackHandler, nullptr);
+  if (hsa_error != HSA_STATUS_SUCCESS) {
+    LogError("Cannot Register Call back event handler");
+  }
+}
+// ================================================================================================
 amd::Memory* Device::GetArenaMemObj(const void* ptr, size_t& offset, size_t size) {
   // Only create arena_mem_object if CPU memory is accessible from HMM
   // or if runtime received an interop from another ROCr's client
@@ -3559,7 +3598,12 @@ void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
         "Callback: Queue %p aborting with error : %s code: 0x%x", queue->base_address,
         errorMsg, status);
     }
-    abort();
+
+    if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
+      amd::Device::device_not_usable_ = true;
+    } else {
+      abort();
+    }
   }
 }
 

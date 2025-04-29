@@ -23,6 +23,7 @@
 #include "platform/commandqueue.hpp"
 #include "rocdefs.hpp"
 #include "rocdevice.hpp"
+#include "utils/flags.hpp"
 #include "utils/util.hpp"
 #include "hsa/hsa.h"
 #include "hsa/hsa_ext_image.h"
@@ -46,26 +47,39 @@ constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
+constexpr static uint64_t kTimeout4Secs = 4 * M;
+
 inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false) {
+
+  hsa_wait_state_t wait_state = HSA_WAIT_STATE_BLOCKED;
+  if (active_wait) {
+    wait_state = HSA_WAIT_STATE_ACTIVE;
+  }
+
   if (hsa_signal_load_relaxed(signal) > 0) {
-    uint64_t timeout = kTimeout100us;
-    if (active_wait) {
-      timeout = kUnlimitedWait;
+    // When it is blocked wait, we wait in active state for 100 us before proceeding to wait in
+    // blocked state indefinitely.
+    if (!active_wait) {
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
+              signal.handle, kTimeout100us);
+      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                    kTimeout100us, HSA_WAIT_STATE_ACTIVE) != 0) {
+        if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsDeviceNotUsable()) {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Device not Stable, while waiting for Signal ="
+                  "(0x%lx) for %d ns", signal.handle, kTimeout100us);
+          return true;
+        }
+      }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
-            signal.handle, timeout);
-
-    // Active wait with a timeout
-    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                  timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
-              signal.handle);
-
-      // Wait until the completion with CPU suspend
-      if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
-        return false;
+    // This is unlimited wait, but we wait for 4 secs and check if the device is
+    // unstable, if so we return, otherwise we continue to wait in the while loop.
+    while (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                     kTimeout4Secs, wait_state) != 0) {
+      if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsDeviceNotUsable()) {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Device not Stable, while waiting for Signal ="
+                  "(0x%lx) for %d ns", signal.handle, kTimeout4Secs);
+        return true;
       }
     }
   }

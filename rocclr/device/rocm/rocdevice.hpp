@@ -541,6 +541,10 @@ class Device : public NullDevice {
 
   void getGlobalCUMask(std::string cuMaskStr);
 
+  static hsa_status_t BackendErrorCallBackHandler(const hsa_amd_event_t* event, void* data);
+
+  static void RegisterBackendErrorCb();
+
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0);
 
   const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
@@ -645,6 +649,9 @@ class Device : public NullDevice {
 
   //! Code object to kernel info map (used in the crash dump analysis)
   mutable std::map<uint64_t, Kernel&> kernel_map_;
+
+  //! Friend function callbackQueue can access and set device class variables.
+  friend void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data);
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
