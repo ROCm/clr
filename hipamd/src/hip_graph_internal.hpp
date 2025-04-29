@@ -159,8 +159,8 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
     }
   }
 
-  // Allocate kernel arg pool for the given size.
-  bool AllocGraphKernargPool(size_t pool_size);
+  // Allocate kernel arg pool on device for the given size.
+  bool AllocGraphKernargPool(size_t pool_size, amd::Device* device);
 
   // Allocate kernel args from current chunck for given size and alignment.
   // If kernel arg pool is full allocate new chunck and alloc kern args from new pool.
@@ -194,6 +194,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
         id_(nextID++),
         parentGraph_(nullptr),
         isEnabled_(1),
+        dev_id_(ihipGetDevice()),
         hipGraphNodeDOTAttribute(style, shape, label) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
@@ -209,6 +210,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
     isEnabled_ = node.isEnabled_;
+    dev_id_ = node.dev_id_;
   }
 
   virtual ~GraphNode() {
@@ -240,7 +242,8 @@ class GraphNode : public hipGraphNodeDOTAttribute {
   size_t GetKerArgSize() const { return alignedKernArgSize_; }
   size_t GetKernargSegmentByteSize() const { return kernargSegmentByteSize_; }
   size_t GetKernargSegmentAlignment() const { return kernargSegmentAlignment_; }
-  hipError_t CaptureAndFormPacket(hip::Stream* capture_stream, GraphKernelArgManager* kernArgMgr) {
+  hipError_t CaptureAndFormPacket(GraphKernelArgManager* kernArgMgr) {
+    auto capture_stream = hip::getNullStream(g_devices[dev_id_]->devices()[0]->context(), false);
     hipError_t status = CreateCommand(capture_stream);
     if (status != hipSuccess) {
       return status;
@@ -433,10 +436,13 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "\nStreamId:" << stream_id_;
       out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
   }
+  void SetDeviceId(int id) { dev_id_ = id; }
+  int GetDeviceId() const { return dev_id_; }
 
  protected:
   // Declare Graph and GraphExec as friends of node for simpler access to GraphNode fields
@@ -465,6 +471,8 @@ class GraphNode : public hipGraphNodeDOTAttribute {
   size_t alignedKernArgSize_ = 256;       //!< Aligned size required for kernel args
   size_t kernargSegmentByteSize_ = 512;   //!< Kernel arg segment byte size
   size_t kernargSegmentAlignment_ = 256;  //!< Kernel arg segment alignment
+  int dev_id_;  //!< Device Id when node is created(dev id from capture stream/current device
+                //!< when explicitly added)
 };
 
 class Graph {
@@ -799,7 +807,6 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
   //! Topological order of the graph doesn't include nodes embedded as part of the child graph
   std::vector<Node> topoOrder_;
   std::vector<hip::Stream*> parallel_streams_;
-  hip::Stream* capture_stream_;
   uint64_t flags_ = 0;
   GraphKernelArgManager* kernArgManager_ = nullptr;  //!< Kernel Arg manager for graph.
   int instantiateDeviceId_ = -1;
@@ -906,7 +913,7 @@ class GraphKernelNode : public GraphNode {
       return;
     }
     for (auto& command : commands_) {
-      hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+      hipFunction_t func = getFunc(kernelParams_, dev_id_);
       hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
       amd::Kernel* kernel = function->kernel();
       amd::ScopedLock lock(function->dflock_);
@@ -934,13 +941,14 @@ class GraphKernelNode : public GraphNode {
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "StreamId:" << stream_id_;
       out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
   }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) override {
-    hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+    hipFunction_t func = getFunc(kernelParams_, dev_id_);
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     std::string label;
     char buffer[4096];
@@ -1010,14 +1018,14 @@ class GraphKernelNode : public GraphNode {
 
   hipError_t copyParams(const hipKernelNodeParams* pNodeParams) {
     hasHiddenHeap_ = false;
-    hipFunction_t func = getFunc(*pNodeParams, ihipGetDevice());
+    hipFunction_t func = getFunc(*pNodeParams, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
     }
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     amd::Kernel* kernel = function->kernel();
     if (DEBUG_CLR_GRAPH_PACKET_CAPTURE) {
-      auto device = g_devices[ihipGetDevice()]->devices()[0];
+      auto device = g_devices[dev_id_]->devices()[0];
       device::Kernel* devKernel = const_cast<device::Kernel*>(kernel->getDeviceKernel(*device));
       kernargSegmentByteSize_ = devKernel->KernargSegmentByteSize();
       kernargSegmentAlignment_ = devKernel->KernargSegmentAlignment();
@@ -1140,15 +1148,14 @@ class GraphKernelNode : public GraphNode {
   GraphNode* clone() const override { return new GraphKernelNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
-    int devID = hip::getDeviceID(stream->context());
-    hipFunction_t func = getFunc(kernelParams_, devID);
+    hipFunction_t func = getFunc(kernelParams_, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
     }
     hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
     amd::Kernel* kernel = function->kernel();
     amd::ScopedLock lock(function->dflock_);
-    hipError_t status = validateKernelParams(&kernelParams_, func, devID);
+    hipError_t status = validateKernelParams(&kernelParams_, func, dev_id_);
     if (hipSuccess != status) {
       return status;
     }
@@ -1187,12 +1194,12 @@ class GraphKernelNode : public GraphNode {
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
-    hipFunction_t func = getFunc(kernelParams_, ihipGetDevice());
+    hipFunction_t func = getFunc(kernelParams_, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
     }
     // updates kernel params
-    hipError_t status = validateKernelParams(params, func, ihipGetDevice());
+    hipError_t status = validateKernelParams(params, func, dev_id_);
     if (hipSuccess != status) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to validateKernelParams");
       return status;
@@ -1213,7 +1220,7 @@ class GraphKernelNode : public GraphNode {
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
     hipDeviceProp_t prop = {0};
-    hipError_t status = ihipGetDeviceProperties(&prop, ihipGetDevice());
+    hipError_t status = ihipGetDeviceProperties(&prop, dev_id_);
     if (hipSuccess != status){
       return status;
     }

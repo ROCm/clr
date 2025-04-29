@@ -654,7 +654,7 @@ public:
   ///       and Blocking streams
   extern hip::Stream* getStream(hipStream_t stream, bool wait = true);
   /// Get default stream associated with the ROCclr context
-  extern hip::Stream* getNullStream(amd::Context&);
+  extern hip::Stream* getNullStream(amd::Context&, bool wait = true);
   /// Get default stream of the thread
   extern hip::Stream* getNullStream(bool wait = true);
   /// Get device ID associated with the ROCclr context

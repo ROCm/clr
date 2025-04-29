@@ -128,17 +128,17 @@ hip::Stream* getStream(hipStream_t stream, bool wait) {
 }
 
 // ================================================================================================
-hip::Stream* getNullStream(amd::Context& ctx) {
+hip::Stream* getNullStream(amd::Context& ctx, bool wait) {
   for (auto& it : g_devices) {
     if (it->asContext() == &ctx) {
-      return it->NullStream();
+      return it->NullStream(wait);
     }
   }
   // If it's a pure SVM allocation with system memory access, then it shouldn't matter which device
   // runtime selects by default
   if (hip::host_context == &ctx) {
     // Return current...
-    return getNullStream();
+    return getNullStream(wait);
   }
   return nullptr;
 }

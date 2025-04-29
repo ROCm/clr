@@ -85,13 +85,7 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
                                   const hipKernelNodeParams* pNodeParams,
                                   const ihipExtKernelEvents* pNodeEvents = nullptr,
-                                  bool capture = true, int coopKernel = 0) {
-  if (pGraphNode == nullptr || graph == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr) || pNodeParams == nullptr ||
-      pNodeParams->func == nullptr) {
-    return hipErrorInvalidValue;
-  }
-
+                                  bool capture = true, int coopKernel = 0, int devId = 0) {
   if (!hip::Graph::isGraphValid(graph)) {
     return hipErrorInvalidValue;
   }
@@ -115,6 +109,9 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   }
 
   *pGraphNode = new hip::GraphKernelNode(pNodeParams, pNodeEvents, coopKernel);
+  if (devId != 0) {
+    (*pGraphNode)->SetDeviceId(devId);
+  }
   status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
   return status;
 }
@@ -231,9 +228,9 @@ hipError_t capturehipLaunchKernel(hipStream_t& stream, const void*& hostFunction
   nodeParams.sharedMemBytes = sharedMemBytes;
 
   hip::GraphNode* pGraphNode;
-  hipError_t status =
-      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &nodeParams);
+  hipError_t status = ihipGraphAddKernelNode(
+      &pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+      s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true, 0, s->DeviceId());
   if (status != hipSuccess) {
     return status;
   }
@@ -338,9 +335,9 @@ hipError_t capturehipModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f, u
   nodeParams.sharedMemBytes = sharedMemBytes;
 
   hip::GraphNode* pGraphNode;
-  hipError_t status =
-      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &nodeParams);
+  hipError_t status = ihipGraphAddKernelNode(
+      &pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+      s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true, 0, s->DeviceId());
   if (status != hipSuccess) {
     return status;
   }
@@ -373,7 +370,7 @@ hipError_t capturehipModuleLaunchCooperativeKernel(hipStream_t& stream, hipFunct
   hipError_t status =
       ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                              s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true,
-                             amd::NDRangeKernelCommand::CooperativeGroups);
+                             amd::NDRangeKernelCommand::CooperativeGroups, s->DeviceId());
   if (status != hipSuccess) {
     return status;
   }
@@ -400,9 +397,9 @@ hipError_t capturehipLaunchByPtr(hipStream_t& stream, hipFunction_t func, dim3 b
 
   hip::GraphNode* pGraphNode;
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
-  hipError_t status =
-      ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
-                             s->GetLastCapturedNodes().size(), &nodeParams);
+  hipError_t status = ihipGraphAddKernelNode(
+      &pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
+      s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true, 0, s->DeviceId());
   if (status != hipSuccess) {
     return status;
   }
@@ -434,7 +431,7 @@ hipError_t capturehipLaunchCooperativeKernel(hipStream_t& stream, const void*& f
   hipError_t status =
       ihipGraphAddKernelNode(&pGraphNode, s->GetCaptureGraph(), s->GetLastCapturedNodes().data(),
                              s->GetLastCapturedNodes().size(), &nodeParams, nullptr, true,
-                             amd::NDRangeKernelCommand::CooperativeGroups);
+                             amd::NDRangeKernelCommand::CooperativeGroups, s->DeviceId());
   if (status != hipSuccess) {
     return status;
   }
@@ -1293,14 +1290,14 @@ hipError_t hipGraphAddKernelNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
   HIP_INIT_API(hipGraphAddKernelNode, pGraphNode, graph, pDependencies, numDependencies,
                pNodeParams);
   if (pGraphNode == nullptr || graph == nullptr || pNodeParams == nullptr ||
-      (numDependencies > 0 && pDependencies == nullptr)) {
+      (numDependencies > 0 && pDependencies == nullptr) || pNodeParams->func == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::GraphNode* node;
-  hipError_t status = ihipGraphAddKernelNode(
-      &node, reinterpret_cast<hip::Graph*>(graph),
-      reinterpret_cast<hip::GraphNode* const*>(pDependencies), numDependencies, pNodeParams,
-      nullptr, false);
+  hipError_t status =
+      ihipGraphAddKernelNode(&node, reinterpret_cast<hip::Graph*>(graph),
+                             reinterpret_cast<hip::GraphNode* const*>(pDependencies),
+                             numDependencies, pNodeParams, nullptr, false);
   *pGraphNode = reinterpret_cast<hipGraphNode*>(node);
   HIP_RETURN(status);
 }
