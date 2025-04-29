@@ -489,7 +489,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
-  deviceProps.memoryBusWidth = info.globalMemChannels_;
+  deviceProps.memoryBusWidth = info.vramBusBitWidth_;
   deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
   deviceProps.major = isa.versionMajor();
   deviceProps.minor = isa.versionMinor();
@@ -690,7 +690,7 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
-  deviceProps.memoryBusWidth = info.globalMemChannels_;
+  deviceProps.memoryBusWidth = info.vramBusBitWidth_;
   deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
   deviceProps.major = isa.versionMajor();
   deviceProps.minor = isa.versionMinor();

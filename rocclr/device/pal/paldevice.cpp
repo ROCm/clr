@@ -667,7 +667,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
-
+  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * 32;
   info_.luidLowPart_ = palProp.osProperties.luidLowPart;
   info_.luidHighPart_ = palProp.osProperties.luidHighPart;
   // Setup the node mask for MGPU only case from the original PAL list of all devices

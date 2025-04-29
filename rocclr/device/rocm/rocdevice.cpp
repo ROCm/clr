@@ -1140,14 +1140,6 @@ bool Device::populateOCLDeviceConstants() {
 
   if (HSA_STATUS_SUCCESS !=
       hsa_agent_get_info(bkendDevice_,
-                         static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_MEMORY_WIDTH),
-                         &info_.globalMemChannels_)) {
-    return false;
-  }
-  assert(info_.globalMemChannels_ > 0);
-
-  if (HSA_STATUS_SUCCESS !=
-      hsa_agent_get_info(bkendDevice_,
                          static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_DRIVER_NODE_ID),
                          &info_.driverNodeId_)) {
     return false;
@@ -1565,6 +1557,8 @@ bool Device::populateOCLDeviceConstants() {
                            &info_.vramBusBitWidth_)) {
       return false;
     }
+
+    info_.globalMemChannels_ = info_.vramBusBitWidth_ / 32;
 
     if (HSA_STATUS_SUCCESS !=
         hsa_agent_get_info(bkendDevice_,
