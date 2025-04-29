@@ -369,24 +369,29 @@ bool VirtualGPU::Queue::flush() {
   const Settings& settings = gpu_.dev().settings();
 
   if (!settings.alwaysResident_ && palMemRefs_.size() != 0) {
-    if (Pal::Result::Success !=
-        iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
-                                      Pal::GpuMemoryRefCantTrim)) {
-      LogError("PAL failed to make resident resources!");
+    Pal::Result result = iDev_->AddGpuMemoryReferences(
+                                      palMemRefs_.size(),
+                                      &palMemRefs_[0], iQueue_,
+                                      Pal::GpuMemoryRefCantTrim);
+    if (Pal::Result::Success != result) {
+      LogPrintfError("PAL failed to make resident resources! result: %d", result);
       return false;
     }
     palMemRefs_.clear();
   }
 
   // Stop commands building
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
-    LogError("PAL failed to finalize a command buffer!");
+  Pal::Result result;
+  result = iCmdBuffs_[cmdBufIdSlot_]->End();
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed to finalize a command buffer! result: %d", result);
     return false;
   }
 
   // Reset the fence. PAL will reset OS event
-  if (Pal::Result::Success != iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_])) {
-    LogError("PAL failed to reset a fence!");
+  result = iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_]);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed to reset a fence! result:%d", result);
     return false;
   }
 
@@ -420,14 +425,16 @@ bool VirtualGPU::Queue::flush() {
     }
   }
   // Submit command buffer to OS
-  Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
     result = gpu_.dev().captureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
   } else {
     result = iQueue_->Submit(submitInfo);
   }
   if (Pal::Result::Success != result) {
-    LogError("PAL failed to submit CMD!");
+    LogPrintfError("PAL failed to submit CMD! result:%d", result);
+    if (GPU_ANALYZE_HANG) {
+      DumpMemoryReferences();
+    }
     return false;
   }
   // Make sure the slot isn't busy
@@ -461,15 +468,17 @@ bool VirtualGPU::Queue::flush() {
   }
 
   // Reset command buffer, so CB chunks could be reused
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Reset(nullptr, false)) {
-    LogError("PAL failed CB reset!");
+  result = iCmdBuffs_[cmdBufIdSlot_]->Reset(nullptr, false);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed CB reset! result:%d", result);
     return false;
   }
   // Start command buffer building
   Pal::CmdBufferBuildInfo cmdBuildInfo = {};
   cmdBuildInfo.pMemAllocator = &vlAlloc_;
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo)) {
-    LogError("PAL failed CB building initialization!");
+  result = iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed CB building initialization! result:%d", result);
     return false;
   }
 

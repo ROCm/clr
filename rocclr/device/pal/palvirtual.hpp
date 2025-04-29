@@ -161,7 +161,7 @@ class VirtualGPU : public device::VirtualDevice {
         if (Pal::Result::Success == result) {
           break;
         } else if ((Pal::Result::NotReady == result) || (Pal::Result::Timeout == result)) {
-          LogWarning("PAL fence isn't ready!");
+          LogPrintfWarning("PAL fence isn't ready! result:%d", result);
           if (GPU_ANALYZE_HANG) {
             DumpMemoryReferences();
           }
