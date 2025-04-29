@@ -788,6 +788,10 @@ bool Buffer::create(bool alloc_local) {
       return false;
     }
 
+    // Update the size of memory object to size of handle, since the setting the size to the actual
+    // physical memory allocated would block the address range during amd::MemObjMap::FindMemObj()
+    // lookup. This might cause address range issue in virtual address space.
+    owner()->UpdatePhysMemSize();
     owner()->setSvmPtr(reinterpret_cast<void*>(owner()->getUserData().hsa_handle));
 
     return true;

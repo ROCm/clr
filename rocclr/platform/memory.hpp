@@ -254,7 +254,6 @@ class Memory : public amd::RuntimeObject {
 
   //! Initializes the device memory array
   virtual void initDeviceMemory();
-
   void setSize(size_t size) { size_ = size; }
   void setInteropObj(InteropObject* obj) { interopObj_ = obj; }
 
@@ -338,6 +337,13 @@ class Memory : public amd::RuntimeObject {
   size_t getSize() const { return size_; }
   Flags getMemFlags() const { return flags_; }
   Type getType() const { return type_; }
+
+  //! Update phys mem size to the handle, only when the ROCCLR_MEM_PHYSMEM flag is set.
+  void UpdatePhysMemSize() {
+    if (flags_ & ROCCLR_MEM_PHYMEM) {
+      size_ = sizeof(getUserData().hsa_handle);
+    }
+  }
 
   const Device* getLastWriter() { return lastWriter_; }
   const HostMemoryReference* getHostMemRef() const { return &hostMemRef_; }
