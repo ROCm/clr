@@ -2,6 +2,27 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
+
+## HIP 6.4.1 for ROCm 6.4.1
+
+### Added
+
+* New debug mask, to print precise code object information for logging.
+
+### Changed
+
+* The way of calling code object. HIP runtime uses device bitcode before SPIRV.
+
+### Optimized
+
+* Improved kernel logging using demangling shader names.
+
+### Resolved issues
+
+* Stale state during the graph capture. The return error was fixed, HIP runtime now always uses the latest dependent nodes during `hipEventRecord` capture.
+* `hipEventRecords` called runtime function `hip::getStream` properly.
+
+
 ## HIP 6.4 (For ROCm 6.4)
 
 ### Added
@@ -24,25 +45,29 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 * roc-obj* tools are being deprecated, and will be removed in an upcoming release.
     - Perl package dependencies are now RECOMMENDS or SUGGESTS.  Users will need to install these themselves.
     - Support for ROCm Object tooling has moved into llvm-objdump provided by package rocm-llvm.
-
-### Removed
-
-* HIP API `hipExtHostAlloc`.
+* SDMA retainer logic is removed for engine selection in operation of runtime buffer copy.
 
 ### Optimized
 
 * `hipGraphLaunch` parallelism is improved for complex data-parallel graphs.
 * Round-robin queue mechanism is updated for command scheduling. For multi-streams execution, HSA queue from null stream lock is freed and won't occupy the queue ID after the kernel in the stream is finished.
 * The HIP runtime doesn't free bitcode object before code generation. It adds a cache, which allows compiled code objects to be reused instead of recompiling. This improves performance on multi-GPU systems.
+* Runtime uses unified copy approach
+    - Unpinned `H2D`copies are no longer blocking until the size of 1MB.
+    - Kernel copy path is enabled for unpinned `H2D`/`D2H` methods.
+    - The default environment variable `GPU_FORCE_BLIT_COPY_SIZE` is set to `16`, which limits the kernel copy to sizes less than 16 KB, while copies about that would be handled by `SDMA` engine.
+    - Blit code is refactored and ASAN instrumentation is cleaned up.
 
 ### Resolved issues
 
-* Out of memory error on Windows. When the user calls `hipMalloc` for device memory allocation while specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory). This fix is not available on Linux.
+* Out of memory error on Windows. When the user calls `hipMalloc` for device memory allocation while specifying a size larger than the available device memory, the HIP runtime fixes the error in the API implementation, allocating the available device memory plus system memory (shared virtual memory).
+* Error of dependency on libgcc-s1 during rocm-dev install on Debian Buster. HIP runtime now uses libgcc1 for this distros.
+* Stack corruption during kernel execution. HIP runtime now adds maximum stack size limit based on the GPU device feature.
 
 ### Upcoming changes
- 
+
 The following are the list of backwards incompatible changes planned for the upcoming major ROCm release.
- 
+
 * Signature changes in APIs to match corresponding CUDA APIs,
     - `hiprtcCreatreProgram`
     - `hiprtcCompileProgram`
