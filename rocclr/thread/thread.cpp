@@ -19,7 +19,6 @@
  THE SOFTWARE. */
 
 #include "thread/thread.hpp"
-#include "thread/semaphore.hpp"
 #include "thread/monitor.hpp"
 #include "os/os.hpp"
 
@@ -29,19 +28,8 @@
 
 namespace amd {
 
-HostThread::HostThread() : Thread("HostThread", 0, false) {
-  setCurrent();
-  Os::currentStackInfo(&stackBase_, &stackSize_);
-  setState(RUNNABLE);
-}
-
 void Thread::create() {
-  created_ = new Semaphore();
-  lock_ = new Semaphore();
-  suspend_ = new Semaphore();
-
   selfSuspendLock_ = new Monitor();
-
   data_ = NULL;
   handle_ = NULL;
   setState(CREATED);
@@ -54,9 +42,11 @@ Thread::Thread(const std::string& name, size_t stackSize, bool spawn)
   if (!spawn) return;
 
   if ((handle_ = Os::createOsThread(this))) {
-    // Now we need to wait for Thread::main to report back.
+    // Now we need to wait for Thread::main() to report back.
+    ScopedLock sl(selfSuspendLock_);
+    // Wait for main() to update state as INITIALIZED
     while (state() != Thread::INITIALIZED) {
-      created_->wait();
+      selfSuspendLock_->wait();
     }
   }
 }
@@ -67,10 +57,6 @@ Thread::~Thread() {
     ::CloseHandle((HANDLE)handle_);
   }
 #endif
-  delete created_;
-  delete lock_;
-  delete suspend_;
-
   delete selfSuspendLock_;
 }
 
@@ -84,10 +70,20 @@ void* Thread::main() {
   // Notify the parent thread that we are up and running.
   {
     ScopedLock sl(selfSuspendLock_);
+    // Notify parent thread that the state is update as INITIALIZED
     setState(INITIALIZED);
-    created_->post();
-    selfSuspendLock_->wait();
+    selfSuspendLock_->notify();
   }
+
+  // Now we need to wait for Thread::start() to report back.
+  {
+    ScopedLock sl(selfSuspendLock_);
+    // wait for start() to update state as RUNNABLE
+    while (state() != Thread::RUNNABLE) {
+      selfSuspendLock_->wait();
+    }
+  }
+
 
   if (state() == RUNNABLE) {
     run(data_);
@@ -103,8 +99,10 @@ bool Thread::start(void* data) {
   }
 
   data_ = data;
+  // Notify the thread that the parent thread are up and running.
   {
     ScopedLock sl(selfSuspendLock_);
+    // Notify main() that the state is updated as RUNNABLE
     setState(RUNNABLE);
     selfSuspendLock_->notify();
   }
@@ -166,8 +164,7 @@ bool Thread::init() {
   }
   initialized_ = true;
 
-  // Register the main thread
-  return NULL != new HostThread();
+  return true;
 }
 
 void Thread::tearDown() {

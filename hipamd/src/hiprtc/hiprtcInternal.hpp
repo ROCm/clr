@@ -80,13 +80,6 @@ template <typename T, typename... Args> inline std::string ToString(T first, Arg
 // hiprtcInit lock
 static amd::Monitor g_hiprtcInitlock{};
 #define HIPRTC_INIT_API_INTERNAL(...)                                                              \
-  amd::Thread* thread = amd::Thread::current();                                                    \
-  if (!VDI_CHECK_THREAD(thread)) {                                                                 \
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,                                                        \
-            "An internal error has occurred."                                                      \
-            " This may be due to insufficient memory.");                                           \
-    HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \
-  }                                                                                                \
   amd::ScopedLock lock(g_hiprtcInitlock);                                                          \
   if (!amd::Flag::init()) {                                                                        \
     HIPRTC_RETURN(HIPRTC_ERROR_INTERNAL_ERROR);                                                    \

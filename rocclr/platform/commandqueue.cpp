@@ -51,7 +51,10 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
     if (thread_.state() >= Thread::INITIALIZED) {
       ScopedLock sl(queueLock_);
       thread_.start(this);
-      queueLock_.wait();
+      // wait for HostQueue::loop() to update acceptingCommands_ as true
+      while (!thread_.acceptingCommands_) {
+        queueLock_.wait();
+      }
     }
   }
 }
@@ -204,6 +207,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
   // Notify the caller that the queue is ready to accept commands.
   {
     ScopedLock sl(queueLock_);
+    // Notify HostQueue() that acceptingCommands_ is updated to true
     thread_.acceptingCommands_ = true;
     queueLock_.notify();
   }

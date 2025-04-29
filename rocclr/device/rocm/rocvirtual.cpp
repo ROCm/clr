@@ -186,12 +186,6 @@ void Timestamp::checkGpuTime() {
 bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   Timestamp* ts = reinterpret_cast<Timestamp*>(arg);
 
-  amd::Thread* thread = amd::Thread::current();
-  if (!(thread != nullptr ||
-      ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
-    return false;
-  }
-
   if (amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
     amd::Command* head = ts->getParsedCommand();
     if (head == nullptr) {
