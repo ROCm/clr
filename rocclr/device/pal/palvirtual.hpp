@@ -504,12 +504,17 @@ class VirtualGPU : public device::VirtualDevice {
     };
 
     if (type == BarrierType::KernelToCopy) {
+      barrier.dstGlobalStageMask = Pal::PipelineStageBlt;
       barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToKernel) {
+      barrier.srcGlobalStageMask = Pal::PipelineStageBlt;
       barrier.srcGlobalAccessMask  = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToCopy) {
+      barrier.srcGlobalStageMask = barrier.dstGlobalStageMask = Pal::PipelineStageBlt;
       barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::FlushL2) {
+      barrier.srcGlobalStageMask |= Pal::PipelineStageBlt; 
+      barrier.dstGlobalStageMask |= Pal::PipelineStageBlt;
       barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy | Pal::CoherCpu;
     }
 
