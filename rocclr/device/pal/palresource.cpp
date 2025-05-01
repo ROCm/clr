@@ -1193,6 +1193,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
                                                   createInfo.pReservedGpuVaOwner, &subOffset_);
     if (memRef_ == nullptr) {
       createInfo.alignment = dev().properties().gpuMemoryProperties.fragmentSize;
+      createInfo.size = amd::alignUp (createInfo.size, createInfo.alignment);
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     }
   }
