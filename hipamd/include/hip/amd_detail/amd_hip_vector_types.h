@@ -36,7 +36,8 @@ THE SOFTWARE.
     #define __HOST_DEVICE__ __host__ __device__
 #endif
 
-#if defined(__has_attribute)
+// __has_attribute is defined as 0 by LLVM headers when compiling from MSVC. Use #if instead of #ifdef to support MSVC.
+#if __has_attribute
     #if __has_attribute(ext_vector_type)
         #define __HIP_USE_NATIVE_VECTOR__ 1
         #define __NATIVE_VECTOR__(n, T) T __attribute__((ext_vector_type(n)))
