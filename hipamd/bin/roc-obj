@@ -207,7 +207,7 @@ run_command() {
 }
 
 main() {
-  printf "Warning: These roc-obj tools are being DEPRECATED.  Similar functionality is being provided by llvm-objdump in the rocm-llvm package.\n"
+  printf "Warning: The roc-obj tools have been DEPRECATED. Similar functionality is provided by llvm-objdump in the rocm-llvm package.\n"
 
   [[ -n $OPT_OUTDIR ]] && mkdir -p "$OPT_OUTDIR"
   local inputs=()

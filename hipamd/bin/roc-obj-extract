@@ -73,8 +73,8 @@ sub usage {
 my %options=();
 getopts('vho:', \%options);
 
-# this tool is being deprecated
-print("Warning:  This tool is being DEPRECATED.  Similar funcitonality is provided in the rocm-llvm package with llvm-objdump.\n");
+# this tool has been deprecated
+print("Warning: This tool has been DEPRECATED. Similar functionality is provided by llvm-objdump in the rocm-llvm package.\n");
 
 if (defined $options{h}) {
   usage();
