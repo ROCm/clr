@@ -153,22 +153,28 @@ void __hipRegisterManagedVar(
     const char* name,  // Name of the variable in code object
     size_t size, unsigned align) {
   HIP_INIT_VOID();
-  hipError_t status = ihipMallocManaged(pointer, size, align);
-  if (status == hipSuccess) {
-    hip::Stream* stream = hip::getNullStream();
-    if (stream != nullptr) {
-      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
-      guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
-                                         status);
+
+  if (hip::g_devices.size() > 0) {
+    hipError_t status = ihipMallocManaged(pointer, size, align);
+    if (status == hipSuccess) {
+      hip::Stream* stream = hip::getNullStream();
+      if (stream != nullptr) {
+        status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
+        guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
+                                           status);
+      } else {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
+      }
     } else {
-      ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
+      guarantee(false, "Error during allocation of managed memory!, error: %d", status);
     }
   } else {
-    guarantee(false, "Error during allocation of managed memory!, error: %d", status);
+    *pointer = nullptr;
+    size = 0;
   }
   hip::Var* var_ptr = new hip::Var(std::string(name), hip::Var::DeviceVarKind::DVK_Managed, pointer,
                                    size, align, reinterpret_cast<hip::FatBinaryInfo**>(hipModule));
-  status = PlatformState::instance().registerStatManagedVar(var_ptr);
+  hipError_t status = PlatformState::instance().registerStatManagedVar(var_ptr);
   guarantee((status == hipSuccess), "Cannot register Static Managed Var, error: %d", status);
 }
 
