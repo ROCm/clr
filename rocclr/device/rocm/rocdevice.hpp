@@ -567,6 +567,9 @@ class Device : public NullDevice {
   //! Removes a kernel from the kernel map
   void RemoveKernel(Kernel& gpuKernel) const;
 
+  // Returns the number of allocated normal queues on this device
+  uint32_t NumNormalQueues() const { return num_normal_queues_.load(); }
+
  private:
   bool create();
 

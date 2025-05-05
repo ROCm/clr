@@ -195,10 +195,13 @@ void HostQueue::finish(bool cpu_wait) {
         device_.removeFromActiveQueues(this);
         lastEnqueueCommand_->release();
         lastEnqueueCommand_ = nullptr;
-        vdev()->ReleaseHwQueue(); // we can only release HwQueue when no commmand in quque.
       }
     }
   }
+
+  // Release all HW queues, which are idle or nearly idle
+  vdev()->ReleaseAllHwQueues();
+
   command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished for host queue : %p", this);
 }

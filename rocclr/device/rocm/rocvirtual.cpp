@@ -1066,6 +1066,8 @@ bool VirtualGPU::dispatchGenericAqlPacket(
     blocking = true;
   }
 
+  TrackQueueProgress(*packet, index);
+
   AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
   *aql_loc = *packet;
   if (header != 0) {
@@ -1241,6 +1243,8 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
     barrier_packet_.completion_signal = signal;
   }
 
+  TrackQueueProgress(barrier_packet_, index);
+
   // Reset fence_dirty_ flag if we submit a barrier with system scopes
   if (cache_state == amd::Device::kCacheStateSystem) {
     fence_dirty_ = false;
@@ -1335,6 +1339,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
 
   uint64_t index = hsa_queue_add_write_index_screlease(gpu_queue_, 1);
   uint64_t read = hsa_queue_load_read_index_relaxed(gpu_queue_);
+
+  TrackQueueProgress(barrier_value_packet_, index);
 
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_amd_barrier_value_packet_t* aql_loc = &(reinterpret_cast<hsa_amd_barrier_value_packet_t*>(
@@ -1465,6 +1471,10 @@ VirtualGPU::~VirtualGPU() {
   delete blitMgr_;
 
   if (tracking_created_) {
+    amd::ScopedLock l(execution());
+    if (gpu_queue_ == nullptr) {
+      gpu_queue_ = roc_device_.AcquireActiveNormalQueue();
+    }
     // Release the resources of signal
     releaseGpuMemoryFence();
   }
@@ -1674,14 +1684,30 @@ address VirtualGPU::allocKernelArguments(size_t size, size_t alignment) {
 }
 
 // ================================================================================================
+void VirtualGPU::ReleaseAllHwQueues() {
+  if (roc_device_.settings().dynamic_queues_ &&
+      (roc_device_.NumNormalQueues() > GPU_MAX_HW_QUEUES)) {
+    // Lock the device to make the following thread safe
+    amd::ScopedLock lock(roc_device_.vgpusAccess());
+    for (uint idx = 0; idx < roc_device_.vgpus().size(); ++idx) {
+      roc_device_.vgpus()[idx]->ReleaseHwQueue();
+    }
+  }
+}
+
+// ================================================================================================
 void VirtualGPU::ReleaseHwQueue() {
   // Try to release normal queue to the pool of active queues
   if (roc_device_.settings().dynamic_queues_ &&
       (priority_ == amd::CommandQueue::Priority::Normal) &&
       !cooperative_ && (cuMask_.size() == 0)) {
     amd::ScopedLock lock(execution());
-    if ((gpu_queue_ != nullptr) && roc_device_.ReleaseActiveNormalQueue(gpu_queue_)) {
-      gpu_queue_ = nullptr;
+    if (gpu_queue_ != nullptr) {
+      if (IsQueueIdle()) {
+        if (roc_device_.ReleaseActiveNormalQueue(gpu_queue_)) {
+          gpu_queue_ = nullptr;
+        }
+      }
     }
   }
 }

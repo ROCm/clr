@@ -1326,6 +1326,7 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitVirtualMap(amd::VirtualMapCommand& cmd) { ShouldNotReachHere(); }
 
   virtual address allocKernelArguments(size_t size, size_t alignment) { return nullptr; }
+  virtual void ReleaseAllHwQueues() {}
   virtual void ReleaseHwQueue() {}
 
   //! Get the blit manager object

@@ -390,6 +390,7 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd){}
 
   virtual address allocKernelArguments(size_t size, size_t alignment) final;
+  virtual void ReleaseAllHwQueues() final;
   virtual void ReleaseHwQueue() final;
 
   /**
@@ -529,6 +530,33 @@ class VirtualGPU : public device::VirtualDevice {
   //! Resets the current queue state. Note: should be called after AQL queue becomes idle
   void ResetQueueStates();
 
+  //! Track the progress of the queue based on the last write index and completion signal
+  template <typename AqlPacket>
+  inline void TrackQueueProgress(const AqlPacket& packet, uint64_t index) {
+    // Track the progress of the current virtual queue
+    last_write_index_ = index;
+    // Update the last completion signal if the packet has one
+    if (packet.completion_signal.handle != 0) {
+      last_barrier_index_ = index;
+      last_completion_signal_ = packet.completion_signal;
+    }
+  }
+
+  //! Returns true if the queue is considered as idle. That means all submitted packets are complete.
+  //! Note: it doesn't track the state of caches
+  bool IsQueueIdle() const {
+    bool result = false;
+    // Make sure the last packet contained a completion signal
+    if (last_barrier_index_ == last_write_index_) {
+      if ((last_write_index_ == 0) && (last_completion_signal_.handle == 0)) {
+        result = true;
+      } else {
+        result = (hsa_signal_load_relaxed(last_completion_signal_) == 0);
+      }
+    }
+    return result;
+  }
+
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
   //! Queue state flags
@@ -595,6 +623,10 @@ class VirtualGPU : public device::VirtualDevice {
   bool fence_dirty_;                    //!< Fence modified flag
 
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
+  uint64_t last_write_index_ = 0;       //!< The last HW queue write index for any packet
+  uint64_t last_barrier_index_ = 0;     //!< The last HW queue write index for a packet
+                                        //!< with a complition signal
+  hsa_signal_t last_completion_signal_{}; //!< The last completion signal
 
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
