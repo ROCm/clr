@@ -1593,29 +1593,25 @@ THE SOFTWARE.
             __device__
             __half htrunc(__half x)
             {
-                return __half_raw{
-                    __ocml_trunc_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_trunc(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hceil(__half x)
             {
-                return __half_raw{
-                    __ocml_ceil_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_ceil(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hfloor(__half x)
             {
-                return __half_raw{
-                   __ocml_floor_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_floor(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hrint(__half x)
             {
-                return __half_raw{
-                    __ocml_rint_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_rint(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
@@ -1713,25 +1709,25 @@ THE SOFTWARE.
             __device__
             __half2 h2trunc(__half2 x)
             {
-                return __half2{__ocml_trunc_2f16(x)};
+              return __half2{__builtin_elementwise_trunc(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2ceil(__half2 x)
             {
-                return __half2{__ocml_ceil_2f16(x)};
+              return __half2{__builtin_elementwise_ceil(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2floor(__half2 x)
             {
-                return __half2{__ocml_floor_2f16(x)};
+              return __half2{__builtin_elementwise_floor(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2rint(__half2 x)
             {
-                return __half2{__ocml_rint_2f16(x)};
+              return __half2{__builtin_elementwise_rint(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__

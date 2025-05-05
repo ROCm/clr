@@ -1548,7 +1548,7 @@ __BF16_HOST_DEVICE_STATIC__ bool operator>=(const __hip_bfloat162& l, const __hi
  * \brief Calculate ceil of bfloat16
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 hceil(const __hip_bfloat16 h) {
-  return __float2bfloat16(__ocml_ceil_f32(__bfloat162float(h)));
+  return __float2bfloat16(__builtin_elementwise_ceil(__bfloat162float(h)));
 }
 
 /**
@@ -1588,7 +1588,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 hexp2(const __hip_bfloat16 h) {
  * \brief Calculate floor of bfloat16
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 hfloor(const __hip_bfloat16 h) {
-  return __float2bfloat16(__ocml_floor_f32(__bfloat162float(h)));
+  return __float2bfloat16(__builtin_elementwise_floor(__bfloat162float(h)));
 }
 
 /**
@@ -1628,7 +1628,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 hrcp(const __hip_bfloat16 h) {
  * \brief Round to nearest int
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 hrint(const __hip_bfloat16 h) {
-  return __float2bfloat16(__ocml_rint_f32(__bfloat162float(h)));
+  return __float2bfloat16(__builtin_elementwise_rint(__bfloat162float(h)));
 }
 
 /**
@@ -1660,7 +1660,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 hsqrt(const __hip_bfloat16 h) {
  * \brief Calculate truncate of bfloat16
  */
 __BF16_DEVICE_STATIC__ __hip_bfloat16 htrunc(const __hip_bfloat16 h) {
-  return __float2bfloat16(__ocml_trunc_f32(__bfloat162float(h)));
+  return __float2bfloat16(__builtin_elementwise_trunc(__bfloat162float(h)));
 }
 
 /**

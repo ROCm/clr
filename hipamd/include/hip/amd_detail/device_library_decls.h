@@ -61,11 +61,6 @@ extern "C" __device__ __attribute__((const)) ushort __ockl_clz_u16(ushort);
 extern "C" __device__ __attribute__((const)) uint __ockl_clz_u32(uint);
 extern "C" __device__ __attribute__((const)) uint64_t __ockl_clz_u64(uint64_t);
 
-extern "C" __device__ __attribute__((const)) float __ocml_floor_f32(float);
-extern "C" __device__ __attribute__((const)) float __ocml_rint_f32(float);
-extern "C" __device__ __attribute__((const)) float __ocml_ceil_f32(float);
-extern "C" __device__ __attribute__((const)) float __ocml_trunc_f32(float);
-
 extern "C" __device__ __attribute__((const)) float __ocml_fmin_f32(float, float);
 extern "C" __device__ __attribute__((const)) float __ocml_fmax_f32(float, float);
 
