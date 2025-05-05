@@ -52,40 +52,51 @@ endif()
 #############
 # Build steps
 #############
-if(CLR_BUILD_HIP)
-  if (UNIX)
-    set(HIPCC_EXECUTABLE "hipcc")
-    set(HIPCONFIG_EXECUTABLE "hipconfig")
-  else()
-    set(HIPCC_EXECUTABLE "hipcc.exe")
-    set(HIPCONFIG_EXECUTABLE "hipconfig.exe")
-  endif()
+
+# Attempt to auto-detect HIP_PLATFORM by interrogating hipconfig. This is kept
+# for compatibility: users are advised to pass HIP_PLATFORM explicitly.
+# Sets the HIP_PLATFORM variable in the parent scope.
+function(_hip_clr_auto_detect_hip_platform)
+    if (UNIX)
+      set(HIPCC_EXECUTABLE "hipcc")
+      set(HIPCONFIG_EXECUTABLE "hipconfig")
+    else()
+      set(HIPCC_EXECUTABLE "hipcc.exe")
+      set(HIPCONFIG_EXECUTABLE "hipconfig.exe")
+    endif()
 
     # Set default HIPCC_BIN_DIR to /opt/rocm/bin
     if(NOT DEFINED HIPCC_BIN_DIR AND UNIX)
-        set(HIPCC_BIN_DIR "/opt/rocm/bin" CACHE STRING "Default hipcc directory on linux.")
+        set(HIPCC_BIN_DIR "/opt/rocm/bin")
     endif()
-    message(STATUS "HIPCC Binary Directory: ${HIPCC_BIN_DIR}")
+    message(STATUS "Auto-detect HIP_PLATFORM from HIPCC Binary Directory: ${HIPCC_BIN_DIR}")
 
     if(NOT EXISTS ${HIPCC_BIN_DIR}/${HIPCONFIG_EXECUTABLE})
         message(FATAL_ERROR "Please pass hipcc/build or hipcc/bin using -DHIPCC_BIN_DIR.")
     endif()
 
-    message(STATUS "HIP Common Directory: ${HIP_COMMON_DIR}")
-    if(NOT DEFINED HIP_COMMON_DIR)
-        message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
-    endif()
     # Determine HIP_PLATFORM
     if(NOT DEFINED HIP_PLATFORM)
         if(NOT DEFINED ENV{HIP_PLATFORM})
             execute_process(COMMAND ${HIPCC_BIN_DIR}/${HIPCONFIG_EXECUTABLE} --platform
-                OUTPUT_VARIABLE HIP_PLATFORM
+                OUTPUT_VARIABLE _detected_hip_platform
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
+            set(HIP_PLATFORM "${_detected_hip_platform}" PARENT_SCOPE)
         else()
-            set(HIP_PLATFORM $ENV{HIP_PLATFORM} CACHE STRING "HIP Platform")
+            set(HIP_PLATFORM "$ENV{HIP_PLATFORM}" PARENT_SCOPE)
         endif()
     endif()
+endfunction()
+if(CLR_BUILD_HIP)
+    message(STATUS "HIP Common Directory: ${HIP_COMMON_DIR}")
+    if(NOT DEFINED HIP_COMMON_DIR)
+        message(FATAL_ERROR "Please pass HIP using -DHIP_COMMON_DIR. HIP_COMMON_DIR is incorrect")
+    endif()
+    if(NOT DEFINED HIP_PLATFORM)
+        _hip_clr_auto_detect_hip_platform()
+    endif()
 endif()
+
 if(CLR_BUILD_HIP)
     option(BUILD_SHARED_LIBS "Build the shared library" ON)
     if (NOT BUILD_SHARED_LIBS)
