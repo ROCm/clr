@@ -623,7 +623,11 @@ class Device : public NullDevice {
   struct QueueCompare {
     // Customized queue compare operator to make sure the queues are sorted in the creation order
     bool operator()(hsa_queue_t* lhs, hsa_queue_t* rhs) const {
+      if (DEBUG_HIP_DYNAMIC_QUEUES) {
         return (lhs->id < rhs->id) ? true : false;
+      } else {
+        return (lhs < rhs) ? true : false;
+      }
     }
   };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
