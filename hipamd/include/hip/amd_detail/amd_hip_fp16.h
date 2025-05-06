@@ -783,7 +783,7 @@ THE SOFTWARE.
 
             // int -> half
             inline
-            __device__
+            __HOST_DEVICE__
             __half __int2half_rn(int x)
             {
                 return __half_raw{static_cast<_Float16>(x)};

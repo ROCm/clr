@@ -453,7 +453,7 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat162 __bfloat162bfloat162(const __hip_bfl
 }
 
 /**
- * \ingroup HIP_INTRINSIC_BFLOAT162_CONV
+ * \ingroup HIP_INTRINSIC_BFLOAT16_CONV
  * \brief Reinterprets bits in a __hip_bfloat16 as a signed short integer
  */
 __BF16_HOST_DEVICE_STATIC__ short int __bfloat16_as_short(const __hip_bfloat16 h) {
@@ -466,7 +466,7 @@ __BF16_HOST_DEVICE_STATIC__ short int __bfloat16_as_short(const __hip_bfloat16 h
 }
 
 /**
- * \ingroup HIP_INTRINSIC_BFLOAT162_CONV
+ * \ingroup HIP_INTRINSIC_BFLOAT16_CONV
  * \brief Reinterprets bits in a __hip_bfloat16 as an unsigned signed short integer
  */
 __BF16_HOST_DEVICE_STATIC__ unsigned short int __bfloat16_as_ushort(const __hip_bfloat16 h) {
@@ -479,10 +479,19 @@ __BF16_HOST_DEVICE_STATIC__ unsigned short int __bfloat16_as_ushort(const __hip_
 }
 
 /**
- * \ingroup HIP_INTRINSIC_BFLOAT162_CONV
+ * \ingroup HIP_INTRINSIC_BFLOAT16_CONV
  * \brief Convert double to __hip_bfloat16
  */
 __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __double2bfloat16(const double a) {
+  __hip_bfloat16 ret{a};
+  return ret;
+}
+
+/**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_CONV
+ * \brief Convert int to __hip_bfloat16
+ */
+__BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __int2bfloat16_rn(const int a) {
   __hip_bfloat16 ret{a};
   return ret;
 }
