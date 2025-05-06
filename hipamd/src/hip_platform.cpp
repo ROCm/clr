@@ -50,11 +50,10 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
                                   hipDeviceptr_t* dptr, size_t* bytes);
 
 extern hipError_t ihipModuleLaunchKernel(
-    hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY, uint32_t gridDimZ, uint32_t blockDimX,
-    uint32_t blockDimY, uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
-    void** kernelParams, void** extra, hipEvent_t startEvent, hipEvent_t stopEvent,
-    uint32_t flags = 0, uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
-    uint64_t prevGridSum = 0, uint64_t allGridSum = 0, uint32_t firstDevice = 0);
+    hipFunction_t f, amd::LaunchParams& launch_params, hipStream_t hStream, void** kernelParams,
+    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags = 0,
+    uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0, uint64_t prevGridSum = 0,
+    uint64_t allGridSum = 0, uint32_t firstDevice = 0);
 static bool isCompatibleCodeObject(const std::string& codeobj_target_id, const char* device_name) {
   // Workaround for device name mismatch.
   // Device name may contain feature strings delimited by '+', e.g.
@@ -641,18 +640,14 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
     return hipErrorInvalidConfiguration;
   }
 
-  size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
-  size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
-  size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+  amd::HIPLaunchParams launch_params(gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+                                     blockDim.z, sharedMemBytes);
+  if (!launch_params.IsValidConfig()) {
     return hipErrorInvalidConfiguration;
   }
-  return ihipModuleLaunchKernel(
-      func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-      static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y, blockDim.z, sharedMemBytes,
-      stream, args, nullptr, startEvent, stopEvent, flags);
+
+  return ihipModuleLaunchKernel(func, launch_params, stream, args, nullptr,
+                                startEvent, stopEvent, flags);
 }
 
 // conversion routines between float and half precision

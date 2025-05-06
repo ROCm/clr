@@ -1176,13 +1176,19 @@ class GraphKernelNode : public GraphNode {
         }
       }
     }
+
+    amd::HIPLaunchParams launch_params(kernelParams_.gridDim.x, kernelParams_.gridDim.y,
+                                       kernelParams_.gridDim.z, kernelParams_.blockDim.x,
+                                       kernelParams_.blockDim.y, kernelParams_.blockDim.z,
+                                       kernelParams_.sharedMemBytes);
+
+    if (!launch_params.IsValidConfig()) {
+      return hipErrorInvalidConfiguration;
+    }
+
     status = ihipLaunchKernelCommand(
-        command, func, kernelParams_.gridDim.x * kernelParams_.blockDim.x,
-        kernelParams_.gridDim.y * kernelParams_.blockDim.y,
-        kernelParams_.gridDim.z * kernelParams_.blockDim.z, kernelParams_.blockDim.x,
-        kernelParams_.blockDim.y, kernelParams_.blockDim.z, kernelParams_.sharedMemBytes, stream,
-        kernelParams_.kernelParams, kernelParams_.extra, kernelEvents_.startEvent_,
-        kernelEvents_.stopEvent_, flags, coopKernel_, 0, 0, 0, 0, 0);
+        command, func, launch_params, stream, kernelParams_.kernelParams, kernelParams_.extra,
+        kernelEvents_.startEvent_, kernelEvents_.stopEvent_, flags, coopKernel_, 0, 0, 0, 0, 0);
     if (signal_is_required_) {
       // Optimize the barriers by adding a signal into the dispatch packet directly
       command->SetProfiling();
@@ -1315,15 +1321,18 @@ class GraphKernelNode : public GraphNode {
 
   static hipError_t validateKernelParams(const hipKernelNodeParams* pNodeParams,
                                          hipFunction_t func, int devId) {
-    size_t globalWorkSizeX = static_cast<size_t>(pNodeParams->gridDim.x) * pNodeParams->blockDim.x;
-    size_t globalWorkSizeY = static_cast<size_t>(pNodeParams->gridDim.y) * pNodeParams->blockDim.y;
-    size_t globalWorkSizeZ = static_cast<size_t>(pNodeParams->gridDim.z) * pNodeParams->blockDim.z;
 
-    hipError_t status = ihipLaunchKernel_validate(
-        func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-        static_cast<uint32_t>(globalWorkSizeZ), pNodeParams->blockDim.x, pNodeParams->blockDim.y,
-        pNodeParams->blockDim.z, pNodeParams->sharedMemBytes, pNodeParams->kernelParams,
-        pNodeParams->extra, devId, 0);
+    amd::HIPLaunchParams launch_params(pNodeParams->gridDim.x, pNodeParams->gridDim.y,
+                                       pNodeParams->gridDim.z, pNodeParams->blockDim.x,
+                                       pNodeParams->blockDim.y, pNodeParams->blockDim.z,
+                                       pNodeParams->sharedMemBytes);
+
+    if (!launch_params.IsValidConfig()) {
+      HIP_RETURN(hipErrorInvalidConfiguration);
+    }
+
+    hipError_t status = ihipLaunchKernel_validate(func, launch_params, pNodeParams->kernelParams,
+                                                  pNodeParams->extra, devId, 0);
     if (status != hipSuccess) {
       return status;
     }
