@@ -7,20 +7,21 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 ### Added
 
-* New debug mask, to print precise code object information for logging.
+* New log mask enumeration `LOG_COMGR` enables logging precise code object information.
 
 ### Changed
 
-* The way of calling code object. HIP runtime uses device bitcode before SPIRV.
+* HIP runtime uses device bitcode before SPIRV.
 
 ### Optimized
 
-* Improved kernel logging using demangling shader names.
+* Improved kernel logging includes de-mangling shader names.
+* Refined implementation in HIP APIs `hipEventRecords` and `hipStreamWaitEvent` for performance improvement.
 
 ### Resolved issues
 
 * Stale state during the graph capture. The return error was fixed, HIP runtime now always uses the latest dependent nodes during `hipEventRecord` capture.
-* `hipEventRecords` called runtime function `hip::getStream` properly.
+* Segmentation fault during kernel execution. HIP runtime now allows maximum stack size as per ISA on the GPU device.
 
 
 ## HIP 6.4 (For ROCm 6.4)
