@@ -418,6 +418,15 @@ struct __attribute__((aligned(4))) __hip_bfloat162 {
 /**@}*/
 
 /**
+ * \ingroup HIP_INTRINSIC_BFLOAT16_COMP
+ * \brief Checks if number is nan
+ */
+__BF16_HOST_DEVICE_STATIC__ bool __hisnan(const __hip_bfloat16 a) {
+  __hip_bfloat16_raw hr = a;
+  return !(~hr.x & 0x7f80) && +(hr.x & 0x7f);
+}
+
+/**
  * \ingroup HIP_INTRINSIC_BFLOAT16_CONV
  * \brief Converts bfloat16 to float
  */
@@ -1207,6 +1216,11 @@ __BF16_HOST_DEVICE_STATIC__ bool __hneu(const __hip_bfloat16 a, const __hip_bflo
  * \brief Compare two bfloat162 values - return max
  */
 __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __hmax(const __hip_bfloat16 a, const __hip_bfloat16 b) {
+  auto a_nan = __hisnan(a), b_nan = __hisnan(b);
+  if (a_nan || b_nan) {
+    if (a_nan && b_nan) return HIPRT_NAN_BF16;  // return canonical NaN
+    return a_nan ? b : a;
+  }
   return (__bf16)a > (__bf16)b ? a : b;
 }
 
@@ -1215,6 +1229,11 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __hmax(const __hip_bfloat16 a, const 
  * \brief Compare two bfloat162 values - return min
  */
 __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __hmin(const __hip_bfloat16 a, const __hip_bfloat16 b) {
+  auto a_nan = __hisnan(a), b_nan = __hisnan(b);
+  if (a_nan || b_nan) {
+    if (a_nan && b_nan) return HIPRT_NAN_BF16;  // return canonical NaN
+    return a_nan ? b : a;
+  }
   return (__bf16)a < (__bf16)b ? a : b;
 }
 
@@ -1257,15 +1276,6 @@ __BF16_HOST_DEVICE_STATIC__ bool __hleu(const __hip_bfloat16 a, const __hip_bflo
 __BF16_HOST_DEVICE_STATIC__ int __hisinf(const __hip_bfloat16 a) {
   __hip_bfloat16_raw hr = a;
   return !(~hr.x & 0x7f80) && !(hr.x & 0x7f);
-}
-
-/**
- * \ingroup HIP_INTRINSIC_BFLOAT16_COMP
- * \brief Checks if number is nan
- */
-__BF16_HOST_DEVICE_STATIC__ bool __hisnan(const __hip_bfloat16 a) {
-  __hip_bfloat16_raw hr = a;
-  return !(~hr.x & 0x7f80) && +(hr.x & 0x7f);
 }
 
 /**
