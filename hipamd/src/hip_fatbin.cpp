@@ -706,8 +706,12 @@ hipError_t FatBinaryInfo::AddDevProgram(hip::Device* device, const void* binary_
 }
 
 hipError_t FatBinaryInfo::BuildProgram(const int device_id) {
-  // Device Id Check and Add DeviceProgram if not added so far
+  // Check for Device Id bounds and empty program to return gracefully
   DeviceIdCheck(device_id);
+
+  if (dev_programs_[device_id] == nullptr) {
+    return hipErrorInvalidKernelFile;
+  }
 
   // If Program was already built skip this step and return success
   if (dev_programs_[device_id]->IsProgramBuilt(*g_devices[device_id]->devices()[0]) == false) {
