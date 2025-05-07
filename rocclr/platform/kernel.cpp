@@ -282,6 +282,11 @@ address KernelParameters::capture(device::VirtualDevice& vDev, uint64_t lclMemSi
       } else if (desc.type_ == T_SAMPLER) {
         Sampler* samplerArg = samplerObjects_[desc.info_.arrayIndex_];
         if (samplerArg != nullptr) {
+          device::Sampler* deviceSampler = samplerArg->getDeviceSampler(device);
+          if (!deviceSampler) {
+            *error = CL_INVALID_CONTEXT;
+            break;
+          }
           samplerArg->retain();
           // todo: It's uint64_t type
           *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = static_cast<uintptr_t>(
