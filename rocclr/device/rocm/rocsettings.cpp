@@ -163,7 +163,7 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
   }
 
   if ((gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10) ||
-     ((gfxipMajor == 9 && gfxipMinor == 4 &&
+     ((gfxipMajor == 9 && gfxipMinor >= 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)))) {
     // Enable Barrier Value packet is only for MI2XX/300
     barrier_value_packet_ = true;
@@ -187,7 +187,7 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
 
   lcWavefrontSize64_ = !enableWave32Mode_;
 
-  if (gfxipMajor > 10 || (gfxipMajor == 9 && gfxipMinor == 4)) {
+  if (gfxipMajor > 10 || (gfxipMajor == 9 && gfxipMinor >= 4)) {
     gwsInitSupported_ = false;
   }
 
@@ -241,7 +241,7 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const uint32_t gfxipMinor = isa.versionMinor();
   const uint32_t gfxStepping = isa.versionStepping();
 
-  const bool isGfx94x = gfxipMajor == 9 && (gfxipMinor == 4 || gfxipMinor == 5) &&
+  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor >= 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isGfx90a = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
   const bool isPreGfx908 =
