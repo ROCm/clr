@@ -99,7 +99,7 @@ THE SOFTWARE.
             // CREATORS
             __HOST_DEVICE__
             __half() = default;
-            __HOST_DEVICE__
+            __HOST_DEVICE__ constexpr
             __half(const __half_raw& x) : data{x.data} {}
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 __HOST_DEVICE__
@@ -363,12 +363,9 @@ THE SOFTWARE.
             __half2(const __half2_raw& xx) : data{xx.data} {}
             __HOST_DEVICE__
             __half2(decltype(data) xx) : data{xx} {}
-            __HOST_DEVICE__
+            __HOST_DEVICE__ constexpr
             __half2(const __half& xx, const __half& yy)
-                :
-                data{static_cast<__half_raw>(xx).data,
-                     static_cast<__half_raw>(yy).data}
-            {}
+                : x(xx), y(yy) {}
             __HOST_DEVICE__
             __half2(const __half2&) = default;
             __HOST_DEVICE__
