@@ -3454,7 +3454,17 @@ hipError_t ihipPointerGetAttributes(void* data, hipPointer_attribute attribute,
 
     switch (attribute) {
       case HIP_POINTER_ATTRIBUTE_CONTEXT : {
-        status = hipErrorNotSupported;
+        if (memObj) {
+          amd::Context& context = memObj->getContext();
+          int devId = getDeviceID(context);
+          if (devId >= 0) {
+            *reinterpret_cast<hipCtx_t*>(data) = reinterpret_cast<hipCtx_t>(g_devices[devId]);
+          } else {
+            return hipErrorInvalidValue;
+          }
+        } else {
+          return hipErrorInvalidValue;
+        }
         break;
       }
       case HIP_POINTER_ATTRIBUTE_MEMORY_TYPE : {
