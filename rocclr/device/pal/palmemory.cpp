@@ -116,9 +116,8 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
     }
 
     if (amd::IS_HIP && dev().settings().apuSystem_) {
-      const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
       Pal::gpusize totalAlloc = dev().TotalAlloc();
-      if (memType == Local && (totalAlloc > invisibleHeap.logicalSize)) {
+      if (memType == Local && totalAlloc > dev().GetMaxFrameBuffer()) {
         memType = RemoteUSWC;
       }
     }

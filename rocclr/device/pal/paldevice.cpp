@@ -998,6 +998,23 @@ bool Device::create(Pal::IDevice* device) {
   // Fill the device info structure
   fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines(), iDev());
 
+  // Reserve percentage memory for large frame buffer.
+  // Reserve a threshold size for small frame buffer, used by page table for remote memory mapping
+  Pal::gpusize invisibleSize = heaps_[Pal::GpuHeapInvisible].logicalSize;
+  Pal::gpusize visibleSize = heaps_[Pal::GpuHeapLocal].logicalSize;
+
+  Pal::gpusize maxInvisibleAllocation = std::min((invisibleSize / 100) * 98,
+    invisibleSize < 128 * Mi? 0: invisibleSize - 128 * Mi);
+  Pal::gpusize maxVisibleAllocation = std::min((visibleSize / 100) * 98,
+    visibleSize < 128 * Mi? 0: visibleSize - 128 * Mi);
+
+  if (invisibleSize < visibleSize && invisibleSize > 0) {
+    // Page table is in invisible and its size is smaller. Invisible is the only deciding factor
+    maxFrameBufferAllocation_ = maxInvisibleAllocation;
+  } else {
+    maxFrameBufferAllocation_ = std::max(maxInvisibleAllocation, maxVisibleAllocation);
+  }
+
   if (!ValidateComgr()) {
     LogError("Code object manager initialization failed!");
     return false;

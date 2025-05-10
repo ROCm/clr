@@ -675,8 +675,8 @@ class Device : public NullDevice {
   //! Allocates hidden heap for device memory allocations
   void HiddenHeapAlloc(const VirtualGPU& gpu);
 
-  const Pal::GpuMemoryHeapProperties& GetGpuHeapInvisible() const {
-    return heaps_[Pal::GpuHeapInvisible];
+  Pal::gpusize GetMaxFrameBuffer() const {
+    return maxFrameBufferAllocation_;
   }
 
   Pal::gpusize TotalAlloc() const {
@@ -760,6 +760,7 @@ class Device : public NullDevice {
   ICaptureMgr* captureMgr_;                      //!< RGP/UberTrace capture manager
   Pal::GpuMemoryHeapProperties
       heaps_[Pal::GpuHeapCount];         //!< Information about heaps, returned from PAL
+  Pal::gpusize maxFrameBufferAllocation_; //!< To reserve some memory in frame buffer
   std::map<Pal::IQueue*, QueueRecycleInfo*> queue_pool_;  //!< Pool of PAL queues for recycling
   amd::Program* trap_handler_ = nullptr;  //!< Trap handler program for debugger setup
 };
