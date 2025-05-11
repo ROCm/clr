@@ -124,9 +124,8 @@ const char* TrapHandlerCode = RUNTIME_KERNEL(
 \n
 \n  // Check if the it was an host trap.
 \n  s_bitcmp1_b32                         ttmp1, SQ_WAVE_PC_HI_HT_SHIFT
-\n  s_cbranch_scc0                        .not_host_trap
+\n  s_cbranch_scc1                        .not_s_trap
 \n
-\n.not_host_trap:
 \n  // It's an s_trap; advance the PC
 \n  s_add_u32                             ttmp0, ttmp0, 0x4
 \n  s_addc_u32                            ttmp1, ttmp1, 0x0
@@ -140,6 +139,7 @@ const char* TrapHandlerCode = RUNTIME_KERNEL(
 \n  // Ignore llvm.debugtrap.
 \n  s_branch                              .exit_trap
 \n
+\n.not_s_trap:
 \n.no_skip_debugtrap:
 \n  // Save trap id and halt status in ttmp6.
 \n  s_andn2_b32                           ttmp6, ttmp6, (TTMP6_SAVED_TRAP_ID_MASK | TTMP6_SAVED_STATUS_HALT_MASK)
