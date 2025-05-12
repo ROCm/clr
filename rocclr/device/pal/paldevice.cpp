@@ -323,6 +323,13 @@ device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Opt
   return program;
 }
 
+void setUUID(Pal::DeviceProperties* devProps, char* uuid) {
+  snprintf(uuid, 5, "%04d", devProps->pciProperties.domainNumber);
+  snprintf(uuid + 4, 5, "%04d", devProps->pciProperties.busNumber);
+  snprintf(uuid + 8, 5, "%04d", devProps->pciProperties.deviceNumber);
+  snprintf(uuid + 12, 5, "%04d", devProps->pciProperties.functionNumber);
+}
+
 void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                 const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
                                 size_t maxTextureSize, uint numComputeRings,
@@ -330,10 +337,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = palProp.vendorId;
   // Set uuid
-  memcpy(info_.uuid_, &palProp.pciProperties.domainNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 4, &palProp.pciProperties.busNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 8, &palProp.pciProperties.deviceNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 12, &palProp.pciProperties.functionNumber, sizeof(uint32_t));
+  Pal::DeviceProperties palPropTmp = palProp;
+  setUUID(&palPropTmp, &info_.uuid_[0]);
 
   info_.maxWorkItemDimensions_ = 3;
 
@@ -1335,22 +1340,7 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
 
         // Retrieve uuid
         char uuid[17] = {0};
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.domainNumber))[j],
-                &uuid[j], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.busNumber))[j],
-                &uuid[j + 4], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.deviceNumber))[j],
-                &uuid[j + 8], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.functionNumber))[j],
-                &uuid[j + 12], 10);
-        }
+        setUUID(&properties, &uuid[0]);
 
         // Convert it to index
         if (strcmp(pch + 4, uuid) == 0) {
