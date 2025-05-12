@@ -539,7 +539,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
   hip::Stream* pStream = &stream;
   switch (type) {
     case hipWriteBuffer:
-      if (queueDevice != dstMemory->GetDeviceById()) {
+      if (queueDevice != dstMemory->GetDeviceById() &&
+          !(dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
         pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -551,7 +552,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
                                             copyMetadata);
       break;
     case hipReadBuffer:
-      if (queueDevice != srcMemory->GetDeviceById()) {
+      if (queueDevice != srcMemory->GetDeviceById() &&
+          !(srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
         pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
         amd::Command* cmd = stream.getLastQueuedCommand(true);
         if (cmd != nullptr) {
@@ -589,7 +591,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
       } else if (srcMemory->GetDeviceById() != dstMemory->GetDeviceById()) {
         // Scenarios such as DtoH where dst is pinned memory
         if ((queueDevice != srcMemory->GetDeviceById()) &&
-            (dstMemory->getContext().devices().size() != 1)) {
+            (dstMemory->getContext().devices().size() != 1) &&
+            !(srcMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
           pStream = hip::getNullStream(srcMemory->GetDeviceById()->context());
           amd::Command* cmd = stream.getLastQueuedCommand(true);
           if (cmd != nullptr) {
@@ -597,7 +600,8 @@ hipError_t ihipMemcpyCommand(amd::Command*& command, void* dst, const void* src,
           }
           // Scenarios such as HtoD where src is pinned memory
         } else if ((queueDevice != dstMemory->GetDeviceById()) &&
-                   (srcMemory->getContext().devices().size() != 1)) {
+                   (srcMemory->getContext().devices().size() != 1) &&
+                   !(dstMemory->getMemFlags() & CL_MEM_VA_RANGE_AMD)) {
           pStream = hip::getNullStream(dstMemory->GetDeviceById()->context());
           amd::Command* cmd = stream.getLastQueuedCommand(true);
           if (cmd != nullptr) {

@@ -329,11 +329,18 @@ class Memory : public amd::RuntimeObject {
 
   // Accessors
   Memory* parent() const { return parent_; }
-  void SetParent(amd::Memory* parent) { parent_ = parent; }
+  void SetParent(amd::Memory* parent) {
+    parent_ = parent;
+    if (parent != nullptr) {
+      parent_->isParent_ = true;
+      parent_->retain();
+    }
+  }
   bool isParent() const { return isParent_; }
   bool ImageView() const { return image_view_; }
 
   size_t getOrigin() const { return origin_; }
+  void setOrigin(size_t origin) { origin_ = origin; }
   size_t getSize() const { return size_; }
   Flags getMemFlags() const { return flags_; }
   Type getType() const { return type_; }
@@ -721,4 +728,3 @@ class IpcBuffer : public Buffer {
 };
 
 }  // namespace amd
-
