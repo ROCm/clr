@@ -1678,6 +1678,7 @@ class Device : public RuntimeObject {
   // Max Scratch size is based on ISA and thus per device.
   // Def value is as per GFX9 being the least among supported devices.
   size_t maxStackSize_ = kMaxStackSize9X;
+  static bool device_not_usable_; //!< If set, we should not launch any commands anymore.
 
   typedef std::list<CommandQueue*> CommandQueues;
 
@@ -2200,7 +2201,6 @@ class Device : public RuntimeObject {
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
   amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
-  static bool device_not_usable_; //!< If set, we should not launch any commands anymore.
 
  private:
   const Isa *isa_;                //!< Device isa
