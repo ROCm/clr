@@ -354,26 +354,32 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
-  if (phys_mem_obj == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+  address end_address = reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + size;
+  while (vaddr_sub_obj &&
+         reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + vaddr_sub_obj->getSize() <=
+             end_address) {
+    amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
+    if (phys_mem_obj == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
+    amd::Command* cmd = new amd::VirtualMapCommand(
+        *hip::getCurrentDevice()->NullStream(), amd::Command::EventWaitList{},
+        vaddr_sub_obj->getSvmPtr(), vaddr_sub_obj->getSize(), nullptr);
+
+    cmd->enqueue();
+    cmd->awaitCompletion();
+    cmd->release();
+    // restore the original pa of the generic allocation
+    hip::GenericAllocation* ga =
+        reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
+    ga->release();
+    address next_subbuffer_ptr =
+        reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + vaddr_sub_obj->getSize();
+    vaddr_sub_obj->release();
+    vaddr_sub_obj = amd::MemObjMap::FindMemObj(next_subbuffer_ptr);
   }
-
-  auto& queue = *g_devices[phys_mem_obj->getUserData().deviceId]->NullStream();
-
-  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
-                                                 nullptr);
-  cmd->enqueue();
-  cmd->awaitCompletion();
-  cmd->release();
-  vaddr_sub_obj->release();
-
-  // restore the original pa of the generic allocation
-  hip::GenericAllocation* ga
-    = reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
-  ga->release();
 
   HIP_RETURN(hipSuccess);
 }
 } //namespace hip
-
