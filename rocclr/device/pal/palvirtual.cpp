@@ -2621,17 +2621,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                       const amd::Kernel& kernel, const_address parameters,
                                       bool nativeMem, uint32_t sharedMemBytes,
                                       bool anyOrder) {
-  size_t newOffset[3] = {0, 0, 0};
-  size_t newGlobalSize[3] = {0, 0, 0};
   state_.anyOrder_ = anyOrder;
-
-  int dim = -1;
-  int iteration = 1;
-  size_t globalStep = 0;
-  for (uint i = 0; i < sizes.dimensions(); i++) {
-    newGlobalSize[i] = sizes.global()[i];
-    newOffset[i] = sizes.offset()[i];
-  }
 
   // Get the HSA kernel object
   const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
@@ -2639,7 +2629,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   // If RGP capturing is enabled, then start SQTT trace
   if (rgpCaptureEna()) {
     size_t newLocalSize[3] = {1, 1, 1};
+    size_t newGlobalSize[3] = {0, 0, 0};
     for (uint i = 0; i < sizes.dimensions(); i++) {
+      newGlobalSize[i] = sizes.global()[i];
       if (sizes.local()[i] != 0) {
         newLocalSize[i] = sizes.local()[i];
       }
@@ -2671,13 +2663,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   if (PAL_EMBED_KERNEL_MD) {
     char buf[256];
-    sprintf(buf,
-            "kernel: %s\n"
-            "private mem size: %x\n"
-            "group mem size: %x\n",
-            hsaKernel.name().c_str(),
-            hsaKernel.spillSegSize(),
-            hsaKernel.ldsSize());
+    sprintf(buf, "kernel: %s\n private mem size: %x\n group mem size: %x\n",
+            hsaKernel.name().c_str(), hsaKernel.spillSegSize(), hsaKernel.ldsSize());
     iCmd()->CmdCommentString(buf);
   }
 
@@ -2694,128 +2681,77 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   // Add ISA memory object to the resource tracking list
   AddKernel(kernel);
 
-  // Check if it is blit kernel. If it is, then check if split is needed.
-  if (hsaKernel.isInternalKernel()) {
-    // Calculate new group size for each submission
-    for (uint i = 0; i < sizes.dimensions(); i++) {
-      if (sizes.global()[i] > static_cast<size_t>(0xffffffff)) {
-        dim = i;
-        iteration = sizes.global()[i] / 0xC0000000 + ((sizes.global()[i] % 0xC0000000) ? 1 : 0);
-        globalStep = (sizes.global()[i] / sizes.local()[i]) / iteration * sizes.local()[dim];
-        break;
-      }
+  GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
+  uint32_t id = gpuEvent.id_;
+  uint64_t vmParentWrap = 0;
+  uint32_t aql_index = 0;
+  // Program the kernel arguments for the GPU execution
+  hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
+      *this, kernel, sizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap, &aql_index);
+  assert((nullptr != aqlPkt) && "Couldn't load kernel arguments");
+
+  // Dynamic call stack size is considered to calculate private segment size and scratch regs
+  // in LightningKernel::postLoad(). As it is not called during hipModuleLaunchKernel unlike
+  // hipLaunchKernel/hipLaunchKernelGGL, Updated value is passed to dispatch packet.
+  size_t privateMemSize = hsaKernel.spillSegSize();
+  if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+    privateMemSize = std::max<uint32_t>(static_cast<uint32_t>(device().StackSize()),
+                              hsaKernel.workGroupInfo()->scratchRegs_ * sizeof(uint32_t)) ;
+    // Validate privateMemSize is more than max allowed.
+    size_t maxStackSize = device().MaxStackSize();
+    if (privateMemSize > maxStackSize) {
+      ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+        "Scratch size (%zu) exceeds max allowed (%zu) for kernel : %s",
+        privateMemSize, maxStackSize, hsaKernel.name().c_str());
+      LogError("Scratch size exceeds max allowed.");
+      return false;
     }
   }
 
-  for (int iter = 0; iter < iteration; ++iter) {
-    GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
-    uint32_t id = gpuEvent.id_;
-    // Reset global size for dimension dim if split is needed
-    if (dim != -1) {
-      newOffset[dim] = sizes.offset()[dim] + globalStep * iter;
-      if (((newOffset[dim] + globalStep) < sizes.global()[dim]) && (iter != (iteration - 1))) {
-        newGlobalSize[dim] = globalStep;
-      } else {
-        newGlobalSize[dim] = sizes.global()[dim] - newOffset[dim];
-      }
-    }
+  // Set up the dispatch information
+  Pal::DispatchAqlParams dispatchParam = {};
+  dispatchParam.pAqlPacket = aqlPkt;
+  if (privateMemSize > 0) {
+    const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
+    dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
+    dispatchParam.scratchSize = scratch->size_;
+    dispatchParam.scratchOffset = scratch->offset_;
+    dispatchParam.workitemPrivateSegmentSize = privateMemSize;
+  }
+  dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
+  dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
+  if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
+    constexpr uint32_t kWavesPerSimdLimit = 4;
+    dispatchParam.wavesPerSh = kWavesPerSimdLimit *
+      dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
+  } else {
+    dispatchParam.wavesPerSh = 0;
+  }
+  dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
+  dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
+  dispatchParam.aqlPacketIndex = aql_index;
+  // Run AQL dispatch in HW
+  eventBegin(MainEngine);
+  iCmd()->CmdDispatchAql(dispatchParam);
 
-    amd::NDRangeContainer tmpSizes(sizes.dimensions(), &newOffset[0], &newGlobalSize[0],
-                                   &(const_cast<amd::NDRangeContainer&>(sizes).local()[0]));
+  if (id != gpuEvent.id_) {
+    LogError("Something is wrong. ID mismatch!\n");
+  }
+  eventEnd(MainEngine, gpuEvent);
+  AqlPacketUpdateTs(aql_index, gpuEvent);
 
-    if (iter > 0) {
-      // Updates the timestamp values, since a CB flush could occur.
-      // Resource processing was  moved from loadArguments() and
-      // an extra loop is required.
-      const amd::KernelParameters& kernelParams = kernel.parameters();
-      amd::Memory* const* memories =
-          reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-      for (uint32_t i = 0; i < kernel.signature().numMemories(); ++i) {
-        if (nativeMem) {
-          Memory* gpuMem = reinterpret_cast<Memory* const*>(memories)[i];
-          if (gpuMem != nullptr) {
-            gpuMem->setBusy(*this, gpuEvent);
-          }
-        } else {
-          amd::Memory* mem = memories[i];
-          if (mem != nullptr) {
-            dev().getGpuMemory(mem)->setBusy(*this, gpuEvent);
-          }
-        }
-      }
-    }
+  // Execute scheduler for device enqueue
+  if (hsaKernel.dynamicParallelism()) {
+    PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
+  }
 
-    uint64_t vmParentWrap = 0;
-    uint32_t aql_index = 0;
-    // Program the kernel arguments for the GPU execution
-    hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-        *this, kernel, tmpSizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap, &aql_index);
-    if (nullptr == aqlPkt) {
-      LogError("Couldn't load kernel arguments");
-      return false;
-    }
-    // Dynamic call stack size is considered to calculate private segment size and scratch regs
-    // in LightningKernel::postLoad(). As it is not called during hipModuleLaunchKernel unlike
-    // hipLaunchKernel/hipLaunchKernelGGL, Updated value is passed to dispatch packet.
-    size_t privateMemSize = hsaKernel.spillSegSize();
-    if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
-      privateMemSize = std::max<uint32_t>(static_cast<uint32_t>(device().StackSize()),
-                                hsaKernel.workGroupInfo()->scratchRegs_ * sizeof(uint32_t)) ;
-      // Validate privateMemSize is more than max allowed.
-      size_t maxStackSize = device().MaxStackSize();
-      if (privateMemSize > maxStackSize) {
-        ClPrint(amd::LOG_INFO, amd::LOG_KERN,
-          "Scratch size (%zu) exceeds max allowed (%zu) for kernel : %s",
-          privateMemSize, maxStackSize, hsaKernel.name().c_str());
-        LogError("Scratch size exceeds max allowed.");
-        return false;
-      }
-    }
+  // Update the global GPU event
+  constexpr bool kNeedFLush = false;
+  setGpuEvent(gpuEvent, kNeedFLush);
 
-    // Set up the dispatch information
-    Pal::DispatchAqlParams dispatchParam = {};
-    dispatchParam.pAqlPacket = aqlPkt;
-    if (privateMemSize > 0) {
-      const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
-      dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
-      dispatchParam.scratchSize = scratch->size_;
-      dispatchParam.scratchOffset = scratch->offset_;
-      dispatchParam.workitemPrivateSegmentSize = privateMemSize;
-    }
-    dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
-    dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
-      constexpr uint32_t kWavesPerSimdLimit = 4;
-      dispatchParam.wavesPerSh = kWavesPerSimdLimit *
-        dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
-    } else {
-      dispatchParam.wavesPerSh = 0;
-    }
-    dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
-    dispatchParam.aqlPacketIndex = aql_index;
-    // Run AQL dispatch in HW
-    eventBegin(MainEngine);
-    iCmd()->CmdDispatchAql(dispatchParam);
-
-    if (id != gpuEvent.id_) {
-      LogError("Something is wrong. ID mismatch!\n");
-    }
-    eventEnd(MainEngine, gpuEvent);
-    AqlPacketUpdateTs(aql_index, gpuEvent);
-
-    // Execute scheduler for device enqueue
-    if (hsaKernel.dynamicParallelism()) {
-      PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
-    }
-
-    // Update the global GPU event
-    constexpr bool kNeedFLush = false;
-    setGpuEvent(gpuEvent, kNeedFLush);
-
-    if (printfEnabled && !printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
-      LogError("Couldn't read printf data from the buffer!\n");
-      return false;
-    }
+  if (printfEnabled && !printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
+    LogError("Couldn't read printf data from the buffer!\n");
+    return false;
   }
 
   // Check if image buffer write back is required
