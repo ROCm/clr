@@ -551,7 +551,7 @@ class coalesced_group : public thread_group {
 
     return __shfl(var, lane, warpSize);
   }
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 
   /** \brief Ballot function on group level.
    *
@@ -617,7 +617,7 @@ class coalesced_group : public thread_group {
          __match_all_sync(static_cast<unsigned long long>(coalesced_info.member_mask), value,
                           &pred));
    }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 };
 
 /** \ingroup CooperativeGConstruct 
@@ -819,14 +819,14 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
   friend __CG_QUALIFIER__ coalesced_group
   binary_partition(const thread_block_tile<fsize, fparent>& tgrp, bool pred);
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
   __CG_QUALIFIER__ unsigned long long build_mask() const {
     unsigned long long mask = ~0ull >> (64 - numThreads);
     // thread_rank() gives thread id from 0..thread launch size.
     return mask << (((internal::workgroup::thread_rank() % warpSize) / numThreads) *
                     numThreads);
   }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 
  public:
 
@@ -850,7 +850,7 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
     return (__shfl_xor(var, laneMask, numThreads));
   }
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
   __CG_QUALIFIER__ unsigned long long ballot(int pred) const {
     const auto mask = build_mask();
     return internal::helper::adjust_mask(mask, __ballot_sync(mask, pred));
@@ -869,7 +869,7 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
     const auto mask = build_mask();
     return internal::helper::adjust_mask(mask, __match_all_sync(mask, value, &pred));
   }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 };
 
 /** \brief   User exposed API that captures the state of the parent group pre-partition
@@ -1197,7 +1197,7 @@ __CG_QUALIFIER__ thread_block_tile<size, ParentCGTy> tiled_partition(const Paren
   return impl::tiled_partition_internal<size, ParentCGTy>(g);
 }
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 
 /** \ingroup CooperativeGConstruct
  *  \brief Binary partition.

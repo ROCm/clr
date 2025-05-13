@@ -16,6 +16,8 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - HIP Extensions APIs for microscaling formats, which are supported on AMD GPUs.
 * New `wptr` and `rptr` values in `ClPrint`, for better logging in dispatch barrier methods.
 * New debug mask, to print precise code object information for logging.
+* The `_sync()` version of crosslane builtins such as `shfl_sync()` and `__reduce_add_sync` are enabled by default. These can be
+disabled by setting the preprocessor macro `HIP_DISABLE_WARP_SYNC_BUILTINS`.
 
 ### Changed
 

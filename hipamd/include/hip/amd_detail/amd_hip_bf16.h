@@ -663,7 +663,7 @@ __hip_bfloat16 __shfl_xor(MAYBE_UNDEF __hip_bfloat16 var, int lane_mask, int wid
     return tmp.f;
 }
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 /**
  * \ingroup HIP_INTRINSIC_BFLOAT16_MOVE
  * \brief shfl down warp intrinsic for bfloat16
@@ -771,7 +771,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_xor_sync(const unsigned long long 
   u.ui = __shfl_xor_sync<unsigned long long, unsigned int>(mask, u.ui, delta, width);
   return u.bf162;
 }
-#endif  // HIP_DISABLE_WARP_SYNC_BUILTINS
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 
 /**
  * \ingroup HIP_INTRINSIC_BFLOAT16_ARITH
