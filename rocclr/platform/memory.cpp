@@ -416,6 +416,14 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
 
 // ================================================================================================
 Memory::~Memory() {
+
+  if (ipcShared()) {
+    amd::MemObjMap::RemoveIpcHandleMemObj(this);
+    auto device = context_().devices()[0];
+    if (device != nullptr) {
+      device->IpcDetach(this);
+    }
+  }
   // For_each destructor callback:
   DestructorCallBackEntry* entry;
   for (entry = destructorCallbacks_; entry != nullptr; entry = entry->next_) {

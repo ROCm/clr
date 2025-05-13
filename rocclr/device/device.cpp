@@ -341,7 +341,8 @@ bool Device::device_not_usable_ = false;
 std::shared_mutex MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
-std::unordered_map<uintptr_t, amd::Memory*> MemObjMap::IpcHandleMemObjMap_ ROCCLR_INIT_PRIORITY(101);
+std::map<MemObjMap::IpcMemHandle, amd::Memory*> MemObjMap::IpcHandleMemObjMap_ ROCCLR_INIT_PRIORITY(101);
+
 
 void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
   std::unique_lock lock(AllocatedLock_);
@@ -449,12 +450,12 @@ amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
   }
 }
 
-void MemObjMap::AddIpcHandleMemObj(const void* k, amd::Memory* v) {
+void MemObjMap::AddIpcHandleMemObj(const IpcMemHandle& k, amd::Memory* v) {
   std::unique_lock lock(AllocatedLock_);
-  auto rval = IpcHandleMemObjMap_.insert({reinterpret_cast<uintptr_t>(k), v});
+  auto rval = IpcHandleMemObjMap_.insert({k, v});
   if (!rval.second) {
-    DevLogPrintfError("IpcHandle Memobj map already has an entry for ptr: 0x%x",
-                      reinterpret_cast<uintptr_t>(k));
+    DevLogPrintfError(
+        "Error adding entry for Memobj 0x%x in IpcHandle map. The handle already exists.", v);
   }
 }
 
@@ -469,11 +470,10 @@ void MemObjMap::RemoveIpcHandleMemObj(amd::Memory* v) {
   }
 }
 
-amd::Memory* MemObjMap::FindIpcHandleMemObj(const void* k) {
+amd::Memory* MemObjMap::FindIpcHandleMemObj(const IpcMemHandle& k) {
   std::shared_lock lock(AllocatedLock_);
-  uintptr_t key = reinterpret_cast<uintptr_t>(k);
 
-  auto it = IpcHandleMemObjMap_.find(key);
+  auto it = IpcHandleMemObjMap_.find(k);
   if (it == IpcHandleMemObjMap_.cend()) {
     return nullptr;
   }
@@ -1020,7 +1020,7 @@ char* Device::getExtensionString() {
 }
 
 // ================================================================================================
-bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
+bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, char* handle, size_t* mem_offset) const {
   amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
   if (amd_mem_obj == nullptr) {
     DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
@@ -1059,7 +1059,7 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
 }
 
 // ================================================================================================
-bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+bool Device::IpcAttach(const char* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
                        void** dev_ptr) const {
   amd::Memory* amd_mem_obj = nullptr;
 
@@ -1093,8 +1093,7 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, u
 }
 
 // ================================================================================================
-void Device::IpcDetach(void* dev_ptr) const {
-  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+void Device::IpcDetach(amd::Memory* amd_mem_obj) const {
 
   // Get the original pointer from the amd::Memory object
   void* orig_dev_ptr = nullptr;
@@ -1105,8 +1104,7 @@ void Device::IpcDetach(void* dev_ptr) const {
   } else {
     ShouldNotReachHere();
   }
-
-  if (amd_mem_obj->release() == 0) {
+  if (amd::MemObjMap::FindMemObj(orig_dev_ptr)) {
     amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
   }
 }

@@ -1374,10 +1374,25 @@ class VirtualDevice : public amd::HeapObject {
 }  // namespace amd::device
 
 namespace amd {
-
+/*! IHIP IPC MEMORY Structure */
+#define AMD_IPC_MEM_HANDLE_SIZE 32
 //! MemoryObject map lookup  class
 class MemObjMap : public AllStatic {
  public:
+  struct IpcMemHandle {
+    char ipc_handle[AMD_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
+    size_t psize;                        ///< Total size of the device memory allocation
+    size_t poffset;                      ///< Offset within the allocation
+    int owners_process_id;               ///< ID of the process that owns the allocation
+    char reserved[LP64_SWITCH(20, 12)];  ///< Reserved for future extensions
+
+    bool operator<(const IpcMemHandle& h) const {
+      int cmp = std::memcmp(ipc_handle, h.ipc_handle, AMD_IPC_MEM_HANDLE_SIZE);
+      if (cmp != 0) return cmp < 0;
+
+      return poffset < h.poffset;
+    }
+  };
   //!< add the host mem pointer and buffer in the container
   static void AddMemObj(const void* k, amd::Memory* v);
 
@@ -1398,11 +1413,11 @@ class MemObjMap : public AllStatic {
   static amd::Memory* FindVirtualMemObj(const void* k);
 
   //!< Same as AddMemObj but for virtual ipc handle to MemObj mapping
-  static void AddIpcHandleMemObj(const void* k, amd::Memory* v);
+  static void AddIpcHandleMemObj(const IpcMemHandle& k, amd::Memory* v);
   //!< Remove entry from the map by searching values
   static void RemoveIpcHandleMemObj(amd::Memory* v);
   //!< Same as FindMemObj but for ipc handle to MemObj mapping
-  static amd::Memory* FindIpcHandleMemObj(const void* k);
+  static amd::Memory* FindIpcHandleMemObj(const IpcMemHandle& k);
 
  private:
   //!< the mem object<->hostptr information container
@@ -1412,7 +1427,7 @@ class MemObjMap : public AllStatic {
   //!< Shared read/write lock
   static std::shared_mutex AllocatedLock_;
   //!< the ipc handle<->mem object information container
-  static std::unordered_map<uintptr_t, amd::Memory*> IpcHandleMemObjMap_;
+  static std::map<IpcMemHandle, amd::Memory*> IpcHandleMemObjMap_;
 };
 
 /// @brief Instruction Set Architecture properties.
@@ -2080,12 +2095,12 @@ class Device : public RuntimeObject {
   //! Checks if OCL runtime can use hsail for compilation
   bool ValidateHsail();
 
-  bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const;
+  bool IpcCreate(void* dev_ptr, size_t* mem_size, char* handle, size_t* mem_offset) const;
 
-  bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+  bool IpcAttach(const char* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
                  void** dev_ptr) const;
 
-  void IpcDetach(void* dev_ptr) const;
+  void IpcDetach(amd::Memory* amd_mem_obj) const;
 
   //! Return context
   amd::Context& context() const { return *context_; }

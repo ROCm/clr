@@ -2505,8 +2505,8 @@ void Device::svmFree(void* ptr) const {
   } else {
     amd::Memory* svmMem = amd::MemObjMap::FindMemObj(ptr);
     if (nullptr != svmMem) {
-      svmMem->release();
       amd::MemObjMap::RemoveMemObj(ptr);
+      svmMem->release();
     }
   }
 }

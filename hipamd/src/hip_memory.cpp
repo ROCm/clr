@@ -3236,16 +3236,16 @@ hipError_t hipIpcGetMemHandle(hipIpcMemHandle_t* handle, void* dev_ptr) {
   HIP_INIT_API(hipIpcGetMemHandle, handle, dev_ptr);
 
   amd::Device* device = nullptr;
-  ihipIpcMemHandle_t* ihandle = nullptr;
+  amd::MemObjMap::IpcMemHandle* ihandle = nullptr;
 
   if ((handle == nullptr) || (dev_ptr == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   device = hip::getCurrentDevice()->devices()[0];
-  ihandle = reinterpret_cast<ihipIpcMemHandle_t *>(handle);
+  ihandle = reinterpret_cast<amd::MemObjMap::IpcMemHandle*>(handle);
 
-  if(!device->IpcCreate(dev_ptr, &(ihandle->psize), &(ihandle->ipc_handle), &(ihandle->poffset))) {
+  if (!device->IpcCreate(dev_ptr, &(ihandle->psize), ihandle->ipc_handle, &(ihandle->poffset))) {
     LogPrintfError("IPC memory creation failed for memory: 0x%x", dev_ptr);
     HIP_RETURN(hipErrorInvalidValue);
   }
@@ -3256,10 +3256,9 @@ hipError_t hipIpcGetMemHandle(hipIpcMemHandle_t* handle, void* dev_ptr) {
 
 hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigned int flags) {
   HIP_INIT_API(hipIpcOpenMemHandle, dev_ptr, &handle, flags);
-
   amd::Memory* amd_mem_obj = nullptr;
   amd::Device* device = nullptr;
-  ihipIpcMemHandle_t* ihandle = nullptr;
+  amd::MemObjMap::IpcMemHandle* ihandle = nullptr;
   size_t offset = 0;
 
   if (dev_ptr == nullptr || flags != hipIpcMemLazyEnablePeerAccess) {
@@ -3268,7 +3267,7 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
 
   /* Call the IPC Attach from Device class */
   device = hip::getCurrentDevice()->devices()[0];
-  ihandle = reinterpret_cast<ihipIpcMemHandle_t *>(&handle);
+  ihandle = reinterpret_cast<amd::MemObjMap::IpcMemHandle*>(&handle);
 
   if (ihandle->psize == 0) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -3278,9 +3277,9 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
     HIP_RETURN(hipErrorInvalidContext);
   }
 
-  amd_mem_obj = amd::MemObjMap::FindIpcHandleMemObj(ihandle);
+  amd_mem_obj = amd::MemObjMap::FindIpcHandleMemObj(*ihandle);
   if (amd_mem_obj == nullptr) {
-    if (!device->IpcAttach(&(ihandle->ipc_handle), ihandle->psize, ihandle->poffset, flags,
+    if (!device->IpcAttach(ihandle->ipc_handle, ihandle->psize, ihandle->poffset, flags,
                            dev_ptr)) {
       LogPrintfError(
           "Cannot attach ipc_handle: with ipc_size: %u"
@@ -3289,7 +3288,7 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
       HIP_RETURN(hipErrorInvalidDevicePointer);
     }
     amd_mem_obj = getMemoryObject(*dev_ptr, offset);
-    amd::MemObjMap::AddIpcHandleMemObj(ihandle, amd_mem_obj);
+    amd::MemObjMap::AddIpcHandleMemObj(*ihandle, amd_mem_obj);
   } else {
     // Handle was already opened by the same process
     *dev_ptr = amd_mem_obj->getSvmPtr();
@@ -3330,18 +3329,10 @@ hipError_t hipIpcCloseMemHandle(void* dev_ptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  // If handle is opened more than once, do detach on last release call
-  if (amd_mem_obj->referenceCount() == 1) {
-    auto device_id = amd_mem_obj->getUserData().deviceId;
-    g_devices[device_id]->SyncAllStreams();
+  auto device_id = amd_mem_obj->getUserData().deviceId;
+  g_devices[device_id]->SyncAllStreams();
 
-    // Remove entry from the map
-    amd::MemObjMap::RemoveIpcHandleMemObj(amd_mem_obj);
-    /* detach the memory */
-    device->IpcDetach(dev_ptr);
-  } else {
-    amd_mem_obj->release();
-  }
+  amd_mem_obj->release();
 
   HIP_RETURN(hipSuccess);
 }

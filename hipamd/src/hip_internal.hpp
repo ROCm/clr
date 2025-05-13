@@ -48,9 +48,6 @@
 #define KCYN "\x1B[36m"
 #define KWHT "\x1B[37m"
 
-/*! IHIP IPC MEMORY Structure */
-#define IHIP_IPC_MEM_HANDLE_SIZE   32
-#define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
 namespace hip{
   extern std::once_flag g_ihipInitialized;
 }
@@ -89,13 +86,6 @@ struct GraphNode;
 struct GraphExec;
 struct UserObject;
 class Stream;
-typedef struct ihipIpcMemHandle_st {
-  char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
-  size_t psize;
-  size_t poffset;
-  int owners_process_id;
-  char reserved[IHIP_IPC_MEM_RESERVED_SIZE];
-} ihipIpcMemHandle_t;
 
 #define IHIP_IPC_EVENT_HANDLE_SIZE 32
 #define IHIP_IPC_EVENT_RESERVED_SIZE LP64_SWITCH(28,24)

@@ -35,7 +35,7 @@ class Stream;
 struct SharedMemPointer {
   size_t offset_;
   size_t size_;
-  char handle_[IHIP_IPC_MEM_HANDLE_SIZE];
+  char handle_[AMD_IPC_MEM_HANDLE_SIZE];
 };
 
 struct MemoryTimestamp {
