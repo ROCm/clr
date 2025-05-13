@@ -390,9 +390,6 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
     return hipErrorInvalidHandle;
   }
   getStreamPerThread(stream);
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::Stream* hip_stream = hip::getStream(stream);

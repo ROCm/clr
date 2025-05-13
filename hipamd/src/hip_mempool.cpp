@@ -85,9 +85,7 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
   if (size == 0) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);
@@ -147,9 +145,7 @@ class FreeAsyncCommand : public amd::Command {
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   HIP_INIT_API(hipFreeAsync, dev_ptr, stream);
 
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
@@ -376,9 +372,7 @@ hipError_t hipMallocFromPoolAsync(
   if ((dev_ptr == nullptr) || (mem_pool == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
   if (size == 0) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);

@@ -82,9 +82,7 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
-  }
+  getStreamPerThread(stream);
 
   size_t offset = 0;
   amd::Memory* memObj = getMemoryObject(dev_ptr, offset);
@@ -238,9 +236,7 @@ hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
-  }
+  getStreamPerThread(stream);
 
   if (flags != hipMemAttachGlobal && flags != hipMemAttachHost && flags != hipMemAttachSingle) {
     HIP_RETURN(hipErrorInvalidValue);

@@ -42,9 +42,7 @@ inline hipError_t ihipGraphUpload(hipGraphExec_t graphExec, hipStream_t stream) 
   if (graphExec == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   if (!hip::GraphExec::isGraphExecValid(reinterpret_cast<hip::GraphExec*>(graphExec))) {
     return hipErrorInvalidValue;
   }
@@ -1026,9 +1024,7 @@ hipError_t hipStreamIsCapturing_common(hipStream_t stream, hipStreamCaptureStatu
   if (pCaptureStatus == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   if (hip::Stream::StreamCaptureBlocking() == true &&
       (stream == nullptr || stream == hipStreamLegacy)) {
     return hipErrorStreamCaptureImplicit;
@@ -1069,9 +1065,7 @@ hipError_t hipThreadExchangeStreamCaptureMode(hipStreamCaptureMode* mode) {
 
 hipError_t hipStreamBeginCapture_common(hipStream_t stream, hipStreamCaptureMode mode,
                                         hipGraph_t graph = nullptr) {
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   // capture cannot be initiated on legacy stream
   if (stream == nullptr || stream == hipStreamLegacy) {
     return hipErrorStreamCaptureUnsupported;
@@ -1591,9 +1585,7 @@ hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
 }
 
 hipError_t ihipGraphLaunch(hip::GraphExec* graphExec, hipStream_t stream) {
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   hip::Stream* launch_stream = hip::getStream(stream);
   return graphExec->Run(launch_stream);
 }
@@ -1604,9 +1596,6 @@ hipError_t hipGraphLaunch_common(hip::GraphExec* graphExec, hipStream_t stream) 
   }
   if (graphExec->GetNodeCount() == 0) {
     return hipSuccess;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
   }
   return ihipGraphLaunch(graphExec, stream);
 }
@@ -2004,9 +1993,7 @@ hipError_t hipStreamGetCaptureInfo_common(hipStream_t stream,
   if (pCaptureStatus == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   if (hip::Stream::StreamCaptureBlocking() == true &&
       (stream == nullptr || stream == hipStreamLegacy)) {
     return hipErrorStreamCaptureImplicit;

@@ -1430,12 +1430,10 @@ hipError_t hipMemcpyAsync_common(void* dst, const void* src, size_t sizeBytes,
   if (static_cast<uint32_t>(kind) > hipMemcpyDefault && kind != hipMemcpyDeviceToDeviceNoCU) {
     return hipErrorInvalidMemcpyDirection;
   }
+  getStreamPerThread(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     return hipErrorInvalidValue;
-  }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
   }
   return ihipMemcpy(dst, src, sizeBytes, kind, *hip_stream, true);
 }
@@ -2360,9 +2358,7 @@ hipError_t ihipMemcpyParam3D(const HIP_MEMCPY3D* pCopy, hipStream_t stream, bool
   if (pCopy == nullptr) {
     return hipErrorInvalidValue;
   }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   hipMemoryType srcMemoryType;
   hipMemoryType dstMemoryType;
   ihipCopyMemParamSet(pCopy, srcMemoryType, dstMemoryType);
@@ -2448,9 +2444,7 @@ hipError_t hipMemcpy2DValidateParams(hipMemcpyKind kind, hipStream_t stream = nu
     return hipErrorInvalidMemcpyDirection;
   }
 
-  if (!hip::isValid(stream)) {
-    return hipErrorInvalidValue;
-  }
+  getStreamPerThread(stream);
 
   return hipSuccess;
 }
