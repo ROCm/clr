@@ -842,6 +842,20 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
       return hipErrorInvalidValue;
     }
 
+    if (launch.stream == nullptr || launch.stream == hipStreamLegacy) {
+      return hipErrorInvalidResourceHandle;
+    }
+
+    // Not supported while stream is capturing
+    hip::Stream* s = reinterpret_cast<hip::Stream*>(launch.stream);
+    if (s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+      s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+      return hipErrorStreamCaptureUnsupported;
+    }
+    if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
+      return hipErrorStreamCaptureInvalidated;
+    }
+
     hip::Stream* hip_stream = hip::getStream(launch.stream);
     hipFunction_t func = nullptr;
     // The order of devices in the launch may not match the order in the global array
