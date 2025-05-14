@@ -85,20 +85,20 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
 
   // Validate input params
   if (pTexObject == nullptr || pResDesc == nullptr || pTexDesc == nullptr) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // pResViewDesc can only be specified if the type of resource is a HIP array or a HIP mipmapped array.
   if ((pResViewDesc != nullptr) &&
       ((pResDesc->resType != hipResourceTypeArray) && (pResDesc->resType != hipResourceTypeMipmappedArray))) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeArray,
   if (pResDesc->resType == hipResourceTypeArray) {
       // hipResourceDesc::res::array::array must be set to a valid HIP array handle.
     if (pResDesc->res.array.array == nullptr) {
-      return hipErrorInvalidValue;
+      return hipErrorInvalidChannelDescriptor;
     } else if (pResDesc->res.array.array->depth > 0 &&
       pTexDesc->filterMode == hipFilterModeLinear &&
       !strncmp(info.name_, "gfx90a", strlen("gfx90a"))) {
@@ -124,7 +124,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       return hipErrorNotSupported;
     }
     if (pResDesc->res.mipmap.mipmap == nullptr || pTexDesc->normalizedCoords == 0) {
-      return hipErrorInvalidValue;
+      return hipErrorInvalidChannelDescriptor;
     }
   }
 
@@ -135,7 +135,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       ((pResDesc->res.linear.devPtr == nullptr) ||
        (!amd::isMultipleOf(pResDesc->res.linear.devPtr, info.imageBaseAddressAlignment_)) ||
        (pResDesc->res.linear.sizeInBytes >= info.imageMaxBufferSize_ * hip::getElementSize(pResDesc->res.linear.desc)))) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypePitch2D,
@@ -151,7 +151,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
        (pResDesc->res.pitch2D.height >= info.image2DMaxHeight_) ||
        (!amd::isMultipleOf(pResDesc->res.pitch2D.pitchInBytes, info.imagePitchAlignment_)))) {
     // TODO check pitch limits.
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // We don't program the max_ansio_ratio field in the the HW sampler SRD.
@@ -658,8 +658,16 @@ hipError_t hipBindTextureToArray(const textureReference* texref,
                                  const hipChannelFormatDesc* desc) {
   HIP_INIT_API(hipBindTextureToArray, texref, array, desc);
 
-  if ((texref == nullptr) || (array == nullptr) || (desc == nullptr)) {
-    return hipErrorInvalidValue;
+  if (texref == nullptr) {
+    return hipErrorInvalidTexture;
+  }
+
+  if (array == nullptr) {
+    return hipErrorInvalidResourceHandle;
+  }
+
+  if (desc == nullptr) {
+    return hipErrorInvalidChannelDescriptor;
   }
 
   hipDeviceptr_t refDevPtr = nullptr;
