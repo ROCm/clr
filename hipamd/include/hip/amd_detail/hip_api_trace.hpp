@@ -929,7 +929,7 @@ typedef hipError_t (*t_hipHccModuleLaunchKernel)(hipFunction_t f, uint32_t globa
 typedef int (*t_hipGetStreamDeviceId)(hipStream_t stream);
 typedef hipError_t (*t_hipDrvGraphAddMemsetNode)(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+                                 const hipMemsetParams* memsetParams, hipCtx_t ctx);
 typedef hipError_t (*t_hipGraphAddExternalSemaphoresWaitNode)(hipGraphNode_t* pGraphNode,
                                hipGraph_t graph, const hipGraphNode_t* pDependencies,
                                size_t numDependencies,
@@ -982,7 +982,7 @@ typedef hipError_t (*t_hipDrvGraphExecMemcpyNodeSetParams)(hipGraphExec_t hGraph
                                    hipCtx_t ctx);
 
 typedef hipError_t (*t_hipDrvGraphExecMemsetNodeSetParams)(hipGraphExec_t hGraphExec,
-                                   hipGraphNode_t hNode, const HIP_MEMSET_NODE_PARAMS* memsetParams,
+                                   hipGraphNode_t hNode, const hipMemsetParams* memsetParams,
                                    hipCtx_t ctx);
 typedef hipError_t (*t_hipSetValidDevices)(int* device_arr, int len);
 typedef hipError_t (*t_hipMemcpyAtoD)(hipDeviceptr_t dstDevice, hipArray_t srcArray,
