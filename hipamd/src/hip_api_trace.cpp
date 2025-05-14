@@ -88,7 +88,7 @@ hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device);
 hipError_t hipCtxDestroy(hipCtx_t ctx);
 hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx);
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags);
-hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion);
+hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion);
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig);
 hipError_t hipCtxGetCurrent(hipCtx_t* ctx);
 hipError_t hipCtxGetDevice(hipDevice_t* device);

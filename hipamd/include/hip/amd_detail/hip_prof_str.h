@@ -1393,7 +1393,7 @@ typedef struct hip_api_data_s {
     } hipCtxEnablePeerAccess;
     struct {
       hipCtx_t ctx;
-      int* apiVersion;
+      unsigned int* apiVersion;
       int apiVersion__val;
     } hipCtxGetApiVersion;
     struct {
@@ -3820,10 +3820,10 @@ typedef struct hip_api_data_s {
   cb_data.args.hipCtxEnablePeerAccess.peerCtx = (hipCtx_t)peerCtx; \
   cb_data.args.hipCtxEnablePeerAccess.flags = (unsigned int)flags; \
 };
-// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('int*', 'apiVersion')]
+// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('unsigned int*', 'apiVersion')]
 #define INIT_hipCtxGetApiVersion_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipCtxGetApiVersion.ctx = (hipCtx_t)ctx; \
-  cb_data.args.hipCtxGetApiVersion.apiVersion = (int*)apiVersion; \
+  cb_data.args.hipCtxGetApiVersion.apiVersion = (unsigned int*)apiVersion; \
 };
 // hipCtxGetCacheConfig[('hipFuncCache_t*', 'cacheConfig')]
 #define INIT_hipCtxGetCacheConfig_CB_ARGS_DATA(cb_data) { \
@@ -6325,7 +6325,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipCtxEnablePeerAccess[('hipCtx_t', 'peerCtx'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipCtxEnablePeerAccess:
       break;
-// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('int*', 'apiVersion')]
+// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('unsigned int*', 'apiVersion')]
     case HIP_API_ID_hipCtxGetApiVersion:
       if (data->args.hipCtxGetApiVersion.apiVersion) data->args.hipCtxGetApiVersion.apiVersion__val = *(data->args.hipCtxGetApiVersion.apiVersion);
       break;
