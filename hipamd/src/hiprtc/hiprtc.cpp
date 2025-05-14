@@ -66,7 +66,8 @@ const char* hiprtcGetErrorString(hiprtcResult x) {
 
 
 hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const char* name,
-                                 int numHeaders, const char** headers, const char** headerNames) {
+                                 int numHeaders, const char* const* headers,
+                                 const char* const* headerNames) {
   HIPRTC_INIT_API(prog, src, name, numHeaders, headers, headerNames);
 
   if (prog == nullptr) {
@@ -111,7 +112,7 @@ hiprtcResult hiprtcCreateProgram(hiprtcProgram* prog, const char* src, const cha
   HIPRTC_RETURN(HIPRTC_SUCCESS);
 }
 
-hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char** options) {
+hiprtcResult hiprtcCompileProgram(hiprtcProgram prog, int numOptions, const char* const* options) {
   HIPRTC_INIT_API(prog, numOptions, options);
 
   auto* rtcProgram = hiprtc::RTCCompileProgram::as_RTCCompileProgram(prog);
