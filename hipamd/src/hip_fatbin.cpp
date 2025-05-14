@@ -217,7 +217,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     if ((comgr_status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_FATBIN, &data_object)) !=
         AMD_COMGR_STATUS_SUCCESS) {
       LogPrintfError("Creating data object failed with status %d ", comgr_status);
-      hip_status = hipErrorInvalidValue;
+      hip_status = hipErrorInvalidImage;
       break;
     }
 
