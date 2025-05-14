@@ -66,6 +66,10 @@ hipError_t ihipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
     return hipErrorInvalidValue;
   }
 
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   amd::Image* image = nullptr;
   cl_mem memObj = reinterpret_cast<cl_mem>(pResDesc->res.array.array->data);
   if (!is_valid(memObj)) {
@@ -94,6 +98,10 @@ hipError_t hipCreateSurfaceObject(hipSurfaceObject_t* pSurfObject,
 hipError_t ihipDestroySurfaceObject(hipSurfaceObject_t surfaceObject) {
   if (surfaceObject == nullptr) {
     return hipSuccess;
+  }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
   return ihipFree(surfaceObject);
