@@ -271,8 +271,10 @@ bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
 // ================================================================================================
 void Graph::clone(Graph* newGraph, bool cloneNodes) const {
   newGraph->pOriginalGraph_ = this;
+  auto curDevId = ihipGetDevice();
   for (hip::GraphNode* entry : vertices_) {
     GraphNode* node = entry->clone();
+    node->SetDeviceId(curDevId);
     node->SetParentGraph(newGraph);
     newGraph->vertices_.push_back(node);
     newGraph->clonedNodes_[entry] = node;
