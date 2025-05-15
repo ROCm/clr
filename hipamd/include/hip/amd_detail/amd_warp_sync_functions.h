@@ -164,6 +164,20 @@ T __hip_readfirstlane(T val) {
     }                                                                          \
   } while(0)
 
+__device__ inline void __syncwarp() {
+  __builtin_amdgcn_fence(__ATOMIC_RELEASE, "wavefront");
+  __builtin_amdgcn_wave_barrier();
+  __builtin_amdgcn_fence(__ATOMIC_ACQUIRE, "wavefront");
+}
+
+template <typename MaskT> __device__ inline void __syncwarp(MaskT mask) {
+  static_assert(__hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
+                "The mask must be a 64-bit integer. "
+                "Implicitly promoting a smaller integer is almost always an error.");
+  __hip_check_mask(mask);
+  return __syncwarp();
+}
+
 // __all_sync, __any_sync, __ballot_sync
 
 template <typename MaskT>
