@@ -61,6 +61,7 @@ THE SOFTWARE.
     } // Namespace hip_impl.
 
     template<typename T, unsigned int n> struct HIP_vector_base;
+    template <typename T, unsigned int rank> struct HIP_vector_type;
 
     template<typename T>
     struct HIP_vector_base<T, 1> {
@@ -114,12 +115,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_base() = default;
         __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_) noexcept : data{x_, y_} {}
+        constexpr HIP_vector_base(T x_, T y_ = T()) noexcept : data{x_, y_} {}
         __HOST_DEVICE__
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
@@ -141,12 +137,7 @@ THE SOFTWARE.
             Native_vec_() = default;
 
             __HOST_DEVICE__
-            explicit
-            constexpr
-            Native_vec_(T x_) noexcept : d{x_, x_, x_} {}
-            __HOST_DEVICE__
-            constexpr
-            Native_vec_(T x_, T y_, T z_) noexcept : d{x_, y_, z_} {}
+            constexpr Native_vec_(T x_, T y_ = T(), T z_ = T()) noexcept : d{x_, y_, z_} {}
             __HOST_DEVICE__
             constexpr
             Native_vec_(const Native_vec_&) = default;
@@ -296,12 +287,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_base() = default;
         __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_, T z_) noexcept : data{x_, y_, z_} {}
+        constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T()) noexcept : data{x_, y_, z_} {}
         __HOST_DEVICE__
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
@@ -340,12 +326,8 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_base() = default;
         __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_, x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_, T z_, T w_) noexcept : data{x_, y_, z_, w_} {}
+        constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T(), T w_ = T()) noexcept
+            : data{x_, y_, z_, w_} {}
         __HOST_DEVICE__
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
@@ -357,6 +339,22 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
+
+    template <typename T, unsigned int rank>
+    __HOST_DEVICE__ HIP_vector_type<T, rank> make_vector_type(T val) {
+      static_assert(rank > 0 && rank <= 4);
+      if constexpr (rank == 1) {
+        return HIP_vector_type<T, rank>{val};
+      } else if constexpr (rank == 2) {
+        return HIP_vector_type<T, rank>{val, val};
+      } else if constexpr (rank == 3) {
+        return HIP_vector_type<T, rank>{val, val, val};
+      } else if constexpr (rank == 4) {
+        return HIP_vector_type<T, rank>{val, val, val, val};
+      }
+      // unreachable path
+      return HIP_vector_type<T, rank>{val};
+    }
 
     template<typename T, unsigned int rank>
     struct HIP_vector_type : public HIP_vector_base<T, rank> {
@@ -402,7 +400,8 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator++() noexcept
         {
-            return *this += HIP_vector_type{1};
+          HIP_vector_type unity = make_vector_type<T, rank>(1);
+          return *this += unity;
         }
         __HOST_DEVICE__
         HIP_vector_type operator++(int) noexcept
@@ -415,7 +414,8 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator--() noexcept
         {
-            return *this -= HIP_vector_type{1};
+          HIP_vector_type unity = make_vector_type<T, rank>(1);
+          return *this -= unity;
         }
         __HOST_DEVICE__
         HIP_vector_type operator--(int) noexcept
@@ -442,7 +442,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator+=(U x) noexcept
         {
-            return *this += HIP_vector_type{x};
+          return *this += make_vector_type<T, rank>(x);
         }
 
         __HOST_DEVICE__
@@ -462,7 +462,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator-=(U x) noexcept
         {
-            return *this -= HIP_vector_type{x};
+          return *this -= make_vector_type<T, rank>(x);
         }
 
         __HOST_DEVICE__
@@ -489,7 +489,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator*=(U x) noexcept
         {
-            return *this *= HIP_vector_type{x};
+          return *this *= make_vector_type<T, rank>(x);
         }
 
         friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator/(
@@ -515,7 +515,7 @@ THE SOFTWARE.
         __HOST_DEVICE__
         HIP_vector_type& operator/=(U x) noexcept
         {
-            return *this /= HIP_vector_type{x};
+          return *this /= make_vector_type<T, rank>(x);
         }
 
         template<
@@ -649,7 +649,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator+(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} += HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} += make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -658,7 +658,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator+(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} += y;
+      return make_vector_type<T, n>(x) += y;
     }
 
     template<typename T, unsigned int n>
@@ -677,7 +677,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator-(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} -= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} -= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -686,7 +686,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator-(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} -= y;
+      return make_vector_type<T, n>(x) -= y;
     }
 
     template<typename T, unsigned int n, typename U>
@@ -696,7 +696,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator*(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} *= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} *= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -705,7 +705,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator*(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} *= y;
+      return make_vector_type<T, n>(x) *= y;
     }
 
     template<typename T, unsigned int n, typename U>
@@ -715,7 +715,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator/(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} /= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} /= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -724,7 +724,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator/(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} /= y;
+      return make_vector_type<T, n>(x) /= y;
     }
 
     template<typename V>
@@ -752,7 +752,7 @@ THE SOFTWARE.
     constexpr
     bool operator==(const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return x == HIP_vector_type<T, n>{y};
+      return x == make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -760,7 +760,7 @@ THE SOFTWARE.
     constexpr
     bool operator==(U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} == y;
+      return make_vector_type<T, n>(x) == y;
     }
 
     template<typename T, unsigned int n>
@@ -812,7 +812,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator%(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} %= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} %= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -825,7 +825,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator%(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} %= y;
+      return make_vector_type<T, n>(x) %= y;
     }
 
     template<
@@ -851,7 +851,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator^(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} ^= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} ^= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -864,7 +864,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator^(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} ^= y;
+      return make_vector_type<T, n>(x) ^= y;
     }
 
     template<
@@ -890,7 +890,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator|(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} |= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} |= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -903,7 +903,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator|(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} |= y;
+      return make_vector_type<T, n>(x) |= y;
     }
 
     template<
@@ -929,7 +929,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator&(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} &= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} &= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -942,7 +942,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator&(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} &= y;
+      return make_vector_type<T, n>(x) &= y;
     }
 
     template<
@@ -968,7 +968,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator>>(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} >>= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} >>= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -981,7 +981,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator>>(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} >>= y;
+      return make_vector_type<T, n>(x) >>= y;
     }
 
     template<
@@ -1007,7 +1007,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator<<(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} <<= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} <<= make_vector_type<T, n>(y);
     }
     template<
         typename T,
@@ -1021,7 +1021,7 @@ THE SOFTWARE.
     HIP_vector_type<T, n> operator<<(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} <<= y;
+      return make_vector_type<T, n>(x) <<= y;
     }
 
     /*
