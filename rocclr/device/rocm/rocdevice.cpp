@@ -18,6 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
+#include "cl.h"
 #ifndef WITHOUT_HSA_BACKEND
 
 #include "platform/program.hpp"
@@ -3395,23 +3396,28 @@ device::Signal* Device::createSignal() const {
 
 // ================================================================================================
 hsa_status_t Device::BackendErrorCallBackHandler(const hsa_amd_event_t* event, void* data) {
+  cl_int gpu_error = CL_SUCCESS;
   switch (event->event_type) {
     case HSA_AMD_GPU_MEMORY_FAULT_EVENT:
+      gpu_error = CL_INVALID_MEM_OBJECT;
       LogError("Memory Fault Error");
       break;
     case HSA_AMD_GPU_HW_EXCEPTION_EVENT:
+      gpu_error = CL_INVALID_OPERATION;
       LogError("HW Exception Error");
       break;
     case HSA_AMD_GPU_MEMORY_ERROR_EVENT:
+      gpu_error = CL_DEVICE_NOT_AVAILABLE;
       LogError("GPU Memory Error");
       break;
     default:
+      gpu_error = CL_DEVICE_NOT_AVAILABLE;
       LogError("Unknown Event Type ");
       break;
   }
 
   if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
-    device_not_usable_ = true;
+    gpu_error_ = gpu_error;
   } else {
     abort();
   }
@@ -3568,6 +3574,48 @@ ProfilingSignal::~ProfilingSignal() {
 }
 
 // ================================================================================================
+cl_int ConvertHSAErrorIntoCLError(hsa_status_t hsa_status) {
+  cl_int cl_error = CL_SUCCESS;
+  switch (hsa_status) {
+    case HSA_STATUS_ERROR_EXCEPTION :
+      cl_error = CL_INVALID_OPERATION;
+      break;
+    case HSA_STATUS_ERROR_INCOMPATIBLE_ARGUMENTS :
+      cl_error = CL_INVALID_ARG_VALUE;
+      break;
+    case HSA_STATUS_ERROR_INVALID_ALLOCATION :
+      cl_error = CL_MEM_OBJECT_ALLOCATION_FAILURE;
+      break;
+    case HSA_STATUS_ERROR_INVALID_CODE_OBJECT :
+      cl_error = CL_INVALID_PROGRAM;
+      break;
+    case HSA_STATUS_ERROR_INVALID_PACKET_FORMAT :
+      cl_error = CL_INVALID_OPERATION;
+      break;
+    case HSA_STATUS_ERROR_INVALID_ARGUMENT :
+      cl_error = CL_INVALID_ARG_VALUE;
+      break;
+    case HSA_STATUS_ERROR_INVALID_ISA :
+      cl_error = CL_INVALID_KERNEL;
+      break;
+    case (hsa_status_t) HSA_STATUS_ERROR_ILLEGAL_INSTRUCTION :
+      cl_error = CL_BUILD_PROGRAM_FAILURE;
+      break;
+    case (hsa_status_t) HSA_STATUS_ERROR_MEMORY_FAULT :
+      cl_error = CL_INVALID_MEM_OBJECT;
+      break;
+    case (hsa_status_t) HSA_STATUS_ERROR_MEMORY_APERTURE_VIOLATION :
+      cl_error = CL_INVALID_MEM_OBJECT;
+      break;
+    case HSA_STATUS_ERROR :
+    default :
+      cl_error = CL_DEVICE_NOT_AVAILABLE;
+      break;
+  }
+  return cl_error;
+}
+
+// ================================================================================================
 void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     Device* dev = reinterpret_cast<Device*>(data);
@@ -3597,7 +3645,7 @@ void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
     }
 
     if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
-      amd::Device::device_not_usable_ = true;
+      amd::Device::gpu_error_ = ConvertHSAErrorIntoCLError(status);
     } else {
       abort();
     }

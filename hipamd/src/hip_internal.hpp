@@ -140,19 +140,23 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 // This macro should be called at the beginning of every HIP API.
 #define HIP_INIT_API(cid, ...)                                                                     \
+  if (amd::Device::IsGPUInError()) {                                                              \
+    HIP_RETURN(ConvertCLErrorIntoHIPError(amd::Device::GetGPUError()));                            \
+  }                                                                                                \
   HIP_INIT_API_INTERNAL(0, cid, __VA_ARGS__)                                                       \
   if (hip::g_devices.size() == 0) {                                                                \
     HIP_RETURN(hipErrorNoDevice);                                                                  \
-  }
+  }                                                                                                \
 
 #define HIP_INIT_API_NO_RETURN(cid, ...)                                                           \
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
 
 #define HIP_RETURN_DURATION(ret, ...)                                                              \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (amd::Device::IsDeviceNotUsable()) {                                                          \
-    hip::tls.last_error_ = hipErrorNoDevice;                                                       \
-    hip::tls.last_command_error_ = hipErrorNoDevice;                                               \
+  if (amd::Device::IsGPUInError()) {                                                               \
+    hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
+    hip::tls.last_error_ = hip_error;                                                              \
+    hip::tls.last_command_error_ = hip_error;                                                      \
   } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
@@ -168,9 +172,10 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define HIP_RETURN(ret, ...)                                                                       \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (amd::Device::IsDeviceNotUsable()) {                                                          \
-    hip::tls.last_error_ = hipErrorNoDevice;                                                       \
-    hip::tls.last_command_error_ = hipErrorNoDevice;                                               \
+  if (amd::Device::IsGPUInError()) {                                                               \
+    hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
+    hip::tls.last_error_ = hip_error;                                                              \
+    hip::tls.last_command_error_ = hip_error;                                                      \
   } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \

@@ -2180,7 +2180,8 @@ class Device : public RuntimeObject {
 #endif
 #endif
 
-  static bool IsDeviceNotUsable() { return device_not_usable_; }
+  static bool IsGPUInError() { return (gpu_error_ != CL_SUCCESS); }
+  static cl_int GetGPUError() { return gpu_error_; }
 
  protected:
   //! Enable the specified extension
@@ -2216,6 +2217,7 @@ class Device : public RuntimeObject {
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
   amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
+  static cl_int gpu_error_; //!< Store the GPU error cause during kernel launch
 
  private:
   const Isa *isa_;                //!< Device isa

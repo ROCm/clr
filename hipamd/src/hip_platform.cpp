@@ -24,6 +24,7 @@
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 #include "platform/runtime.hpp"
+#include "utils/flags.hpp"
 
 #include <unordered_map>
 #include <mutex>
@@ -185,13 +186,16 @@ void __hipRegisterTexture(
 
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   static std::once_flag unregister_device_sync;
-  std::call_once(unregister_device_sync, [](){
-    for (auto& hipDevice : g_devices) {
-      // By synchronizing devices ensure that all HSA signal handlers
-      // complete before removeFatBinary
-      hipDevice->SyncAllStreams(true);
-    }
-  });
+  // If SKIP ABORT is set and GPU is in error, dont need to sync streams.
+  if (!HIP_SKIP_ABORT_ON_GPU_ERROR || !amd::Device::IsGPUInError()) {
+    std::call_once(unregister_device_sync, [](){
+      for (auto& hipDevice : g_devices) {
+        // By synchronizing devices ensure that all HSA signal handlers
+        // complete before removeFatBinary
+        hipDevice->SyncAllStreams(true);
+      }
+    });
+  }
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }

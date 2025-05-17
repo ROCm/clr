@@ -22,6 +22,7 @@
 #include "thread/monitor.hpp"
 #include "device/device.hpp"
 #include "platform/context.hpp"
+#include "utils/flags.hpp"
 
 /*!
  * \file commandQueue.cpp

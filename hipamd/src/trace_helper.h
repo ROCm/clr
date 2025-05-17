@@ -245,3 +245,35 @@ inline std::string ToString(T first, Args... args) {
     return ToString(first) + ", " + ToString(args...);
 }
 
+
+inline hipError_t ConvertCLErrorIntoHIPError(cl_int cl_error) {
+  hipError_t hip_error = hipSuccess;
+  switch (cl_error) {
+    case CL_INVALID_OPERATION :
+      hip_error = hipErrorLaunchFailure;
+      break;
+    case CL_MEM_OBJECT_ALLOCATION_FAILURE :
+      hip_error = hipErrorIllegalAddress;
+      break;
+    case CL_INVALID_PROGRAM :
+      hip_error = hipErrorInvalidSource;
+      break;
+    case CL_INVALID_ARG_VALUE :
+      hip_error = hipErrorInvalidValue;
+      break;
+    case CL_INVALID_KERNEL :
+      hip_error = hipErrorInvalidKernelFile;
+      break;
+    case CL_BUILD_PROGRAM_FAILURE :
+      hip_error = hipErrorLaunchFailure;
+      break;
+    case CL_INVALID_MEM_OBJECT :
+      hip_error = hipErrorIllegalAddress;
+      break;
+    case CL_DEVICE_NOT_AVAILABLE:
+    default:
+      hip_error = hipErrorUnknown;
+      break;
+  }
+  return hip_error;
+}
