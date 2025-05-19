@@ -1700,15 +1700,15 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
         getBuffer(static_cast<const_address>(dstAddr + stagedCopyOffset), totalSize,
                   kEnablePin, kFirstTx, outBuffer);
         copySize = outBuffer.copySize_;
-        address xferBufAddr = outBuffer.buffer_;
-        srcAddr += stagedCopyOffset;
+        address stagingBuffer = outBuffer.buffer_;
+        address currentSrcAddr = srcAddr + stagedCopyOffset;
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging D2H copy stg buf=%p, src=%p, "
-                "dstOrigin=0x%x, size=%zu", xferBufAddr, srcAddr, dstOrigin[0], copySize);
+                "dstOrigin=0x%x, size=%zu", stagingBuffer, currentSrcAddr, dstOrigin[0], copySize);
         // Flush caches for coherency after the copy as we need to std::memcpy
         // from staging buffer to unpinned dst. Also attach a signal to the dispatch packet
         // itself that we can wait on without extra barrier packet.
         gpu().addSystemScope();
-        result = shaderCopyBuffer(xferBufAddr, srcAddr, dstOrigin, origin, copySize,
+        result = shaderCopyBuffer(stagingBuffer, currentSrcAddr, dstOrigin, origin, copySize,
                                   entire, dev().settings().limit_blit_wg_, copyMetadata,
                                   kAttachSignal);
         if (!result) {
@@ -1718,8 +1718,8 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
         if (outBuffer.pinnedMem_ == nullptr) {
           gpu().Barriers().WaitCurrent();
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy host dst=%p, stg buf=%p, size=%zu",
-                  (void*)(dstAddr + stagedCopyOffset), xferBufAddr, copySize);
-          memcpy(dstAddr + stagedCopyOffset, xferBufAddr, copySize);
+                  (void*)(dstAddr + stagedCopyOffset), stagingBuffer, copySize);
+          memcpy(dstAddr + stagedCopyOffset, stagingBuffer, copySize);
         }
         totalSize -= copySize;
         stagedCopyOffset += copySize;
@@ -1841,14 +1841,14 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
         // Get an address from managed staging buffer
         address stagingBuffer = outBuffer.buffer_;
         copySize = outBuffer.copySize_;
-        dstAddr += stagedCopyOffset;
+        address currentDstAddr = dstAddr + stagedCopyOffset;
         if (outBuffer.pinnedMem_ == nullptr) {
           ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy stg buf=%p, host src=%p, size=%zu",
                   stagingBuffer, (void*)(srcAddr + stagedCopyOffset), copySize);
           memcpy(stagingBuffer, srcAddr + stagedCopyOffset, copySize);
         }
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging H2D copy dst=%p, stg buf=%p, "
-                "dstOrigin=0x%x, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
+                "dstOrigin=0x%x, size=%zu", currentDstAddr, stagingBuffer, origin[0], copySize);
         bool kAttachSignal = false;
         if (copyMetadata.isAsync_ == false) {
           // If its a blocking call, attach signal to the packet which we can track for
@@ -1856,7 +1856,7 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
           kAttachSignal = true;
           gpu().addSystemScope();
         }
-        result = shaderCopyBuffer(dstAddr, stagingBuffer,
+        result = shaderCopyBuffer(currentDstAddr, stagingBuffer,
                                   origin, srcOrigin, copySize,
                                   entire, dev().settings().limit_blit_wg_,
                                   copyMetadata, kAttachSignal);
