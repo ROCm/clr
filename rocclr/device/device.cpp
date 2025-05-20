@@ -370,7 +370,9 @@ amd::Memory* MemObjMap::FindMemObj(const void* k, size_t* offset) {
 
   --it;
   amd::Memory* mem = it->second;
-  if (key >= it->first && key < (it->first + mem->getSize())) {
+  size_t mem_size = (mem->getMemFlags() & ROCCLR_MEM_PHYMEM) ? sizeof(mem->getUserData().hsa_handle)
+                                                             : mem->getSize();
+  if (key >= it->first && key < (it->first + mem_size)) {
     if (offset != nullptr) {
       *offset = key - it->first;
     }
