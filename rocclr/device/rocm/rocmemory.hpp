@@ -173,6 +173,8 @@ class Buffer : public roc::Memory {
 
   virtual bool ExportHandle(void* handle) const final;
 
+  virtual bool GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) final;
+
   // Recreate the device memory using new size and alignment.
   bool recreate(size_t newSize, size_t newAlignment, bool forceSystem);
 

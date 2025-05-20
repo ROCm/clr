@@ -63,7 +63,7 @@
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 #define HIP_TOOLS_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 11
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 12
 
 // HIP API interface
 // HIP compiler dispatch functions
@@ -1041,6 +1041,11 @@ typedef hipError_t (*t_hipLaunchKernelExC)(const hipLaunchConfig_t* config, cons
 typedef hipError_t (*t_hipDrvLaunchKernelEx)(const HIP_LAUNCH_CONFIG* config, hipFunction_t f,
                                              void** params, void** extra);
 
+typedef hipError_t (*t_hipMemGetHandleForAddressRange)(void* handle, hipDeviceptr_t dptr,
+                                                       size_t size,
+                                                       hipMemRangeHandleType handleType,
+                                                       unsigned long long flags);
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1579,8 +1584,10 @@ struct HipDispatchTable {
   t_hipLaunchKernelExC hipLaunchKernelExC_fn;
   t_hipDrvLaunchKernelEx hipDrvLaunchKernelEx_fn;
 
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION = 12
+  t_hipMemGetHandleForAddressRange hipMemGetHandleForAddressRange_fn;
   // DO NOT EDIT ABOVE!
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 11
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 12
 
   // ******************************************************************************************* //
   //

@@ -456,6 +456,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectTextureDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureReference = HIP_API_ID_NONE,
+  HIP_API_ID_hipMemGetHandleForAddressRange = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectCreate = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectDestroy = HIP_API_ID_NONE,
   HIP_API_ID_hipTexObjectGetResourceDesc = HIP_API_ID_NONE,
@@ -6264,6 +6265,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipGetTextureObjectTextureDesc_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureReference()
 #define INIT_hipGetTextureReference_CB_ARGS_DATA(cb_data) {};
+// hipMemGetHandleForAddressRange()
+#define INIT_hipMemGetHandleForAddressRange_CB_ARGS_DATA(cb_data) {};
 // hipTexObjectCreate()
 #define INIT_hipTexObjectCreate_CB_ARGS_DATA(cb_data) {};
 // hipTexObjectDestroy()

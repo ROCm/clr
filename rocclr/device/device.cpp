@@ -1126,6 +1126,25 @@ std::vector<amd::CommandQueue*> Device::getActiveQueues() {
   }
   return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
 }
+
+// =================================================================================================
+bool Device::GetHandleForAddressRange(void* dev_ptr, size_t size, void* handle) {
+  // Check if the ptr is created through VMM APIs, if true we use different ROCr APIs.
+  amd::Memory* amd_base_obj = amd::MemObjMap::FindVirtualMemObj(dev_ptr);
+  bool VmmPtr = (amd_base_obj != nullptr) ? true : false;
+
+  // Even if it is VMM ptr, check to make sure the memory is mapped. On hipMalloc'ed ptrs,
+  // make sure the memory is allocated.
+  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
+  if (amd_mem_obj == nullptr) {
+    DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
+    return false;
+  }
+
+  device::Memory* dev_mem = amd_mem_obj->getDeviceMemory(*this);
+  return dev_mem->GetFDHandleForMem(dev_ptr, size, VmmPtr, handle);
+}
+
 }  // namespace amd
 
 namespace amd::device {

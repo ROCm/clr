@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #include <hip/hip_runtime.h>
+#include "device.hpp"
 #include "hip/driver_types.h"
 #include "hip_internal.hpp"
 #include "hip_platform.hpp"
@@ -4279,4 +4280,23 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
   HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,
                                    (size_t)mipmapDesc->offset, buf));
 }
+
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+                                          hipMemRangeHandleType handleType,
+                                          unsigned long long flags) {
+  HIP_INIT_API(hipMemGetHandleForAddressRange, handle, dptr, size, handleType, flags);
+
+  // We do not support any flags at this time.
+  if (dptr == nullptr || size == 0 || handleType != hipMemRangeHandleTypeDmaBufFd || flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue;)
+  }
+
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  if (!device->GetHandleForAddressRange(dptr, size, handle)) {
+    HIP_RETURN(hipErrorInvalidValue;)
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
 }  // namespace hip

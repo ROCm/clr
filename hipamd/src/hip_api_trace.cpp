@@ -826,6 +826,9 @@ hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigne
 hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args);
 hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f, void** params,
                                 void** extra);
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+                                          hipMemRangeHandleType handleType,
+                                          unsigned long long flags);
 
 }  // namespace hip
 
@@ -1341,6 +1344,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipEventRecordWithFlags_fn = hip::hipEventRecordWithFlags;
   ptrDispatchTable->hipLaunchKernelExC_fn = hip::hipLaunchKernelExC;
   ptrDispatchTable->hipDrvLaunchKernelEx_fn = hip::hipDrvLaunchKernelEx;
+  ptrDispatchTable->hipMemGetHandleForAddressRange_fn = hip::hipMemGetHandleForAddressRange;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1981,15 +1985,17 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 473)
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 11
 HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchKernelExC_fn, 474);
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvLaunchKernelEx_fn, 475);
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 12
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetHandleForAddressRange_fn, 476);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 476)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 477)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 11,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 12,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif

@@ -1049,6 +1049,50 @@ bool Buffer::ExportHandle(void* handle) const {
   return true;
 }
 
+// ================================================================================================
+bool Buffer::GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) {
+  int dmabuffd = -1;
+  size_t offset = 0;
+
+  // In case of vmm, we use a different set of APIs for retrieving the dmabuffd.
+  if (vmm) {
+    hsa_amd_vmem_alloc_handle_t mem_handle;
+
+    // Retrieve the corresponding phys_mem handle for the mapped dev_ptr.
+    hsa_status_t hsa_status = hsa_amd_vmem_retain_alloc_handle(&mem_handle, dev_ptr);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot retain alloc handle for dev_ptr: 0x%x hsa returned status: %d",
+                     dev_ptr, hsa_status);
+      return false;
+    }
+
+    // Now, retrieve the shareable handle (fd in linux) for the phys_mem handle.
+    hsa_status = hsa_amd_vmem_export_shareable_handle(&dmabuffd, mem_handle, 0);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot get shareable handle for mem_handle: %lu, hsa returned status: %d",
+                      mem_handle, hsa_status);
+      return false;
+    }
+  } else {
+    // Retrieve a shareable handle for the device ptr.
+    hsa_status_t hsa_status = hsa_amd_portable_export_dmabuf(dev_ptr, size, &dmabuffd, &offset);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot export a portable fd for dev_ptr: 0x%x with size: %lu,"
+                     "hsa returned status: %d", dev_ptr, size, hsa_status);
+      return false;
+    }
+  }
+  
+  if (dmabuffd <= 0) {
+    LogPrintfError("Invalid file descriptor handle: %d returned", dmabuffd);
+    return false;
+  }
+
+  // As per spec, handle passed through HIP API is ptr to int.
+  *(reinterpret_cast<int*>(handle)) = dmabuffd;
+  return true;
+}
+
 // ======================================= roc::Image =============================================
 typedef struct ChannelOrderMap {
   uint32_t cl_channel_order;

@@ -952,6 +952,9 @@ class Memory : public amd::HeapObject {
   //! Get current access of the memory in device.
   MemAccess GetAccess() const { return memAccess_; }
 
+  //! Retrieves shareable handle for hipMalloc'ed address range.
+  virtual bool GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) { return false; }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -2182,6 +2185,8 @@ class Device : public RuntimeObject {
 
   static bool IsGPUInError() { return (gpu_error_ != CL_SUCCESS); }
   static cl_int GetGPUError() { return gpu_error_; }
+
+  bool GetHandleForAddressRange(void* dev_ptr, size_t size, void* handle);
 
  protected:
   //! Enable the specified extension

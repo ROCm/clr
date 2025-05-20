@@ -1878,3 +1878,10 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
                                 void** extra) {
   return hip::GetHipDispatchTable()->hipDrvLaunchKernelEx_fn(config, f, kernel, extra);
 }
+
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+                                          hipMemRangeHandleType handleType,
+                                          unsigned long long flags) {
+  return hip::GetHipDispatchTable()->hipMemGetHandleForAddressRange_fn(handle, dptr, size,
+                                                                       handleType, flags);
+}
