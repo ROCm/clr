@@ -1698,14 +1698,14 @@ bool KernelBlitManager::readBuffer(device::Memory& srcMemory, void* dstHost,
       constexpr bool kAttachSignal = true;
       while (totalSize > 0) {
         copySize = std::min(totalSize, maxStagedXferSize);
-        srcAddr += stagedCopyOffset;
+        address currentSrcAddr = srcAddr + stagedCopyOffset;
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging D2H copy stg buf=%p, src=%p, "
-                "dstOrigin=0x%x, size=%zu", xferBufAddr, srcAddr, dstOrigin[0], copySize);
+                "dstOrigin=0x%x, size=%zu", xferBufAddr, currentSrcAddr, dstOrigin[0], copySize);
         // Flush caches for coherency after the copy as we need to std::memcpy
         // from staging buffer to unpinned dst. Also attach a signal to the dispatch packet
         // itself that we can wait on without extra barrier packet.
         gpu().addSystemScope();
-        result = shaderCopyBuffer(xferBufAddr, srcAddr, dstOrigin, origin, copySize,
+        result = shaderCopyBuffer(xferBufAddr, currentSrcAddr, dstOrigin, origin, copySize,
                                   entire, dev().settings().limit_blit_wg_, copyMetadata,
                                   kAttachSignal);
         if (!result) {
@@ -1828,15 +1828,15 @@ bool KernelBlitManager::writeBuffer(const void* srcHost, device::Memory& dstMemo
         copySize = std::min(totalSize, maxStagedXferSize);
         // Get an address from managed staging buffer
         address stagingBuffer = gpu().Staging().Acquire(std::min(copySize, maxStagedXferSize));
-        dstAddr += stagedCopyOffset;
+        address currentDstAddr = dstAddr + stagedCopyOffset;
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "memcpy stg buf=%p, host src=%p, size=%zu",
                 stagingBuffer, (void*)(srcAddr + stagedCopyOffset), copySize);
         memcpy(stagingBuffer, srcAddr + stagedCopyOffset, copySize);
         ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Blit staging H2D copy dst=%p, stg buf=%p, "
-                "dstOrigin=0x%x, size=%zu", dstAddr, stagingBuffer, origin[0], copySize);
+                "dstOrigin=0x%x, size=%zu", currentDstAddr, stagingBuffer, origin[0], copySize);
         // No cache flush is needed here as we use a staging buffer, and the acquire logic
         // ensures that the cacheline is different and re-used only when L2 is flushed
-        result = shaderCopyBuffer(dstAddr, stagingBuffer,
+        result = shaderCopyBuffer(currentDstAddr, stagingBuffer,
                                   origin, srcOrigin, copySize,
                                   entire, dev().settings().limit_blit_wg_, copyMetadata);
         if (!result) {
