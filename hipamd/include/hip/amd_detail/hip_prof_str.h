@@ -1623,8 +1623,8 @@ typedef struct hip_api_data_s {
       const hipGraphNode_t* dependencies;
       hipGraphNode_t dependencies__val;
       size_t numDependencies;
-      const HIP_MEMSET_NODE_PARAMS* memsetParams;
-      HIP_MEMSET_NODE_PARAMS memsetParams__val;
+      const hipMemsetParams* memsetParams;
+      hipMemsetParams memsetParams__val;
       hipCtx_t ctx;
     } hipDrvGraphAddMemsetNode;
     struct {
@@ -1637,8 +1637,8 @@ typedef struct hip_api_data_s {
     struct {
       hipGraphExec_t hGraphExec;
       hipGraphNode_t hNode;
-      const HIP_MEMSET_NODE_PARAMS* memsetParams;
-      HIP_MEMSET_NODE_PARAMS memsetParams__val;
+      const hipMemsetParams* memsetParams;
+      hipMemsetParams memsetParams__val;
       hipCtx_t ctx;
     } hipDrvGraphExecMemsetNodeSetParams;
     struct {
@@ -4082,13 +4082,13 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDrvGraphAddMemcpyNode.copyParams = (const HIP_MEMCPY3D*)copyParams; \
   cb_data.args.hipDrvGraphAddMemcpyNode.ctx = (hipCtx_t)ctx; \
 };
-// hipDrvGraphAddMemsetNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+// hipDrvGraphAddMemsetNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const hipMemsetParams*', 'memsetParams'), ('hipCtx_t', 'ctx')]
 #define INIT_hipDrvGraphAddMemsetNode_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDrvGraphAddMemsetNode.phGraphNode = (hipGraphNode_t*)phGraphNode; \
   cb_data.args.hipDrvGraphAddMemsetNode.hGraph = (hipGraph_t)hGraph; \
   cb_data.args.hipDrvGraphAddMemsetNode.dependencies = (const hipGraphNode_t*)dependencies; \
   cb_data.args.hipDrvGraphAddMemsetNode.numDependencies = (size_t)numDependencies; \
-  cb_data.args.hipDrvGraphAddMemsetNode.memsetParams = (const HIP_MEMSET_NODE_PARAMS*)memsetParams; \
+  cb_data.args.hipDrvGraphAddMemsetNode.memsetParams = (const hipMemsetParams*)memsetParams; \
   cb_data.args.hipDrvGraphAddMemsetNode.ctx = (hipCtx_t)ctx; \
 };
 // hipDrvGraphExecMemcpyNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMCPY3D*', 'copyParams'), ('hipCtx_t', 'ctx')]
@@ -4098,11 +4098,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipDrvGraphExecMemcpyNodeSetParams.copyParams = (const HIP_MEMCPY3D*)copyParams; \
   cb_data.args.hipDrvGraphExecMemcpyNodeSetParams.ctx = (hipCtx_t)ctx; \
 };
-// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const hipMemsetParams*', 'memsetParams'), ('hipCtx_t', 'ctx')]
 #define INIT_hipDrvGraphExecMemsetNodeSetParams_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipDrvGraphExecMemsetNodeSetParams.hGraphExec = (hipGraphExec_t)hGraphExec; \
   cb_data.args.hipDrvGraphExecMemsetNodeSetParams.hNode = (hipGraphNode_t)hNode; \
-  cb_data.args.hipDrvGraphExecMemsetNodeSetParams.memsetParams = (const HIP_MEMSET_NODE_PARAMS*)memsetParams; \
+  cb_data.args.hipDrvGraphExecMemsetNodeSetParams.memsetParams = (const hipMemsetParams*)memsetParams; \
   cb_data.args.hipDrvGraphExecMemsetNodeSetParams.ctx = (hipCtx_t)ctx; \
 };
 // hipDrvGraphMemcpyNodeGetParams[('hipGraphNode_t', 'hNode'), ('HIP_MEMCPY3D*', 'nodeParams')]
@@ -6551,7 +6551,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       if (data->args.hipDrvGraphAddMemcpyNode.dependencies) data->args.hipDrvGraphAddMemcpyNode.dependencies__val = *(data->args.hipDrvGraphAddMemcpyNode.dependencies);
       if (data->args.hipDrvGraphAddMemcpyNode.copyParams) data->args.hipDrvGraphAddMemcpyNode.copyParams__val = *(data->args.hipDrvGraphAddMemcpyNode.copyParams);
       break;
-// hipDrvGraphAddMemsetNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+// hipDrvGraphAddMemsetNode[('hipGraphNode_t*', 'phGraphNode'), ('hipGraph_t', 'hGraph'), ('const hipGraphNode_t*', 'dependencies'), ('size_t', 'numDependencies'), ('const hipMemsetParams*', 'memsetParams'), ('hipCtx_t', 'ctx')]
     case HIP_API_ID_hipDrvGraphAddMemsetNode:
       if (data->args.hipDrvGraphAddMemsetNode.phGraphNode) data->args.hipDrvGraphAddMemsetNode.phGraphNode__val = *(data->args.hipDrvGraphAddMemsetNode.phGraphNode);
       if (data->args.hipDrvGraphAddMemsetNode.dependencies) data->args.hipDrvGraphAddMemsetNode.dependencies__val = *(data->args.hipDrvGraphAddMemsetNode.dependencies);
@@ -6561,7 +6561,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipDrvGraphExecMemcpyNodeSetParams:
       if (data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams) data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams__val = *(data->args.hipDrvGraphExecMemcpyNodeSetParams.copyParams);
       break;
-// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const HIP_MEMSET_NODE_PARAMS*', 'memsetParams'), ('hipCtx_t', 'ctx')]
+// hipDrvGraphExecMemsetNodeSetParams[('hipGraphExec_t', 'hGraphExec'), ('hipGraphNode_t', 'hNode'), ('const hipMemsetParams*', 'memsetParams'), ('hipCtx_t', 'ctx')]
     case HIP_API_ID_hipDrvGraphExecMemsetNodeSetParams:
       if (data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams) data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams__val = *(data->args.hipDrvGraphExecMemsetNodeSetParams.memsetParams);
       break;

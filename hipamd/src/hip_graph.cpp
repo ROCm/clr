@@ -1411,7 +1411,7 @@ hipError_t hipGraphAddMemsetNode(hipGraphNode_t* pGraphNode, hipGraph_t graph,
 
 hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+                                 const hipMemsetParams* memsetParams, hipCtx_t ctx) {
   HIP_INIT_API(hipDrvGraphAddMemsetNode, phGraphNode, hGraph, dependencies, numDependencies,
                memsetParams, ctx);
   if (phGraphNode == nullptr || hGraph == nullptr ||
@@ -3393,7 +3393,7 @@ hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGrap
 }
 
 hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
-                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+                                   const hipMemsetParams* memsetParams, hipCtx_t ctx) {
   HIP_INIT_API(hipDrvGraphExecMemsetNodeSetParams, hGraphExec, hNode, memsetParams);
   hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(hNode);
 

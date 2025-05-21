@@ -359,7 +359,7 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc);
 hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+                                 const hipMemsetParams* memsetParams, hipCtx_t ctx);
 hipError_t hipInit(unsigned int flags);
 hipError_t hipIpcCloseMemHandle(void* devPtr);
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event);
@@ -789,7 +789,7 @@ hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGr
 hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                    const HIP_MEMCPY3D* copyParams, hipCtx_t ctx);
 hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
-                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+                                   const hipMemsetParams* memsetParams, hipCtx_t ctx);
 hipError_t hipSetValidDevices(int* device_arr, int len);
 hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice, hipArray_t srcArray, size_t srcOffset,
                          size_t ByteCount);

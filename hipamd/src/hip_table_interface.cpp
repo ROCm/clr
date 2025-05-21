@@ -831,7 +831,7 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
 }
 hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+                                 const hipMemsetParams* memsetParams, hipCtx_t ctx) {
   return hip::GetHipDispatchTable()->hipDrvGraphAddMemsetNode_fn(phGraphNode, hGraph,
                                             dependencies, numDependencies, memsetParams, ctx);
 }
@@ -1785,7 +1785,7 @@ hipError_t hipGetFuncBySymbol(hipFunction_t* functionPtr, const void* symbolPtr)
   return hip::GetHipDispatchTable()->hipGetFuncBySymbol_fn(functionPtr, symbolPtr);
 }
 hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
-                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx) {
+                                   const hipMemsetParams* memsetParams, hipCtx_t ctx) {
   return hip::GetHipDispatchTable()->hipDrvGraphExecMemsetNodeSetParams_fn(hGraphExec, hNode,
                                    memsetParams, ctx);
 }
