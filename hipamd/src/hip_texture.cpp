@@ -85,13 +85,13 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
 
   // Validate input params
   if (pTexObject == nullptr || pResDesc == nullptr || pTexDesc == nullptr) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // pResViewDesc can only be specified if the type of resource is a HIP array or a HIP mipmapped array.
   if ((pResViewDesc != nullptr) &&
       ((pResDesc->resType != hipResourceTypeArray) && (pResDesc->resType != hipResourceTypeMipmappedArray))) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeArray,
@@ -124,7 +124,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       return hipErrorNotSupported;
     }
     if (pResDesc->res.mipmap.mipmap == nullptr || pTexDesc->normalizedCoords == 0) {
-      return hipErrorInvalidValue;
+      return hipErrorInvalidChannelDescriptor;
     }
   }
 
@@ -135,7 +135,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
       ((pResDesc->res.linear.devPtr == nullptr) ||
        (!amd::isMultipleOf(pResDesc->res.linear.devPtr, info.imageBaseAddressAlignment_)) ||
        (pResDesc->res.linear.sizeInBytes >= info.imageMaxBufferSize_ * hip::getElementSize(pResDesc->res.linear.desc)))) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidChannelDescriptor;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypePitch2D,
