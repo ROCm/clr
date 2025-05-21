@@ -271,8 +271,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     return hipErrorInvalidConfiguration;
   }
 
-  if (launch_params.global_[0] == 0 || launch_params.global_[1] == 0
-                                     || launch_params.global_[2] == 0) {
+  if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0) {
     return hipErrorInvalidConfiguration;
   }
 
@@ -286,7 +285,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     return hipErrorInvalidValue;
   }
   // Make sure dispatch doesn't exceed max workgroup size limit
-  if (launch_params.local_.product() > info.maxWorkGroupSize_) {
+  if (blockDimX * blockDimY * blockDimZ > info.maxWorkGroupSize_) {
     return hipErrorInvalidConfiguration;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
