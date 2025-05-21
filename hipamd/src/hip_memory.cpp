@@ -106,12 +106,13 @@ hipError_t ihipFree(void *ptr) {
   size_t offset = 0;
   amd::Memory* memory_object = getMemoryObject(ptr, offset);
   if (memory_object != nullptr) {
-    // Wait on the device, associated with the current memory object during allocation
     auto device_id = memory_object->getUserData().deviceId;
-    g_devices[device_id]->SyncAllStreams();
 
     // Find out if memory belongs to any memory pool
     if (!g_devices[device_id]->FreeMemory(memory_object, nullptr)) {
+      // Wait on the device, associated with the current memory object during allocation
+      g_devices[device_id]->SyncAllStreams();
+
       // External mem is not svm.
       if (memory_object->isInterop()) {
         amd::MemObjMap::RemoveMemObj(ptr);
