@@ -725,6 +725,8 @@ Device::Device()
       vaCacheMap_(nullptr),
       index_(0) {
   memset(&info_, '\0', sizeof(info_));
+  // By default consider just 1 xcc per device
+  info_.numberOfXccs_ = 1;
 }
 
 Device::~Device() {

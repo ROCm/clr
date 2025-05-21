@@ -661,6 +661,8 @@ struct Info : public amd::EmbeddedObject {
 
   size_t scratchLimitMin; //! Minimum size of scratch limit of this device memory in bytes.
   size_t scratchLimitMax; //! Maximum size of scratch limit of this device memory in bytes.
+
+  uint32_t numberOfXccs_; //! The number of XCC(s) on the device
 };
 
 //! Device settings

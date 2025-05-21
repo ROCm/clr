@@ -445,6 +445,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     case hipDeviceAttributeAccessPolicyMaxWindowSize:
       *pi = prop.accessPolicyMaxWindowSize;
        break;
+    case hipDeviceAttributeNumberOfXccs:
+      *pi = static_cast<int>(g_devices[device]->devices()[0]->info().numberOfXccs_);
+       break;
     default:
       HIP_RETURN(hipErrorInvalidValue);
   }

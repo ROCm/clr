@@ -1668,6 +1668,11 @@ bool Device::populateOCLDeviceConstants() {
     LogError("HSA_AMD_AGENT_INFO_SVM_DIRECT_HOST_ACCESS query failed.");
   }
 
+  if (HSA_STATUS_SUCCESS != hsa_agent_get_info(bkendDevice_,
+      static_cast<hsa_agent_info_t>(HSA_AMD_AGENT_INFO_NUM_XCC), &info_.numberOfXccs_)) {
+    LogError("HSA_AMD_AGENT_INFO_NUM_XCC query failed.");
+  }
+
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Gfx Major/Minor/Stepping: %d/%d/%d", isa().versionMajor(),
   isa().versionMinor(), isa().versionStepping());
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HMM support: %d, XNACK: %d, Direct host access: %d",
