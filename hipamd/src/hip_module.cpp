@@ -266,12 +266,12 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, const amd::LaunchParams& l
   if ((kernelParams != nullptr) && (extra != nullptr)) {
     LogPrintfError("%s",
                    "Both, kernelParams and extra Params are provided, only one should be provided");
-    return hipErrorInvalidValue;
+    return hipErrorInvalidConfiguration;
   }
 
   if (launch_params.global_[0] == 0 || launch_params.global_[1] == 0
                                      || launch_params.global_[2] == 0) {
-    return hipErrorInvalidValue;
+    return hipErrorInvalidConfiguration;
   }
 
   if (launch_params.local_[0] == 0 || launch_params.local_[1] == 0
@@ -286,9 +286,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, const amd::LaunchParams& l
   }
   // Make sure dispatch doesn't exceed max workgroup size limit
   if (launch_params.local_.product() > info.maxWorkGroupSize_) {
-    return (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_LAUNCH_KERNEL) ?
-                                  hipErrorInvalidConfiguration :
-                                  hipErrorInvalidValue;
+    return hipErrorInvalidConfiguration;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
   amd::Kernel* kernel = function->kernel();
