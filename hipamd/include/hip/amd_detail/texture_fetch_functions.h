@@ -260,7 +260,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2D(texture<T, hipTextureType2D, readMode> t, float x, float y)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_2D(i, s, float2(x, y).data);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_2D(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -268,7 +269,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex1DLayered(texture<T, hipTextureType1DLayered, readMode> t, float x, int layer)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_1Da(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -276,7 +278,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2DLayered(texture<T, hipTextureType2DLayered, readMode> t, float x, float y, int layer)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_2Da(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -284,7 +287,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex3D(texture<T, hipTextureType3D, readMode> t, float x, float y, float z)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_3D(i, s, float4(x, y, z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_3D(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -292,7 +296,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> texCubemap(texture<T, hipTextureTypeCubemap, readMode> t, float x, float y, float z)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_CM(i, s, float4(x, y, z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_CM(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -308,7 +313,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2DLod(texture<T, hipTextureType2D, readMode> t, float x, float y, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_2D(i, s, float2(x, y).data, level);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_lod_2D(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -316,7 +322,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex1DLayeredLod(texture<T, hipTextureType1DLayered, readMode> t, float x, int layer, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_1Da(i, s, float2(x, layer).data, level);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_lod_1Da(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -324,7 +331,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2DLayeredLod(texture<T, hipTextureType2DLayered, readMode> t, float x, float y, int layer, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_2Da(i, s, float4(x, y, layer, 0.0f).data, level);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_lod_2Da(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -332,7 +340,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex3DLod(texture<T, hipTextureType3D, readMode> t, float x, float y, float z, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_3D(i, s, float4(x, y, z, 0.0f).data, level);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_lod_3D(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -340,7 +349,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> texCubemapLod(texture<T, hipTextureTypeCubemap, readMode> t, float x, float y, float z, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_CM(i, s, float4(x, y, z, 0.0f).data, level);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_lod_CM(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -348,7 +358,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> texCubemapLayered(texture<T, hipTextureTypeCubemapLayered, readMode> t, float x, float y, float z, int layer)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_CMa(i, s, float4(x, y, z, layer).data);
+    float4 coords{x, y, z, layer};
+    auto tmp = __ockl_image_sample_CMa(i, s, get_native_vector(coords));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -356,7 +367,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> texCubemapLayeredLod(texture<T, hipTextureTypeCubemapLayered, readMode> t, float x, float y, float z, int layer, float level)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_lod_CMa(i, s, float4(x, y, z, layer).data, level);
+    float4 coords{x, y, z, layer};
+    auto tmp = __ockl_image_sample_lod_CMa(i, s, get_native_vector(coords), level);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -365,8 +377,9 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     // TODO missing in device libs.
-    // auto tmp = __ockl_image_sample_grad_CM(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    // auto tmp = __ockl_image_sample_grad_CM(i, s, get_native_vector(float4(x, y, z, 0.0f)),
+    // get_native_vector(float4(dPdx.x, dPdx.y, dPdx.z, 0.0f)), get_native_vector(float4(dPdy.x,
+    // dPdy.y, dPdy.z, 0.0f))); return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
     return {};
 }
 
@@ -375,8 +388,9 @@ static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> t
 {
     TEXTURE_PARAMETERS_INIT;
     // TODO missing in device libs.
-    // auto tmp = __ockl_image_sample_grad_CMa(i, s, float4(x, y, z, layer).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
+    // auto tmp = __ockl_image_sample_grad_CMa(i, s, get_native_vector(float4(x, y, z, layer)),
+    // get_native_vector(float4(dPdx.x, dPdx.y, dPdx.z, 0.0f)), get_native_vector(float4(dPdy.x,
+    // dPdy.y, dPdy.z, 0.0f))); return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
     return {};
 }
 
@@ -392,7 +406,9 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2DGrad(texture<T, hipTextureType2D, readMode> t, float x, float y, float2 dPdx, float2 dPdy)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_grad_2D(i, s, float2(x, y).data, float2(dPdx.x, dPdx.y).data,  float2(dPdy.x, dPdy.y).data);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_grad_2D(i, s, get_native_vector(coords), get_native_vector(dPdx),
+                                           get_native_vector(dPdy));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -400,7 +416,8 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex1DLayeredGrad(texture<T, hipTextureType1DLayered, readMode> t, float x, int layer, float dPdx, float dPdy)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_grad_1Da(i, s, float2(x, layer).data, dPdx, dPdy);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_grad_1Da(i, s, get_native_vector(coords), dPdx, dPdy);
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -408,7 +425,9 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex2DLayeredGrad(texture<T, hipTextureType2DLayered, readMode> t, float x, float y, int layer, float2 dPdx, float2 dPdy)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_grad_2Da(i, s, float4(x, y, layer, 0.0f).data, float2(dPdx.x, dPdx.y).data, float2(dPdy.x, dPdy.y).data);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_grad_2Da(i, s, get_native_vector(coords),
+                                            get_native_vector(dPdx), get_native_vector(dPdy));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -416,7 +435,11 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex_ret_t<T, readMode> tex3DGrad(texture<T, hipTextureType3D, readMode> t, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     TEXTURE_PARAMETERS_INIT;
-    auto tmp = __ockl_image_sample_grad_3D(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    float4 gradx{dPdx.x, dPdx.y, dPdx.z, 0.0f};
+    float4 grady{dPdy.x, dPdy.y, dPdy.z, 0.0f};
+    auto tmp = __ockl_image_sample_grad_3D(i, s, get_native_vector(coords),
+                                           get_native_vector(gradx), get_native_vector(grady));
     return __hipMapFrom<__hip_tex_ret_t<T, readMode>>(tmp);
 }
 
@@ -467,22 +490,23 @@ template <typename T, hipTextureReadMode readMode>
 static __forceinline__ __device__ __hip_img_chk__ __hip_tex2dgather_ret_t<T, readMode> tex2Dgather(texture<T, hipTextureType2D, readMode> t, float x, float y, int comp=0)
 {
     TEXTURE_PARAMETERS_INIT;
+    float2 coords{x, y};
     switch (comp) {
     case 1: {
-        auto tmp = __ockl_image_gather4g_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+      auto tmp = __ockl_image_gather4g_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     case 2: {
-        auto tmp = __ockl_image_gather4b_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+      auto tmp = __ockl_image_gather4b_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     case 3: {
-        auto tmp = __ockl_image_gather4a_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+      auto tmp = __ockl_image_gather4a_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     default: {
-        auto tmp = __ockl_image_gather4r_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
+      auto tmp = __ockl_image_gather4r_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<__hip_tex2dgather_ret_t<T, readMode>>(tmp);
     }
     }
     return {};

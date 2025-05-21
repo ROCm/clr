@@ -78,7 +78,8 @@ template <
 static __device__ __hip_img_chk__ T tex2D(hipTextureObject_t textureObject, float x, float y)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_2D(i, s, float2(x, y).data);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_2D(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -96,7 +97,8 @@ template <
 static __device__ __hip_img_chk__ T tex3D(hipTextureObject_t textureObject, float x, float y, float z)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_3D(i, s, float4(x, y, z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_3D(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -114,7 +116,8 @@ template <
 static __device__ __hip_img_chk__ T tex1DLayered(hipTextureObject_t textureObject, float x, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_1Da(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -132,7 +135,8 @@ template <
 static __device__ __hip_img_chk__ T tex2DLayered(hipTextureObject_t textureObject, float x, float y, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_2Da(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -150,7 +154,8 @@ template <
 static __device__ __hip_img_chk__  T texCubemap(hipTextureObject_t textureObject, float x, float y, float z)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_CM(i, s, float4(x, y, z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_CM(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -168,7 +173,8 @@ template <
 static __device__ __hip_img_chk__ T texCubemapLayered(hipTextureObject_t textureObject, float x, float y, float z, int layer)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_CMa(i, s, float4(x, y, z, layer).data);
+    float4 coords{x, y, z, layer};
+    auto tmp = __ockl_image_sample_CMa(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -186,26 +192,27 @@ template <
 static __device__ __hip_img_chk__ T tex2Dgather(hipTextureObject_t textureObject, float x, float y, int comp = 0)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
+    float2 coords{x, y};
     switch (comp) {
     case 1: {
-        auto tmp = __ockl_image_gather4r_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<T>(tmp);
-        break;
+      auto tmp = __ockl_image_gather4r_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<T>(tmp);
+      break;
     }
     case 2: {
-        auto tmp = __ockl_image_gather4g_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<T>(tmp);
-        break;
+      auto tmp = __ockl_image_gather4g_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<T>(tmp);
+      break;
     }
     case 3: {
-        auto tmp = __ockl_image_gather4b_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<T>(tmp);
-        break;
+      auto tmp = __ockl_image_gather4b_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<T>(tmp);
+      break;
     }
     default: {
-        auto tmp = __ockl_image_gather4a_2D(i, s, float2(x, y).data);
-        return __hipMapFrom<T>(tmp);
-        break;
+      auto tmp = __ockl_image_gather4a_2D(i, s, get_native_vector(coords));
+      return __hipMapFrom<T>(tmp);
+      break;
     }
     }
     return {};
@@ -243,7 +250,8 @@ template <
 static __device__ __hip_img_chk__ T tex2DLod(hipTextureObject_t textureObject, float x, float y, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_lod_2D(i, s, float2(x, y).data, level);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_lod_2D(i, s, get_native_vector(coords), level);
     return __hipMapFrom<T>(tmp);
 }
 
@@ -261,7 +269,8 @@ template <
 static __device__ __hip_img_chk__ T tex3DLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_lod_3D(i, s, float4(x, y, z, 0.0f).data, level);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_lod_3D(i, s, get_native_vector(coords), level);
     return __hipMapFrom<T>(tmp);
 }
 
@@ -279,7 +288,8 @@ template <
 static __device__ __hip_img_chk__ T tex1DLayeredLod(hipTextureObject_t textureObject, float x, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_1Da(i, s, float2(x, layer).data);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_1Da(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -297,7 +307,8 @@ template <
 static __device__ __hip_img_chk__  T tex2DLayeredLod(hipTextureObject_t textureObject, float x, float y, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_2Da(i, s, float4(x, y, layer, 0.0f).data);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_2Da(i, s, get_native_vector(coords));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -315,7 +326,8 @@ template <
 static __device__ __hip_img_chk__ T texCubemapLod(hipTextureObject_t textureObject, float x, float y, float z, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_lod_CM(i, s, float4(x, y, z, 0.0f).data, level);
+    float4 coords{x, y, z, 0.0f};
+    auto tmp = __ockl_image_sample_lod_CM(i, s, get_native_vector(coords), level);
     return __hipMapFrom<T>(tmp);
 }
 
@@ -334,8 +346,9 @@ static __device__ __hip_img_chk__ T texCubemapGrad(hipTextureObject_t textureObj
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
-    // auto tmp = __ockl_image_sample_grad_CM(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return __hipMapFrom<T>(tmp);
+    // auto tmp = __ockl_image_sample_grad_CM(i, s, get_native_vector(float4(x, y, z, 0.0f)),
+    // get_native_vector(float4(dPdx.x, dPdx.y, dPdx.z, 0.0f)), get_native_vector(float4(dPdy.x,
+    // dPdy.y, dPdy.z, 0.0f))); return __hipMapFrom<T>(tmp);
     return {};
 }
 
@@ -353,7 +366,8 @@ template <
 static __device__ __hip_img_chk__ T texCubemapLayeredLod(hipTextureObject_t textureObject, float x, float y, float z, int layer, float level)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_lod_CMa(i, s, float4(x, y, z, layer).data, level);
+    float4 coords{x, y, z, layer};
+    auto tmp = __ockl_image_sample_lod_CMa(i, s, get_native_vector(coords), level);
     return __hipMapFrom<T>(tmp);
 }
 
@@ -389,7 +403,9 @@ template <
 static __device__ __hip_img_chk__ T tex2DGrad(hipTextureObject_t textureObject, float x, float y, float2 dPdx, float2 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_grad_2D(i, s, float2(x, y).data, float2(dPdx.x, dPdx.y).data,  float2(dPdy.x, dPdy.y).data);
+    float2 coords{x, y};
+    auto tmp = __ockl_image_sample_grad_2D(i, s, get_native_vector(coords), get_native_vector(dPdx),
+                                           get_native_vector(dPdy));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -407,7 +423,11 @@ template <
 static __device__ __hip_img_chk__ T tex3DGrad(hipTextureObject_t textureObject, float x, float y, float z, float4 dPdx, float4 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_grad_3D(i, s, float4(x, y, z, 0.0f).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
+    float4 coords{x, y, z, 0.0f};
+    float4 gradx{dPdy.x, dPdy.y, dPdy.z, 0.0f};
+    float4 grady{dPdy.x, dPdy.y, dPdy.z, 0.0f};
+    auto tmp = __ockl_image_sample_grad_3D(i, s, get_native_vector(coords),
+                                           get_native_vector(gradx), get_native_vector(grady));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -425,7 +445,8 @@ template <
 static __device__ __hip_img_chk__ T tex1DLayeredGrad(hipTextureObject_t textureObject, float x, int layer, float dPdx, float dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_grad_1Da(i, s, float2(x, layer).data, dPdx, dPdy);
+    float2 coords{x, layer};
+    auto tmp = __ockl_image_sample_grad_1Da(i, s, get_native_vector(coords), dPdx, dPdy);
     return __hipMapFrom<T>(tmp);
 }
 
@@ -443,7 +464,9 @@ template <
 static __device__ __hip_img_chk__ T tex2DLayeredGrad(hipTextureObject_t textureObject, float x, float y, int layer, float2 dPdx, float2 dPdy)
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
-    auto tmp = __ockl_image_sample_grad_2Da(i, s, float4(x, y, layer, 0.0f).data, float2(dPdx.x, dPdx.y).data, float2(dPdy.x, dPdy.y).data);
+    float4 coords{x, y, layer, 0.0f};
+    auto tmp = __ockl_image_sample_grad_2Da(i, s, get_native_vector(coords),
+                                            get_native_vector(dPdx), get_native_vector(dPdy));
     return __hipMapFrom<T>(tmp);
 }
 
@@ -462,8 +485,9 @@ static __device__ __hip_img_chk__  T texCubemapLayeredGrad(hipTextureObject_t te
 {
     TEXTURE_OBJECT_PARAMETERS_INIT
     // TODO missing in device libs.
-    // auto tmp = __ockl_image_sample_grad_CMa(i, s, float4(x, y, z, layer).data, float4(dPdx.x, dPdx.y, dPdx.z, 0.0f).data, float4(dPdy.x, dPdy.y, dPdy.z, 0.0f).data);
-    // return __hipMapFrom<T>(tmp);
+    // auto tmp = __ockl_image_sample_grad_CMa(i, s, get_native_vector(float4(x, y, z, layer)),
+    // get_native_vector(float4(dPdx.x, dPdx.y, dPdx.z, 0.0f)), get_native_vector(float4(dPdy.x,
+    // dPdy.y, dPdy.z, 0.0f))); return __hipMapFrom<T>(tmp);
     return {};
 }
 

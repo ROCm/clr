@@ -151,8 +151,9 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2Dread(T* data, hipSurfaceObject_t surfObj, int x, int y) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
-    auto tmp = __ockl_image_load_2D(i, int2(x, y).data);
+    auto tmp = __ockl_image_load_2D(i, get_native_vector(coords));
     *data = __hipMapFrom<T>(tmp);
 }
 
@@ -170,9 +171,10 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2Dwrite(T data, hipSurfaceObject_t surfObj, int x, int y) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
-    __ockl_image_store_2D(i, int2(x, y).data, tmp);
+    __ockl_image_store_2D(i, get_native_vector(coords), tmp);
 }
 
 /** \brief Reads the value from the three-dimensional surface at coordinate 
@@ -190,8 +192,9 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf3Dread(T* data, hipSurfaceObject_t surfObj, int x, int y, int z) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int4 coords{x, y, z, 0};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_3D(i), __ockl_image_channel_order_3D(i));
-    auto tmp = __ockl_image_load_3D(i, int4(x, y, z, 0).data);
+    auto tmp = __ockl_image_load_3D(i, get_native_vector(coords));
     *data = __hipMapFrom<T>(tmp);
 }
 
@@ -210,9 +213,10 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf3Dwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int z) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int4 coords{x, y, z, 0};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_3D(i), __ockl_image_channel_order_3D(i));
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
-    __ockl_image_store_3D(i, int4(x, y, z, 0).data, tmp);
+    __ockl_image_store_3D(i, get_native_vector(coords), tmp);
 }
 
 /** \brief Reads the value from the one-dimensional layered surface at
@@ -268,8 +272,9 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2DLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
-    auto tmp = __ockl_image_load_lod_2D(i, int2(x, y).data, layer);
+    auto tmp = __ockl_image_load_lod_2D(i, get_native_vector(coords), layer);
     *data = __hipMapFrom<T>(tmp);
 }
 
@@ -288,9 +293,10 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2DLayeredwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
-    __ockl_image_store_lod_2D(i, int2(x, y).data, layer, tmp);
+    __ockl_image_store_lod_2D(i, get_native_vector(coords), layer, tmp);
 }
 
 /** \brief Reads the value from the cubemap surface at coordinate x, y and
@@ -308,8 +314,9 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
-    auto tmp = __ockl_image_load_CM(i, int2(x, y).data, face);
+    auto tmp = __ockl_image_load_CM(i, get_native_vector(coords), face);
     *data = __hipMapFrom<T>(tmp);
 }
 
@@ -328,9 +335,10 @@ template <
     typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int face) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
-    __ockl_image_store_CM(i, int2(x, y).data, face, tmp);
+    __ockl_image_store_CM(i, get_native_vector(coords), face, tmp);
 }
 
 /** \brief Reads the value from the layered cubemap surface at coordinate x, y
@@ -350,8 +358,9 @@ template <
 static __device__ __hip_img_chk__ void surfCubemapLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
         int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
-    auto tmp = __ockl_image_load_lod_CM(i, int2(x, y).data, face, layer);
+    auto tmp = __ockl_image_load_lod_CM(i, get_native_vector(coords), face, layer);
     *data = __hipMapFrom<T>(tmp);
 }
 
@@ -372,9 +381,10 @@ template <
 static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
         int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
+    int2 coords{x, y};
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_2D(i), __ockl_image_channel_order_2D(i));
     auto tmp = __hipMapTo<float4::Native_vec_>(data);
-    __ockl_image_store_lod_CM(i, int2(x, y).data, face, layer, tmp);
+    __ockl_image_store_lod_CM(i, get_native_vector(coords), face, layer, tmp);
 }
 
 // Doxygen end group SurfaceAPI
