@@ -268,11 +268,12 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   if ((kernelParams != nullptr) && (extra != nullptr)) {
     LogPrintfError("%s",
                    "Both, kernelParams and extra Params are provided, only one should be provided");
-    return hipErrorInvalidValue;
+    return hipErrorInvalidConfiguration;
   }
 
-  if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0) {
-    return hipErrorInvalidValue;
+  if (launch_params.global_[0] == 0 || launch_params.global_[1] == 0
+                                     || launch_params.global_[2] == 0) {
+    return hipErrorInvalidConfiguration;
   }
 
   if (blockDimX == 0 || blockDimY == 0 || blockDimZ == 0) {
@@ -285,7 +286,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
     return hipErrorInvalidValue;
   }
   // Make sure dispatch doesn't exceed max workgroup size limit
-  if (blockDimX * blockDimY * blockDimZ > info.maxWorkGroupSize_) {
+  if (launch_params.local_.product() > info.maxWorkGroupSize_) {
     return hipErrorInvalidConfiguration;
   }
   hip::DeviceFunc* function = hip::DeviceFunc::asFunction(f);
