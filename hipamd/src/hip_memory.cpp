@@ -3357,11 +3357,11 @@ hipError_t hipHostGetDevicePointer(void** devicePointer, void* hostPointer, unsi
 hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void* ptr) {
   HIP_INIT_API(hipPointerGetAttributes, attributes, ptr);
 
-  if (attributes == nullptr || ptr == nullptr) {
+  if (attributes == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   size_t offset = 0;
-  amd::Memory* memObj = getMemoryObject(ptr, offset);
+  amd::Memory* memObj = (ptr != nullptr) ? getMemoryObject(ptr, offset) : nullptr;
   int device = 0;
   device::Memory* devMem = nullptr;
   memset(attributes, 0, sizeof(hipPointerAttribute_t));
@@ -3406,7 +3406,9 @@ hipError_t hipPointerGetAttributes(hipPointerAttribute_t* attributes, const void
     attributes->isManaged = false;
     attributes->allocationFlags = 0;
     attributes->device = hipInvalidDeviceId;
-    LogPrintfError("Cannot get amd_mem_obj for ptr: %p", ptr);
+    if (ptr != nullptr) {
+      LogPrintfError("Cannot get amd_mem_obj for ptr: %p", ptr);
+    }
   }
   HIP_RETURN(hipSuccess);
 }
