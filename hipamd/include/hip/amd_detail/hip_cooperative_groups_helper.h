@@ -52,16 +52,7 @@ THE SOFTWARE.
 #define _CG_STATIC_CONST_DECL_ static constexpr
 #endif
 
-#if defined(__SPIRV__) && !defined(__AMDGCN_WAVEFRONT_SIZE)
-#error "TEMPORARY LIMITATION: when targeting AMDGCN SPIR-V"
-       "__AMDGCN_WAVEFRONT_SIZE is not defined, and must be defined by the user"
-#endif
-#if __AMDGCN_WAVEFRONT_SIZE == 32
-using lane_mask = unsigned int;
-#else
 using lane_mask = unsigned long long int;
-#endif
-
 namespace cooperative_groups {
 
 /* Global scope */
@@ -250,10 +241,12 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 __CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
   unsigned int counter=0;
   if (warpSize == 32) {
-      counter = __builtin_amdgcn_mbcnt_lo(x, add);
+    counter = __builtin_amdgcn_mbcnt_lo(static_cast<unsigned int>(x), add);
   } else {
-    counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
-    counter = __builtin_amdgcn_mbcnt_hi(static_cast<lane_mask>(x >> 32), counter);
+    unsigned int lo = static_cast<unsigned int>(x & 0xFFFFFFFF);
+    unsigned int hi = static_cast<unsigned int>((x >> 32) & 0xFFFFFFFF);
+    counter = __builtin_amdgcn_mbcnt_lo(lo, add);
+    counter = __builtin_amdgcn_mbcnt_hi(hi, counter);
   }
 
   return counter;
