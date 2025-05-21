@@ -157,13 +157,11 @@ const char* ihipGetErrorName(hipError_t hip_error);
     hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
     hip::tls.last_error_ = hip_error;                                                              \
     hip::tls.last_command_error_ = hip_error;                                                      \
-  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
+  } else {                                                                                         \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
     }                                                                                              \
-  } else {                                                                                         \
-    hip::tls.last_error_ = hip::tls.last_command_error_;                                           \
   }                                                                                                \
   HIPPrintDuration(amd::LOG_INFO, amd::LOG_API, &startTimeUs, "%s: Returned %s : %s", __func__,    \
                    hip::ihipGetErrorName(hip::tls.last_command_error_),                            \
@@ -176,13 +174,11 @@ const char* ihipGetErrorName(hipError_t hip_error);
     hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
     hip::tls.last_error_ = hip_error;                                                              \
     hip::tls.last_command_error_ = hip_error;                                                      \
-  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
+  } else {                                                                                         \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
     }                                                                                              \
-  } else {                                                                                         \
-    hip::tls.last_error_ = hip::tls.last_command_error_;                                           \
   }                                                                                                \
   HIP_ERROR_PRINT(hip::tls.last_command_error_, __VA_ARGS__)                                       \
   return hip::tls.last_command_error_;

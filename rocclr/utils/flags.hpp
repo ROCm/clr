@@ -273,9 +273,6 @@ release(bool, DEBUG_CLR_SKIP_RELEASE_SCOPE, false,                            \
         "Forces release scope to SCOPE_NONE for aql packets")                 \
 release(bool, DEBUG_HIP_DYNAMIC_QUEUES, false,                                \
         "Forces dynamic queue management")                                    \
-release(uint, DEBUG_HIP_7_PREVIEW, 0,                                         \
-        "Enables specific backward incompatible changes support before 7.0,"  \
-        "using the mask. By default the changes are disabled and is set to 0")\
 release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, false,                             \
         "Set this to true, to avoid host side abort for GPU errors")          \
 release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
