@@ -49,18 +49,19 @@ namespace cooperative_groups {
  */
 class thread_group {
  protected:
-  uint32_t _type;  //! Type of the thread_group.
-  uint32_t _size;  //! Total number of threads in the tread_group.
-  uint64_t _mask;  //! Lanemask for coalesced and tiled partitioned group types,
-                   //! LSB represents lane 0, and MSB represents lane 63
+  __hip_uint32_t _type;  //! Type of the thread_group.
+  __hip_uint32_t _size;  //! Total number of threads in the thread_group.
+  __hip_uint64_t _mask;  //! Lanemask for coalesced and tiled partitioned group types,
+                         //! LSB represents lane 0, and MSB represents lane 63
 
   //! Construct a thread group, and set thread group type and other essential
   //! thread group properties. This generic thread group is directly constructed
-  //! only when the group is supposed to contain only the calling the thread
+  //! only when the group is supposed to contain only the calling thread
   //! (through the API - `this_thread()`), and in all other cases, this thread
   //! group object is a sub-object of some other derived thread group object.
-  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size = static_cast<uint64_t>(0),
-                                uint64_t mask = static_cast<uint64_t>(0)) {
+  __CG_QUALIFIER__ thread_group(internal::group_type type,
+                                __hip_uint32_t size = static_cast<__hip_uint64_t>(0),
+                                __hip_uint64_t mask = static_cast<__hip_uint64_t>(0)) {
     _type = type;
     _size = size;
     _mask = mask;
@@ -88,11 +89,11 @@ class thread_group {
   //! Total number of threads in the thread_group, and this serves the purpose
   //! for all derived cooperative group types because their `size` is directly
   //! saved during the construction.
-  __CG_QUALIFIER__ uint32_t size() const { return _size; }
+  __CG_QUALIFIER__ __hip_uint32_t size() const { return _size; }
   //! Returns the type of the group.
   __CG_QUALIFIER__ unsigned int cg_type() const { return _type; }
   //! Rank of the calling thread within [0, \link size() size() \endlink).
-  __CG_QUALIFIER__ uint32_t thread_rank() const;
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const;
   //! Returns true if the group has not violated any API constraints.
   __CG_QUALIFIER__ bool is_valid() const;
 
@@ -138,21 +139,21 @@ class multi_grid_group : public thread_group {
   friend __CG_QUALIFIER__ multi_grid_group this_multi_grid();
 
  protected:
-  //! Construct mutli-grid thread group (through the API this_multi_grid())
-  explicit __CG_QUALIFIER__ multi_grid_group(uint32_t size)
+  //! Construct multi-grid thread group (through the API this_multi_grid())
+  explicit __CG_QUALIFIER__ multi_grid_group(__hip_uint32_t size)
       : thread_group(internal::cg_multi_grid, size) {}
 
  public:
 
   //! Number of invocations participating in this multi-grid group. In other
   //! words, the number of GPUs.
-  __CG_QUALIFIER__ uint32_t num_grids() { return internal::multi_grid::num_grids(); }
+  __CG_QUALIFIER__ __hip_uint32_t num_grids() { return internal::multi_grid::num_grids(); }
 
   //! Rank of this invocation. In other words, an ID number within the range
   //! [0, num_grids()) of the GPU that kernel is running on.
-  __CG_QUALIFIER__ uint32_t grid_rank() { return internal::multi_grid::grid_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t grid_rank() { return internal::multi_grid::grid_rank(); }
   //! @copydoc thread_group::thread_rank
-  __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::multi_grid::thread_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const { return internal::multi_grid::thread_rank(); }
   //! @copydoc thread_group::is_valid
   __CG_QUALIFIER__ bool is_valid() const { return internal::multi_grid::is_valid(); }
   //! @copydoc thread_group::sync
@@ -193,11 +194,11 @@ class grid_group : public thread_group {
 
  protected:
   //! Construct grid thread group (through the API this_grid())
-  explicit __CG_QUALIFIER__ grid_group(uint32_t size) : thread_group(internal::cg_grid, size) {}
+  explicit __CG_QUALIFIER__ grid_group(__hip_uint32_t size) : thread_group(internal::cg_grid, size) {}
 
  public:
   //! @copydoc thread_group::thread_rank
-  __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::grid::thread_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const { return internal::grid::thread_rank(); }
   //! @copydoc thread_group::is_valid
   __CG_QUALIFIER__ bool is_valid() const { return internal::grid::is_valid(); }
   //! @copydoc thread_group::sync
@@ -236,7 +237,7 @@ class thread_block : public thread_group {
                                                        unsigned int tile_size);
  protected:
   // Construct a workgroup thread group (through the API this_thread_block())
-  explicit __CG_QUALIFIER__ thread_block(uint32_t size)
+  explicit __CG_QUALIFIER__ thread_block(__hip_uint32_t size)
       : thread_group(internal::cg_workgroup, size) {}
 
   __CG_QUALIFIER__ thread_group new_tiled_group(unsigned int tile_size) const {
@@ -266,9 +267,9 @@ class thread_block : public thread_group {
   //! Returns 3-dimensional thread index within the block.
   __CG_STATIC_QUALIFIER__ dim3 thread_index() { return internal::workgroup::thread_index(); }
   //! @copydoc thread_group::thread_rank
-  __CG_STATIC_QUALIFIER__ uint32_t thread_rank() { return internal::workgroup::thread_rank(); }
+  __CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() { return internal::workgroup::thread_rank(); }
   //! @copydoc thread_group::size
-  __CG_STATIC_QUALIFIER__ uint32_t size() { return internal::workgroup::size(); }
+  __CG_STATIC_QUALIFIER__ __hip_uint32_t size() { return internal::workgroup::size(); }
   //! @copydoc thread_group::is_valid
   __CG_STATIC_QUALIFIER__ bool is_valid() { return internal::workgroup::is_valid(); }
   //! @copydoc thread_group::sync
@@ -639,7 +640,7 @@ __CG_QUALIFIER__ coalesced_group coalesced_threads() {
  *  \note  This function is implemented on Linux and is under development
  *  on Microsoft Windows.
  */
-__CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
+__CG_QUALIFIER__ __hip_uint32_t thread_group::thread_rank() const {
   switch (this->_type) {
     case internal::cg_multi_grid: {
       return (static_cast<const multi_grid_group*>(this)->thread_rank());
@@ -744,7 +745,7 @@ __CG_QUALIFIER__ void thread_group::sync() const {
  *           cooperative group type APIs. This function is implemented on Linux
  *           and is under development on Microsoft Windows.
  */
-template <class CGTy> __CG_QUALIFIER__ uint32_t group_size(CGTy const& g) { return g.size(); }
+template <class CGTy> __CG_QUALIFIER__ __hip_uint32_t group_size(CGTy const& g) { return g.size(); }
 
 /** \brief   Returns the rank of thread of the group.
  *
@@ -757,7 +758,7 @@ template <class CGTy> __CG_QUALIFIER__ uint32_t group_size(CGTy const& g) { retu
  *           cooperative group type APIs. This function is implemented on Linux
  *           and is under development on Microsoft Windows.
  */
-template <class CGTy> __CG_QUALIFIER__ uint32_t thread_rank(CGTy const& g) {
+template <class CGTy> __CG_QUALIFIER__ __hip_uint32_t thread_rank(CGTy const& g) {
   return g.thread_rank();
 }
 

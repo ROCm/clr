@@ -87,19 +87,6 @@ size_t amd_dbgapi_get_build_id();
 #include <math.h>
 #include <stdint.h>
 #endif // __cplusplus
-#else
-#if !__HIP_NO_STD_DEFS__
-typedef unsigned int uint32_t;
-typedef unsigned long long uint64_t;
-typedef signed int int32_t;
-typedef signed long long int64_t;
-namespace std {
-using ::uint32_t;
-using ::uint64_t;
-using ::int32_t;
-using ::int64_t;
-}
-#endif // __HIP_NO_STD_DEFS__
 #endif // !defined(__HIPCC_RTC__)
 
 #if __HIP_CLANG_ONLY__
@@ -249,11 +236,12 @@ void hipLaunchKernelGGL(F kernel, const dim3& numBlocks, const dim3& dimBlocks,
 
 #if defined(__HIPCC_RTC__)
 typedef struct dim3 {
-    uint32_t x;  ///< x
-    uint32_t y;  ///< y
-    uint32_t z;  ///< z
+    __hip_uint32_t x;  ///< x
+    __hip_uint32_t y;  ///< y
+    __hip_uint32_t z;  ///< z
 #ifdef __cplusplus
-    constexpr __device__ dim3(uint32_t _x = 1, uint32_t _y = 1, uint32_t _z = 1) : x(_x), y(_y), z(_z){};
+    constexpr __device__ dim3(__hip_uint32_t _x = 1, __hip_uint32_t _y = 1, __hip_uint32_t _z = 1)
+            : x(_x), y(_y), z(_z){};
 #endif
 } dim3;
 #endif // !defined(__HIPCC_RTC__)
