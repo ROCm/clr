@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -66,18 +66,18 @@ namespace cooperative_groups {
 
 /* Global scope */
 template <unsigned int size>
-using is_power_of_2 = std::integral_constant<bool, (size & (size - 1)) == 0>;
+using is_power_of_2 = __hip_internal::integral_constant<bool, (size & (size - 1)) == 0>;
 
 template <unsigned int size>
-using is_valid_wavefront = std::integral_constant<bool, size <= 64>;
+using is_valid_wavefront = __hip_internal::integral_constant<bool, size <= 64>;
 
 template <unsigned int size>
 using is_valid_tile_size =
-    std::integral_constant<bool, is_power_of_2<size>::value && is_valid_wavefront<size>::value>;
+    __hip_internal::integral_constant<bool, is_power_of_2<size>::value && is_valid_wavefront<size>::value>;
 
 template <typename T>
 using is_valid_type =
-    std::integral_constant<bool, std::is_integral<T>::value || std::is_floating_point<T>::value>;
+    __hip_internal::integral_constant<bool, __hip_internal::is_integral<T>::value || __hip_internal::is_floating_point<T>::value>;
 
 namespace internal {
 

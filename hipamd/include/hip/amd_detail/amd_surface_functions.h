@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2018 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -111,7 +111,7 @@ static __HOST_DEVICE__ __forceinline__ int __hipGetPixelAddr(int x, int format, 
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf1Dread(T* data, hipSurfaceObject_t surfObj, int x,
         int boundaryMode = hipBoundaryModeZero) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
@@ -129,7 +129,7 @@ static __device__ __hip_img_chk__ void surf1Dread(T* data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf1Dwrite(T data, hipSurfaceObject_t surfObj, int x) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
@@ -148,7 +148,7 @@ static __device__ __hip_img_chk__ void surf1Dwrite(T data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2Dread(T* data, hipSurfaceObject_t surfObj, int x, int y) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -168,7 +168,7 @@ static __device__ __hip_img_chk__ void surf2Dread(T* data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2Dwrite(T data, hipSurfaceObject_t surfObj, int x, int y) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -189,7 +189,7 @@ static __device__ __hip_img_chk__ void surf2Dwrite(T data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf3Dread(T* data, hipSurfaceObject_t surfObj, int x, int y, int z) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int4 coords{x, y, z, 0};
@@ -210,7 +210,7 @@ static __device__ __hip_img_chk__ void surf3Dread(T* data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf3Dwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int z) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int4 coords{x, y, z, 0};
@@ -230,7 +230,7 @@ static __device__ __hip_img_chk__ void surf3Dwrite(T data, hipSurfaceObject_t su
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf1DLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
@@ -249,7 +249,7 @@ static __device__ __hip_img_chk__ void surf1DLayeredread(T* data, hipSurfaceObje
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf1DLayeredwrite(T data, hipSurfaceObject_t surfObj, int x, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     x = __hipGetPixelAddr(x, __ockl_image_channel_data_type_1D(i), __ockl_image_channel_order_1D(i));
@@ -269,7 +269,7 @@ static __device__ __hip_img_chk__ void surf1DLayeredwrite(T data, hipSurfaceObje
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2DLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -290,7 +290,7 @@ static __device__ __hip_img_chk__ void surf2DLayeredread(T* data, hipSurfaceObje
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surf2DLayeredwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -311,7 +311,7 @@ static __device__ __hip_img_chk__ void surf2DLayeredwrite(T data, hipSurfaceObje
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -332,7 +332,7 @@ static __device__ __hip_img_chk__ void surfCubemapread(T* data, hipSurfaceObject
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapwrite(T data, hipSurfaceObject_t surfObj, int x, int y, int face) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
     int2 coords{x, y};
@@ -354,7 +354,7 @@ static __device__ __hip_img_chk__ void surfCubemapwrite(T data, hipSurfaceObject
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapLayeredread(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
         int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT
@@ -377,7 +377,7 @@ static __device__ __hip_img_chk__ void surfCubemapLayeredread(T* data, hipSurfac
  */
 template <
     typename T,
-    typename std::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
+    typename __hip_internal::enable_if<__hip_is_tex_surf_channel_type<T>::value>::type* = nullptr>
 static __device__ __hip_img_chk__ void surfCubemapLayeredwrite(T* data, hipSurfaceObject_t surfObj, int x, int y, int face,
         int layer) {
     __HIP_SURFACE_OBJECT_PARAMETERS_INIT

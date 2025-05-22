@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -78,13 +78,13 @@ THE SOFTWARE.
         #include "amd_device_functions.h"
         #include "amd_warp_functions.h"
       #endif
-        namespace std
+        namespace __hip_internal
         {
-            template<> struct is_floating_point<_Float16> : std::true_type {};
+            template<> struct is_floating_point<_Float16> : __hip_internal::true_type {};
         }
 
         template<bool cond, typename T = void>
-        using Enable_if_t = typename std::enable_if<cond, T>::type;
+        using Enable_if_t = typename __hip_internal::enable_if<cond, T>::type;
 
         // BEGIN STRUCT __HALF
         struct __half {
@@ -106,7 +106,7 @@ THE SOFTWARE.
                 __half(decltype(data) x) : data{x} {}
                 template<
                     typename T,
-                    Enable_if_t<std::is_floating_point<T>{}>* = nullptr>
+                    Enable_if_t<__hip_internal::is_floating_point<T>{}>* = nullptr>
                 __HOST_DEVICE__
                 __half(T x) : data{static_cast<_Float16>(x)} {}
             #endif
@@ -120,7 +120,7 @@ THE SOFTWARE.
             // CREATORS - DEVICE ONLY
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 template<
-                    typename T, Enable_if_t<std::is_integral<T>{}>* = nullptr>
+                    typename T, Enable_if_t<__hip_internal::is_integral<T>{}>* = nullptr>
                 __HOST_DEVICE__
                 __half(T x) : data{static_cast<_Float16>(x)} {}
             #endif
@@ -165,7 +165,7 @@ THE SOFTWARE.
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 template<
                     typename T,
-                    Enable_if_t<std::is_floating_point<T>{}>* = nullptr>
+                    Enable_if_t<__hip_internal::is_floating_point<T>{}>* = nullptr>
                 __HOST_DEVICE__
                 __half& operator=(T x)
                 {
@@ -177,7 +177,7 @@ THE SOFTWARE.
             // MANIPULATORS - DEVICE ONLY
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 template<
-                    typename T, Enable_if_t<std::is_integral<T>{}>* = nullptr>
+                    typename T, Enable_if_t<__hip_internal::is_integral<T>{}>* = nullptr>
                 __device__
                 __half& operator=(T x)
                 {
@@ -235,7 +235,7 @@ THE SOFTWARE.
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 template<
                     typename T,
-                    Enable_if_t<std::is_floating_point<T>{}>* = nullptr>
+                    Enable_if_t<__hip_internal::is_floating_point<T>{}>* = nullptr>
                 __HOST_DEVICE__
                 operator T() const { return data; }
             #endif
@@ -249,7 +249,7 @@ THE SOFTWARE.
 
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 template<
-                    typename T, Enable_if_t<std::is_integral<T>{}>* = nullptr>
+                    typename T, Enable_if_t<__hip_internal::is_integral<T>{}>* = nullptr>
                 __HOST_DEVICE__
                 operator T() const { return data; }
             #endif
