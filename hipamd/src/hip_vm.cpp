@@ -134,10 +134,6 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, size, *prop);
   *handle = reinterpret_cast<hipMemGenericAllocationHandle_t>(phys_mem_obj->getUserData().data);
 
-  // Remove because the entry is not needed in MemObjMap.
-  // We save the copy of Phy mem obj in virtual mem obj during mapping.
-  amd::MemObjMap::RemoveMemObj(ptr);
-
   HIP_RETURN(hipSuccess);
 }
 
