@@ -63,7 +63,7 @@
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 #define HIP_TOOLS_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 12
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 13
 
 // HIP API interface
 // HIP compiler dispatch functions
@@ -1586,8 +1586,12 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 12
   t_hipMemGetHandleForAddressRange hipMemGetHandleForAddressRange_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION = 13
+  // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams
+
   // DO NOT EDIT ABOVE!
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 12
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 13
 
   // ******************************************************************************************* //
   //
