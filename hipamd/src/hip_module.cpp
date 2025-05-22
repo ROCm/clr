@@ -48,6 +48,7 @@ hipError_t hipModuleUnload(hipModule_t hmod) {
   if (hmod == nullptr) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
   }
+  CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(PlatformState::instance().unloadModule(hmod));
 }
 
