@@ -785,7 +785,11 @@ hipError_t hipGetTextureAlignmentOffset(size_t* offset,
                                         const textureReference* texref) {
   HIP_INIT_API(hipGetTextureAlignmentOffset, offset, texref);
 
-  if ((offset == nullptr) || (texref == nullptr)) {
+  if (texref == nullptr) {
+    HIP_RETURN(hipErrorInvalidTexture);
+  }
+
+  if (offset == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   amd::Device* device = hip::getCurrentDevice()->devices()[0];
