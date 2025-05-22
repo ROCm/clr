@@ -859,6 +859,20 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
     if (!hip::isValid(launch.stream)) {
       return hipErrorInvalidValue;
     }
+    
+    if (launch.stream == nullptr || launch.stream == hipStreamLegacy) {
+      return hipErrorInvalidResourceHandle;
+    }
+
+    // Not supported while stream is capturing
+    hip::Stream* s = reinterpret_cast<hip::Stream*>(launch.stream);
+    if (s->GetCaptureStatus() == hipStreamCaptureStatusActive) {
+      s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+      return hipErrorStreamCaptureUnsupported;
+    }
+    if (s->GetCaptureStatus() == hipStreamCaptureStatusInvalidated) {
+      return hipErrorStreamCaptureInvalidated;
+    }
 
     hip::Stream* hip_stream = hip::getStream(launch.stream);
     hipFunction_t func = nullptr;
