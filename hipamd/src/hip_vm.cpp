@@ -62,7 +62,7 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
   const auto& dev_info = g_devices[0]->devices()[0]->info();
   if (size == 0 || ((size % dev_info.virtualMemAllocGranularity_) != 0)
       || ((alignment & (alignment - 1)) != 0)) {
-    HIP_RETURN(hipErrorMemoryAllocation);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   // Initialize the ptr, single virtual alloc call would reserve va range for all devices.
@@ -86,9 +86,12 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
 
   //  Currently we do not support Pinned memory
   if (handle == nullptr || size == 0 || flags != 0 || prop == nullptr ||
-      prop->type != hipMemAllocationTypePinned || prop->location.type != hipMemLocationTypeDevice ||
-      prop->location.id >= g_devices.size()) {
+      prop->type != hipMemAllocationTypePinned || prop->location.type != hipMemLocationTypeDevice) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (prop->location.id < 0 || prop->location.id >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
   }
 
   if (prop->requestedHandleTypes != hipMemHandleTypeNone
@@ -141,6 +144,10 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle,
   HIP_INIT_API(hipMemExportToShareableHandle, shareableHandle, handle, handleType, flags);
 
   if (flags != 0 || handle == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (shareableHandle == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -326,13 +333,41 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  // Ensure that the specified size parameter matches the total size of a complete set of
+  // sub-buffers, disallowing partial sub-buffer coverage
+  auto mem_object = amd::MemObjMap::FindMemObj(ptr);
+  if (mem_object && mem_object->parent()) {
+    size_t accumulated_buffer_size = 0;
+    for (auto sub_buffer : mem_object->parent()->subBuffers()) {
+      accumulated_buffer_size += sub_buffer->getSize();
+      if (accumulated_buffer_size > size) {
+        HIP_RETURN(hipErrorInvalidValue);
+      } else if (accumulated_buffer_size == size) {
+        break;
+      }
+    }
+
+    if (accumulated_buffer_size != size) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
   for (size_t desc_idx = 0; desc_idx < count; ++desc_idx) {
+    if (desc[desc_idx].location.type != hipMemLocationTypeDevice) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
     if (desc[desc_idx].location.id >= g_devices.size()) {
       HIP_RETURN(hipErrorInvalidValue)
     }
 
     auto& dev = g_devices[desc[desc_idx].location.id];
     amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(desc[desc_idx].flags);
+    if (access_flags != amd::Device::VmmAccess::kNone &&
+        access_flags != amd::Device::VmmAccess::kReadOnly &&
+        access_flags != amd::Device::VmmAccess::kReadWrite) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
 
     if (!dev->devices()[0]->SetMemAccess(ptr, size, access_flags)) {
       HIP_RETURN(hipErrorInvalidValue);
@@ -350,7 +385,7 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
   }
 
   amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(ptr);
-  if (vaddr_sub_obj == nullptr && vaddr_sub_obj->getSize() != size) {
+  if (vaddr_sub_obj == nullptr || vaddr_sub_obj->getSize() != size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
