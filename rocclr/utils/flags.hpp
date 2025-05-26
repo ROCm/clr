@@ -273,7 +273,7 @@ release(bool, DEBUG_CLR_SKIP_RELEASE_SCOPE, false,                            \
         "Forces release scope to SCOPE_NONE for aql packets")                 \
 release(bool, DEBUG_HIP_DYNAMIC_QUEUES, false,                                \
         "Forces dynamic queue management")                                    \
-release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, false,                             \
+release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, true,                              \
         "Set this to true, to avoid host side abort for GPU errors")          \
 release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
          "Force use of SPIRV instead of device specific code object.")        \
