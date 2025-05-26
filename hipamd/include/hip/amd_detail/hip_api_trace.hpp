@@ -127,7 +127,7 @@ typedef hipError_t (*t_hipCtxCreate)(hipCtx_t* ctx, unsigned int flags, hipDevic
 typedef hipError_t (*t_hipCtxDestroy)(hipCtx_t ctx);
 typedef hipError_t (*t_hipCtxDisablePeerAccess)(hipCtx_t peerCtx);
 typedef hipError_t (*t_hipCtxEnablePeerAccess)(hipCtx_t peerCtx, unsigned int flags);
-typedef hipError_t (*t_hipCtxGetApiVersion)(hipCtx_t ctx, int* apiVersion);
+typedef hipError_t (*t_hipCtxGetApiVersion)(hipCtx_t ctx, unsigned int* apiVersion);
 typedef hipError_t (*t_hipCtxGetCacheConfig)(hipFuncCache_t* cacheConfig);
 typedef hipError_t (*t_hipCtxGetCurrent)(hipCtx_t* ctx);
 typedef hipError_t (*t_hipCtxGetDevice)(hipDevice_t* device);

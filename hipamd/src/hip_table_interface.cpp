@@ -144,7 +144,7 @@ hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx) {
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags) {
   return hip::GetHipDispatchTable()->hipCtxEnablePeerAccess_fn(peerCtx, flags);
 }
-hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion) {
+hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion) {
   return hip::GetHipDispatchTable()->hipCtxGetApiVersion_fn(ctx, apiVersion);
 }
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig) {

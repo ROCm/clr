@@ -317,7 +317,7 @@ hipError_t hipCtxGetDevice(hipDevice_t* device) {
   HIP_RETURN(hipErrorInvalidContext);
 }
 
-hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion) {
+hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion) {
   HIP_INIT_API(hipCtxGetApiVersion, apiVersion);
   HIP_RETURN(hipErrorNotSupported);
 }
