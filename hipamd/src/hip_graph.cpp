@@ -1483,6 +1483,8 @@ hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
   }
   hip::GraphExec* ge = reinterpret_cast<hip::GraphExec*>(pGraphExec);
   ge->release();
+  amd::ScopedLock lock(GraphExec::graphExecSetLock_);
+  GraphExec::graphExecSet_.erase(ge);
   HIP_RETURN(hipSuccess);
 }
 
