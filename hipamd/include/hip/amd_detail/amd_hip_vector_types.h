@@ -51,31 +51,45 @@ THE SOFTWARE.
     #include <type_traits>
 #endif // defined(__HIPCC_RTC__)
 
-    namespace hip_impl {
-        inline
-        constexpr
-        unsigned int next_pot(unsigned int x) {
-            // Precondition: x > 1.
-	        return 1u << (32u - __builtin_clz(x - 1u));
-        }
-    } // Namespace hip_impl.
+template <typename T, unsigned int n> struct HIP_vector_base;
+template <typename T, unsigned int rank> struct HIP_vector_type;
 
-    template<typename T, unsigned int n> struct HIP_vector_base;
-    template <typename T, unsigned int rank> struct HIP_vector_type;
+namespace hip_impl {
+inline constexpr unsigned int next_pot(unsigned int x) {
+  // Precondition: x > 1.
+  return 1u << (32u - __builtin_clz(x - 1u));
+}
+
+template <typename T, unsigned int n>
+__attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_*
+get_native_pointer(HIP_vector_base<T, n>& base_vec) {
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
+  static_assert(std::alignment_of<HIP_vector_base<T, n>>::value ==
+                std::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  return reinterpret_cast<typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
+};
+
+template <typename T, unsigned int n>
+__attribute__((always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_*
+get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
+  static_assert(std::alignment_of<HIP_vector_base<T, n>>::value ==
+                std::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  return reinterpret_cast<const typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
+};
+}  // Namespace hip_impl.
 
     template <typename T, unsigned int n>
     __attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_&
     get_native_vector(HIP_vector_base<T, n>& base_vec) {
-      static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-      return *reinterpret_cast<typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
+      return *hip_impl::get_native_pointer(base_vec);
     };
 
     template <typename T, unsigned int n>
     __attribute__((
         always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_&
     get_native_vector(const HIP_vector_base<T, n>& base_vec) {
-      static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-      return *reinterpret_cast<const typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
+      return *hip_impl::get_native_pointer(base_vec);
     };
 
     template<typename T>
