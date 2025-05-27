@@ -72,9 +72,10 @@ bool Stream::Create() {
 }
 
 // ================================================================================================
-void Stream::Destroy(hip::Stream* stream) {
+void Stream::Destroy(hip::Stream* stream, bool forceDestroy) {
   stream->device().removeFromActiveQueues(stream);
   stream->device_->RemoveStream(stream);
+  stream->SetForceDestroy(forceDestroy);
   stream->release();
   stream = nullptr;
 }
@@ -397,7 +398,7 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   if (stream == nullptr) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
-  if (stream == hipStreamPerThread) {
+  if (stream == hipStreamPerThread || stream == hipStreamLegacy) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
   }
   if (!hip::isValid(stream)) {

@@ -294,6 +294,9 @@ class HostQueue : public CommandQueue {
   //! Get queue status
   bool GetQueueStatus() { return isActive_; }
 
+  //! Set the force destory to terminate queue without checking last command
+  void SetForceDestroy(bool forceDestroy) { forceDestroy_ = forceDestroy; }
+
   uint64_t getQueueID() {
     return thread_.vdev()->getQueueID();
   }
@@ -305,6 +308,7 @@ private:
 
   //! True if this command queue is active
   bool isActive_;
+  bool forceDestroy_ = false;  //!< Destroy the queue in the current state
 };
 
 class DeviceQueue : public CommandQueue {
