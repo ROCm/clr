@@ -127,6 +127,7 @@ bool HostQueue::terminate() {
     Agent::postCommandQueueFree(as_cl(this->asCommandQueue()));
   }
 
+  device_.removeFromActiveQueues(this);
 
   return true;
 }

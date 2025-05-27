@@ -1096,8 +1096,16 @@ bool Device::IpcDetach(void* dev_ptr) const {
 
 std::vector<amd::CommandQueue*> Device::getActiveQueues() {
   amd::ScopedLock lock(activeQueuesLock_);
-  for (auto& queue: activeQueues) {
-    queue->retain(); // Increase reference count in case it's destroyed in different threads
+  for (auto it = activeQueues.begin(); it != activeQueues.end();) {
+    if ((*it)->referenceCount() == 0) {
+      // It is being terminated in HostQueue::terminate().
+      // We should not wait for commands in a queue being terminated.
+      it = activeQueues.erase(it);
+    } else {
+      // In case the queue will be destroyed in Stream::Destroy().
+      (*it)->retain();
+      ++it;
+    }
   }
   return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
 }
