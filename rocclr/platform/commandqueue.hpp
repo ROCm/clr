@@ -151,6 +151,7 @@ class CommandQueue : public RuntimeObject {
   CommandQueue& operator=(const CommandQueue&);
 };
 
+
 class HostQueue : public CommandQueue {
   class Thread : public amd::Thread {
    public:
