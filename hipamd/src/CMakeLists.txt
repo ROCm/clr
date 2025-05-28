@@ -130,8 +130,7 @@ target_sources(amdhip64 PRIVATE
   hip_comgr_helper.cpp)
 
 if(WIN32)
-  target_sources(amdhip64 PRIVATE
-    hip_runtime.cpp hiprtc/hiprtcInternal.cpp)
+  target_sources(amdhip64 PRIVATE hip_runtime.cpp)
 endif()
 
 if(BUILD_SHARED_LIBS)
