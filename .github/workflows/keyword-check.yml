@@ -3,6 +3,8 @@ name: Keywords checker
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
+    branches:
+      - amd-staging
   workflow_dispatch:
 
 jobs:
