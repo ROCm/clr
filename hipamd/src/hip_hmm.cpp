@@ -72,6 +72,10 @@ hipError_t hipMallocManaged(void** dev_ptr, size_t size, unsigned int flags) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   HIP_RETURN(ihipMallocManaged(dev_ptr, size), *dev_ptr);
 }
 
@@ -149,6 +153,10 @@ hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advic
 
   if ((dev_ptr == nullptr) || (count == 0)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
   size_t offset = 0;
