@@ -591,6 +591,10 @@ hipError_t hipDeviceSetCacheConfig(hipFuncCache_t cacheConfig) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
@@ -631,6 +635,11 @@ hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) {
       config != hipSharedMemBankSizeEightByte) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
