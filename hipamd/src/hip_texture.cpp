@@ -617,6 +617,13 @@ hipError_t hipBindTexture2D(size_t* offset,
                             size_t pitch) {
   HIP_INIT_API(hipBindTexture2D, offset, texref, devPtr, desc, width, height, pitch);
 
+  if (texref == nullptr) {
+    HIP_RETURN(hipErrorUnknown);
+  }
+  if (devPtr == nullptr) {
+    HIP_RETURN(hipErrorNotFound);
+  }
+
   hipDeviceptr_t refDevPtr = nullptr;
   size_t refDevSize = 0;
 
