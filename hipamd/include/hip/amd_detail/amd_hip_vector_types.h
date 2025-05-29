@@ -361,10 +361,14 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       // Operators
       __HOST_DEVICE__
-      HIP_vector_type& operator++() noexcept {
-        HIP_vector_type unity = make_vector_type<T, rank>(1);
-        return *this += unity;
+      T& operator[](size_t idx) noexcept { return reinterpret_cast<T*>(this)[idx]; }
+      __HOST_DEVICE__
+      const T& operator[](size_t idx) const noexcept {
+        return reinterpret_cast<const T*>(this)[idx];
       }
+
+      __HOST_DEVICE__
+      HIP_vector_type& operator++() noexcept { return *this += HIP_vector_type{1}; }
       __HOST_DEVICE__
       HIP_vector_type operator++(int) noexcept {
         auto tmp(*this);
