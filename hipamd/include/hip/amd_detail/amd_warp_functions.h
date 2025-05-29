@@ -87,9 +87,7 @@ inline __device__ const struct final {
   __device__
   __attribute__((always_inline, const))
     operator int() const noexcept {
-#ifdef __HIP_DEVICE_COMPILE__
       return __builtin_amdgcn_wavefrontsize();
-#endif
     }
 } warpSize{};
 
