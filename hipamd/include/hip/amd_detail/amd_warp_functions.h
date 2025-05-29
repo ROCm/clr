@@ -83,18 +83,13 @@ __device__ static inline int __hip_move_dpp_N(int src) {
                                     bound_ctrl);
 }
 
-#if defined(__SPIRV__)
-    inline __device__ const struct final {
-        __device__
-        __attribute__((always_inline, const))
-        operator int() const noexcept {
-            return __builtin_amdgcn_wavefrontsize();
-        }
-    } warpSize{};
-#else
-    __device__
-    static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
-#endif
+inline __device__ const struct final {
+  __device__
+  __attribute__((always_inline, const))
+    operator int() const noexcept {
+      return __builtin_amdgcn_wavefrontsize();
+    }
+} warpSize{};
 
 // warp vote function __all __any __ballot
 __device__

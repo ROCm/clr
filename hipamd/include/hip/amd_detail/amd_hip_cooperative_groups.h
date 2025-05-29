@@ -375,7 +375,9 @@ class coalesced_group : public thread_group {
     if (coalesced_info.tiled_info.is_tiled) {
       unsigned int base_offset = (thread_rank() & (~(tile_size - 1)));
       unsigned int masklength = min(static_cast<unsigned int>(size()) - base_offset, tile_size);
-      lane_mask member_mask = static_cast<lane_mask>(-1) >> (warpSize - masklength);
+      lane_mask full_mask = (warpSize == 32) ? static_cast<lane_mask>((1u << 32) - 1)
+                                             : static_cast<lane_mask>(-1ull);
+      lane_mask member_mask = full_mask >> (warpSize - masklength);
 
       member_mask <<= (__lane_id() & ~(tile_size - 1));
       coalesced_group coalesced_tile = coalesced_group(member_mask);
