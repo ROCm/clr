@@ -91,11 +91,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   // pResViewDesc can only be specified if the type of resource is a HIP array or a HIP mipmapped array.
   if ((pResViewDesc != nullptr) &&
       ((pResDesc->resType != hipResourceTypeArray) && (pResDesc->resType != hipResourceTypeMipmappedArray))) {
-    if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_TEXTURE_API) {
-      return hipErrorUnknown;
-    } else {
-      return hipErrorInvalidChannelDescriptor;
-    }
+    return hipErrorUnknown;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeArray,
@@ -535,25 +531,16 @@ hipError_t ihipBindTexture(size_t* offset,
                            const void* devPtr,
                            const hipChannelFormatDesc* desc,
                            size_t size) {
-  bool preview_70 = DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_TEXTURE_API;
-  if (!preview_70) {
-    if ((texref == nullptr) ||
-        (devPtr == nullptr) ||
-        (desc == nullptr)) {
-      return hipErrorInvalidValue;
-    }
-  } else {
-    if (texref == nullptr) {
-      return hipErrorUnknown;
-    }
+  if (texref == nullptr) {
+    return hipErrorUnknown;
+  }
 
-    if (devPtr == nullptr) {
-      return hipErrorNotFound;
-    }
+  if (devPtr == nullptr) {
+    return hipErrorNotFound;
+  }
 
-    if (desc == nullptr) {
-      return hipErrorInvalidValue;
-    }
+  if (desc == nullptr) {
+    return hipErrorInvalidValue;
   }
 
   // Any previous address or HIP array state associated with the texture reference is superseded by this function.
