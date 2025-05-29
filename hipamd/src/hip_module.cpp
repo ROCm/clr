@@ -268,7 +268,7 @@ hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
   if ((kernelParams != nullptr) && (extra != nullptr)) {
     LogPrintfError("%s",
                    "Both, kernelParams and extra Params are provided, only one should be provided");
-    return hipErrorInvalidConfiguration;
+    return hipErrorInvalidValue;
   }
 
   if (globalWorkSizeX == 0 || globalWorkSizeY == 0 || globalWorkSizeZ == 0) {
@@ -502,7 +502,12 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
                blockDimZ, sharedMemBytes, hStream, kernelParams, extra);
 
   if (!hip::isValid(hStream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
+  if (gridDimX == 0 || gridDimY == 0 || gridDimZ == 0 || blockDimX == 0 ||
+        blockDimY == 0 || blockDimZ == 0) {
+      HIP_RETURN(hipErrorInvalidValue);
   }
 
   STREAM_CAPTURE(hipModuleLaunchKernel, hStream, f, gridDimX, gridDimY, gridDimZ, blockDimX,
@@ -510,14 +515,24 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, uint32_t gridDimX, uint32_t gr
 
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
   constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
-  if (gridDimX > int32_max || gridDimY > uint16_max || gridDimZ > uint16_max) {
+  if (gridDimX > int32_max || gridDimY > uint16_max || gridDimZ > uint16_max)  {
     HIP_RETURN(hipErrorInvalidValue);
   }
+  int deviceId = hip::Stream::DeviceId(hStream);
+  const amd::Device* device = g_devices[deviceId]->devices()[0];
+
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max()) {
-    HIP_RETURN(hipErrorInvalidConfiguration);
+
+  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
+      globalWorkSizeZ > std::numeric_limits<uint32_t>::max() ||
+      blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
+      HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (sharedMemBytes > device->info().localMemSizePerCU_) {
+      HIP_RETURN(hipErrorInvalidValue);
   }
   HIP_RETURN(ihipModuleLaunchKernel(
       f, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
@@ -536,7 +551,7 @@ hipError_t hipExtModuleLaunchKernel(hipFunction_t f, uint32_t globalWorkSizeX,
                kernelParams, extra, startEvent, stopEvent, flags);
 
   if (!hip::isValid(hStream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
   STREAM_CAPTURE(hipExtModuleLaunchKernel, hStream, f, globalWorkSizeX, globalWorkSizeY,
@@ -572,17 +587,32 @@ hipError_t hipModuleLaunchCooperativeKernel(hipFunction_t f, unsigned int gridDi
                blockDimY, blockDimZ, sharedMemBytes, stream, kernelParams);
 
   if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipErrorContextIsDestroyed);
   }
 
+  if (gridDimX == 0 || gridDimY == 0 || gridDimZ == 0 || blockDimX == 0 ||
+        blockDimY == 0 || blockDimZ == 0) {
+      HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  int deviceId = hip::Stream::DeviceId(stream);
+  const amd::Device* device = g_devices[deviceId]->devices()[0];
+
+  constexpr auto uint32_max = static_cast<uint64_t>(std::numeric_limits<uint32_t>::max());
   size_t globalWorkSizeX = static_cast<size_t>(gridDimX) * blockDimX;
   size_t globalWorkSizeY = static_cast<size_t>(gridDimY) * blockDimY;
   size_t globalWorkSizeZ = static_cast<size_t>(gridDimZ) * blockDimZ;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
-    HIP_RETURN(hipErrorInvalidConfiguration);
+
+  if (globalWorkSizeX > uint32_max ||
+      globalWorkSizeY > uint32_max ||
+      globalWorkSizeZ > uint32_max ||
+      blockDimX * blockDimY * blockDimZ > device->info().maxWorkGroupSize_) {
+    HIP_RETURN(hipErrorInvalidValue);
   }
+  if (sharedMemBytes > device->info().localMemSizePerCU_) {
+      HIP_RETURN(hipErrorInvalidValue);
+  }
+
   HIP_RETURN(ihipModuleLaunchKernel(f, static_cast<uint32_t>(globalWorkSizeX),
                   static_cast<uint32_t>(globalWorkSizeY),
                   static_cast<uint32_t>(globalWorkSizeZ), blockDimX, blockDimY,
@@ -773,7 +803,7 @@ hipError_t hipLaunchCooperativeKernel_common(const void* f, dim3 gridDim, dim3 b
                                              void** kernelParams, uint32_t sharedMemBytes,
                                              hipStream_t hStream) {
   if (!hip::isValid(hStream)) {
-    return hipErrorContextIsDestroyed;
+    return hipErrorInvalidHandle;
   }
 
   STREAM_CAPTURE(hipLaunchCooperativeKernel, hStream, f, gridDim, blockDim, kernelParams,
