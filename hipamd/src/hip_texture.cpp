@@ -91,7 +91,7 @@ hipError_t ihipCreateTextureObject(hipTextureObject_t* pTexObject,
   // pResViewDesc can only be specified if the type of resource is a HIP array or a HIP mipmapped array.
   if ((pResViewDesc != nullptr) &&
       ((pResDesc->resType != hipResourceTypeArray) && (pResDesc->resType != hipResourceTypeMipmappedArray))) {
-    return hipErrorInvalidChannelDescriptor;
+    return hipErrorUnknown;
   }
 
   // If hipResourceDesc::resType is set to hipResourceTypeArray,
@@ -534,9 +534,15 @@ hipError_t ihipBindTexture(size_t* offset,
                            const void* devPtr,
                            const hipChannelFormatDesc* desc,
                            size_t size) {
-  if ((texref == nullptr) ||
-      (devPtr == nullptr) ||
-      (desc == nullptr)) {
+  if (texref == nullptr) {
+    return hipErrorUnknown;
+  }
+
+  if (devPtr == nullptr) {
+    return hipErrorNotFound;
+  }
+
+  if (desc == nullptr) {
     return hipErrorInvalidValue;
   }
 
