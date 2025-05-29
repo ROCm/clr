@@ -364,10 +364,10 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       // Operators
       __HOST_DEVICE__
-      T& operator[](size_t idx) noexcept { return (*hip_impl::get_native_pointer(*this))[idx]; }
+      T& operator[](size_t idx) noexcept { return reinterpret_cast<T*>(this)[idx]; }
       __HOST_DEVICE__
       const T& operator[](size_t idx) const noexcept {
-        return (*hip_impl::get_native_pointer(*this))[idx];
+        return reinterpret_cast<const T*>(this)[idx];
       }
 
       __HOST_DEVICE__
