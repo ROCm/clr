@@ -590,8 +590,8 @@ typedef hipError_t (*t_hipMemcpyFromSymbolAsync)(void* dst, const void* symbol, 
                                                  hipStream_t stream);
 typedef hipError_t (*t_hipMemcpyHtoA)(hipArray_t dstArray, size_t dstOffset, const void* srcHost,
                                       size_t count);
-typedef hipError_t (*t_hipMemcpyHtoD)(hipDeviceptr_t dst, void* src, size_t sizeBytes);
-typedef hipError_t (*t_hipMemcpyHtoDAsync)(hipDeviceptr_t dst, void* src, size_t sizeBytes,
+typedef hipError_t (*t_hipMemcpyHtoD)(hipDeviceptr_t dst, const void* src, size_t sizeBytes);
+typedef hipError_t (*t_hipMemcpyHtoDAsync)(hipDeviceptr_t dst, const void* src, size_t sizeBytes,
                                            hipStream_t stream);
 typedef hipError_t (*t_hipMemcpyParam2D)(const hip_Memcpy2D* pCopy);
 typedef hipError_t (*t_hipMemcpyParam2DAsync)(const hip_Memcpy2D* pCopy, hipStream_t stream);

@@ -1591,9 +1591,7 @@ hipError_t hipMemcpyFromSymbolAsync_spt(void* dst, const void* symbol, size_t si
   HIP_RETURN_DURATION(hipMemcpyFromSymbolAsync_common(dst, symbol, sizeBytes, offset, kind, stream));
 }
 
-hipError_t hipMemcpyHtoD(hipDeviceptr_t dstDevice,
-                         void* srcHost,
-                         size_t ByteCount) {
+hipError_t hipMemcpyHtoD(hipDeviceptr_t dstDevice, const void* srcHost, size_t ByteCount) {
   HIP_INIT_API(hipMemcpyHtoD, dstDevice, srcHost, ByteCount);
   CHECK_STREAM_CAPTURING();
   hip::Stream* stream = hip::getStream(nullptr);
@@ -1640,7 +1638,7 @@ hipError_t hipMemcpyAsync_spt(void* dst, const void* src, size_t sizeBytes,
   HIP_RETURN_DURATION(hipMemcpyAsync_common(dst, src, sizeBytes, kind, stream));
 }
 
-hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice, void* srcHost, size_t ByteCount,
+hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dstDevice, const void* srcHost, size_t ByteCount,
                               hipStream_t stream) {
   HIP_INIT_API(hipMemcpyHtoDAsync, dstDevice, srcHost, ByteCount, stream);
   hipMemcpyKind kind = hipMemcpyHostToDevice;

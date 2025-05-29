@@ -3133,12 +3133,12 @@ typedef struct hip_api_data_s {
     } hipMemcpyHtoAAsync;
     struct {
       hipDeviceptr_t dst;
-      void* src;
+      const void* src;
       size_t sizeBytes;
     } hipMemcpyHtoD;
     struct {
       hipDeviceptr_t dst;
-      void* src;
+      const void* src;
       size_t sizeBytes;
       hipStream_t stream;
     } hipMemcpyHtoDAsync;

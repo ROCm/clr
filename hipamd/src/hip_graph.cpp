@@ -755,8 +755,8 @@ hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& s
   return capturehipMemcpy(stream, dst, src, sizeBytes, kind);
 }
 
-hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice, void*& srcHost,
-                                     size_t& ByteCount, hipMemcpyKind& kind) {
+hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice,
+                                     const void*& srcHost, size_t& ByteCount, hipMemcpyKind& kind) {
   ClPrint(amd::LOG_INFO, amd::LOG_API, "[hipGraph] Current capture node MemcpyHtoD on stream : %p",
           stream);
   if (!hip::isValid(stream)) {
