@@ -36,7 +36,7 @@ TimeStamp::~TimeStamp() {}
 
 void TimeStamp::begin() {
   if (!flags_.beginIssued_) {
-    gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
+    gpu().iCmd()->CmdWriteTimestamp(Pal::PipelineStageFlag::PipelineStageBottomOfPipe, *iMem_,
                                     memOffset_ + CommandStartTime * sizeof(uint64_t));
     flags_.beginIssued_ = true;
   }
@@ -44,7 +44,7 @@ void TimeStamp::begin() {
 
 void TimeStamp::end() {
   CondLog(!flags_.beginIssued_, "We didn't issue a begin operation!");
-  gpu().iCmd()->CmdWriteTimestamp(Pal::HwPipePoint::HwPipeBottom, *iMem_,
+  gpu().iCmd()->CmdWriteTimestamp(Pal::PipelineStageFlag::PipelineStageBottomOfPipe, *iMem_,
                                   memOffset_ + CommandEndTime * sizeof(uint64_t));
   flags_.endIssued_ = true;
 }

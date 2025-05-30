@@ -29,13 +29,69 @@ THE SOFTWARE.
 
 namespace hip {
 
-FatBinaryDeviceInfo::~FatBinaryDeviceInfo() {
-  if (program_ != nullptr) {
-    program_->unload();
-    program_->release();
-    program_ = nullptr;
+namespace comgr_helper {
+
+template <typename comgr_T> class ComgrUniqueHandle {
+ public:
+  ComgrUniqueHandle() = default;
+  // constructor which takes ownership of a correctly initialzed handle
+  ComgrUniqueHandle(comgr_T& handle) : comgr_obj_(handle) { handle = {0}; };
+
+  template <typename T = comgr_T,
+            std::enable_if_t<std::is_same_v<T, amd_comgr_data_set_t> ||
+                                 std::is_same_v<T, amd_comgr_action_info_t>,
+                             bool> = true>
+  [[nodiscard]] amd_comgr_status_t Create() {
+    if constexpr (std::is_same_v<T, amd_comgr_data_set_t>) {
+      return amd::Comgr::create_data_set(&comgr_obj_);
+    } else if constexpr (std::is_same_v<T, amd_comgr_action_info_t>) {
+      return amd::Comgr::create_action_info(&comgr_obj_);
+    }
+
+    // Unreachable code
+    return AMD_COMGR_STATUS_SUCCESS;
   }
-}
+
+  template <typename T = comgr_T,
+            std::enable_if_t<std::is_same_v<T, amd_comgr_data_t>, bool> = true>
+  [[nodiscard]] amd_comgr_status_t Create(amd_comgr_data_kind_t kind) {
+    return amd::Comgr::create_data(kind, &comgr_obj_);
+  }
+
+  ~ComgrUniqueHandle() {
+    if (comgr_obj_.handle != 0) {
+      if constexpr (std::is_same_v<comgr_T, amd_comgr_data_set_t>) {
+        amd::Comgr::destroy_data_set(comgr_obj_);
+      } else if constexpr (std::is_same_v<comgr_T, amd_comgr_action_info_t>) {
+        amd::Comgr::destroy_action_info(comgr_obj_);
+      } else if constexpr (std::is_same_v<comgr_T, amd_comgr_data_t>) {
+        amd::Comgr::release_data(comgr_obj_);
+      }
+    }
+  }
+
+  // Delete all copy and move operators
+  ComgrUniqueHandle(ComgrUniqueHandle&) = delete;
+  ComgrUniqueHandle(ComgrUniqueHandle&&) = delete;
+  ComgrUniqueHandle& operator=(ComgrUniqueHandle&) = delete;
+  ComgrUniqueHandle& operator=(ComgrUniqueHandle&&) = delete;
+
+  // Method to access data
+  comgr_T get() const {
+    assert(comgr_obj_.handle != 0);
+    return comgr_obj_;
+  }
+
+ private:
+  comgr_T comgr_obj_{0};
+};
+
+
+typedef ComgrUniqueHandle<amd_comgr_data_set_t> ComgrDataSetUniqueHandle;
+typedef ComgrUniqueHandle<amd_comgr_action_info_t> ComgrActionInfoUniqueHandle;
+typedef ComgrUniqueHandle<amd_comgr_data_t> ComgrDataUniqueHandle;
+
+}  // namespace comgr_helper
 
 FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image)
     : fdesc_(amd::Os::FDescInit()),
@@ -50,19 +106,22 @@ FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image)
     fname_ = std::string();
   }
 
-  fatbin_dev_info_.resize(g_devices.size(), nullptr);
+  dev_programs_.resize(g_devices.size(), nullptr);
 }
 
 FatBinaryInfo::~FatBinaryInfo() {
   // Different devices in the same model have the same binary_image_
   std::set<const void*> toDelete;
   // Release per device fat bin info.
-  for (auto* fbd : fatbin_dev_info_) {
-    if (fbd != nullptr) {
-      if (fbd->binary_image_ && fbd->binary_offset_ == 0 && fbd->binary_image_ != image_) {
-        toDelete.insert(fbd->binary_image_);
+  for (int dev_id = 0; dev_id < dev_programs_.size(); dev_id++) {
+    if (dev_programs_[dev_id] != nullptr) {
+      auto& binaryInfo = dev_programs_[dev_id]->binary(*g_devices[dev_id]->devices()[0]);
+      if (std::get<0>(binaryInfo) && std::get<1>(binaryInfo).second == 0 &&
+          std::get<0>(binaryInfo) != image_) {
+        toDelete.insert(std::get<0>(binaryInfo));
       }
-      delete fbd;
+      dev_programs_[dev_id]->release();
+      dev_programs_[dev_id] = nullptr;
     }
   }
   for (auto itemData : toDelete) {
@@ -142,7 +201,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
   // If file name & path are available (or it is passed to you), then get the file desc to use
   // COMGR file slice APIs.
-  if (fname_.size() > 0) {
+  if (image_ == nullptr && fname_.size() > 0) {
     // Get File Handle & size of the file.
     ufd_ = PlatformState::instance().GetUniqueFileHandle(fname_.c_str());
     if (ufd_ == nullptr) {
@@ -155,14 +214,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     }
 
     // If image_ is nullptr, then file path is passed via hipMod* APIs, so map the file.
-    if (image_ == nullptr) {
-      if (!amd::Os::MemoryMapFileDesc(ufd_->fdesc_, ufd_->fsize_, foffset_, &image_)) {
-        LogError("Cannot map the file descriptor");
-        PlatformState::instance().CloseUniqueFileHandle(ufd_);
-        return hipErrorInvalidValue;
-      }
-      image_mapped_ = true;
+    if (!amd::Os::MemoryMapFileDesc(ufd_->fdesc_, ufd_->fsize_, foffset_, &image_)) {
+      LogError("Cannot map the file descriptor");
+      PlatformState::instance().CloseUniqueFileHandle(ufd_);
+      return hipErrorInvalidValue;
     }
+
+    image_mapped_ = true;
   }
 
   // At this line, image should be a valid ptr.
@@ -179,12 +237,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           hip_status = hipErrorInvalidImage;
           break;
         }
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(image_, elf_size, 0);
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
-          hip_status = hipErrorOutOfMemory;
+        hip_status = AddDevProgram(devices[dev_idx], image_, elf_size, 0);
+        if (hip_status != hipSuccess) {
           break;
         }
       }
@@ -200,12 +254,12 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
     if (isCompressed || HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
       size_t major = 0, minor = 0;
       amd::Comgr::get_version(&major, &minor);
-      if (major >= 2 && minor >= 8) {
+      if ((major == 2 && minor >= 8) || major > 2) {
         hip_status = ExtractFatBinaryUsingCOMGR(image_, devices);
         break;
       } else if (isCompressed) {
-        LogPrintfError("comgr %zu.%zu cannot support commpressed mode which need comgr 2.8+", major,
-                       minor);
+        LogPrintfError("comgr %zu.%zu cannot support compressed mode which requires comgr 2.8+",
+                       major, minor);
         hip_status = hipErrorNotSupported;
         break;
       } else if (HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
@@ -253,9 +307,15 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       std::string device_name = device->devices()[0]->isa().isaName();
       unique_isa_names.insert({device_name, std::make_pair<size_t, size_t>(0, 0)});
     }
-    // Add the spirv target
-    const std::string spirv_isa_name = "spirv64-amd-amdhsa--amdgcnspirv";
-    unique_isa_names.insert({spirv_isa_name, std::make_pair<size_t, size_t>(0, 0)});
+
+    // there are two spirv targets, spirv64-amd-amdhsa--amdgcnspirv and
+    // spirv64-amd-amdhsa-unknown-amdgcnspirv.
+    // eventually we will remove spirv64-amd-amdhsa--amdgcnspirv
+    const std::vector<std::string> spirv_isa_names = {"spirv64-amd-amdhsa--amdgcnspirv",
+                                                      "spirv64-amd-amdhsa-unknown-amdgcnspirv"};
+    for (const auto& spirv_isa_name : spirv_isa_names) {
+      unique_isa_names.insert({spirv_isa_name, std::make_pair<size_t, size_t>(0, 0)});
+    }
 
     // Create a query list using COMGR info for unique ISAs.
     std::vector<amd_comgr_code_object_info_t> query_list_array;
@@ -283,261 +343,232 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                                                     static_cast<size_t>(item.offset));
     }
 
-    // if we have SPIRV isa, we will use Comgr to create isa for all devices.
-    auto spirv_isa_handle = unique_isa_names.find(spirv_isa_name);
-    bool spirv_isa_found = spirv_isa_handle->second.first != 0;
-
-    if (!spirv_isa_found) {
-      for (auto device : devices) {
-        std::string device_name = device->devices()[0]->isa().isaName();
-        auto dev_it = unique_isa_names.find(device_name);
-        // If the size is 0, then Comgr API could not find the CO for this GPU device/ISA
-        if (dev_it->second.first == 0) {
-          LogPrintfError("Cannot find CO in the bundle %s for ISA: %s", fname_.c_str(),
-                         device_name.c_str());
-          hip_status = hipErrorNoBinaryForGpu;
-          ListAllDeviceWithNoCOFromBundle(unique_isa_names);
-          break;
-        }
-        guarantee(unique_isa_names.cend() != dev_it,
-                  "Cannot find the device name in the unique device name");
-        fatbin_dev_info_[device->deviceId()] = new FatBinaryDeviceInfo(
-            reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
-            dev_it->second.first, dev_it->second.second);
-        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
+    bool spirv_isa_found = false;
+    decltype(unique_isa_names.begin()) spirv_isa_handle;
+    for (const auto& spirv_isa_name : spirv_isa_names) {
+      auto iter = unique_isa_names.find(spirv_isa_name);
+      if (iter->second.first != 0) {
+        spirv_isa_found = true;
+        spirv_isa_handle = iter;
       }
-    } else {
-      LogPrintfDebug("%s", "SPIRV isa found");
+    }
 
-      amd_comgr_data_set_t spirv_data_set, bc_data_set;
-      amd_comgr_data_t spirv_data;
-      amd_comgr_action_info_t action;
+    bool compile_spv_bitcode_res = false;
+    std::once_flag spirv_to_bc_flag;
 
-      if (comgr_status = amd::Comgr::create_data_set(&spirv_data_set);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+    comgr_helper::ComgrDataSetUniqueHandle bc_data_set;
+    std::unordered_map<std::string, std::pair<char*, size_t>> compiled_co;  // code object cache
+
+    auto compile_spv_bitcode = [&]() {
+      comgr_helper::ComgrDataSetUniqueHandle spirv_data_set;
+      comgr_helper::ComgrDataUniqueHandle spirv_data;
+      comgr_helper::ComgrActionInfoUniqueHandle action;
+
+      if (comgr_status = spirv_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data set");
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_SPIRV, &spirv_data);
+      if (comgr_status = spirv_data.Create(AMD_COMGR_DATA_KIND_SPIRV);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data");
-        amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::set_data(spirv_data, spirv_isa_handle->second.first /* size */,
-                                              reinterpret_cast<char*>(const_cast<void*>(image_)) +
-                                                  spirv_isa_handle->second.second /* buffer */);
+      if (comgr_status =
+              amd::Comgr::set_data(spirv_data.get(), spirv_isa_handle->second.first /* size */,
+                                   reinterpret_cast<char*>(const_cast<void*>(image_)) +
+                                       spirv_isa_handle->second.second /* buffer */);
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to assign data in comgr");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::set_data_name(spirv_data, "hip_code_object.spv");
+      if (comgr_status = amd::Comgr::set_data_name(spirv_data.get(), "hip_code_object.spv");
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to set data name");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::data_set_add(spirv_data_set, spirv_data);
+      if (comgr_status = amd::Comgr::data_set_add(spirv_data_set.get(), spirv_data.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to add spir data");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::create_action_info(&action);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+      if (comgr_status = action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create action");
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::create_data_set(&bc_data_set);
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+      if (comgr_status = bc_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create bitcode data set");
-        (void)amd::Comgr::destroy_action_info(action);
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
 
-      if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action,
-                                               spirv_data_set, bc_data_set);
+      if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action.get(),
+                                               spirv_data_set.get(), bc_data_set.get());
           comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to compile to ll");
-        (void)amd::Comgr::destroy_action_info(action);
-        (void)amd::Comgr::release_data(spirv_data);
-        (void)amd::Comgr::destroy_data_set(spirv_data_set);
-        (void)amd::Comgr::destroy_data_set(bc_data_set);
-        return hipErrorInvalidValue;
+        return;
       }
+      compile_spv_bitcode_res = true;
+    };
 
-      (void)amd::Comgr::release_data(spirv_data);
-      (void)amd::Comgr::destroy_data_set(spirv_data_set);
-      (void)amd::Comgr::destroy_action_info(action);
+    LogPrintfInfo("Searching for code objects, HIP_FORCE_SPIRV_CODEOBJECT: %d",
+                  HIP_FORCE_SPIRV_CODEOBJECT);
 
-      for (auto device : devices) {
-        LogPrintfInfo("Creating ISA for: %s from spir-v", device->devices()[0]->isa().targetId());
-        amd_comgr_action_info_t reloc_action;
-        std::string isa =
-            std::string{"amdgcn-amd-amdhsa--"} + device->devices()[0]->isa().targetId();
-        if (comgr_status = amd::Comgr::create_action_info(&reloc_action);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+    for (auto device : devices) {
+      std::string device_name = device->devices()[0]->isa().isaName();
+      auto dev_it = unique_isa_names.find(device_name);
+      // If the size is not 0, that means we found the native isa code object
+      if (dev_it->second.first != 0 && !HIP_FORCE_SPIRV_CODEOBJECT) {
+        LogPrintfInfo("Using Native code object: %s", device->devices()[0]->isa().targetId());
+        guarantee(unique_isa_names.cend() != dev_it,
+                  "Cannot find the device name in the unique device name");
+        hip_status = AddDevProgram(
+            device, reinterpret_cast<address>(const_cast<void*>(image_)) + dev_it->second.second,
+            dev_it->second.first, dev_it->second.second);
+        if (hip_status != hipSuccess) {
+          break;
+        }
+      } else if (spirv_isa_found) {
+        // Compile to bitcode once
+        std::call_once(spirv_to_bc_flag, compile_spv_bitcode);
+
+        if(!compile_spv_bitcode_res) {
+          hip_status = hipErrorInvalidValue;
+          break;
+        }
+
+        std::string target_id = device->devices()[0]->isa().targetId();
+        if (auto code_iter = compiled_co.find(target_id); code_iter != compiled_co.end()) {
+          // We have already compiled for it, lets reuse the code object
+          char* co = new char[code_iter->second.second];
+          std::memcpy(co, code_iter->second.first, code_iter->second.second);
+          LogPrintfInfo("reusing code object for: %s", target_id.c_str());
+          hip_status = AddDevProgram(device, co, code_iter->second.second, 0);
+          if (hip_status != hipSuccess) {
+            break;
+          }
+          continue;
+        }
+
+        LogPrintfInfo("Creating ISA for: %s from spirv", target_id.c_str());
+        comgr_helper::ComgrActionInfoUniqueHandle reloc_action;
+        std::string isa = "amdgcn-amd-amdhsa--" + target_id;
+        if (comgr_status = reloc_action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create action");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        // TODO: do this for all devices
-        if (comgr_status = amd::Comgr::action_info_set_isa_name(reloc_action, isa.c_str());
+        if (comgr_status = amd::Comgr::action_info_set_isa_name(reloc_action.get(), isa.c_str());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set ISA name");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        if (comgr_status = amd::Comgr::action_info_set_device_lib_linking(reloc_action, true);
+        if (comgr_status = amd::Comgr::action_info_set_device_lib_linking(reloc_action.get(), true);
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set device lib linking");
-          return hipErrorInvalidValue;
+          break;
         }
 
         if (comgr_status = amd::Comgr::action_info_set_option_list(
-                reloc_action, nullptr /* options list */, 0 /* options size */);
+                reloc_action.get(), nullptr /* options list */, 0 /* options size */);
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to set option list");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        amd_comgr_data_set_t reloc_data;
-        if (comgr_status = amd::Comgr::create_data_set(&reloc_data);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        comgr_helper::ComgrDataSetUniqueHandle reloc_data;
+        if (comgr_status = reloc_data.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create reloc data set");
-          return hipErrorInvalidValue;
-        }
-
-        if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
-                                                 reloc_action, bc_data_set, reloc_data);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          LogError("Failed to compile to reloc");
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
-          LogError("Failed to do action: codegen bc ot reloc");
-          return hipErrorInvalidValue;
-        }
-
-        amd_comgr_action_info_t exe_action;
-        amd_comgr_data_set_t exe_output;
-
-        if (comgr_status = amd::Comgr::create_action_info(&exe_action);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          LogError("Failed to create action");
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
-          LogError("Failed to create exe action");
-          return hipErrorInvalidValue;
+          break;
         }
 
         if (comgr_status =
-                amd::Comgr::action_info_set_isa_name(exe_action, isa.c_str());
+                amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
+                                      reloc_action.get(), bc_data_set.get(), reloc_data.get());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+          LogError("Failed to compile to reloc");
+          LogError("Failed to do action: codegen bc ot reloc");
+          break;
+        }
+
+        comgr_helper::ComgrActionInfoUniqueHandle exe_action;
+        comgr_helper::ComgrDataSetUniqueHandle exe_output;
+
+        if (comgr_status = exe_action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+          LogError("Failed to create action");
+          LogError("Failed to create exe action");
+          break;
+        }
+
+        if (comgr_status = amd::Comgr::action_info_set_isa_name(exe_action.get(), isa.c_str());
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to set exe action isa name");
-          return hipErrorInvalidValue;
         }
 
-        if (comgr_status = amd::Comgr::create_data_set(&exe_output);
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = exe_output.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to create exe output");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
-                                                 exe_action, reloc_data, exe_output);
+        if (comgr_status =
+                amd::Comgr::do_action(AMD_COMGR_ACTION_LINK_RELOCATABLE_TO_EXECUTABLE,
+                                      exe_action.get(), reloc_data.get(), exe_output.get());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
           LogError("Failed to do action: reloc to exe");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        amd_comgr_data_t exe_data;
-        if (auto res = amd::Comgr::action_data_get_data(exe_output, AMD_COMGR_DATA_KIND_EXECUTABLE,
-                                                        0, &exe_data);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        amd_comgr_data_t exe_data_handle;
+        if (comgr_status = amd::Comgr::action_data_get_data(
+                exe_output.get(), AMD_COMGR_DATA_KIND_EXECUTABLE, 0, &exe_data_handle);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to action get exe data");
-          return hipErrorInvalidValue;
+          break;
         }
+        // Move ownership of exe_data_handle to exe_data
+        comgr_helper::ComgrDataUniqueHandle exe_data(exe_data_handle);
 
         size_t co_size;
-        if (auto res = amd::Comgr::get_data(exe_data, &co_size, NULL);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = amd::Comgr::get_data(exe_data.get(), &co_size, NULL);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to get exe size");
-          return hipErrorInvalidValue;
+          break;
         }
 
         char* co = new char[co_size];
-        if (auto res = amd::Comgr::get_data(exe_data, &co_size, co);
-            res != AMD_COMGR_STATUS_SUCCESS) {
-          (void)amd::Comgr::destroy_action_info(exe_action);
-          (void)amd::Comgr::destroy_action_info(reloc_action);
-          (void)amd::Comgr::destroy_data_set(exe_output);
-          (void)amd::Comgr::destroy_data_set(reloc_data);
-          (void)amd::Comgr::destroy_data_set(bc_data_set);
+        if (comgr_status = amd::Comgr::get_data(exe_data.get(), &co_size, co);
+            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to get exe data");
-          return hipErrorInvalidValue;
+          break;
         }
 
-        fatbin_dev_info_[device->deviceId()] =
-            new FatBinaryDeviceInfo(co, CodeObject::ElfSize(co), 0);
-        fatbin_dev_info_[device->deviceId()]->program_ = new amd::Program(*(device->asContext()));
-
-        // cleanup
-        (void)amd::Comgr::release_data(exe_data);
-        (void)amd::Comgr::destroy_action_info(exe_action);
-        (void)amd::Comgr::destroy_action_info(reloc_action);
-        (void)amd::Comgr::destroy_data_set(exe_output);
-        (void)amd::Comgr::destroy_data_set(reloc_data);
-        (void)amd::Comgr::destroy_data_set(bc_data_set);
+        auto elf_size = CodeObject::ElfSize(co);
+        hip_status = AddDevProgram(device, co, elf_size, 0);
+        if (hip_status != hipSuccess) {
+          break;
+        }
+        // Save the compiled code object
+        compiled_co[target_id] = std::make_pair(co, elf_size);
+      } else {
+        // We found neither a compatible code object nor SPIRV
+        LogPrintfError(
+            "No compatible code objects found for: %s, value of HIP_FORCE_SPIRV_CODEOBJECT: %d",
+            device->devices()[0]->isa().targetId(), HIP_FORCE_SPIRV_CODEOBJECT);
+        hip_status = hipErrorInvalidValue;
+        break;
       }
     }
   } while (0);
+
+  if (comgr_status != AMD_COMGR_STATUS_SUCCESS) {
+    LogError("comgr API call failed");
+    hip_status = hipErrorInvalidValue;
+  }
 
   // Clean up file and memory resouces if hip_status failed for some reason.
   if (hip_status != hipSuccess && hip_status != hipErrorInvalidKernelFile) {
@@ -621,13 +652,9 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
         // Calculate the offset wrt binary_image and the original image
         size_t offset_l = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
                            reinterpret_cast<address>(const_cast<void*>(image_)));
-
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
-
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
+        hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
+                                  code_objs[dev_idx].second, offset_l);
+        if (hip_error != hipSuccess) {
           break;
         }
       }
@@ -635,76 +662,67 @@ hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devi
 
     return hip_error;
   }
+  const void* binary_image;
+  size_t binary_size;
+  size_t binary_offset;
 
   if (hip_error == hipErrorInvalidKernelFile) {
     for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      // the image type is no CLANG_OFFLOAD_BUNDLER, image for current device directly passed
-      fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-          new FatBinaryDeviceInfo(image_, CodeObject::ElfSize(image_), 0);
+      hip_error = AddDevProgram(devices[dev_idx], image_, CodeObject::ElfSize(image_), 0);
+      if (hip_error != hipSuccess) {
+        return hip_error;
+      }
     }
   } else if (hip_error == hipSuccess) {
     for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
       // Calculate the offset wrt binary_image and the original image
-      size_t offset_l = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
+      binary_offset = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
                          reinterpret_cast<address>(const_cast<void*>(image_)));
-
-      fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-          new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, offset_l);
+      hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
+                                code_objs[dev_idx].second, binary_offset);
+      if (hip_error != hipSuccess) {
+        return hip_error;
+      }
     }
   }
-
-  for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-    fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-        new amd::Program(*devices[dev_idx]->asContext());
-    if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
-      return hipErrorOutOfMemory;
-    }
-  }
-
   return hipSuccess;
 }
 
-hipError_t FatBinaryInfo::AddDevProgram(const int device_id) {
-  // Device Id bounds Check
-  DeviceIdCheck(device_id);
-
-  FatBinaryDeviceInfo* fbd_info = fatbin_dev_info_[device_id];
-  if (fbd_info == nullptr) {
-    return hipErrorInvalidKernelFile;
+hipError_t FatBinaryInfo::AddDevProgram(hip::Device* device, const void* binary_image,
+                                        size_t binary_size, size_t binary_offset) {
+  int devID = device->deviceId();
+  amd::Context* ctx = device->asContext();
+  amd::Program* program = new amd::Program(*ctx);
+  dev_programs_[devID] = program;
+  if (program == nullptr) {
+    return hipErrorOutOfMemory;
   }
-
-  // If fat binary was already added, skip this step and return success
-  if (fbd_info->add_dev_prog_ == false) {
-    amd::Context* ctx = g_devices[device_id]->asContext();
-    if (CL_SUCCESS !=
-        fbd_info->program_->addDeviceProgram(*ctx->devices()[0], fbd_info->binary_image_,
-                                             fbd_info->binary_size_, false, nullptr, nullptr,
-                                             fdesc_, fbd_info->binary_offset_, uri_)) {
-      return hipErrorInvalidKernelFile;
-    }
-    fbd_info->add_dev_prog_ = true;
+  if (CL_SUCCESS !=
+      program->addDeviceProgram(*ctx->devices()[0], binary_image, binary_size, false, nullptr,
+                                nullptr, fdesc_, binary_offset, uri_)) {
+    return hipErrorInvalidKernelFile;
   }
   return hipSuccess;
 }
 
 hipError_t FatBinaryInfo::BuildProgram(const int device_id) {
-  // Device Id Check and Add DeviceProgram if not added so far
+  // Check for Device Id bounds and empty program to return gracefully
   DeviceIdCheck(device_id);
-  IHIP_RETURN_ONFAIL(AddDevProgram(device_id));
 
-  // If Program was already built skip this step and return success
-  FatBinaryDeviceInfo* fbd_info = fatbin_dev_info_[device_id];
-  if (fbd_info->prog_built_ == false) {
-    if (CL_SUCCESS !=
-        fbd_info->program_->build(g_devices[device_id]->devices(), nullptr, nullptr, nullptr,
-                                  kOptionChangeable, kNewDevProg)) {
-      return hipErrorNoBinaryForGpu;
-    }
-    fbd_info->prog_built_ = true;
+  if (dev_programs_[device_id] == nullptr) {
+    return hipErrorInvalidKernelFile;
   }
 
-  if (!fbd_info->program_->load()) {
-    return hipErrorNoBinaryForGpu;
+  // If Program was already built skip this step and return success
+  if (dev_programs_[device_id]->IsProgramBuilt(*g_devices[device_id]->devices()[0]) == false) {
+    if (CL_SUCCESS !=
+        dev_programs_[device_id]->build(g_devices[device_id]->devices(), nullptr, nullptr, nullptr,
+                                        kOptionChangeable, kNewDevProg)) {
+      return hipErrorNoBinaryForGpu;
+    }
+    if (!dev_programs_[device_id]->load()) {
+      return hipErrorNoBinaryForGpu;
+    }
   }
   return hipSuccess;
 }
@@ -730,13 +748,10 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
     if (hip_status == hipErrorNoBinaryForGpu || hip_status == hipSuccess) {
       for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
         if (code_objs[dev_idx].first) {
-          fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-              new FatBinaryDeviceInfo(code_objs[dev_idx].first, code_objs[dev_idx].second, 0);
-
-          fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-              new amd::Program(*devices[dev_idx]->asContext());
-          if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == NULL) {
-            break;
+          hip_status =
+              AddDevProgram(devices[dev_idx], code_objs[dev_idx].first, code_objs[dev_idx].second, 0);
+          if (hip_status != hipSuccess) {
+            return hip_status;
           }
         } else {
           // This is the case of hipErrorNoBinaryForGpu which will finally fail app on device
@@ -749,13 +764,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
       hip_status = hipSuccess;
       // If the image ptr is not clang offload bundle then just directly point the image.
       for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-        fatbin_dev_info_[devices[dev_idx]->deviceId()] =
-            new FatBinaryDeviceInfo(data, CodeObject::ElfSize(data), 0);
-        fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ =
-            new amd::Program(*devices[dev_idx]->asContext());
-        if (fatbin_dev_info_[devices[dev_idx]->deviceId()]->program_ == nullptr) {
-          hip_status = hipErrorOutOfMemory;
-          break;
+        hip_status = AddDevProgram(devices[dev_idx], data, CodeObject::ElfSize(data), 0);
+        if (hip_status != hipSuccess) {
+          return hip_status;
         }
       }
     } else {

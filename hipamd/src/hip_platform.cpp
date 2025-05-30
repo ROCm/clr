@@ -24,6 +24,7 @@
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 #include "platform/runtime.hpp"
+#include "utils/flags.hpp"
 
 #include <unordered_map>
 #include <mutex>
@@ -50,11 +51,10 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
                                   hipDeviceptr_t* dptr, size_t* bytes);
 
 extern hipError_t ihipModuleLaunchKernel(
-    hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY, uint32_t gridDimZ, uint32_t blockDimX,
-    uint32_t blockDimY, uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
-    void** kernelParams, void** extra, hipEvent_t startEvent, hipEvent_t stopEvent,
-    uint32_t flags = 0, uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
-    uint64_t prevGridSum = 0, uint64_t allGridSum = 0, uint32_t firstDevice = 0);
+    hipFunction_t f, amd::LaunchParams& launch_params, hipStream_t hStream, void** kernelParams,
+    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags = 0,
+    uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0, uint64_t prevGridSum = 0,
+    uint64_t allGridSum = 0, uint32_t firstDevice = 0);
 static bool isCompatibleCodeObject(const std::string& codeobj_target_id, const char* device_name) {
   // Workaround for device name mismatch.
   // Device name may contain feature strings delimited by '+', e.g.
@@ -186,13 +186,16 @@ void __hipRegisterTexture(
 
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   static std::once_flag unregister_device_sync;
-  std::call_once(unregister_device_sync, [](){
-    for (auto& hipDevice : g_devices) {
-      // By synchronizing devices ensure that all HSA signal handlers
-      // complete before removeFatBinary
-      hipDevice->SyncAllStreams(true);
-    }
-  });
+  // If SKIP ABORT is set and GPU is in error, dont need to sync streams.
+  if (!HIP_SKIP_ABORT_ON_GPU_ERROR || !amd::Device::IsGPUInError()) {
+    std::call_once(unregister_device_sync, [](){
+      for (auto& hipDevice : g_devices) {
+        // By synchronizing devices ensure that all HSA signal handlers
+        // complete before removeFatBinary
+        hipDevice->SyncAllStreams(true);
+      }
+    });
+  }
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }
@@ -405,8 +408,14 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     const size_t SgprWaves = maxSGPRs / amd::alignUp(wrkGrpInfo->usedSGPRs_, 16);
     GprWaves = std::min(VgprWaves, SgprWaves);
   }
-  uint32_t simdPerCU = (device.isa().versionMajor() <= 9) ? device.info().simdPerCU_
-                                                          : (wrkGrpInfo->isWGPMode_ ? 4 : 2);
+
+  // The table contains SIMD per CU, not per WGP, so when WGP mode is set on kernel metadata,
+  // multiply the number of SIMDs by 2, to account for 2CUs in 1 WGP.
+  uint32_t simdPerCU = device.isa().simdPerCU();
+  if (wrkGrpInfo->isWGPMode_) {
+    simdPerCU  *= 2;
+  }
+
   const size_t alu_occupancy = simdPerCU * std::min(MaxWavesPerSimd, GprWaves);
   const int alu_limited_threads = alu_occupancy * wrkGrpInfo->wavefrontSize_;
 
@@ -641,18 +650,14 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
     return hipErrorInvalidConfiguration;
   }
 
-  size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
-  size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
-  size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+  amd::HIPLaunchParams launch_params(gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+                                     blockDim.z, sharedMemBytes);
+  if (!launch_params.IsValidConfig()) {
     return hipErrorInvalidConfiguration;
   }
-  return ihipModuleLaunchKernel(
-      func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-      static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y, blockDim.z, sharedMemBytes,
-      stream, args, nullptr, startEvent, stopEvent, flags);
+
+  return ihipModuleLaunchKernel(func, launch_params, stream, args, nullptr,
+                                startEvent, stopEvent, flags);
 }
 
 // conversion routines between float and half precision

@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,8 @@ void HostMemoryReference::deallocateMemory(const Context& context) {
   }
 }
 
-Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr)
+Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr,
+               size_t alignment)
     : numDevices_(0),
       deviceMemories_(NULL),
       destructorCallbacks_(NULL),
@@ -96,7 +97,8 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       svmHostAddress_(svmPtr),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_(true) /* Memory Ops Lock */ {
+      lockMemoryOps_(true),
+      alignment_(alignment) /* Memory Ops Lock */ {
   svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
   canBeCached_ = true;
 }
@@ -192,12 +194,12 @@ void Memory::operator delete(void* p, const Context& context) { Memory::operator
 
 void Memory::addSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.push_back(view);
+  subBuffers_.emplace(view);
 }
 
 void Memory::removeSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.remove(view);
+  subBuffers_.erase(view);
 }
 
 bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) {
@@ -414,6 +416,14 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
 
 // ================================================================================================
 Memory::~Memory() {
+
+  if (ipcShared()) {
+    amd::MemObjMap::RemoveIpcHandleMemObj(this);
+    auto device = context_().devices()[0];
+    if (device != nullptr) {
+      device->IpcDetach(this);
+    }
+  }
   // For_each destructor callback:
   DestructorCallBackEntry* entry;
   for (entry = destructorCallbacks_; entry != nullptr; entry = entry->next_) {

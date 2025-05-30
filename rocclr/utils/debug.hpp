@@ -65,6 +65,7 @@ enum LogMask {
   LOG_MEM       = 131072, //!< (0x20000) Memory allocation
   LOG_MEM_POOL  = 262144, //!< (0x40000) Memory pool allocation, including memory in graphs
   LOG_TS        = 524288, //!< (0x80000) Timestamp details
+  LOG_COMGR     = 1048576,//!< (0x100000) Comgr path information print
   LOG_ALWAYS    = -1      //!< (0xFFFFFFFF) Log always even mask flag is zero
 };
 
@@ -217,6 +218,8 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
       }                                                                                            \
     }                                                                                              \
   } while (false)
+
+#define IsLogEnabled(level, mask) (AMD_LOG_LEVEL >= level && (AMD_LOG_MASK & mask || AMD_LOG_MASK == amd::LOG_ALWAYS))
 
 //called on entry and exit, calculates duration with local starttime variable defined in HIP_INIT_API
 #define HIPPrintDuration(level, mask, startTimeUs, format, ...)                                    \

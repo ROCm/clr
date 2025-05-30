@@ -73,6 +73,7 @@ bool Stream::Create() {
 
 // ================================================================================================
 void Stream::Destroy(hip::Stream* stream, bool forceDestroy) {
+  stream->device().removeFromActiveQueues(stream);
   stream->device_->RemoveStream(stream);
   stream->SetForceDestroy(forceDestroy);
   stream->release();
@@ -322,9 +323,7 @@ hipError_t hipDeviceGetStreamPriorityRange(int* leastPriority, int* greatestPrio
 // ================================================================================================
 hipError_t hipStreamGetFlags_common(hipStream_t stream, unsigned int* flags) {
   if ((flags != nullptr) && (stream != nullptr)) {
-    if (!hip::isValid(stream)) {
-      return hipErrorContextIsDestroyed;
-    }
+    getStreamPerThread(stream);
     *flags = reinterpret_cast<hip::Stream*>(stream)->Flags();
   } else {
     return hipErrorInvalidValue;
@@ -348,9 +347,7 @@ hipError_t hipStreamGetFlags_spt(hipStream_t stream, unsigned int* flags) {
 
 // ================================================================================================
 hipError_t hipStreamSynchronize_common(hipStream_t stream) {
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
-  }
+  getStreamPerThread(stream);
   if (stream != nullptr && stream != hipStreamLegacy) {
     // If still capturing return error
     if (hip::Stream::StreamCaptureOngoing(stream) == true) {
@@ -396,9 +393,6 @@ hipError_t hipStreamDestroy(hipStream_t stream) {
   }
   if (stream == hipStreamPerThread || stream == hipStreamLegacy) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
-  }
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorContextIsDestroyed);
   }
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   if (s->GetCaptureStatus() != hipStreamCaptureStatusNone) {
@@ -447,10 +441,11 @@ void WaitThenDecrementSignal(hipStream_t stream, hipError_t status, void* user_d
 // ================================================================================================
 hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsigned int flags) {
   hipError_t status = hipSuccess;
-  if (event == nullptr || !hip::isValid(stream)) {
+  if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
-  hip::Stream* waitStream = reinterpret_cast<hip::Stream*>(stream);
+  getStreamPerThread(stream);
+  hip::Stream* waitStream = hip::getStream(stream);
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   auto eventStreamHandle = reinterpret_cast<hipStream_t>(e->GetCaptureStream());
   // the stream associated with the device might have been destroyed
@@ -490,7 +485,7 @@ hipError_t hipStreamWaitEvent_common(hipStream_t stream, hipEvent_t event, unsig
         eventStream->GetDevice()->AddSafeStream(eventStream, waitStream);
       }
     }
-    status = e->streamWait(stream, flags);
+    status = e->streamWait(waitStream, flags);
   }
   return status;
 }
@@ -510,9 +505,7 @@ hipError_t hipStreamWaitEvent_spt(hipStream_t stream, hipEvent_t event, unsigned
 
 // ================================================================================================
 hipError_t hipStreamQuery_common(hipStream_t stream) {
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   if (stream != nullptr) {
     // If still capturing return error
     if (hip::Stream::StreamCaptureOngoing(stream) == true) {
@@ -565,10 +558,7 @@ hipError_t hipStreamQuery_spt(hipStream_t stream) {
 }
 
 hipError_t streamCallback_common(hipStream_t stream, StreamCallback* cbo, void* userData) {
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
-
+  getStreamPerThread(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   amd::Command* last_command = hip_stream->getLastQueuedCommand(true);
   amd::Command::EventWaitList eventWaitList;
@@ -687,9 +677,7 @@ hipError_t hipStreamGetPriority_common(hipStream_t stream, int* priority) {
   }
 
   if ((priority != nullptr) && (stream != nullptr)) {
-    if (!hip::isValid(stream)) {
-      return hipErrorContextIsDestroyed;
-    }
+    getStreamPerThread(stream);
     *priority = static_cast<int>(reinterpret_cast<hip::Stream*>(stream)->GetPriority());
   } else {
     return hipErrorInvalidValue;

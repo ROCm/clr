@@ -87,7 +87,7 @@ class EventMarker : public amd::Marker {
     profilingInfo_.marker_ts_ = markerTs;
     profilingInfo_.batch_flush_ = batch_flush;
     profilingInfo_.clear();
-    setEventScope(scope);
+    setCommandEntryScope(scope);
   }
 };
 
@@ -105,7 +105,7 @@ class Event {
   constexpr static bool kBatchFlush = true;  //!< Flushes CPU command batch in direct dispatch mode
 
   Event(uint32_t flags) : flags_(flags), lock_(true) /* hipEvent_t lock*/,
-                              event_(nullptr), unrecorded_(false), stream_(nullptr) {
+                              event_(nullptr), stream_(nullptr) {
     device_id_ = hip::getCurrentDevice()->deviceId();  // Created in current device ctx
   }
 
@@ -121,26 +121,23 @@ class Event {
   hipError_t elapsedTime(Event& eStop, float& ms);
 
   virtual hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
-  virtual hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
-  virtual hipError_t streamWait(hipStream_t stream, uint flags);
+  virtual hipError_t streamWait(hip::Stream* stream, uint flags);
 
   virtual hipError_t recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                    uint32_t flags = 0, bool batch_flush = true);
-  virtual hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
-  hipError_t addMarker(hipStream_t stream, amd::Command* command,
-                       bool record, bool batch_flush = true);
+  virtual hipError_t enqueueRecordCommand(hip::Stream* stream, amd::Command* command);
+  hipError_t addMarker(hip::Stream* stream, amd::Command* command,
+                       bool batch_flush = true);
 
-  void BindCommand(amd::Command& command, bool record) {
+  void BindCommand(amd::Command& command) {
     amd::ScopedLock lock(lock_);
     if (event_ != nullptr) {
       event_->release();
     }
     event_ = &command.event();
-    unrecorded_ = !record;
     command.retain();
   }
 
-  bool isUnRecorded() const { return unrecorded_; }
   amd::Monitor& lock() { return lock_; }
   const int deviceId() const { return device_id_; }
   void setDeviceId(int id) { device_id_ = id; }
@@ -170,10 +167,6 @@ class Event {
   hip::Stream* stream_;
   amd::Event* event_;
   int device_id_;
-  //! Flag to indicate hipEventRecord has not been called. This is needed for
-  //! hip*ModuleLaunchKernel API which takes start and stop events so no
-  //! hipEventRecord is called. Cleanup needed once those APIs are deprecated.
-  bool unrecorded_;
 };
 
 class EventDD : public Event {
@@ -216,13 +209,11 @@ class IPCEvent : public Event {
   hipError_t synchronize();
   hipError_t query();
 
-  hipError_t streamWaitCommand(amd::Command*& command, hip::Stream* stream);
-  hipError_t enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command);
-  hipError_t streamWait(hipStream_t stream, uint flags);
+  hipError_t streamWait(hip::Stream* stream, uint flags);
 
   hipError_t recordCommand(amd::Command*& command, amd::HostQueue* queue,
                            uint32_t flags = 0, bool batch_flush = true) override;
-  hipError_t enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record);
+  hipError_t enqueueRecordCommand(hip::Stream* stream, amd::Command* command);
 };
 
 

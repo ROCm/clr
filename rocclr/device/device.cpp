@@ -170,24 +170,6 @@ std::pair<const Isa*, const Isa*> Isa::supportedIsas() {
     {"gfx90a:sramecc-:xnack+", nullptr,     true,  false,   9,  0,  10,   OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc+:xnack-", nullptr,     true,  false,   9,  0,  10,   ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx90a:sramecc+:xnack+", nullptr,     true,  false,   9,  0,  10,   ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940",                 nullptr,     true,  false,   9,  4,  0,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc-",        nullptr,     true,  false,   9,  4,  0,    OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc+",        nullptr,     true,  false,   9,  4,  0,    ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:xnack-",          nullptr,     true,  false,   9,  4,  0,    ANY,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:xnack+",          nullptr,     true,  false,   9,  4,  0,    ANY,    ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc-:xnack-", nullptr,     true,  false,   9,  4,  0,    OFF,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc-:xnack+", nullptr,     true,  false,   9,  4,  0,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc+:xnack-", nullptr,     true,  false,   9,  4,  0,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx940:sramecc+:xnack+", nullptr,     true,  false,   9,  4,  0,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941",                 nullptr,     true,  false,   9,  4,  1,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc-",        nullptr,     true,  false,   9,  4,  1,    OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc+",        nullptr,     true,  false,   9,  4,  1,    ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:xnack-",          nullptr,     true,  false,   9,  4,  1,    ANY,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:xnack+",          nullptr,     true,  false,   9,  4,  1,    ANY,    ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc-:xnack-", nullptr,     true,  false,   9,  4,  1,    OFF,    OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc-:xnack+", nullptr,     true,  false,   9,  4,  1,    OFF,    ON,   4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc+:xnack-", nullptr,     true,  false,   9,  4,  1,    ON,     OFF,  4,    16,   1,    256,    64 * Ki, 32},
-    {"gfx941:sramecc+:xnack+", nullptr,     true,  false,   9,  4,  1,    ON,     ON,   4,    16,   1,    256,    64 * Ki, 32},
     {"gfx942",                 nullptr,     true,  false,   9,  4,  2,    ANY,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx942:sramecc-",        nullptr,     true,  false,   9,  4,  2,    OFF,    ANY,  4,    16,   1,    256,    64 * Ki, 32},
     {"gfx942:sramecc+",        nullptr,     true,  false,   9,  4,  2,    ON,     ANY,  4,    16,   1,    256,    64 * Ki, 32},
@@ -354,9 +336,13 @@ Context* Device::glb_ctx_ = nullptr;
 Monitor Device::p2p_stage_ops_(true);
 Memory* Device::p2p_stage_ = nullptr;
 
+cl_int Device::gpu_error_ = CL_SUCCESS;
+
 std::shared_mutex MemObjMap::AllocatedLock_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::MemObjMap_ ROCCLR_INIT_PRIORITY(101);
 std::map<uintptr_t, amd::Memory*> MemObjMap::VirtualMemObjMap_ ROCCLR_INIT_PRIORITY(101);
+std::map<MemObjMap::IpcMemHandle, amd::Memory*> MemObjMap::IpcHandleMemObjMap_ ROCCLR_INIT_PRIORITY(101);
+
 
 void MemObjMap::AddMemObj(const void* k, amd::Memory* v) {
   std::unique_lock lock(AllocatedLock_);
@@ -464,6 +450,37 @@ amd::Memory* MemObjMap::FindVirtualMemObj(const void* k) {
   }
 }
 
+void MemObjMap::AddIpcHandleMemObj(const IpcMemHandle& k, amd::Memory* v) {
+  std::unique_lock lock(AllocatedLock_);
+  auto rval = IpcHandleMemObjMap_.insert({k, v});
+  if (!rval.second) {
+    DevLogPrintfError(
+        "Error adding entry for Memobj 0x%x in IpcHandle map. The handle already exists.", v);
+  }
+}
+
+void MemObjMap::RemoveIpcHandleMemObj(amd::Memory* v) {
+  std::unique_lock lock(AllocatedLock_);
+
+  for (const auto it : IpcHandleMemObjMap_) {
+    if (it.second == v) {
+      IpcHandleMemObjMap_.erase(it.first);
+      break;
+    }
+  }
+}
+
+amd::Memory* MemObjMap::FindIpcHandleMemObj(const IpcMemHandle& k) {
+  std::shared_lock lock(AllocatedLock_);
+
+  auto it = IpcHandleMemObjMap_.find(k);
+  if (it == IpcHandleMemObjMap_.cend()) {
+    return nullptr;
+  }
+
+  return it->second;
+}
+
 //==================================================================================================
 bool Device::ValidateVirtualAddressRange(amd::Memory* vaddr_base_obj, amd::Memory* vaddr_sub_obj) {
 
@@ -520,10 +537,12 @@ amd::Memory* Device::CreateVirtualBuffer(amd::Context& device_context, void* vpt
     }
     assert(vaddr_base_obj->getMemFlags() & CL_MEM_VA_RANGE_AMD);
 
-    size_t offset = (reinterpret_cast<address>(vptr)
-                     - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
-    Context& ctx = vaddr_base_obj->getContext();
-    vaddr_sub_obj = new (ctx) amd::Buffer(*vaddr_base_obj,CL_MEM_VA_RANGE_AMD, offset, size);
+    size_t offset =
+        (reinterpret_cast<address>(vptr) - reinterpret_cast<address>(vaddr_base_obj->getSvmPtr()));
+    vaddr_sub_obj =
+        new (device_context) amd::Buffer(device_context, CL_MEM_VA_RANGE_AMD, size, vptr);
+    vaddr_sub_obj->SetParent(vaddr_base_obj);
+    vaddr_sub_obj->setOrigin(offset);
 
     // This curr_mem_obj->create() does not create an actual memory but stores the memory info
     // with given vptr on ROCr backend.
@@ -757,6 +776,18 @@ bool Device::ValidateHsail() {
   return true;
 }
 
+size_t GetMaxStackSize(const std::string& procName) {
+  if (procName.find("gfx9") != std::string::npos || procName.find("gfx8")
+                                                    != std::string::npos) {
+    return kMaxStackSize9X;
+  } else if (procName.find("gfx11") != std::string::npos || procName.find("gfx10")
+                                                            != std::string::npos) {
+    return kMaxStackSize11X;
+  } else {
+    return kMaxStackSize12X;
+  }
+}
+
 bool Device::create(const Isa &isa) {
   assert(!vaCacheAccess_ && !vaCacheMap_);
   isa_ = &isa;
@@ -773,6 +804,7 @@ bool Device::create(const Isa &isa) {
   if (!amd::IS_HIP) {
     stack_size_ = 16 * Ki;
   }
+  maxStackSize_ = GetMaxStackSize(isa_->processorName());
   return true;
 }
 
@@ -948,7 +980,7 @@ bool Device::disableP2P(amd::Device* ptrDev) {
 }
 
 bool Device::UpdateStackSize(uint64_t stackSize) {
-  if (stackSize > kMaxStackSize) {
+  if (stackSize > maxStackSize_) {
     return false;
   }
   stack_size_ = amd::alignUp(stackSize, 16);
@@ -988,7 +1020,7 @@ char* Device::getExtensionString() {
 }
 
 // ================================================================================================
-bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const {
+bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, char* handle, size_t* mem_offset) const {
   amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
   if (amd_mem_obj == nullptr) {
     DevLogPrintfError("Cannot retrieve amd_mem_obj for dev_ptr: 0x%x", dev_ptr);
@@ -1027,7 +1059,7 @@ bool Device::IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* me
 }
 
 // ================================================================================================
-bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+bool Device::IpcAttach(const char* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
                        void** dev_ptr) const {
   amd::Memory* amd_mem_obj = nullptr;
 
@@ -1061,17 +1093,7 @@ bool Device::IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, u
 }
 
 // ================================================================================================
-bool Device::IpcDetach(void* dev_ptr) const {
-  amd::Memory* amd_mem_obj = amd::MemObjMap::FindMemObj(dev_ptr);
-  if (amd_mem_obj == nullptr) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x cannot be null \n", dev_ptr);
-    return false;
-  }
-
-  if (!amd_mem_obj->ipcShared()) {
-    DevLogPrintfError("Memory object for the ptr: 0x%x is not ipcShared \n", dev_ptr);
-    return false;
-  }
+void Device::IpcDetach(amd::Memory* amd_mem_obj) const {
 
   // Get the original pointer from the amd::Memory object
   void* orig_dev_ptr = nullptr;
@@ -1082,14 +1104,26 @@ bool Device::IpcDetach(void* dev_ptr) const {
   } else {
     ShouldNotReachHere();
   }
-
-  if (amd_mem_obj->release() == 0) {
+  if (amd::MemObjMap::FindMemObj(orig_dev_ptr)) {
     amd::MemObjMap::RemoveMemObj(orig_dev_ptr);
   }
-
-  return true;
 }
 
+std::vector<amd::CommandQueue*> Device::getActiveQueues() {
+  amd::ScopedLock lock(activeQueuesLock_);
+  for (auto it = activeQueues.begin(); it != activeQueues.end();) {
+    if ((*it)->referenceCount() == 0) {
+      // It is being terminated in HostQueue::terminate().
+      // We should not wait for commands in a queue being terminated.
+      it = activeQueues.erase(it);
+    } else {
+      // In case the queue will be destroyed in Stream::Destroy().
+      (*it)->retain();
+      ++it;
+    }
+  }
+  return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
+}
 }  // namespace amd
 
 namespace amd::device {

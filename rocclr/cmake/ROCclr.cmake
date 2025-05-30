@@ -18,12 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.5)
-
-if (POLICY CMP0072)
-        cmake_policy(SET CMP0072 NEW)
-endif()
-
 # ROCclr abstracts the usage of multiple AMD compilers and runtimes.
 # It is possible to support multiple backends concurrently in the same binary.
 option(ROCCLR_ENABLE_HSAIL "Enable support for HSAIL compiler" OFF)
@@ -86,13 +80,12 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/platform/commandqueue.cpp
   ${ROCCLR_SRC_DIR}/platform/context.cpp
   ${ROCCLR_SRC_DIR}/platform/kernel.cpp
+  ${ROCCLR_SRC_DIR}/platform/vmheap.cpp
   ${ROCCLR_SRC_DIR}/platform/memory.cpp
   ${ROCCLR_SRC_DIR}/platform/ndrange.cpp
   ${ROCCLR_SRC_DIR}/platform/program.cpp
   ${ROCCLR_SRC_DIR}/platform/runtime.cpp
   ${ROCCLR_SRC_DIR}/platform/interop_gl.cpp
-  ${ROCCLR_SRC_DIR}/thread/monitor.cpp
-  ${ROCCLR_SRC_DIR}/thread/semaphore.cpp
   ${ROCCLR_SRC_DIR}/thread/thread.cpp
   ${ROCCLR_SRC_DIR}/utils/debug.cpp
   ${ROCCLR_SRC_DIR}/utils/flags.cpp)

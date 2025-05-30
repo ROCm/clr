@@ -404,41 +404,47 @@ __device__ static inline int __double2loint(double x) {
     return tmp[0];
 }
 
-__device__ static inline int __double2int_rd(double x) { return (int)__ocml_floor_f64(x); }
-__device__ static inline int __double2int_rn(double x) { return (int)__ocml_rint_f64(x); }
-__device__ static inline int __double2int_ru(double x) { return (int)__ocml_ceil_f64(x); }
+__device__ static inline int __double2int_rd(double x) {
+  return (int)__builtin_elementwise_floor(x);
+}
+__device__ static inline int __double2int_rn(double x) {
+  return (int)__builtin_elementwise_rint(x);
+}
+__device__ static inline int __double2int_ru(double x) {
+  return (int)__builtin_elementwise_ceil(x);
+}
 __device__ static inline int __double2int_rz(double x) { return (int)x; }
 
 __device__ static inline long long int __double2ll_rd(double x) {
-  return (long long)__ocml_floor_f64(x);
+  return (long long)__builtin_elementwise_floor(x);
 }
 __device__ static inline long long int __double2ll_rn(double x) {
-  return (long long)__ocml_rint_f64(x);
+  return (long long)__builtin_elementwise_rint(x);
 }
 __device__ static inline long long int __double2ll_ru(double x) {
-  return (long long)__ocml_ceil_f64(x);
+  return (long long)__builtin_elementwise_ceil(x);
 }
 __device__ static inline long long int __double2ll_rz(double x) { return (long long)x; }
 
 __device__ static inline unsigned int __double2uint_rd(double x) {
-  return (unsigned int)__ocml_floor_f64(x);
+  return (unsigned int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned int __double2uint_rn(double x) {
-  return (unsigned int)__ocml_rint_f64(x);
+  return (unsigned int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned int __double2uint_ru(double x) {
-  return (unsigned int)__ocml_ceil_f64(x);
+  return (unsigned int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned int __double2uint_rz(double x) { return (unsigned int)x; }
 
 __device__ static inline unsigned long long int __double2ull_rd(double x) {
-  return (unsigned long long int)__ocml_floor_f64(x);
+  return (unsigned long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned long long int __double2ull_rn(double x) {
-  return (unsigned long long int)__ocml_rint_f64(x);
+  return (unsigned long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned long long int __double2ull_ru(double x) {
-  return (unsigned long long int)__ocml_ceil_f64(x);
+  return (unsigned long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned long long int __double2ull_rz(double x) {
   return (unsigned long long int)x;
@@ -466,41 +472,41 @@ CUDA implements half as unsigned short whereas, HIP doesn't.
 
 */
 
-__device__ static inline int __float2int_rd(float x) { return (int)__ocml_floor_f32(x); }
-__device__ static inline int __float2int_rn(float x) { return (int)__ocml_rint_f32(x); }
-__device__ static inline int __float2int_ru(float x) { return (int)__ocml_ceil_f32(x); }
-__device__ static inline int __float2int_rz(float x) { return (int)__ocml_trunc_f32(x); }
+__device__ static inline int __float2int_rd(float x) { return (int)__builtin_elementwise_floor(x); }
+__device__ static inline int __float2int_rn(float x) { return (int)__builtin_elementwise_rint(x); }
+__device__ static inline int __float2int_ru(float x) { return (int)__builtin_elementwise_ceil(x); }
+__device__ static inline int __float2int_rz(float x) { return (int)__builtin_elementwise_trunc(x); }
 
 __device__ static inline long long int __float2ll_rd(float x) {
-  return (long long int)__ocml_floor_f32(x);
+  return (long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline long long int __float2ll_rn(float x) {
-  return (long long int)__ocml_rint_f32(x);
+  return (long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline long long int __float2ll_ru(float x) {
-  return (long long int)__ocml_ceil_f32(x);
+  return (long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline long long int __float2ll_rz(float x) { return (long long int)x; }
 
 __device__ static inline unsigned int __float2uint_rd(float x) {
-  return (unsigned int)__ocml_floor_f32(x);
+  return (unsigned int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned int __float2uint_rn(float x) {
-  return (unsigned int)__ocml_rint_f32(x);
+  return (unsigned int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned int __float2uint_ru(float x) {
-  return (unsigned int)__ocml_ceil_f32(x);
+  return (unsigned int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned int __float2uint_rz(float x) { return (unsigned int)x; }
 
 __device__ static inline unsigned long long int __float2ull_rd(float x) {
-  return (unsigned long long int)__ocml_floor_f32(x);
+  return (unsigned long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned long long int __float2ull_rn(float x) {
-  return (unsigned long long int)__ocml_rint_f32(x);
+  return (unsigned long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned long long int __float2ull_ru(float x) {
-  return (unsigned long long int)__ocml_ceil_f32(x);
+  return (unsigned long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned long long int __float2ull_rz(float x) {
   return (unsigned long long int)x;
@@ -828,14 +834,14 @@ int __syncthreads_or(int predicate)
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
   SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a
-              14:13   Shader Engine the wave is assigned to for gfx940-942
+              14:13   Shader Engine the wave is assigned to for 942
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
   QUEUE_ID    26:24   Queue from which this wave was dispatched.
   STATE_ID    29:27   State ID (graphics only, not compute).
   ME_ID       31:30   Micro-engine ID.
 
-  XCC_ID Register bit structure for gfx940/941/942/950
+  XCC_ID Register bit structure for 942/950
   XCC_ID      3:0     XCC the wave is assigned to.
  */
 
@@ -860,7 +866,7 @@ int __syncthreads_or(int predicate)
 #if (defined(__gfx908__) || defined(__gfx90a__) || \
      defined(__GFX11__))
   #define HW_ID_SE_ID_SIZE    3
-#else //4 SEs/XCC for gfx940-942
+#else //4 SEs/XCC for 942
   #define HW_ID_SE_ID_SIZE    2
 #endif
 #if (defined(__GFX10__) || defined(__GFX11__))
@@ -871,7 +877,7 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__) || defined(__gfx950__))
+#if (defined(__gfx942__) || defined(__gfx950__))
   #define __gfx94plus_clr__
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4

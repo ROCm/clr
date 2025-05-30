@@ -22,6 +22,7 @@
 #include "thread/monitor.hpp"
 #include "device/device.hpp"
 #include "platform/context.hpp"
+#include "utils/flags.hpp"
 
 /*!
  * \file commandQueue.cpp
@@ -51,7 +52,10 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
     if (thread_.state() >= Thread::INITIALIZED) {
       ScopedLock sl(queueLock_);
       thread_.start(this);
-      queueLock_.wait();
+      // wait for HostQueue::loop() to update acceptingCommands_ as true
+      while (!thread_.acceptingCommands_) {
+        queueLock_.wait();
+      }
     }
   }
 }
@@ -133,13 +137,29 @@ bool HostQueue::terminate() {
   return true;
 }
 
+void HostQueue::finishCommand(Command* command) {
+  if (command == nullptr) {
+    command = getLastQueuedCommand(true);
+    if (command != nullptr) {
+      ClPrint(LOG_DEBUG, LOG_CMD, "No command, awaiting complete status on host");
+      command->awaitCompletion();
+      command->release();
+    }
+    return;
+  }
+  // Check hardware event status for the specific command
+  static constexpr bool kWaitCompletion = true;
+  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+    ClPrint(LOG_DEBUG, LOG_CMD, "No HW event, awaiting complete status on host");
+    command->awaitCompletion();
+  }
+}
+
 void HostQueue::finish(bool cpu_wait) {
   Command* command = nullptr;
   if (IS_HIP) {
     command = getLastQueuedCommand(true);
     if (command == nullptr) {
-      assert(GetSubmissionBatch() == nullptr &&
-        "Can't claim the queue is finished with the active batch!");
       return;
     }
     // Force blocking wait if requested. That allows to avoid a build up of unreleased CPU commands
@@ -180,6 +200,9 @@ void HostQueue::finish(bool cpu_wait) {
     }
   }
 
+  // Release all HW queues, which are idle or nearly idle
+  vdev()->ReleaseAllHwQueues();
+
   command->release();
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished for host queue : %p", this);
 }
@@ -188,6 +211,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
   // Notify the caller that the queue is ready to accept commands.
   {
     ScopedLock sl(queueLock_);
+    // Notify HostQueue() that acceptingCommands_ is updated to true
     thread_.acceptingCommands_ = true;
     queueLock_.notify();
   }
@@ -251,7 +275,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
     // Submit to the device queue.
     command->submit(*virtualDevice);
 
-    // if this is a user invisible marker command, then flush
+    // if this is a user invisible marker with a waiting event, then flush
     if (0 == command->type()) {
       virtualDevice->flush(head);
       tail = head = NULL;

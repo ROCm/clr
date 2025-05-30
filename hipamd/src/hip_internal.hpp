@@ -48,9 +48,6 @@
 #define KCYN "\x1B[36m"
 #define KWHT "\x1B[37m"
 
-/*! IHIP IPC MEMORY Structure */
-#define IHIP_IPC_MEM_HANDLE_SIZE   32
-#define IHIP_IPC_MEM_RESERVED_SIZE LP64_SWITCH(20,12)
 namespace hip{
   extern std::once_flag g_ihipInitialized;
 }
@@ -89,13 +86,6 @@ struct GraphNode;
 struct GraphExec;
 struct UserObject;
 class Stream;
-typedef struct ihipIpcMemHandle_st {
-  char ipc_handle[IHIP_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
-  size_t psize;
-  size_t poffset;
-  int owners_process_id;
-  char reserved[IHIP_IPC_MEM_RESERVED_SIZE];
-} ihipIpcMemHandle_t;
 
 #define IHIP_IPC_EVENT_HANDLE_SIZE 32
 #define IHIP_IPC_EVENT_RESERVED_SIZE LP64_SWITCH(28,24)
@@ -144,32 +134,30 @@ const char* ihipGetErrorName(hipError_t hip_error);
           __func__, hip::ihipGetErrorName(err), ToString( __VA_ARGS__ ).c_str());
 
 #define HIP_INIT_API_INTERNAL(noReturn, cid, ...)                                                  \
-  amd::Thread* thread = amd::Thread::current();                                                    \
-  if (!VDI_CHECK_THREAD(thread)) {                                                                 \
-    ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,                                                        \
-            "An internal error has occurred."                                                      \
-            " This may be due to insufficient memory.");                                           \
-    if (!noReturn) {                                                                               \
-      return hipErrorOutOfMemory;                                                                  \
-    }                                                                                              \
-  }                                                                                                \
   HIP_INIT(noReturn)                                                                               \
   HIP_API_PRINT(__VA_ARGS__)                                                                       \
   HIP_CB_SPAWNER_OBJECT(cid);
 
 // This macro should be called at the beginning of every HIP API.
 #define HIP_INIT_API(cid, ...)                                                                     \
+  if (amd::Device::IsGPUInError()) {                                                              \
+    HIP_RETURN(ConvertCLErrorIntoHIPError(amd::Device::GetGPUError()));                            \
+  }                                                                                                \
   HIP_INIT_API_INTERNAL(0, cid, __VA_ARGS__)                                                       \
   if (hip::g_devices.size() == 0) {                                                                \
     HIP_RETURN(hipErrorNoDevice);                                                                  \
-  }
+  }                                                                                                \
 
 #define HIP_INIT_API_NO_RETURN(cid, ...)                                                           \
   HIP_INIT_API_INTERNAL(1, cid, __VA_ARGS__)
 
 #define HIP_RETURN_DURATION(ret, ...)                                                              \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+  if (amd::Device::IsGPUInError()) {                                                               \
+    hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
+    hip::tls.last_error_ = hip_error;                                                              \
+    hip::tls.last_command_error_ = hip_error;                                                      \
+  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
@@ -184,7 +172,11 @@ const char* ihipGetErrorName(hipError_t hip_error);
 
 #define HIP_RETURN(ret, ...)                                                                       \
   hip::tls.last_command_error_ = ret;                                                              \
-  if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                                      \
+  if (amd::Device::IsGPUInError()) {                                                               \
+    hipError_t hip_error = ConvertCLErrorIntoHIPError(amd::Device::GetGPUError());                 \
+    hip::tls.last_error_ = hip_error;                                                              \
+    hip::tls.last_command_error_ = hip_error;                                                      \
+  } else if (DEBUG_HIP_7_PREVIEW & amd::CHANGE_HIP_GET_LAST_ERROR) {                               \
     if (hip::tls.last_command_error_ != hipSuccess &&                                              \
            hip::tls.last_command_error_ != hipErrorNotReady) {                                     \
       hip::tls.last_error_ = hip::tls.last_command_error_;                                         \
@@ -657,7 +649,7 @@ public:
   ///       and Blocking streams
   extern hip::Stream* getStream(hipStream_t stream, bool wait = true);
   /// Get default stream associated with the ROCclr context
-  extern hip::Stream* getNullStream(amd::Context&);
+  extern hip::Stream* getNullStream(amd::Context&, bool wait = true);
   /// Get default stream of the thread
   extern hip::Stream* getNullStream(bool wait = true);
   /// Get device ID associated with the ROCclr context

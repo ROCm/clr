@@ -390,7 +390,7 @@ class coalesced_group : public thread_group {
       int lanes_to_skip = ((thread_rank()) / tile_size) * tile_size;
 
       for (unsigned int i = 0; i < warpSize; i++) {
-        lane_mask active = coalesced_info.member_mask & (1 << i);
+        lane_mask active = coalesced_info.member_mask & (static_cast<lane_mask>(1) << i);
         // Make sure the lane is active
         if (active) {
           if (lanes_to_skip <= 0 && tile_rank < tile_size) {
@@ -462,7 +462,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     srcRank = srcRank % static_cast<int>(size());
 
@@ -489,7 +488,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl_down(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     // Note: The cuda implementation appears to use the remainder of lane_delta
     // and WARP_SIZE as the shift value rather than lane_delta itself.
@@ -530,7 +528,6 @@ class coalesced_group : public thread_group {
    */
   template <class T>
   __CG_QUALIFIER__ T shfl_up(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
 
     // Note: The cuda implementation appears to use the remainder of lane_delta
     // and WARP_SIZE as the shift value rather than lane_delta itself.
@@ -554,7 +551,7 @@ class coalesced_group : public thread_group {
 
     return __shfl(var, lane, warpSize);
   }
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 
   /** \brief Ballot function on group level.
    *
@@ -620,7 +617,7 @@ class coalesced_group : public thread_group {
          __match_all_sync(static_cast<unsigned long long>(coalesced_info.member_mask), value,
                           &pred));
    }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 };
 
 /** \ingroup CooperativeGConstruct 
@@ -822,14 +819,14 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
   friend __CG_QUALIFIER__ coalesced_group
   binary_partition(const thread_block_tile<fsize, fparent>& tgrp, bool pred);
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
   __CG_QUALIFIER__ unsigned long long build_mask() const {
     unsigned long long mask = ~0ull >> (64 - numThreads);
     // thread_rank() gives thread id from 0..thread launch size.
     return mask << (((internal::workgroup::thread_rank() % warpSize) / numThreads) *
                     numThreads);
   }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 
  public:
 
@@ -838,26 +835,22 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
   }
 
   template <class T> __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl(var, srcRank, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_down(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_down(var, lane_delta, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_up(T var, unsigned int lane_delta) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_up(var, lane_delta, numThreads));
   }
 
   template <class T> __CG_QUALIFIER__ T shfl_xor(T var, unsigned int laneMask) const {
-    static_assert(is_valid_type<T>::value, "Neither an integer or float type.");
     return (__shfl_xor(var, laneMask, numThreads));
   }
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
   __CG_QUALIFIER__ unsigned long long ballot(int pred) const {
     const auto mask = build_mask();
     return internal::helper::adjust_mask(mask, __ballot_sync(mask, pred));
@@ -876,7 +869,7 @@ template <unsigned int size> class thread_block_tile_base : public tile_base<siz
     const auto mask = build_mask();
     return internal::helper::adjust_mask(mask, __match_all_sync(mask, value, &pred));
   }
-#endif
+#endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 };
 
 /** \brief   User exposed API that captures the state of the parent group pre-partition
@@ -1204,7 +1197,7 @@ __CG_QUALIFIER__ thread_block_tile<size, ParentCGTy> tiled_partition(const Paren
   return impl::tiled_partition_internal<size, ParentCGTy>(g);
 }
 
-#ifdef HIP_ENABLE_WARP_SYNC_BUILTINS
+#if !defined(HIP_DISABLE_WARP_SYNC_BUILTINS)
 
 /** \ingroup CooperativeGConstruct
  *  \brief Binary partition.

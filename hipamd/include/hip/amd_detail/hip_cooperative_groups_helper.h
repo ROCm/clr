@@ -69,7 +69,7 @@ template <unsigned int size>
 using is_power_of_2 = std::integral_constant<bool, (size & (size - 1)) == 0>;
 
 template <unsigned int size>
-using is_valid_wavefront = std::integral_constant<bool, (size <= __AMDGCN_WAVEFRONT_SIZE)>;
+using is_valid_wavefront = std::integral_constant<bool, size <= 64>;
 
 template <unsigned int size>
 using is_valid_tile_size =

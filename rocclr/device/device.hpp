@@ -126,6 +126,16 @@ enum MemRangeAttribute : uint32_t {
 constexpr int CpuDeviceId = static_cast<int>(-1);
 constexpr int InvalidDeviceId = static_cast<int>(-2);
 
+// Max scratch size is device dependent.
+constexpr size_t kWave32 = 32;
+constexpr size_t kWave64 = 64;
+constexpr size_t kScratchBits12X = 18;
+constexpr size_t kScratchBits9X = 15;
+constexpr size_t kCompilerRequired = 64;
+constexpr size_t kMaxStackSize12X = (((1 << kScratchBits12X) - 1) * 256 / kWave32) - kCompilerRequired;
+constexpr size_t kMaxStackSize11X = (((1 << kScratchBits9X) - 1) * 256 / kWave32) - kCompilerRequired;
+constexpr size_t kMaxStackSize9X = (((1 << kScratchBits9X) - 1) * 256 / kWave64) - kCompilerRequired;
+
 enum class ExternalSemaphoreHandleType : uint32_t {
   OpaqueFd = 1,        // Handle is an opaque file descriptor
   OpaqueWin32 = 2,     // Handle is an opaque shared NT handle
@@ -648,6 +658,9 @@ struct Info : public amd::EmbeddedObject {
   uint32_t luidLowPart_;        //!< Luid low 4 bytes, available in Windows only
   uint32_t luidHighPart_;       //!< Luid high 4 bytes, available in Windows only
   uint32_t luidDeviceNodeMask_; //!< Luid node mask
+
+  size_t scratchLimitMin; //! Minimum size of scratch limit of this device memory in bytes.
+  size_t scratchLimitMax; //! Maximum size of scratch limit of this device memory in bytes.
 };
 
 //! Device settings
@@ -673,8 +686,6 @@ class Settings : public amd::HeapObject {
       uint customHostAllocator_ : 1;  //!< True if device has custom host allocator
                                       //  that replaces generic OS allocation routines
       uint supportDepthsRGB_ : 1;     //!< Support DEPTH and sRGB channel order format
-      uint reportFMAF_ : 1;           //!< Report FP_FAST_FMAF define in CL program
-      uint reportFMA_ : 1;            //!< Report FP_FAST_FMA define in CL program
       uint singleFpDenorm_ : 1;       //!< Support Single FP Denorm
       uint hsailExplicitXnack_ : 1;   //!< Xnack in hsail path for this device
       uint useLightning_ : 1;         //!< Enable LC path for this device
@@ -689,7 +700,7 @@ class Settings : public amd::HeapObject {
       uint gwsInitSupported_:1;       //!< Check if GWS is supported on this machine.
       uint kernel_arg_opt_: 1;        //!< Enables kernel arg optimization for blit kernels
       uint kernel_arg_impl_ : 2;      //!< Kernel argument implementation
-      uint reserved_ : 7;
+      uint reserved_ : 12;
     };
     uint value_;
   };
@@ -1315,6 +1326,8 @@ class VirtualDevice : public amd::HeapObject {
   virtual void submitVirtualMap(amd::VirtualMapCommand& cmd) { ShouldNotReachHere(); }
 
   virtual address allocKernelArguments(size_t size, size_t alignment) { return nullptr; }
+  virtual void ReleaseAllHwQueues() {}
+  virtual void ReleaseHwQueue() {}
 
   //! Get the blit manager object
   device::BlitManager& blitMgr() const { return *blitMgr_; }
@@ -1361,10 +1374,25 @@ class VirtualDevice : public amd::HeapObject {
 }  // namespace amd::device
 
 namespace amd {
-
+/*! IHIP IPC MEMORY Structure */
+#define AMD_IPC_MEM_HANDLE_SIZE 32
 //! MemoryObject map lookup  class
 class MemObjMap : public AllStatic {
  public:
+  struct IpcMemHandle {
+    char ipc_handle[AMD_IPC_MEM_HANDLE_SIZE];  ///< ipc memory handle on ROCr
+    size_t psize;                        ///< Total size of the device memory allocation
+    size_t poffset;                      ///< Offset within the allocation
+    int owners_process_id;               ///< ID of the process that owns the allocation
+    char reserved[LP64_SWITCH(20, 12)];  ///< Reserved for future extensions
+
+    bool operator<(const IpcMemHandle& h) const {
+      int cmp = std::memcmp(ipc_handle, h.ipc_handle, AMD_IPC_MEM_HANDLE_SIZE);
+      if (cmp != 0) return cmp < 0;
+
+      return poffset < h.poffset;
+    }
+  };
   //!< add the host mem pointer and buffer in the container
   static void AddMemObj(const void* k, amd::Memory* v);
 
@@ -1384,6 +1412,13 @@ class MemObjMap : public AllStatic {
   //!< Same as FindMemObj but for virtual addressing
   static amd::Memory* FindVirtualMemObj(const void* k);
 
+  //!< Same as AddMemObj but for virtual ipc handle to MemObj mapping
+  static void AddIpcHandleMemObj(const IpcMemHandle& k, amd::Memory* v);
+  //!< Remove entry from the map by searching values
+  static void RemoveIpcHandleMemObj(amd::Memory* v);
+  //!< Same as FindMemObj but for ipc handle to MemObj mapping
+  static amd::Memory* FindIpcHandleMemObj(const IpcMemHandle& k);
+
  private:
   //!< the mem object<->hostptr information container
   static std::map<uintptr_t, amd::Memory*> MemObjMap_;
@@ -1391,6 +1426,8 @@ class MemObjMap : public AllStatic {
   static std::map<uintptr_t, amd::Memory*> VirtualMemObjMap_;
   //!< Shared read/write lock
   static std::shared_mutex AllocatedLock_;
+  //!< the ipc handle<->mem object information container
+  static std::map<IpcMemHandle, amd::Memory*> IpcHandleMemObjMap_;
 };
 
 /// @brief Instruction Set Architecture properties.
@@ -1653,11 +1690,10 @@ class Device : public RuntimeObject {
   static constexpr size_t kMGInfoSizePerDevice = kMGSyncDataSize + sizeof(MGSyncInfo);
   static constexpr size_t kSGInfoSize = kMGSyncDataSize;
 
-  // Amount of space used by each wave is in units of 256 dwords.
-  // As per COMPUTE_TMPRING_SIZE.WAVE_SIZE 24:12
-  // The field size supports a range of 0->(2M-256) dwords per wave64.
-  // Per lane this works out to 131056 bytes or 128K - 16
-  static constexpr size_t kMaxStackSize = ((128 * Ki) - 16);
+  // Max Scratch size is based on ISA and thus per device.
+  // Def value is as per GFX9 being the least among supported devices.
+  size_t maxStackSize_ = kMaxStackSize9X;
+  static bool device_not_usable_; //!< If set, we should not launch any commands anymore.
 
   typedef std::list<CommandQueue*> CommandQueues;
 
@@ -1751,8 +1787,8 @@ class Device : public RuntimeObject {
   //! Allocate a chunk of device memory as a cache for a CL memory object
   virtual device::Memory* createMemory(Memory& owner) const = 0;
 
-  //! Allocate a chunk of device memory without owner class
-  virtual device::Memory* createMemory(size_t size) const = 0;
+  //! Allocate a chunk of device memory with address alignment
+  virtual device::Memory* createMemory(size_t size, size_t alignment = 0) const = 0;
 
   //! Allocate a device sampler object
   virtual bool createSampler(const Sampler&, device::Sampler**) const = 0;
@@ -1960,6 +1996,12 @@ class Device : public RuntimeObject {
     return false;
   }
 
+  //! Returns current scratch limit of the device. Valid only on rocm device.
+  virtual size_t ScratchLimitCurrent() const { return 0; }
+
+  //! Sets the current scratch limit of the device. Valid only on rocm device.
+  virtual bool UpdateScratchLimitCurrent(size_t limit) const { return true; }
+
   //! Validate kernel
   virtual bool validateKernel(const amd::Kernel& kernel,
                               const device::VirtualDevice* vdev,
@@ -2053,12 +2095,12 @@ class Device : public RuntimeObject {
   //! Checks if OCL runtime can use hsail for compilation
   bool ValidateHsail();
 
-  bool IpcCreate(void* dev_ptr, size_t* mem_size, void* handle, size_t* mem_offset) const;
+  bool IpcCreate(void* dev_ptr, size_t* mem_size, char* handle, size_t* mem_offset) const;
 
-  bool IpcAttach(const void* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
+  bool IpcAttach(const char* handle, size_t mem_size, size_t mem_offset, unsigned int flags,
                  void** dev_ptr) const;
 
-  bool IpcDetach(void* dev_ptr) const;
+  void IpcDetach(amd::Memory* amd_mem_obj) const;
 
   //! Return context
   amd::Context& context() const { return *context_; }
@@ -2103,10 +2145,7 @@ class Device : public RuntimeObject {
   }
 
   //! Returns the queues that have at least one submitted command
-  std::vector<amd::CommandQueue*> getActiveQueues() {
-     amd::ScopedLock lock(activeQueuesLock_);
-     return std::vector<amd::CommandQueue*>(activeQueues.begin(), activeQueues.end());
-  }
+  std::vector<amd::CommandQueue*> getActiveQueues();
 
   //! Adds the queue to the set of active command queues
   void addToActiveQueues(amd::CommandQueue* commandQueue) {
@@ -2132,11 +2171,18 @@ class Device : public RuntimeObject {
     return nullptr;
   }
 
+  //! Returns stack size set for the device
+  size_t MaxStackSize() const { return maxStackSize_; }
+
 #if defined(__clang__)
 #if __has_feature(address_sanitizer)
   virtual device::UriLocator* createUriLocator() const = 0;
 #endif
 #endif
+
+  static bool IsGPUInError() { return (gpu_error_ != CL_SUCCESS); }
+  static cl_int GetGPUError() { return gpu_error_; }
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -2171,6 +2217,8 @@ class Device : public RuntimeObject {
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
   amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
+  static cl_int gpu_error_; //!< Store the GPU error cause during kernel launch
+
  private:
   const Isa *isa_;                //!< Device isa
   bool IsTypeMatching(cl_device_type type, bool offlineDevices);

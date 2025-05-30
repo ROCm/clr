@@ -28,8 +28,9 @@ THE SOFTWARE.
   #define __HOST_DEVICE__ __device__
 #else
   #define __HOST_DEVICE__ __host__ __device__
-  #include <hip/amd_detail/amd_hip_common.h>
-  #include "hip/amd_detail/host_defines.h"
+  #include "amd_hip_common.h"
+  #include "host_defines.h"
+  #include "amd_hip_vector_types.h"
   #include <assert.h>
   #if defined(__cplusplus)
     #include <algorithm>
@@ -73,7 +74,6 @@ THE SOFTWARE.
     #if defined(__cplusplus)
       #if !defined(__HIPCC_RTC__)
         #include "hip_fp16_math_fwd.h"
-        #include "amd_hip_vector_types.h"
         #include "host_defines.h"
         #include "amd_device_functions.h"
         #include "amd_warp_functions.h"
@@ -99,7 +99,7 @@ THE SOFTWARE.
             // CREATORS
             __HOST_DEVICE__
             __half() = default;
-            __HOST_DEVICE__
+            __HOST_DEVICE__ constexpr
             __half(const __half_raw& x) : data{x.data} {}
             #if !defined(__HIP_NO_HALF_CONVERSIONS__)
                 __HOST_DEVICE__
@@ -363,12 +363,9 @@ THE SOFTWARE.
             __half2(const __half2_raw& xx) : data{xx.data} {}
             __HOST_DEVICE__
             __half2(decltype(data) xx) : data{xx} {}
-            __HOST_DEVICE__
+            __HOST_DEVICE__ constexpr
             __half2(const __half& xx, const __half& yy)
-                :
-                data{static_cast<__half_raw>(xx).data,
-                     static_cast<__half_raw>(yy).data}
-            {}
+                : x(xx), y(yy) {}
             __HOST_DEVICE__
             __half2(const __half2&) = default;
             __HOST_DEVICE__
@@ -783,7 +780,7 @@ THE SOFTWARE.
 
             // int -> half
             inline
-            __device__
+            __HOST_DEVICE__
             __half __int2half_rn(int x)
             {
                 return __half_raw{static_cast<_Float16>(x)};
@@ -1593,29 +1590,25 @@ THE SOFTWARE.
             __device__
             __half htrunc(__half x)
             {
-                return __half_raw{
-                    __ocml_trunc_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_trunc(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hceil(__half x)
             {
-                return __half_raw{
-                    __ocml_ceil_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_ceil(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hfloor(__half x)
             {
-                return __half_raw{
-                   __ocml_floor_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_floor(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
             __half hrint(__half x)
             {
-                return __half_raw{
-                    __ocml_rint_f16(static_cast<__half_raw>(x).data)};
+              return __half_raw{__builtin_elementwise_rint(static_cast<__half_raw>(x).data)};
             }
             inline
             __device__
@@ -1713,25 +1706,25 @@ THE SOFTWARE.
             __device__
             __half2 h2trunc(__half2 x)
             {
-                return __half2{__ocml_trunc_2f16(x)};
+              return __half2{__builtin_elementwise_trunc(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2ceil(__half2 x)
             {
-                return __half2{__ocml_ceil_2f16(x)};
+              return __half2{__builtin_elementwise_ceil(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2floor(__half2 x)
             {
-                return __half2{__ocml_floor_2f16(x)};
+              return __half2{__builtin_elementwise_floor(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
             __half2 h2rint(__half2 x)
             {
-                return __half2{__ocml_rint_2f16(x)};
+              return __half2{__builtin_elementwise_rint(static_cast<__half2_raw>(x).data)};
             }
             inline
             __device__
@@ -1870,6 +1863,41 @@ THE SOFTWARE.
              tmp.i = __shfl_xor(tmp.i, lane_mask, width);
              return tmp.h;
          }
+
+         #if defined(HIP_ENABLE_EXTRA_WARP_SYNC_TYPES) && !defined(__HIP_NO_HALF_OPERATORS__)
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_add_f16(__half);
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_min_f16(__half);
+         extern "C" __device__ __attribute__((const)) __half __ockl_wfred_max_f16(__half);
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_add_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val)& a, decltype(val)& b) { return a + b; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_add_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_min_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val) lhs, decltype(val) rhs) { return rhs < lhs? rhs : lhs; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_min_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         template <typename MaskT>
+         __device__ inline __half __reduce_max_sync(MaskT mask, __half val)
+         {
+           auto op = [](decltype(val) lhs, decltype(val) rhs) { return lhs < rhs? rhs : lhs; };
+           auto wfReduce = [](decltype(val) v) { return __ockl_wfred_max_f16(v); };
+
+           return __reduce_op_sync(mask, val, op, wfReduce);
+         }
+
+         #endif  // __HIP_NO_HALF_OPERATORS__
+
     #endif // defined(__cplusplus)
 #elif defined(__GNUC__) || defined(_MSC_VER)
     #if !defined(__HIPCC_RTC__)

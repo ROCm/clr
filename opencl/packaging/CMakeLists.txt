@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.1)
+cmake_minimum_required(VERSION 3.16.8)
 project(rocm-opencl)
 
 set(CPACK_COMPONENTS_ALL binary dev)

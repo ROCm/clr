@@ -587,6 +587,20 @@ global:
     hipGraphBatchMemOpNodeGetParams;
     hipGraphBatchMemOpNodeSetParams;
     hipGraphExecBatchMemOpNodeSetParams;
+    hipEventRecordWithFlags;
+    hipLinkAddData;
+    hipLinkAddFile;
+    hipLinkComplete;
+    hipLinkCreate;
+    hipLinkDestroy;
 local:
     *;
 } hip_6.2;
+
+hip_6.5 {
+global:
+    hipLaunchKernelExC;
+    hipDrvLaunchKernelEx;
+local:
+    *;
+} hip_6.4;

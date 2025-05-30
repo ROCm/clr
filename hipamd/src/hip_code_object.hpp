@@ -95,6 +95,10 @@ class CodeObject {
       const void* data, size_t size, const std::vector<std::string>& devices,
       std::vector<std::pair<const void*, size_t>>& code_objs);
 
+  // Query the generic target of agent target.
+  // Return true on successfull query, false on failure
+   static bool QueryGenericTarget(std::string agentTarget, std::string& processor,
+                char& sram_ecc, char& xnack);
  protected:
   //Given an ptr to image or file, extracts to code object
   //for corresponding devices

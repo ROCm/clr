@@ -75,6 +75,7 @@ bool IPCEvent::createIpcEventShmemIfNeeded() {
   return true;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::query() {
   if (ipc_evt_.ipc_shmem_) {
     int prev_read_idx = ipc_evt_.ipc_shmem_->read_index;
@@ -87,6 +88,7 @@ hipError_t IPCEvent::query() {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::synchronize() {
   if (ipc_evt_.ipc_shmem_) {
     int prev_read_idx = ipc_evt_.ipc_shmem_->read_index;
@@ -101,93 +103,56 @@ hipError_t IPCEvent::synchronize() {
   return hipSuccess;
 }
 
-hipError_t IPCEvent::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
-  command = new amd::Marker(*stream, false);
-  if (command == NULL) {
-    return hipErrorOutOfMemory;
-  }
-  return hipSuccess;
-}
-
-hipError_t IPCEvent::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
-  auto t{new CallbackData{ipc_evt_.ipc_shmem_->read_index, ipc_evt_.ipc_shmem_}};
-  StreamCallback* cbo = new StreamAddCallback(
-      stream, reinterpret_cast<hipStreamCallback_t>(WaitThenDecrementSignal), t);
-  if (!command->setCallback(CL_COMPLETE, ihipStreamCallback, cbo)) {
-    command->release();
-    return hipErrorInvalidHandle;
-  }
-  command->enqueue();
-  command->release();
-  command->awaitCompletion();
-  return hipSuccess;
-}
-
-hipError_t IPCEvent::streamWait(hipStream_t stream, uint flags) {
-  hip::Stream* hip_stream = hip::getStream(stream);
-
-  amd::ScopedLock lock(lock_);
-  if(query() != hipSuccess) {
-    amd::Command* command;
-    hipError_t status = streamWaitCommand(command, hip_stream);
-    if (status != hipSuccess) {
-      return status;
-    }
-    status = enqueueStreamWaitCommand(stream, command);
-    return status;
-  }
-  return hipSuccess;
+// ================================================================================================
+hipError_t IPCEvent::streamWait(hip::Stream* stream, uint flags) {
+  int offset = ipc_evt_.ipc_shmem_->read_index;
+  hipError_t status =
+      ihipStreamOperation(reinterpret_cast<hipStream_t>(stream), ROCCLR_COMMAND_STREAM_WAIT_VALUE,
+                          &(ipc_evt_.ipc_shmem_->signal[offset]), 0, 1, 1, sizeof(uint32_t));
+  return status;
 }
 
 // ================================================================================================
 hipError_t IPCEvent::recordCommand(amd::Command*& command, amd::HostQueue* stream,
                                    uint32_t flags, bool batch_flush) {
-  bool unrecorded = isUnRecorded();
-  if (unrecorded) {
-    command = new amd::Marker(*stream, kMarkerDisableFlush);
-  } else {
-    return Event::recordCommand(command, stream, batch_flush);
-  }
+  command = new amd::Marker(*stream, kMarkerDisableFlush);
   return hipSuccess;
 }
 
 // ================================================================================================
-hipError_t IPCEvent::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
-  bool unrecorded = isUnRecorded();
-  if (unrecorded) {
-    amd::Event& tEvent = command->event();
-    createIpcEventShmemIfNeeded();
-    int write_index = ipc_evt_.ipc_shmem_->write_index++;
-    int offset = write_index % IPC_SIGNALS_PER_EVENT;
-    while (ipc_evt_.ipc_shmem_->signal[offset] != 0) {
-      amd::Os::sleep(1);
-    }
-    // Lock signal.
-    ipc_evt_.ipc_shmem_->signal[offset] = 1;
-    ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
-    command->enqueue();
+hipError_t IPCEvent::enqueueRecordCommand(hip::Stream* stream, amd::Command* command) {
+
+  amd::Event& tEvent = command->event();
+  createIpcEventShmemIfNeeded();
+  int write_index = ipc_evt_.ipc_shmem_->write_index++;
+  int offset = write_index % IPC_SIGNALS_PER_EVENT;
+  while (ipc_evt_.ipc_shmem_->signal[offset] != 0) {
+    amd::Os::sleep(1);
+  }
+  // Lock signal.
+  ipc_evt_.ipc_shmem_->signal[offset] = 1;
+  ipc_evt_.ipc_shmem_->owners_device_id = deviceId();
+  command->enqueue();
 
     // device writes 0 to signal after the hipEventRecord command is completed
     // the signal value is checked by WaitThenDecrementSignal cb
-    hipError_t status = ihipStreamOperation(stream, ROCCLR_COMMAND_STREAM_WRITE_VALUE,
-                                 &(ipc_evt_.ipc_shmem_->signal[offset]),
-                                 0,
-                                 0, 0, sizeof(uint32_t));
+    hipError_t status = ihipStreamOperation(
+        reinterpret_cast<hipStream_t>(stream), ROCCLR_COMMAND_STREAM_WRITE_VALUE,
+        &(ipc_evt_.ipc_shmem_->signal[offset]), 0, 0, 0, sizeof(uint32_t));
     if (status != hipSuccess) {
       return status;
     }
 
-    // Update read index to indicate new signal.
-    int expected = write_index - 1;
-    while (!ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
-      amd::Os::sleep(1);
-    }
-  } else {
-    return Event::enqueueRecordCommand(stream, command, record);
+  // Update read index to indicate new signal.
+  int expected = write_index - 1;
+  while (!ipc_evt_.ipc_shmem_->read_index.compare_exchange_weak(expected, write_index)) {
+    amd::Os::sleep(1);
   }
+  
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
   if (!createIpcEventShmemIfNeeded()) {
     return hipErrorInvalidValue;
@@ -199,6 +164,7 @@ hipError_t IPCEvent::GetHandle(ihipIpcEventHandle_t* handle) {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
   ipc_evt_.ipc_name_ = handle->shmem_name;
   if (!amd::Os::MemoryMapFileTruncated(ipc_evt_.ipc_name_.c_str(),
@@ -222,7 +188,6 @@ hipError_t IPCEvent::OpenHandle(ihipIpcEventHandle_t* handle) {
 }
 
 // ================================================================================================
-
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event) {
   HIP_INIT_API(hipIpcGetEventHandle, handle, event);
 

@@ -70,6 +70,7 @@ class GpuMemoryReference : public amd::ReferenceCountedObject {
   const Device& device_;     //!< GPU device
   //! @note: This field is necessary for the thread safe release only
   VirtualGPU* gpu_;  //!< Resource will be used only on this queue
+  bool va_range_ = false; //!< Resource is a VA range(@note: PAL doesn't provide this info)
 
  protected:
   //! Default destructor
@@ -104,7 +105,9 @@ class Resource : public amd::HeapObject {
     VirtualGPU* gpu_;          //!< Resource won't be shared between multiple queues
     const Resource* svmBase_;  //!< SVM base for MGPU allocations
     bool interprocess_;        //!< Ressource can be used in the interprocess communication
-    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr), interprocess_(false) {}
+    size_t alignment_;         //!< allocation address alignment
+    CreateParams() : owner_(nullptr), gpu_(nullptr), svmBase_(nullptr), interprocess_(false),
+                     alignment_(0) {}
   };
 
   struct PinnedParams : public CreateParams {

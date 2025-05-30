@@ -127,13 +127,20 @@ void RuntimeTearDown::RegisterObject(ReferenceCountedObject* obj) {
 class RuntimeTearDown runtime_tear_down;
 
 uint ReferenceCountedObject::retain() {
-  return referenceCount_.fetch_add(1, std::memory_order_relaxed) + 1;
+  uint prev = referenceCount_.fetch_add(1, std::memory_order_relaxed);
+  assert(prev != 0 && "An object with count==0 is invalid");
+  return prev + 1;
 }
 
 uint ReferenceCountedObject::release() {
   uint newCount = referenceCount_.fetch_sub(1, std::memory_order_relaxed) - 1;
   if (newCount == 0) {
     if (terminate()) {
+      // The destructor should be called with a count==1 for the last thread
+      // releasing the reference. Since an atomic load before the decrement
+      // would add more atomic operations, simply bump the count to 1 here
+      // before destructing the object.
+      referenceCount_.store(1, std::memory_order_relaxed);
       delete this;
     }
   }

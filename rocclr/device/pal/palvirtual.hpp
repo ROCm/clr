@@ -137,7 +137,7 @@ class VirtualGPU : public device::VirtualDevice {
     Pal::Result UpdateAppPowerProfile();
 
     // ibReuse forces event wait without polling, to make sure event occured
-    template <bool ibReuse> bool waifForFence(uint cbId) const {
+    template <bool ibReuse> bool waitForFence(uint cbId) const {
       Pal::Result result = Pal::Result::Success;
       uint64_t start;
       uint64_t end;
@@ -161,7 +161,7 @@ class VirtualGPU : public device::VirtualDevice {
         if (Pal::Result::Success == result) {
           break;
         } else if ((Pal::Result::NotReady == result) || (Pal::Result::Timeout == result)) {
-          LogWarning("PAL fence isn't ready!");
+          LogPrintfWarning("PAL fence isn't ready! result:%d", result);
           if (GPU_ANALYZE_HANG) {
             DumpMemoryReferences();
           }
@@ -394,9 +394,7 @@ class VirtualGPU : public device::VirtualDevice {
   void addConstBuffer(ConstantBuffer* cb) { constBufs_.push_back(cb); }
 
   //! Start the command profiling
-  void profilingBegin(amd::Command& command,     //!< Command queue object
-                      bool drmProfiling = false  //!< Measure DRM time
-  );
+  void profilingBegin(amd::Command& command);  //!< Command queue object
 
   //! End the command profiling
   void profilingEnd(amd::Command& command);
@@ -493,31 +491,34 @@ class VirtualGPU : public device::VirtualDevice {
 
   void addBarrier(RgpSqqtBarrierReason reason = RgpSqqtBarrierReason::MemDependency,
                   BarrierType type = BarrierType::KernelToKernel) const {
-    Pal::BarrierInfo barrier = {};
-    barrier.pipePointWaitCount = 1;
-    Pal::HwPipePoint point = Pal::HwPipePostCs;
-    barrier.pPipePoints = &point;
-    barrier.transitionCount = 1;
-    Pal::BarrierTransition trans = {};
-    trans.srcCacheMask = Pal::CoherShader;
-    trans.dstCacheMask = Pal::CoherShader;
-    trans.imageInfo.oldLayout.usages = Pal::LayoutShaderRead;
-    trans.imageInfo.oldLayout.engines = Pal::LayoutComputeEngine;
-    trans.imageInfo.newLayout.usages = Pal::LayoutShaderRead;
-    trans.imageInfo.newLayout.engines = Pal::LayoutComputeEngine;
+    Pal::AcquireReleaseInfo barrier = {
+      .srcGlobalStageMask = Pal::PipelineStageCs,
+      .dstGlobalStageMask = Pal::PipelineStageCs,
+      .srcGlobalAccessMask = Pal::CoherShader,
+      .dstGlobalAccessMask = Pal::CoherShader,
+      .memoryBarrierCount = 0,
+      .pMemoryBarriers = nullptr,
+      .imageBarrierCount = 0,
+      .pImageBarriers = nullptr,
+      .reason = static_cast<uint32_t>(reason)
+    };
+
     if (type == BarrierType::KernelToCopy) {
-      trans.dstCacheMask = Pal::CoherCopy;
+      barrier.dstGlobalStageMask = Pal::PipelineStageBlt;
+      barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToKernel) {
-      trans.srcCacheMask = Pal::CoherCopy;
+      barrier.srcGlobalStageMask = Pal::PipelineStageBlt;
+      barrier.srcGlobalAccessMask  = Pal::CoherCopy;
     } else if (type == BarrierType::CopyToCopy) {
-      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy;
+      barrier.srcGlobalStageMask = barrier.dstGlobalStageMask = Pal::PipelineStageBlt;
+      barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy;
     } else if (type == BarrierType::FlushL2) {
-      trans.dstCacheMask = trans.srcCacheMask = Pal::CoherCopy | Pal::CoherCpu;
+      barrier.srcGlobalStageMask |= Pal::PipelineStageBlt; 
+      barrier.dstGlobalStageMask |= Pal::PipelineStageBlt;
+      barrier.srcGlobalAccessMask = barrier.dstGlobalAccessMask = Pal::CoherCopy | Pal::CoherCpu;
     }
-    barrier.pTransitions = &trans;
-    barrier.waitPoint = Pal::HwPipePreCs;
-    barrier.reason = static_cast<uint32_t>(reason);
-    iCmd()->CmdBarrier(barrier);
+
+    iCmd()->CmdReleaseThenAcquire(barrier);
     queues_[engineID_]->submit<true>(false);
   }
 

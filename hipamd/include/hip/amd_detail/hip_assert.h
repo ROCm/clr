@@ -22,6 +22,8 @@ THE SOFTWARE.
 
 #pragma once
 
+#if defined(__clang__) and defined(__HIP__)
+
 // abort
 extern "C" __device__ inline __attribute__((weak))
 void abort() {
@@ -99,3 +101,5 @@ void __assertfail()
       __builtin_trap();                             \
   } while (0)
 #endif
+
+#endif // defined(__clang__) and defined(__HIP__)

@@ -51,18 +51,11 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
 #endif  // DEBUG
       hip::PlatformState::instance().setDynamicLibraryHandle(static_cast<void*>(hinst));
       break;
-    case DLL_PROCESS_DETACH: {
-      amd::Thread* thread = amd::Thread::current();
-      if (!(thread != nullptr ||
-            ((thread = new amd::HostThread()) != nullptr && thread == amd::Thread::current()))) {
-        return true;
-      }
+    case DLL_PROCESS_DETACH:
       hip::ihipDestroyDevice();
-    } break;
-    case DLL_THREAD_DETACH: {
-      amd::Thread* thread = amd::Thread::current();
-      delete thread;
-    } break;
+      break;
+    case DLL_THREAD_DETACH:
+      break;
     default:
       break;
   }

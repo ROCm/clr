@@ -18,12 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.5.1)
-
-if (POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW)
-endif()
-
 include(GNUInstallDirs)
 
 set(VERSION_MAJOR_AMDHIP ${HIP_VERSION_MAJOR})
@@ -132,11 +126,12 @@ target_sources(amdhip64 PRIVATE
   hip_vm.cpp
   hip_api_trace.cpp
   hip_table_interface.cpp
-  hip_table_interface_c.cpp)
+  hip_table_interface_c.cpp
+  hip_comgr_helper.cpp)
 
 if(WIN32)
   target_sources(amdhip64 PRIVATE
-    hip_runtime.cpp)
+    hip_runtime.cpp hiprtc/hiprtcInternal.cpp)
 endif()
 
 if(BUILD_SHARED_LIBS)
@@ -208,16 +203,14 @@ set(HIPRTC_OBJECTS)
 # Add hiprtc
 add_subdirectory(hiprtc)
 
-if(NOT WIN32)
-  target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
-  if(BUILD_SHARED_LIBS)
-    target_link_libraries(amdhip64 PRIVATE ${HIPRTC_OBJECTS})
-    add_dependencies(amdhip64 hiprtc-builtins)
-    INSTALL(TARGETS hiprtc-builtins
-      RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-      LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-      ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  endif()
+target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
+if(BUILD_SHARED_LIBS)
+  target_link_libraries(amdhip64 PRIVATE ${HIPRTC_OBJECTS})
+  add_dependencies(amdhip64 hiprtc-builtins)
+  INSTALL(TARGETS hiprtc-builtins
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
 endif()
 
 #############################

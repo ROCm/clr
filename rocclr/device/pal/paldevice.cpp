@@ -84,21 +84,6 @@ struct PalDevice {
 
 static constexpr PalDevice supportedPalDevices[] = {
 // GFX Version PAL GFX IP Level            PAL Name         PAL ASIC Revision
-  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Carrizo",       Pal::AsicRevision::Carrizo},
-  {8,  0,  1,  Pal::GfxIpLevel::GfxIp8,    "Bristol Ridge", Pal::AsicRevision::Bristol},
-  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Iceland",       Pal::AsicRevision::Iceland},
-  {8,  0,  2,  Pal::GfxIpLevel::GfxIp8,    "Tonga",         Pal::AsicRevision::Tonga}, // Also Tongapro (generated code is for Tonga)
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Fiji",          Pal::AsicRevision::Fiji},
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Ellesmere",     Pal::AsicRevision::Polaris10}, // Ellesmere
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "Baffin",        Pal::AsicRevision::Polaris11}, // Baffin
-  {8,  0,  3,  Pal::GfxIpLevel::GfxIp8,    "gfx803",        Pal::AsicRevision::Polaris12}, // Lexa
-  {8,  1,  0,  Pal::GfxIpLevel::GfxIp8_1,  "Stoney",        Pal::AsicRevision::Stoney},
-  {9,  0,  0,  Pal::GfxIpLevel::GfxIp9,    "gfx900",        Pal::AsicRevision::Vega10},
-  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven},
-  {9,  0,  4,  Pal::GfxIpLevel::GfxIp9,    "gfx904",        Pal::AsicRevision::Vega12},
-  {9,  0,  6,  Pal::GfxIpLevel::GfxIp9,    "gfx906",        Pal::AsicRevision::Vega20},
-  {9,  0,  2,  Pal::GfxIpLevel::GfxIp9,    "gfx902",        Pal::AsicRevision::Raven2},
-  {9,  0, 12,  Pal::GfxIpLevel::GfxIp9,    "gfx90c",        Pal::AsicRevision::Renoir},
   {10, 1,  0,  Pal::GfxIpLevel::GfxIp10_1, "gfx1010",       Pal::AsicRevision::Navi10},
   {10, 1,  1,  Pal::GfxIpLevel::GfxIp10_1, "gfx1011",       Pal::AsicRevision::Navi12},
   {10, 1,  2,  Pal::GfxIpLevel::GfxIp10_1, "gfx1012",       Pal::AsicRevision::Navi14},
@@ -115,6 +100,8 @@ static constexpr PalDevice supportedPalDevices[] = {
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::Phoenix2},
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint1},
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint2},
+  {11, 5,  0,  Pal::GfxIpLevel::GfxIp11_5, "gfx1150",       Pal::AsicRevision::Strix1},
+  {11, 5,  1,  Pal::GfxIpLevel::GfxIp11_5, "gfx1151",       Pal::AsicRevision::StrixHalo},
 };
 
 static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,
@@ -336,6 +323,13 @@ device::Program* NullDevice::createProgram(amd::Program& owner, amd::option::Opt
   return program;
 }
 
+void setUUID(Pal::DeviceProperties* devProps, char* uuid) {
+  snprintf(uuid, 5, "%04d", devProps->pciProperties.domainNumber);
+  snprintf(uuid + 4, 5, "%04d", devProps->pciProperties.busNumber);
+  snprintf(uuid + 8, 5, "%04d", devProps->pciProperties.deviceNumber);
+  snprintf(uuid + 12, 5, "%04d", devProps->pciProperties.functionNumber);
+}
+
 void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                 const Pal::GpuMemoryHeapProperties heaps[Pal::GpuHeapCount],
                                 size_t maxTextureSize, uint numComputeRings,
@@ -343,10 +337,8 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.type_ = CL_DEVICE_TYPE_GPU;
   info_.vendorId_ = palProp.vendorId;
   // Set uuid
-  memcpy(info_.uuid_, &palProp.pciProperties.domainNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 4, &palProp.pciProperties.busNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 8, &palProp.pciProperties.deviceNumber, sizeof(uint32_t));
-  memcpy(info_.uuid_ + 12, &palProp.pciProperties.functionNumber, sizeof(uint32_t));
+  Pal::DeviceProperties palPropTmp = palProp;
+  setUUID(&palPropTmp, &info_.uuid_[0]);
 
   info_.maxWorkItemDimensions_ = 3;
 
@@ -391,10 +383,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   if (settings().checkExtension(ClKhrFp64)) {
     info_.doubleFPConfig_ = info_.singleFPConfig_ | CL_FP_DENORM;
   }
-
-  if (settings().reportFMA_) {
-    info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
-  }
+  info_.singleFPConfig_ |= CL_FP_CORRECTLY_ROUNDED_DIVIDE_SQRT;
 
   if (settings().checkExtension(ClKhrFp16)) {
     info_.halfFPConfig_ = info_.singleFPConfig_;
@@ -587,7 +576,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
     if (settings().svmFineGrainSystem_) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_FINE_GRAIN_SYSTEM;
     }
-    if (amd::IS_HIP && ipLevel_ >= Pal::GfxIpLevel::GfxIp9) {
+    if (amd::IS_HIP) {
       info_.svmCapabilities_ |= CL_DEVICE_SVM_ATOMICS;
     }
 
@@ -683,7 +672,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
-
+  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * 32;
   info_.luidLowPart_ = palProp.osProperties.luidLowPart;
   info_.luidHighPart_ = palProp.osProperties.luidHighPart;
   // Setup the node mask for MGPU only case from the original PAL list of all devices
@@ -884,6 +873,8 @@ Device::~Device() {
 
 extern const char* SchedulerSourceCode;
 extern const char* SchedulerSourceCode20;
+
+constexpr int TrapHandlerABIVersion = 10;
 extern const char* TrapHandlerCode;
 
 // ================================================================================================
@@ -1011,6 +1002,23 @@ bool Device::create(Pal::IDevice* device) {
 
   // Fill the device info structure
   fillDeviceInfo(properties(), heaps_, 16 * Ki, numComputeEngines(), numExclusiveComputeEngines(), iDev());
+
+  // Reserve percentage memory for large frame buffer.
+  // Reserve a threshold size for small frame buffer, used by page table for remote memory mapping
+  Pal::gpusize invisibleSize = heaps_[Pal::GpuHeapInvisible].logicalSize;
+  Pal::gpusize visibleSize = heaps_[Pal::GpuHeapLocal].logicalSize;
+
+  Pal::gpusize maxInvisibleAllocation = std::min((invisibleSize / 100) * 98,
+    invisibleSize < 128 * Mi? 0: invisibleSize - 128 * Mi);
+  Pal::gpusize maxVisibleAllocation = std::min((visibleSize / 100) * 98,
+    visibleSize < 128 * Mi? 0: visibleSize - 128 * Mi);
+
+  if (invisibleSize < visibleSize && invisibleSize > 0) {
+    // Page table is in invisible and its size is smaller. Invisible is the only deciding factor
+    maxFrameBufferAllocation_ = maxInvisibleAllocation;
+  } else {
+    maxFrameBufferAllocation_ = std::max(maxInvisibleAllocation, maxVisibleAllocation);
+  }
 
   if (!ValidateComgr()) {
     LogError("Code object manager initialization failed!");
@@ -1164,6 +1172,14 @@ bool Device::initializeHeapResources() {
     if (iDev()->Finalize(finalizeInfo) != Pal::Result::Success) {
       return false;
     }
+
+    // Override the _amdgpu_r_debug.r_version field with the trap handler
+    // version.  We can't import the definition of r_debug here as it would
+    // conflict with ELF related definitions pulled-in by platform/program.hpp.
+    // The layout of r_debug is a stable ABI, so we are guaranteed the
+    // r_version field will always be at offset 0.
+    *reinterpret_cast<int *> (_amdgpu_r_debug_ptr) = TrapHandlerABIVersion;
+
     Pal::HipRuntimeSetup setup {.pRdebug = _amdgpu_r_debug_ptr,
                                 .runtimeState = 1,    // Always valid debug state
                                 .ttmpSetupHint = GPU_DEBUG_ENABLE};
@@ -1324,22 +1340,7 @@ static void parseRequestedDeviceList(const char* requestedDeviceList,
 
         // Retrieve uuid
         char uuid[17] = {0};
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.domainNumber))[j],
-                &uuid[j], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.busNumber))[j],
-                &uuid[j + 4], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.deviceNumber))[j],
-                &uuid[j + 8], 10);
-        }
-        for (int j = 0; j < 4; j++) {
-          itoa((reinterpret_cast<char*>(&properties.pciProperties.functionNumber))[j],
-                &uuid[j + 12], 10);
-        }
+        setUUID(&properties, &uuid[0]);
 
         // Convert it to index
         if (strcmp(pch + 4, uuid) == 0) {
@@ -1396,6 +1397,7 @@ bool Device::init() {
   info.pSettingsPath = "OCL";
   info.maxSvmSize = static_cast<Pal::gpusize>(OCL_SET_SVM_SIZE * Mi);
   info.clientApiId = (amd::IS_HIP) ? Pal::ClientApi::Hip : Pal::ClientApi::OpenCl;
+  info.instrApiVer = RgpSqttInstrumentationApiVersion;
 
   if (IS_LINUX) {
     //! @note: Linux may have a deadlock if runtime will attempt to reserve
@@ -1419,7 +1421,7 @@ bool Device::init() {
     // Make sure the devdriver initialization is done after Pal platform creation
     // to avoid a timeout in RGP server
     platform_->GetDevDriverServer()->GetDriverControlServer()->StartLateDeviceInit();
-    platform_->GetDevDriverServer()->GetDriverControlServer()->FinishDeviceInit();
+
   }
 #endif // PAL_GPUOPEN_OCL
 
@@ -1447,6 +1449,14 @@ bool Device::init() {
     // Create the GPU device object
     Device* d = new Device();
     result = result && (nullptr != d) && d->create(gDeviceList[ordinal]);
+
+#ifdef PAL_GPUOPEN_OCL
+    if ((platform_->GetDevDriverServer() != nullptr) &&
+        (platform_->GetDevDriverServer()->GetDriverControlServer() != nullptr)) {
+        // Finalize DevDriver initialization after device creation
+        platform_->GetDevDriverServer()->GetDriverControlServer()->FinishDeviceInit();
+    }
+#endif // PAL_GPUOPEN_OCL
 
     if (result) {
       foundDevice = true;
@@ -1705,6 +1715,7 @@ pal::Memory* Device::createBuffer(amd::Memory& owner, bool directAccess) const {
     if (owner.ipcShared()) {
       type = Resource::IpcMemory;
     }
+    params.alignment_ = owner.getAlignment();
     // Create memory object
     result = gpuMemory->create(type, &params);
 
@@ -1905,9 +1916,11 @@ device::Memory* Device::createMemory(amd::Memory& owner) const {
 }
 
 // ================================================================================================
-device::Memory* Device::createMemory(size_t size) const {
+device::Memory* Device::createMemory(size_t size, size_t alignment) const {
   auto buffer = new pal::Memory(*this, size);
-  if ((buffer == nullptr) || !buffer->create(Resource::Local)) {
+  Resource::CreateParams params {};
+  params.alignment_ = alignment;
+  if ((buffer == nullptr) || !buffer->create(Resource::Local, &params)) {
     LogError("Couldn't allocate memory on device!");
     return nullptr;
   }
@@ -2492,8 +2505,8 @@ void Device::svmFree(void* ptr) const {
   } else {
     amd::Memory* svmMem = amd::MemObjMap::FindMemObj(ptr);
     if (nullptr != svmMem) {
-      svmMem->release();
       amd::MemObjMap::RemoveMemObj(ptr);
+      svmMem->release();
     }
   }
 }
@@ -2625,7 +2638,7 @@ void Device::HiddenHeapAlloc(const VirtualGPU& gpu) {
     heap_buffer_ = createMemory(HeapBufferSize);
     if (initial_heap_size_ != 0) {
       initial_heap_size_ = amd::alignUp(initial_heap_size_, 2 * Mi);
-      initial_heap_buffer_ = createMemory(initial_heap_size_);
+      initial_heap_buffer_ = createMemory(initial_heap_size_, 2 * Mi);
     }
     if (heap_buffer_ == nullptr) {
       LogError("Heap buffer allocation failed!");

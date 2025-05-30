@@ -1,4 +1,4 @@
-/* Copyright (c) 2022-2023 Advanced Micro Devices, Inc.
+/* Copyright (c) 2022-2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -90,16 +90,19 @@ bool Heap::RemoveMemory(amd::Memory* memory, MemoryTimestamp* ts) {
 }
 
 // ================================================================================================
-Heap::SortedMap::iterator Heap::EraseAllocaton(Heap::SortedMap::iterator& it) {
+Heap::SortedMap::iterator Heap::EraseAllocation(Heap::SortedMap::iterator& it) {
   auto memory = it->first.second;
   const device::Memory* dev_mem = memory->getDeviceMemory(*device_->devices()[0]);
   void* dev_mem_vaddr = reinterpret_cast<void*>(dev_mem->virtualAddress());
   total_size_ -= it->first.first;
+  if (dev_mem_vaddr == nullptr) {
+    dev_mem_vaddr = memory->getSvmPtr();
+  }
 
-  if (dev_mem_vaddr != nullptr) {
-    amd::SvmBuffer::free(memory->getContext(), dev_mem_vaddr);
+  if (use_vm_heap_) {
+    vm_heap_.Free(memory);
   } else {
-    amd::SvmBuffer::free(memory->getContext(), memory->getSvmPtr());
+    amd::SvmBuffer::free(memory->getContext(), dev_mem_vaddr);
   }
   // Clear HIP event
   it->second.SetEvent(nullptr);
@@ -119,10 +122,14 @@ bool Heap::ReleaseAllMemory(size_t min_bytes_to_hold, bool safe_release) {
       it->second.Wait();
     }
     if (it->second.IsSafeRelease()) {
-      it = EraseAllocaton(it);
+      it = EraseAllocation(it);
     } else {
       ++it;
     }
+  }
+  // Handle managed pool with trim
+  if (vm_heap_.FreeMappedSize() > min_bytes_to_hold) {
+    vm_heap_.TrimPhysMemory(min_bytes_to_hold);
   }
   return true;
 }
@@ -131,11 +138,12 @@ bool Heap::ReleaseAllMemory(size_t min_bytes_to_hold, bool safe_release) {
 bool Heap::ReleaseAllMemory() {
   for (auto it = allocations_.begin(); it != allocations_.end();) {
     // Make sure the heap holds the minimum number of bytes
-    if (total_size_ <= release_threshold_) {
+    // @note: Managed memory controls the threshold on its own
+    if (!use_vm_heap_ && (total_size_ <= release_threshold_)) {
       return true;
     }
     if (it->second.IsSafeRelease()) {
-      it = EraseAllocaton(it);
+      it = EraseAllocation(it);
     } else {
       ++it;
     }
@@ -187,13 +195,17 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
     }
     cl_svm_mem_flags flags = (state_.interprocess_) ? ROCCLR_MEM_INTERPROCESS : 0;
     flags |= (state_.phys_mem_) ? ROCCLR_MEM_PHYMEM : 0;
-    dev_ptr = amd::SvmBuffer::malloc(*context, flags, size, dev_info.memBaseAddrAlign_, nullptr);
+    if (state_.use_vm_heap_) {
+      dev_ptr = Alloc(size);
+    } else {
+      dev_ptr = amd::SvmBuffer::malloc(*context, flags, size, dev_info.memBaseAddrAlign_, nullptr);
+    }
     if (dev_ptr == nullptr) {
       size_t free = 0, total =0;
       hipError_t err = hipMemGetInfo(&free, &total);
       if (err == hipSuccess) {
-        LogPrintfError("Allocation failed : Device memory : required :%zu | free :%zu | total :%zu",
-          size, free, total);
+        LogPrintfError("Allocation failed : Device memory : required :\
+          %zu | free :%zu | total :%zu", size, free, total);
       }
       return nullptr;
     }
@@ -214,8 +226,6 @@ void* MemoryPool::AllocateMemory(size_t size, Stream* stream, void* dptr) {
     }
   } else {
     dev_ptr = memory->getSvmPtr();
-    if (!amd::MemObjMap::FindMemObj(dev_ptr))
-      amd::MemObjMap::AddMemObj(dev_ptr, memory);
   }
   // Place the allocated memory into the busy heap
   ts.AddSafeStream(stream);
@@ -236,7 +246,7 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
   {
     amd::ScopedLock lock(lock_pool_ops_);
 
-    if (memory->getUserData().phys_mem_obj != nullptr) {
+    if (!state_.use_vm_heap_ && memory->getUserData().phys_mem_obj != nullptr) {
       memory = memory->getUserData().phys_mem_obj;
     }
 
@@ -284,7 +294,7 @@ bool MemoryPool::FreeMemory(amd::Memory* memory, Stream* stream, Event* event) {
         // Add a marker to the stream to trace availability of this memory
         Event* e = new hip::Event(0);
         if (e != nullptr) {
-          if (hipSuccess == e->addMarker(reinterpret_cast<hipStream_t>(stream), nullptr, true)) {
+          if (hipSuccess == e->addMarker(stream, nullptr)) {
             ts.SetEvent(e);
             // Make sure runtime sends a notification
             auto result = e->ready();
@@ -368,6 +378,7 @@ hipError_t MemoryPool::SetAttribute(hipMemPoolAttr attr, void* value) {
         return hipErrorInvalidValue;
       }
       max_total_size_ = reset;
+      ResetMaxMappedSize();
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Should be GetAttribute only
@@ -408,12 +419,14 @@ hipError_t MemoryPool::GetAttribute(hipMemPoolAttr attr, void* value) {
       *reinterpret_cast<uint64_t*>(value) = free_heap_.GetReleaseThreshold();
       break;
     case hipMemPoolAttrReservedMemCurrent:
-      // All allocate memory by the pool in OS
-      *reinterpret_cast<uint64_t*>(value) = busy_heap_.GetTotalSize() + free_heap_.GetTotalSize();
+      // All allocated memory by the pool in OS
+      *reinterpret_cast<uint64_t*>(value) = (state_.use_vm_heap_) ? MappedSize() :
+        (busy_heap_.GetTotalSize() + free_heap_.GetTotalSize());
       break;
     case hipMemPoolAttrReservedMemHigh:
       // High watermark of all allocated memory in OS, since the last reset
-      *reinterpret_cast<uint64_t*>(value) = max_total_size_;
+      *reinterpret_cast<uint64_t*>(value) = (state_.use_vm_heap_)
+          ? MaxMappedSize() : max_total_size_;
       break;
     case hipMemPoolAttrUsedMemCurrent:
       // Total currently used memory by the pool

@@ -20,14 +20,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#include "hiprtcComgrHelper.hpp"
+#include "hip_comgr_helper.hpp"
 #if defined(_WIN32)
 #include <io.h>
 #endif
 
-#include "../amd_hsa_elf.hpp"
+#include "../src/amd_hsa_elf.hpp"
 
-namespace hiprtc {
+namespace hip {
+
+std::unordered_set<LinkProgram*> LinkProgram::linker_set_;
 
 namespace helpers {
 
@@ -40,6 +42,7 @@ constexpr char const* OFFLOAD_KIND_HIP = "hip";
 constexpr char const* OFFLOAD_KIND_HIPV4 = "hipv4";
 constexpr char const* OFFLOAD_KIND_HCC = "hcc";
 constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
+constexpr char const* SPIRV_BUNDLE_ENTRY_ID = "hip-spirv64-amd-amdhsa-amdgcnspirv";
 
 static constexpr size_t bundle_magic_string_size =
     strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
@@ -156,16 +159,6 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
       xnackSupported = true;
       sramEccSupported = false;
       proc_name = "gfx90c";
-      break;
-    case EF_AMDGPU_MACH_AMDGCN_GFX940:
-      xnackSupported = true;
-      sramEccSupported = true;
-      proc_name = "gfx940";
-      break;
-    case EF_AMDGPU_MACH_AMDGCN_GFX941:
-      xnackSupported = true;
-      sramEccSupported = true;
-      proc_name = "gfx941";
       break;
     case EF_AMDGPU_MACH_AMDGCN_GFX942:
       xnackSupported = true;
@@ -302,73 +295,6 @@ static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupp
   return true;
 }
 
-static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string& target_id) {
-  if (!code_object) return false;
-  const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(code_object);
-  if (ehdr->e_machine != EM_AMDGPU) return false;
-  if (ehdr->e_ident[EI_OSABI] != ELFOSABI_AMDGPU_HSA) return false;
-
-  bool isXnackSupported{false}, isSramEccSupported{false};
-
-  std::string proc_name;
-  if (!getProcName(ehdr->e_flags, proc_name, isXnackSupported, isSramEccSupported)) return false;
-  target_id = std::string(AMDGCN_TARGET_TRIPLE) + '-' + proc_name;
-
-  switch (ehdr->e_ident[EI_ABIVERSION]) {
-    case ELFABIVERSION_AMDGPU_HSA_V2: {
-      LogPrintfInfo("[Code Object V2, target id:%s]", target_id.c_str());
-      return false;
-    }
-
-    case ELFABIVERSION_AMDGPU_HSA_V3: {
-      LogPrintfInfo("[Code Object V3, target id:%s]", target_id.c_str());
-      if (isSramEccSupported) {
-        if (ehdr->e_flags & EF_AMDGPU_FEATURE_SRAMECC_V3)
-          target_id += ":sramecc+";
-        else
-          target_id += ":sramecc-";
-      }
-      if (isXnackSupported) {
-        if (ehdr->e_flags & EF_AMDGPU_FEATURE_XNACK_V3)
-          target_id += ":xnack+";
-        else
-          target_id += ":xnack-";
-      }
-      break;
-    }
-
-    case ELFABIVERSION_AMDGPU_HSA_V4:
-    case ELFABIVERSION_AMDGPU_HSA_V5:
-    case ELFABIVERSION_AMDGPU_HSA_V6: {
-      if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V4) {
-        LogPrintfInfo("[Code Object V4, target id:%s]", target_id.c_str());
-      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V5) {
-        LogPrintfInfo("[Code Object V5, target id:%s]", target_id.c_str());
-      } else if (ehdr->e_ident[EI_ABIVERSION] & ELFABIVERSION_AMDGPU_HSA_V6) {
-        LogPrintfInfo("[Code Object V6, target id:%s]", target_id.c_str());
-      }
-
-      unsigned co_sram_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_SRAMECC_V4;
-      if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_OFF_V4)
-        target_id += ":sramecc-";
-      else if (co_sram_value == EF_AMDGPU_FEATURE_SRAMECC_ON_V4)
-        target_id += ":sramecc+";
-
-      unsigned co_xnack_value = (ehdr->e_flags) & EF_AMDGPU_FEATURE_XNACK_V4;
-      if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_OFF_V4)
-        target_id += ":xnack-";
-      else if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_ON_V4)
-        target_id += ":xnack+";
-      break;
-    }
-
-    default: {
-      return false;
-    }
-  }
-  return true;
-}
-
 // Consumes the string 'consume_' from the starting of the given input
 // eg: input = amdgcn-amd-amdhsa--gfx908 and consume_ is amdgcn-amd-amdhsa--
 // input will become gfx908.
@@ -378,42 +304,6 @@ static bool consume(std::string& input, std::string consume_) {
   }
   input = input.substr(consume_.size());
   return true;
-}
-
-// Is agent target compatible with generic code object target?
-static bool isCompatibleWithGenericTarget(std::string& coTarget, std::string& agentTarget) {
-  // The map is subject to change per removing policy
-  static std::map<std::string, std::string> genericTargetMap{
-      // "gfx9-generic"
-      {"gfx900", "gfx9-generic"},
-      {"gfx902", "gfx9-generic"},
-      {"gfx904", "gfx9-generic"},
-      {"gfx906", "gfx9-generic"},
-      {"gfx909", "gfx9-generic"},
-      {"gfx90c", "gfx9-generic"},
-      // "gfx10-1-generic"
-      {"gfx1010", "gfx10-1-generic"},
-      {"gfx1011", "gfx10-1-generic"},
-      {"gfx1012", "gfx10-1-generic"},
-      {"gfx1013", "gfx10-1-generic"},
-      // "gfx10-3-generic"
-      {"gfx1030", "gfx10-3-generic"},
-      {"gfx1031", "gfx10-3-generic"},
-      {"gfx1032", "gfx10-3-generic"},
-      {"gfx1033", "gfx10-3-generic"},
-      {"gfx1034", "gfx10-3-generic"},
-      {"gfx1035", "gfx10-3-generic"},
-      {"gfx1036", "gfx10-3-generic"},
-      // "gfx11-generic"
-      {"gfx1100", "gfx11-generic"},
-      {"gfx1101", "gfx11-generic"},
-      {"gfx1102", "gfx11-generic"},
-      {"gfx1103", "gfx11-generic"},
-      {"gfx1150", "gfx11-generic"},
-      {"gfx1151", "gfx11-generic"},
-  };
-  auto search = genericTargetMap.find(agentTarget);
-  return search != genericTargetMap.end() && coTarget == search->second;
 }
 
 // Trim String till character, will be used to get gpuname
@@ -447,22 +337,6 @@ static bool getTargetIDValue(std::string& input, std::string& processor, char& s
   if (sramecc_value != ' ' && sramecc_value != '+' && sramecc_value != '-') return false;
   xnack_value = getFeatureValue(input, std::string(":xnack"));
   if (xnack_value != ' ' && xnack_value != '+' && xnack_value != '-') return false;
-  return true;
-}
-
-static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
-                       std::string& co_triple_target_id) {
-  std::string offload_kind = trimName(bundled_co_entry_id, '-');
-  if (offload_kind != OFFLOAD_KIND_HIPV4 && offload_kind != OFFLOAD_KIND_HIP &&
-      offload_kind != OFFLOAD_KIND_HCC)
-    return false;
-
-  if (offload_kind != OFFLOAD_KIND_HIPV4)
-    return getTripleTargetIDFromCodeObject(code_object, co_triple_target_id);
-
-  // For code object V4 onwards the bundled code object entry ID correctly
-  // specifies the target triple.
-  co_triple_target_id = bundled_co_entry_id.substr(1);
   return true;
 }
 
@@ -501,7 +375,7 @@ bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   // Check for compatibility
   if (genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
     // co_processor is generic target
-    if (!isCompatibleWithGenericTarget(co_processor, agent_isa_processor))
+    if (!IsCompatibleWithGenericTarget(co_processor, agent_isa_processor))
     return false;
   } else if (agent_isa_processor != co_processor) {
     return false;
@@ -551,7 +425,6 @@ bool UnbundleBitCode(const std::vector<char>& bundled_llvm_bitcode, const std::s
     const size_t image_size = desc->size;
     std::string bundleEntryId{desc->bundleEntryId, desc->bundleEntryIdSize};
 
-    // Need call getTripleTargetID(...).
     // Check if the device id and code object id are compatible
     unsigned genericVersion = getGenericVersion(image);
     if (isCodeObjectCompatibleWithDevice(bundleEntryId, isa, genericVersion)) {
@@ -819,13 +692,86 @@ bool compileToBitCode(const amd_comgr_data_set_t compileInputs, const std::strin
   return true;
 }
 
+bool CheckIfBundled(std::vector<char>& llvm_bitcode) {
+  std::string magic(llvm_bitcode.begin(),
+                    llvm_bitcode.begin() + bundle_magic_string_size);
+
+  if (magic.compare(CLANG_OFFLOAD_BUNDLER_MAGIC_STR) == 0) {
+    return true;
+  }
+  // File is not bundled
+  return false;
+
+}
+// Unbundle Bitcode using COMGR action
+// Supports only 1 Bundle Entry ID for now
+bool UnbundleUsingComgr(std::vector<char>& source, const std::string& isa,
+                        std::vector<std::string>& linkOptions, std::string& buildLog,
+                        std::vector<char>& unbundled_bitcode, const char *bundleEntryIDs[],
+                        size_t bundleEntryIDsCount) {
+  amd_comgr_data_set_t linkinput;
+  if (amd::Comgr::create_data_set(&linkinput) != AMD_COMGR_STATUS_SUCCESS) {
+     return false;
+  }
+  std::string name = "UnbundleCode.bc";
+  if (!helpers::addCodeObjData(linkinput, source, name, AMD_COMGR_DATA_KIND_BC_BUNDLE)) {
+   return false;
+  }
+
+  amd_comgr_action_info_t action;
+  if (createAction(action, linkOptions, isa, AMD_COMGR_LANGUAGE_NONE) != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  if (bundleEntryIDsCount > 1) {
+    LogError("Error in hip Linker : bundleEntryID count > 1");
+    return false;
+  }
+
+  if(amd::Comgr::action_info_set_bundle_entry_ids(action, bundleEntryIDs, bundleEntryIDsCount) != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    return false;
+  }
+
+  amd_comgr_data_set_t output;
+  if (amd::Comgr::create_data_set(&output) != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    return false;
+  }
+
+  if (auto res =
+          amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE, action, linkinput, output);
+      res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+   if (!extractBuildLog(output, buildLog)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  if (!extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, unbundled_bitcode)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  amd::Comgr::destroy_action_info(action);
+  amd::Comgr::destroy_data_set(output);
+  amd::Comgr::destroy_data_set(linkinput);
+  return true;
+}
+
 bool linkLLVMBitcode(const amd_comgr_data_set_t linkInputs, const std::string& isa,
                      std::vector<std::string>& linkOptions, std::string& buildLog,
                      std::vector<char>& LinkedLLVMBitcode) {
-  amd_comgr_language_t lang = AMD_COMGR_LANGUAGE_HIP;
+  const amd_comgr_language_t lang = AMD_COMGR_LANGUAGE_HIP;
   amd_comgr_action_info_t action;
 
-  if (auto res = createAction(action, linkOptions, isa, AMD_COMGR_LANGUAGE_HIP);
+  if (auto res = createAction(action, linkOptions, isa, lang);
       res != AMD_COMGR_STATUS_SUCCESS) {
     return false;
   }
@@ -860,13 +806,64 @@ bool linkLLVMBitcode(const amd_comgr_data_set_t linkInputs, const std::string& i
   return true;
 }
 
+bool convertSPIRVToLLVMBC(const amd_comgr_data_set_t linkInputs, const std::string& isa,
+                      std::vector<std::string>& linkOptions, std::string& buildLog,
+                      std::vector<char>& LinkedLLVMBitcode) {
+  amd_comgr_action_info_t action;
+
+  if (auto res = createAction(action, linkOptions, isa, AMD_COMGR_LANGUAGE_NONE);
+      res != AMD_COMGR_STATUS_SUCCESS) {
+    return false;
+  }
+
+  amd_comgr_data_set_t output;
+  if (auto res = amd::Comgr::create_data_set(&output); res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    return false;
+  }
+
+  if (auto res =
+          amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action, linkInputs, output);
+      res != AMD_COMGR_STATUS_SUCCESS) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  if (!extractBuildLog(output, buildLog)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  if (!extractByteCodeBinary(output, AMD_COMGR_DATA_KIND_BC, LinkedLLVMBitcode)) {
+    amd::Comgr::destroy_action_info(action);
+    amd::Comgr::destroy_data_set(output);
+    return false;
+  }
+
+  amd::Comgr::destroy_action_info(action);
+  amd::Comgr::destroy_data_set(output);
+  return true;
+}
+
 bool createExecutable(const amd_comgr_data_set_t linkInputs, const std::string& isa,
                       std::vector<std::string>& exeOptions, std::string& buildLog,
-                      std::vector<char>& executable) {
+                      std::vector<char>& executable, bool spirv_bc /* default false */) {
   amd_comgr_action_info_t action;
 
   if (auto res = createAction(action, exeOptions, isa); res != AMD_COMGR_STATUS_SUCCESS) {
     return false;
+  }
+
+  // If SPIRV bitcode was processed, make sure we link device libs to it
+  if (spirv_bc) {
+    if (auto res = amd::Comgr::action_info_set_device_lib_linking(action, true);
+        res != AMD_COMGR_STATUS_SUCCESS) {
+      LogError("Can not link device libs to action");
+      amd::Comgr::destroy_action_info(action);
+      return false;
+    }
   }
 
   amd_comgr_data_set_t relocatableData;
@@ -951,63 +948,6 @@ void GenerateUniqueFileName(std::string& name) {
   unlink(name_template);
   close(temp_fd);
 #endif
-}
-
-bool dumpIsaFromBC(const amd_comgr_data_set_t isaInputs, const std::string& isa,
-                   std::vector<std::string>& exeOptions, std::string name, std::string& buildLog) {
-  amd_comgr_action_info_t action;
-
-  if (auto res = createAction(action, exeOptions, isa); res != AMD_COMGR_STATUS_SUCCESS) {
-    return false;
-  }
-
-  amd_comgr_data_set_t isaData;
-  if (auto res = amd::Comgr::create_data_set(&isaData); res != AMD_COMGR_STATUS_SUCCESS) {
-    amd::Comgr::destroy_action_info(action);
-    return false;
-  }
-
-  if (auto res = amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_ASSEMBLY, action, isaInputs,
-                                       isaData);
-      res != AMD_COMGR_STATUS_SUCCESS) {
-    extractBuildLog(isaData, buildLog);
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-
-  std::vector<char> isaOutput;
-  if (!extractByteCodeBinary(isaData, AMD_COMGR_DATA_KIND_SOURCE, isaOutput)) {
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-
-  if (name.size() == 0) {
-    // Generate a unique name if the program name is not specified by the user
-    name = std::string("hiprtcXXXXXX");
-    GenerateUniqueFileName(name);
-  }
-  std::string isaName = isa;
-#if defined(_WIN32)
-  // Replace special charaters that are not supported by Windows FS.
-  std::replace(isaName.begin(), isaName.end(), ':', '@');
-#endif
-
-  auto isaFileName = name + std::string("-hip-") + isaName + ".s";
-  std::ofstream f(isaFileName.c_str(), std::ios::trunc | std::ios::binary);
-  if (f.is_open()) {
-    f.write(isaOutput.data(), isaOutput.size());
-    f.close();
-  } else {
-    buildLog += "Warning: writing isa file failed.\n";
-    amd::Comgr::destroy_action_info(action);
-    amd::Comgr::destroy_data_set(isaData);
-    return false;
-  }
-  amd::Comgr::destroy_action_info(action);
-  amd::Comgr::destroy_data_set(isaData);
-  return true;
 }
 
 bool demangleName(const std::string& mangledName, std::string& demangledName) {
@@ -1127,5 +1067,467 @@ bool fillMangledNames(std::vector<char>& dataVec, std::map<std::string, std::str
   return true;
 }
 
+const std::map<std::string, std::string>& GenericTargetMapping() {
+  // The map is subject to change per removing policy
+  static const std::map<std::string, std::string> genericTargetMap{
+    // "gfx9-generic"
+    {"gfx900", "gfx9-generic"},
+    {"gfx902", "gfx9-generic"},
+    {"gfx904", "gfx9-generic"},
+    {"gfx906", "gfx9-generic"},
+    {"gfx909", "gfx9-generic"},
+    {"gfx90c", "gfx9-generic"},
+    // "gfx9-4-generic"
+    {"gfx942", "gfx9-4-generic"},
+    {"gfx950", "gfx9-4-generic"},
+    // "gfx10-1-generic"
+    {"gfx1010", "gfx10-1-generic"},
+    {"gfx1011", "gfx10-1-generic"},
+    {"gfx1012", "gfx10-1-generic"},
+    {"gfx1013", "gfx10-1-generic"},
+    // "gfx10-3-generic"
+    {"gfx1030", "gfx10-3-generic"},
+    {"gfx1031", "gfx10-3-generic"},
+    {"gfx1032", "gfx10-3-generic"},
+    {"gfx1033", "gfx10-3-generic"},
+    {"gfx1034", "gfx10-3-generic"},
+    {"gfx1035", "gfx10-3-generic"},
+    {"gfx1036", "gfx10-3-generic"},
+    // "gfx11-generic"
+    {"gfx1100", "gfx11-generic"},
+    {"gfx1101", "gfx11-generic"},
+    {"gfx1102", "gfx11-generic"},
+    {"gfx1103", "gfx11-generic"},
+    {"gfx1150", "gfx11-generic"},
+    {"gfx1151", "gfx11-generic"},
+    // "gfx12-generic"
+    {"gfx1200", "gfx12-generic"},
+    {"gfx1201", "gfx12-generic"},
+  };
+  return genericTargetMap;
+}
+
+bool IsCompatibleWithGenericTarget(const std::string& coTarget, const std::string& agentTarget) {
+  auto& map = GenericTargetMapping();
+  auto search = map.find(agentTarget);
+  return search != map.end() && coTarget == search->second;
+}
 }  // namespace helpers
-}  // namespace hiprtc
+
+std::vector<std::string> getLinkOptions(const LinkArguments& args) {
+  std::vector<std::string> res;
+
+  {  // process optimization level
+    std::string opt("-O");
+    opt += std::to_string(args.optimization_level_);
+    res.push_back(opt);
+  }
+
+  const auto irArgCount = args.linker_ir2isa_args_count_;
+  if (irArgCount > 0) {
+    res.reserve(irArgCount);
+    const auto irArg = args.linker_ir2isa_args_;
+    for (size_t i = 0; i < irArgCount; i++) {
+      res.emplace_back(std::string(irArg[i]));
+    }
+  }
+  return res;
+}
+
+// RTC Program Member Functions
+RTCProgram::RTCProgram(std::string name) : name_(name) {
+  constexpr bool kComgrVersioned = true;
+  std::call_once(amd::Comgr::initialized, amd::Comgr::LoadLib, kComgrVersioned);
+  if (amd::Comgr::create_data_set(&exec_input_) != AMD_COMGR_STATUS_SUCCESS) {
+    guarantee(false, "Failed to allocate internal hiprtc structure");
+  }
+}
+
+bool RTCProgram::findIsa() {
+
+#ifdef BUILD_SHARED_LIBS
+  const char* libName;
+#ifdef _WIN32
+  std::string dll_name = std::string("amdhip64_" + std::to_string(HIP_VERSION_MAJOR) + ".dll");
+  libName = dll_name.c_str();
+#else
+  libName = "libamdhip64.so";
+#endif
+
+  void* handle = amd::Os::loadLibrary(libName);
+
+  if (!handle) {
+    LogInfo("hip runtime failed to load using dlopen");
+    build_log_ +=
+        "hip runtime failed to load.\n"
+        "Error: Please provide architecture for which code is to be "
+        "generated.\n";
+    return false;
+  }
+
+  void* sym_hipGetDevice = amd::Os::getSymbol(handle, "hipGetDevice");
+  void* sym_hipGetDeviceProperties =
+      amd::Os::getSymbol(handle, "hipGetDevicePropertiesR0600");  // Try to find the new symbol
+  if (sym_hipGetDeviceProperties == nullptr) {
+    sym_hipGetDeviceProperties =
+        amd::Os::getSymbol(handle, "hipGetDeviceProperties");  // Fall back to old one
+  }
+
+  if (sym_hipGetDevice == nullptr || sym_hipGetDeviceProperties == nullptr) {
+    LogInfo("ISA cannot be found to dlsym failure");
+    build_log_ +=
+        "ISA cannot be found from hip runtime.\n"
+        "Error: Please provide architecture for which code is to be "
+        "generated.\n";
+    return false;
+  }
+
+  hipError_t (*dyn_hipGetDevice)(int*) = reinterpret_cast<hipError_t (*)(int*)>(sym_hipGetDevice);
+
+  hipError_t (*dyn_hipGetDeviceProperties)(hipDeviceProp_t*, int) =
+      reinterpret_cast<hipError_t (*)(hipDeviceProp_t*, int)>(sym_hipGetDeviceProperties);
+
+  int device;
+  hipError_t status = dyn_hipGetDevice(&device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  hipDeviceProp_t props;
+  status = dyn_hipGetDeviceProperties(&props, device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  isa_ = "amdgcn-amd-amdhsa--";
+  isa_.append(props.gcnArchName);
+
+  amd::Os::unloadLibrary(handle);
+  return true;
+
+#else
+  int device;
+  hipError_t status = hipGetDevice(&device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  hipDeviceProp_t props;
+  status = hipGetDeviceProperties(&props, device);
+  if (status != hipSuccess) {
+    return false;
+  }
+  isa_ = "amdgcn-amd-amdhsa--";
+  isa_.append(props.gcnArchName);
+
+  return true;
+#endif
+}
+
+// RTC Program Member Functions
+void RTCProgram::AppendOptions(const std::string app_env_var, std::vector<std::string>* options) {
+  if (options == nullptr) {
+    LogError("Append options passed is nullptr.");
+    return;
+  }
+
+  std::stringstream ss(app_env_var);
+  std::istream_iterator<std::string> begin{ss}, end;
+  options->insert(options->end(), begin, end);
+}
+
+// HIPRTC Program lock
+amd::Monitor RTCProgram::lock_(true);
+
+LinkProgram::LinkProgram(std::string name) : RTCProgram(name) {
+  if (amd::Comgr::create_data_set(&link_input_) != AMD_COMGR_STATUS_SUCCESS) {
+    guarantee(false, "Failed to allocate internal comgr structure");
+  }
+  amd::ScopedLock lock(lock_);
+  linker_set_.insert(this);
+}
+
+bool LinkProgram::isLinkerValid(LinkProgram* link_program) {
+  amd::ScopedLock lock(lock_);
+  if (linker_set_.find(link_program) == linker_set_.end()) {
+    return false;
+  }
+  return true;
+}
+
+bool LinkProgram::AddLinkerOptions(unsigned int num_options, hipJitOption* options_ptr,
+                                      void** options_vals_ptr) {
+  for (size_t opt_idx = 0; opt_idx < num_options; ++opt_idx) {
+    if ( options_vals_ptr[opt_idx] == nullptr) {
+      LogError("Options value can not be nullptr");
+      return false;
+    }
+    switch (options_ptr[opt_idx]) {
+      case hipJitOptionMaxRegisters:
+        link_args_.max_registers_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionThreadsPerBlock:
+        link_args_.threads_per_block_ =
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionWallTime:
+        link_args_.wall_time_ = *(reinterpret_cast<long*>(options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionInfoLogBuffer: {
+        link_args_.info_log_ = (reinterpret_cast<char*>(options_vals_ptr[opt_idx]));
+        break;
+      }
+      case hipJitOptionInfoLogBufferSizeBytes:
+        link_args_.info_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionErrorLogBuffer: {
+        link_args_.error_log_ = reinterpret_cast<char*>(options_vals_ptr[opt_idx]);
+        break;
+      }
+      case hipJitOptionErrorLogBufferSizeBytes:
+        link_args_.error_log_size_ = (reinterpret_cast<size_t>(options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionOptimizationLevel:
+        link_args_.optimization_level_ =
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionTargetFromContext:
+        link_args_.target_from_hip_context_ =
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionTarget:
+        link_args_.jit_target_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionFallbackStrategy:
+        link_args_.fallback_strategy_ =
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionGenerateDebugInfo:
+        link_args_.generate_debug_info_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionLogVerbose:
+        link_args_.log_verbose_ = reinterpret_cast<size_t>(options_vals_ptr[opt_idx]);
+        break;
+      case hipJitOptionGenerateLineInfo:
+        link_args_.generate_line_info_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionCacheMode:
+        link_args_.cache_mode_ = *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionSm3xOpt:
+        link_args_.sm3x_opt_ = *(reinterpret_cast<bool*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionFastCompile:
+        link_args_.fast_compile_ = *(reinterpret_cast<bool*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionGlobalSymbolNames: {
+        link_args_.global_symbol_names_ = reinterpret_cast<const char**>(options_vals_ptr[opt_idx]);
+        break;
+      }
+      case hipJitOptionGlobalSymbolAddresses: {
+        link_args_.global_symbol_addresses_ = reinterpret_cast<void**>(options_vals_ptr[opt_idx]);
+        break;
+      }
+      case hipJitOptionGlobalSymbolCount:
+        link_args_.global_symbol_count_ =
+            *(reinterpret_cast<unsigned int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionLto:
+        link_args_.lto_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionFtz:
+        link_args_.ftz_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionPrecDiv:
+        link_args_.prec_div_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionPrecSqrt:
+        link_args_.prec_sqrt_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionFma:
+        link_args_.fma_ = *(reinterpret_cast<int*>(&options_vals_ptr[opt_idx]));
+        break;
+      case hipJitOptionPositionIndependentCode:
+        link_args_.pic_ = *(reinterpret_cast<int *>(&options_vals_ptr[opt_idx]));
+      case hipJitOptionMinCTAPerSM:
+        link_args_.min_cta_per_sm_ = *(reinterpret_cast<int *>(&options_vals_ptr[opt_idx]));
+      case hipJitOptionMaxThreadsPerBlock:
+        link_args_.max_threads_per_block_ = *(reinterpret_cast<int *>(&options_vals_ptr[opt_idx]));
+      case hipJitOptionOverrideDirectiveValues:
+        link_args_.override_directive_values_ = *(reinterpret_cast<int *>(&options_vals_ptr[opt_idx]));
+      case hipJitOptionIRtoISAOptExt: {
+        link_args_.linker_ir2isa_args_ = reinterpret_cast<const char**>(options_vals_ptr[opt_idx]);
+        break;
+      }
+      case hipJitOptionIRtoISAOptCountExt:
+        link_args_.linker_ir2isa_args_count_ = reinterpret_cast<size_t>(options_vals_ptr[opt_idx]);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return true;
+}
+
+
+
+amd_comgr_data_kind_t LinkProgram::GetCOMGRDataKind(hipJitInputType input_type) {
+  amd_comgr_data_kind_t data_kind = AMD_COMGR_DATA_KIND_UNDEF;
+
+  // Map the hiprtc input type to comgr data kind
+  switch (input_type) {
+    case hipJitInputLLVMBitcode:
+      data_kind = AMD_COMGR_DATA_KIND_BC;
+      break;
+    case hipJitInputLLVMBundledBitcode:
+      data_kind =
+          HIPRTC_USE_RUNTIME_UNBUNDLER ? AMD_COMGR_DATA_KIND_BC : AMD_COMGR_DATA_KIND_BC_BUNDLE;
+      break;
+    case hipJitInputLLVMArchivesOfBundledBitcode:
+      data_kind = AMD_COMGR_DATA_KIND_AR_BUNDLE;
+      break;
+    case hipJitInputSpirv:
+      data_kind = AMD_COMGR_DATA_KIND_SPIRV;
+      break;
+    default:
+      LogError("hip link : Cannot find the corresponding comgr data kind");
+      break;
+  }
+
+  return data_kind;
+}
+
+
+bool LinkProgram::AddLinkerDataImpl(std::vector<char>& link_data, hipJitInputType input_type,
+                                       std::string& link_file_name) {
+  std::vector<char> llvm_code_object;
+  is_bundled_ = helpers::CheckIfBundled(link_data);
+
+  if (HIPRTC_USE_RUNTIME_UNBUNDLER && input_type == hipJitInputLLVMBundledBitcode) {
+    if (!findIsa()) {
+      return false;
+    }
+
+    size_t co_offset = 0;
+    size_t co_size = 0;
+    if (!helpers::UnbundleBitCode(link_data, isa_, co_offset, co_size)) {
+      LogError("Error in hip Linker: unable to unbundle the llvm bitcode");
+      return false;
+    }
+
+    llvm_code_object.assign(link_data.begin() + co_offset, link_data.begin() + co_offset + co_size);
+  } else if (is_bundled_ && input_type == hipJitInputSpirv) {
+    const char* bundleEntryIDs[] = { helpers::SPIRV_BUNDLE_ENTRY_ID };
+    size_t bundleEntryIDsCount = sizeof(bundleEntryIDs) / sizeof(bundleEntryIDs[0]);
+    if(!helpers::UnbundleUsingComgr(link_data, isa_, link_options_, build_log_, llvm_code_object,
+                                    bundleEntryIDs, bundleEntryIDsCount)) {
+      LogError("Error in hip Linker: Unable to unbundle SPIRV Bitcode");
+      return false;
+    }
+  } else {
+      llvm_code_object.assign(link_data.begin(), link_data.end());
+  }
+
+  if ((data_kind_ = GetCOMGRDataKind(input_type)) == AMD_COMGR_DATA_KIND_UNDEF) {
+      LogError("Cannot find the correct COMGR data kind");
+      return false;
+  }
+
+  if (!helpers::addCodeObjData(link_input_, llvm_code_object, link_file_name, data_kind_)) {
+    LogError("Error in hip Linker: unable to add linked code object");
+    return false;
+  }
+
+  return true;
+}
+
+
+bool LinkProgram::AddLinkerFile(std::string file_path, hipJitInputType input_type) {
+  std::ifstream file_stream{file_path, std::ios_base::in | std::ios_base::binary};
+  if (!file_stream.good()) {
+    return false;
+  }
+
+  file_stream.seekg(0, std::ios::end);
+  std::streampos file_size = file_stream.tellg();
+  file_stream.seekg(0, std::ios::beg);
+
+  // Read the file contents
+  std::vector<char> link_file_info(file_size);
+  file_stream.read(link_file_info.data(), file_size);
+
+  file_stream.close();
+
+  std::string link_file_name("LinkerProgram");
+
+  return AddLinkerDataImpl(link_file_info, input_type, link_file_name);
+}
+
+bool LinkProgram::AddLinkerData(void* image_ptr, size_t image_size, std::string link_file_name,
+                                   hipJitInputType input_type) {
+  char* image_char_buf = reinterpret_cast<char*>(image_ptr);
+  std::vector<char> llvm_code_object(image_char_buf, image_char_buf + image_size);
+
+  return AddLinkerDataImpl(llvm_code_object, input_type, link_file_name);
+}
+
+bool LinkProgram::LinkComplete(void** bin_out, size_t* size_out) {
+  if (!findIsa()) {
+    return false;
+  }
+
+  // If the data kind is SPIRV, convert it beforehand and pass it on to subsequent machinery
+  // TODO I think this can be simplified a bit, we are basically reading and writing into comgr data
+  // structures, do we need to do that? This might cause some errors, so adding this to come back to
+  // it.
+  amd_comgr_data_set_t link_input = link_input_;
+  if (data_kind_ == AMD_COMGR_DATA_KIND_SPIRV) {
+    // Convert SPIRV Unbundled code object to LLVM Bitcode
+    std::vector<char> llvmbc_from_spirv;
+    if (!helpers::convertSPIRVToLLVMBC(link_input_, isa_, link_options_, build_log_, llvmbc_from_spirv)) {
+      LogError("Error in hip Linker: unable to convert SPIRV to BC");
+      return false;
+    }
+
+    std::string linkedFileName = "LLVMBitcodeFromSPIRV.bc";
+    if (!helpers::addCodeObjData(link_input, llvmbc_from_spirv, linkedFileName, AMD_COMGR_DATA_KIND_BC)) {
+      LogError("Error in hip Linker: unable to add linked LLVM bitcode");
+      return false;
+    }
+  }
+
+  std::vector<char> llvm_bitcode;
+  if (!helpers::linkLLVMBitcode(link_input, isa_, link_options_, build_log_, llvm_bitcode)) {
+    LogError("Error in hip linker: unable to add device libs to linked bitcode");
+    return false;
+  }
+
+  std::string linkedFileName = "LLVMBitcode.bc";
+  if (!helpers::addCodeObjData(exec_input_, llvm_bitcode, linkedFileName, AMD_COMGR_DATA_KIND_BC)) {
+    LogError("Error in hip linker: unable to add linked bitcode");
+    return false;
+  }
+
+  std::vector<std::string> exe_options = getLinkOptions(link_args_);
+  LogPrintfInfo("Exe options forwarded to compiler: %s",
+                [&]() {
+                  std::string ret;
+                  for (const auto& i : exe_options) {
+                    ret += i;
+                    ret += " ";
+                  }
+                  return ret;
+                }()
+                    .c_str());
+  if (!helpers::createExecutable(exec_input_, isa_, exe_options, build_log_, executable_,
+                        data_kind_ == AMD_COMGR_DATA_KIND_SPIRV)) {
+    LogPrintfInfo("Error in hip linker: unable to create exectuable: %s", build_log_.c_str());
+    return false;
+  }
+
+  *size_out = executable_.size();
+  *bin_out = executable_.data();
+
+  return true;
+}
+
+
+}  // namespace hip

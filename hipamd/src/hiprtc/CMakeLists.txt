@@ -24,12 +24,7 @@
 # Depends on: rocclr, so find_package(rocclr) will be required
 # Building hip header requires hip include folders with hip_version.h
 
-cmake_minimum_required(VERSION 3.16.1)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
-
-if (POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -73,7 +68,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+target_sources(hiprtc PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
 
 set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
@@ -238,12 +233,12 @@ add_custom_command(
   COMMAND ${clang} -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
   DEPENDS ${clang} ${HIPRTC_GEN_PREPROCESSED})
 
-target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
+target_sources(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
 if(NOT WIN32)
   if (BUILD_SHARED_LIBS)
-    target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+    target_sources(amdhip64 PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
   endif()
 endif()
 

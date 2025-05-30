@@ -68,7 +68,7 @@ void OCLMemoryInfo::open(unsigned int test, char* units, double& conversion,
   cl_bool is_apu = false;
   error_ = clGetDeviceInfo(devices_[deviceId], CL_DEVICE_HOST_UNIFIED_MEMORY,
                            sizeof(cl_bool), &is_apu, nullptr);
-  if (is_apu && (test == 1)) {
+  if (is_apu) {
     printf("Test not supported for apus, skipping...\n");
     failed_ = true;
     return;

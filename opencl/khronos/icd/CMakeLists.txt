@@ -1,5 +1,4 @@
 cmake_minimum_required (VERSION 3.5)
-
 project (OPENCL_ICD_LOADER)
 include (GNUInstallDirs)
 find_package (Threads REQUIRED)

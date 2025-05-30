@@ -178,11 +178,10 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return nullptr;
   }
-  device::Memory* createMemory(size_t size) const override {
+  device::Memory* createMemory(size_t size, size_t alignment = 0) const override {
     ShouldNotReachHere();
     return nullptr;
   }
-
   //! Sampler object allocation
   bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                      device::Sampler** sampler   //!< device sampler object
@@ -329,50 +328,7 @@ struct AgentInfo {
 //! A HSA device ordinal (physical HSA device)
 class Device : public NullDevice {
  public:
-  //! Transfer buffers
-  class XferBuffers : public amd::HeapObject {
-   public:
-    static const size_t MaxXferBufListSize = 8;
-
-    //! Default constructor
-    XferBuffers(const Device& device, size_t bufSize)
-        : bufSize_(bufSize), acquiredCnt_(0), gpuDevice_(device) {}
-
-    //! Default destructor
-    ~XferBuffers();
-
-    //! Creates the xfer buffers object
-    bool create();
-
-    //! Acquires an instance of the transfer buffers
-    Memory& acquire();
-
-    //! Releases transfer buffer
-    void release(VirtualGPU& gpu,  //!< Virual GPU object used with the buffer
-                 Memory& buffer    //!< Transfer buffer for release
-                 );
-
-    //! Returns the buffer's size for transfer
-    size_t bufSize() const { return bufSize_; }
-
-   private:
-    //! Disable copy constructor
-    XferBuffers(const XferBuffers&);
-
-    //! Disable assignment operator
-    XferBuffers& operator=(const XferBuffers&);
-
-    //! Get device object
-    const Device& dev() const { return gpuDevice_; }
-
-    size_t bufSize_;                  //!< Staged buffer size
-    std::list<Memory*> freeBuffers_;  //!< The list of free buffers
-    std::atomic_uint acquiredCnt_;   //!< The total number of acquired buffers
-    amd::Monitor lock_;               //!< Stgaed buffer acquire/release lock
-    const Device& gpuDevice_;         //!< GPU device object
-  };
-
-  //! Initialise the whole HSA device subsystem (CAL init, device enumeration, etc).
+  //! Initialise the whole HSA device subsystem (init, device enumeration, etc).
   static bool init();
   static void tearDown();
 
@@ -412,8 +368,7 @@ class Device : public NullDevice {
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
 
   virtual device::Memory* createMemory(amd::Memory& owner) const;
-  virtual device::Memory* createMemory(size_t size) const;
-
+  virtual device::Memory* createMemory(size_t size, size_t alignment = 0) const;
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                              device::Sampler** sampler   //!< device sampler object
@@ -476,7 +431,8 @@ class Device : public NullDevice {
                                 amd::MemoryAdvice advice, bool use_cpu = false) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
-
+  virtual size_t ScratchLimitCurrent() const final;
+  virtual bool UpdateScratchLimitCurrent(size_t limit) const final;
   virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
   virtual bool virtualFree(void* addr);
 
@@ -517,9 +473,6 @@ class Device : public NullDevice {
   //! Adds a map target to the cache
   bool addMapTarget(amd::Memory* memory) const;
 
-  //! Returns transfer buffer object
-  XferBuffers& xferRead() const { return *xferRead_; }
-
   //! Returns a ROC memory object from AMD memory object
   roc::Memory* getRocMemory(amd::Memory* mem  //!< Pointer to AMD memory object
                             ) const;
@@ -557,10 +510,15 @@ class Device : public NullDevice {
   //! share previously created
   hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false,
                             const std::vector<uint32_t>& cuMask = {},
-                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
+                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal,
+                            bool managed = false);
 
   //! Release HSA queue
-  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {}, bool coop_queue = false);
+  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {},
+                    bool coop_queue = false, bool managed = false);
+
+  hsa_queue_t* AcquireActiveNormalQueue();
+  bool ReleaseActiveNormalQueue(hsa_queue_t* queue);
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
@@ -583,6 +541,10 @@ class Device : public NullDevice {
 
   void getGlobalCUMask(std::string cuMaskStr);
 
+  static hsa_status_t BackendErrorCallBackHandler(const hsa_amd_event_t* event, void* data);
+
+  static void RegisterBackendErrorCb();
+
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0);
 
   const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
@@ -604,6 +566,9 @@ class Device : public NullDevice {
   void AddKernel(Kernel& gpuKernel) const;
   //! Removes a kernel from the kernel map
   void RemoveKernel(Kernel& gpuKernel) const;
+
+  // Returns the number of allocated normal queues on this device
+  uint32_t NumNormalQueues() const { return num_normal_queues_.load(); }
 
  private:
   bool create();
@@ -648,19 +613,30 @@ class Device : public NullDevice {
   static constexpr bool offlineDevice_ = false;
   VirtualGPU* xferQueue_;  //!< Transfer queue, created on demand
 
-  XferBuffers* xferRead_;   //!< Transfer buffers read
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode
   static address mg_sync_;  //!< MGPU grid launch sync memory (SVM location)
 
   struct QueueInfo {
-    int refCount;
-    void* hostcallBuffer_;
+    int refCount;           //! Reference counter. Shows how many time the queue was shared
+    void* hostcallBuffer_;  //! Host call buffer for the HSA queue
   };
 
+  struct QueueCompare {
+    // Customized queue compare operator to make sure the queues are sorted in the creation order
+    bool operator()(hsa_queue_t* lhs, hsa_queue_t* rhs) const {
+      if (DEBUG_HIP_DYNAMIC_QUEUES) {
+        return (lhs->id < rhs->id) ? true : false;
+      } else {
+        return (lhs < rhs) ? true : false;
+      }
+    }
+  };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queuePool_;
+  amd::Monitor active_queue_access_;                //!< Lock to serialise virtual gpu list access
+  std::atomic<uint32_t> num_normal_queues_{0};      //!< The total number of allocated normal queues
 
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
   hsa_queue_t* getQueueFromPool(const uint qIndex);
@@ -671,7 +647,7 @@ class Device : public NullDevice {
                             std::vector<LinkAttrType>* link_attr);
 
   //! Pool of HSA queues with custom CU masks
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queueWithCUMaskPool_;
 
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;
@@ -680,6 +656,9 @@ class Device : public NullDevice {
 
   //! Code object to kernel info map (used in the crash dump analysis)
   mutable std::map<uint64_t, Kernel&> kernel_map_;
+
+  //! Friend function callbackQueue can access and set device class variables.
+  friend void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data);
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index

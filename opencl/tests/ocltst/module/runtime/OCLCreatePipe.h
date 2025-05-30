@@ -1,4 +1,4 @@
-/* Copyright (c) 2008 - 2021 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -18,59 +18,20 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifndef SEMAPHORE_HPP_
-#define SEMAPHORE_HPP_
+#ifndef _OCL_OCLCreatePipe_H_
+#define _OCL_OCLCreatePipe_H_
 
-#include "top.hpp"
-#include "utils/util.hpp"
+#include "OCLTestImp.h"
 
-#include <atomic>
-#if defined(__linux__)
-#include <semaphore.h>
-#endif /*linux*/
+class OCLCreatePipe : public OCLTestImp {
+ public:
+  OCLCreatePipe();
+  virtual ~OCLCreatePipe();
 
-
-namespace amd {
-
-/*! \addtogroup Threads
- *  @{
- *
- *  \addtogroup Synchronization
- *  @{
- */
-
-class Thread;
-
-//! \brief Counting semaphore
-class Semaphore : public HeapObject {
- private:
-  std::atomic_int state_;  //!< This semaphore's value.
-
-#ifdef _WIN32
-  void* handle_;  //!< The semaphore object's handle.
-#else  // !_WIN32
-  sem_t sem_;  //!< The semaphore object's identifier.
-#endif /*!_WIN32*/
-
-public:
-  Semaphore();
-  ~Semaphore();
-
-  //! \brief Decrement this semaphore
-  void wait();
-  void timedWait(int millis);
-
-  //! \brief Increment this semaphore
-  void post();
-
-  //! \brief Reset this semaphore.
-  void reset() { state_.store(0, std::memory_order_release); }
+ public:
+  virtual void open(unsigned int test, char* units, double& conversion,
+                    unsigned int deviceID);
+  virtual void run(void);
 };
 
-/*! @}
- *  @}
- */
-
-}  // namespace amd
-
-#endif /*SEMAPHORE_HPP_*/
+#endif  // _OCL_OCLCreatePipe_H_

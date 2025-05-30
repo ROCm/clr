@@ -138,12 +138,7 @@ hipError_t Event::elapsedTime(Event& eStop, float& ms) {
     // Hence for now make sure CPU status is updated by calling awaitCompletion();
     awaitEventCompletion();
     eStop.awaitEventCompletion();
-    if (unrecorded_ && eStop.isUnRecorded()) {
-      // Both the events are not recorded, just need the end and start of stop event
-      ms = static_cast<float>(eStop.time(false) - eStop.time(true)) / 1000000.f;
-    } else {
-      ms = static_cast<float>(eStop.time(false) - time(false)) / 1000000.f;
-    }
+    ms = static_cast<float>(eStop.time(false) - time(false)) / 1000000.f;
   }
   return hipSuccess;
 }
@@ -171,7 +166,7 @@ int64_t EventDD::time(bool getStartTs) const {
     return static_cast<int64_t>(end);
   }
 }
-
+// ================================================================================================
 hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream) {
   amd::Command::EventWaitList eventWaitList;
   if (event_ != nullptr) {
@@ -180,38 +175,29 @@ hipError_t Event::streamWaitCommand(amd::Command*& command, hip::Stream* stream)
   command = new amd::Marker(*stream, kMarkerDisableFlush, eventWaitList);
   // Since we only need to have a dependency on an existing event,
   // we may not need to flush any caches.
-  command->setEventScope(amd::Device::kCacheStateIgnore);
+  command->setCommandEntryScope(amd::Device::kCacheStateIgnore);
 
   if (command == NULL) {
     return hipErrorOutOfMemory;
   }
   return hipSuccess;
 }
-
-hipError_t Event::enqueueStreamWaitCommand(hipStream_t stream, amd::Command* command) {
-  command->enqueue();
-  return hipSuccess;
-}
-
-hipError_t Event::streamWait(hipStream_t stream, uint flags) {
-  hip::Stream* hip_stream = hip::getStream(stream);
+// ================================================================================================
+hipError_t Event::streamWait(hip::Stream* stream, uint flags) {
   // Access to event_ object must be lock protected
   amd::ScopedLock lock(lock_);
-  if ((event_ == nullptr) || (event_->command().queue() == hip_stream) || ready()) {
+  if ((event_ == nullptr) || (event_->command().queue() == stream) || ready()) {
     return hipSuccess;
   }
   if (!event_->notifyCmdQueue()) {
     return hipErrorLaunchOutOfResources;
   }
   amd::Command* command;
-  hipError_t status = streamWaitCommand(command, hip_stream);
+  hipError_t status = streamWaitCommand(command, stream);
   if (status != hipSuccess) {
     return status;
   }
-  status = enqueueStreamWaitCommand(stream, command);
-  if (status != hipSuccess) {
-    return status;
-  }
+  command->enqueue();
   command->release();
   return hipSuccess;
 }
@@ -229,13 +215,15 @@ hipError_t Event::recordCommand(amd::Command*& command, amd::HostQueue* stream,
       releaseFlags = amd::Device::kCacheStateInvalid;
     }
     // Always submit a EventMarker.
-    command = new hip::EventMarker(*stream, !kMarkerDisableFlush, true, releaseFlags, batch_flush);
+    constexpr bool kMarkerTs = true;
+    command =
+        new hip::EventMarker(*stream, !kMarkerDisableFlush, kMarkerTs, releaseFlags, batch_flush);
   }
   return hipSuccess;
 }
 
 // ================================================================================================
-hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command, bool record) {
+hipError_t Event::enqueueRecordCommand(hip::Stream* stream, amd::Command* command) {
   command->enqueue();
   if (event_ == &command->event()) {
     return hipSuccess;
@@ -244,24 +232,20 @@ hipError_t Event::enqueueRecordCommand(hipStream_t stream, amd::Command* command
     event_->release();
   }
   event_ = &command->event();
-  unrecorded_ = !record;
 
   return hipSuccess;
 }
 
 // ================================================================================================
-hipError_t Event::addMarker(hipStream_t stream, amd::Command* command,
-                            bool record, bool batch_flush) {
-  // Skip wait as we should not be resolving stream in this sub
-  constexpr bool kSkipWait = true;
-  hip::Stream* hip_stream = hip::getStream(stream, kSkipWait);
+hipError_t Event::addMarker(hip::Stream* hip_stream, amd::Command* command,
+                            bool batch_flush) {
   // Keep the lock always at the beginning of this to avoid a race. SWDEV-277847
   amd::ScopedLock lock(lock_);
   hipError_t status = recordCommand(command, hip_stream, 0, batch_flush);
   if (status != hipSuccess) {
     return hipSuccess;
   }
-  status = enqueueRecordCommand(stream, command, record);
+  status = enqueueRecordCommand(hip_stream, command);
   return status;
 }
 
@@ -327,6 +311,7 @@ hipError_t ihipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   return hipSuccess;
 }
 
+// ================================================================================================
 hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   HIP_INIT_API(hipEventCreateWithFlags, event, flags);
 
@@ -337,6 +322,7 @@ hipError_t hipEventCreateWithFlags(hipEvent_t* event, unsigned flags) {
   HIP_RETURN(ihipEventCreateWithFlags(event, flags), *event);
 }
 
+// ================================================================================================
 hipError_t hipEventCreate(hipEvent_t* event) {
   HIP_INIT_API(hipEventCreate, event);
 
@@ -347,6 +333,7 @@ hipError_t hipEventCreate(hipEvent_t* event) {
   HIP_RETURN(ihipEventCreateWithFlags(event, 0), *event);
 }
 
+// ================================================================================================
 hipError_t hipEventDestroy(hipEvent_t event) {
   HIP_INIT_API(hipEventDestroy, event);
 
@@ -363,7 +350,7 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   // There is a possibility that stream destroy be called first
   hipStream_t s = e->GetCaptureStream();
   if (hip::isValid(s)) {
-    if (e->GetCaptureStream() != nullptr) {
+    if (s != nullptr && s != hipStreamLegacy) {
       reinterpret_cast<hip::Stream*>(e->GetCaptureStream())->EraseCaptureEvent(event);
     }
   }
@@ -371,6 +358,7 @@ hipError_t hipEventDestroy(hipEvent_t event) {
   HIP_RETURN(hipSuccess);
 }
 
+// ================================================================================================
 hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_INIT_API(hipEventElapsedTime, ms, start, stop);
 
@@ -392,47 +380,67 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
 }
 
-hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
+// ================================================================================================
+hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  if (!(flags == hipEventRecordDefault || flags == hipEventRecordExternal)){
+    return hipErrorInvalidValue;
+  }
   hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
   getStreamPerThread(stream);
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   e->SetCaptureStream(stream);
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+  if ((stream != nullptr && stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     ClPrint(amd::LOG_INFO, amd::LOG_API,
         "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
-    if (!lastCapturedNodes.empty()) {
-      e->SetNodesPrevToRecorded(lastCapturedNodes);
+    e->SetNodesPrevToRecorded(lastCapturedNodes);
+    if (flags == hipEventRecordExternal) {
+      hip::GraphNode* pGraphNode;
+      status = hipGraphAddEventRecordNode((hipGraphNode_t*) pGraphNode, (hipGraph_t) s->GetCaptureGraph(),
+                                          (hipGraphNode_t*) s->GetLastCapturedNodes().data(),
+                                          s->GetLastCapturedNodes().size(), (hipEvent_t) e);
+      if (status != hipSuccess) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "hipEventRecord add external event node failed");
+        return status;
+      }
+      s->SetLastCapturedNode(pGraphNode);
     }
   } else {
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
     }
-    status = e->addMarker(stream, nullptr, true, !hip::Event::kBatchFlush);
+    status = e->addMarker(hip_stream, nullptr, !hip::Event::kBatchFlush);
   }
   return status;
 }
 
+// ================================================================================================
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
+// ================================================================================================
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
+// ================================================================================================
+hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  HIP_INIT_API(hipEventRecordWithFlags, event, stream, flags);
+  HIP_RETURN(hipEventRecord_common(event, stream, flags));
+}
+
+// ================================================================================================
 hipError_t hipEventSynchronize(hipEvent_t event) {
   HIP_INIT_API(hipEventSynchronize, event);
 
@@ -440,12 +448,14 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
     HIP_RETURN(hipErrorInvalidHandle);
   }
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
-      s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
-      HIP_RETURN(hipErrorCapturedEvent);
+  auto hip_stream = e->GetCaptureStream();
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hip_stream);
+  if ((hip_stream != nullptr && hip_stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+    s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+    HIP_RETURN(hipErrorCapturedEvent);
   }
-  if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream()) == true) {
+  if (hip::Stream::StreamCaptureOngoing(hip_stream) == true) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
@@ -455,14 +465,17 @@ hipError_t hipEventSynchronize(hipEvent_t event) {
   HIP_RETURN(status);
 }
 
+// ================================================================================================
 hipError_t ihipEventQuery(hipEvent_t event) {
   if (event == nullptr) {
     return hipErrorInvalidHandle;
   }
 
   hip::Event* e = reinterpret_cast<hip::Event*>(event);
-  hip::Stream* s = reinterpret_cast<hip::Stream*>(e->GetCaptureStream());
-  if ((s != nullptr) && (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
+  auto hip_stream = e->GetCaptureStream();
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(hip_stream);
+  if ((hip_stream != nullptr && hip_stream != hipStreamLegacy) &&
+      (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
     HIP_RETURN(hipErrorCapturedEvent);
   }

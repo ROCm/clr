@@ -208,8 +208,11 @@ class DmaBlitManager : public device::HostBlitManager {
   }
 
  protected:
-  static constexpr uint MaxPinnedBuffers = 4;
-
+  struct BufferState{
+    address buffer_;         //!< Staging Buffer or Pinned Host Mem Address
+    amd::Memory* pinnedMem_; //!< Pinned Memory
+    size_t copySize_;        //!< last copy size
+  };
   //! Synchronizes the blit operations if necessary
   inline void synchronize() const;
 
@@ -237,11 +240,32 @@ class DmaBlitManager : public device::HostBlitManager {
                              const_address src, hsa_agent_t& srcAgent, size_t size,
                              amd::CopyMetadata& copyMetadata) const;
 
-  const size_t MinSizeForPinnedTransfer;
+  // Get Pinned Host Memory or Staging Buffer
+  void getBuffer(const_address hostMem,         //!< Host Mem Address
+                 size_t size,            //!< Transfer Size
+                 bool enablePin,         //!< True when Pinning is enabled
+                 bool first_tx,          //!< True for first copy
+                 BufferState &buffer     //!< State of Buffer
+                ) const;
+
+  // Release Pinned host memory
+  void releaseBuffer(BufferState &buff //!< True if last copy used Pinned resource
+                    ) const;
+
+  bool hsaCopyStagedOrPinned(const_address hostSrc,             //!< Src buffer address
+                             address hostDst,                   //!< Dst Buffer address
+                             size_t size,                       //!< Size in bytes
+                             bool hostToDev,                    //!< True for H2D copy
+                             amd::CopyMetadata& copyMetadata,   //!< copy MetaData
+                             bool enPinning = false             //!< True if pinning required
+                            ) const;
+
+  const size_t PinXferSize;                   //!< Copy size for Pinned Copy
+  const size_t MinSizeForPinnedXfer;          //!< Mininum copy size for Pinned Copy
+  const size_t StagingXferSize;               //!< Copy size for Staging Buffer Copy
+
   bool completeOperation_;                    //!< DMA blit manager must complete operation
   amd::Context* context_;                     //!< A dummy context
-  mutable int64_t sdmaEngineRetainCount_;     //!< Keeps track of memcopies to either get the last
-                                              //!< used SDMA engine or fetch the new mask
   uint32_t sdmaEngineReadMask_;               //!< SDMA Engine Read Mask
   uint32_t sdmaEngineWriteMask_;              //!< SDMA Engine Write Mask
 
@@ -251,15 +275,6 @@ class DmaBlitManager : public device::HostBlitManager {
 
   //! Disable operator=
   DmaBlitManager& operator=(const DmaBlitManager&);
-
-  //! Assits in transferring data from Host to Local or vice versa
-  //! taking into account the Hsail profile supported by Hsa Agent
-  bool hsaCopyStaged(const_address hostSrc,           //!< Contains source data to be copied
-                     address hostDst,                 //!< Destination buffer address for copying
-                     size_t size,                     //!< Size of data to copy in bytes
-                     bool hostToDev,                  //!< True if data is copied from H2D
-                     amd::CopyMetadata& copyMetadata  //!< Memory copy MetaData
-                     ) const;
 };
 
 //! Kernel Blit Manager

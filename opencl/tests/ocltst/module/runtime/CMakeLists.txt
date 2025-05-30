@@ -41,6 +41,7 @@ set(TESTS
     OCLSVM
     OCLThreadTrace
     OCLUnalignedCopy
+    OCLCreatePipe
 )
 
 add_library(oclruntime SHARED

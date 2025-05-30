@@ -42,8 +42,8 @@ Event::Event(HostQueue& queue, bool profilingEnabled)
       hw_event_(nullptr),
       notify_event_(nullptr),
       device_(&queue.device()),
-      profilingInfo_(profilingEnabled),
-      event_scope_(Device::kCacheStateInvalid) {
+      profilingInfo_(profilingEnabled) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 
@@ -53,8 +53,8 @@ Event::Event()
       status_(CL_SUBMITTED),
       hw_event_(nullptr),
       notify_event_(nullptr),
-      device_(nullptr),
-      event_scope_(Device::kCacheStateInvalid) {
+      device_(nullptr) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 
@@ -277,7 +277,6 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       // Save notification, associated with the current event
       notify_event_ = command;
@@ -290,7 +289,6 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       command->release();
     }
@@ -356,8 +354,8 @@ void Command::enqueue() {
     Agent::postEventCreate(as_cl(static_cast<Event*>(this)), type_);
   }
 
-  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p",
-          amd::activity_prof::getOclCommandKindString(this->type()), this);
+  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p to queue: %p",
+          amd::activity_prof::getOclCommandKindString(this->type()), this, queue_);
 
   // Direct dispatch logic below will submit the command immediately, but the command status
   // update will occur later after flush() with a wait

@@ -369,24 +369,29 @@ bool VirtualGPU::Queue::flush() {
   const Settings& settings = gpu_.dev().settings();
 
   if (!settings.alwaysResident_ && palMemRefs_.size() != 0) {
-    if (Pal::Result::Success !=
-        iDev_->AddGpuMemoryReferences(palMemRefs_.size(), &palMemRefs_[0], iQueue_,
-                                      Pal::GpuMemoryRefCantTrim)) {
-      LogError("PAL failed to make resident resources!");
+    Pal::Result result = iDev_->AddGpuMemoryReferences(
+                                      palMemRefs_.size(),
+                                      &palMemRefs_[0], iQueue_,
+                                      Pal::GpuMemoryRefCantTrim);
+    if (Pal::Result::Success != result) {
+      LogPrintfError("PAL failed to make resident resources! result: %d", result);
       return false;
     }
     palMemRefs_.clear();
   }
 
   // Stop commands building
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->End()) {
-    LogError("PAL failed to finalize a command buffer!");
+  Pal::Result result;
+  result = iCmdBuffs_[cmdBufIdSlot_]->End();
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed to finalize a command buffer! result: %d", result);
     return false;
   }
 
   // Reset the fence. PAL will reset OS event
-  if (Pal::Result::Success != iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_])) {
-    LogError("PAL failed to reset a fence!");
+  result = iDev_->ResetFences(1, &iCmdFences_[cmdBufIdSlot_]);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed to reset a fence! result:%d", result);
     return false;
   }
 
@@ -420,20 +425,22 @@ bool VirtualGPU::Queue::flush() {
     }
   }
   // Submit command buffer to OS
-  Pal::Result result;
   if (gpu_.rgpCaptureEna()) {
     result = gpu_.dev().captureMgr()->TimedQueueSubmit(iQueue_, cmdBufIdCurrent_, submitInfo);
   } else {
     result = iQueue_->Submit(submitInfo);
   }
   if (Pal::Result::Success != result) {
-    LogError("PAL failed to submit CMD!");
+    LogPrintfError("PAL failed to submit CMD! result:%d", result);
+    if (GPU_ANALYZE_HANG) {
+      DumpMemoryReferences();
+    }
     return false;
   }
   // Make sure the slot isn't busy
   constexpr bool IbReuse = true;
   if (GPU_FLUSH_ON_EXECUTION) {
-    waifForFence<!IbReuse>(cmdBufIdSlot_);
+    waitForFence<!IbReuse>(cmdBufIdSlot_);
   }
 
   // Reset the counter of commands
@@ -444,7 +451,7 @@ bool VirtualGPU::Queue::flush() {
 
   if (cmdBufIdCurrent_ == GpuEvent::InvalidID) {
     // Wait for the last one
-    waifForFence<!IbReuse>(cmdBufIdSlot_);
+    waitForFence<!IbReuse>(cmdBufIdSlot_);
     cmdBufIdCurrent_ = 1;
     cmbBufIdRetired_ = 0;
   }
@@ -452,7 +459,7 @@ bool VirtualGPU::Queue::flush() {
   // Wrap current slot
   cmdBufIdSlot_ = cmdBufIdCurrent_ % max_command_buffers_;
 
-  waifForFence<IbReuse>(cmdBufIdSlot_);
+  waitForFence<IbReuse>(cmdBufIdSlot_);
 
   // Progress retired TS
   if ((cmdBufIdCurrent_ > max_command_buffers_) &&
@@ -461,15 +468,17 @@ bool VirtualGPU::Queue::flush() {
   }
 
   // Reset command buffer, so CB chunks could be reused
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Reset(nullptr, false)) {
-    LogError("PAL failed CB reset!");
+  result = iCmdBuffs_[cmdBufIdSlot_]->Reset(nullptr, false);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed CB reset! result:%d", result);
     return false;
   }
   // Start command buffer building
   Pal::CmdBufferBuildInfo cmdBuildInfo = {};
   cmdBuildInfo.pMemAllocator = &vlAlloc_;
-  if (Pal::Result::Success != iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo)) {
-    LogError("PAL failed CB building initialization!");
+  result = iCmdBuffs_[cmdBufIdSlot_]->Begin(cmdBuildInfo);
+  if (Pal::Result::Success != result) {
+    LogPrintfError("PAL failed CB building initialization! result:%d", result);
     return false;
   }
 
@@ -511,7 +520,7 @@ bool VirtualGPU::Queue::waitForEvent(uint id) {
 
   uint slotId = id % max_command_buffers_;
   constexpr bool IbReuse = true;
-  bool result = waifForFence<!IbReuse>(slotId);
+  bool result = waitForFence<!IbReuse>(slotId);
   cmbBufIdRetired_ = id;
   return result;
 }
@@ -890,7 +899,9 @@ bool VirtualGPU::create(bool profiling, uint deviceQueueSize, uint rtCUs,
   createInfo.flags.autoMemoryReuse = false;
   createInfo.allocInfo[Pal::CommandDataAlloc].allocHeap = Pal::GpuHeapGartUswc;
   createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize =
-      VirtualGPU::Queue::MaxCommands * (320 + ((profiling) ? 96 : 0));
+      VirtualGPU::Queue::MaxCommands * (320 +
+                                        ((profiling) ? 96 : 0) +
+                                        ((dev().captureMgr() != nullptr)? 512 : 0));
   createInfo.allocInfo[Pal::CommandDataAlloc].allocSize =
       dev().settings().maxCmdBuffers_ * createInfo.allocInfo[Pal::CommandDataAlloc].suballocSize;
 
@@ -1170,7 +1181,7 @@ void VirtualGPU::submitReadMemory(amd::ReadMemoryCommand& vcmd) {
   // Find if virtual address is a CL allocation
   device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.destination(), &offset);
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   memory->syncCacheFromHost(*this);
   cl_command_type type = vcmd.type();
@@ -1297,7 +1308,7 @@ void VirtualGPU::submitWriteMemory(amd::WriteMemoryCommand& vcmd) {
   // Find if virtual address is a CL allocation
   device::Memory* hostMemory = dev().findMemoryFromVA(vcmd.source(), &offset);
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   bool entire = vcmd.isEntireMemory();
 
@@ -1613,7 +1624,7 @@ void VirtualGPU::submitMapMemory(amd::MapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   pal::Memory* memory = dev().getGpuMemory(&vcmd.memory());
 
@@ -1708,7 +1719,7 @@ void VirtualGPU::submitUnmapMemory(amd::UnmapMemoryCommand& vcmd) {
       LogError("Unmap without map call");
       return;
     }
-    profilingBegin(vcmd, true);
+    profilingBegin(vcmd);
 
     // Check if image is a mipmap and assign a saved view
     amdImage = owner->asImage();
@@ -1874,7 +1885,7 @@ void VirtualGPU::submitFillMemory(amd::FillMemoryCommand& cmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(cmd, true);
+  profilingBegin(cmd);
   if (cmd.type() == CL_COMMAND_FILL_IMAGE) {
     if (!fillMemory(cmd.type(), &cmd.memory(), cmd.pattern(), cmd.patternSize(),
         cmd.origin(), cmd.size())) {
@@ -2064,7 +2075,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem()) {
@@ -2103,7 +2114,7 @@ void VirtualGPU::submitSvmMapMemory(amd::SvmMapMemoryCommand& vcmd) {
 void VirtualGPU::submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   // no op for FGS supported device
   if (!dev().isFineGrainedSystem()) {
@@ -2139,7 +2150,7 @@ void VirtualGPU::submitSvmFillMemory(amd::SvmFillMemoryCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   if (!dev().isFineGrainedSystem()) {
     size_t patternSize = vcmd.patternSize();
@@ -2171,7 +2182,7 @@ void VirtualGPU::submitMigrateMemObjects(amd::MigrateMemObjectsCommand& vcmd) {
   // Make sure VirtualGPU has an exclusive access to the resources
   amd::ScopedLock lock(execution());
 
-  profilingBegin(vcmd, true);
+  profilingBegin(vcmd);
 
   for (const auto& it : vcmd.memObjects()) {
     // Find device memory
@@ -2510,7 +2521,6 @@ void VirtualGPU::PostDeviceEnqueue(const amd::Kernel& kernel, const HSAILKernel&
   param->releaseHostCP = 0;
   param->parentAQL = vmParentWrap;
   param->dedicatedQueue = dev().settings().useDeviceQueue_;
-  param->useATC = dev().settings().svmFineGrainSystem_;
 
   // Fill the scratch buffer information
   if (hsaKernel.prog().maxScratchRegs() > 0) {
@@ -2611,17 +2621,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                       const amd::Kernel& kernel, const_address parameters,
                                       bool nativeMem, uint32_t sharedMemBytes,
                                       bool anyOrder) {
-  size_t newOffset[3] = {0, 0, 0};
-  size_t newGlobalSize[3] = {0, 0, 0};
   state_.anyOrder_ = anyOrder;
-
-  int dim = -1;
-  int iteration = 1;
-  size_t globalStep = 0;
-  for (uint i = 0; i < sizes.dimensions(); i++) {
-    newGlobalSize[i] = sizes.global()[i];
-    newOffset[i] = sizes.offset()[i];
-  }
 
   // Get the HSA kernel object
   const HSAILKernel& hsaKernel = static_cast<const HSAILKernel&>(*(kernel.getDeviceKernel(dev())));
@@ -2629,7 +2629,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   // If RGP capturing is enabled, then start SQTT trace
   if (rgpCaptureEna()) {
     size_t newLocalSize[3] = {1, 1, 1};
+    size_t newGlobalSize[3] = {0, 0, 0};
     for (uint i = 0; i < sizes.dimensions(); i++) {
+      newGlobalSize[i] = sizes.global()[i];
       if (sizes.local()[i] != 0) {
         newLocalSize[i] = sizes.local()[i];
       }
@@ -2661,13 +2663,8 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
 
   if (PAL_EMBED_KERNEL_MD) {
     char buf[256];
-    sprintf(buf,
-            "kernel: %s\n"
-            "private mem size: %x\n"
-            "group mem size: %x\n",
-            hsaKernel.name().c_str(),
-            hsaKernel.spillSegSize(),
-            hsaKernel.ldsSize());
+    sprintf(buf, "kernel: %s\n private mem size: %x\n group mem size: %x\n",
+            hsaKernel.name().c_str(), hsaKernel.spillSegSize(), hsaKernel.ldsSize());
     iCmd()->CmdCommentString(buf);
   }
 
@@ -2684,120 +2681,77 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   // Add ISA memory object to the resource tracking list
   AddKernel(kernel);
 
-  // Check if it is blit kernel. If it is, then check if split is needed.
-  if (hsaKernel.isInternalKernel()) {
-    // Calculate new group size for each submission
-    for (uint i = 0; i < sizes.dimensions(); i++) {
-      if (sizes.global()[i] > static_cast<size_t>(0xffffffff)) {
-        dim = i;
-        iteration = sizes.global()[i] / 0xC0000000 + ((sizes.global()[i] % 0xC0000000) ? 1 : 0);
-        globalStep = (sizes.global()[i] / sizes.local()[i]) / iteration * sizes.local()[dim];
-        break;
-      }
+  GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
+  uint32_t id = gpuEvent.id_;
+  uint64_t vmParentWrap = 0;
+  uint32_t aql_index = 0;
+  // Program the kernel arguments for the GPU execution
+  hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
+      *this, kernel, sizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap, &aql_index);
+  assert((nullptr != aqlPkt) && "Couldn't load kernel arguments");
+
+  // Dynamic call stack size is considered to calculate private segment size and scratch regs
+  // in LightningKernel::postLoad(). As it is not called during hipModuleLaunchKernel unlike
+  // hipLaunchKernel/hipLaunchKernelGGL, Updated value is passed to dispatch packet.
+  size_t privateMemSize = hsaKernel.spillSegSize();
+  if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
+    privateMemSize = std::max<uint32_t>(static_cast<uint32_t>(device().StackSize()),
+                              hsaKernel.workGroupInfo()->scratchRegs_ * sizeof(uint32_t)) ;
+    // Validate privateMemSize is more than max allowed.
+    size_t maxStackSize = device().MaxStackSize();
+    if (privateMemSize > maxStackSize) {
+      ClPrint(amd::LOG_INFO, amd::LOG_KERN,
+        "Scratch size (%zu) exceeds max allowed (%zu) for kernel : %s",
+        privateMemSize, maxStackSize, hsaKernel.name().c_str());
+      LogError("Scratch size exceeds max allowed.");
+      return false;
     }
   }
 
-  for (int iter = 0; iter < iteration; ++iter) {
-    GpuEvent gpuEvent(queues_[MainEngine]->cmdBufId());
-    uint32_t id = gpuEvent.id_;
-    // Reset global size for dimension dim if split is needed
-    if (dim != -1) {
-      newOffset[dim] = sizes.offset()[dim] + globalStep * iter;
-      if (((newOffset[dim] + globalStep) < sizes.global()[dim]) && (iter != (iteration - 1))) {
-        newGlobalSize[dim] = globalStep;
-      } else {
-        newGlobalSize[dim] = sizes.global()[dim] - newOffset[dim];
-      }
-    }
+  // Set up the dispatch information
+  Pal::DispatchAqlParams dispatchParam = {};
+  dispatchParam.pAqlPacket = aqlPkt;
+  if (privateMemSize > 0) {
+    const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
+    dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
+    dispatchParam.scratchSize = scratch->size_;
+    dispatchParam.scratchOffset = scratch->offset_;
+    dispatchParam.workitemPrivateSegmentSize = privateMemSize;
+  }
+  dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
+  dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
+  if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
+    constexpr uint32_t kWavesPerSimdLimit = 4;
+    dispatchParam.wavesPerSh = kWavesPerSimdLimit *
+      dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
+  } else {
+    dispatchParam.wavesPerSh = 0;
+  }
+  dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
+  dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
+  dispatchParam.aqlPacketIndex = aql_index;
+  // Run AQL dispatch in HW
+  eventBegin(MainEngine);
+  iCmd()->CmdDispatchAql(dispatchParam);
 
-    amd::NDRangeContainer tmpSizes(sizes.dimensions(), &newOffset[0], &newGlobalSize[0],
-                                   &(const_cast<amd::NDRangeContainer&>(sizes).local()[0]));
+  if (id != gpuEvent.id_) {
+    LogError("Something is wrong. ID mismatch!\n");
+  }
+  eventEnd(MainEngine, gpuEvent);
+  AqlPacketUpdateTs(aql_index, gpuEvent);
 
-    if (iter > 0) {
-      // Updates the timestamp values, since a CB flush could occur.
-      // Resource processing was  moved from loadArguments() and
-      // an extra loop is required.
-      const amd::KernelParameters& kernelParams = kernel.parameters();
-      amd::Memory* const* memories =
-          reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
-      for (uint32_t i = 0; i < kernel.signature().numMemories(); ++i) {
-        if (nativeMem) {
-          Memory* gpuMem = reinterpret_cast<Memory* const*>(memories)[i];
-          if (gpuMem != nullptr) {
-            gpuMem->setBusy(*this, gpuEvent);
-          }
-        } else {
-          amd::Memory* mem = memories[i];
-          if (mem != nullptr) {
-            dev().getGpuMemory(mem)->setBusy(*this, gpuEvent);
-          }
-        }
-      }
-    }
+  // Execute scheduler for device enqueue
+  if (hsaKernel.dynamicParallelism()) {
+    PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
+  }
 
-    uint64_t vmParentWrap = 0;
-    uint32_t aql_index = 0;
-    // Program the kernel arguments for the GPU execution
-    hsa_kernel_dispatch_packet_t* aqlPkt = hsaKernel.loadArguments(
-        *this, kernel, tmpSizes, parameters, ldsSize + sharedMemBytes, vmDefQueue, &vmParentWrap, &aql_index);
-    if (nullptr == aqlPkt) {
-      LogError("Couldn't load kernel arguments");
-      return false;
-    }
-    // Dynamic call stack size is considered to calculate private segment size and scratch regs
-    // in LightningKernel::postLoad(). As it is not called during hipModuleLaunchKernel unlike
-    // hipLaunchKernel/hipLaunchKernelGGL, Updated value is passed to dispatch packet.
-    size_t privateMemSize = hsaKernel.spillSegSize();
-    if ((hsaKernel.workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
-      privateMemSize = std::max<uint32_t>(static_cast<uint32_t>(device().StackSize()),
-                                hsaKernel.workGroupInfo()->scratchRegs_ * sizeof(uint32_t)) ;
-    }
+  // Update the global GPU event
+  constexpr bool kNeedFLush = false;
+  setGpuEvent(gpuEvent, kNeedFLush);
 
-    // Set up the dispatch information
-    Pal::DispatchAqlParams dispatchParam = {};
-    dispatchParam.pAqlPacket = aqlPkt;
-    if (privateMemSize > 0) {
-      const Device::ScratchBuffer* scratch = dev().scratch(hwRing());
-      dispatchParam.scratchAddr = scratch->memObj_->vmAddress();
-      dispatchParam.scratchSize = scratch->size_;
-      dispatchParam.scratchOffset = scratch->offset_;
-      dispatchParam.workitemPrivateSegmentSize = privateMemSize;
-    }
-    dispatchParam.pCpuAqlCode = hsaKernel.cpuAqlCode();
-    dispatchParam.hsaQueueVa = hsaQueueMem_->vmAddress();
-    if (!hsaKernel.prog().isLC() && hsaKernel.workGroupInfo()->wavesPerSimdHint_ != 0) {
-      constexpr uint32_t kWavesPerSimdLimit = 4;
-      dispatchParam.wavesPerSh = kWavesPerSimdLimit *
-        dev().info().cuPerShaderArray_ * dev().info().simdPerCU_;
-    } else {
-      dispatchParam.wavesPerSh = 0;
-    }
-    dispatchParam.useAtc = dev().settings().svmFineGrainSystem_ ? true : false;
-    dispatchParam.kernargSegmentSize = hsaKernel.argsBufferSize();
-    dispatchParam.aqlPacketIndex = aql_index;
-    // Run AQL dispatch in HW
-    eventBegin(MainEngine);
-    iCmd()->CmdDispatchAql(dispatchParam);
-
-    if (id != gpuEvent.id_) {
-      LogError("Something is wrong. ID mismatch!\n");
-    }
-    eventEnd(MainEngine, gpuEvent);
-    AqlPacketUpdateTs(aql_index, gpuEvent);
-
-    // Execute scheduler for device enqueue
-    if (hsaKernel.dynamicParallelism()) {
-      PostDeviceEnqueue(kernel, hsaKernel, gpuDefQueue, vmDefQueue, vmParentWrap, &gpuEvent);
-    }
-
-    // Update the global GPU event
-    constexpr bool kNeedFLush = false;
-    setGpuEvent(gpuEvent, kNeedFLush);
-
-    if (printfEnabled && !printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
-      LogError("Couldn't read printf data from the buffer!\n");
-      return false;
-    }
+  if (printfEnabled && !printfDbgHSA().output(*this, printfEnabled, hsaKernel.printfInfo())) {
+    LogError("Couldn't read printf data from the buffer!\n");
+    return false;
   }
 
   // Check if image buffer write back is required
@@ -2855,6 +2809,17 @@ void VirtualGPU::submitMarker(amd::Marker& vcmd) {
     if (!foundEvent) {
       state_.forceWait_ = true;
     }
+  } else if (amd::IS_HIP) {
+    // Use GPU based timing for HIP events
+
+    // Make sure VirtualGPU has an exclusive access to the resources
+    amd::ScopedLock lock(execution());
+    GpuEvent event;
+    profilingBegin(vcmd);
+    eventBegin(MainEngine);
+    eventEnd(MainEngine, event);
+    setGpuEvent(event);
+    profilingEnd(vcmd);
   }
 }
 
@@ -3361,6 +3326,8 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
     amd::ScopedLock lock(execution());
     earlyDone = waitAllEngines(cb);
   }
+  // Get timestamp, incase readjustTimeGPU_ needs to be updated
+  uint64_t endTimeStampCPU = amd::Os::timeNanos();
 
   // Free resource cache if we have too many entries
   //! \note we do it here, when all engines are idle,
@@ -3384,7 +3351,6 @@ void VirtualGPU::waitEventLock(CommandBatch* cb) {
       // Get the timestamp value of the last command in the batch
       cb->lastTS_->value(&startTimeStampGPU, &endTimeStampGPU);
 
-      uint64_t endTimeStampCPU = amd::Os::timeNanos();
       // Adjust the base time by the execution time
       readjustTimeGPU_ = endTimeStampGPU - endTimeStampCPU;
     }
@@ -3413,7 +3379,7 @@ bool VirtualGPU::allocConstantBuffers() {
   return true;
 }
 
-void VirtualGPU::profilingBegin(amd::Command& command, bool drmProfiling) {
+void VirtualGPU::profilingBegin(amd::Command& command) {
   // Is profiling enabled?
   if (command.profilingInfo().enabled_) {
     // Allocate a timestamp object from the cache

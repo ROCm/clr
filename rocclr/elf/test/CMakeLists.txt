@@ -19,7 +19,6 @@
 # THE SOFTWARE.
 
 #-------------------------------------elf_test--------------------------------------#
-cmake_minimum_required(VERSION 3.5.1)
 # This is unit test for amd::Elf.
 # The test is on top of rocclr, so rocclr must be built and installed firstly.
 # This file is seperate from cmake file of rocclr to prevent interference. 

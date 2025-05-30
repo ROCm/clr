@@ -128,17 +128,17 @@ hip::Stream* getStream(hipStream_t stream, bool wait) {
 }
 
 // ================================================================================================
-hip::Stream* getNullStream(amd::Context& ctx) {
+hip::Stream* getNullStream(amd::Context& ctx, bool wait) {
   for (auto& it : g_devices) {
     if (it->asContext() == &ctx) {
-      return it->NullStream();
+      return it->NullStream(wait);
     }
   }
   // If it's a pure SVM allocation with system memory access, then it shouldn't matter which device
   // runtime selects by default
   if (hip::host_context == &ctx) {
     // Return current...
-    return getNullStream();
+    return getNullStream(wait);
   }
   return nullptr;
 }
@@ -319,17 +319,11 @@ hipError_t hipCtxGetDevice(hipDevice_t* device) {
 
 hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion) {
   HIP_INIT_API(hipCtxGetApiVersion, apiVersion);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig) {
   HIP_INIT_API(hipCtxGetCacheConfig, cacheConfig);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
@@ -340,33 +334,21 @@ hipError_t hipCtxSetCacheConfig(hipFuncCache_t cacheConfig) {
       cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSetSharedMemConfig(hipSharedMemConfig config) {
   HIP_INIT_API(hipCtxSetSharedMemConfig, config);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSynchronize(void) {
   HIP_INIT_API(hipCtxSynchronize, 1);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetFlags(unsigned int* flags) {
   HIP_INIT_API(hipCtxGetFlags, flags);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
