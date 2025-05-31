@@ -219,12 +219,14 @@ hipError_t hipMemcpyPeerAsync(void* dst, int dstDevice, const void* src, int src
 
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags) {
   HIP_INIT_API(hipCtxEnablePeerAccess, peerCtx, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx) {
   HIP_INIT_API(hipCtxDisablePeerAccess, peerCtx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   HIP_RETURN(hipSuccess);
 }

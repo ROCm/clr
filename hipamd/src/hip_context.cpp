@@ -174,6 +174,7 @@ hipError_t hipInit(unsigned int flags) {
 
 hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
   HIP_INIT_API(hipCtxCreate, ctx, flags, device);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (static_cast<size_t>(device) >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidValue);
@@ -191,6 +192,7 @@ hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device) {
 
 hipError_t hipCtxSetCurrent(hipCtx_t ctx) {
   HIP_INIT_API(hipCtxSetCurrent, ctx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (ctx == nullptr) {
     if (!tls.ctxt_stack_.empty()) {
@@ -209,6 +211,7 @@ hipError_t hipCtxSetCurrent(hipCtx_t ctx) {
 
 hipError_t hipCtxGetCurrent(hipCtx_t* ctx) {
   HIP_INIT_API(hipCtxGetCurrent, ctx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   *ctx = reinterpret_cast<hipCtx_t>(hip::getCurrentDevice());
 
@@ -217,6 +220,7 @@ hipError_t hipCtxGetCurrent(hipCtx_t* ctx) {
 
 hipError_t hipCtxGetSharedMemConfig(hipSharedMemConfig* pConfig) {
   HIP_INIT_API(hipCtxGetSharedMemConfig, pConfig);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   *pConfig = hipSharedMemBankSizeFourByte;
 
@@ -238,6 +242,7 @@ hipError_t hipRuntimeGetVersion(int* runtimeVersion) {
 
 hipError_t hipCtxDestroy(hipCtx_t ctx) {
   HIP_INIT_API(hipCtxDestroy, ctx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   hip::Device* dev = reinterpret_cast<hip::Device*>(ctx);
   if (dev == nullptr) {
@@ -262,6 +267,7 @@ hipError_t hipCtxDestroy(hipCtx_t ctx) {
 
 hipError_t hipCtxPopCurrent(hipCtx_t* ctx) {
   HIP_INIT_API(hipCtxPopCurrent, ctx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   hip::Device** dev = reinterpret_cast<hip::Device**>(ctx);
   if (!tls.ctxt_stack_.empty()) {
@@ -279,6 +285,7 @@ hipError_t hipCtxPopCurrent(hipCtx_t* ctx) {
 
 hipError_t hipCtxPushCurrent(hipCtx_t ctx) {
   HIP_INIT_API(hipCtxPushCurrent, ctx);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   hip::Device* dev = reinterpret_cast<hip::Device*>(ctx);
   if (dev == nullptr) {
@@ -306,6 +313,7 @@ hipError_t hipDriverGetVersion(int* driverVersion) {
 
 hipError_t hipCtxGetDevice(hipDevice_t* device) {
   HIP_INIT_API(hipCtxGetDevice, device);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (device != nullptr) {
     *device = hip::getCurrentDevice()->deviceId();
@@ -319,16 +327,19 @@ hipError_t hipCtxGetDevice(hipDevice_t* device) {
 
 hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion) {
   HIP_INIT_API(hipCtxGetApiVersion, apiVersion);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig) {
   HIP_INIT_API(hipCtxGetCacheConfig, cacheConfig);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSetCacheConfig(hipFuncCache_t cacheConfig) {
   HIP_INIT_API(hipCtxSetCacheConfig, cacheConfig);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (cacheConfig != hipFuncCachePreferNone && cacheConfig != hipFuncCachePreferShared &&
       cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
@@ -339,21 +350,25 @@ hipError_t hipCtxSetCacheConfig(hipFuncCache_t cacheConfig) {
 
 hipError_t hipCtxSetSharedMemConfig(hipSharedMemConfig config) {
   HIP_INIT_API(hipCtxSetSharedMemConfig, config);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSynchronize(void) {
   HIP_INIT_API(hipCtxSynchronize, 1);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetFlags(unsigned int* flags) {
   HIP_INIT_API(hipCtxGetFlags, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipDevicePrimaryCtxGetState(hipDevice_t dev, unsigned int* flags, int* active) {
   HIP_INIT_API(hipDevicePrimaryCtxGetState, dev, flags, active);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (static_cast<unsigned int>(dev) >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidDevice);
@@ -372,6 +387,7 @@ hipError_t hipDevicePrimaryCtxGetState(hipDevice_t dev, unsigned int* flags, int
 
 hipError_t hipDevicePrimaryCtxRelease(hipDevice_t dev) {
   HIP_INIT_API(hipDevicePrimaryCtxRelease, dev);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (static_cast<unsigned int>(dev) >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidDevice);
@@ -382,6 +398,7 @@ hipError_t hipDevicePrimaryCtxRelease(hipDevice_t dev) {
 
 hipError_t hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev) {
   HIP_INIT_API(hipDevicePrimaryCtxRetain, pctx, dev);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (static_cast<unsigned int>(dev) >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidDevice);
@@ -397,12 +414,14 @@ hipError_t hipDevicePrimaryCtxRetain(hipCtx_t* pctx, hipDevice_t dev) {
 
 hipError_t hipDevicePrimaryCtxReset(hipDevice_t dev) {
   HIP_INIT_API(hipDevicePrimaryCtxReset, dev);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipDevicePrimaryCtxSetFlags(hipDevice_t dev, unsigned int flags) {
   HIP_INIT_API(hipDevicePrimaryCtxSetFlags, dev, flags);
+  CHECK_STREAM_CAPTURE_SUPPORTED()
 
   if (static_cast<unsigned int>(dev) >= g_devices.size()) {
     HIP_RETURN(hipErrorInvalidDevice);
