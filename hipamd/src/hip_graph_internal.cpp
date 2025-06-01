@@ -19,6 +19,9 @@
  THE SOFTWARE. */
 
 #include "hip_graph_internal.hpp"
+
+#include <simde/x86/sse2.h>
+
 #include <queue>
 
 #define CASE_STRING(X, C)                                                                          \
@@ -806,9 +809,9 @@ void GraphKernelArgManager::ReadBackOrFlush() {
       address dev_ptr =
           kernarg_graph_.back().kernarg_pool_addr_ + kernarg_graph_.back().kernarg_pool_size_;
       auto kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
-      _mm_sfence();
+      simde_mm_sfence();
       *(dev_ptr - 1) = kSentinel;
-      _mm_mfence();
+      simde_mm_mfence();
       kSentinel = *reinterpret_cast<volatile unsigned char*>(dev_ptr - 1);
     }
   }
