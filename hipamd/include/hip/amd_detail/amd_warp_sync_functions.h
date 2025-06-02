@@ -362,7 +362,7 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
   // unsigned int[2] is used when T is 64-bit wide
   typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, permuteType, permuteType[2]>::type result, permuteResult;
   auto backwardPermute = [](int index, permuteType val) {
-    if constexpr (std::is_integral<T>::value || std::is_same<T, double>::value)
+    if constexpr (__hip_internal::is_integral<T>::value || __hip_internal::is_same<T, double>::value)
       return __hip_ds_bpermute(index, val);
     else
       return __hip_ds_bpermutef(index, val);
