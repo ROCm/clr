@@ -1571,14 +1571,14 @@ struct HipDispatchTable {
   t_hipGraphExecBatchMemOpNodeSetParams hipGraphExecBatchMemOpNodeSetParams_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
-  t_hipEventRecordWithFlags hipEventRecordWithFlags_fn;
-
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
   t_hipLinkAddData hipLinkAddData_fn;
   t_hipLinkAddFile hipLinkAddFile_fn;
   t_hipLinkComplete hipLinkComplete_fn;
   t_hipLinkCreate hipLinkCreate_fn;
   t_hipLinkDestroy hipLinkDestroy_fn;
+
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
+  t_hipEventRecordWithFlags hipEventRecordWithFlags_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 11
   t_hipLaunchKernelExC hipLaunchKernelExC_fn;
