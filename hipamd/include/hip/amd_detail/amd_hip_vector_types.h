@@ -106,6 +106,8 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
         __HOST_DEVICE__
+        explicit constexpr HIP_vector_base(T x_) : x(x_) {}
+        __HOST_DEVICE__
         constexpr
         HIP_vector_base(HIP_vector_base&&) = default;
         __HOST_DEVICE__
@@ -125,6 +127,8 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       HIP_vector_base() = default;
       __HOST_DEVICE__
       constexpr HIP_vector_base(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(T x_, T y_ = T()) : x(x_), y(y_) {}
       __HOST_DEVICE__
       constexpr HIP_vector_base(HIP_vector_base&&) = default;
       __HOST_DEVICE__
@@ -288,6 +292,8 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
         __HOST_DEVICE__
+        constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T()) : x(x_), y(y_), z(z_) {};
+        __HOST_DEVICE__
         constexpr
         HIP_vector_base(HIP_vector_base&&) = default;
         __HOST_DEVICE__
@@ -306,18 +312,21 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       using value_type = T;
 
-        __HOST_DEVICE__
-        HIP_vector_base() = default;
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(const HIP_vector_base&) = default;
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(HIP_vector_base&&) = default;
-        __HOST_DEVICE__
-        ~HIP_vector_base() = default;
-        __HOST_DEVICE__
-        HIP_vector_base& operator=(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      HIP_vector_base() = default;
+      __HOST_DEVICE__
+      constexpr
+      HIP_vector_base(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T(), T w_ = T())
+          : x(x_), y(y_), z(z_), w(w_) {};
+      __HOST_DEVICE__
+      constexpr
+      HIP_vector_base(HIP_vector_base&&) = default;
+      __HOST_DEVICE__
+      ~HIP_vector_base() = default;
+      __HOST_DEVICE__
+      HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
     template <typename T, size_t rank, size_t... indices>
