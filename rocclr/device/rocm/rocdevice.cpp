@@ -391,6 +391,7 @@ hsa_status_t Device::loaderQueryHostAddress(const void* device, const void** hos
 // ================================================================================================
 bool Device::init() {
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack2.");
   hsa_status_t status = HSA_STATUS_SUCCESS;
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {

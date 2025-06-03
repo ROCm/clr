@@ -51,5 +51,10 @@ const char* hipApiName(uint32_t id) { return hip_api_name(id); }
 
 extern "C" void hipRegisterTracerCallback(int (*function)(activity_domain_t domain,
                                                           uint32_t operation_id, void* data)) {
+  if (function != nullptr) {
+    AMD_LOG_LEVEL=7;
+  } else {
+    AMD_LOG_LEVEL=0;
+  }
   amd::activity_prof::report_activity.store(function, std::memory_order_relaxed);
 }

@@ -522,7 +522,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
       status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
 
       if (status == HSA_STATUS_SUCCESS) {
-        status = hsa_amd_memory_get_preferred_copy_engine(dstAgent, srcAgent, &recIdMask);
+        //status = hsa_amd_memory_get_preferred_copy_engine(dstAgent, srcAgent, &recIdMask);
       }
 
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, srcAgent %p, "
