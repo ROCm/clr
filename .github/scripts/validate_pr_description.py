@@ -7,7 +7,7 @@ def is_checkbox(line: str) -> bool:
 
 
 def is_checked(line: str) -> bool:
-    return bool(re.match(r"^\s*-\s*\[[xX]\]\s*.+", line))
+    return bool(re.match(r"^\s*-\s*\[\s*[xX]\s*\]\s*.+", line))
 
 
 def is_comment(line: str) -> bool:
