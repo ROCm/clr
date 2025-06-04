@@ -64,8 +64,8 @@ template <typename T, unsigned int n>
 __attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_*
 get_native_pointer(HIP_vector_base<T, n>& base_vec) {
   static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-  static_assert(std::alignment_of<HIP_vector_base<T, n>>::value ==
-                std::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
   return reinterpret_cast<typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
 };
 
@@ -73,8 +73,8 @@ template <typename T, unsigned int n>
 __attribute__((always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_*
 get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
   static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-  static_assert(std::alignment_of<HIP_vector_base<T, n>>::value ==
-                std::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
   return reinterpret_cast<const typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
 };
 }  // Namespace hip_impl.
@@ -334,14 +334,15 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template <typename T, size_t rank, size_t... indices>
     constexpr inline __HOST_DEVICE__ HIP_vector_type<T, rank> make_vector_type_impl(
-        T val, std::index_sequence<indices...>) noexcept {
+        T val, __hip_internal::index_sequence<indices...>) noexcept {
       // Fills vec with vals, and ignores the indices
       return HIP_vector_type<T, rank>{((void)indices, val)...};
     }
 
     template <typename T, unsigned int rank>
     constexpr inline __HOST_DEVICE__ HIP_vector_type<T, rank> make_vector_type(T val) {
-      return make_vector_type_impl<T, rank>(val, std::make_index_sequence<rank>{});
+      return make_vector_type_impl<T, rank>(val,
+        __hip_internal::make_index_sequence_value(__hip_internal::make_index_sequence<rank>{}));
     }
 
     template <typename T, unsigned int rank>
@@ -351,7 +352,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       __HOST_DEVICE__
       HIP_vector_type() = default;
       template <typename U,
-                typename __hip_internal::enable_if<std::is_convertible<U, T>::value>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_convertible<U, T>::value>::type* = nullptr>
       __HOST_DEVICE__ explicit constexpr HIP_vector_type(U x_) noexcept
           : HIP_vector_base<T, rank>{static_cast<T>(x_)} {}
       template <  // TODO: constrain based on type as well.

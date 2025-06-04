@@ -43,6 +43,7 @@ typedef signed char int8_t;
 typedef signed short int16_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
+typedef unsigned long size_t;
 
 template <class _Tp, _Tp __v> struct integral_constant {
   static constexpr const _Tp value = __v;
@@ -181,6 +182,34 @@ template<typename _Tp>
 
 template <bool B, class T, class F> struct conditional { using type = T; };
 template <class T, class F> struct conditional<false, T, F> { using type = F; };
+
+template<class T>
+struct alignment_of : integral_constant<size_t, alignof(T)> {};
+
+template<typename T, T... Ints>
+struct integer_sequence {
+    using value_type = T;
+    static constexpr size_t size() noexcept { return sizeof...(Ints); }
+};
+
+template<size_t... Ints>
+using index_sequence = integer_sequence<size_t, Ints...>;
+
+template<size_t N, size_t... Ints>
+struct make_index_sequence_impl : make_index_sequence_impl<N - 1, N - 1, Ints...> {};
+
+template<size_t... Ints>
+struct make_index_sequence_impl<0, Ints...> {
+    using type = index_sequence<Ints...>;
+};
+
+template<size_t N>
+using make_index_sequence = typename make_index_sequence_impl<N>::type;
+
+template <size_t... Ints>
+constexpr index_sequence<Ints...> make_index_sequence_value(index_sequence<Ints...>) {
+    return {};
+}
 }
 typedef __hip_internal::uint8_t __hip_uint8_t;
 typedef __hip_internal::uint16_t __hip_uint16_t;
