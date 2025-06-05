@@ -152,7 +152,7 @@
 static_assert(CHAR_BIT == 8, "byte size should be of 8 bits");
 #endif
 static_assert(sizeof(unsigned short) == 2, "size of unsigned short should be 2 bytes");
-static_assert(sizeof(__bf16) == sizeof(unsigned short));
+static_assert(sizeof(__bf16) == sizeof(unsigned short), "");
 
 /**
  * \ingroup HIP_INTRINSIC_BFLOAT16_RAW
@@ -347,7 +347,7 @@ typedef __bf16 __bf16_2 __attribute__((ext_vector_type(2)));
  * @{
  */
 struct __attribute__((aligned(4))) __hip_bfloat162 {
-  static_assert(sizeof(__hip_bfloat16[2]) == sizeof(__bf16_2));
+  static_assert(sizeof(__hip_bfloat16[2]) == sizeof(__bf16_2), "");
 
  public:
   union {
@@ -465,7 +465,7 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat162 __bfloat162bfloat162(const __hip_bfl
  * \brief Reinterprets bits in a __hip_bfloat16 as a signed short integer
  */
 __BF16_HOST_DEVICE_STATIC__ short int __bfloat16_as_short(const __hip_bfloat16 h) {
-  static_assert(sizeof(__hip_bfloat16) == sizeof(short int));
+  static_assert(sizeof(__hip_bfloat16) == sizeof(short int), "");
   union {
     __hip_bfloat16 bf16;
     short int si;
@@ -478,7 +478,7 @@ __BF16_HOST_DEVICE_STATIC__ short int __bfloat16_as_short(const __hip_bfloat16 h
  * \brief Reinterprets bits in a __hip_bfloat16 as an unsigned signed short integer
  */
 __BF16_HOST_DEVICE_STATIC__ unsigned short int __bfloat16_as_ushort(const __hip_bfloat16 h) {
-  static_assert(sizeof(__hip_bfloat16) == sizeof(unsigned short int));
+  static_assert(sizeof(__hip_bfloat16) == sizeof(unsigned short int), "");
   union {
     __hip_bfloat16 bf16;
     unsigned short int usi;
@@ -596,7 +596,7 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat162 __lows2bfloat162(const __hip_bfloat1
  * \brief Reinterprets short int into a bfloat16
  */
 __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __short_as_bfloat16(const short int a) {
-  static_assert(sizeof(__hip_bfloat16) == sizeof(short int));
+  static_assert(sizeof(__hip_bfloat16) == sizeof(short int), "");
   union {
     short int si;
     __hip_bfloat16 bf16;
@@ -609,7 +609,7 @@ __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __short_as_bfloat16(const short int a
  * \brief Reinterprets unsigned short int into a bfloat16
  */
 __BF16_HOST_DEVICE_STATIC__ __hip_bfloat16 __ushort_as_bfloat16(const unsigned short int a) {
-  static_assert(sizeof(__hip_bfloat16) == sizeof(unsigned short int));
+  static_assert(sizeof(__hip_bfloat16) == sizeof(unsigned short int), "");
   union {
     unsigned short int usi;
     __hip_bfloat16 bf16;
@@ -683,7 +683,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_down_sync(const unsigned long long
                                                         const __hip_bfloat162 in,
                                                         const unsigned int delta,
                                                         const int width = warpSize) {
-  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
+  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int), "");
   union {
     __hip_bfloat162 bf162;
     unsigned int ui;
@@ -709,7 +709,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_sync(const unsigned long long mask,
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_sync(const unsigned long long mask,
                                                    const __hip_bfloat162 in, const int delta,
                                                    const int width = warpSize) {
-  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
+  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int), "");
   union {
     __hip_bfloat162 bf162;
     unsigned int ui;
@@ -737,7 +737,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_up_sync(const unsigned long long m
                                                       const __hip_bfloat162 in,
                                                       const unsigned int delta,
                                                       const int width = warpSize) {
-  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
+  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int), "");
   union {
     __hip_bfloat162 bf162;
     unsigned int ui;
@@ -763,7 +763,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat16 __shfl_xor_sync(const unsigned long long m
 __BF16_DEVICE_STATIC__ __hip_bfloat162 __shfl_xor_sync(const unsigned long long mask,
                                                        const __hip_bfloat162 in, const int delta,
                                                        const int width = warpSize) {
-  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int));
+  static_assert(sizeof(__hip_bfloat162) == sizeof(unsigned int), "");
   union {
     __hip_bfloat162 bf162;
     unsigned int ui;
@@ -1810,7 +1810,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
                                                        __hip_bfloat162 value) {
 #if __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2bf16)
   typedef short __attribute__((ext_vector_type(2))) vec_short2;
-  static_assert(sizeof(vec_short2) == sizeof(__hip_bfloat162_raw));
+  static_assert(sizeof(vec_short2) == sizeof(__hip_bfloat162_raw), "");
   union {
     __hip_bfloat162_raw bf162_raw;
     vec_short2 vs2;
@@ -1818,7 +1818,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
   u.vs2 = __builtin_amdgcn_flat_atomic_fadd_v2bf16((vec_short2*)address, u.vs2);
   return static_cast<__hip_bfloat162>(u.bf162_raw);
 #else
-  static_assert(sizeof(unsigned int) == sizeof(__hip_bfloat162_raw));
+  static_assert(sizeof(unsigned int) == sizeof(__hip_bfloat162_raw), "");
   union u_hold {
     __hip_bfloat162_raw h2r;
     unsigned int u32;
@@ -1836,7 +1836,7 @@ __BF16_DEVICE_STATIC__ __hip_bfloat162 unsafeAtomicAdd(__hip_bfloat162* address,
 }
 __BF16_DEVICE_STATIC__ __hip_bfloat16 unsafeAtomicAdd(__hip_bfloat16 *address,
                                                       __hip_bfloat16 value) {
-  static_assert(sizeof(unsigned short int) == sizeof(__hip_bfloat16_raw));
+  static_assert(sizeof(unsigned short int) == sizeof(__hip_bfloat16_raw), "");
   unsigned short int* address_as_short = reinterpret_cast<unsigned short int *>(address);
   // Align to 4 bytes
   unsigned int* aligned_addr = __builtin_bit_cast(unsigned int*,

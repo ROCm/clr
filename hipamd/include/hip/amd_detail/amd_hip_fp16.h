@@ -1374,11 +1374,11 @@ THE SOFTWARE.
 	        __HOST_DEVICE__
 	        __half __habs(__half x)
 	        {
-                static_assert(sizeof(_Float16) == sizeof(unsigned short));
-                union {
-                  _Float16 fp16;
-                  unsigned short us;
-                } u{static_cast<__half_raw>(x).data};
+                  static_assert(sizeof(_Float16) == sizeof(unsigned short), "");
+                  union {
+                    _Float16 fp16;
+                    unsigned short us;
+                  } u{static_cast<__half_raw>(x).data};
                 u.us &= 0x7FFFu;
                 return __half_raw{u.fp16};
 	        }
@@ -1527,7 +1527,7 @@ THE SOFTWARE.
             #if __has_builtin(__builtin_amdgcn_flat_atomic_fadd_v2f16)
                 // The api expects an ext_vector_type of half
                 typedef _Float16 __attribute__((ext_vector_type(2))) vec_fp162;
-                static_assert(sizeof(vec_fp162) == sizeof(__half2_raw));
+                static_assert(sizeof(vec_fp162) == sizeof(__half2_raw), "");
                 union {
                     __half2_raw h2r;
                     vec_fp162 fp16;
@@ -1536,11 +1536,11 @@ THE SOFTWARE.
                     __builtin_amdgcn_flat_atomic_fadd_v2f16((vec_fp162*)address, u.fp16);
                 return static_cast<__half2>(u.h2r);
             #else
-                static_assert(sizeof(__half2_raw) == sizeof(unsigned int));
-                union u_hold {
-                    __half2_raw h2r;
-                    unsigned int u32;
-                };
+              static_assert(sizeof(__half2_raw) == sizeof(unsigned int), "");
+              union u_hold {
+                __half2_raw h2r;
+                unsigned int u32;
+              };
                 u_hold old_val, new_val;
                 old_val.u32 = __hip_atomic_load((unsigned int*)address, __ATOMIC_RELAXED,
                                                 __HIP_MEMORY_SCOPE_AGENT);
@@ -1553,26 +1553,26 @@ THE SOFTWARE.
             #endif
             }
             inline __device__ __half unsafeAtomicAdd(__half* address, __half value) {
-                static_assert(sizeof(unsigned short int) == sizeof(__half_raw));
-                unsigned short int* address_as_short = reinterpret_cast<unsigned short int *>(address);
-                // Align to 4 bytes
-                unsigned int* aligned_addr = __builtin_bit_cast(unsigned int*,
-                                             __builtin_bit_cast(unsigned long long int, address_as_short)
-                                             & (unsigned long long int)(~0x3));
+              static_assert(sizeof(unsigned short int) == sizeof(__half_raw), "");
+              unsigned short int* address_as_short = reinterpret_cast<unsigned short int*>(address);
+              // Align to 4 bytes
+              unsigned int* aligned_addr =
+                  __builtin_bit_cast(unsigned int*,
+                                     __builtin_bit_cast(unsigned long long int, address_as_short) &
+                                         (unsigned long long int)(~0x3));
 
-                bool is_lower = __builtin_bit_cast(unsigned long long int, aligned_addr) ==
-                                __builtin_bit_cast(unsigned long long int, address);
-                __half2 fval;
-                if (is_lower)
-                  fval = __halves2half2(value, __float2half(0.0f));
-                else
-                  fval = __halves2half2(__float2half(0.0f), value);
+              bool is_lower = __builtin_bit_cast(unsigned long long int, aligned_addr) ==
+                  __builtin_bit_cast(unsigned long long int, address);
+              __half2 fval;
+              if (is_lower)
+                fval = __halves2half2(value, __float2half(0.0f));
+              else
+                fval = __halves2half2(__float2half(0.0f), value);
 
-                __half2 *in = (__half2 *)(aligned_addr);
-                __half2 out =  unsafeAtomicAdd(in , fval);
-                if (is_lower)
-                   return __low2half(out);
-                return __high2half(out);
+              __half2* in = (__half2*)(aligned_addr);
+              __half2 out = unsafeAtomicAdd(in, fval);
+              if (is_lower) return __low2half(out);
+              return __high2half(out);
             }
             #endif // defined(__clang__) && defined(__HIP__)
 

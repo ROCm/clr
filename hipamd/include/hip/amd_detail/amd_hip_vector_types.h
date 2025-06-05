@@ -63,18 +63,24 @@ inline constexpr unsigned int next_pot(unsigned int x) {
 template <typename T, unsigned int n>
 __attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_*
 get_native_pointer(HIP_vector_base<T, n>& base_vec) {
-  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
-                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_),
+                "Cannot safely reinterpret between types of different sizes");
+  static_assert(
+      __hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+          __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value,
+      "Cannot safely reinterpret to type of different alignment");
   return reinterpret_cast<typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
 };
 
 template <typename T, unsigned int n>
 __attribute__((always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_*
 get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
-  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
-  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
-                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_),
+                "Cannot safely reinterpret between types of different sizes");
+  static_assert(
+      __hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+          __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value,
+      "Cannot safely reinterpret to type of different alignment");
   return reinterpret_cast<const typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec.x);
 };
 }  // Namespace hip_impl.
