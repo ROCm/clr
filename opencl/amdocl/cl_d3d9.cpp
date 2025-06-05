@@ -28,6 +28,7 @@
 #include <cstring>
 #include <utility>
 
+
 RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR,
               (cl_platform_id platform, cl_uint num_media_adapters,
                cl_dx9_media_adapter_type_khr* media_adapters_type, void* media_adapters,
@@ -182,8 +183,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreateFromDX9MediaSurfaceKHR,
   D3DSURFACE_DESC Desc;
   pD3D9Resource->GetDesc(&Desc);
 
-  if ((Desc.Format != D3DFMT_NV_12) &&
-      (Desc.Format != D3DFMT_P010) &&
+  if ((Desc.Format != D3DFMT_NV_12) && (Desc.Format != D3DFMT_P010) &&
       (Desc.Format != D3DFMT_YV_12) && (plane != 0)) {
     *not_null(errcode_ret) = CL_INVALID_VALUE;
     LogWarning("The plane has to be Zero if the surface format is non-planar !");
@@ -232,15 +232,16 @@ RUNTIME_EXIT
 //      clCreateImage2DFromD3D9ResourceAMD
 //
 cl_mem amd::clCreateImage2DFromD3D9ResourceAMD(amd::Context& amdContext, cl_mem_flags flags,
-                                          cl_dx9_media_adapter_type_khr adapter_type,
-                                          cl_dx9_surface_info_khr* surface_info, cl_uint plane,
-                                          int* errcode_ret) {
+                                               cl_dx9_media_adapter_type_khr adapter_type,
+                                               cl_dx9_surface_info_khr* surface_info, cl_uint plane,
+                                               int* errcode_ret) {
   cl_dx9_surface_info_khr* cl_surf_info = reinterpret_cast<cl_dx9_surface_info_khr*>(surface_info);
   IDirect3DSurface9* pD3D9Resource = cl_surf_info->resource;
   HANDLE shared_handle = cl_surf_info->shared_handle;
 
   amd::D3D9Object obj;
-  cl_int errcode = amd::D3D9Object::initD3D9Object(amdContext, adapter_type, surface_info, plane, obj);
+  cl_int errcode =
+      amd::D3D9Object::initD3D9Object(amdContext, adapter_type, surface_info, plane, obj);
   if (CL_SUCCESS != errcode) {
     *not_null(errcode_ret) = errcode;
     return (cl_mem)0;
@@ -291,7 +292,6 @@ void amd::SyncD3D9Objects(std::vector<amd::Memory*>& memObjects) {
   while (S_OK != query->GetData(&data, sizeof(BOOL), D3DGETDATA_FLUSH)) {
   }
 }
-
 
 
 #endif  //_WIN32
