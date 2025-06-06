@@ -375,7 +375,7 @@ class coalesced_group : public thread_group {
     if (coalesced_info.tiled_info.is_tiled) {
       unsigned int base_offset = (thread_rank() & (~(tile_size - 1)));
       unsigned int masklength = min(static_cast<unsigned int>(size()) - base_offset, tile_size);
-      lane_mask full_mask = (warpSize == 32) ? static_cast<lane_mask>((1u << 32) - 1)
+      lane_mask full_mask = (static_cast<int>(warpSize) == 32) ? static_cast<lane_mask>((1u << 32) - 1)
                                              : static_cast<lane_mask>(-1ull);
       lane_mask member_mask = full_mask >> (warpSize - masklength);
 
@@ -469,7 +469,7 @@ class coalesced_group : public thread_group {
     srcRank = srcRank % static_cast<int>(size());
 
     int lane = (size() == warpSize) ? srcRank
-             : (warpSize == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
+             : (static_cast<int>(warpSize) == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
                                     : __fns32(coalesced_info.member_mask, 0, (srcRank + 1));
 
     return __shfl(var, lane, warpSize);
@@ -501,7 +501,7 @@ class coalesced_group : public thread_group {
     }
 
     int lane;
-    if (warpSize == 64) {
+    if (static_cast<int>(warpSize) == 64) {
       lane = __fns64(coalesced_info.member_mask, __lane_id(), lane_delta + 1);
     }
     else {
@@ -541,10 +541,10 @@ class coalesced_group : public thread_group {
     }
 
     int lane;
-    if (warpSize == 64) {
+    if (static_cast<int>(warpSize) == 64) {
       lane = __fns64(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
     }
-    else if (warpSize == 32) {
+    else if (static_cast<int>(warpSize) == 32) {
       lane = __fns32(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
     }
 

@@ -101,7 +101,7 @@ T __hip_readfirstlane(T val) {
 // When compiling for wave32 mode, ignore the upper half of the 64-bit mask.
 #define __hip_adjust_mask_for_wave32(MASK)            \
   do {                                          \
-    if (warpSize == 32) MASK &= 0xFFFFFFFF;     \
+    if (static_cast<int>(warpSize) == 32) MASK &= 0xFFFFFFFF;     \
   } while (0)
 
 // We use a macro to expand each builtin into a waterfall that implements the

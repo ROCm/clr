@@ -128,7 +128,7 @@ unsigned long long __activemask() {
 #endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 
 __device__ static inline unsigned int __lane_id() {
-    if (warpSize == 32) return __builtin_amdgcn_mbcnt_lo(-1, 0);
+    if (static_cast<int>(warpSize) == 32) return __builtin_amdgcn_mbcnt_lo(-1, 0);
     return  __builtin_amdgcn_mbcnt_hi(
         -1, __builtin_amdgcn_mbcnt_lo(-1, 0));
 }

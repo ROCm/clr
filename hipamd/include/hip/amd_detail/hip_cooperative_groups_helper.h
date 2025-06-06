@@ -240,7 +240,7 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 // have i-th bit of x set and come before the current thread.
 __CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
   unsigned int counter=0;
-  if (warpSize == 32) {
+  if (static_cast<int>(warpSize) == 32) {
     counter = __builtin_amdgcn_mbcnt_lo(static_cast<unsigned int>(x), add);
   } else {
     unsigned int lo = static_cast<unsigned int>(x & 0xFFFFFFFF);
