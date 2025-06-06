@@ -2,26 +2,27 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
-## HIP 6.5 for ROCm 6.5
+## HIP 7.0 for ROCm 7.0
 
 ### Added
 
 * New HIP APIs
     - `hipLaunchKernelEx`  dispatches the provided kernel with the given launch configuration and forwards the kernel arguments.
     - `hipLaunchKernelExC`  launches a HIP kernel using a generic function pointer and the specified configuration.
-    - `hipDrvLaunchKernelEx`  dispatches the device kernel represented by a HIP function object
+    - `hipDrvLaunchKernelEx`  dispatches the device kernel represented by a HIP function object.
+    - `hipMemGetHandleForAddressRange`  gets a handle for the address range requested.
 * New support for Open Compute Project (OCP) floating-point `FP4`/`FP6`/`FP8` as the following. For details, see [Low precision floating point document](https://rocm.docs.amd.com/projects/HIP/en/latest/reference/low_fp_types.html).
     - Data types for `FP4`/`FP6`/`FP8`.
     - HIP APIs for `FP4`/`FP6`/`FP8`, which are compatible with corresponding CUDA APIs.
     - HIP Extensions APIs for microscaling formats, which are supported on AMD GPUs.
 * New `wptr` and `rptr` values in `ClPrint`, for better logging in dispatch barrier methods.
 * New debug mask, to print precise code object information for logging.
-* The `_sync()` version of crosslane builtins such as `shfl_sync()` and `__reduce_add_sync` are enabled by default. These can be
-disabled by setting the preprocessor macro `HIP_DISABLE_WARP_SYNC_BUILTINS`.
+* The `_sync()` version of crosslane builtins such as `shfl_sync()` and `__reduce_add_sync` are enabled by default. These can be disabled by setting the preprocessor macro `HIP_DISABLE_WARP_SYNC_BUILTINS`.
 
 ### Changed
 
-* Some unsupported GPUs such as gfx8, gfx8 and gfx7 are deprecated on Microsoft Windows.
+* Some unsupported GPUs such as gfx9, gfx8 and gfx7 are deprecated on Microsoft Windows.
+* Stream validation in some HIP APIs are removed, to match the behavior with CUDA.
 
 ### Optimized
 
@@ -36,10 +37,51 @@ HIP runtime has the following functional improvements which greatly improve runt
 * Improved kernel logging using demangling shader names.
 * Advanced support for SPIRV, now kernel compilation caching is enabled by default. This feature is controlled by the environment variable `AMD_COMGR_CACHE`, for details, see [hip_rtc document](https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_rtc.html).
 * Programmatic support for scratch limit on GPU device. Developer can now use the environment variable `HSA_SCRATCH_SINGLE_LIMIT` to change the default allocation size with expected scratch limit.
+* HIP runtime now enables peer-to-peer (P2P) memory copies to utilize all available SDMA engines, rather than being limited to a single engine. It also selects the best engine first to give optimal bindwidth.
+* Improved launch latency for `D2D` copies and `memset` on MI300 series.
 
 ### Resolved issues
 
 * Error of "unable to find modules" in HIP clean up for code object module.
+
+## HIP 6.4.2 for ROCm 6.4.2
+
+### Added
+
+* Support for the pointer attribute `HIP_POINTER_ATTRIBUTE_CONTEXT`.
+
+### Optimized
+
+* Improved implementation in `hipEventSynchronize`, HIP runtime now makes internal callbacks non-blocking to gain performance.
+
+### Resolved issues
+
+* Issue of dependency on `libgcc-s1` during rocm-dev install on Debian Buster. HIP runtime removed this Debian package dependency, and uses `libgcc1` instead for this distros.
+* Building issue for `COMGR` dynamic load on Fedora and other Distros. HIP runtime now doesn't link against `libamd_comgr.so`.
+* Failure in the API `hipStreamDestroy`, when stream type is `hipStreamLegacy`. The API now returns error code `hipErrorInvalidResourceHandle` on this condition.
+* Kernel launch errors, such as `shared object initialization failed`, `invalid device function` or `kernel execution failure`. HIP runtime now loads `COMGR` properly considering the file with its name and mapped mage.
+* Memory access fault in some appplications. HIP runtime fixed offset accumulation in memory address.
+
+## HIP 6.4.1 for ROCm 6.4.1
+
+### Added
+
+* New log mask enumeration `LOG_COMGR` enables logging precise code object information.
+
+### Changed
+
+* HIP runtime uses device bitcode before SPIRV.
+* The implementation of preventing `hipLaunchKernel` latency degradation with number of idle streams is reverted/disabled by default.
+
+### Optimized
+
+* Improved kernel logging includes de-mangling shader names.
+* Refined implementation in HIP APIs `hipEventRecords` and `hipStreamWaitEvent` for performance improvement.
+
+### Resolved issues
+
+* Stale state during the graph capture. The return error was fixed, HIP runtime now always uses the latest dependent nodes during `hipEventRecord` capture.
+* Segmentation fault during kernel execution. HIP runtime now allows maximum stack size as per ISA on the GPU device.
 
 ## HIP 6.4 (For ROCm 6.4)
 
@@ -75,6 +117,9 @@ HIP runtime has the following functional improvements which greatly improve runt
     - Kernel copy path is enabled for unpinned `H2D`/`D2H` methods.
     - The default environment variable `GPU_FORCE_BLIT_COPY_SIZE` is set to `16`, which limits the kernel copy to sizes less than 16 KB, while copies about that would be handled by `SDMA` engine.
     - Blit code is refactored and ASAN instrumentation is cleaned up.
+* HIP runtime uses signals without interrupts.
+    - In active wait mode, uses signals without interrupts by default.
+    - Only when a callback is required, switches to the interrupts.
 
 ### Resolved issues
 
@@ -87,10 +132,12 @@ HIP runtime has the following functional improvements which greatly improve runt
 The following are the list of backwards incompatible changes planned for the upcoming major ROCm release.
 
 * Signature changes in APIs to match corresponding CUDA APIs,
-    - `hiprtcCreatreProgram`
+    - `hiprtcCreateProgram`
     - `hiprtcCompileProgram`
     - `hipCtxGetApiVersion`
-* Behaviour of `hipPointerGetAttributes` is changed to match corresponding CUDA API in version 11 and later releases.
+* Behavior of `hipPointerGetAttributes` is changed to match corresponding CUDA API in version 11 and later releases.
+* Behavior of `hipFree` is changed to match corresponding CUDA API `cudaFree`.
+* HIP vector constructor changes for `hipComplex`.
 * Return error/value codes update in the following hip APIs, they now match the corresponding CUDA APIs,
     - `hipModuleLaunchKernel`
     - `hipExtModuleLaunchKernel`
@@ -114,11 +161,11 @@ The following are the list of backwards incompatible changes planned for the upc
    - `hipMemPoolDestory`
    - `hipDeviceSetMemPool`
    - `hipEventQuery`
-* The implementation of `hipStreamAddCallback` is updated, to match the behaviour of CUDA.
+* The implementation of `hipStreamAddCallback` is updated, to match the behavior of CUDA.
 * Removal of hiprtc symbols from hip library.
     - hiprtc will be a independent library, all symbols supported in hip library are removed.
     - Any application using hiprtc APIs should link explicitly with hiprtc library.
-    - This change makes the usage of hiprtc library on Linux the same as on Windows, and matches the behaviour of CUDA nvrtc.
+    - This change makes the usage of hiprtc library on Linux the same as on Windows, and matches the behavior of CUDA nvrtc.
 * Removal of deprecated struct `HIP_MEMSET_NODE_PARAMS`, developers can use definition `hipMemsetParams` instead.
 
 
@@ -158,10 +205,9 @@ The following are the list of backwards incompatible changes planned for the upc
 
 * An activeQueues set that tracks only the queues that have a command submitted to them, which allows fast iteration in `waitActiveStreams`.
 
-### Resolved issues
+### Optimized
 
-* A Deadlock in a specific customer application by preventing hipLaunchKernel latency degradation with number of idle streams.
-
+* Mechanism of preventing `hipLaunchKernel` latency degradation with number of idle streams is implemented for performance improvement.
 
 ## HIP 6.3 for ROCm 6.3
 
@@ -189,6 +235,11 @@ The following are the list of backwards incompatible changes planned for the upc
 * Optimized multi-threaded dispatches to improve performance.
 * Limited the software batch size to control the number of command submissions for runtime to handle efficiently.
 * Optimizes HSA callback performance when a large number of events are recorded by multiple threads and submitted to multiple GPUs.
+* HIP graph execution perfomance improvement.
+    - Added the optimized multistream path in graph execution. It uses a fixed number of async streams in the execution
+    - Optimized the launch latency, where commands creation and execution is done at the same time
+    - Optimized the scheduling to use less barriers and waiting signals if the same queue  can be detected
+    - The new path is controlled by a new environment variable, with the options either to use the original path, or to force the number of asynchronous queues for execution.
 
 ### Resolved issues
 
@@ -356,7 +407,7 @@ This header exists alongside the older bfloat16 header in`amd_hip_bfloat16.h` wh
 
 ### Resolved issues
 - Kernel launch maximum dimension validation is added specifically on gridY and gridZ in the HIP API hipModule-LaunchKernel. As a result,when hipGetDeviceAttribute is called for the value of hipDeviceAttributeMaxGrid-Dim, the behavior on the AMD platform is equivalent to NVIDIA.
-- The HIP stream synchronisation behaviour is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
+- The HIP stream synchronisation behavior is changed in internal stream functions, in which a flag "wait" is added and set when the current stream is null pointer while executing stream synchronisation on other explicitly created streams. This change avoids blocking of execution on null/default stream.
 The change won't affect usage of applications, and makes them behave the same on the AMD platform as NVIDIA.
 - Error handling behavior on unsupported GPU is fixed, HIP runtime will log out error message, instead of creating signal abortion error which is invisible to developers but continued kernel execution process. This is for the case when developers compile any application via hipcc, setting the option --offload-arch with GPU ID which is different from the one on the system.
 
