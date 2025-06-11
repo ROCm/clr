@@ -65,6 +65,33 @@ bool Supported() {
 #endif
 }
 
+#if !defined(_WIN32)
+// Fallback for older OS' and Mesa versions
+static void LegacyInitGLX() {
+  if (!GlxInfo) {
+    GlxInfo = (PFNMESAGLINTEROPGLXQUERYDEVICEINFOPROC*)dlsym(RTLD_DEFAULT,
+                                                             "MesaGLInteropGLXQueryDeviceInfo");
+  }
+
+  if (!GlxExport) {
+    GlxExport =
+        (PFNMESAGLINTEROPGLXEXPORTOBJECTPROC*)dlsym(RTLD_DEFAULT, "MesaGLInteropGLXExportObject");
+  }
+}
+
+static void LegacyInitEGL() {
+  if (!EglInfo) {
+    EglInfo = (PFNMESAGLINTEROPEGLQUERYDEVICEINFOPROC*)dlsym(RTLD_DEFAULT,
+                                                             "MesaGLInteropEGLQueryDeviceInfo");
+  }
+
+  if (!EglExport) {
+    EglExport =
+        (PFNMESAGLINTEROPEGLEXPORTOBJECTPROC*)dlsym(RTLD_DEFAULT, "MesaGLInteropEGLExportObject");
+  }
+}
+#endif
+
 // Returns true if the required subsystem is supported on the GL device.
 // Must be called at least once, may be called multiple times.
 bool Init(MESA_INTEROP_KIND Kind) {
@@ -87,6 +114,14 @@ bool Init(MESA_INTEROP_KIND Kind) {
           "eglGLInteropQueryDeviceInfoMESA");
       EglExport =
           (PFNMESAGLINTEROPEGLEXPORTOBJECTPROC*)egl_procaddr_fn("eglGLInteropExportObjectMESA");
+    }
+
+    if (!GlxInfo || !GlxExport) {
+      LegacyInitGLX();
+    }
+
+    if (!EglInfo || !EglExport) {
+      LegacyInitEGL();
     }
 
     uint32_t ret = MESA_INTEROP_NONE;
