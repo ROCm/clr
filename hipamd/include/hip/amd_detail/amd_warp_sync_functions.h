@@ -340,7 +340,8 @@ T __shfl_xor_sync(MaskT mask, T var, int laneMask,
 template <typename MaskT, typename T, typename BinaryOp, typename WfReduce>
 __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wfReduce)
 {
-  using permuteType = __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int>::type;
+  using permuteType =
+    typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int>::type;
   static constexpr auto kMaskNumBits = sizeof(MaskT) * 8;
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
