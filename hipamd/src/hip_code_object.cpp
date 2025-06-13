@@ -90,8 +90,7 @@ bool CodeObject::IsClangOffloadMagicBundle(const void* data, bool& isCompressed)
     isCompressed = false;
     return true;
   }
-  std::string magic1(reinterpret_cast<const char*>(data),
-                    kOffloadBundleCompressedMagicStrSize - 1);
+  std::string magic1(reinterpret_cast<const char*>(data), kOffloadBundleCompressedMagicStrSize - 1);
   if (!magic1.compare(kOffloadBundleCompressedMagicStr)) {
     isCompressed = true;
     return true;
@@ -102,23 +101,25 @@ bool CodeObject::IsClangOffloadMagicBundle(const void* data, bool& isCompressed)
 uint32_t CodeObject::getGenericVersion(const void* image) {
   const Elf64_Ehdr* ehdr = reinterpret_cast<const Elf64_Ehdr*>(image);
   return (ehdr->e_machine == EM_AMDGPU && ehdr->e_ident[EI_OSABI] == ELFOSABI_AMDGPU_HSA &&
-      ehdr->e_ident[EI_ABIVERSION] == ELFABIVERSION_AMDGPU_HSA_V6) ?
-      ((ehdr->e_flags & EF_AMDGPU_GENERIC_VERSION) >> EF_AMDGPU_GENERIC_VERSION_OFFSET) : 0;
+          ehdr->e_ident[EI_ABIVERSION] == ELFABIVERSION_AMDGPU_HSA_V6)
+      ? ((ehdr->e_flags & EF_AMDGPU_GENERIC_VERSION) >> EF_AMDGPU_GENERIC_VERSION_OFFSET)
+      : 0;
 }
 
 bool CodeObject::isGenericTarget(const void* image) {
   return getGenericVersion(image) >= EF_AMDGPU_GENERIC_VERSION_MIN;
 }
 
-bool CodeObject::containGenericTarget(const void *data) {
+bool CodeObject::containGenericTarget(const void* data) {
   const auto obheader = reinterpret_cast<const __ClangOffloadBundleUncompressedHeader*>(data);
   const auto* desc = &obheader->desc[0];
   for (uint64_t i = 0; i < obheader->numOfCodeObjects; ++i,
-        desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
-           reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) + desc->bundleEntryIdSize)) {
+                desc = reinterpret_cast<const __ClangOffloadBundleInfo*>(
+                    reinterpret_cast<uintptr_t>(&desc->bundleEntryId[0]) +
+                    desc->bundleEntryIdSize)) {
     if (desc->size == 0) continue;
     const void* image =
-         reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
+        reinterpret_cast<const void*>(reinterpret_cast<uintptr_t>(obheader) + desc->offset);
     if (isGenericTarget(image)) {
       return true;
     }
@@ -424,8 +425,8 @@ static bool getTripleTargetIDFromCodeObject(const void* code_object, std::string
 
       else if (co_xnack_value == EF_AMDGPU_FEATURE_XNACK_ON_V4)
         target_id += ":xnack+";
-      ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
-        "[Code Object %s, target id: %s]", vstr, target_id.c_str());
+      ClPrint(amd::LOG_INFO, amd::LOG_COMGR, "[Code Object %s, target id: %s]", vstr,
+              target_id.c_str());
       break;
     }
 
@@ -494,7 +495,7 @@ static bool getTargetIDValue(std::string& input, std::string& processor, char& s
 }
 
 static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_object,
-                          std::string& co_triple_target_id) {
+                              std::string& co_triple_target_id) {
   std::string offload_kind = trimName(bundled_co_entry_id, '-');
   if (offload_kind != kOffloadKindHipv4 && offload_kind != kOffloadKindHip &&
       offload_kind != kOffloadKindHcc)
@@ -509,7 +510,8 @@ static bool getTripleTargetID(std::string bundled_co_entry_id, const void* code_
 }
 
 static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
-                std::string agent_triple_target_id, unsigned int genericVersion) {
+                                             std::string agent_triple_target_id,
+                                             unsigned int genericVersion) {
   // Primitive Check
   if (co_triple_target_id == agent_triple_target_id) return true;
 
@@ -542,8 +544,7 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   // Check for compatibility
   if (genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
     // co_processor is generic target
-    if (!helpers::IsCompatibleWithGenericTarget(co_processor, agent_isa_processor))
-      return false;
+    if (!helpers::IsCompatibleWithGenericTarget(co_processor, agent_isa_processor)) return false;
   } else if (agent_isa_processor != co_processor) {
     return false;
   }
@@ -556,8 +557,8 @@ static bool isCodeObjectCompatibleWithDevice(std::string co_triple_target_id,
   return true;
 }
 
-bool CodeObject::QueryGenericTarget(std::string agentTarget, std::string& processor,
-		char& sram_ecc, char& xnack) {
+bool CodeObject::QueryGenericTarget(std::string agentTarget, std::string& processor, char& sram_ecc,
+                                    char& xnack) {
   static const std::string head = std::string(kAmdgcnTargetTriple) + '-';
   // Parse agent isa triple target id
   if (!consume(agentTarget, head)) {
@@ -567,7 +568,7 @@ bool CodeObject::QueryGenericTarget(std::string agentTarget, std::string& proces
     return false;
   }
   if (processor.empty()) return false;
-  auto &map = helpers::GenericTargetMapping();
+  auto& map = helpers::GenericTargetMapping();
   auto search = map.find(processor);
   if (search == map.end()) return false;
   processor = head + search->second;
@@ -640,19 +641,19 @@ hipError_t CodeObject::extractCodeObjectFromFatBinary(
     uint32_t genericVersion = getGenericVersion(image);
     if (!getTripleTargetID(bundleEntryId, image, co_triple_target_id)) continue;
     ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
-      "bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%u\n",
-      bundleEntryId.c_str(), co_triple_target_id.c_str(), genericVersion);
+            "bundleEntryId=%s, co_triple_target_id=%s, genericVersion=%u\n", bundleEntryId.c_str(),
+            co_triple_target_id.c_str(), genericVersion);
 
     for (size_t dev = 0; dev < agent_triple_target_ids.size(); ++dev) {
       if (code_objs[dev].first != nullptr) {
         if (!isGenericTarget(code_objs[dev].first)) {
-          continue; // Specific target already found
-        } else if(genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
-          continue; // Generic target already found, no need to check another generic
+          continue;  // Specific target already found
+        } else if (genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN) {
+          continue;  // Generic target already found, no need to check another generic
         }
       }
       if (isCodeObjectCompatibleWithDevice(co_triple_target_id, agent_triple_target_ids[dev],
-        genericVersion)) {
+                                           genericVersion)) {
         if (code_objs[dev].first == nullptr) --num_code_objs;
         code_objs[dev] = std::make_pair(image, image_size);
       }
@@ -735,8 +736,8 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
   amd_comgr_data_t item{0};
 
 
-  std::set<std::string> devicesSet{};  // To make sure device is unique
-  std::set<std::string> genericDevicesSet{}; // Used to record generic targets
+  std::set<std::string> devicesSet{};         // To make sure device is unique
+  std::set<std::string> genericDevicesSet{};  // Used to record generic targets
 
   std::vector<const char*> bundleEntryIDs{};
   static const std::string hipv4 = kOffloadKindHipv4_;  // bundled code objects need the prefix
@@ -748,7 +749,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
       std::string processor;
       char sram_ecc = ' ', xnack = ' ';
       if (!QueryGenericTarget(agent_triple_target_ids[i], processor, sram_ecc, xnack)) {
-        continue; // No generic target for this device
+        continue;  // No generic target for this device
       }
       // Now processor is generic such as
       // amdgcn-amd-amdhsa--gfx9-4-generic, amdgcn-amd-amdhsa--gfx11-generic
@@ -919,9 +920,8 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
       if (!consume(bundleEntryId, kOffloadHipV4FatBinName_)) {
         // This is behavour in comgr unbundling which is subject to change.
         // So just give info.
-        ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
-                "bundleEntryId=%s isn't prefixed with %s", bundleEntryId.c_str(),
-                kOffloadHipV4FatBinName_);
+        ClPrint(amd::LOG_INFO, amd::LOG_COMGR, "bundleEntryId=%s isn't prefixed with %s",
+                bundleEntryId.c_str(), kOffloadHipV4FatBinName_);
       }
       trimNameTail(bundleEntryId, '.');  // Remove .fileExtention
 
@@ -955,8 +955,8 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
               // amd::Comgr::do_action(AMD_COMGR_ACTION_UNBUNDLE) still returns item with
               // valid name but no data. We need continue searching for other devices
               ClPrint(amd::LOG_INFO, amd::LOG_COMGR,
-                  "amd::Comgr::get_data() return 0 size for agent_triple_target_ids[%zu]=%s", dev,
-                  agent_triple_target_ids[dev].c_str());
+                      "amd::Comgr::get_data() return 0 size for agent_triple_target_ids[%zu]=%s",
+                      dev, agent_triple_target_ids[dev].c_str());
               break;
             }
             // itemData should be deleted in fatbin's destructor
@@ -978,7 +978,7 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
           }
           if (code_objs[dev].first != nullptr) {
             // This must be data of generic target
-            bool used  = false; // Still used by other devices?
+            bool used = false;  // Still used by other devices?
             for (size_t i = 0; i < num_devices; ++i) {
               if (dev != i && code_objs[dev].first == code_objs[i].first) {
                 used = true;
@@ -993,12 +993,12 @@ hipError_t CodeObject::extractCodeObjectFromFatBinaryUsingComgr(
           }
           code_objs[dev] = std::make_pair(reinterpret_cast<const void*>(itemData), itemSize);
           ClPrint(amd::LOG_DEBUG, amd::LOG_COMGR,
-              "Found agent_triple_target_ids[%zu]=%s: item: Data=%p(%s, %s), "
-              "Size=%zu, num_code_objs=%zu",
-              dev, agent_triple_target_ids[dev].c_str(), itemData,
-              isCompressed ? "compressed" : "uncompressed",
-              genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN ? "generic" : "non-generic",
-              itemSize, num_code_objs);
+                  "Found agent_triple_target_ids[%zu]=%s: item: Data=%p(%s, %s), "
+                  "Size=%zu, num_code_objs=%zu",
+                  dev, agent_triple_target_ids[dev].c_str(), itemData,
+                  isCompressed ? "compressed" : "uncompressed",
+                  genericVersion >= EF_AMDGPU_GENERIC_VERSION_MIN ? "generic" : "non-generic",
+                  itemSize, num_code_objs);
         }
       }
 
@@ -1341,9 +1341,7 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
     for (auto& hostVar : hostVarsIter->second) {
       auto varIter = vars_.find(hostVar);
       if (varIter == vars_.end()) {
-        LogPrintfError(
-          "removeFatBinary: Unable to find module 0x%x hostVar 0x%x",
-          module, hostVar);
+        LogPrintfError("removeFatBinary: Unable to find module 0x%x hostVar 0x%x", module, hostVar);
       } else {
         delete varIter->second;
         vars_.erase(varIter);
@@ -1377,8 +1375,8 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
     for (auto& hostFunc : hostFuncsIter->second) {
       auto funcIter = functions_.find(hostFunc);
       if (funcIter == functions_.end()) {
-        LogPrintfError("removeFatBinary: Unable to find module 0x%x hostFunc 0x%x",
-                       module, hostFunc);
+        LogPrintfError("removeFatBinary: Unable to find module 0x%x hostFunc 0x%x", module,
+                       hostFunc);
       } else {
         delete funcIter->second;
         functions_.erase(funcIter);
@@ -1395,8 +1393,8 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
       delete moduleIter->second;
       modules_.erase(moduleIter);
     } else {
-      LogPrintfError("removeFatBinary: Unable to find module 0x%x via hostModule 0x%x",
-                    module, hostModule);
+      LogPrintfError("removeFatBinary: Unable to find module 0x%x via hostModule 0x%x", module,
+                     hostModule);
     }
     module_to_hostModule_.erase(hostModuleIter);
   }
@@ -1435,7 +1433,7 @@ hipError_t StatCO::getStatFunc(hipFunction_t* hfunc, const void* hostFunction, i
   }
 
   // Lazy load
-  FatBinaryInfo **module = it->second->moduleInfo();
+  FatBinaryInfo** module = it->second->moduleInfo();
   if (*(module) == nullptr) {
     amd::ScopedLock lock(sclock_);
     if (*(module) == nullptr) {
@@ -1456,7 +1454,7 @@ hipError_t StatCO::getStatFuncAttr(hipFuncAttributes* func_attr, const void* hos
   }
 
   // Lazy load
-  FatBinaryInfo **module = it->second->moduleInfo();
+  FatBinaryInfo** module = it->second->moduleInfo();
   if (*(module) == nullptr) {
     std::ignore = digestFatBinary(module_to_hostModule_[module], *module);
   }
@@ -1487,7 +1485,7 @@ hipError_t StatCO::getStatGlobalVar(const void* hostVar, int deviceId, hipDevice
   }
 
   // Lazy load
-  FatBinaryInfo **module = it->second->moduleInfo();
+  FatBinaryInfo** module = it->second->moduleInfo();
   if (*(module) == nullptr) {
     std::ignore = digestFatBinary(module_to_hostModule_[module], *module);
   }
@@ -1513,7 +1511,7 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
     for (auto& vecIter : managedVars_) {
       for (auto& var : vecIter.second) {
         // Lazy load
-        FatBinaryInfo **module = var->moduleInfo();
+        FatBinaryInfo** module = var->moduleInfo();
         if (*(module) == nullptr) {
           std::ignore = digestFatBinary(module_to_hostModule_[module], *module);
         }
