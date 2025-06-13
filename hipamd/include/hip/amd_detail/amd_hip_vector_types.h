@@ -659,7 +659,9 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     template<typename T, unsigned int n>
     __HOST_DEVICE__
     inline
+    #if __cplusplus >= 201402L
     constexpr
+    #endif
     bool operator==(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
     {
