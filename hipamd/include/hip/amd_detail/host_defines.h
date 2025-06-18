@@ -43,7 +43,11 @@ typedef signed char int8_t;
 typedef signed short int16_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
+#if defined(_MSC_VER)
+typedef unsigned long long size_t;
+#else
 typedef unsigned long size_t;
+#endif
 
 template <class _Tp, _Tp __v> struct integral_constant {
   static constexpr const _Tp value = __v;
