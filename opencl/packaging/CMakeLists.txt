@@ -105,15 +105,16 @@ endif()
 set(CPACK_RPM_PACKAGE_LICENSE "MIT and ASL 2.0")
 
 #########Dev-Package###############
-
-# DEBIAN CPACK variables
 set(CPACK_DEBIAN_DEV_PACKAGE_NAME "rocm-opencl-dev")
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl, hsa-rocr-dev, rocm-core")
-# RPM CPACK variables
 set(CPACK_RPM_DEV_PACKAGE_NAME "rocm-opencl-devel")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-opencl, hsa-rocr-devel, rocm-core")
 
-
+if(BUILD_ICD)
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl, hsa-rocr-dev, rocm-core")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-opencl, hsa-rocr-devel, rocm-core")
+else()
+  set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "mesa-common-dev, rocm-opencl, hsa-rocr-dev, rocm-core, ocl-icd-opencl-dev")
+  set(CPACK_RPM_DEV_PACKAGE_REQUIRES "rocm-opencl, hsa-rocr-devel, rocm-core, ocl-icd-devel")
+endif()
 #############################
 # ICD Loader
 #############################
