@@ -6,7 +6,7 @@ on:
       alerts:
         required: false
         type: string
-        description: 'ℹ️Use either alert IDs or Start/End date!⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀List of alert IDs (comma-separated values)'
+        description: 'ℹ️Use either alert IDs or Start/End date!⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀Alert IDs (comma-separated values and/or list e.g. 1152, 1122-1124)'
       from_date:
         required: false
         type: string
@@ -22,7 +22,7 @@ on:
 
 jobs:
   call_codeql_reusable_workflow:
-    uses: AMD-GH-Actions/ai-pr-platform-actions-lib/.github/workflows/reusable_codeql_historical.yml@main
+    uses: AMD-GH-Actions/ai-pr-platform-actions-lib/.github/workflows/reusable_codeql.yml@main
     with:
       team_name: rocm_clr
       alerts: ${{ inputs.alerts }}
