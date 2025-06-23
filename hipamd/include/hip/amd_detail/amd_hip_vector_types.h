@@ -41,7 +41,7 @@ THE SOFTWARE.
         #define __HIP_USE_NATIVE_VECTOR__ 1
         #define __NATIVE_VECTOR__(n, T) T __attribute__((ext_vector_type(n)))
     #else
-        #define __NATIVE_VECTOR__(n, T) T[n]
+        #define __NATIVE_VECTOR__(n, T) alignas(n * sizeof(T)) T[n]
     #endif
 
 #if defined(__cplusplus)
@@ -55,11 +55,6 @@ template <typename T, unsigned int n> struct HIP_vector_base;
 template <typename T, unsigned int rank> struct HIP_vector_type;
 
 namespace hip_impl {
-inline constexpr unsigned int next_pot(unsigned int x) {
-  // Precondition: x > 1.
-  return 1u << (32u - __builtin_clz(x - 1u));
-}
-
 template <typename T, unsigned int n>
 __attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_*
 get_native_pointer(HIP_vector_base<T, n>& base_vec) {
@@ -116,7 +111,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
-    template <typename T> struct alignas(2 * sizeof(T)) HIP_vector_base<T, 2> {
+    template <typename T> struct alignas(alignof(__NATIVE_VECTOR__(2, T))) HIP_vector_base<T, 2> {
       using Native_vec_ = __NATIVE_VECTOR__(2, T);
 
       T x, y;
@@ -310,7 +305,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         HIP_vector_base& operator=(HIP_vector_base&&) = default;
     };
 
-    template <typename T> struct alignas(4 * sizeof(T)) HIP_vector_base<T, 4> {
+    template <typename T> struct alignas(__NATIVE_VECTOR__(4, T)) HIP_vector_base<T, 4> {
       using Native_vec_ = __NATIVE_VECTOR__(4, T);
 
       T x, y, z, w;
