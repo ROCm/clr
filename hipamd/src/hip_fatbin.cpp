@@ -352,18 +352,13 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         spirv_isa_handle = iter;
       }
     }
-
-    bool compile_spv_bitcode_res = false;
-    std::once_flag spirv_to_bc_flag;
-
-    comgr_helper::ComgrDataSetUniqueHandle bc_data_set;
+    bool get_spirv_data_res = false;
+    std::once_flag get_spirv_data_flag;
     std::unordered_map<std::string, std::pair<char*, size_t>> compiled_co;  // code object cache
+    comgr_helper::ComgrDataSetUniqueHandle spirv_data_set;
+    comgr_helper::ComgrDataUniqueHandle spirv_data;
 
-    auto compile_spv_bitcode = [&]() {
-      comgr_helper::ComgrDataSetUniqueHandle spirv_data_set;
-      comgr_helper::ComgrDataUniqueHandle spirv_data;
-      comgr_helper::ComgrActionInfoUniqueHandle action;
-
+    auto get_spirv_data = [&]() {
       if (comgr_status = spirv_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
         LogError("Failed to create SPIRV Data set");
         return;
@@ -396,23 +391,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         return;
       }
 
-      if (comgr_status = action.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-        LogError("Failed to create action");
-        return;
-      }
-
-      if (comgr_status = bc_data_set.Create(); comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-        LogError("Failed to create bitcode data set");
-        return;
-      }
-
-      if (comgr_status = amd::Comgr::do_action(AMD_COMGR_ACTION_TRANSLATE_SPIRV_TO_BC, action.get(),
-                                               spirv_data_set.get(), bc_data_set.get());
-          comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-        LogError("Failed to compile to ll");
-        return;
-      }
-      compile_spv_bitcode_res = true;
+      get_spirv_data_res = true;
     };
 
     LogPrintfInfo("Searching for code objects, HIP_FORCE_SPIRV_CODEOBJECT: %d",
@@ -433,14 +412,12 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
           break;
         }
       } else if (spirv_isa_found) {
-        // Compile to bitcode once
-        std::call_once(spirv_to_bc_flag, compile_spv_bitcode);
+        std::call_once(get_spirv_data_flag, get_spirv_data);
 
-        if(!compile_spv_bitcode_res) {
+        if(!get_spirv_data_res) {
           hip_status = hipErrorInvalidValue;
           break;
         }
-
         std::string target_id = device->devices()[0]->isa().targetId();
         if (auto code_iter = compiled_co.find(target_id); code_iter != compiled_co.end()) {
           // We have already compiled for it, lets reuse the code object
@@ -488,8 +465,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
         }
 
         if (comgr_status =
-                amd::Comgr::do_action(AMD_COMGR_ACTION_CODEGEN_BC_TO_RELOCATABLE,
-                                      reloc_action.get(), bc_data_set.get(), reloc_data.get());
+                amd::Comgr::do_action(AMD_COMGR_ACTION_COMPILE_SPIRV_TO_RELOCATABLE,
+                                      reloc_action.get(), spirv_data_set.get(), reloc_data.get());
             comgr_status != AMD_COMGR_STATUS_SUCCESS) {
           LogError("Failed to compile to reloc");
           LogError("Failed to do action: codegen bc ot reloc");
