@@ -390,7 +390,6 @@ hsa_status_t Device::loaderQueryHostAddress(const void* device, const void** hos
 
 // ================================================================================================
 bool Device::init() {
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Initializing HSA stack.");
   hsa_status_t status = HSA_STATUS_SUCCESS;
   // Initialize the compiler
   if (!initCompiler(offlineDevice_)) {
@@ -476,7 +475,7 @@ bool Device::init() {
     gpu_agents_ = valid_agents;
   }
 
-  LogPrintfInfo("Enumerated GPU agents = %lu", gpu_agents_.size());
+  LogPrintfInfo("Initalizing runtime stack, Enumerated GPU agents = %lu", gpu_agents_.size());
 
   for (auto agent : gpu_agents_) {
     std::unique_ptr<Device> roc_device(new Device(agent));

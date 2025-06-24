@@ -24,6 +24,7 @@
 #include "platform/runtime.hpp"
 #include "rocclr/utils/flags.hpp"
 #include "rocclr/utils/versions.hpp"
+#include "rocclr/os/os.hpp"
 
 #include <hip/amd_detail/hip_api_trace.hpp>
 namespace hip {
@@ -51,8 +52,12 @@ void init(bool* status) {
     *status = false;
     return;
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
 
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HIP Version: %d.%d.%d.%s, Direct Dispatch: %d",
+          HIP_VERSION_MAJOR, HIP_VERSION_MINOR, HIP_VERSION_PATCH, HIP_VERSION_GITHASH,
+          AMD_DIRECT_DISPATCH);
+  // Print the current path of the library
+  amd::Os::PrintLibraryLocation();
   const std::vector<amd::Device*>& devices = amd::Device::getDevices(CL_DEVICE_TYPE_GPU, false);
   const size_t deviceCount = devices.size();
   g_devices.reserve(deviceCount);  // Pre-allocate space for better performance

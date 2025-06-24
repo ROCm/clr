@@ -328,6 +328,9 @@ class Os : AllStatic {
 
   //! Return the current process id
   static int getProcessId();
+
+  // Prints the location of the currently loaded library (shared object or DLL)
+  static void PrintLibraryLocation();
 };
 
 /*@}*/

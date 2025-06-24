@@ -30,7 +30,6 @@ bool Comgr::is_ready_ = false;
 
 bool Comgr::LoadLib(bool is_versioned) {
 #if defined(COMGR_DYN_DLL)
-  ClPrint(amd::LOG_INFO, amd::LOG_CODE, "Loading COMGR library.");
 
   if (is_versioned) {
 #if defined(HIP_MAJOR_VERSION) && defined(HIP_MAJOR_VERSION)
