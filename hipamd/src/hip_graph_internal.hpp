@@ -674,8 +674,22 @@ class Graph {
     auto memory = getMemoryObject(dev_ptr, offset);
     if (memory != nullptr) {
       auto device_id = memory->getUserData().deviceId;
+      // First check if memory belonged to the graph pool
+      if (!mem_pool_->FreeMemory(memory, stream)) {
+	if (!g_devices[device_id]->FreeMemory(memory, stream)) {
+	  LogError("Memory didn't belong to any pool!");
+	}
+      }
+    }
+  }
+
+  void FreeMemory(amd::Memory* memory, hip::Stream* stream) const {
+    size_t offset = 0;
+    auto device_id = memory->getUserData().deviceId;
+    // First check if memory belonged to the graph pool
+    if (!mem_pool_->FreeMemory(memory, stream)) {
       if (!g_devices[device_id]->FreeMemory(memory, stream)) {
-        LogError("Memory didn't belong to any pool!");
+	LogError("Memory didn't belong to any pool!");
       }
     }
   }
@@ -2455,6 +2469,47 @@ class GraphMemAllocNode final : public GraphNode {
   void GetParams(hipMemAllocNodeParams* params) const {
     std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));
   }
+
+  hipError_t SetParamsInternal(hipMemAllocNodeParams *params) {
+    // Baseline implementation: free previous memory, allocate new memory
+    if (va_ != nullptr) {
+      if (va_->referenceCount() == 1) {
+        auto graph = GetParentGraph();
+        if (graph != nullptr) {
+          graph->FreeAddress(va_->getSvmPtr());
+        }
+      }
+
+      va_->release();
+    }
+
+    // Now re-allocate memory
+    std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
+    node_params_.dptr = (HIP_MEM_POOL_USE_VM) ? ReserveAddress() : Execute();
+    params->dptr = node_params_.dptr;
+    if (node_params_.dptr == nullptr) {
+      return hipErrorOutOfMemory;
+    }
+
+    return hipSuccess;
+  }
+
+  hipError_t SetParams(hipMemAllocNodeParams *params) {
+    if (params->bytesize == 0 ||
+	params->poolProps.allocType != hipMemAllocationTypePinned ||
+	params->poolProps.location.type != hipMemLocationTypeDevice) {
+      params->dptr = nullptr;
+      return hipErrorInvalidValue;
+    }
+    if (params->poolProps.location.type == hipMemLocationTypeDevice) {
+      if (params->poolProps.location.id < 0 ||
+	  params->poolProps.location.id >= g_devices.size()) {
+	return hipErrorInvalidValue;
+      }
+    }
+
+    return SetParamsInternal(params);
+  }
 };
 
 // ================================================================================================
@@ -2541,6 +2596,28 @@ class GraphMemFreeNode : public GraphNode {
 
   void GetParams(void** params) const {
     *params = device_ptr_;
+  }
+
+  hipError_t SetParams(hipMemFreeNodeParams *params) {
+    size_t offset = 0;
+    auto memory = getMemoryObject(params->dptr, offset);
+    if (memory == nullptr) {
+      if (HIP_MEM_POOL_USE_VM) {
+	// When VM is on the address must be valid and may point to a VA object
+	memory = amd::MemObjMap::FindVirtualMemObj(params->dptr);
+      }
+      if (memory == nullptr) {
+	return hipErrorInvalidValue;
+      }
+    }
+
+    // FIXME: more verification. Technically, as it is now, this breaks the invariant
+    // that every alloc node has a corresponding free node since here dptr could be
+    // any (valid) memory object
+
+    device_ptr_ = params->dptr;
+
+    return hipSuccess;
   }
 };
 

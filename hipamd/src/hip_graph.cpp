@@ -3505,10 +3505,12 @@ hipError_t ihipGraphNodeSetParams(hip::GraphNode* n, hipGraphNodeParams *nodePar
                                                 &nodeParams->extSemWait);
       break;
     case hipGraphNodeTypeMemAlloc:
-      status = hipErrorNotSupported;
+      status = reinterpret_cast<hip::GraphMemAllocNode*>(n)->SetParams(
+						&nodeParams->alloc);
       break;
     case hipGraphNodeTypeMemFree:
-      status = hipErrorNotSupported;
+      status = reinterpret_cast<hip::GraphMemFreeNode*>(n)->SetParams(
+						&nodeParams->free);
       break;
     default:
       status = hipErrorInvalidValue;
