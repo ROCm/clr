@@ -1,7 +1,7 @@
-name: Clang format check
-
+name: Clang format check  
 on:
-  push:
+  pull_request:
+    types: [synchronize, opened]
 
 jobs:
   format:
@@ -19,4 +19,4 @@ jobs:
         id: clang-format
         run: |
           chmod +x .github/hooks/clang-format-check.sh
-          ./.github/hooks/clang-format-check.sh --range "${{ github.event.before }}..${{ github.sha }}"
+          ./.github/hooks/clang-format-check.sh --range "${{ github.event.pull_request.base.sha }}..${{ github.sha }}"

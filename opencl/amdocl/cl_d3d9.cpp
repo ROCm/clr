@@ -42,7 +42,7 @@ RUNTIME_ENTRY(cl_int, clGetDeviceIDsFromDX9MediaAdapterKHR,
   static const bool VALIDATE_ONLY = true;
 
   if (platform != NULL && platform != AMD_PLATFORM) {
-    LogWarning("\"platrform\" is not a valid AMD platform");
+    LogWarning("\"platform\" is not a valid AMD platform");
     return CL_INVALID_PLATFORM;
   }
   // check if input parameter are correct
