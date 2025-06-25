@@ -22,7 +22,7 @@
 
 #include "os/os.hpp"
 #include "thread/thread.hpp"
-
+#include "utils/flags.hpp"
 #include <windows.h>
 #include <process.h>
 #include <tchar.h>
