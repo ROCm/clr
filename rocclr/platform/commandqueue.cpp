@@ -79,7 +79,9 @@ bool HostQueue::terminate() {
               lastCommand = command;
             }
         }
-        lastCommand->awaitCompletion();
+        if (device_.gpu_error_ == CL_SUCCESS) {
+	  lastCommand->awaitCompletion();
+        }
         // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
         // after lastCommand->awaitCompletion() is called.
         if (lastEnqueueCommand_ != nullptr) {
