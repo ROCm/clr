@@ -384,15 +384,36 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  // Helper lambda to get the next sub-buffer pointer
+  auto next_subbuffer_ptr = [](const amd::Memory* mem) -> address {
+    return reinterpret_cast<address>(mem->getSvmPtr()) + mem->getSize();
+  };
+
   amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(ptr);
-  if (vaddr_sub_obj == nullptr || vaddr_sub_obj->getSize() != size) {
+  // Validate that the size is within range
+  if (vaddr_sub_obj == nullptr ||
+      (vaddr_sub_obj->parent() != nullptr &&
+       size > (vaddr_sub_obj->parent()->getSize() - vaddr_sub_obj->getOrigin()))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
   address end_address = reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + size;
-  while (vaddr_sub_obj &&
-         reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + vaddr_sub_obj->getSize() <=
-             end_address) {
+  size_t total_processed_size = 0;
+  amd::Memory* check_obj = vaddr_sub_obj;
+  // Validate that the size matches the sum of sub-buffer sizes
+  while (check_obj && next_subbuffer_ptr(check_obj) <= end_address) {
+    if (size > total_processed_size && size < total_processed_size + check_obj->getSize()) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    total_processed_size += check_obj->getSize();
+    check_obj = amd::MemObjMap::FindMemObj(next_subbuffer_ptr(check_obj));
+  }
+  if (total_processed_size != size) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // Unmap all sub-buffers in the range
+  while (vaddr_sub_obj && next_subbuffer_ptr(vaddr_sub_obj) <= end_address) {
     amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
     if (phys_mem_obj == nullptr) {
       HIP_RETURN(hipErrorInvalidValue);
@@ -401,7 +422,6 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     amd::Command* cmd = new amd::VirtualMapCommand(
         *hip::getCurrentDevice()->NullStream(), amd::Command::EventWaitList{},
         vaddr_sub_obj->getSvmPtr(), vaddr_sub_obj->getSize(), nullptr);
-
     cmd->enqueue();
     cmd->awaitCompletion();
     cmd->release();
@@ -409,12 +429,12 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     hip::GenericAllocation* ga =
         reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
     ga->release();
-    address next_subbuffer_ptr =
-        reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + vaddr_sub_obj->getSize();
+
+    address next_ptr = next_subbuffer_ptr(vaddr_sub_obj);
     vaddr_sub_obj->release();
-    vaddr_sub_obj = amd::MemObjMap::FindMemObj(next_subbuffer_ptr);
+    vaddr_sub_obj = amd::MemObjMap::FindMemObj(next_ptr);
   }
 
   HIP_RETURN(hipSuccess);
 }
-} //namespace hip
+}  // namespace hip
