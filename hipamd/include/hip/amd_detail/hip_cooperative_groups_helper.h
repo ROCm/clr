@@ -138,7 +138,7 @@ __CG_STATIC_QUALIFIER__ __hip_uint32_t num_grids() {
 __CG_STATIC_QUALIFIER__ __hip_uint32_t grid_rank() {
   return static_cast<__hip_uint32_t>(__ockl_multi_grid_grid_rank()); }
 
-__CG_STATIC_QUALIFIER__ __hip_uint32_t size() { return static_cast<__hip_uint32_t>(__ockl_multi_grid_size()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() { return static_cast<__hip_uint32_t>(__ockl_multi_grid_size()); }
 
 __CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
   return static_cast<__hip_uint32_t>(__ockl_multi_grid_thread_rank()); }
@@ -155,7 +155,7 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
  */
 namespace grid {
 
-__CG_STATIC_QUALIFIER__ __hip_uint32_t size() {
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() {
   return static_cast<__hip_uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
                     (blockDim.x * gridDim.x));
 }
@@ -200,7 +200,7 @@ __CG_STATIC_QUALIFIER__ dim3 thread_index() {
                static_cast<__hip_uint32_t>(threadIdx.z)));
 }
 
-__CG_STATIC_QUALIFIER__ __hip_uint32_t size() {
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() {
   return (static_cast<__hip_uint32_t>(blockDim.x * blockDim.y * blockDim.z));
 }
 
