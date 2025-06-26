@@ -2257,8 +2257,9 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain
   }
 
   void* ptr = nullptr;
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
-  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa device memory %p, size 0x%zx", ptr, size);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, hsa_mem_flags, &ptr);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+      "Allocate hsa device memory %p, size 0x%zx, hsa_mem_flags 0x%xh", ptr, size, hsa_mem_flags);
   if (stat != HSA_STATUS_SUCCESS) {
     LogError("Fail allocation local memory");
     return nullptr;
