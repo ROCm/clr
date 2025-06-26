@@ -1031,8 +1031,10 @@ Memory* Buffer::createBufferView(amd::Memory& subBufferOwner) const {
 // ================================================================================================
 bool Buffer::ExportHandle(void* handle) const {
   Pal::GpuMemoryExportInfo exportInfo = {};
+#if IS_WINDOWS
   // Set default flags in case they are not provided by application
   exportInfo.accessFlags = GENERIC_READ | GENERIC_WRITE;
+#endif
   *reinterpret_cast<Pal::OsExternalHandle*>(handle) = iMem()->ExportExternalHandle(exportInfo);
   return true;
 }

@@ -792,7 +792,7 @@ bool Resource::CreateInterop(CreateParams* params) {
 
     if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
                               &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
-#ifdef ATI_OS_WIN
+#if IS_WINDOWS
                               ,
                               openInfo.doppDesktopInfo
 #endif
@@ -808,6 +808,7 @@ bool Resource::CreateInterop(CreateParams* params) {
     if (vparams->handle_) {
       openInfo.hExternalResource = vparams->handle_;
     } else if (vparams->name_) {
+#if IS_WINDOWS
       Pal::ExternalHandleInfo eHandleInfo = {};
       eHandleInfo.objectType = Pal::ExternalObjectType::Allocation;
       eHandleInfo.pNtObjectName = reinterpret_cast<const wchar_t*>(vparams->name_);
@@ -819,10 +820,13 @@ bool Resource::CreateInterop(CreateParams* params) {
           dev().iDev()->OpenExternalHandleFromName(eHandleInfo, &openInfo.hExternalResource)) {
         return false;
       }
+#else
+      return false;
+#endif
     }
     openInfo.flags.ntHandle = vparams->nt_handle_;
   }
-#ifdef ATI_OS_WIN
+#if IS_WINDOWS
   else {
     D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
     openInfo.hExternalResource = d3dRes->handle_;
@@ -883,7 +887,7 @@ bool Resource::CreateInterop(CreateParams* params) {
       switch (misc) {
         case 1:  // NV12 or P010 formats
           switch (layer) {
-            case -1:
+            case std::numeric_limits<uint>::max():
             case 0:
               break;
             case 1:
@@ -899,7 +903,7 @@ bool Resource::CreateInterop(CreateParams* params) {
           break;
         case 2:  // YV12 format
           switch (layer) {
-            case -1:
+            case std::numeric_limits<uint>::max():
             case 0:
               break;
             case 1:

@@ -65,6 +65,15 @@ static PFNGlxGetProcAddress pfnGlxGetProcAddress = nullptr;
 typedef int(APIENTRYP PFNMesaGLInteropGLXQueryDeviceInfo)(Display* dpy, GLXContext context,
                                                           mesa_glinterop_device_info* out);
 static PFNMesaGLInteropGLXQueryDeviceInfo pfnMesaGLInteropGLXQueryDeviceInfo = nullptr;
+typedef Bool(APIENTRYP PFNGLXBEGINCLINTEROPAMD)(GLXContext context, GLuint flags);
+typedef Bool(APIENTRYP PFNGLXENDCLINTEROPAMD)(GLXContext context, GLuint flags);
+typedef Bool(APIENTRYP PFNGLXRESOURCEATTACHAMD)(GLXContext context, GLvoid* resource,
+                                                GLvoid* pResourceData);
+typedef Bool(APIENTRYP PFNGLXRESOURCEDETACHAMD)(GLXContext context, GLvoid* resource);
+typedef Bool(APIENTRYP PFNGLXRESOURCEDETACHAMD)(GLXContext context, GLvoid* resource);
+typedef Bool(APIENTRYP PFNGLXRESOURCEDETACHAMD)(GLXContext context, GLvoid* resource);
+typedef Bool(APIENTRYP PFNGLXGETCONTEXTMVPUINFOAMD)(GLXContext context, GLuint* deviceId,
+                                                    GLuint* chainMask);
 static PFNGLXBEGINCLINTEROPAMD glXBeginCLInteropAMD = nullptr;
 static PFNGLXENDCLINTEROPAMD glXEndCLInteropAMD = nullptr;
 static PFNGLXRESOURCEATTACHAMD glXResourceAttachAMD = nullptr;
@@ -90,8 +99,8 @@ static PFNWGLRESOURCEDETACHAMD wglResourceAcquireAMD = nullptr;
 static PFNWGLRESOURCEDETACHAMD wglResourceReleaseAMD = nullptr;
 static PFNWGLRESOURCEDETACHAMD wglResourceDetachAMD = nullptr;
 static PFNWGLGETCONTEXTGPUINFOAMD wglGetContextGPUInfoAMD = nullptr;
-bool gGlFuncInit = false;
 #endif
+bool gGlFuncInit = false;
 
 namespace amd::pal {
 

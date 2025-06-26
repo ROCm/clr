@@ -981,7 +981,7 @@ class Memory : public amd::HeapObject {
   //! not a physical map. When a memory object does not use USE_HOST_PTR we
   //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
   amd::Memory* mapMemory_;            //!< Memory used as map target buffer
-  volatile size_t indirectMapCount_;  //!< Number of maps
+  std::atomic<size_t> indirectMapCount_;  //!< Number of maps
   std::unordered_map<const void*, WriteMapInfo>
       writeMapInfo_;  //!< Saved write map info for partial unmap
 

@@ -237,6 +237,7 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #else /*CL_LOG*/
 #define ClPrint(level, mask, format, ...) (void)(0)
 #define ClCondPrint(level, mask, condition, format, ...) (void)(0)
+#define HIPPrintDuration(level, mask, startTimeUs, format, ...) (void)(0)
 #endif /*CL_LOG*/
 
 #define ClTrace(level, mask) ClPrint(level, mask, "%s", __func__)
@@ -245,13 +246,13 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define LogError(msg) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, msg)
 #define LogWarning(msg) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, msg)
 
-#define LogPrintfDebug(format, ...) ClPrint(amd::LOG_DEBUG, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfError(format, ...) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfWarning(format, ...) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfInfo(format, ...) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, format, __VA_ARGS__)
+#define LogPrintfDebug(format, ...) ClPrint(amd::LOG_DEBUG, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfError(format, ...) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfWarning(format, ...) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfInfo(format, ...) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
 
 #if (defined(DEBUG) || defined(DEV_LOG_ENABLE))
-  #define DevLogPrintfError(format, ...) LogPrintfError(format, __VA_ARGS__)
+  #define DevLogPrintfError(format, ...)  LogPrintfError(format, ##__VA_ARGS__)
   #define DevLogError(msg) LogError(msg)
 #else
   #define DevLogPrintfError(format, ...)

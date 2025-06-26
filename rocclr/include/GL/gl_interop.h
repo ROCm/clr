@@ -21,7 +21,6 @@
 #ifndef GL_INTEROP_H_
 #define GL_INTEROP_H_
 
-#ifdef _WIN32
 #define GL_RESOURCE_ATTACH_TEXTURE_AMD                                  0x12a000
 #define GL_RESOURCE_ATTACH_FRAMEBUFFER_AMD                              0x12a001
 #define GL_RESOURCE_ATTACH_RENDERBUFFER_AMD                             0x12a002
@@ -88,6 +87,7 @@ typedef struct GLResourceDataRec {
 
 } GLResourceData;
 
+#ifdef _WIN32
 typedef BOOL (WINAPI* PFNWGLBEGINCLINTEROPAMD)(HGLRC hglrc, GLuint flags);
 typedef BOOL (WINAPI* PFNWGLENDCLINTEROPAMD) (HGLRC hglrc,  GLuint flags);
 typedef BOOL (WINAPI* PFNWGLRESOURCEATTACHAMD) (HGLRC hglrc, GLvoid* resource, GLvoid* pResourceData);

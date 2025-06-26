@@ -426,7 +426,7 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
                                       uint64_t(heaps[Pal::GpuHeapInvisible].physicalSize));
   }
 
-#if defined(ATI_OS_WIN)
+#if IS_WINDOWS
   if (settings().apuSystem_) {
     info_.maxMemAllocSize_ = std::max(
         (static_cast<uint64_t>(heaps[Pal::GpuHeapGartUswc].logicalSize) * uswcPercentAvailable) /
@@ -673,8 +673,10 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
   info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * 32;
+#if IS_WINDOWS
   info_.luidLowPart_ = palProp.osProperties.luidLowPart;
   info_.luidHighPart_ = palProp.osProperties.luidHighPart;
+#endif
   // Setup the node mask for MGPU only case from the original PAL list of all devices
   if ((gNumDevices > 1) && (pal_device != nullptr)) {
     for (uint32_t i = 0; i < gNumDevices; ++i) {
@@ -2058,6 +2060,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
   Pal::gpusize system_memory = allocedMem[Pal::GpuHeapGartCacheable] +
     allocedMem[Pal::GpuHeapGartUswc] + cache_group_local - resourceCache().cacheSize();
 
+#if IS_WINDOWS
   // Second, query OS for overall memory usage on the system
 
   if (properties().osProperties.supportMemoryBudgetQuery) {
@@ -2086,7 +2089,7 @@ bool Device::globalFreeMemory(size_t* freeMemory) const {
       system_memory = system_total_alloced;
     }
   }
-
+#endif
   // Third, finalize reported free memory
 
   // Fill free memory info
@@ -2799,12 +2802,12 @@ bool Device::createBlitProgram() {
         if (asm_program->load()) {
           trap_handler_ = asm_program;
         } else {
-          DevLogPrintfError("Could not load the trap handler \n");
+          DevLogError("Could not load the trap handler \n");
           asm_program->release();
         }
       }
     } else {
-      DevLogPrintfError("Trap handler creation failed\n");
+      DevLogError("Trap handler creation failed\n");
     }
   }
 
