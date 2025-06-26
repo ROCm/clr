@@ -44,7 +44,6 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 #############################
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
-option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
 if(MSVC)
@@ -482,27 +481,4 @@ if(HIP_HIPCC_EXECUTABLE)
     if(CPPCHECK_EXE)
         add_dependencies(analyze cppcheck)
     endif()
-endif()
-
-#File reorg Backward compatibility function
-if(NOT WIN32)
-    if(FILE_REORG_BACKWARD_COMPATIBILITY)
-    # To enabe/disable #error in wrapper header files
-        if(NOT DEFINED ROCM_HEADER_WRAPPER_WERROR)
-            if(DEFINED ENV{ROCM_HEADER_WRAPPER_WERROR})
-                set(ROCM_HEADER_WRAPPER_WERROR "$ENV{ROCM_HEADER_WRAPPER_WERROR}"
-                    CACHE STRING "Header wrapper warnings as errors.")
-            else()
-                set(ROCM_HEADER_WRAPPER_WERROR "OFF" CACHE STRING "Header wrapper warnings as errors.")
-            endif()
-        endif()
-
-        if(ROCM_HEADER_WRAPPER_WERROR)
-            set(deprecated_error 1)
-        else()
-            set(deprecated_error 0)
-        endif()
-
-        include(hip-backward-compat.cmake)
-    endif() #FILE_REORG_BACKWARD_COMPATIBILITY
 endif()

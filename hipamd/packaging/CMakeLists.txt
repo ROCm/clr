@@ -185,12 +185,6 @@ set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "hip-runtime-amd")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "hip-runtime-amd")
 
 set(CPACK_COMPONENT_BINARY_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [RUNTIME - AMD]")
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-#This is used for softlinking hip-target files
-   configure_file(hip-runtime-amd.postinst ${CMAKE_CURRENT_BINARY_DIR}/binary/postinst @ONLY)
-   configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
-   set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
-endif()
 # Set Runtime Package  dependencies
 set(HIP_RUNTIME_ROCM_PKG_DEPENDENCIES "hsa-rocr, rocminfo, comgr, rocm-core")
 # Add rocprofiler-register dependencies
@@ -213,10 +207,6 @@ set(CPACK_DEBIAN_BINARY_PACKAGE_PROVIDES "hip-rocclr (= ${CPACK_PACKAGE_VERSION}
 set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 
 set(CPACK_RPM_BINARY_PACKAGE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-   set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst")
-   set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
-endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
 
 if(EL7_DISTRO)
