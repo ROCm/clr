@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #include "hip_mempool_impl.hpp"
+#include "platform/graph_vmheap.hpp"
 
 namespace hip {
 /**
@@ -171,8 +172,22 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   if (!AMD_DIRECT_DISPATCH) {
     // Note: This logic is required for multithreading execution only and
     // can reduce mempool reserved memory efficiency
-    for (auto dev : g_devices) {
-      graph_in_use |= dev->GetGraphMemoryPool()->GraphInUse();
+    size_t offset = 0;
+    auto memory = getMemoryObject(dev_ptr, offset);
+    if (memory != nullptr) {
+      for (auto dev : g_devices) {
+	graph_in_use |= dev->GetGraphMemoryPool()->Free(memory);
+	if (!graph_in_use) {
+	  continue;
+	}
+
+	auto deallocation_commands = dev->GetGraphMemoryPool()->GetDeallocationCommands(*s);
+	for (auto cmd : deallocation_commands) {
+	  cmd->enqueue();
+	  cmd->release();
+	}
+	break;
+      }
     }
   }
 
@@ -189,31 +204,6 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
     } else {
       HIP_RETURN(hipErrorInvalidValue);
     }
-  } else {
-    if (!AMD_DIRECT_DISPATCH) {
-      // Add a marker to the stream to trace availability of this memory
-      // Note: MT path requires the marker command to be created in the host thread,
-      // so the queue thread could process it, because creating a command from the queue thread
-      // may block the execution
-      event = new hip::Event(0);
-      if (event != nullptr) {
-        if (hipSuccess !=
-            event->addMarker(hip_stream, nullptr)) {
-          delete event;
-          event = nullptr;
-        } else {
-          // Make sure runtime sends a notification to the worker thread
-          auto result = event->ready();
-        }
-      }
-    }
-
-    auto cmd = new FreeAsyncCommand(*hip_stream, dev_ptr, event);
-    if (cmd == nullptr) {
-      HIP_RETURN(hipErrorUnknown);
-    }
-    cmd->enqueue();
-    cmd->release();
   }
 
   HIP_RETURN(hipSuccess);

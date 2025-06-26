@@ -359,5 +359,4 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeapArray {
   uint64_t max_total_size_; //!< Max of total reserved memory in the pool since last reset
 };
 
-
-} // Mamespace hip
+} // Namespace hip

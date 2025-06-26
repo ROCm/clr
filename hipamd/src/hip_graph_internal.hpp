@@ -34,6 +34,7 @@
 #include "hip_platform.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_vm.hpp"
+#include "platform/graph_vmheap.hpp"
 
 typedef struct ihipExtKernelEvents {
   hipEvent_t startEvent_;
@@ -638,8 +639,42 @@ class Graph {
   }
 
   void* AllocateMemory(size_t size, hip::Stream* stream, void* dptr) const {
-    auto ptr = mem_pool_->AllocateMemory(size, stream, dptr);
+    // Free memory, if any
+    // Unmapping will be handled by later graph execution
+    if (dptr != nullptr) {
+      size_t offset = 0;
+      auto memory = getMemoryObject(dptr, offset);
+      if (memory) {
+        Free(memory);
+      }
+    }
+
+    auto ptr = Alloc(size);
+    auto allocation_commands = GetAllocationCommands(ptr, stream == nullptr ? *device_->NullStream(false) : *stream);
+    for (auto cmd : allocation_commands) {
+      cmd->enqueue();
+      cmd->awaitCompletion();
+      cmd->release();
+    }
     return ptr;
+  }
+
+  void* Alloc(size_t size) const {
+    auto ptr = mem_pool_->Alloc(size);
+    return ptr;
+  }
+
+  std::vector<amd::Command*> GetAllocationCommands(void* ptr, amd::HostQueue& queue) const {
+    return mem_pool_->GetAllocationCommands(ptr, queue);
+  }
+
+  std::vector<amd::Command*> GetDeallocationCommands(amd::HostQueue& queue) const {
+    return mem_pool_->GetDeallocationCommands(queue);
+  }
+
+  bool Free(amd::Memory* memory) const {
+    // FIXME: assumes that memory belonged to the graph pool
+    return mem_pool_->Free(memory);
   }
 
   void* ReserveAddress(size_t size) const {
@@ -675,36 +710,23 @@ class Graph {
     if (memory != nullptr) {
       auto device_id = memory->getUserData().deviceId;
       // First check if memory belonged to the graph pool
-      if (!mem_pool_->FreeMemory(memory, stream)) {
-	if (!g_devices[device_id]->FreeMemory(memory, stream)) {
-	  LogError("Memory didn't belong to any pool!");
+      bool freed = Free(memory);
+      if (freed) {
+	// Handle any deallocation commands immediately
+	auto deallocation_commands = GetDeallocationCommands(stream == nullptr ? *device_->NullStream(false) : *stream);
+	for (auto cmd : deallocation_commands) {
+	  cmd->enqueue();
+	  cmd->awaitCompletion();
+	  cmd->release();
 	}
-      }
-    }
-  }
-
-  void FreeMemory(amd::Memory* memory, hip::Stream* stream) const {
-    size_t offset = 0;
-    auto device_id = memory->getUserData().deviceId;
-    // First check if memory belonged to the graph pool
-    if (!mem_pool_->FreeMemory(memory, stream)) {
-      if (!g_devices[device_id]->FreeMemory(memory, stream)) {
+      } else if (!g_devices[device_id]->FreeMemory(memory, stream)) {
 	LogError("Memory didn't belong to any pool!");
       }
     }
   }
 
-  bool ProbeMemory(void* dev_ptr) const {
-    size_t offset = 0;
-    auto memory = getMemoryObject(dev_ptr, offset);
-    if (memory != nullptr) {
-      return mem_pool_->IsBusyMemory(memory);
-    }
-    return false;
-  }
-
-  void FreeAllMemory(hip::Stream* stream) {
-    mem_pool_->FreeAllMemory(stream);
+  void FreeAllMemory(hip::Stream* stream) const {
+    mem_pool_->FreeAllMemory(*stream);
   }
 
   bool IsGraphInstantiated() const {
@@ -744,7 +766,7 @@ class Graph {
   std::vector<hip::Stream*> streams_;  //!< The list of streams, used in the execution
   int32_t current_id_ = 0;             //!< The current node ID in the graph execution sequence
   hip::Device* device_;                //!< HIP device object
-  hip::MemoryPool* mem_pool_;          //!< Memory pool, associated with this graph
+  amd::GraphVmHeapArray* mem_pool_;    //!< Memory pool, associated with this graph
   std::unordered_set<GraphNode*> capturedNodes_;
   bool graphInstantiated_;
   std::unordered_map<Node, Node> clonedNodes_;
@@ -1558,10 +1580,15 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   GraphNode* clone() const override { return new GraphMemcpyNode1D(*this); }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
+    hipError_t status = hip::GraphMemcpyNode1D::ValidateParams(dst_, src_, count_, kind_);
+    if (status != hipSuccess) {
+      return status;
+    }
+
     if ((kind_ == hipMemcpyHostToHost || kind_ == hipMemcpyDefault) && IsHtoHMemcpy(dst_, src_)) {
       return hipSuccess;
     }
-    hipError_t status = GraphNode::CreateCommand(stream);
+    status = GraphNode::CreateCommand(stream);
     if (status != hipSuccess) {
       return status;
     }
@@ -1649,10 +1676,6 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   }
 
   hipError_t SetParams(void* dst, const void* src, size_t count, hipMemcpyKind kind) {
-    hipError_t status = ValidateParams(dst, src, count, kind);
-    if (status != hipSuccess) {
-      return status;
-    }
     dst_ = dst;
     src_ = src;
     count_ = count;
@@ -2315,63 +2338,6 @@ class GraphEmptyNode : public GraphNode {
 // ================================================================================================
 class GraphMemAllocNode final : public GraphNode {
   hipMemAllocNodeParams node_params_;  // Node parameters for memory allocation
-  amd::Memory* va_ = nullptr;         // Memory object, which holds a virtual address
-
-  // Derive the new class for VirtualMapCommand,
-  // so runtime can allocate memory during the execution of command
-  class VirtualMemAllocNode : public amd::VirtualMapCommand {
-   public:
-    VirtualMemAllocNode(amd::HostQueue& queue, const amd::Event::EventWaitList& eventWaitList,
-                        amd::Memory* va, size_t size, amd::Memory* memory, Graph* graph)
-        : VirtualMapCommand(queue, eventWaitList, va->getSvmPtr(), size, memory),
-          va_(va), graph_(graph) {}
-
-    virtual void submit(device::VirtualDevice& device) final {
-      // Remove VA reference from the global mapping. Runtime has to keep a dummy reference for
-      // validation logic during the capture or creation of the nodes
-      if (!AMD_DIRECT_DISPATCH) {
-        WorkerThreadLock_.lock();
-      }
-      if (amd::MemObjMap::FindMemObj(va_->getSvmPtr())) {
-        amd::MemObjMap::RemoveMemObj(va_->getSvmPtr());
-      }
-      // Allocate real memory for mapping
-      const auto& dev_info = queue()->device().info();
-      auto aligned_size = amd::alignUp(size_, dev_info.virtualMemAllocGranularity_);
-      auto dptr = graph_->AllocateMemory(aligned_size, static_cast<hip::Stream*>(queue()), nullptr);
-      if (dptr == nullptr) {
-        setStatus(CL_INVALID_OPERATION);
-        if (!AMD_DIRECT_DISPATCH) {
-          WorkerThreadLock_.unlock();
-        }
-        return;
-      }
-      size_t offset = 0;
-      // Get memory object associated with the real allocation
-      memory_ = getMemoryObject(dptr, offset);
-      // Retain memory object because command release will release it
-      memory_->retain();
-      size_ = aligned_size;
-      // Execute the original mapping command
-      VirtualMapCommand::submit(device);
-      if (!AMD_DIRECT_DISPATCH) {
-        WorkerThreadLock_.unlock();
-      }
-      amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(va_->getSvmPtr());
-      assert(vaddr_sub_obj != nullptr);
-      queue()->device().SetMemAccess(vaddr_sub_obj->getSvmPtr(), aligned_size,
-                                     amd::Device::VmmAccess::kReadWrite);
-      va_->retain();
-      graph_->IncrementMemAllocNodeCount(); // Increment count of unreleased mem alloc nodes
-      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL,
-              "Graph MemAlloc execute [%p-%p], %p", vaddr_sub_obj->getSvmPtr(),
-              reinterpret_cast<char*>(vaddr_sub_obj->getSvmPtr()) + aligned_size, memory());
-    }
-
-   private:
-    amd::Memory* va_;   // Memory object with the new virtual address for mapping
-    Graph* graph_;  // Graph which allocates/maps memory
-  };
 
  public:
   GraphMemAllocNode(const hipMemAllocNodeParams* node_params)
@@ -2383,22 +2349,19 @@ class GraphMemAllocNode final : public GraphNode {
       : GraphNode(rhs) {
     node_params_ = rhs.node_params_;
     if (HIP_MEM_POOL_USE_VM) {
-      assert(rhs.va_ != nullptr && "Graph MemAlloc runtime can't clone an invalid node!");
-      va_ = rhs.va_;
-      va_->retain();
+      assert(rhs.node_params_.dptr != nullptr && "Graph MemAlloc runtime can't clone an invalid node!");
+      node_params_.dptr = rhs.node_params_.dptr;
     }
   }
 
   virtual ~GraphMemAllocNode() final {
-    if (va_ != nullptr) {
-      if (va_->referenceCount() == 1) {
-        auto graph = GetParentGraph();
-        if (graph != nullptr) {
-          graph->FreeAddress(va_->getSvmPtr());
-        }
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      size_t offset = 0;
+      auto memory = getMemoryObject(node_params_.dptr, offset);
+      if (memory) {
+        graph->Free(memory);
       }
-
-      va_->release();
     }
   }
 
@@ -2411,24 +2374,11 @@ class GraphMemAllocNode final : public GraphNode {
     } else {
       auto graph = GetParentGraph();
       if (graph != nullptr) {
-        assert(va_ != nullptr && "Runtime can't create a command for an invalid node!");
-        stream->GetDevice()->GetGraphMemoryPool()->SetGraphInUse();
-        // Create command for memory mapping
-        auto cmd = new VirtualMemAllocNode(*stream, amd::Event::EventWaitList{},
-            va_, node_params_.bytesize, nullptr, graph);
-        commands_.push_back(cmd);
-        size_t offset = 0;
-        // Check if memory was already added after first reserve
-        if (getMemoryObject(node_params_.dptr, offset) == nullptr) {
-          // Map VA in the accessible space because the graph execution still has
-          // pointers validation and must find a valid object
-          // @note: Memory can be released outside of the graph and
-          // runtime can't keep a valid mapping since it doesn't know if the graph will
-          // be executed again
-          amd::MemObjMap::AddMemObj(node_params_.dptr, va_);
-        }
-        ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc create: %p",
-            node_params_.dptr);
+	auto allocation_commands = graph->GetAllocationCommands(node_params_.dptr, *stream);
+	for (auto cmd : allocation_commands) {
+	  commands_.push_back(cmd);
+	}
+	graph->IncrementMemAllocNodeCount();
       }
     }
     return error;
@@ -2437,12 +2387,9 @@ class GraphMemAllocNode final : public GraphNode {
   void* ReserveAddress() {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
-      node_params_.dptr = graph->ReserveAddress(node_params_.bytesize);
-      if (node_params_.dptr != nullptr) {
-        // Find VA and map in the accessible space so capture can find a valid object
-        va_ = amd::MemObjMap::FindVirtualMemObj(node_params_.dptr);
-        amd::MemObjMap::AddMemObj(node_params_.dptr, va_);
-      }
+      // FIXME: 4K is hadcoded for now because checking for alignment would require to have a stream
+      auto aligned_size = amd::alignUp(node_params_.bytesize, 4096);
+      node_params_.dptr = graph->Alloc(aligned_size);
       ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc reserve VA: %p",
           node_params_.dptr);
     }
@@ -2452,16 +2399,8 @@ class GraphMemAllocNode final : public GraphNode {
   void* Execute(hip::Stream* stream = nullptr) {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
-      // The node creation requires to return a valid address, however FreeNode can't
-      // free memory on creation because it doesn't have any execution point yet. Thus
-      // the code below makes sure memory won't be recreated on the first execution of the graph
-      if ((node_params_.dptr == nullptr) || !graph->ProbeMemory(node_params_.dptr)) {
-        auto dptr = graph->AllocateMemory(node_params_.bytesize, stream, node_params_.dptr);
-        if ((node_params_.dptr != nullptr) && (node_params_.dptr != dptr)) {
-          LogPrintfError("Ptr mismatch in graph mem alloc %p != %p", node_params_.dptr, dptr);
-        }
-        node_params_.dptr = dptr;
-      }
+      auto dptr = graph->AllocateMemory(node_params_.bytesize, stream, node_params_.dptr);
+      node_params_.dptr = dptr;
     }
     return node_params_.dptr;
   }
@@ -2472,15 +2411,13 @@ class GraphMemAllocNode final : public GraphNode {
 
   hipError_t SetParamsInternal(hipMemAllocNodeParams *params) {
     // Baseline implementation: free previous memory, allocate new memory
-    if (va_ != nullptr) {
-      if (va_->referenceCount() == 1) {
-        auto graph = GetParentGraph();
-        if (graph != nullptr) {
-          graph->FreeAddress(va_->getSvmPtr());
-        }
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      size_t offset = 0;
+      auto memory = getMemoryObject(node_params_.dptr, offset);
+      if (memory) {
+        graph->Free(memory);
       }
-
-      va_->release();
     }
 
     // Now re-allocate memory
@@ -2516,47 +2453,6 @@ class GraphMemAllocNode final : public GraphNode {
 class GraphMemFreeNode : public GraphNode {
   void* device_ptr_;    // Device pointer of the freed memory
 
-  // Derive the new class for VirtualMap command, since runtime has to free
-  // real allocation after unmap is complete
-  class VirtualMemFreeNode : public amd::VirtualMapCommand {
-   public:
-    VirtualMemFreeNode(Graph* graph, int device_id, amd::HostQueue& queue,
-        const amd::Event::EventWaitList& eventWaitList, void* ptr, size_t size,
-        amd::Memory* memory) : VirtualMapCommand(queue, eventWaitList, ptr, size, memory)
-        , graph_(graph), device_id_(device_id) {}
-
-    virtual void submit(device::VirtualDevice& device) final {
-      // Find memory object before unmap logic
-      auto vaddr_sub_obj = amd::MemObjMap::FindMemObj(ptr());
-      assert(vaddr_sub_obj != nullptr);
-      amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
-      assert(phys_mem_obj != nullptr);
-      auto vaddr_mem_obj = amd::MemObjMap::FindVirtualMemObj(ptr());
-      assert(vaddr_mem_obj != nullptr);
-      VirtualMapCommand::submit(device);
-      if (!AMD_DIRECT_DISPATCH) {
-        // Update the current device, since hip event, used in mem pools, requires device
-        hip::setCurrentDevice(device_id_);
-      }
-      // Free virtual address
-      vaddr_sub_obj->release();
-      vaddr_mem_obj->release();
-      // Release the allocation back to graph's pool
-      auto device_id = phys_mem_obj->getUserData().deviceId;
-      if (!g_devices[device_id]->FreeMemory(phys_mem_obj, static_cast<hip::Stream*>(queue()))) {
-        LogError("Memory didn't belong to any pool!");
-      }
-      amd::MemObjMap::AddMemObj(ptr(), vaddr_mem_obj);
-      graph_->DecrementMemAllocNodeCount(); // Decrement count of unreleased memalloc nodes
-      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemFree execute: %p, %p",
-          ptr(), vaddr_sub_obj);
-    }
-
-   private:
-    Graph* graph_;  // Graph, which has the execution of this command
-    int device_id_;     // Device ID where this command is executed
-  };
-
  public:
   GraphMemFreeNode(void* dptr)
     : GraphNode(hipGraphNodeTypeMemFree, "solid", "rectangle", "MEM_FREE")
@@ -2574,13 +2470,11 @@ class GraphMemFreeNode : public GraphNode {
     } else {
       auto graph = GetParentGraph();
       if (graph != nullptr) {
-        const auto& dev_info = stream->device().info();
-        auto va = amd::MemObjMap::FindVirtualMemObj(device_ptr_);
-        // Unmap virtual address from memory
-        amd::Command* cmd = new VirtualMemFreeNode(graph, stream->DeviceId(), *stream,
-            amd::Command::EventWaitList{}, device_ptr_,
-            amd::alignUp(va->getSize(), dev_info.virtualMemAllocGranularity_), nullptr);
-        commands_.push_back(cmd);
+	auto deallocation_commands = graph->GetDeallocationCommands(*stream);
+	for (auto cmd : deallocation_commands) {
+	  commands_.push_back(cmd);
+	}
+	graph->DecrementMemAllocNodeCount();
         ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph FreeMem create: %p", device_ptr_);
       }
     }

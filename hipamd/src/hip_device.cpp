@@ -24,6 +24,7 @@
 #include "hip_internal.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_platform.hpp"
+#include "platform/graph_vmheap.hpp"
 
 #undef hipGetDeviceProperties
 #undef hipDeviceProp_t
@@ -63,16 +64,9 @@ bool Device::Create() {
   }
 
   // Create graph memory pool
-  graph_mem_pool_ = new MemoryPool(this, nullptr, true);
+  graph_mem_pool_ = new amd::GraphVmHeapArray(devices()[0], [this]()->amd::HostQueue&{ return *NullStream(false); });
   if (graph_mem_pool_ == nullptr) {
     return false;
-  }
-
-  if (!HIP_MEM_POOL_USE_VM) {
-    uint64_t max_size = std::numeric_limits<uint64_t>::max();
-    // Use maximum value to hold memory, because current implementation doesn't support VM
-    // Note: the call for the threshold is always successful
-    auto error = graph_mem_pool_->SetAttribute(hipMemPoolAttrReleaseThreshold, &max_size);
   }
 
   // Current is default pool after device creation
@@ -322,7 +316,7 @@ Device::~Device() {
   }
 
   if (graph_mem_pool_ != nullptr) {
-    graph_mem_pool_->release();
+    delete graph_mem_pool_;
   }
 
   if (null_stream_ != nullptr) {

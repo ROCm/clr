@@ -155,12 +155,8 @@ hipError_t ihipGraphAddMemcpyNode1D(hip::GraphNode** pGraphNode, hip::Graph* gra
       (numDependencies > 0 && pDependencies == nullptr) || count ==0) {
     return hipErrorInvalidValue;
   }
-  hipError_t status = hip::GraphMemcpyNode1D::ValidateParams(dst, src, count, kind);
-  if (status != hipSuccess) {
-    return status;
-  }
   *pGraphNode = new hip::GraphMemcpyNode1D(dst, src, count, kind);
-  status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
+  hipError_t status = ihipGraphAddNode(*pGraphNode, graph, pDependencies, numDependencies, capture);
   return status;
 }
 
@@ -2848,20 +2844,23 @@ hipError_t hipDeviceGetGraphMemAttribute(int device, hipGraphMemAttributeType at
   hipError_t result = hipErrorInvalidValue;
   switch (attr) {
     case hipGraphMemAttrUsedMemCurrent:
-      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
-          hipMemPoolAttrUsedMemCurrent, value);
+      *reinterpret_cast<uint64_t*>(value) = 
+	  g_devices[device]->GetGraphMemoryPool()->TotalSize();
+      result = hipSuccess;
       break;
     case hipGraphMemAttrUsedMemHigh:
-      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
-          hipMemPoolAttrUsedMemHigh, value);
+      *reinterpret_cast<uint64_t*>(value) = g_devices[device]->GetGraphMemoryPool()->MaxTotalSize();
+      result = hipSuccess;
       break;
     case hipGraphMemAttrReservedMemCurrent:
-      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
-          hipMemPoolAttrReservedMemCurrent, value);
+      *reinterpret_cast<uint64_t*>(value) =
+	  g_devices[device]->GetGraphMemoryPool()->MappedSize();
+      result = hipSuccess;
       break;
     case hipGraphMemAttrReservedMemHigh:
-      result = g_devices[device]->GetGraphMemoryPool()->GetAttribute(
-          hipMemPoolAttrReservedMemHigh, value);
+      *reinterpret_cast<uint64_t*>(value) =
+	g_devices[device]->GetGraphMemoryPool()->MaxMappedSize();
+      result = hipSuccess;
       break;
     default:
       break;
@@ -2881,12 +2880,16 @@ hipError_t hipDeviceSetGraphMemAttribute(int device, hipGraphMemAttributeType at
   hipError_t result = hipErrorInvalidValue;
   switch (attr) {
     case hipGraphMemAttrUsedMemHigh:
-      result = g_devices[device]->GetGraphMemoryPool()->SetAttribute(
-          hipMemPoolAttrUsedMemHigh, value);
+      if (*reinterpret_cast<uint64_t*>(value) == 0) {
+	g_devices[device]->GetGraphMemoryPool()->SetMaxTotalSize(*reinterpret_cast<uint64_t*>(value));
+	result = hipSuccess;
+      }
       break;
     case hipGraphMemAttrReservedMemHigh:
-      result = g_devices[device]->GetGraphMemoryPool()->SetAttribute(
-          hipMemPoolAttrReservedMemHigh, value);
+      if (*reinterpret_cast<uint64_t*>(value) == 0) {
+	g_devices[device]->GetGraphMemoryPool()->ResetMaxMappedSize();
+	result = hipSuccess;
+      }
       break;
     default:
       break;
@@ -2900,7 +2903,7 @@ hipError_t hipDeviceGraphMemTrim(int device) {
   if ((static_cast<size_t>(device) >= g_devices.size()) || device < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-  g_devices[device]->GetGraphMemoryPool()->TrimTo(0);
+  g_devices[device]->GetGraphMemoryPool()->TrimPhysMemory(0);
   HIP_RETURN(hipSuccess);
 }
 

@@ -48,6 +48,10 @@
 #define KCYN "\x1B[36m"
 #define KWHT "\x1B[37m"
 
+namespace amd {
+  class GraphVmHeapArray;
+}
+
 namespace hip{
   extern std::once_flag g_ihipInitialized;
 }
@@ -500,7 +504,7 @@ public:
 
     MemoryPool* default_mem_pool_;  //!< Default memory pool for this device
     MemoryPool* current_mem_pool_;
-    MemoryPool* graph_mem_pool_;    //!< Memory pool, associated with graphs for this device
+    amd::GraphVmHeapArray* graph_mem_pool_;    //!< Memory pool, associated with graphs for this device
 
     std::set<MemoryPool*> mem_pools_;
 
@@ -574,7 +578,7 @@ public:
     MemoryPool* GetDefaultMemoryPool() const { return default_mem_pool_; }
 
     /// Get the graph memory pool on the device
-    MemoryPool* GetGraphMemoryPool() const { return graph_mem_pool_; }
+    amd::GraphVmHeapArray* GetGraphMemoryPool() const { return graph_mem_pool_; }
 
     /// Add memory pool to the device
     void AddMemoryPool(MemoryPool* pool);

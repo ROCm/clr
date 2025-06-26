@@ -68,6 +68,7 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/device/device.cpp
   ${ROCCLR_SRC_DIR}/device/devkernel.cpp
   ${ROCCLR_SRC_DIR}/device/devprogram.cpp
+  ${ROCCLR_SRC_DIR}/platform/graph_vmheap.cpp
   ${ROCCLR_SRC_DIR}/device/hsailctx.cpp
   ${ROCCLR_SRC_DIR}/elf/elf.cpp
   ${ROCCLR_SRC_DIR}/os/alloc.cpp
