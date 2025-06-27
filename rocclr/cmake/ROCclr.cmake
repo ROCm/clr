@@ -90,6 +90,23 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/utils/debug.cpp
   ${ROCCLR_SRC_DIR}/utils/flags.cpp)
 
+find_package(Git)
+
+set(ROCCLR_VERSION_GITHASH "not_found")
+if(GIT_FOUND)
+  # Get commit short hash
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if (git_result EQUAL 0)
+    set(ROCCLR_VERSION_GITHASH ${git_output})
+  endif()
+endif()
+
+target_compile_definitions(rocclr PRIVATE ROCCLR_VERSION_GITHASH="${ROCCLR_VERSION_GITHASH}")
+
 if(WIN32)
   target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/platform/interop_d3d9.cpp
