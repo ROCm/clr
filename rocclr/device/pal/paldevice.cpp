@@ -104,11 +104,15 @@ static constexpr PalDevice supportedPalDevices[] = {
   {11, 5,  1,  Pal::GfxIpLevel::GfxIp11_5, "gfx1151",       Pal::AsicRevision::StrixHalo},
 };
 
-static std::tuple<const amd::Isa*, const char*> findIsa(Pal::AsicRevision asicRevision,
-                                                        bool sramecc, bool xnack) {
-  auto palDeviceIter = std::find_if(
-      std::begin(supportedPalDevices), std::end(supportedPalDevices),
-      [&](const PalDevice& palDevice) { return palDevice.asicRevision_ == asicRevision; });
+static std::tuple<const amd::Isa*, const char*> findIsa(uint32_t gfxipMajor, uint32_t gfxipMinor,
+                                                        uint32_t gfxipStepping, bool sramecc,
+                                                        bool xnack) {
+  auto palDeviceIter = std::find_if(std::begin(supportedPalDevices), std::end(supportedPalDevices),
+                                    [&](const PalDevice& palDevice) {
+                                      return palDevice.gfxipMajor_ == gfxipMajor &&
+                                          palDevice.gfxipMinor_ == gfxipMinor &&
+                                          palDevice.gfxipStepping_ == (gfxipStepping & 0xF);
+                                    });
   if (palDeviceIter == std::end(supportedPalDevices)) {
     return std::make_tuple(nullptr, nullptr);
   }
@@ -127,7 +131,7 @@ static std::tuple<Pal::GfxIpLevel, Pal::AsicRevision, const char*> findPal(uint3
                                     [&](const PalDevice& palDevice) {
                                       return palDevice.gfxipMajor_ == gfxipMajor &&
                                           palDevice.gfxipMinor_ == gfxipMinor &&
-                                          palDevice.gfxipStepping_ == gfxipStepping;
+                                          palDevice.gfxipStepping_ == (gfxipStepping & 0xF);
                                     });
   if (palDeviceIter == std::end(supportedPalDevices)) {
     return std::make_tuple(Pal::GfxIpLevel::None, Pal::AsicRevision::Unknown, nullptr);
@@ -236,6 +240,9 @@ bool NullDevice::create(const char* palName, const amd::Isa& isa, Pal::GfxIpLeve
   ipLevel_ = ipLevel;
   properties.revision = asicRevision;
   properties.gfxLevel = ipLevel;
+  properties.gfxTriple.major = isa.versionMajor();
+  properties.gfxTriple.major = isa.versionMinor();
+  properties.gfxTriple.stepping = isa.versionStepping();
   uint subtarget = 0;
 
   pal::Settings* palSettings = new pal::Settings();
@@ -910,9 +917,10 @@ bool Device::create(Pal::IDevice* device) {
   // not if it is ENABLED. This will cause us to enable the feature on
   // the HSAIL path, which is not supported.
   bool isSRAMECCEnabled = false;
-
   const amd::Isa* isa;
-  std::tie(isa, palName_) = findIsa(asicRevision_, isSRAMECCEnabled, isXNACKEnabled);
+  std::tie(isa, palName_) =
+      findIsa(properties().gfxTriple.major, properties().gfxTriple.minor,
+              properties().gfxTriple.stepping, isSRAMECCEnabled, isXNACKEnabled);
   if (!isa) {
     LogPrintfError("Unsupported PAL device with ASIC revision #%d", asicRevision_);
     return false;
