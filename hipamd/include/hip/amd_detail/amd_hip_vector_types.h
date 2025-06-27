@@ -39,10 +39,11 @@ THE SOFTWARE.
 #if defined(__has_attribute)
     #if __has_attribute(ext_vector_type)
         #define __HIP_USE_NATIVE_VECTOR__ 1
-        #define __NATIVE_VECTOR__(n, T) T __attribute__((ext_vector_type(n)))
-    #else
-        #define __NATIVE_VECTOR__(n, T) alignas(n * sizeof(T)) T[n]
-    #endif
+#define __NATIVE_VECTOR__(n, T)                                                                    \
+  T __attribute__((ext_vector_type(n))) __attribute__((aligned(__hip_vec_align_v<T, n>)))
+#else
+#define __NATIVE_VECTOR__(n, T) alignas(__hip_vec_align_v<T, n>) T[n]
+#endif
 
 #if defined(__cplusplus)
 #if !defined(__HIPCC_RTC__)
@@ -50,6 +51,10 @@ THE SOFTWARE.
     #include <iosfwd>
     #include <type_traits>
 #endif // defined(__HIPCC_RTC__)
+
+template <class T, int N>
+inline constexpr __hip_internal::size_t __hip_vec_align_v =
+    ((N == 4 && alignof(T) == 8) ? 16 : N * alignof(T));
 
 template <typename T, unsigned int n> struct HIP_vector_base;
 template <typename T, unsigned int rank> struct HIP_vector_type;
