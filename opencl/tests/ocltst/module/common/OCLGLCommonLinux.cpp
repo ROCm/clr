@@ -169,6 +169,21 @@ bool OCLGLCommon::checkAssociationDeviceWithGLContext(OCLGLHandle& hGL) {
     }
   }
 
+  // If the current device id does not work for CL GL interop,
+  // fall back to other devices.
+  if (!ret) {
+    for (unsigned int i = 0; i < numDevices; i++) {
+      for (unsigned int j = 0; j < deviceCount_; j++) {
+        if (interopDevices[i] == devices_[j]) {
+          // Found an OpenCL device work with current GL context.
+          _deviceId = j;
+          ret = true;
+          break;
+        }
+      }
+    }
+  }
+
   free(interopDevices);
   return ret;
 }

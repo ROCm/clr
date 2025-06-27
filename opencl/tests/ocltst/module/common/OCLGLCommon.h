@@ -45,7 +45,7 @@ class OCLGLCommon : public OCLTestImp {
   // virtual interface //
   ///////////////////////
   virtual void open(unsigned int test, char* units, double& conversion,
-                    unsigned int deviceId);
+                    unsigned int &deviceId);
   virtual unsigned int close(void);
   static void gluPerspective(double fovy, double aspect, double zNear,
                              double zFar);
