@@ -55,7 +55,7 @@ set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "rocm-opencl-icd-loader")
 set(CPACK_DEBIAN_BINARY_PACKAGE_CONFLICTS "rocm-opencl-icd-loader")
 set(CPACK_RPM_BINARY_PACKAGE_OBSOLETES "rocm-opencl-icd-loader")
 
-set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/opencl/postinst;${CMAKE_BINARY_DIR}/opencl/packages/opencl/prerm")
+set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/opencl/postinst;${CMAKE_BINARY_DIR}/opencl/packages/opencl/postrm")
 # RPM CPACK variables
 set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/opencl/rpm_post")
 set(CPACK_RPM_BINARY_POST_UNINSTALL_SCRIPT_FILE "${CMAKE_BINARY_DIR}/opencl/packages/opencl/rpm_postun")
@@ -124,7 +124,7 @@ if(BUILD_ICD)
   set(CPACK_ICD_DEB "ON")
   set(CPACK_DEBIAN_ICD_PACKAGE_NAME "rocm-ocl-icd")
 
-  set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/prerm")
+  set(CPACK_DEBIAN_ICD_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/postinst;${CMAKE_BINARY_DIR}/opencl/packages/rocm-ocl-icd/postrm")
   set(CPACK_DEBIAN_ICD_PACKAGE_DEPENDS "rocm-core")
 
 # RPM CPACK variables

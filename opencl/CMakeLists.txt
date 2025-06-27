@@ -102,18 +102,42 @@ if(NOT DEFINED ROCM_PATH)
 endif()
 message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
 
+configure_file(
+  packaging/amdocl64.icd
+  ${CMAKE_BINARY_DIR}/opencl/packages/opencl/${OPENCL_AMD_ICD_FILE}
+  COPYONLY
+)
+install(
+  FILES ${CMAKE_BINARY_DIR}/opencl/packages/opencl/${OPENCL_AMD_ICD_FILE}
+  DESTINATION /${CMAKE_INSTALL_SYSCONFDIR}/OpenCL/vendors
+  COMPONENT binary
+  EXCLUDE_FROM_ALL
+)
+
+configure_file(
+  packaging/rocm-opencl.conf
+  ${CMAKE_BINARY_DIR}/opencl/packages/opencl/10-rocm-opencl.conf
+  COPYONLY
+)
+install(
+  FILES ${CMAKE_BINARY_DIR}/opencl/packages/opencl/10-rocm-opencl.conf
+  DESTINATION /${CMAKE_INSTALL_SYSCONFDIR}/ld.so.conf.d
+  COMPONENT binary
+  EXCLUDE_FROM_ALL
+)
+
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/opencl)
 configure_file(packaging/rocm-opencl.postinst ${BUILD_DIR}/postinst @ONLY)
-configure_file(packaging/rocm-opencl.prerm ${BUILD_DIR}/prerm @ONLY)
+configure_file(packaging/rocm-opencl.postrm ${BUILD_DIR}/postrm @ONLY)
 configure_file(packaging/rocm-opencl.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
 configure_file(packaging/rocm-opencl.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
 
 if(BUILD_ICD)
   set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-ocl-icd)
   configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
-  configure_file(packaging/rocm-ocl-icd.prerm ${BUILD_DIR}/prerm @ONLY)
+  configure_file(packaging/rocm-ocl-icd.postrm ${BUILD_DIR}/postrm @ONLY)
   configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
   configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
 endif()
