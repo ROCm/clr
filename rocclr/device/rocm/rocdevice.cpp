@@ -228,6 +228,7 @@ void Device::setupCpuAgent() {
   system_segment_ = cpu_agents_[index].fine_grain_pool;
   system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
   system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
+  system_ext_segment_ = cpu_agents_[index].ext_fine_grain_pool;
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
           "coarse=0x%zx) for gpu agent=0x%zx CPU<->GPU XGMI=%d", index, cpu_agent_.handle,
           system_segment_.handle, system_coarse_segment_.handle, bkendDevice_.handle, isXgmi_);
@@ -924,7 +925,7 @@ hsa_status_t Device::iterateCpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
 
       // If the flag set is ext scoped fine grain, break the loop
       if ((global_flag & HSA_REGION_GLOBAL_FLAG_EXTENDED_SCOPE_FINE_GRAINED) != 0) {
-        agentInfo->ext_fine_grain_pool_ = pool;
+        agentInfo->ext_fine_grain_pool = pool;
         break;
       }
 
@@ -2090,6 +2091,17 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
     case kAtomics :
       segment = system_segment_;
       break;
+    case kUncachedAtomics :
+      if (system_ext_segment_.handle != 0) {
+        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+                  "Using extended fine grained access system memory pool");
+        segment = system_ext_segment_;
+      } else {
+        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+                  "Falling through on fine grained access system memory pool");
+        segment = system_segment_;
+      }
+      break;
     default :
       guarantee(false, "Invalid Memory Segment");
       break;
@@ -2098,7 +2110,7 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx,"
-          " numa_node = %d", ptr, size, preferred_numa_node_);
+     " numa_node = %d, mem_seg = %d", ptr, size, preferred_numa_node_, static_cast<int>(mem_seg));
   if (stat != HSA_STATUS_SUCCESS) {
     LogPrintfError("Fail allocation host memory with err %d", stat);
     return nullptr;
@@ -2115,13 +2127,28 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
 }
 
 // ================================================================================================
-void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics) const {
+void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, MemorySegment mem_seg) const {
   void* ptr = nullptr;
-  const hsa_amd_memory_pool_t segment =
-      // If runtime disables barrier, then all host allocations must have L2 disabled
-      !atomics ? (agentInfo.coarse_grain_pool.handle != 0) ?
-              agentInfo.coarse_grain_pool : agentInfo.fine_grain_pool
-               : agentInfo.fine_grain_pool;
+  hsa_amd_memory_pool_t segment = agentInfo.fine_grain_pool;
+  switch (mem_seg) {
+    case kNoAtomics :
+      if (agentInfo.coarse_grain_pool.handle != 0) {
+        segment = agentInfo.coarse_grain_pool;
+      }
+      break;
+    case kUncachedAtomics :
+      if (agentInfo.ext_fine_grain_pool.handle != 0) {
+        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+                  "Using extended fine grained access system memory pool in hostAgentAlloc");
+        segment = agentInfo.ext_fine_grain_pool;
+      } else {
+        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+                  "Falling through on fine grained access system memory pool in hostAgentAlloc");
+      }
+      break;
+    default :
+      break;
+  }
   assert(segment.handle != 0);
   hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
@@ -2141,11 +2168,10 @@ void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomi
 }
 
 // ================================================================================================
-void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
+void* Device::hostNumaAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const {
   void* ptr = nullptr;
 #ifndef ROCCLR_SUPPORT_NUMA_POLICY
-  ptr = hostAlloc(size, alignment, atomics
-                  ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
+  ptr = hostAlloc(size, alignment, mem_seg);
 #else
   int mode = MPOL_DEFAULT;
   int maxNodes = numa_num_possible_nodes();
@@ -2168,15 +2194,14 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, bool atomics) const {
       // We only care about the first CPU node
       for (unsigned int i = 0; i < cpuCount; i++) {
         if ((1u << i) & *nodeMask->maskp) {
-          ptr = hostAgentAlloc(size, cpu_agents_[i], atomics);
+          ptr = hostAgentAlloc(size, cpu_agents_[i], mem_seg);
           break;
         }
       }
       break;
     default:
       //  All other modes fall back to default mode
-      ptr = hostAlloc(size, alignment, atomics
-                      ? Device::MemorySegment::kAtomics : Device::MemorySegment::kNoAtomics);
+      ptr = hostAlloc(size, alignment, mem_seg);
   }
   numa_free_cpumask(nodeMask);
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
