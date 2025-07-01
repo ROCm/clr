@@ -364,8 +364,19 @@ hipError_t ihipHostMalloc(void** ptr, size_t sizeBytes, unsigned int flags)
   }
 
   unsigned int ihipFlags = CL_MEM_SVM_FINE_GRAIN_BUFFER;
+  if (flags & hipHostMallocUncached) {
+    if (IS_WINDOWS) {
+      return hipErrorInvalidValue;
+    }
+    if (flags & (hipHostMallocNonCoherent | hipHostMallocCoherent)) {
+      return hipErrorInvalidValue;
+    }
+    ihipFlags |= ROCCLR_MEM_HSA_UNCACHED;
+  }
+
   if (flags == 0 ||
-      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser) ||
+      flags & (hipHostMallocCoherent | hipHostMallocMapped | hipHostMallocNumaUser |
+      hipHostMallocUncached) ||
       (!(flags & hipHostMallocNonCoherent) && HIP_HOST_COHERENT)) {
     ihipFlags |= CL_MEM_SVM_ATOMICS;
   }
@@ -1271,11 +1282,21 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 }
 
 hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
-  if (hostPtr == nullptr || sizeBytes == 0 || flags > 15) {
+  if (hostPtr == nullptr || sizeBytes == 0 ||
+      flags & ~(hipHostRegisterPortable | hipHostRegisterMapped |
+          hipExtHostRegisterCoarseGrained | hipExtHostRegisterUncached)) {
     return hipErrorInvalidValue;
   } else {
+    unsigned int memFlags = CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS;
+    if (flags & hipExtHostRegisterUncached) {
+      if (IS_WINDOWS) {
+        return hipErrorInvalidValue;
+      }
+      memFlags |= ROCCLR_MEM_HSA_UNCACHED;
+    }
+
     amd::Memory* mem = new (*hip::host_context) amd::Buffer(*hip::host_context,
-                            CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS, sizeBytes);
+                                                            memFlags, sizeBytes);
 
     constexpr bool sysMemAlloc = false;
     constexpr bool skipAlloc = false;
@@ -1296,6 +1317,7 @@ hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags)
         amd::MemObjMap::AddMemObj(vAddr, mem);
       }
     }
+
 
     if (mem != nullptr) {
       mem->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
@@ -1354,8 +1376,8 @@ hipError_t hipHostAlloc(void** ptr, size_t sizeBytes, unsigned int flags) {
   if (ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (flags > (hipHostMallocPortable | hipHostMallocMapped |
-      hipHostMallocWriteCombined)) {
+  if (flags & ~(hipHostAllocPortable | hipHostAllocMapped |
+      hipHostAllocWriteCombined | hipHostAllocUncached)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -4510,4 +4532,23 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
   HIP_RETURN(ihipMipmapArrayCreate(mipmap, &allocateArray, mipmapDesc->numLevels,
                                    (size_t)mipmapDesc->offset, buf));
 }
+
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+                                          hipMemRangeHandleType handleType,
+                                          unsigned long long flags) {
+  HIP_INIT_API(hipMemGetHandleForAddressRange, handle, dptr, size, handleType, flags);
+
+  // We do not support any flags at this time.
+  if (dptr == nullptr || size == 0 || handleType != hipMemRangeHandleTypeDmaBufFd || flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue;)
+  }
+
+  amd::Device* device = hip::getCurrentDevice()->devices()[0];
+  if (!device->GetHandleForAddressRange(dptr, size, handle)) {
+    HIP_RETURN(hipErrorInvalidValue;)
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
 }  // namespace hip
