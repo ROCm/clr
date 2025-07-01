@@ -222,9 +222,8 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
   __BF16_HOST_DEVICE__ __hip_bfloat16(const __bf16 val) : __x_bf16(val) {}
 
   /*! \brief create __hip_bfloat16 from an unsigned long long */
-  __hip_bfloat16(unsigned long long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16(unsigned long long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return;
     }
@@ -239,9 +238,8 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
       msb_pos++;
     }
 
-    uint64_t exponent = msb_pos + 127;
+    uint16_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return;
     }
@@ -249,11 +247,13 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint64_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint64_t mantissa_bits = abs_value >> shift;
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_full = abs_value & mantissa_mask;
+      uint64_t mantissa_bits = mantissa_full >> shift;
 
       bool round_up = false;
       if (shift > 0) {
-        uint64_t remainder = abs_value & ((1ULL << shift) - 1);
+        uint64_t remainder = mantissa_full & ((1ULL << shift) - 1);
         uint64_t half = 1ULL << (shift - 1);
 
         if (remainder > half) {
@@ -271,23 +271,22 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
-    __x = (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = (static_cast<uint16_t>(exponent) << 7) | mantissa;
+    __x = (exponent << 7) | mantissa;
   }
 
   /*! \brief create __hip_bfloat16 from an long long */
-  __hip_bfloat16(long long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16(long long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return;
     }
@@ -311,7 +310,6 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
 
     uint64_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return;
     }
@@ -319,7 +317,9 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint64_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint64_t mantissa_bits = abs_value >> shift;
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_full = abs_value & mantissa_mask;
+      uint64_t mantissa_bits = mantissa_full >> shift;
 
       bool round_up = false;
       if (shift > 0) {
@@ -341,23 +341,22 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
     __x = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
   };
 
   /*! \brief create __hip_bfloat16 from an unsigned long */
-  __hip_bfloat16(unsigned long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16(unsigned long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return;
     }
@@ -374,7 +373,6 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
 
     uint32_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return;
     }
@@ -382,7 +380,9 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint32_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint32_t mantissa_bits = abs_value >> shift;
+      uint32_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint32_t mantissa_full = abs_value & mantissa_mask;
+      uint32_t mantissa_bits = mantissa_full >> shift;
 
       bool round_up = false;
       if (shift > 0) {
@@ -404,23 +404,22 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
     __x = (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = (static_cast<uint16_t>(exponent) << 7) | mantissa;
   };
 
   /*! \brief create __hip_bfloat16 from an long */
-  __hip_bfloat16(long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16(long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return;
     }
@@ -444,7 +443,6 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
 
     uint32_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return;
     }
@@ -452,7 +450,9 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint32_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint32_t mantissa_bits = abs_value >> shift;
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_full = abs_value & mantissa_mask;
+      uint64_t mantissa_bits = mantissa_full >> shift;
 
       bool round_up = false;
       if (shift > 0) {
@@ -474,23 +474,22 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
     __x = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
   };
 
   /*! \brief assign from an unsigned long long */
-  __hip_bfloat16& operator=(unsigned long long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16& operator=(unsigned long long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return *this;
     }
@@ -507,7 +506,6 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
 
     uint64_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return *this;
     }
@@ -515,7 +513,10 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint64_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint64_t mantissa_bits = abs_value >> shift;
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_full = abs_value & mantissa_mask;
+      uint64_t mantissa_bits = mantissa_full >> shift;
+
 
       bool round_up = false;
       if (shift > 0) {
@@ -537,24 +538,23 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return *this;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
-    __x = (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = (static_cast<uint16_t>(exponent) << 7) | mantissa;
+    __x = (exponent << 7) | mantissa;
     return *this;
   }
 
   /*! \brief assign from an unsigned long long */
-  __hip_bfloat16& operator=(long long val) {
+  __BF16_HOST_DEVICE__ __hip_bfloat16& operator=(long long val) {
     if (val == 0) {
-      __x_bf16 = 0;
       __x = 0;
       return *this;
     }
@@ -578,7 +578,6 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
 
     uint64_t exponent = msb_pos + 127;
     if (exponent >= 255) {
-      __x_bf16 = 0x7F80;
       __x = 0x7F80;
       return *this;
     }
@@ -586,7 +585,9 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
     uint64_t mantissa = 0;
     if (msb_pos >= 7) {
       int32_t shift = msb_pos - 7;
-      uint64_t mantissa_bits = abs_value >> shift;
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_full = abs_value & mantissa_mask;
+      uint64_t mantissa_bits = mantissa_full >> shift;
 
       bool round_up = false;
       if (shift > 0) {
@@ -608,17 +609,17 @@ struct __attribute__((aligned(2))) __hip_bfloat16 {
           mantissa = 0;
           exponent++;
           if (exponent >= 255) {
-            __x_bf16 = 0x7F80;
             __x = 0x7F80;
             return *this;
           }
         }
       }
     } else {
-      mantissa = static_cast<uint16_t>((abs_value << (7 - msb_pos)) & 0x7F);
+      uint64_t mantissa_mask = (1ULL << msb_pos) - 1;
+      uint64_t mantissa_part = abs_value & mantissa_mask;
+      mantissa = static_cast<uint16_t>(mantissa_part << (7 - msb_pos));
     }
     __x = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
-    __x_bf16 = sign | (static_cast<uint16_t>(exponent) << 7) | mantissa;
     return *this;
   }
 
