@@ -81,8 +81,8 @@ hipError_t capturehipMemcpy3DAsync(hipStream_t& stream, const hipMemcpy3DParms*&
 hipError_t capturehipMemcpyAsync(hipStream_t& stream, void*& dst, const void*& src,
                                  size_t& sizeBytes, hipMemcpyKind& kind);
 
-hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice, void*& srcHost,
-                                     size_t& ByteCount, hipMemcpyKind& kind);
+hipError_t capturehipMemcpyHtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice,
+                                     const void*& srcHost, size_t& ByteCount, hipMemcpyKind& kind);
 
 hipError_t capturehipMemcpyDtoDAsync(hipStream_t& stream, hipDeviceptr_t& dstDevice,
                                      hipDeviceptr_t& srcDevice, size_t& ByteCount,

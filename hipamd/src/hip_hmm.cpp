@@ -65,9 +65,15 @@ static_assert(static_cast<uint32_t>(hipMemRangeAttributeLastPrefetchLocation) ==
 hipError_t hipMallocManaged(void** dev_ptr, size_t size, unsigned int flags) {
   HIP_INIT_API(hipMallocManaged, dev_ptr, size, flags);
 
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+
   if ((dev_ptr == nullptr) || (size == 0) ||
       ((flags != hipMemAttachGlobal) && (flags != hipMemAttachHost))) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
   HIP_RETURN(ihipMallocManaged(dev_ptr, size), *dev_ptr);
@@ -135,6 +141,8 @@ hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device,
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device) {
   HIP_INIT_API(hipMemAdvise, dev_ptr, count, advice, device);
 
+  CHECK_STREAM_CAPTURE_SUPPORTED();
+
   bool isAdviseReadMostly = (advice == hipMemAdviseSetReadMostly) ||
                             (advice == hipMemAdviseUnsetReadMostly);
 
@@ -145,6 +153,10 @@ hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advic
 
   if ((dev_ptr == nullptr) || (count == 0)) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
   size_t offset = 0;

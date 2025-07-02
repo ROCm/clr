@@ -49,33 +49,34 @@ namespace cooperative_groups {
  */
 class thread_group {
  protected:
-  uint32_t _type;  //! Type of the thread_group.
-  uint32_t _size;  //! Total number of threads in the tread_group.
-  uint64_t _mask;  //! Lanemask for coalesced and tiled partitioned group types,
-                   //! LSB represents lane 0, and MSB represents lane 63
+  __hip_uint32_t _type;  //! Type of the thread_group.
+  __hip_uint32_t _num_threads;  //! Total number of threads in the thread_group.
+  __hip_uint64_t _mask;  //! Lanemask for coalesced and tiled partitioned group types,
+                         //! LSB represents lane 0, and MSB represents lane 63
 
   //! Construct a thread group, and set thread group type and other essential
   //! thread group properties. This generic thread group is directly constructed
-  //! only when the group is supposed to contain only the calling the thread
+  //! only when the group is supposed to contain only the calling thread
   //! (through the API - `this_thread()`), and in all other cases, this thread
   //! group object is a sub-object of some other derived thread group object.
-  __CG_QUALIFIER__ thread_group(internal::group_type type, uint32_t size = static_cast<uint64_t>(0),
-                                uint64_t mask = static_cast<uint64_t>(0)) {
+  __CG_QUALIFIER__ thread_group(internal::group_type type,
+                                __hip_uint32_t num_threads = static_cast<__hip_uint64_t>(0),
+                                __hip_uint64_t mask = static_cast<__hip_uint64_t>(0)) {
     _type = type;
-    _size = size;
+    _num_threads = num_threads;
     _mask = mask;
   }
 
   struct _tiled_info {
     bool is_tiled;
-    unsigned int size;
+    unsigned int num_threads;
     unsigned int meta_group_rank;
     unsigned int meta_group_size;
   };
 
   struct _coalesced_info {
     lane_mask member_mask;
-    unsigned int size;
+    unsigned int num_threads;
     struct _tiled_info tiled_info;
   } coalesced_info;
 
@@ -86,13 +87,15 @@ class thread_group {
 
  public:
   //! Total number of threads in the thread_group, and this serves the purpose
-  //! for all derived cooperative group types because their `size` is directly
+  //! for all derived cooperative group types because their `num_threads` is directly
   //! saved during the construction.
-  __CG_QUALIFIER__ uint32_t size() const { return _size; }
+  __CG_QUALIFIER__ __hip_uint32_t num_threads() const { return _num_threads; }
+  //! Total number of threads in the group (alias of num_threads())
+  __CG_QUALIFIER__ __hip_uint32_t size() const { return num_threads(); }
   //! Returns the type of the group.
   __CG_QUALIFIER__ unsigned int cg_type() const { return _type; }
-  //! Rank of the calling thread within [0, \link size() size() \endlink).
-  __CG_QUALIFIER__ uint32_t thread_rank() const;
+  //! Rank of the calling thread within [0, \link num_threads() num_threads() \endlink).
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const;
   //! Returns true if the group has not violated any API constraints.
   __CG_QUALIFIER__ bool is_valid() const;
 
@@ -138,21 +141,21 @@ class multi_grid_group : public thread_group {
   friend __CG_QUALIFIER__ multi_grid_group this_multi_grid();
 
  protected:
-  //! Construct mutli-grid thread group (through the API this_multi_grid())
-  explicit __CG_QUALIFIER__ multi_grid_group(uint32_t size)
+  //! Construct multi-grid thread group (through the API this_multi_grid())
+  explicit __CG_QUALIFIER__ multi_grid_group(__hip_uint32_t size)
       : thread_group(internal::cg_multi_grid, size) {}
 
  public:
 
   //! Number of invocations participating in this multi-grid group. In other
   //! words, the number of GPUs.
-  __CG_QUALIFIER__ uint32_t num_grids() { return internal::multi_grid::num_grids(); }
+  __CG_QUALIFIER__ __hip_uint32_t num_grids() { return internal::multi_grid::num_grids(); }
 
   //! Rank of this invocation. In other words, an ID number within the range
   //! [0, num_grids()) of the GPU that kernel is running on.
-  __CG_QUALIFIER__ uint32_t grid_rank() { return internal::multi_grid::grid_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t grid_rank() { return internal::multi_grid::grid_rank(); }
   //! @copydoc thread_group::thread_rank
-  __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::multi_grid::thread_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const { return internal::multi_grid::thread_rank(); }
   //! @copydoc thread_group::is_valid
   __CG_QUALIFIER__ bool is_valid() const { return internal::multi_grid::is_valid(); }
   //! @copydoc thread_group::sync
@@ -173,7 +176,7 @@ class multi_grid_group : public thread_group {
  *           development on Microsoft Windows.
  */
 __CG_QUALIFIER__ multi_grid_group this_multi_grid() {
-  return multi_grid_group(internal::multi_grid::size());
+  return multi_grid_group(internal::multi_grid::num_threads());
 }
 // Doxygen end group CooperativeGConstruct
 /** @} */
@@ -193,11 +196,11 @@ class grid_group : public thread_group {
 
  protected:
   //! Construct grid thread group (through the API this_grid())
-  explicit __CG_QUALIFIER__ grid_group(uint32_t size) : thread_group(internal::cg_grid, size) {}
+  explicit __CG_QUALIFIER__ grid_group(__hip_uint32_t size) : thread_group(internal::cg_grid, size) {}
 
  public:
   //! @copydoc thread_group::thread_rank
-  __CG_QUALIFIER__ uint32_t thread_rank() const { return internal::grid::thread_rank(); }
+  __CG_QUALIFIER__ __hip_uint32_t thread_rank() const { return internal::grid::thread_rank(); }
   //! @copydoc thread_group::is_valid
   __CG_QUALIFIER__ bool is_valid() const { return internal::grid::is_valid(); }
   //! @copydoc thread_group::sync
@@ -215,7 +218,7 @@ class grid_group : public thread_group {
  *  \note    This function is implemented on Linux and is under development
  *           on Microsoft Windows.
  */
-__CG_QUALIFIER__ grid_group this_grid() { return grid_group(internal::grid::size()); }
+__CG_QUALIFIER__ grid_group this_grid() { return grid_group(internal::grid::num_threads()); }
 
 /** \brief   The workgroup (thread-block in CUDA terminology) cooperative group
  *           type.
@@ -236,7 +239,7 @@ class thread_block : public thread_group {
                                                        unsigned int tile_size);
  protected:
   // Construct a workgroup thread group (through the API this_thread_block())
-  explicit __CG_QUALIFIER__ thread_block(uint32_t size)
+  explicit __CG_QUALIFIER__ thread_block(__hip_uint32_t size)
       : thread_group(internal::cg_workgroup, size) {}
 
   __CG_QUALIFIER__ thread_group new_tiled_group(unsigned int tile_size) const {
@@ -246,14 +249,14 @@ class thread_block : public thread_group {
       __hip_assert(false && "invalid tile size");
     }
 
-    auto block_size = size();
+    auto block_size = num_threads();
     auto rank = thread_rank();
     auto partitions = (block_size + tile_size - 1) / tile_size;
     auto tail = (partitions * tile_size) - block_size;
     auto partition_size = tile_size - tail * (rank >= (partitions - 1) * tile_size);
     thread_group tiledGroup = thread_group(internal::cg_tiled_group, partition_size);
 
-    tiledGroup.coalesced_info.tiled_info.size = tile_size;
+    tiledGroup.coalesced_info.tiled_info.num_threads = tile_size;
     tiledGroup.coalesced_info.tiled_info.is_tiled = true;
     tiledGroup.coalesced_info.tiled_info.meta_group_rank = rank / tile_size;
     tiledGroup.coalesced_info.tiled_info.meta_group_size = partitions;
@@ -266,9 +269,11 @@ class thread_block : public thread_group {
   //! Returns 3-dimensional thread index within the block.
   __CG_STATIC_QUALIFIER__ dim3 thread_index() { return internal::workgroup::thread_index(); }
   //! @copydoc thread_group::thread_rank
-  __CG_STATIC_QUALIFIER__ uint32_t thread_rank() { return internal::workgroup::thread_rank(); }
+  __CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() { return internal::workgroup::thread_rank(); }
+  //! @copydoc thread_group::num_threads
+  __CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() { return internal::workgroup::num_threads(); }
   //! @copydoc thread_group::size
-  __CG_STATIC_QUALIFIER__ uint32_t size() { return internal::workgroup::size(); }
+  __CG_STATIC_QUALIFIER__ __hip_uint32_t size() { return num_threads(); }
   //! @copydoc thread_group::is_valid
   __CG_STATIC_QUALIFIER__ bool is_valid() { return internal::workgroup::is_valid(); }
   //! @copydoc thread_group::sync
@@ -288,7 +293,7 @@ class thread_block : public thread_group {
  *           on Microsoft Windows.
  */
 __CG_QUALIFIER__ thread_block this_thread_block() {
-  return thread_block(internal::workgroup::size());
+  return thread_block(internal::workgroup::num_threads());
 }
 
 /** \brief   The tiled_group cooperative group type
@@ -312,7 +317,7 @@ class tiled_group : public thread_group {
       __hip_assert(false && "invalid tile size");
     }
 
-    if (size() <= tile_size) {
+    if (num_threads() <= tile_size) {
       return *this;
     }
 
@@ -324,17 +329,20 @@ class tiled_group : public thread_group {
  protected:
   explicit __CG_QUALIFIER__ tiled_group(unsigned int tileSize)
       : thread_group(internal::cg_tiled_group, tileSize) {
-    coalesced_info.tiled_info.size = tileSize;
+    coalesced_info.tiled_info.num_threads = tileSize;
     coalesced_info.tiled_info.is_tiled = true;
   }
 
  public:
+  //! @copydoc thread_group::num_threads
+  __CG_QUALIFIER__ unsigned int num_threads() const { return (coalesced_info.tiled_info.num_threads); }
+
   //! @copydoc thread_group::size
-  __CG_QUALIFIER__ unsigned int size() const { return (coalesced_info.tiled_info.size); }
+  __CG_QUALIFIER__ unsigned int size() const { return num_threads(); }
 
   //! @copydoc thread_group::thread_rank
   __CG_QUALIFIER__ unsigned int thread_rank() const {
-    return (internal::workgroup::thread_rank() & (coalesced_info.tiled_info.size - 1));
+    return (internal::workgroup::thread_rank() & (coalesced_info.tiled_info.num_threads - 1));
   }
 
   //! @copydoc thread_group::sync
@@ -373,14 +381,16 @@ class coalesced_group : public thread_group {
     // prepare a mask for further partitioning it so that it stays coalesced.
     if (coalesced_info.tiled_info.is_tiled) {
       unsigned int base_offset = (thread_rank() & (~(tile_size - 1)));
-      unsigned int masklength = min(static_cast<unsigned int>(size()) - base_offset, tile_size);
-      lane_mask member_mask = static_cast<lane_mask>(-1) >> (warpSize - masklength);
+      unsigned int masklength = min(static_cast<unsigned int>(num_threads()) - base_offset, tile_size);
+      lane_mask full_mask = (static_cast<int>(warpSize) == 32) ? static_cast<lane_mask>((1u << 32) - 1)
+                                             : static_cast<lane_mask>(-1ull);
+      lane_mask member_mask = full_mask >> (warpSize - masklength);
 
       member_mask <<= (__lane_id() & ~(tile_size - 1));
       coalesced_group coalesced_tile = coalesced_group(member_mask);
       coalesced_tile.coalesced_info.tiled_info.is_tiled = true;
       coalesced_tile.coalesced_info.tiled_info.meta_group_rank = thread_rank() / tile_size;
-      coalesced_tile.coalesced_info.tiled_info.meta_group_size = size() / tile_size;
+      coalesced_tile.coalesced_info.tiled_info.meta_group_size = num_threads() / tile_size;
       return coalesced_tile;
     }
     // Here the parent coalesced_group is not partitioned.
@@ -404,7 +414,7 @@ class coalesced_group : public thread_group {
       coalesced_group coalesced_tile = coalesced_group(member_mask);
       coalesced_tile.coalesced_info.tiled_info.meta_group_rank = thread_rank() / tile_size;
       coalesced_tile.coalesced_info.tiled_info.meta_group_size =
-                                                      (size() + tile_size - 1) / tile_size;
+                                                      (num_threads() + tile_size - 1) / tile_size;
       return coalesced_tile;
     }
      return coalesced_group(0);
@@ -415,16 +425,21 @@ class coalesced_group : public thread_group {
   explicit __CG_QUALIFIER__ coalesced_group(lane_mask member_mask)
       : thread_group(internal::cg_coalesced_group) {
     coalesced_info.member_mask = member_mask; // Which threads are active
-    coalesced_info.size = __popcll(coalesced_info.member_mask); // How many threads are active
+    coalesced_info.num_threads = __popcll(coalesced_info.member_mask); // How many threads are active
     coalesced_info.tiled_info.is_tiled = false; // Not a partitioned group
     coalesced_info.tiled_info.meta_group_rank = 0;
     coalesced_info.tiled_info.meta_group_size = 1;
   }
 
  public:
+   //! @copydoc thread_group::num_threads
+   __CG_QUALIFIER__ unsigned int num_threads() const {
+     return coalesced_info.num_threads;
+   }
+
    //! @copydoc thread_group::size
    __CG_QUALIFIER__ unsigned int size() const {
-     return coalesced_info.size;
+     return num_threads();
    }
 
    //! @copydoc thread_group::thread_rank
@@ -463,10 +478,10 @@ class coalesced_group : public thread_group {
   template <class T>
   __CG_QUALIFIER__ T shfl(T var, int srcRank) const {
 
-    srcRank = srcRank % static_cast<int>(size());
+    srcRank = srcRank % static_cast<int>(num_threads());
 
-    int lane = (size() == warpSize) ? srcRank
-             : (warpSize == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
+    int lane = (num_threads() == warpSize) ? srcRank
+             : (static_cast<int>(warpSize) == 64)     ? __fns64(coalesced_info.member_mask, 0, (srcRank + 1))
                                     : __fns32(coalesced_info.member_mask, 0, (srcRank + 1));
 
     return __shfl(var, lane, warpSize);
@@ -493,12 +508,12 @@ class coalesced_group : public thread_group {
     // and WARP_SIZE as the shift value rather than lane_delta itself.
     // This is not described in the documentation and is not done here.
 
-    if (size() == warpSize) {
+    if (num_threads() == warpSize) {
       return __shfl_down(var, lane_delta, warpSize);
     }
 
     int lane;
-    if (warpSize == 64) {
+    if (static_cast<int>(warpSize) == 64) {
       lane = __fns64(coalesced_info.member_mask, __lane_id(), lane_delta + 1);
     }
     else {
@@ -533,15 +548,15 @@ class coalesced_group : public thread_group {
     // and WARP_SIZE as the shift value rather than lane_delta itself.
     // This is not described in the documentation and is not done here.
 
-    if (size() == warpSize) {
+    if (num_threads() == warpSize) {
       return __shfl_up(var, lane_delta, warpSize);
     }
 
     int lane;
-    if (warpSize == 64) {
+    if (static_cast<int>(warpSize) == 64) {
       lane = __fns64(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
     }
-    else if (warpSize == 32) {
+    else if (static_cast<int>(warpSize) == 32) {
       lane = __fns32(coalesced_info.member_mask, __lane_id(), -(lane_delta + 1));
     }
 
@@ -639,7 +654,7 @@ __CG_QUALIFIER__ coalesced_group coalesced_threads() {
  *  \note  This function is implemented on Linux and is under development
  *  on Microsoft Windows.
  */
-__CG_QUALIFIER__ uint32_t thread_group::thread_rank() const {
+__CG_QUALIFIER__ __hip_uint32_t thread_group::thread_rank() const {
   switch (this->_type) {
     case internal::cg_multi_grid: {
       return (static_cast<const multi_grid_group*>(this)->thread_rank());
@@ -744,11 +759,11 @@ __CG_QUALIFIER__ void thread_group::sync() const {
  *           cooperative group type APIs. This function is implemented on Linux
  *           and is under development on Microsoft Windows.
  */
-template <class CGTy> __CG_QUALIFIER__ uint32_t group_size(CGTy const& g) { return g.size(); }
+template <class CGTy> __CG_QUALIFIER__ __hip_uint32_t group_size(CGTy const& g) { return g.num_threads(); }
 
 /** \brief   Returns the rank of thread of the group.
  *
- *  \details Rank of the calling thread within [0, \link size() size() \endlink).
+ *  \details Rank of the calling thread within [0, \link num_threads() num_threads() \endlink).
  * 
  *  \tparam CGTy  The cooperative group class template parameter.
  *  \param g [in] The cooperative group for rank returns.
@@ -757,7 +772,7 @@ template <class CGTy> __CG_QUALIFIER__ uint32_t group_size(CGTy const& g) { retu
  *           cooperative group type APIs. This function is implemented on Linux
  *           and is under development on Microsoft Windows.
  */
-template <class CGTy> __CG_QUALIFIER__ uint32_t thread_rank(CGTy const& g) {
+template <class CGTy> __CG_QUALIFIER__ __hip_uint32_t thread_rank(CGTy const& g) {
   return g.thread_rank();
 }
 
@@ -802,7 +817,11 @@ template <unsigned int tileSize> class tile_base {
   }
 
   //! Number of threads within this tile
-  __CG_STATIC_QUALIFIER__ unsigned int size() { return numThreads; }
+  __CG_STATIC_QUALIFIER__ unsigned int num_threads() { return numThreads; }
+
+  //! Legacy member functions
+  //! Number of threads within this tile (alias of num_threads())
+  __CG_STATIC_QUALIFIER__ unsigned int size() { return num_threads(); }
 };
 
 /**
@@ -885,7 +904,7 @@ public:
 
   //! Returns the number of groups created when the parent group was partitioned.
   __CG_STATIC_QUALIFIER__ unsigned int meta_group_size() {
-    return (ParentCGTy::size() + tileSize - 1) / tileSize;
+    return (ParentCGTy::num_threads() + tileSize - 1) / tileSize;
   }
 };
 
@@ -903,10 +922,11 @@ class thread_block_tile_type : public thread_block_tile_base<tileSize>,
   typedef thread_block_tile_base<numThreads> tbtBase;
   protected:
     __CG_QUALIFIER__ thread_block_tile_type() : tiled_group(numThreads) {
-      coalesced_info.tiled_info.size = numThreads;
+      coalesced_info.tiled_info.num_threads = numThreads;
       coalesced_info.tiled_info.is_tiled = true;
     }
   public:
+    using tbtBase::num_threads;
     using tbtBase::size;
     using tbtBase::sync;
     using tbtBase::thread_rank;
@@ -925,13 +945,14 @@ class thread_block_tile_type<tileSize, void> : public thread_block_tile_base<til
 
     __CG_QUALIFIER__ thread_block_tile_type(unsigned int meta_group_rank, unsigned int meta_group_size)
         : tiled_group(numThreads) {
-    coalesced_info.tiled_info.size = numThreads;
+    coalesced_info.tiled_info.num_threads = numThreads;
     coalesced_info.tiled_info.is_tiled = true;
     coalesced_info.tiled_info.meta_group_rank = meta_group_rank;
     coalesced_info.tiled_info.meta_group_size = meta_group_size;
   }
 
  public:
+  using tbtBase::num_threads;
   using tbtBase::size;
   using tbtBase::sync;
   using tbtBase::thread_rank;

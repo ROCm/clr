@@ -101,7 +101,7 @@ T __hip_readfirstlane(T val) {
 // When compiling for wave32 mode, ignore the upper half of the 64-bit mask.
 #define __hip_adjust_mask_for_wave32(MASK)            \
   do {                                          \
-    if (warpSize == 32) MASK &= 0xFFFFFFFF;     \
+    if (static_cast<int>(warpSize) == 32) MASK &= 0xFFFFFFFF;     \
   } while (0)
 
 // We use a macro to expand each builtin into a waterfall that implements the
@@ -340,7 +340,8 @@ T __shfl_xor_sync(MaskT mask, T var, int laneMask,
 template <typename MaskT, typename T, typename BinaryOp, typename WfReduce>
 __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wfReduce)
 {
-  using permuteType = __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int>::type;
+  using permuteType =
+    typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, T, unsigned int>::type;
   static constexpr auto kMaskNumBits = sizeof(MaskT) * 8;
   static_assert(
       __hip_internal::is_integral<MaskT>::value && sizeof(MaskT) == 8,
@@ -362,7 +363,7 @@ __device__ inline T __reduce_op_sync(MaskT mask, T val, BinaryOp op, WfReduce wf
   // unsigned int[2] is used when T is 64-bit wide
   typename __hip_internal::conditional<sizeof(T) == 4 || sizeof(T) == 2, permuteType, permuteType[2]>::type result, permuteResult;
   auto backwardPermute = [](int index, permuteType val) {
-    if constexpr (std::is_integral<T>::value || std::is_same<T, double>::value)
+    if constexpr (__hip_internal::is_integral<T>::value || __hip_internal::is_same<T, double>::value)
       return __hip_ds_bpermute(index, val);
     else
       return __hip_ds_bpermutef(index, val);

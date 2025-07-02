@@ -661,6 +661,8 @@ struct Info : public amd::EmbeddedObject {
 
   size_t scratchLimitMin; //! Minimum size of scratch limit of this device memory in bytes.
   size_t scratchLimitMax; //! Maximum size of scratch limit of this device memory in bytes.
+
+  uint32_t numberOfXccs_; //! The number of XCC(s) on the device
 };
 
 //! Device settings
@@ -952,6 +954,9 @@ class Memory : public amd::HeapObject {
   //! Get current access of the memory in device.
   MemAccess GetAccess() const { return memAccess_; }
 
+  //! Retrieves shareable handle for hipMalloc'ed address range.
+  virtual bool GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) { return false; }
+
  protected:
   enum Flags {
     HostMemoryDirectAccess = 0x00000001,  //!< GPU has direct access to the host memory
@@ -976,7 +981,7 @@ class Memory : public amd::HeapObject {
   //! not a physical map. When a memory object does not use USE_HOST_PTR we
   //! can use a remote resource and DMA, avoiding the additional CPU memcpy.
   amd::Memory* mapMemory_;            //!< Memory used as map target buffer
-  volatile size_t indirectMapCount_;  //!< Number of maps
+  std::atomic<size_t> indirectMapCount_;  //!< Number of maps
   std::unordered_map<const void*, WriteMapInfo>
       writeMapInfo_;  //!< Saved write map info for partial unmap
 
@@ -1666,7 +1671,8 @@ class Device : public RuntimeObject {
   typedef enum MemorySegment {
     kNoAtomics = 0,
     kAtomics = 1,
-    kKernArg = 2
+    kKernArg = 2,
+    kUncachedAtomics = 4
   } MemorySegment;
 
   typedef enum CacheState {
@@ -1693,7 +1699,7 @@ class Device : public RuntimeObject {
   // Max Scratch size is based on ISA and thus per device.
   // Def value is as per GFX9 being the least among supported devices.
   size_t maxStackSize_ = kMaxStackSize9X;
-  static bool device_not_usable_; //!< If set, we should not launch any commands anymore.
+  static cl_int gpu_error_; //!< Store the GPU error cause during kernel launch
 
   typedef std::list<CommandQueue*> CommandQueues;
 
@@ -2183,6 +2189,8 @@ class Device : public RuntimeObject {
   static bool IsGPUInError() { return (gpu_error_ != CL_SUCCESS); }
   static cl_int GetGPUError() { return gpu_error_; }
 
+  bool GetHandleForAddressRange(void* dev_ptr, size_t size, void* handle);
+
  protected:
   //! Enable the specified extension
   char* getExtensionString();
@@ -2217,7 +2225,6 @@ class Device : public RuntimeObject {
   uint64_t initial_heap_size_{HIP_INITIAL_DM_SIZE};  //!< Initial device heap size
   amd::Monitor activeQueuesLock_ {}; //!< Guards access to the activeQueues set
   std::unordered_set<amd::CommandQueue*> activeQueues; //!< The set of active queues
-  static cl_int gpu_error_; //!< Store the GPU error cause during kernel launch
 
  private:
   const Isa *isa_;                //!< Device isa

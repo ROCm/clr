@@ -445,6 +445,9 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     case hipDeviceAttributeAccessPolicyMaxWindowSize:
       *pi = prop.accessPolicyMaxWindowSize;
        break;
+    case hipDeviceAttributeNumberOfXccs:
+      *pi = static_cast<int>(g_devices[device]->devices()[0]->info().numberOfXccs_);
+       break;
     default:
       HIP_RETURN(hipErrorInvalidValue);
   }
@@ -588,6 +591,10 @@ hipError_t hipDeviceSetCacheConfig(hipFuncCache_t cacheConfig) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
@@ -628,6 +635,11 @@ hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) {
       config != hipSharedMemBankSizeEightByte) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
@@ -773,6 +785,6 @@ hipError_t hipSetValidDevices(int* device_arr, int len) {
 }
 } //namespace hip
 
-extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0600* properties) {
-  return hip::hipChooseDeviceR0600(device, properties);
+extern "C" hipError_t hipChooseDevice(int* device, const hipDeviceProp_tR0000* properties) {
+  return hip::hipChooseDeviceR0000(device, properties);
 }

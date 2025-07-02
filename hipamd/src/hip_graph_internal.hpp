@@ -2005,15 +2005,6 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(params, &memsetParams_, sizeof(hipMemsetParams));
   }
 
-  void GetParams(HIP_MEMSET_NODE_PARAMS* params) {
-    params->dst = memsetParams_.dst;
-    params->elementSize = memsetParams_.elementSize;
-    params->height = memsetParams_.height;
-    params->pitch = memsetParams_.pitch;
-    params->value = memsetParams_.value;
-    params->width = memsetParams_.width;
-  }
-
   hipError_t SetParamsInternal(const hipMemsetParams* params, bool isExec, size_t depth = 1) {
     hipError_t hip_error = hipSuccess;
     hip_error = ihipGraphMemsetParams_validate(params);
@@ -2086,16 +2077,6 @@ class GraphMemsetNode : public GraphNode {
     return SetParamsInternal(params, isExec, depth);
   }
 
-  hipError_t SetParams(const HIP_MEMSET_NODE_PARAMS* params, bool isExec = false, size_t depth = 1) {
-    hipMemsetParams pmemsetParams;
-    pmemsetParams.dst = params->dst;
-    pmemsetParams.elementSize = params->elementSize;
-    pmemsetParams.height = params->height;
-    pmemsetParams.pitch = params->pitch;
-    pmemsetParams.value = params->value;
-    pmemsetParams.width = params->width;
-    return SetParamsInternal(&pmemsetParams, isExec, depth);
-  }
   hipError_t SetParams(GraphNode* node) override {
     const GraphMemsetNode* memsetNode = static_cast<GraphMemsetNode const*>(node);
     return SetParams(&memsetNode->memsetParams_, false, memsetNode->depth_);

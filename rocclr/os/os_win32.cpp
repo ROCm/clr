@@ -22,7 +22,7 @@
 
 #include "os/os.hpp"
 #include "thread/thread.hpp"
-
+#include "utils/flags.hpp"
 #include <windows.h>
 #include <process.h>
 #include <tchar.h>
@@ -730,6 +730,21 @@ void Os::CloseIpcMemory(const FileDesc desc, const void* ptr, size_t size) {
   if (desc != nullptr) {
     CloseHandle(desc);
   }
+}
+
+void Os::PrintLibraryLocation() {
+  HMODULE hm = NULL;
+  if (GetModuleHandleExA(
+          GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+          (LPCSTR)&Os::loadLibrary, &hm)) {
+    char cszDllPath[1024] = {0};
+    if (GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath))) {
+      printf("HIP Library Path: %s\n", cszDllPath);
+      ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HIP Library Path: %s", cszDllPath);
+      return;
+    }
+  }
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HIP Library Path: <unknown>");
 }
 
 }  // namespace amd

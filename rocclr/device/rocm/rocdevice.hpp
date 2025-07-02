@@ -322,7 +322,7 @@ struct AgentInfo {
   hsa_amd_memory_pool_t fine_grain_pool;
   hsa_amd_memory_pool_t coarse_grain_pool;
   hsa_amd_memory_pool_t kern_arg_pool;
-  hsa_amd_memory_pool_t ext_fine_grain_pool_;
+  hsa_amd_memory_pool_t ext_fine_grain_pool;
 };
 
 //! A HSA device ordinal (physical HSA device)
@@ -406,7 +406,6 @@ class Device : public NullDevice {
 
   //! Gets free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;
-
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = MemorySegment::kNoAtomics) const;
 
@@ -455,10 +454,10 @@ class Device : public NullDevice {
   virtual void ReleaseGlobalSignal(void* signal) const;
 
   //! Allocate host memory in terms of numa policy set by user
-  void* hostNumaAlloc(size_t size, size_t alignment, bool atomics = false) const;
+  void* hostNumaAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const;
 
   //! Allocate host memory from agent info
-  void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics = false) const;
+  void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, MemorySegment mem_seg) const;
 
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }
@@ -503,7 +502,7 @@ class Device : public NullDevice {
   VirtualGPU* xferQueue() const;
 
   hsa_amd_memory_pool_t SystemSegment() const { return system_segment_; }
-
+  hsa_amd_memory_pool_t SystemExtSegment() const { return system_ext_segment_; }
   hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
 
   //! Acquire HSA queue. This method can create a new HSA queue or
@@ -602,6 +601,8 @@ class Device : public NullDevice {
   hsa_amd_memory_pool_t system_segment_;
   hsa_amd_memory_pool_t system_coarse_segment_;
   hsa_amd_memory_pool_t system_kernarg_segment_;
+  hsa_amd_memory_pool_t system_ext_segment_;
+
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
   hsa_amd_memory_pool_t gpu_ext_fine_grained_segment_;

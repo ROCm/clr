@@ -88,7 +88,7 @@ hipError_t hipCtxCreate(hipCtx_t* ctx, unsigned int flags, hipDevice_t device);
 hipError_t hipCtxDestroy(hipCtx_t ctx);
 hipError_t hipCtxDisablePeerAccess(hipCtx_t peerCtx);
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags);
-hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion);
+hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion);
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig);
 hipError_t hipCtxGetCurrent(hipCtx_t* ctx);
 hipError_t hipCtxGetDevice(hipDevice_t* device);
@@ -359,7 +359,7 @@ hipError_t hipImportExternalSemaphore(hipExternalSemaphore_t* extSem_out,
                                       const hipExternalSemaphoreHandleDesc* semHandleDesc);
 hipError_t hipDrvGraphAddMemsetNode(hipGraphNode_t* phGraphNode, hipGraph_t hGraph,
                                  const hipGraphNode_t* dependencies, size_t numDependencies,
-                                 const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+                                 const hipMemsetParams* memsetParams, hipCtx_t ctx);
 hipError_t hipInit(unsigned int flags);
 hipError_t hipIpcCloseMemHandle(void* devPtr);
 hipError_t hipIpcGetEventHandle(hipIpcEventHandle_t* handle, hipEvent_t event);
@@ -479,8 +479,9 @@ hipError_t hipMemcpyFromSymbol(void* dst, const void* symbol, size_t sizeBytes, 
 hipError_t hipMemcpyFromSymbolAsync(void* dst, const void* symbol, size_t sizeBytes, size_t offset,
                                     hipMemcpyKind kind, hipStream_t stream);
 hipError_t hipMemcpyHtoA(hipArray_t dstArray, size_t dstOffset, const void* srcHost, size_t count);
-hipError_t hipMemcpyHtoD(hipDeviceptr_t dst, void* src, size_t sizeBytes);
-hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dst, void* src, size_t sizeBytes, hipStream_t stream);
+hipError_t hipMemcpyHtoD(hipDeviceptr_t dst, const void* src, size_t sizeBytes);
+hipError_t hipMemcpyHtoDAsync(hipDeviceptr_t dst, const void* src, size_t sizeBytes,
+                              hipStream_t stream);
 hipError_t hipMemcpyParam2D(const hip_Memcpy2D* pCopy);
 hipError_t hipMemcpyParam2DAsync(const hip_Memcpy2D* pCopy, hipStream_t stream);
 hipError_t hipMemcpyPeer(void* dst, int dstDeviceId, const void* src, int srcDeviceId,
@@ -789,7 +790,7 @@ hipError_t hipDrvGraphAddMemFreeNode(hipGraphNode_t* phGraphNode, hipGraph_t hGr
 hipError_t hipDrvGraphExecMemcpyNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                    const HIP_MEMCPY3D* copyParams, hipCtx_t ctx);
 hipError_t hipDrvGraphExecMemsetNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
-                                   const HIP_MEMSET_NODE_PARAMS* memsetParams, hipCtx_t ctx);
+                                   const hipMemsetParams* memsetParams, hipCtx_t ctx);
 hipError_t hipSetValidDevices(int* device_arr, int len);
 hipError_t hipMemcpyAtoD(hipDeviceptr_t dstDevice, hipArray_t srcArray, size_t srcOffset,
                          size_t ByteCount);
@@ -826,6 +827,9 @@ hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigne
 hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args);
 hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f, void** params,
                                 void** extra);
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+                                          hipMemRangeHandleType handleType,
+                                          unsigned long long flags);
 
 }  // namespace hip
 
@@ -1341,6 +1345,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipEventRecordWithFlags_fn = hip::hipEventRecordWithFlags;
   ptrDispatchTable->hipLaunchKernelExC_fn = hip::hipLaunchKernelExC;
   ptrDispatchTable->hipDrvLaunchKernelEx_fn = hip::hipDrvLaunchKernelEx;
+  ptrDispatchTable->hipMemGetHandleForAddressRange_fn = hip::hipMemGetHandleForAddressRange;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1971,25 +1976,28 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipGraphBatchMemOpNodeGetParams_fn, 465);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphBatchMemOpNodeSetParams_fn, 466);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGraphExecBatchMemOpNodeSetParams_fn, 467);
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
-HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecordWithFlags_fn, 468)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddData_fn , 468)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddFile_fn , 469)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkComplete_fn , 470)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkCreate_fn , 471)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 472)
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddData_fn , 469)
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddFile_fn , 470)
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkComplete_fn , 471)
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkCreate_fn , 472)
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 473)
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecordWithFlags_fn, 473)
+
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 11
 HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchKernelExC_fn, 474);
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvLaunchKernelEx_fn, 475);
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 12
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetHandleForAddressRange_fn, 476);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 476)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 477)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 11,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 13,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif

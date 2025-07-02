@@ -236,15 +236,6 @@ add_custom_command(
 target_sources(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
 
-if(NOT WIN32)
-  if (BUILD_SHARED_LIBS)
-    target_sources(amdhip64 PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
-  endif()
-endif()
-
-list(APPEND HIPRTC_OBJECTS ${HIPRTC_GEN_OBJ})
-set(HIPRTC_OBJECTS ${HIPRTC_OBJECTS} PARENT_SCOPE)
-
 add_dependencies(hiprtc hiprtc-builtins)
 install(TARGETS hiprtc-builtins
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2023 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -52,32 +52,23 @@ THE SOFTWARE.
 #define _CG_STATIC_CONST_DECL_ static constexpr
 #endif
 
-#if defined(__SPIRV__) && !defined(__AMDGCN_WAVEFRONT_SIZE)
-#error "TEMPORARY LIMITATION: when targeting AMDGCN SPIR-V"
-       "__AMDGCN_WAVEFRONT_SIZE is not defined, and must be defined by the user"
-#endif
-#if __AMDGCN_WAVEFRONT_SIZE == 32
-using lane_mask = unsigned int;
-#else
 using lane_mask = unsigned long long int;
-#endif
-
 namespace cooperative_groups {
 
 /* Global scope */
 template <unsigned int size>
-using is_power_of_2 = std::integral_constant<bool, (size & (size - 1)) == 0>;
+using is_power_of_2 = __hip_internal::integral_constant<bool, (size & (size - 1)) == 0>;
 
 template <unsigned int size>
-using is_valid_wavefront = std::integral_constant<bool, size <= 64>;
+using is_valid_wavefront = __hip_internal::integral_constant<bool, size <= 64>;
 
 template <unsigned int size>
 using is_valid_tile_size =
-    std::integral_constant<bool, is_power_of_2<size>::value && is_valid_wavefront<size>::value>;
+    __hip_internal::integral_constant<bool, is_power_of_2<size>::value && is_valid_wavefront<size>::value>;
 
 template <typename T>
 using is_valid_type =
-    std::integral_constant<bool, std::is_integral<T>::value || std::is_floating_point<T>::value>;
+    __hip_internal::integral_constant<bool, __hip_internal::is_integral<T>::value || __hip_internal::is_floating_point<T>::value>;
 
 namespace internal {
 
@@ -141,16 +132,16 @@ __CG_STATIC_QUALIFIER__ unsigned long long adjust_mask(
  */
 namespace multi_grid {
 
-__CG_STATIC_QUALIFIER__ uint32_t num_grids() {
-  return static_cast<uint32_t>(__ockl_multi_grid_num_grids()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_grids() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_num_grids()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t grid_rank() {
-  return static_cast<uint32_t>(__ockl_multi_grid_grid_rank()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t grid_rank() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_grid_rank()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t size() { return static_cast<uint32_t>(__ockl_multi_grid_size()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() { return static_cast<__hip_uint32_t>(__ockl_multi_grid_size()); }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return static_cast<uint32_t>(__ockl_multi_grid_thread_rank()); }
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
+  return static_cast<__hip_uint32_t>(__ockl_multi_grid_thread_rank()); }
 
 __CG_STATIC_QUALIFIER__ bool is_valid() { return static_cast<bool>(__ockl_multi_grid_is_valid()); }
 
@@ -164,23 +155,23 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_multi_grid_sync(); }
  */
 namespace grid {
 
-__CG_STATIC_QUALIFIER__ uint32_t size() {
-  return static_cast<uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() {
+  return static_cast<__hip_uint32_t>((blockDim.z * gridDim.z) * (blockDim.y * gridDim.y) *
                     (blockDim.x * gridDim.x));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
   // Compute global id of the workgroup to which the current thread belongs to
-  uint32_t blkIdx = static_cast<uint32_t>((blockIdx.z * gridDim.y * gridDim.x) +
+  __hip_uint32_t blkIdx = static_cast<__hip_uint32_t>((blockIdx.z * gridDim.y * gridDim.x) +
                                (blockIdx.y * gridDim.x) + (blockIdx.x));
 
   // Compute total number of threads being passed to reach current workgroup
   // within grid
-  uint32_t num_threads_till_current_workgroup =
-      static_cast<uint32_t>(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
+  __hip_uint32_t num_threads_till_current_workgroup =
+      static_cast<__hip_uint32_t>(blkIdx * (blockDim.x * blockDim.y * blockDim.z));
 
   // Compute thread local rank within current workgroup
-  uint32_t local_thread_rank = static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
+  __hip_uint32_t local_thread_rank = static_cast<__hip_uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                                           (threadIdx.y * blockDim.x) + (threadIdx.x));
 
   return (num_threads_till_current_workgroup + local_thread_rank);
@@ -200,21 +191,21 @@ __CG_STATIC_QUALIFIER__ void sync() { __ockl_grid_sync(); }
 namespace workgroup {
 
 __CG_STATIC_QUALIFIER__ dim3 group_index() {
-  return (dim3(static_cast<uint32_t>(blockIdx.x), static_cast<uint32_t>(blockIdx.y),
-               static_cast<uint32_t>(blockIdx.z)));
+  return (dim3(static_cast<__hip_uint32_t>(blockIdx.x), static_cast<__hip_uint32_t>(blockIdx.y),
+               static_cast<__hip_uint32_t>(blockIdx.z)));
 }
 
 __CG_STATIC_QUALIFIER__ dim3 thread_index() {
-  return (dim3(static_cast<uint32_t>(threadIdx.x), static_cast<uint32_t>(threadIdx.y),
-               static_cast<uint32_t>(threadIdx.z)));
+  return (dim3(static_cast<__hip_uint32_t>(threadIdx.x), static_cast<__hip_uint32_t>(threadIdx.y),
+               static_cast<__hip_uint32_t>(threadIdx.z)));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t size() {
-  return (static_cast<uint32_t>(blockDim.x * blockDim.y * blockDim.z));
+__CG_STATIC_QUALIFIER__ __hip_uint32_t num_threads() {
+  return (static_cast<__hip_uint32_t>(blockDim.x * blockDim.y * blockDim.z));
 }
 
-__CG_STATIC_QUALIFIER__ uint32_t thread_rank() {
-  return (static_cast<uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
+__CG_STATIC_QUALIFIER__ __hip_uint32_t thread_rank() {
+  return (static_cast<__hip_uint32_t>((threadIdx.z * blockDim.y * blockDim.x) +
                      (threadIdx.y * blockDim.x) + (threadIdx.x)));
 }
 
@@ -225,8 +216,8 @@ __CG_STATIC_QUALIFIER__ bool is_valid() {
 __CG_STATIC_QUALIFIER__ void sync() { __syncthreads(); }
 
 __CG_STATIC_QUALIFIER__ dim3 block_dim() {
-  return (dim3(static_cast<uint32_t>(blockDim.x), static_cast<uint32_t>(blockDim.y),
-          static_cast<uint32_t>(blockDim.z)));
+  return (dim3(static_cast<__hip_uint32_t>(blockDim.x), static_cast<__hip_uint32_t>(blockDim.y),
+          static_cast<__hip_uint32_t>(blockDim.z)));
 }
 
 }  // namespace workgroup
@@ -249,11 +240,13 @@ __CG_STATIC_QUALIFIER__ void sync() { __builtin_amdgcn_fence(__ATOMIC_ACQ_REL, "
 // have i-th bit of x set and come before the current thread.
 __CG_STATIC_QUALIFIER__ unsigned int masked_bit_count(lane_mask x, unsigned int add = 0) {
   unsigned int counter=0;
-  if (warpSize == 32) {
-      counter = __builtin_amdgcn_mbcnt_lo(x, add);
+  if (static_cast<int>(warpSize) == 32) {
+    counter = __builtin_amdgcn_mbcnt_lo(static_cast<unsigned int>(x), add);
   } else {
-    counter = __builtin_amdgcn_mbcnt_lo(static_cast<lane_mask>(x), add);
-    counter = __builtin_amdgcn_mbcnt_hi(static_cast<lane_mask>(x >> 32), counter);
+    unsigned int lo = static_cast<unsigned int>(x & 0xFFFFFFFF);
+    unsigned int hi = static_cast<unsigned int>((x >> 32) & 0xFFFFFFFF);
+    counter = __builtin_amdgcn_mbcnt_lo(lo, add);
+    counter = __builtin_amdgcn_mbcnt_hi(hi, counter);
   }
 
   return counter;

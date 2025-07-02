@@ -27,7 +27,7 @@ if(ADDRESS_SANITIZER)
   set(ASAN_LINKER_FLAGS "-fsanitize=address")
   set(ASAN_COMPILER_FLAGS "-fno-omit-frame-pointer -fsanitize=address")
 
-  if(NOT CMAKE_COMPILER_IS_GNUCC)
+  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     if(BUILD_SHARED_LIBS)
       set(ASAN_COMPILER_FLAGS "${ASAN_COMPILER_FLAGS} -shared-libsan")
       set(ASAN_LINKER_FLAGS "${ASAN_LINKER_FLAGS} -shared-libsan")
@@ -42,7 +42,7 @@ if(ADDRESS_SANITIZER)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} ${ASAN_LINKER_FLAGS} -Wl,--build-id=sha1")
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCC)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=deprecated-declarations")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
@@ -130,8 +130,7 @@ target_sources(amdhip64 PRIVATE
   hip_comgr_helper.cpp)
 
 if(WIN32)
-  target_sources(amdhip64 PRIVATE
-    hip_runtime.cpp hiprtc/hiprtcInternal.cpp)
+  target_sources(amdhip64 PRIVATE hip_runtime.cpp)
 endif()
 
 if(BUILD_SHARED_LIBS)
@@ -199,19 +198,8 @@ if(__HIP_ENABLE_PCH)
   target_sources(amdhip64 PRIVATE ${CMAKE_BINARY_DIR}/hip_pch.o)
 endif()
 
-set(HIPRTC_OBJECTS)
 # Add hiprtc
 add_subdirectory(hiprtc)
-
-target_compile_definitions(amdhip64 PRIVATE __HIP_ENABLE_RTC)
-if(BUILD_SHARED_LIBS)
-  target_link_libraries(amdhip64 PRIVATE ${HIPRTC_OBJECTS})
-  add_dependencies(amdhip64 hiprtc-builtins)
-  INSTALL(TARGETS hiprtc-builtins
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-endif()
 
 #############################
 # Profiling API support

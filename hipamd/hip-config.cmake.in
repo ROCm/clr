@@ -82,19 +82,6 @@ function(hip_add_interface_link_flags TARGET)
   endif()
 endfunction()
 
-# NOTE: If hip-config is invoked from /opt/rocm-ver/hip/lib/cmake/hip/
-# then PACKAGE_PREFIX_DIR will resolve to /opt/rocm-ver/hip, which is for backward compatibility
-# The following will ensure PACKAGE_PREFIX_DIR will resolves to /opt/rocm-ver
-# First find the real path to hip-config file with symlinks resolved
-# Real Path : /opt/rocm-ver/lib/cmake/hip/hip-config.cmake
-# Then go up 4 levels to get PACKAGE_PREFIX_DIR
-# PACKAGE_PREFIX_DIR : /opt/rocm-ver
-# TODO:once file reorg backward compatibility is turned off this can be removed.
-if(IS_SYMLINK ${CMAKE_CURRENT_LIST_FILE})
-  get_filename_component(CONFIG_FILE_PATH "${CMAKE_CURRENT_LIST_FILE}" REALPATH)
-  get_filename_component(PACKAGE_PREFIX_DIR "${CONFIG_FILE_PATH}/../../../../" ABSOLUTE)
-endif()
-# end of TODO
 set(HIP_PACKAGE_PREFIX_DIR  ${PACKAGE_PREFIX_DIR})
 
 set_and_check( hip_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@" )

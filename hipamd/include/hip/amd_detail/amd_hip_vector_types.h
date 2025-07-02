@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -39,133 +39,74 @@ THE SOFTWARE.
 #if defined(__has_attribute)
     #if __has_attribute(ext_vector_type)
         #define __HIP_USE_NATIVE_VECTOR__ 1
-        #define __NATIVE_VECTOR__(n, T) T __attribute__((ext_vector_type(n)))
-    #else
-        #define __NATIVE_VECTOR__(n, T) T[n]
-    #endif
+#define __NATIVE_VECTOR__(n, T)                                                                    \
+  T __attribute__((ext_vector_type(n))) __attribute__((aligned(__hip_vec_align_v<T, n>)))
+#else
+#define __NATIVE_VECTOR__(n, T) alignas(__hip_vec_align_v<T, n>) T[n]
+#endif
 
 #if defined(__cplusplus)
 #if !defined(__HIPCC_RTC__)
     #include <array>
     #include <iosfwd>
     #include <type_traits>
-#else
-namespace std {
-using ::size_t;
-
-template <class _Tp, _Tp __v> struct integral_constant {
-  static constexpr const _Tp value = __v;
-  typedef _Tp value_type;
-  typedef integral_constant type;
-  constexpr operator value_type() const { return value; }
-  constexpr value_type operator()() const { return value; }
-};
-template <class _Tp, _Tp __v> constexpr const _Tp integral_constant<_Tp, __v>::value;
-
-typedef integral_constant<bool, true> true_type;
-typedef integral_constant<bool, false> false_type;
-
-template <bool B> using bool_constant = integral_constant<bool, B>;
-typedef bool_constant<true> true_type;
-typedef bool_constant<false> false_type;
-
-template <bool __B, class __T = void> struct enable_if {};
-template <class __T> struct enable_if<true, __T> { typedef __T type; };
-
-template<bool _B> struct true_or_false_type : public false_type {};
-template<> struct true_or_false_type<true> : public true_type {};
-
-template <class _Tp> struct is_integral : public false_type {};
-template <> struct is_integral<bool> : public true_type {};
-template <> struct is_integral<char> : public true_type {};
-template <> struct is_integral<signed char> : public true_type {};
-template <> struct is_integral<unsigned char> : public true_type {};
-template <> struct is_integral<wchar_t> : public true_type {};
-template <> struct is_integral<short> : public true_type {};
-template <> struct is_integral<unsigned short> : public true_type {};
-template <> struct is_integral<int> : public true_type {};
-template <> struct is_integral<unsigned int> : public true_type {};
-template <> struct is_integral<long> : public true_type {};
-template <> struct is_integral<unsigned long> : public true_type {};
-template <> struct is_integral<long long> : public true_type {};
-template <> struct is_integral<unsigned long long> : public true_type {};
-
-template <class _Tp> struct is_arithmetic : public false_type {};
-template <> struct is_arithmetic<bool> : public true_type {};
-template <> struct is_arithmetic<char> : public true_type {};
-template <> struct is_arithmetic<signed char> : public true_type {};
-template <> struct is_arithmetic<unsigned char> : public true_type {};
-template <> struct is_arithmetic<wchar_t> : public true_type {};
-template <> struct is_arithmetic<short> : public true_type {};
-template <> struct is_arithmetic<unsigned short> : public true_type {};
-template <> struct is_arithmetic<int> : public true_type {};
-template <> struct is_arithmetic<unsigned int> : public true_type {};
-template <> struct is_arithmetic<long> : public true_type {};
-template <> struct is_arithmetic<unsigned long> : public true_type {};
-template <> struct is_arithmetic<long long> : public true_type {};
-template <> struct is_arithmetic<unsigned long long> : public true_type {};
-template <> struct is_arithmetic<float> : public true_type {};
-template <> struct is_arithmetic<double> : public true_type {};
-
-template<typename _Tp> struct is_floating_point : public false_type {};
-template<> struct is_floating_point<float> : public true_type {};
-template<> struct is_floating_point<double> : public true_type {};
-template<> struct is_floating_point<long double> : public true_type {};
-
-template <typename __T, typename __U> struct is_same : public false_type {};
-template <typename __T> struct is_same<__T, __T> : public true_type {};
-
-template<typename _Tp, bool = is_arithmetic<_Tp>::value>
-  struct is_signed : public false_type {};
-template<typename _Tp>
-  struct is_signed<_Tp, true> : public true_or_false_type<_Tp(-1) < _Tp(0)> {};
-
-template <class _T1, class _T2> struct is_convertible
-  : public true_or_false_type<__is_convertible_to(_T1, _T2)> {};
-
-template<typename _CharT> struct char_traits;
-template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_istream;
-template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_ostream;
-typedef basic_istream<char> istream;
-typedef basic_ostream<char> ostream;
-
-template <typename __T> struct is_scalar : public integral_constant<bool, __is_scalar(__T)> {};
-} // Namespace std.
 #endif // defined(__HIPCC_RTC__)
 
-    namespace hip_impl {
-        inline
-        constexpr
-        unsigned int next_pot(unsigned int x) {
-            // Precondition: x > 1.
-	        return 1u << (32u - __builtin_clz(x - 1u));
-        }
-    } // Namespace hip_impl.
+template <class T, int N>
+inline constexpr __hip_internal::size_t __hip_vec_align_v =
+    ((N == 4 && alignof(T) == 8) ? 16 : N * alignof(T));
 
-    template<typename T, unsigned int n> struct HIP_vector_base;
+template <typename T, unsigned int n> struct HIP_vector_base;
+template <typename T, unsigned int rank> struct HIP_vector_type;
+
+namespace hip_impl {
+template <typename T, unsigned int n>
+__attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_*
+get_native_pointer(HIP_vector_base<T, n>& base_vec) {
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
+  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  return reinterpret_cast<typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec);
+};
+
+template <typename T, unsigned int n>
+__attribute__((always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_*
+get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
+  static_assert(sizeof(base_vec) == sizeof(typename HIP_vector_base<T, n>::Native_vec_));
+  static_assert(__hip_internal::alignment_of<HIP_vector_base<T, n>>::value ==
+                __hip_internal::alignment_of<typename HIP_vector_base<T, n>::Native_vec_>::value);
+  return reinterpret_cast<const typename HIP_vector_base<T, n>::Native_vec_*>(&base_vec);
+};
+}  // Namespace hip_impl.
+
+    template <typename T, unsigned int n>
+    __attribute__((always_inline)) __HOST_DEVICE__ typename HIP_vector_base<T, n>::Native_vec_&
+    get_native_vector(HIP_vector_base<T, n>& base_vec) {
+      return *hip_impl::get_native_pointer(base_vec);
+    };
+
+    template <typename T, unsigned int n>
+    __attribute__((
+        always_inline)) __HOST_DEVICE__ const typename HIP_vector_base<T, n>::Native_vec_&
+    get_native_vector(const HIP_vector_base<T, n>& base_vec) {
+      return *hip_impl::get_native_pointer(base_vec);
+    };
 
     template<typename T>
     struct HIP_vector_base<T, 1> {
         using Native_vec_ = __NATIVE_VECTOR__(1, T);
 
-        union {
-            Native_vec_ data;
-            struct {
-                T x;
-            };
-        };
+        T x;
 
         using value_type = T;
 
         __HOST_DEVICE__
         HIP_vector_base() = default;
         __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_} {}
-        __HOST_DEVICE__
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
+        __HOST_DEVICE__
+        explicit constexpr HIP_vector_base(T x_) : x(x_) {}
         __HOST_DEVICE__
         constexpr
         HIP_vector_base(HIP_vector_base&&) = default;
@@ -175,43 +116,25 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
-    template<typename T>
-    struct HIP_vector_base<T, 2> {
-        using Native_vec_ = __NATIVE_VECTOR__(2, T);
+    template <typename T> struct alignas(alignof(__NATIVE_VECTOR__(2, T))) HIP_vector_base<T, 2> {
+      using Native_vec_ = __NATIVE_VECTOR__(2, T);
 
-        union
-        #if !__has_attribute(ext_vector_type)
-            alignas(hip_impl::next_pot(2 * sizeof(T)))
-        #endif
-        {
-            Native_vec_ data;
-            struct {
-                T x;
-                T y;
-            };
-        };
+      T x, y;
 
-        using value_type = T;
+      using value_type = T;
 
-        __HOST_DEVICE__
-        HIP_vector_base() = default;
-        __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_) noexcept : data{x_, y_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(const HIP_vector_base&) = default;
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(HIP_vector_base&&) = default;
-        __HOST_DEVICE__
-        ~HIP_vector_base() = default;
-        __HOST_DEVICE__
-        HIP_vector_base& operator=(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      HIP_vector_base() = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(T x_, T y_ = T()) : x(x_), y(y_) {}
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(HIP_vector_base&&) = default;
+      __HOST_DEVICE__
+      ~HIP_vector_base() = default;
+      __HOST_DEVICE__
+      HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
     template<typename T>
@@ -276,7 +199,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
 
             template<
                 typename U = T,
-                typename std::enable_if<std::is_signed<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_signed<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_ operator-() const noexcept
             {
@@ -287,7 +210,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
 
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_ operator~() const noexcept
             {
@@ -297,7 +220,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator%=(const Native_vec_& x_) noexcept
             {
@@ -306,7 +229,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator^=(const Native_vec_& x_) noexcept
             {
@@ -315,7 +238,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator|=(const Native_vec_& x_) noexcept
             {
@@ -324,7 +247,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator&=(const Native_vec_& x_) noexcept
             {
@@ -333,7 +256,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator>>=(const Native_vec_& x_) noexcept
             {
@@ -342,7 +265,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
             template<
                 typename U = T,
-                typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
+                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
             __HOST_DEVICE__
             Native_vec_& operator<<=(const Native_vec_& x_) noexcept
             {
@@ -364,29 +287,17 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
             }
         };
 
-        union {
-            Native_vec_ data;
-            struct {
-                T x;
-                T y;
-                T z;
-            };
-        };
+        T x, y, z;
 
         using value_type = T;
 
         __HOST_DEVICE__
         HIP_vector_base() = default;
         __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_, T z_) noexcept : data{x_, y_, z_} {}
-        __HOST_DEVICE__
         constexpr
         HIP_vector_base(const HIP_vector_base&) = default;
+        __HOST_DEVICE__
+        constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T()) : x(x_), y(y_), z(z_) {};
         __HOST_DEVICE__
         constexpr
         HIP_vector_base(HIP_vector_base&&) = default;
@@ -399,320 +310,256 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         HIP_vector_base& operator=(HIP_vector_base&&) = default;
     };
 
-    template<typename T>
-    struct HIP_vector_base<T, 4> {
-        using Native_vec_ = __NATIVE_VECTOR__(4, T);
+    template <typename T> struct alignas(__NATIVE_VECTOR__(4, T)) HIP_vector_base<T, 4> {
+      using Native_vec_ = __NATIVE_VECTOR__(4, T);
 
-        union
-        #if !__has_attribute(ext_vector_type)
-            alignas(hip_impl::next_pot(4 * sizeof(T)))
-        #endif
-        {
-            Native_vec_ data;
-            struct {
-                T x;
-                T y;
-                T z;
-                T w;
-            };
-        };
+      T x, y, z, w;
 
-        using value_type = T;
+      using value_type = T;
 
-        __HOST_DEVICE__
-        HIP_vector_base() = default;
-        __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_base(T x_) noexcept : data{x_, x_, x_, x_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(T x_, T y_, T z_, T w_) noexcept : data{x_, y_, z_, w_} {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(const HIP_vector_base&) = default;
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_base(HIP_vector_base&&) = default;
-        __HOST_DEVICE__
-        ~HIP_vector_base() = default;
-        __HOST_DEVICE__
-        HIP_vector_base& operator=(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      HIP_vector_base() = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(const HIP_vector_base&) = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(T x_, T y_ = T(), T z_ = T(), T w_ = T())
+          : x(x_), y(y_), z(z_), w(w_) {};
+      __HOST_DEVICE__
+      constexpr HIP_vector_base(HIP_vector_base&&) = default;
+      __HOST_DEVICE__
+      ~HIP_vector_base() = default;
+      __HOST_DEVICE__
+      HIP_vector_base& operator=(const HIP_vector_base&) = default;
     };
 
-    template<typename T, unsigned int rank>
+    template <typename T, size_t rank, size_t... indices>
+    constexpr inline __HOST_DEVICE__ HIP_vector_type<T, rank> make_vector_type_impl(
+        T val, __hip_internal::index_sequence<indices...>) noexcept {
+      // Fills vec with vals, and ignores the indices
+      return HIP_vector_type<T, rank>{((void)indices, val)...};
+    }
+
+    template <typename T, unsigned int rank>
+    constexpr inline __HOST_DEVICE__ HIP_vector_type<T, rank> make_vector_type(T val) {
+      return make_vector_type_impl<T, rank>(val,
+        __hip_internal::make_index_sequence_value(__hip_internal::make_index_sequence<rank>{}));
+    }
+
+    template <typename T, unsigned int rank>
     struct HIP_vector_type : public HIP_vector_base<T, rank> {
-        using HIP_vector_base<T, rank>::data;
-        using typename HIP_vector_base<T, rank>::Native_vec_;
+      using typename HIP_vector_base<T, rank>::Native_vec_;
 
-        __HOST_DEVICE__
-        HIP_vector_type() = default;
-        template<
-            typename U,
-            typename std::enable_if<
-                std::is_convertible<U, T>::value>::type* = nullptr>
-        __HOST_DEVICE__
-        explicit
-        constexpr
-        HIP_vector_type(U x_) noexcept
-            : HIP_vector_base<T, rank>{static_cast<T>(x_)}
-        {}
-        template< // TODO: constrain based on type as well.
-            typename... Us,
-            typename std::enable_if<
-                (rank > 1) && sizeof...(Us) == rank>::type* = nullptr>
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_type(Us... xs) noexcept
-            : HIP_vector_base<T, rank>{static_cast<T>(xs)...}
-        {}
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_type(const HIP_vector_type&) = default;
-        __HOST_DEVICE__
-        constexpr
-        HIP_vector_type(HIP_vector_type&&) = default;
-        __HOST_DEVICE__
-        ~HIP_vector_type() = default;
+      __HOST_DEVICE__
+      HIP_vector_type() = default;
+      template <typename U,
+                typename __hip_internal::enable_if<__hip_internal::is_convertible<U, T>::value>::type* = nullptr>
+      __HOST_DEVICE__ explicit constexpr HIP_vector_type(U x_) noexcept
+          : HIP_vector_base<T, rank>{static_cast<T>(x_)} {}
+      template <  // TODO: constrain based on type as well.
+          typename... Us,
+          typename __hip_internal::enable_if<(rank > 1) && sizeof...(Us) == rank>::type* = nullptr>
+      __HOST_DEVICE__ constexpr HIP_vector_type(Us... xs) noexcept
+          : HIP_vector_base<T, rank>{static_cast<T>(xs)...} {}
+      __HOST_DEVICE__
+      constexpr HIP_vector_type(const HIP_vector_type&) = default;
+      __HOST_DEVICE__
+      constexpr HIP_vector_type(HIP_vector_type&&) = default;
+      __HOST_DEVICE__
+      ~HIP_vector_type() = default;
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator=(const HIP_vector_type&) = default;
-        __HOST_DEVICE__
-        HIP_vector_type& operator=(HIP_vector_type&&) = default;
+      __HOST_DEVICE__
+      HIP_vector_type& operator=(const HIP_vector_type&) = default;
+      __HOST_DEVICE__
+      HIP_vector_type& operator=(HIP_vector_type&&) = default;
 
-        // Operators
-        __HOST_DEVICE__
-        HIP_vector_type& operator++() noexcept
-        {
-            return *this += HIP_vector_type{1};
-        }
-        __HOST_DEVICE__
-        HIP_vector_type operator++(int) noexcept
-        {
-            auto tmp(*this);
-            ++*this;
-            return tmp;
-        }
+      // Operators
+      __HOST_DEVICE__
+      T& operator[](size_t idx) noexcept { return reinterpret_cast<T*>(this)[idx]; }
+      __HOST_DEVICE__
+      const T& operator[](size_t idx) const noexcept {
+        return reinterpret_cast<const T*>(this)[idx];
+      }
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator--() noexcept
-        {
-            return *this -= HIP_vector_type{1};
-        }
-        __HOST_DEVICE__
-        HIP_vector_type operator--(int) noexcept
-        {
-            auto tmp(*this);
-            --*this;
-            return tmp;
-        }
+      __HOST_DEVICE__
+      HIP_vector_type& operator++() noexcept {
+        HIP_vector_type unity = make_vector_type<T, rank>(1);
+        return *this += unity;
+      }
+      __HOST_DEVICE__
+      HIP_vector_type operator++(int) noexcept {
+        auto tmp(*this);
+        ++*this;
+        return tmp;
+      }
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator+=(const HIP_vector_type& x) noexcept
-        {
+      __HOST_DEVICE__
+      HIP_vector_type& operator--() noexcept {
+        HIP_vector_type unity = make_vector_type<T, rank>(1);
+        return *this -= unity;
+      }
+      __HOST_DEVICE__
+      HIP_vector_type operator--(int) noexcept {
+        auto tmp(*this);
+        --*this;
+        return tmp;
+      }
+
+      __HOST_DEVICE__ HIP_vector_type& operator+=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data += x.data;
+        get_native_vector(*this) += get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] += x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] += get_native_vector(x)[i];
 #endif
-            return *this;
-        }
-        template<
-            typename U,
-            typename std::enable_if<
-                std::is_convertible<U, T>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator+=(U x) noexcept
-        {
-            return *this += HIP_vector_type{x};
-        }
+        return *this;
+      }
+      template <typename U, typename __hip_internal::enable_if<
+                    __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator+=(U x) noexcept {
+        return *this += make_vector_type<T, rank>(x);
+      }
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator-=(const HIP_vector_type& x) noexcept
-        {
+      __HOST_DEVICE__ HIP_vector_type& operator-=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data -= x.data;
+        get_native_vector(*this) -= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] -= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] -= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
-        template<
-            typename U,
-            typename std::enable_if<
-                std::is_convertible<U, T>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator-=(U x) noexcept
-        {
-            return *this -= HIP_vector_type{x};
-        }
+        return *this;
+      }
+      template <typename U, typename __hip_internal::enable_if<
+                    __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator-=(U x) noexcept {
+        return *this -= make_vector_type<T, rank>(x);
+      }
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator*=(const HIP_vector_type& x) noexcept
-        {
+      __HOST_DEVICE__ HIP_vector_type& operator*=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data *= x.data;
+        get_native_vector(*this) *= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] *= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] *= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator*(
-        HIP_vector_type x, const HIP_vector_type& y) noexcept
-        {
-          return HIP_vector_type{ x } *= y;
-        }
+      friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator*(
+          HIP_vector_type x, const HIP_vector_type& y) noexcept {
+        return HIP_vector_type{x} *= y;
+      }
 
-        template<
-            typename U,
-            typename std::enable_if<
-                std::is_convertible<U, T>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator*=(U x) noexcept
-        {
-            return *this *= HIP_vector_type{x};
-        }
+      template <typename U, typename __hip_internal::enable_if<
+                    __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator*=(U x) noexcept {
+        return *this *= make_vector_type<T, rank>(x);
+      }
 
-        friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator/(
-        HIP_vector_type x, const HIP_vector_type& y) noexcept
-        {
-          return HIP_vector_type{ x } /= y;
-        }
+      friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator/(
+          HIP_vector_type x, const HIP_vector_type& y) noexcept {
+        return HIP_vector_type{x} /= y;
+      }
 
-        __HOST_DEVICE__
-        HIP_vector_type& operator/=(const HIP_vector_type& x) noexcept
-        {
+      __HOST_DEVICE__ HIP_vector_type& operator/=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data /= x.data;
+        get_native_vector(*this) /= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] /= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] /= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
-        template<
-            typename U,
-            typename std::enable_if<
-                std::is_convertible<U, T>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator/=(U x) noexcept
-        {
-            return *this /= HIP_vector_type{x};
-        }
+        return *this;
+      }
+      template <typename U, typename __hip_internal::enable_if<
+                    __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator/=(U x) noexcept {
+        return *this /= make_vector_type<T, rank>(x);
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_signed<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type operator-() const noexcept
-        {
-            auto tmp(*this);
+      template <typename U = T, typename __hip_internal::enable_if<
+                    __hip_internal::is_signed<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type operator-() const noexcept {
+        auto tmp(*this);
 #if __HIP_USE_NATIVE_VECTOR__
-            tmp.data = -tmp.data;
+        get_native_vector(tmp) = -get_native_vector(tmp);
 #else
-            for (auto i = 0u; i != rank; ++i) tmp.data[i] = -tmp.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(tmp)[i] = -get_native_vector(tmp)[i];
 #endif
-            return tmp;
-        }
+        return tmp;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type operator~() const noexcept
-        {
-            HIP_vector_type r{*this};
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type operator~() const noexcept {
+        HIP_vector_type r{*this};
 #if __HIP_USE_NATIVE_VECTOR__
-            r.data = ~r.data;
+        get_native_vector(r) = ~get_native_vector(r);
 #else
-            for (auto i = 0u; i != rank; ++i) r.data[i] = ~r.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(r)[i] = ~get_native_vector(r)[i];
 #endif
-            return r;
-        }
+        return r;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator%=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                    __hip_internal::is_integral<U>{}>::type* = nullptr>
+       __HOST_DEVICE__ HIP_vector_type& operator%=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data %= x.data;
+        get_native_vector(*this) %= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] %= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] %= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator^=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator^=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data ^= x.data;
+        get_native_vector(*this) ^= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] ^= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] ^= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator|=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator|=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data |= x.data;
+        get_native_vector(*this) |= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] |= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] |= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator&=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+       __HOST_DEVICE__ HIP_vector_type& operator&=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data &= x.data;
+        get_native_vector(*this) &= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] &= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] &= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator>>=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator>>=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data >>= x.data;
+        get_native_vector(*this) >>= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] >>= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] >>= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
 
-        template<
-            typename U = T,
-            typename std::enable_if<std::is_integral<U>{}>::type* = nullptr>
-        __HOST_DEVICE__
-        HIP_vector_type& operator<<=(const HIP_vector_type& x) noexcept
-        {
+      template<typename U = T, typename __hip_internal::enable_if<
+                   __hip_internal::is_integral<U>{}>::type* = nullptr>
+      __HOST_DEVICE__ HIP_vector_type& operator<<=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
-            data <<= x.data;
+        get_native_vector(*this) <<= get_native_vector(x);
 #else
-            for (auto i = 0u; i != rank; ++i) data[i] <<= x.data[i];
+        for (auto i = 0u; i != rank; ++i) get_native_vector(*this)[i] <<= get_native_vector(x)[i];
 #endif
-            return *this;
-        }
+        return *this;
+      }
     };
 
     template<typename T, unsigned int n>
@@ -731,7 +578,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator+(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} += HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} += make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -740,7 +587,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator+(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} += y;
+      return make_vector_type<T, n>(x) += y;
     }
 
     template<typename T, unsigned int n>
@@ -759,7 +606,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator-(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} -= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} -= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -768,7 +615,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator-(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} -= y;
+      return make_vector_type<T, n>(x) -= y;
     }
 
     template<typename T, unsigned int n, typename U>
@@ -778,7 +625,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator*(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} *= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} *= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -787,7 +634,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator*(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} *= y;
+      return make_vector_type<T, n>(x) *= y;
     }
 
     template<typename T, unsigned int n, typename U>
@@ -797,7 +644,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator/(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} /= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} /= make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -806,35 +653,34 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     HIP_vector_type<T, n> operator/(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} /= y;
-    }
-
-    template<typename V>
-    __HOST_DEVICE__
-    inline
-    constexpr
-    bool _hip_compare(const V& x, const V& y, int n) noexcept
-    {
-        return
-            (n == -1) ? true : ((x[n] != y[n]) ? false : _hip_compare(x, y, n - 1));
+      return make_vector_type<T, n>(x) /= y;
     }
 
     template<typename T, unsigned int n>
     __HOST_DEVICE__
     inline
+    #if __cplusplus >= 201402L
     constexpr
+    #endif
     bool operator==(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return _hip_compare(x.data, y.data, n - 1);
+      bool isTrue = true;
+      const auto& native_x = get_native_vector(x);
+      const auto& native_y = get_native_vector(y);
+      for (unsigned int i = 0; i < n; ++i) {
+        isTrue = (isTrue && (native_x[i] == native_y[i]));
+      }
+      return isTrue;
     }
+
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
     inline
     constexpr
     bool operator==(const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return x == HIP_vector_type<T, n>{y};
+      return x == make_vector_type<T, n>(y);
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
@@ -842,7 +688,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     constexpr
     bool operator==(U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} == y;
+      return make_vector_type<T, n>(x) == y;
     }
 
     template<typename T, unsigned int n>
@@ -874,7 +720,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -887,33 +733,33 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator%(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} %= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} %= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator%(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} %= y;
+      return make_vector_type<T, n>(x) %= y;
     }
 
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -926,33 +772,33 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator^(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} ^= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} ^= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator^(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} ^= y;
+      return make_vector_type<T, n>(x) ^= y;
     }
 
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -965,33 +811,33 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator|(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} |= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} |= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator|(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} |= y;
+      return make_vector_type<T, n>(x) |= y;
     }
 
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -1004,33 +850,33 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator&(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} &= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} &= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator&(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} &= y;
+      return make_vector_type<T, n>(x) &= y;
     }
 
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -1043,33 +889,33 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator>>(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} >>= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} >>= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator>>(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} >>= y;
+      return make_vector_type<T, n>(x) >>= y;
     }
 
     template<
         typename T,
         unsigned int n,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
@@ -1082,56 +928,56 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator<<(
         const HIP_vector_type<T, n>& x, U y) noexcept
     {
-        return HIP_vector_type<T, n>{x} <<= HIP_vector_type<T, n>{y};
+      return HIP_vector_type<T, n>{x} <<= make_vector_type<T, n>(y);
     }
     template<
         typename T,
         unsigned int n,
         typename U,
-        typename std::enable_if<std::is_arithmetic<U>::value>::type,
-        typename std::enable_if<std::is_integral<T>{}>* = nullptr>
+        typename __hip_internal::enable_if<__hip_internal::is_arithmetic<U>::value>::type,
+        typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
     inline
     constexpr
     HIP_vector_type<T, n> operator<<(
         U x, const HIP_vector_type<T, n>& y) noexcept
     {
-        return HIP_vector_type<T, n>{x} <<= y;
+      return make_vector_type<T, n>(x) <<= y;
     }
 
     /*
      * Map HIP_vector_type<U, rankU> to HIP_vector_type<T, rankT>
      */
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 1 && rankU >= 1),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 1 && rankU >= 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT>(static_cast<T>(u.x));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 2 && rankU == 1),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 2 && rankU == 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(0));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 2 && rankU >= 2),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 2 && rankU >= 2),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(u.y));
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 1),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 4 && rankU == 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(0),
@@ -1139,7 +985,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 2),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 4 && rankU == 2),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT>(static_cast<T>(u.x), static_cast<T>(u.y),
@@ -1147,7 +993,7 @@ template <typename __T> struct is_scalar : public integral_constant<bool, __is_s
     };
 
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename std::enable_if<(rankT == 4 && rankU == 4),
+    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 4 && rankU == 4),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT> (static_cast<T>(u.x), static_cast<T>(u.y),

@@ -83,18 +83,13 @@ __device__ static inline int __hip_move_dpp_N(int src) {
                                     bound_ctrl);
 }
 
-#if defined(__SPIRV__)
-    inline __device__ const struct final {
-        __device__
-        __attribute__((always_inline, const))
-        operator int() const noexcept {
-            return __builtin_amdgcn_wavefrontsize();
-        }
-    } warpSize{};
-#else
-    __device__
-    static constexpr int warpSize = __AMDGCN_WAVEFRONT_SIZE;
-#endif
+inline __device__ const struct final {
+  __device__
+  __attribute__((always_inline, const))
+    operator int() const noexcept {
+      return __builtin_amdgcn_wavefrontsize();
+    }
+} warpSize{};
 
 // warp vote function __all __any __ballot
 __device__
@@ -133,7 +128,7 @@ unsigned long long __activemask() {
 #endif // HIP_DISABLE_WARP_SYNC_BUILTINS
 
 __device__ static inline unsigned int __lane_id() {
-    if (warpSize == 32) return __builtin_amdgcn_mbcnt_lo(-1, 0);
+    if (static_cast<int>(warpSize) == 32) return __builtin_amdgcn_mbcnt_lo(-1, 0);
     return  __builtin_amdgcn_mbcnt_hi(
         -1, __builtin_amdgcn_mbcnt_lo(-1, 0));
 }
@@ -163,13 +158,13 @@ __device__
 inline
 double __shfl(MAYBE_UNDEF double var, int src_lane, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl(tmp[0], src_lane, width);
     tmp[1] = __shfl(tmp[1], src_lane, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     double tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -179,13 +174,13 @@ long __shfl(MAYBE_UNDEF long var, int src_lane, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl(tmp[0], src_lane, width);
     tmp[1] = __shfl(tmp[1], src_lane, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -198,13 +193,13 @@ inline
 unsigned long __shfl(MAYBE_UNDEF unsigned long var, int src_lane, int width = warpSize) {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long) == sizeof(__hip_uint64_t), "");
 
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl(tmp[0], src_lane, width);
     tmp[1] = __shfl(tmp[1], src_lane, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -217,13 +212,13 @@ inline
 long long __shfl(MAYBE_UNDEF long long var, int src_lane, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long long) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl(tmp[0], src_lane, width);
     tmp[1] = __shfl(tmp[1], src_lane, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -231,13 +226,13 @@ __device__
 inline
 unsigned long long __shfl(MAYBE_UNDEF unsigned long long var, int src_lane, int width = warpSize) {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long long) == sizeof(__hip_uint64_t), "");
 
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl(tmp[0], src_lane, width);
     tmp[1] = __shfl(tmp[1], src_lane, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -268,13 +263,13 @@ __device__
 inline
 double __shfl_up(MAYBE_UNDEF double var, unsigned int lane_delta, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_up(tmp[0], lane_delta, width);
     tmp[1] = __shfl_up(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     double tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -284,13 +279,13 @@ long __shfl_up(MAYBE_UNDEF long var, unsigned int lane_delta, int width = warpSi
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_up(tmp[0], lane_delta, width);
     tmp[1] = __shfl_up(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -305,13 +300,13 @@ unsigned long __shfl_up(MAYBE_UNDEF unsigned long var, unsigned int lane_delta, 
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long) == sizeof(__hip_uint64_t), "");
 
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_up(tmp[0], lane_delta, width);
     tmp[1] = __shfl_up(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -325,11 +320,11 @@ inline
 long long __shfl_up(MAYBE_UNDEF long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long long) == sizeof(__hip_uint64_t), "");
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_up(tmp[0], lane_delta, width);
     tmp[1] = __shfl_up(tmp[1], lane_delta, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -339,11 +334,11 @@ inline
 unsigned long long __shfl_up(MAYBE_UNDEF unsigned long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long long) == sizeof(__hip_uint64_t), "");
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_up(tmp[0], lane_delta, width);
     tmp[1] = __shfl_up(tmp[1], lane_delta, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -374,13 +369,13 @@ __device__
 inline
 double __shfl_down(MAYBE_UNDEF double var, unsigned int lane_delta, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_down(tmp[0], lane_delta, width);
     tmp[1] = __shfl_down(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     double tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -390,13 +385,13 @@ long __shfl_down(MAYBE_UNDEF long var, unsigned int lane_delta, int width = warp
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_down(tmp[0], lane_delta, width);
     tmp[1] = __shfl_down(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -410,13 +405,13 @@ unsigned long __shfl_down(MAYBE_UNDEF unsigned long var, unsigned int lane_delta
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long) == sizeof(__hip_uint64_t), "");
 
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_down(tmp[0], lane_delta, width);
     tmp[1] = __shfl_down(tmp[1], lane_delta, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -429,11 +424,11 @@ inline
 long long __shfl_down(MAYBE_UNDEF long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long long) == sizeof(__hip_uint64_t), "");
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_down(tmp[0], lane_delta, width);
     tmp[1] = __shfl_down(tmp[1], lane_delta, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -442,11 +437,11 @@ inline
 unsigned long long __shfl_down(MAYBE_UNDEF unsigned long long var, unsigned int lane_delta, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long long) == sizeof(__hip_uint64_t), "");
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_down(tmp[0], lane_delta, width);
     tmp[1] = __shfl_down(tmp[1], lane_delta, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -477,13 +472,13 @@ __device__
 inline
 double __shfl_xor(MAYBE_UNDEF double var, int lane_mask, int width = warpSize) {
     static_assert(sizeof(double) == 2 * sizeof(int), "");
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_xor(tmp[0], lane_mask, width);
     tmp[1] = __shfl_xor(tmp[1], lane_mask, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     double tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -493,13 +488,13 @@ long __shfl_xor(MAYBE_UNDEF long var, int lane_mask, int width = warpSize)
 {
     #ifndef _MSC_VER
     static_assert(sizeof(long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long) == sizeof(__hip_uint64_t), "");
 
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_xor(tmp[0], lane_mask, width);
     tmp[1] = __shfl_xor(tmp[1], lane_mask, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -513,13 +508,13 @@ unsigned long __shfl_xor(MAYBE_UNDEF unsigned long var, int lane_mask, int width
 {
     #ifndef _MSC_VER
     static_assert(sizeof(unsigned long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long) == sizeof(__hip_uint64_t), "");
 
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_xor(tmp[0], lane_mask, width);
     tmp[1] = __shfl_xor(tmp[1], lane_mask, width);
 
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
     #else
@@ -532,11 +527,11 @@ inline
 long long __shfl_xor(MAYBE_UNDEF long long var, int lane_mask, int width = warpSize)
 {
     static_assert(sizeof(long long) == 2 * sizeof(int), "");
-    static_assert(sizeof(long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(long long) == sizeof(__hip_uint64_t), "");
     int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_xor(tmp[0], lane_mask, width);
     tmp[1] = __shfl_xor(tmp[1], lane_mask, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }
@@ -545,11 +540,11 @@ inline
 unsigned long long __shfl_xor(MAYBE_UNDEF unsigned long long var, int lane_mask, int width = warpSize)
 {
     static_assert(sizeof(unsigned long long) == 2 * sizeof(unsigned int), "");
-    static_assert(sizeof(unsigned long long) == sizeof(uint64_t), "");
+    static_assert(sizeof(unsigned long long) == sizeof(__hip_uint64_t), "");
     unsigned int tmp[2]; __builtin_memcpy(tmp, &var, sizeof(tmp));
     tmp[0] = __shfl_xor(tmp[0], lane_mask, width);
     tmp[1] = __shfl_xor(tmp[1], lane_mask, width);
-    uint64_t tmp0 = (static_cast<uint64_t>(tmp[1]) << 32ull) | static_cast<uint32_t>(tmp[0]);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(tmp[1]) << 32ull) | static_cast<__hip_uint32_t>(tmp[0]);
     unsigned long long tmp1;  __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
     return tmp1;
 }

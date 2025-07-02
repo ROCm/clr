@@ -559,6 +559,8 @@ hipError_t hipStreamQuery_spt(hipStream_t stream) {
 
 hipError_t streamCallback_common(hipStream_t stream, StreamCallback* cbo, void* userData) {
   getStreamPerThread(stream);
+
+  CHECK_SUPPORTED_DURING_CAPTURE();
   hip::Stream* hip_stream = hip::getStream(stream);
   amd::Command* last_command = hip_stream->getLastQueuedCommand(true);
   amd::Command::EventWaitList eventWaitList;
@@ -607,6 +609,19 @@ hipError_t hipStreamAddCallback_common(hipStream_t stream, hipStreamCallback_t c
   if (callback == nullptr || flags != 0) {
     return hipErrorInvalidValue;
   }
+
+  if (stream != nullptr && stream != hipStreamLegacy && hip::isValid(stream)) {
+    hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+    if (s->GetCaptureStatus() != hipStreamCaptureStatusNone) {
+      s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
+      return hipErrorStreamCaptureUnsupported;
+    }
+  } else if (Stream::StreamCaptureBlocking() == true) {
+    // If any of the blocking streams is capturing, return error for implicit capture and
+    // invalidate capture for all capturing streams
+    CHECK_STREAM_CAPTURING();
+  }
+
   StreamCallback* cbo = new StreamAddCallback(stream, callback, userData);
   return streamCallback_common(stream, cbo, userData);
 }

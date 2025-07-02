@@ -825,7 +825,10 @@ bool Buffer::create(bool alloc_local) {
             deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
           }
         } else if (memFlags & CL_MEM_FOLLOW_USER_NUMA_POLICY) {
-          deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
+          deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) == 0
+                      ? Device::MemorySegment::kNoAtomics :
+                      ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
+                      Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics));
         } else if (memFlags & ROCCLR_MEM_HSA_SIGNAL_MEMORY) {
           // TODO: ROCr will introduce a new attribute enum that implies a non-blocking signal,
           // replace "HSA_AMD_SIGNAL_AMD_GPU_ONLY" with this new enum when it is ready.
@@ -849,9 +852,10 @@ bool Buffer::create(bool alloc_local) {
           // Disable host access to force blit path for memeory writes.
           flags_ &= ~HostMemoryDirectAccess;
         } else {
-          deviceMemory_ = dev().hostAlloc(size(), 1, ((memFlags & CL_MEM_SVM_ATOMICS) != 0)
-                                                       ? Device::MemorySegment::kAtomics
-                                                       : Device::MemorySegment::kNoAtomics);
+          deviceMemory_ = dev().hostAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) == 0
+                 ? Device::MemorySegment::kNoAtomics :
+                 ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
+                 Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics));
         }
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
@@ -1008,15 +1012,24 @@ bool Buffer::create(bool alloc_local) {
     owner()->setHostMem(deviceMemory_);
   } else if (owner()->getSvmPtr() != owner()->getHostMem()) {
     if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-      hsa_amd_memory_pool_t pool = (memFlags & CL_MEM_SVM_ATOMICS) ?
-                                    dev().SystemSegment() :
-                                    (dev().SystemCoarseSegment().handle != 0 ?
-                                        dev().SystemCoarseSegment() : dev().SystemSegment());
+      hsa_amd_memory_pool_t pool = dev().SystemSegment(); // Default
+      if ((memFlags & CL_MEM_SVM_ATOMICS) == 0) {
+        if (dev().SystemCoarseSegment().handle != 0) {
+          pool = dev().SystemCoarseSegment();
+        }
+      } else if ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0) {
+        if (dev().SystemExtSegment().handle != 0) {
+          pool = dev().SystemExtSegment();
+          ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
+                  "Using extended fine grained access system memory pool to lock");
+        }
+      }
       hsa_agent_t hsa_agent = dev().getBackendDevice();
       hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(),
           owner()->getSize(), &hsa_agent, 1, pool, 0, &deviceMemory_);
       ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, HostPtr = %p,"
-              " DevPtr = %p", pool, owner()->getSize(), owner()->getHostMem(), deviceMemory_ );
+              " DevPtr = %p, memFlags = 0x%xh", pool, owner()->getSize(),
+              owner()->getHostMem(), deviceMemory_, memFlags);
       if (status != HSA_STATUS_SUCCESS) {
         DevLogPrintfError("Failed to lock memory to pool, failed with hsa_status: %d \n", status);
         deviceMemory_ = nullptr;
@@ -1046,6 +1059,50 @@ bool Buffer::ExportHandle(void* handle) const {
     LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
     return false;
   }
+  return true;
+}
+
+// ================================================================================================
+bool Buffer::GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) {
+  int dmabuffd = -1;
+  size_t offset = 0;
+
+  // In case of vmm, we use a different set of APIs for retrieving the dmabuffd.
+  if (vmm) {
+    hsa_amd_vmem_alloc_handle_t mem_handle;
+
+    // Retrieve the corresponding phys_mem handle for the mapped dev_ptr.
+    hsa_status_t hsa_status = hsa_amd_vmem_retain_alloc_handle(&mem_handle, dev_ptr);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot retain alloc handle for dev_ptr: 0x%x hsa returned status: %d",
+                     dev_ptr, hsa_status);
+      return false;
+    }
+
+    // Now, retrieve the shareable handle (fd in linux) for the phys_mem handle.
+    hsa_status = hsa_amd_vmem_export_shareable_handle(&dmabuffd, mem_handle, 0);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot get shareable handle for mem_handle: %lu, hsa returned status: %d",
+                      mem_handle, hsa_status);
+      return false;
+    }
+  } else {
+    // Retrieve a shareable handle for the device ptr.
+    hsa_status_t hsa_status = hsa_amd_portable_export_dmabuf(dev_ptr, size, &dmabuffd, &offset);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot export a portable fd for dev_ptr: 0x%x with size: %lu,"
+                     "hsa returned status: %d", dev_ptr, size, hsa_status);
+      return false;
+    }
+  }
+  
+  if (dmabuffd <= 0) {
+    LogPrintfError("Invalid file descriptor handle: %d returned", dmabuffd);
+    return false;
+  }
+
+  // As per spec, handle passed through HIP API is ptr to int.
+  *(reinterpret_cast<int*>(handle)) = dmabuffd;
   return true;
 }
 

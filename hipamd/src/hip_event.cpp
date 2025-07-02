@@ -479,6 +479,9 @@ hipError_t ihipEventQuery(hipEvent_t event) {
     s->SetCaptureStatus(hipStreamCaptureStatusInvalidated);
     HIP_RETURN(hipErrorCapturedEvent);
   }
+  if (hip::Stream::StreamCaptureOngoing(e->GetCaptureStream())) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
   return e->query();
 }
 
