@@ -3310,6 +3310,5 @@ struct __hip_fp8x4_e5m2 {
     return float4(low.x, low.y, high.x, high.y);
   }
 };
-
 #endif // ENABLE_OCP_HIPRTC
 #endif // _HIP_INCLUDE_HIP_AMD_DETAIL_HIP_FP8_H_
