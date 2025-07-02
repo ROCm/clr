@@ -56,13 +56,14 @@
 #include <iostream>
 #include <iomanip>
 #include <memory>
+#include <sys/resource.h>
 #ifdef ROCCLR_SUPPORT_NUMA_POLICY
 #include <numa.h>
 #include <numaif.h>
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
 #include <sstream>
 #include <vector>
-#endif // WITHOUT_HSA_BaCKEND
+#endif // WITHOUT_HSA_BACKEND
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
@@ -3446,12 +3447,14 @@ hsa_status_t Device::BackendErrorCallBackHandler(const hsa_amd_event_t* event, v
       break;
   }
 
-  if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
-    gpu_error_ = gpu_error;
-  } else {
-    abort();
+  // Execute the default handler if a GPU core file should be generated ...
+  struct rlimit rlimit;
+  if ((getrlimit(RLIMIT_CORE, &rlimit) == 0 && rlimit.rlim_cur != 0) ||
+      !HIP_SKIP_ABORT_ON_GPU_ERROR) {
+    return HSA_STATUS_ERROR;
   }
 
+  gpu_error_ = gpu_error;
   return HSA_STATUS_SUCCESS;
 }
 
@@ -3674,11 +3677,12 @@ void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
         errorMsg, status);
     }
 
-    if (HIP_SKIP_ABORT_ON_GPU_ERROR) {
-      amd::Device::gpu_error_ = ConvertHSAErrorIntoCLError(status);
-    } else {
+    struct rlimit rlimit;
+    if ((getrlimit(RLIMIT_CORE, &rlimit) == 0 && rlimit.rlim_cur != 0) ||
+        !HIP_SKIP_ABORT_ON_GPU_ERROR) {
       abort();
     }
+    amd::Device::gpu_error_ = ConvertHSAErrorIntoCLError(status);
   }
 }
 
