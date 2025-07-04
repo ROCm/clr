@@ -21,6 +21,7 @@
 #pragma once
 #include <algorithm>
 #include <queue>
+#include <deque>
 #include <stack>
 #include <iostream>
 #include <unordered_map>
@@ -34,6 +35,7 @@
 #include "hip_platform.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_vm.hpp"
+#include "hip_comgr_helper.hpp"
 
 typedef struct ihipExtKernelEvents {
   hipEvent_t startEvent_;
@@ -141,6 +143,33 @@ class hipGraphNodeDOTAttribute {
   virtual const char* GetShape(hipGraphDebugDotFlags flag) { return shape_; }
 
   virtual std::string GetLabel(hipGraphDebugDotFlags flag) { return label_; }
+
+  std::string GetColorAndShortenLabel(std::string *label) {
+    std::string color;
+    if (label->find("fusion") != std::string::npos ||
+          label->find("wrapped") != std::string::npos) {
+      color = "lightgreen";
+    } else if (label->find("nccl") != std::string::npos) {
+      color = "magenta";
+    } else if (label->find("Cijk") != std::string::npos ||
+                 label->find("Bjlk") != std::string::npos ||
+                 label->find("Alik") != std::string::npos) {
+      color = "orange";
+    } else if (label->find("MEM") != std::string::npos) {
+      color = "lightblue";
+    }
+    std::string demangled;
+    helpers::demangleName(*label, demangled);
+
+    if (std::string_view pref("ncclDevKernel_"); demangled.find(pref) == 0) {
+      demangled = demangled.substr(pref.length());
+    }
+    if (demangled.length() > 30) {
+      demangled = demangled.substr(0,30) + "..";
+    }
+    *label = demangled;
+    return color;
+  }
 
   virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) {}
 };
@@ -362,9 +391,9 @@ class GraphNode : public hipGraphNodeDOTAttribute {
   virtual void EnqueueCommands(hip::Stream* stream) {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
-    if (!isEnabled_ &&
+    if (unlikely(!isEnabled_ &&
         (type_ == hipGraphNodeTypeKernel || type_ == hipGraphNodeTypeMemcpy ||
-         type_ == hipGraphNodeTypeMemset)) {
+         type_ == hipGraphNodeTypeMemset))) {
       amd::Command::EventWaitList waitList;
       if (!commands_.empty()) {
         waitList = commands_[0]->eventWaitList();
@@ -420,23 +449,29 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     }
     return isGraphCapture;
   }
+
+  std::string Xstring() {
+    std::ostringstream oss;
+    this->PrintAttributes(oss, hipGraphDebugDotFlagsHandles);
+    return oss.str();
+  }
+
   virtual void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
+
+    auto label = GetLabel(flag),
+         color = GetColorAndShortenLabel(&label);
+
     out << "[";
-    out << "style";
-    out << "=\"";
-    out << style_;
-    out << "\"";
-    out << "shape";
-    out << "=\"";
-    out << GetShape(flag);
-    out << "\"";
-    out << "label";
-    out << "=\"";
-    out << GetLabel(flag);
+    out << "style=\"" << style_ << "\"";
+    if (!color.empty()) {
+      out << "fillcolor=\"" << color << "\"style=\"filled\"";
+    }
+    out << "shape=\"" << GetShape(flag) << "\"";
+    out << "label=\"" << label;
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "\nStreamId:" << stream_id_;
-      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
-      out << "\nDeviceId:" << dev_id_;
+      // out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      // out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
@@ -610,6 +645,8 @@ class Graph {
     bool wait     //!< Wait dependencies
     );
 
+  bool RunOneNodeDFS(Node top_node, bool top_wait);
+
   //! Runs all nodes from the execution graph on the assigned streams
   bool RunNodes(
     int32_t base_stream = 0,  //!< The base stream to run the graph on
@@ -622,7 +659,7 @@ class Graph {
   void clone(Graph* newGraph, bool cloneNodes = false) const;
   Graph* clone() const;
   void GenerateDOT(std::ostream& fout, hipGraphDebugDotFlags flag) {
-    fout << "subgraph cluster_" << GetID() << " {" << std::endl;
+    // fout << "subgraph cluster_" << GetID() << " {" << std::endl;
     fout << "label=\"graph_" << GetID() <<"\"graph[style=\"dashed\"];\n";
     for (auto node : vertices_) {
       node->GenerateDOTNode(GetID(), fout, flag);
@@ -631,7 +668,7 @@ class Graph {
     for (auto& node : vertices_) {
       node->GenerateDOTNodeEdges(GetID(), fout, flag);
     }
-    fout << "}" << std::endl;
+    // fout << "}" << std::endl;
     for (auto node : vertices_) {
       node->GenerateDOT(fout, flag);
     }
@@ -734,6 +771,7 @@ class Graph {
   std::unordered_set<GraphNode*> capturedNodes_;
   bool graphInstantiated_;
   std::unordered_map<Node, Node> clonedNodes_;
+  std::deque< std::pair< Node, bool >> dfs_queue_;
 };
 
 class GraphExec : public amd::ReferenceCountedObject, public Graph {
@@ -902,6 +940,17 @@ class GraphKernelNode : public GraphNode {
   void EnqueueCommands(hip::Stream* stream) override {
     // If the node is disabled it becomes empty node. To maintain ordering just enqueue marker.
     // Node can be enabled/disabled only for kernel, memcpy and memset nodes.
+
+    // NOTE: what if we create a function to enqueue several commands in a raw???
+    // e.g. like push_command and then at the end: flush
+    for (auto& command : commands_) {
+      hipFunction_t func = getFunc(kernelParams_, dev_id_);
+      hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
+      amd::Kernel* kernel = function->kernel();
+      amd::ScopedLock lock(function->dflock_);
+      command->enqueue(); // enqueue/release seem to be the most expensive!
+      command->release();
+    }
     if (!isEnabled_) {
       amd::Command::EventWaitList waitList;
       if (!commands_.empty()) {
@@ -912,17 +961,13 @@ class GraphKernelNode : public GraphNode {
       command->release();
       return;
     }
-    for (auto& command : commands_) {
-      hipFunction_t func = getFunc(kernelParams_, dev_id_);
-      hip::DeviceFunc* function = hip::DeviceFunc::asFunction(func);
-      amd::Kernel* kernel = function->kernel();
-      amd::ScopedLock lock(function->dflock_);
-      command->enqueue();
-      command->release();
-    }
   }
 
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
+
+    auto label = GetLabel(flag),
+         color = GetColorAndShortenLabel(&label);
+
     out << "[";
     out << "style";
     out << "=\"";
@@ -931,17 +976,20 @@ class GraphKernelNode : public GraphNode {
      flag == hipGraphDebugDotFlagsKernelNodeAttributes)
         ? out << "\n"
         : out << "\"";
+    if (!color.empty()) {
+      out << "fillcolor=\"" << color << "\"style=\"filled\"";
+    }
     out << "shape";
     out << "=\"";
     out << GetShape(flag);
     out << "\"";
     out << "label";
     out << "=\"";
-    out << GetLabel(flag);
+    out << label;
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
-      out << "StreamId:" << stream_id_;
-      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
-      out << "\nDeviceId:" << dev_id_;
+      out << "\nStreamId:" << stream_id_;
+      // out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      // out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
@@ -990,7 +1038,8 @@ class GraphKernelNode : public GraphNode {
       label = buffer;
     }
     else {
-      label = std::to_string(GetID()) + "\n" + function->name() + "\n";
+      // label = std::to_string(GetID()) + "\n" + function->name() + "\n";
+      label = function->name();
     }
     return label;
   }
@@ -1091,7 +1140,7 @@ class GraphKernelNode : public GraphNode {
 
   GraphKernelNode(const hipKernelNodeParams* pNodeParams, const ihipExtKernelEvents* pEvents,
                   int coopKernel = 0)
-      : GraphNode(hipGraphNodeTypeKernel, "bold", "octagon", "KERNEL") {
+      : GraphNode(hipGraphNodeTypeKernel, "bold", "box", "KERNEL") {
     kernelEvents_ = { 0 };
     if (pEvents != nullptr) {
       kernelEvents_ = *pEvents;
@@ -1108,6 +1157,11 @@ class GraphKernelNode : public GraphNode {
   ~GraphKernelNode() { freeParams(); }
 
   void freeParams() {
+
+    if (!baseCommands_.empty() && baseCommands_[0] != nullptr) {
+      baseCommands_[0]->release();
+      baseCommands_.clear();
+    }
     // Deallocate memory allocated for kernargs passed via 'kernelParams'
     if (kernelParams_.kernelParams != nullptr) {
       for (size_t i = 0; i < numParams_; ++i) {
@@ -1147,7 +1201,12 @@ class GraphKernelNode : public GraphNode {
 
   GraphNode* clone() const override { return new GraphKernelNode(*this); }
 
-  hipError_t CreateCommand(hip::Stream* stream) override {
+  std::vector< amd::Command *> baseCommands_;
+
+#define USE_CLONED_CMDS 0
+
+  hipError_t CreateCommandInternal(hip::Stream* stream) 
+  {
     hipFunction_t func = getFunc(kernelParams_, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
@@ -1163,7 +1222,10 @@ class GraphKernelNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-    commands_.reserve(1);
+    if (!baseCommands_.empty() && baseCommands_[0] != nullptr) {
+      baseCommands_[0]->release();
+    }
+    baseCommands_.resize(1);
     amd::Command* command;
     uint32_t flags = 0;
     if (DEBUG_HIP_FORCE_ASYNC_QUEUE) {
@@ -1193,8 +1255,34 @@ class GraphKernelNode : public GraphNode {
       // Optimize the barriers by adding a signal into the dispatch packet directly
       command->SetProfiling();
     }
-    commands_.emplace_back(command);
-    return status;
+    baseCommands_[0] = command;
+    return hipSuccess;
+  }
+
+#define Xunlikely(cond) __builtin_expect(!!(cond), 0)
+
+  hipError_t CreateCommand(hip::Stream* stream) override {
+
+    if (Xunlikely(baseCommands_.empty() || stream_ != stream)) {
+      if (auto res = CreateCommandInternal(stream); res != hipSuccess) {
+        return res;
+      }
+    }
+#if USE_CLONED_CMDS
+    // since our command is cloned => we should not release everything on terminate()
+    commands_.resize(baseCommands_.size());
+    for (size_t i = 0; i < baseCommands_.size(); i++) {
+      // XPUT("Cloning command %d -- %p", (int)i, baseCommands_[i]);
+      commands_[i] = baseCommands_[i]->Clone();
+      if (commands_[i] == nullptr) {
+        XPUT("Unable to clone command: %s", baseCommands_[i]->Xstring().c_str());
+        return hipErrorInvalidConfiguration;
+      }
+    }
+#else
+    commands_.swap(baseCommands_);
+#endif
+    return hipSuccess;
   }
 
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
@@ -1357,7 +1445,7 @@ class GraphMemcpyNode : public GraphNode {
 
  public:
   GraphMemcpyNode(const hipMemcpy3DParms* pCopyParams)
-      : GraphNode(hipGraphNodeTypeMemcpy, "solid", "trapezium", "MEMCPY") {
+      : GraphNode(hipGraphNodeTypeMemcpy, "solid", "box", "MEMCPY") {
     if (pCopyParams) {
       copyParams_ = *pCopyParams;
     }
@@ -1490,7 +1578,7 @@ class GraphMemcpyNode : public GraphNode {
           copyParams_.extent.depth);
       label = buffer;
     } else {
-      label = std::to_string(GetID()) + "\nMEMCPY\n(" + memcpyDirection + ")";
+      label = "MEMCPY\n(" + memcpyDirection + ")";
     }
     return label;
   }
@@ -1693,7 +1781,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
           (size_t)0, (size_t)0, (size_t)0, count_, (size_t)1, (size_t)1);
       label = buffer;
     } else {
-      label = std::to_string(GetID()) + "\n" + label_ + "\n(" + memcpyDirection + "," +
+      label = std::string(label_) + "\n(" + memcpyDirection + "," +
           std::to_string(count_) + ")";
     }
     return label;
@@ -1924,7 +2012,7 @@ class GraphMemsetNode : public GraphNode {
  public:
   GraphMemsetNode(const hipMemsetParams* pMemsetParams, size_t depth = 1, size_t arrWidth = 1,
                   size_t arrHeight = 1)
-      : GraphNode(hipGraphNodeTypeMemset, "solid", "invtrapezium", "MEMSET") {
+      : GraphNode(hipGraphNodeTypeMemset, "solid", "box", "MEMSET") {
     memsetParams_ = *pMemsetParams;
     depth_ = depth;
     arrWidth_ = arrWidth;
@@ -1966,7 +2054,7 @@ class GraphMemsetNode : public GraphNode {
       } else {
         sizeBytes = memsetParams_.width * memsetParams_.height * depth_ * memsetParams_.elementSize;
       }
-      label = std::to_string(GetID()) + "\n" + label_ + "\n(" +
+      label = std::string(label_) + "\n(" +
           std::to_string(memsetParams_.value) + "," + std::to_string(sizeBytes) + ")";
     }
     return label;
@@ -2020,10 +2108,19 @@ class GraphMemsetNode : public GraphNode {
       if (memObj != nullptr) {
         amd::Memory *memObjOri = getMemoryObject(memsetParams_.dst, discardOffset);
         if (memObjOri != nullptr) {
-          if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) {
-            return hipErrorInvalidValue;
+          {
+            // fprintf(stderr, "============== orig: %p memObj: %p; dev = %d; new: %p memObj: %p dev = %d\n",
+            //   memsetParams_.dst, memObjOri, memObjOri->getUserData().deviceId, 
+            //   params->dst, memObj, memObj->getUserData().deviceId);
+
+          // if (memObjOri->getUserData().deviceId != memObj->getUserData().deviceId) 
+          //   return hipErrorInvalidValue;
           }
+        } else {
+          // fprintf(stderr, "memobjOri is null!\n");
         }
+      } else {
+        // fprintf(stderr, "memobj is null!\n");
       }
     }
     size_t sizeBytes;
