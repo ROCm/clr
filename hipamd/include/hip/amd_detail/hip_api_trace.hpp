@@ -63,7 +63,7 @@
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 #define HIP_TOOLS_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 9
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 10
 
 // HIP API interface
 // HIP compiler dispatch functions
@@ -1035,6 +1035,8 @@ typedef hipError_t (*t_hipGraphBatchMemOpNodeSetParams)(hipGraphNode_t hNode,
                                                         hipBatchMemOpNodeParams* nodeParams);
 typedef hipError_t (*t_hipGraphExecBatchMemOpNodeSetParams)(
     hipGraphExec_t hGraphExec, hipGraphNode_t hNode, const hipBatchMemOpNodeParams* nodeParams);
+typedef hipError_t (*t_hipEventRecordWithFlags)(hipEvent_t event, hipStream_t stream, unsigned int flags);
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1566,8 +1568,11 @@ struct HipDispatchTable {
   t_hipLinkCreate hipLinkCreate_fn;
   t_hipLinkDestroy hipLinkDestroy_fn;
 
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
+  t_hipEventRecordWithFlags hipEventRecordWithFlags_fn;
+
   // DO NOT EDIT ABOVE!
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 10
 
   // ******************************************************************************************* //
   //

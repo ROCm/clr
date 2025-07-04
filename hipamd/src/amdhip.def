@@ -488,4 +488,4 @@ hipLinkAddData
 hipLinkAddFile
 hipLinkComplete
 hipLinkCreate
-hipLinkDestroy
+hipLinkDestroyhipEventRecordWithFlags

@@ -592,6 +592,7 @@ global:
     hipLinkComplete;
     hipLinkCreate;
     hipLinkDestroy;
+    hipEventRecordWithFlags;
 local:
     *;
 } hip_6.2;

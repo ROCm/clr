@@ -823,6 +823,7 @@ hipError_t hipGraphBatchMemOpNodeSetParams(hipGraphNode_t hNode,
                                            hipBatchMemOpNodeParams* nodeParams);
 hipError_t hipGraphExecBatchMemOpNodeSetParams(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                                const hipBatchMemOpNodeParams* nodeParams);
+hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned flags);
 }  // namespace hip
 
 namespace hip {
@@ -1334,6 +1335,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGraphBatchMemOpNodeSetParams_fn = hip::hipGraphBatchMemOpNodeSetParams;
   ptrDispatchTable->hipGraphExecBatchMemOpNodeSetParams_fn =
       hip::hipGraphExecBatchMemOpNodeSetParams;
+  ptrDispatchTable->hipEventRecordWithFlags_fn = hip::hipEventRecordWithFlags;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1957,16 +1959,17 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddData_fn , 468)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLinkAddFile_fn , 469)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLinkComplete_fn , 470)
 HIP_ENFORCE_ABI(HipDispatchTable, hipLinkCreate_fn , 471)
-HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 472)
+HIP_ENFORCE_ABI(HipDispatchTable, hipLinkDestroy_fn , 472)// HIP_RUNTIME_API_TABLE_STEP_VERSION == 9
+HIP_ENFORCE_ABI(HipDispatchTable, hipEventRecordWithFlags_fn, 473)
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 473)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 474)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 9,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 10,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif
