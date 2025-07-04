@@ -46,6 +46,9 @@ struct GraphNode;
 struct GraphExec;
 struct UserObject;
 typedef GraphNode* Node;
+hipError_t ihipGraphAddNode(hip::GraphNode* graphNode, hip::Graph* graph,
+                                   hip::GraphNode* const* pDependencies, size_t numDependencies,
+                                   bool capture);
 struct UserObject : public amd::ReferenceCountedObject {
   typedef void (*UserCallbackDestructor)(void* data);
   static std::unordered_set<UserObject*> ObjectSet_;

@@ -19,8 +19,9 @@
  THE SOFTWARE. */
 
 #include <hip/hip_runtime.h>
-
 #include "hip_event.hpp"
+#include "hip_graph_internal.hpp"
+
 #if !defined(_MSC_VER)
 #include <unistd.h>
 #endif
@@ -394,7 +395,10 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
 }
 
-hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
+hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  if (!(flags == hipEventRecordDefault || flags == hipEventRecordExternal)){
+    return hipErrorInvalidValue;
+  }
   hipError_t status = hipSuccess;
   if (event == nullptr) {
     return hipErrorInvalidHandle;
@@ -413,7 +417,21 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
         "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
-    e->SetNodesPrevToRecorded(lastCapturedNodes);
+    if (!lastCapturedNodes.empty()) {
+      e->SetNodesPrevToRecorded(lastCapturedNodes);
+    }
+    if (flags == hipEventRecordExternal) {
+      hip::GraphNode* node = new hip::GraphEventRecordNode(reinterpret_cast<hipEvent_t>(e));
+      hipError_t status = hip::ihipGraphAddNode(node, 
+                      reinterpret_cast<hip::Graph*>(s->GetCaptureGraph()),
+                      reinterpret_cast<hip::GraphNode* const*>(s->GetLastCapturedNodes().data()),
+                      s->GetLastCapturedNodes().size(), false);
+      if (status != hipSuccess) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "hipEventRecord add external event node failed");
+        return status;
+      }
+      s->SetLastCapturedNode(node);
+    }
   } else {
     if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
       return hipErrorInvalidHandle;
@@ -425,13 +443,18 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream) {
 
 hipError_t hipEventRecord(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
 }
 
 hipError_t hipEventRecord_spt(hipEvent_t event, hipStream_t stream) {
   HIP_INIT_API(hipEventRecord, event, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
-  HIP_RETURN(hipEventRecord_common(event, stream));
+  HIP_RETURN(hipEventRecord_common(event, stream, hipEventRecordDefault));
+}
+
+hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigned int flags) {
+  HIP_INIT_API(hipEventRecordWithFlags, event, stream, flags);
+  HIP_RETURN(hipEventRecord_common(event, stream, flags));
 }
 
 hipError_t hipEventSynchronize(hipEvent_t event) {

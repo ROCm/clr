@@ -4142,6 +4142,9 @@ typedef struct hip_api_data_s {
 };
 // hipEventRecordWithFlags[('hipEvent_t', 'event'), ('hipStream_t', 'stream'), ('unsigned int', 'flags')]
 #define INIT_hipEventRecordWithFlags_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipEventRecordWithFlags.event = (hipEvent_t)event; \
+  cb_data.args.hipEventRecordWithFlags.stream = (hipStream_t)stream; \
+  cb_data.args.hipEventRecordWithFlags.flags = (unsigned int)flags; \
 };
 // hipEventSynchronize[('hipEvent_t', 'event')]
 #define INIT_hipEventSynchronize_CB_ARGS_DATA(cb_data) { \
