@@ -26,6 +26,11 @@
 #include "hip_event.hpp"
 #include "hip_mempool_impl.hpp"
 
+#include <stdio.h>
+
+#define OKOK //fprintf(stderr, "%s:%d\n", __FILE__, __LINE__);
+#define XPUT(fmt, ...) fprintf(stderr, fmt"\n", ##__VA_ARGS__)
+
 namespace hip {
 
 std::vector<hip::Stream*> g_captureStreams;

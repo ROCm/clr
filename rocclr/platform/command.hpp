@@ -379,6 +379,15 @@ class Command : public Event {
     }
   }
 
+  std::string Xstring() const {
+    std::string s("Cmd: ");
+    s += amd::activity_prof::getOclCommandKindString(type());
+    if (capturedKernelName_) {
+      s += " kernel: " + *capturedKernelName_;
+    }
+    return s;
+  }
+
   //! Return this command's OpenCL type.
   cl_command_type type() const { return type_; }
 

@@ -20,6 +20,9 @@
 
 #include "hip_graph_internal.hpp"
 #include <queue>
+#include <stdio.h>
+
+#define XPUT(fmt, ...) fprintf(stderr, fmt"\n", ##__VA_ARGS__);
 
 #define CASE_STRING(X, C)                                                                          \
   case X:                                                                                          \
@@ -513,7 +516,8 @@ void Graph::UpdateStreams(hip::Stream* launch_stream,
 
 // ================================================================================================
 bool Graph::RunOneNode(Node node, bool wait) {
-  if (node->launch_id_ == -1) {
+  if (node->launch_id_ != -1) return true;
+
     // Clear the storage of the wait nodes
     memset(&wait_order_[0], 0, sizeof(Node) * wait_order_.size());
     amd::Command::EventWaitList waitList;
@@ -538,17 +542,32 @@ bool Graph::RunOneNode(Node node, bool wait) {
       }
     }
 
+    // XPUT("Scheduling node: %s; current_ID: %d", 
+    //        node->Xstring().c_str(), current_id_);
+
     // Create a wait list from the last launches of all dependencies
     for (auto dep : wait_order_) {
-      if (dep != nullptr) {
-        // Add all commands in the wait list
-        if (dep->GetType() != hipGraphNodeTypeGraph) {
-          for (auto command : dep->GetCommands()) {
-            waitList.push_back(command);
-          }
+      if (dep == nullptr) continue;
+      //XPUT("dep in wait order: %s", dep->Xstring().c_str());
+      // Add all commands in the wait list
+      if (dep->GetType() != hipGraphNodeTypeGraph) {
+        for (auto command : dep->GetCommands()) {
+          // XPUT("dep command: %s", command->Xstring().c_str());
+          waitList.push_back(command);
         }
+        continue;
       }
-    }
+      //XPUT("subgraph dep command: %s", dep->Xstring().c_str());
+      std::vector<Node> node_list;
+      dep->TopologicalOrder(node_list);
+      if (!node_list.empty()) {
+        int i = 0;
+        for (auto command : node_list.back()->GetCommands()) {
+          //XPUT("%d: subgraph deps: %s", i++, command->Xstring().c_str());
+          // waitList.push_back(command);
+        }
+      } 
+    } // for
     if (node->GetType() == hipGraphNodeTypeGraph) {
       // Process child graph separately, since, there is no connection
       auto child = reinterpret_cast<hip::ChildGraphNode*>(node)->GetChildGraph();
@@ -585,6 +604,7 @@ bool Graph::RunOneNode(Node node, bool wait) {
       // Don't wait in the nodes, executed on the same streams and if it has just one dependency
       bool wait = ((i < DEBUG_HIP_FORCE_GRAPH_QUEUES) ||
                    (edge->GetDependencies().size() > 1)) ? true : false;
+      // XPUT("%d: edge: %p wait: %d", i, edge, wait);
       // Execute the edge node
       if (!RunOneNode(edge, wait)) {
         return false;
@@ -596,7 +616,7 @@ bool Graph::RunOneNode(Node node, bool wait) {
       // Always use the last node, since it's the latest for the particular queue
       leafs_[node->stream_id_] = node;
     }
-  }
+
   return true;
 }
 
@@ -618,6 +638,13 @@ bool Graph::RunNodes(
       start_marker->release();
     }
   }
+  // XPUT("#roots: %d #leafs: %d wait_order: %d parent_waitlist: %p", 
+  //   roots_.size(), leafs_.size(), wait_order_.size(), parent_waitlist);
+  // for (auto r : roots_) {
+  //   if (r != nullptr) {
+  //     XPUT(" root %s", r->Xstring().c_str());
+  //   }
+  // }
   amd::Command::EventWaitList wait_list;
   current_id_ = 0;
   memset(&leafs_[0], 0, sizeof(Node) * leafs_.size());
@@ -630,7 +657,8 @@ bool Graph::RunNodes(
     wait_list.push_back(last_command);
     // Check if the graph has multiple root nodes
     for (uint32_t i = 0; i < DEBUG_HIP_FORCE_GRAPH_QUEUES; ++i) {
-      if ((base_stream != i) && (roots_[i] != nullptr)) {
+      if ((base_stream != i) && (roots_[i] != nullptr)) 
+      {
         // Wait for the app's queue
         auto start_marker = new amd::Marker(*streams_[i], true, wait_list);
         if (start_marker != nullptr) {
