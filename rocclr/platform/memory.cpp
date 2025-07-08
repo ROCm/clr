@@ -103,11 +103,11 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
   canBeCached_ = true;
 }
 
-Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type type)
+Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type type, Context* new_ctx)
     : numDevices_(0),
       deviceMemories_(NULL),
       destructorCallbacks_(NULL),
-      context_(parent.getContext()),
+      context_((new_ctx != nullptr) ? *new_ctx : parent.getContext()),
       parent_(&parent),
       type_((type == 0) ? parent.type_ : type),
       hostMemRef_(NULL),
@@ -122,7 +122,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       svmHostAddress_(parent.getSvmPtr()),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_(true)  /* Memory Ops Lock */ {
+      lockMemoryOps_(true) /* Memory Ops Lock */ {
   svmPtrCommited_ = parent.isSvmPtrCommited();
   canBeCached_ = true;
   parent_->retain();
