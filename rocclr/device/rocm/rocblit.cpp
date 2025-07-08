@@ -603,6 +603,24 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
       (srcMemory.isHostMemDirectAccess()) ? dev().getCpuAgent() : dev().getBackendDevice();
     dstAgent =
       (dstMemory.isHostMemDirectAccess()) ? dev().getCpuAgent() : dev().getBackendDevice();
+
+    // When a memory is opened as IPCBuffer, the runtime is not aware of the agent that
+    // owns the memory, thus query the pointer info here.
+    if (static_cast<const amd::Memory*>(srcMemory.owner())->ipcShared()) {
+      hsa_amd_pointer_info_t info = {sizeof(hsa_amd_pointer_info_t)};
+      if (HSA_STATUS_SUCCESS ==
+            hsa_amd_pointer_info(const_cast<address>(src), &info, nullptr, nullptr, nullptr)) {
+        srcAgent = info.agentOwner;
+      }
+    }
+
+    if (static_cast<const amd::Memory*>(dstMemory.owner())->ipcShared()) {
+      hsa_amd_pointer_info_t info = {sizeof(hsa_amd_pointer_info_t)};
+      if (HSA_STATUS_SUCCESS ==
+            hsa_amd_pointer_info(dst, &info, nullptr, nullptr, nullptr)) {
+        dstAgent = info.agentOwner;
+      }
+    }
   }
   else {
     srcAgent = srcMemory.dev().getBackendDevice();
