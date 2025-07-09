@@ -271,8 +271,7 @@ hipError_t ihipExtLaunchKernel(hipStream_t stream, hipFunction_t f, uint32_t glo
   nodeParams.func = f;
   nodeParams.blockDim = dim3(localWorkSizeX, localWorkSizeY, localWorkSizeZ);
   nodeParams.extra = extra;
-  nodeParams.gridDim = dim3(globalWorkSizeX / localWorkSizeX, globalWorkSizeY / localWorkSizeY,
-                            globalWorkSizeZ / localWorkSizeZ);
+  nodeParams.gridDim = dim3(globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ);
   nodeParams.kernelParams = kernelParams;
   nodeParams.sharedMemBytes = sharedMemBytes;
 
@@ -309,7 +308,7 @@ hipError_t capturehipExtLaunchKernel(hipStream_t& stream, const void*& hostFunct
           "[hipGraph] Current capture node ExtLaunchKernel on stream : %p", stream);
   return ihipExtLaunchKernel(
       stream, reinterpret_cast<hipFunction_t>(const_cast<void*>(hostFunction)),
-      gridDim.x * blockDim.x, gridDim.y * blockDim.y, gridDim.z * blockDim.z, blockDim.x,
+      gridDim.x, gridDim.y, gridDim.z, blockDim.x,
       blockDim.y, blockDim.z, sharedMemBytes, args, nullptr, startEvent, stopEvent, flags);
 }
 
