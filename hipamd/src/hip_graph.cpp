@@ -728,12 +728,8 @@ hipError_t capturehipMemcpy(hipStream_t stream, void* dst, const void* src, size
   std::vector<hip::GraphNode*> pDependencies = s->GetLastCapturedNodes();
   size_t numDependencies = s->GetLastCapturedNodes().size();
   hip::Graph* graph = s->GetCaptureGraph();
-  hipError_t status = ihipMemcpy_validate(dst, src, sizeBytes, kind);
-  if (status != hipSuccess) {
-    return status;
-  }
   hip::GraphNode* node = new hip::GraphMemcpyNode1D(dst, src, sizeBytes, kind);
-  status = ihipGraphAddNode(node, graph, pDependencies.data(), numDependencies);
+  hipError_t status = ihipGraphAddNode(node, graph, pDependencies.data(), numDependencies);
   if (status != hipSuccess) {
     return status;
   }
