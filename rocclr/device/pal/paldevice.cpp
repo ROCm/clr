@@ -678,8 +678,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       static_cast<size_t>(palProp.gpuMemoryProperties.virtualMemAllocGranularity);
   info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
+  info_.availableVGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableVgprs;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
-  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * 32;
+  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * info_.wavefrontWidth_;
 #if IS_WINDOWS
   info_.luidLowPart_ = palProp.osProperties.luidLowPart;
   info_.luidHighPart_ = palProp.osProperties.luidHighPart;

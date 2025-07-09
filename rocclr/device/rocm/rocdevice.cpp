@@ -1634,12 +1634,21 @@ bool Device::populateOCLDeviceConstants() {
   // Get Values from from Comgr
   amd_comgr_metadata_node_t isaMeta;
   if (getIsaMeta(std::move(isa().isaName()), isaMeta)) {
-    std::string vgprValue;
-    info_.availableVGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumVGPRs", vgprValue))
-        ? (atoi(vgprValue.c_str()) * info_.simdPerCU_)
-        : 0;
+    std::string addressableNumVGPRs, totalNumVGPRs, vGPRAllocGranule;
+    info_.availableVGPRs_ = getValueFromIsaMeta(isaMeta, "AddressableNumVGPRs",
+           addressableNumVGPRs) ? atoi(addressableNumVGPRs.c_str()) : 0;
+    info_.vgprsPerSimd_ = getValueFromIsaMeta(isaMeta, "TotalNumVGPRs",
+           totalNumVGPRs) ? atoi(totalNumVGPRs.c_str()) : 0;
+    info_.vgprAllocGranularity_ = getValueFromIsaMeta(isaMeta, "VGPRAllocGranule",
+           vGPRAllocGranule) ? atoi(vGPRAllocGranule.c_str()) : 0;
 
-    info_.availableRegistersPerCU_ = info_.availableVGPRs_ * 64;  // 64 registers per VGPR
+    info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ *
+                                     info_.wavefrontWidth_;
+    ClPrint(amd::LOG_INFO, amd::LOG_INIT,
+      "addressableNumVGPRs=%u, totalNumVGPRs=%u, vGPRAllocGranule=%u," \
+      " availableRegistersPerCU_=%u",
+      info_.availableVGPRs_, info_.vgprsPerSimd_, info_.vgprAllocGranularity_,
+      info_.availableRegistersPerCU_);
 
     std::string sgprValue;
     info_.availableSGPRs_ = (getValueFromIsaMeta(isaMeta, "AddressableNumSGPRs", sgprValue))
@@ -1648,6 +1657,8 @@ bool Device::populateOCLDeviceConstants() {
     if (!releaseIsaMeta(isaMeta)) {
       LogInfo("Can not release the isa meta node");
     }
+  } else {
+    ClPrint(amd::LOG_ERROR, amd::LOG_INIT, "getIsaMeta(%s) failed!", isa().isaName().c_str());
   }
 
   // Generic support for HMM interfaces
@@ -1693,82 +1704,6 @@ bool Device::populateOCLDeviceConstants() {
     }
   }
   HIP_MEM_POOL_USE_VM &= info_.virtualMemoryManagement_;
-
-  switch (isa().versionMajor()) {
-    case (12):
-      if (isa().versionMinor() == 0) {
-        switch (isa().versionStepping()) {
-          case (0):
-          case (1):
-          default:
-            info_.vgprAllocGranularity_ = 24;
-            info_.vgprsPerSimd_ = 1536;
-            break;
-        }
-      }
-      break;
-    case (11):
-      if (isa().versionMinor() == 0) {
-        switch (isa().versionStepping()) {
-          case (0):
-          case (1):
-          case (5):
-            info_.vgprAllocGranularity_ = 24;
-            info_.vgprsPerSimd_ = 1536;
-            break;
-          case (2):
-          case (3):
-          default:
-            info_.vgprAllocGranularity_ = 16;
-            info_.vgprsPerSimd_ = 1024;
-            break;
-        }
-      } else if (isa().versionMinor() == 5) {
-        switch (isa().versionStepping()) {
-          case (1):
-            info_.vgprAllocGranularity_ = 24;
-            info_.vgprsPerSimd_ = 1536;
-            break;
-          default:
-            info_.vgprAllocGranularity_ = 16;
-            info_.vgprsPerSimd_ = 1024;
-            break;
-        }
-      } else {
-          info_.vgprAllocGranularity_ = 16;
-          info_.vgprsPerSimd_ = 1024;
-      }
-      break;
-    case (10):
-      switch (isa().versionMinor()) {
-        case (0):
-        case (1):
-          info_.vgprAllocGranularity_ = 8;
-          info_.vgprsPerSimd_ = 1024;
-          break;
-        case (3):
-        default:
-          info_.vgprAllocGranularity_ = 16;
-          info_.vgprsPerSimd_ = 1024;
-          break;
-      }
-      break;
-    case (9):
-      if ((isa().versionMinor() == 0 && isa().versionStepping() == 10) ||
-          isa().versionMinor() == 4 || isa().versionMinor() == 5) {
-        info_.vgprAllocGranularity_ = 8;
-        info_.vgprsPerSimd_ = 512;
-      } else {
-        info_.vgprAllocGranularity_ = 4;
-        info_.vgprsPerSimd_ = 256;
-      }
-      break;
-    default:
-      // For gfx<=8
-      info_.vgprAllocGranularity_ = 4;
-      info_.vgprsPerSimd_ = 256;
-      break;
-  }
 
   if (isa().versionMajor() < 8) {
     info_.sgprsPerSimd_ = 512;

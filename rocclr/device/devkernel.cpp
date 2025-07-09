@@ -619,7 +619,7 @@ Kernel::Kernel(const amd::Device& dev, const std::string& name, const Program& p
   workGroupInfo_.usedGPRs_ = 0;
   workGroupInfo_.availableSGPRs_ = 0;
   workGroupInfo_.usedSGPRs_ = 0;
-  workGroupInfo_.availableVGPRs_ = 0;
+  workGroupInfo_.availableVGPRs_ = dev.info().availableVGPRs_;
   workGroupInfo_.usedVGPRs_ = 0;
   workGroupInfo_.availableLDSSize_ = 0;
   workGroupInfo_.usedLDSSize_ = 0;
