@@ -265,6 +265,8 @@ class GraphNode : public hipGraphNodeDOTAttribute {
   }
   hip::Stream* GetQueue() const { return stream_; }
 
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const { return {}; }
+
   virtual void SetStream(hip::Stream* stream) { stream_ = stream; }
   //! Updates the grpah node with the execution stream
   void SetStream(
@@ -381,6 +383,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     }
   }
   Graph* GetParentGraph() { return parentGraph_; }
+  Graph* GetParentGraph() const { return parentGraph_; }
   virtual Graph* GetChildGraph() { return nullptr; }
   void SetParentGraph(Graph* graph) { parentGraph_ = graph; }
   virtual hipError_t SetParams(GraphNode* node) { return hipSuccess; }
@@ -662,6 +665,10 @@ class Graph {
   void* Alloc(size_t size) const {
     auto ptr = mem_pool_->Alloc(size);
     return ptr;
+  }
+
+  bool IsValidAllocation(void* ptr) const {
+    return mem_pool_->IsValidAllocation(ptr);
   }
 
   std::vector<amd::Command*> GetAllocationCommands(void* ptr, amd::HostQueue& queue) const {
@@ -956,6 +963,50 @@ class GraphKernelNode : public GraphNode {
       command->enqueue();
       command->release();
     }
+  }
+
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
+    std::set<void*> defs;
+    std::set<void*> uses;
+
+    amd::Kernel* kernel = hip::DeviceFunc::asFunction(getFunc(kernelParams_, dev_id_))->kernel();
+    auto device = g_devices[dev_id_]->devices()[0];
+    device::Kernel* devKernel = const_cast<device::Kernel*>(kernel->getDeviceKernel(*device));
+    auto signature = devKernel->signature();
+    auto kernel_param_descriptors = signature.params();
+
+    std::vector<bool> read_only(numParams_);
+    size_t count = 0;
+    for (auto& param : kernel_param_descriptors) {
+      if (param.info_.hidden_) {
+	continue;
+      }
+      // FIXME: it seems that isReadOnlyByCompiler is wrong, at least it misses the case like this:
+      // kernel(void *p)
+      //   q = p
+      //   *q = 0
+      // p here would get marked isReadOnlyByCompiler, but not readOnly_. Is this intentional?
+
+      //read_only[count++] = param.accessQualifier_ == CL_KERNEL_ARG_ACCESS_READ_ONLY;
+      //read_only[count++] = param.info_.readOnly_ || param.info_.isReadOnlyByCompiler;
+      read_only[count++] = param.info_.readOnly_;
+    }
+
+    auto graph = GetParentGraph();
+    for (unsigned int i = 0; i < numParams_; ++i) {
+      size_t offset = 0;
+      auto ptr = *reinterpret_cast<void**>(kernelParams_.kernelParams[i]);
+      auto memory = getMemoryObject(ptr, offset);
+      if (memory != nullptr || (graph != nullptr && graph->IsValidAllocation(ptr))) {
+	if (read_only[i]) {
+	  uses.insert(ptr);
+	} else {
+	  uses.insert(ptr);
+	  defs.insert(ptr);
+	}
+      }
+    }
+    return {defs, uses};
   }
 
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
@@ -1578,6 +1629,29 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
   }
 
   GraphNode* clone() const override { return new GraphMemcpyNode1D(*this); }
+
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
+    std::set<void*> defs;
+    std::set<void*> uses;
+    auto graph = GetParentGraph();
+    {
+    size_t offset = 0;
+    auto memory = getMemoryObject(dst_, offset);
+    if (memory != nullptr || (graph != nullptr && graph->IsValidAllocation(dst_))) {
+      defs.insert(dst_);
+      uses.insert(dst_);
+    }
+    }
+    {
+    size_t offset = 0;
+    auto memory = getMemoryObject(src_, offset);
+    if (memory != nullptr || (graph != nullptr && graph->IsValidAllocation(const_cast<void*>(src_)))) {
+      defs.insert(const_cast<void*>(src_));
+      uses.insert(const_cast<void*>(src_));
+    }
+    }
+    return {defs, uses};
+  }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
     hipError_t status = hip::GraphMemcpyNode1D::ValidateParams(dst_, src_, count_, kind_);
@@ -2367,6 +2441,10 @@ class GraphMemAllocNode final : public GraphNode {
 
   virtual GraphNode* clone() const final { return new GraphMemAllocNode(*this); }
 
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
+    return {{node_params_.dptr}, {}};
+  }
+
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
     if (!HIP_MEM_POOL_USE_VM) {
@@ -2462,6 +2540,10 @@ class GraphMemFreeNode : public GraphNode {
   }
 
   virtual GraphNode* clone() const final { return new GraphMemFreeNode(*this); }
+
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
+    return {{}, {device_ptr_}};
+  }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);

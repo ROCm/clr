@@ -19,6 +19,7 @@
  THE SOFTWARE. */
 
 #include "hip_graph_internal.hpp"
+#include "hip_graph_pass_manager.hpp"
 #include <queue>
 
 #define CASE_STRING(X, C)                                                                          \
@@ -234,6 +235,7 @@ void Graph::ScheduleNodes() {
 
 // ================================================================================================
 bool Graph::TopologicalOrder(std::vector<Node>& TopoOrder) {
+  TopoOrder.clear();
   std::queue<Node> q;
   std::unordered_map<Node, int> inDegree;
   for (auto entry : vertices_) {
@@ -706,6 +708,19 @@ hipError_t GraphExec::Run(hip::Stream* launch_stream) {
     }
   }  else {
     repeatLaunch_ = true;
+  }
+
+  GraphAnalysis graph_analysis;
+  if (graph_analysis.Run(topoOrder_[0]->GetParentGraph())) {
+    ScheduleNodes();
+    if (false == TopologicalOrder()) {
+      return hipErrorInvalidValue;
+    }
+    // FIXME: is it safe to just call init on an already initialized GraphExec?
+    auto status = Init();
+    if (status != hipSuccess) {
+      return status;
+    }
   }
 
   if (max_streams_ == 1 && instantiateDeviceId_ == launch_stream->DeviceId()) {

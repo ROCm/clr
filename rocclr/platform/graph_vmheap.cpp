@@ -575,6 +575,19 @@ address GraphVmHeapArray::Alloc(size_t size) {
 }
 
 // ================================================================================================
+bool GraphVmHeapArray::IsValidAllocation(void* ptr) {
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    if (vm_heaps_[i]->created_ && vm_heaps_[i]->InRange(ptr)) {
+      return true;
+    }
+  }
+  if (large_heap_.created_ && large_heap_.InRange(ptr)) {
+    return true;
+  }
+  return false;
+}
+
+// ================================================================================================
 bool GraphVmHeapArray::Free(amd::Memory* memory) {
   const device::Memory* dev_mem = memory->getDeviceMemory(*device_);
   void* addr = reinterpret_cast<void*>(dev_mem->virtualAddress());

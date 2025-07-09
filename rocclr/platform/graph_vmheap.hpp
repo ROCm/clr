@@ -397,6 +397,9 @@ public:
     size_t size     //! The allocation size
     );
 
+  //! Checks that ptr was allocated from this GraphVmHeapArray
+  bool IsValidAllocation(void* ptr);
+
   //! Creates commands to map physical memory chunks corresponding to object at ptr
   std::vector<Command*> GetAllocationCommands(void* ptr, HostQueue& queue);
 
