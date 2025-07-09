@@ -253,9 +253,8 @@ void GraphVmHeap::UnmapPhysMemory(size_t offset, size_t size) {
 }
 
 // ================================================================================================
-bool GraphVmHeap::BlockFullyMapped(GraphHeapBlock* block) {
+bool GraphVmHeap::BlockFullyMapped(GraphHeapBlock* block, size_t size) {
   size_t offset = block->Offset();
-  size_t size = block->Size();
 
   auto start_chunk = offset / chunk_size_;
   auto end_chunk = alignUp(offset + size, chunk_size_) / chunk_size_;
@@ -373,9 +372,9 @@ GraphHeapBlock* GraphVmHeap::AllocBlock(size_t un_size, bool should_reuse_physic
   while (walk) {
     if ((walk->size_ > size) &&
 	(best == nullptr || walk->size_ < best->size_) &&
-	(!should_reuse_physical || BlockFullyMapped(walk))) {
+	(!should_reuse_physical || BlockFullyMapped(walk, size))) {
       best = walk;
-    } else if (walk->size_ == size && (!should_reuse_physical || BlockFullyMapped(walk))) {
+    } else if (walk->size_ == size && (!should_reuse_physical || BlockFullyMapped(walk, size))) {
       // No need to split, just move to busy list
       DetachBlock(&free_list_, walk);
       walk->busy_ = true;

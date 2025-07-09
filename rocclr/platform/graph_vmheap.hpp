@@ -347,7 +347,7 @@ private:
   void UnmapPhysMemory(size_t offset, size_t size);
 
   //! Checks that the block already has all necessary physical memory
-  bool BlockFullyMapped(GraphHeapBlock* block);
+  bool BlockFullyMapped(GraphHeapBlock* block, size_t size);
 
   //! Join two blocks, transferring the size of the second into the first and deleting the second
   void Join2Blocks(GraphHeapBlock* first, GraphHeapBlock* second) const;
