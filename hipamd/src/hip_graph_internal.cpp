@@ -112,6 +112,53 @@ hipError_t GraphMemcpyNode::ValidateParams(const hipMemcpy3DParms* pNodeParams) 
 }
 
 // ================================================================================================
+Graph::~Graph() {
+  for (auto node : vertices_) {
+    delete node;
+  }
+  amd::ScopedLock lock(graphSetLock_);
+  graphSet_.erase(this);
+  for (auto& userobj : graphUserObj_) {
+    // Graph is destorying so remove it from user object's graph list.
+    userobj.first->owning_graphs_.erase(this);
+    // Bypass if graph owned refcount is more then actual refcount of user object
+    if (userobj.second > userobj.first->referenceCount()) {
+      continue;
+    }
+    // User object is about to die and hence remove it.
+    if (userobj.first->referenceCount() == userobj.second) {
+      RemoveUserObjectFromOwingGraphs(userobj.first);
+    }
+    // Release user object = # of times it is owned by this graph.
+    for (int i = 0; i < userobj.second; i++) {
+      if (userobj.first->referenceCount() >= 1) {
+	userobj.first->release();
+      }
+    }
+  }
+  graphUserObj_.clear();
+  memAllocNodePtrs_.clear();
+
+  if (graph_analysis_ != nullptr) {
+    delete graph_analysis_;
+  }
+}
+
+// ================================================================================================
+bool Graph::RunGraphAnalysis() {
+  if (graph_analysis_) {
+    return graph_analysis_->Run(this);
+  }
+  LogError("Graph analysis was not initialized");
+  return false;
+}
+
+// ================================================================================================
+void Graph::InvalidateGraphAnalysis() {
+  graph_analysis_->Invalidate();
+}
+
+// ================================================================================================
 bool Graph::isGraphValid(Graph* pGraph) {
   amd::ScopedLock lock(graphSetLock_);
   if (graphSet_.find(pGraph) == graphSet_.end()) {
@@ -707,11 +754,11 @@ hipError_t GraphExec::Run(hip::Stream* launch_stream) {
        return hipErrorInvalidValue;
     }
   }  else {
+    topoOrder_[0]->GetParentGraph()->graph_analysis_ = new GraphAnalysis();
     repeatLaunch_ = true;
   }
 
-  GraphAnalysis graph_analysis;
-  if (graph_analysis.Run(topoOrder_[0]->GetParentGraph())) {
+  if (topoOrder_[0]->GetParentGraph()->RunGraphAnalysis()) {
     ScheduleNodes();
     if (false == TopologicalOrder()) {
       return hipErrorInvalidValue;

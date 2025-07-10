@@ -322,22 +322,32 @@ class GraphAnalysis {
 
 public:
   bool Run(Graph* graph) {
-    dt_.Build(graph);
-    GetValues(graph);
+    if (graph == graph_) {
+      return false;
+    }
+
+    graph_ = graph;
+
+    dt_.Build(graph_);
+    GetValues();
 
     // Pass 1: remove unnecessary dependencies
-    bool modified = MoveByDependencies(graph);
+    bool modified = MoveByDependencies();
     modified |= RemoveUselessEdges();
     
     // Pass 2: coallocation
-    dt_.Build(graph);
-    FindCoallocatedObjects(graph);
+    dt_.Build(graph_);
+    FindCoallocatedObjects();
     CreateAllocationSchedule(AllocationHeuristic::Greedy);
 
     return modified;
   }
+
+  void Invalidate() {
+    graph_ = nullptr;
+  }
 private:
-  void GetValues(Graph* graph) {
+  void GetValues() {
     auto path_exists = [](GraphNode* s, GraphNode* t) -> bool {
       if (s == nullptr) {
 	return true;
@@ -367,7 +377,7 @@ private:
 
     std::map<GraphNode*, std::set<void*>> uses_without_defs;
 
-    auto nodes = graph->GetNodes();
+    auto nodes = graph_->GetNodes();
     for (auto node : nodes) {
       auto dependencies = node->Values();
       auto defs = dependencies.first;
@@ -516,10 +526,10 @@ private:
     }
   }
 
-  bool MoveByDependencies(Graph* graph) {
+  bool MoveByDependencies() {
     // Store a copy of the graph to later check if we made any changes
     std::map<GraphNode*, std::vector<GraphNode*>> graph_copy;
-    for (auto node : graph->GetNodes()) {
+    for (auto node : graph_->GetNodes()) {
       std::vector<GraphNode*> edges;
       for (auto edge : node->GetEdges()) {
 	edges.push_back(edge);
@@ -528,7 +538,7 @@ private:
     }
 
     // Unlink the whole graph
-    for (auto node : graph->GetNodes()) {
+    for (auto node : graph_->GetNodes()) {
       auto parents = node->GetDependencies();
       auto children = node->GetEdges();
       for (auto parent : parents) {
@@ -548,7 +558,7 @@ private:
     }
 
     // Check if we made any changes
-    for (auto node : graph->GetNodes()) {
+    for (auto node : graph_->GetNodes()) {
       if (graph_copy[node].size() != node->GetEdges().size()) {
 	return true;
       }
@@ -611,16 +621,16 @@ private:
     return modified;
   }
 
-  void FindCoallocatedObjects(Graph* graph) {
+  void FindCoallocatedObjects() {
     std::map<GraphNode*, size_t> distances;
     auto longest_path = [&](GraphNode* search) {
       // Iteration in topological order + dynamic programming
       // Only works because this is a DAG
       std::map<GraphNode*, size_t> length_to;
-      for (auto node : graph->GetNodes()) {
+      for (auto node : graph_->GetNodes()) {
 	length_to[node] = 0;
       }
-      for (auto node : graph->GetNodes()) {
+      for (auto node : graph_->GetNodes()) {
 	for (auto edge : node->GetEdges()) {
 	  length_to[edge] = std::max(length_to[edge], length_to[node] + 1);
 	}
@@ -785,6 +795,8 @@ private:
       }
     }
   }
+
+  Graph* graph_;
 
   DominatorTree dt_;
   std::set<Value> values_;
