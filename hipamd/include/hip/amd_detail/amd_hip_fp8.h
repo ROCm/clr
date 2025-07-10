@@ -70,6 +70,7 @@
 
 #if !defined(__HIPCC_RTC__)
 #include <hip/amd_detail/amd_hip_common.h>
+#include <hip/amd_detail/amd_device_functions.h>
 #include <climits>
 
 #include "host_defines.h"          // __hip_internal::
@@ -1037,32 +1038,19 @@ struct __hip_fp8_e4m3_fnuz {
       return;
     }
 
-    uint8_t sign = (val < 0) ? 1 : 0;
-    uint64_t absVal = (val < 0) ? -val : val;
+    uint8_t sign = static_cast<std::uint8_t>((val & 0x8000000000000000ULL) >> 56);
+    uint64_t absVal = (sign) ? (~val + 1) : val;
 
-    int msb_pos = 63;
-    while (msb_pos >= 0 && !(absVal & (1ULL << msb_pos))) msb_pos--;
+#if __HIP_DEVICE_COMPILE__
+    int msb_pos = 64 - __clzll(absVal);
+#else
+    int msb_pos = 64 - __builtin_clzll(absVal);
+#endif
 
     int exp = msb_pos + 7;
 
-    if (exp <= 0) {
-      int shift = -6 - msb_pos;
-      uint64_t shifted = absVal >> shift;
-
-      uint64_t mantissa = shifted;
-      if (shift > 0) {
-        uint64_t remainder = absVal & ((1ULL << shift) - 1);
-        uint64_t halfway = 1ULL << (shift - 1);
-        if (remainder > halfway || (remainder == halfway && (mantissa & 1))) mantissa++;
-      }
-
-      if (mantissa >= 8) mantissa = 7;
-      __x = (sign << 7) | (mantissa & 0x07);
-      return;
-    }
-
     if (exp >= 15) {
-      __x = (sign << 7) | (0b1110 << 3) | 7;
+      __x = 0x7E;
       return;
     }
 
@@ -1084,11 +1072,11 @@ struct __hip_fp8_e4m3_fnuz {
       mantissa_bits = 0;
       exp++;
       if (exp >= 15) {
-        __x = (sign << 7) | (0b1110 << 3) | 3;
+        __x = 0x7E;
         return;
       }
     }
-    __x = (sign << 7) | (exp << 3) | (mantissa_bits & 0x07);
+    __x = sign | (exp << 3) | (mantissa_bits & 0x07);
   }
 
 #if HIP_FP8_TYPE_FNUZ
@@ -1101,29 +1089,16 @@ struct __hip_fp8_e4m3_fnuz {
       return;
     }
 
-    int msb_pos = 63;
-    while (msb_pos >= 0 && !(val & (1ULL << msb_pos))) msb_pos--;
+#if __HIP_DEVICE_COMPILE__
+    int msb_pos = 64 - __clzll(absVal);
+#else
+    int msb_pos = 64 - __builtin_clzll(val);
+#endif
 
     int exp = msb_pos + 7;
 
-    if (exp <= 0) {
-      int shift = -6 - msb_pos;
-      uint64_t shifted = val >> shift;
-
-      uint64_t mantissa = shifted;
-      if (shift > 0) {
-        uint64_t remainder = val & ((1ULL << shift) - 1);
-        uint64_t halfway = 1ULL << (shift - 1);
-        if (remainder > halfway || (remainder == halfway && (mantissa & 1))) mantissa++;
-      }
-
-      if (mantissa >= 8) mantissa = 7;
-      __x = (mantissa & 0x07);
-      return;
-    }
-
     if (exp >= 15) {
-      __x = (0b1110 << 3) | 7;
+      __x = 0xFE;
       return;
     }
 
@@ -1145,7 +1120,7 @@ struct __hip_fp8_e4m3_fnuz {
       mantissa_bits = 0;
       exp++;
       if (exp >= 15) {
-        __x = (0b1110 << 3) | 7;
+        __x = 0xFE;
         return;
       }
     }
@@ -1800,32 +1775,19 @@ struct __hip_fp8_e5m2_fnuz {
       return;
     }
 
-    uint8_t sign = (val < 0) ? 1 : 0;
-    uint64_t absVal = (val < 0) ? -val : val;
+    uint8_t sign = static_cast<std::uint8_t>((val & 0x8000000000000000ULL) >> 56);
+    uint64_t absVal = (sign) ? (~val + 1) : val;
 
-    int msb_pos = 63;
-    while (msb_pos >= 0 && !(absVal & (1ULL << msb_pos))) msb_pos--;
+#if __HIP_DEVICE_COMPILE__
+    int msb_pos = 64 - __clzll(absVal);
+#else
+    int msb_pos = 64 - __builtin_clzll(absVal);
+#endif
 
     int exp = msb_pos + 15;
 
-    if (exp <= 0) {
-      int shift = -14 - msb_pos;
-      uint64_t shifted = absVal >> shift;
-
-      uint64_t mantissa = shifted;
-      if (shift > 0) {
-        uint64_t remainder = absVal & ((1ULL << shift) - 1);
-        uint64_t halfway = 1ULL << (shift - 1);
-        if (remainder > halfway || (remainder == halfway && (mantissa & 1))) mantissa++;
-      }
-
-      if (mantissa >= 4) mantissa = 3;
-      __x = (sign << 7) | (mantissa & 0x03);
-      return;
-    }
-
     if (exp >= 31) {
-      __x = (sign << 7) | (0b11110 << 2) | 3;
+      __x = 0x7E;
       return;
     }
 
@@ -1845,11 +1807,11 @@ struct __hip_fp8_e5m2_fnuz {
       mantissa_bits = 0;
       exp++;
       if (exp >= 31) {
-        __x = (sign << 7) | (0b11110 << 2) | 3;
+        __x = 0x7E;
         return;
       }
     }
-    __x = (sign << 7) | (exp << 2) | (mantissa_bits & 0x03);
+    __x = sign | (exp << 2) | (mantissa_bits & 0x03);
   }
 
 #if HIP_FP8_TYPE_FNUZ
@@ -1862,29 +1824,16 @@ struct __hip_fp8_e5m2_fnuz {
       return;
     }
 
-    int msb_pos = 63;
-    while (msb_pos >= 0 && !(val & (1ULL << msb_pos))) msb_pos--;
+#if __HIP_DEVICE_COMPILE__
+    int msb_pos = 64 - __clzll(absVal);
+#else
+    int msb_pos = 64 - __builtin_clzll(val);
+#endif
 
     int exp = msb_pos + 15;
 
-    if (exp <= 0) {
-      int shift = -14 - msb_pos;
-      uint64_t shifted = val >> shift;
-
-      uint64_t mantissa = shifted;
-      if (shift > 0) {
-        uint64_t remainder = val & ((1ULL << shift) - 1);
-        uint64_t halfway = 1ULL << (shift - 1);
-        if (remainder > halfway || (remainder == halfway && (mantissa & 1))) mantissa++;
-      }
-
-      if (mantissa >= 4) mantissa = 3;
-      __x = (mantissa & 0x03);
-      return;
-    }
-
     if (exp >= 31) {
-      __x = (0b11110 << 2) | 3;
+      __x = 0xFE;
       return;
     }
 
@@ -1904,7 +1853,7 @@ struct __hip_fp8_e5m2_fnuz {
       mantissa_bits = 0;
       exp++;
       if (exp >= 31) {
-        __x = (0b11110 << 2) | 3;
+        __x = 0xFE;
         return;
       }
     }
