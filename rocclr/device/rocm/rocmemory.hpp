@@ -151,6 +151,14 @@ class Memory : public device::Memory {
 
   void* persistent_host_ptr_;  //!< Host accessible pointer for persistent memory
 
+  // Get MemorySegment type in terms of host memory allocation flags
+  Device::MemorySegment getHostMemorySegment(const unsigned int memFlags) {
+    return (memFlags & CL_MEM_SVM_ATOMICS) == 0
+           ? Device::MemorySegment::kNoAtomics :
+           ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
+             Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics);
+  }
+
  private:
   // Disable copy constructor
   Memory(const Memory&);

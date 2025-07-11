@@ -191,11 +191,8 @@ Device::Device(hsa_agent_t bkendDevice)
     , numOfVgpus_(0)
     , preferred_numa_node_(0)
     , maxSdmaReadMask_(0)
-    , maxSdmaWriteMask_(0) {
+    , maxSdmaWriteMask_(0), cpu_agent_info_(nullptr) {
   group_segment_.handle = 0;
-  system_segment_.handle = 0;
-  system_coarse_segment_.handle = 0;
-  system_kernarg_segment_.handle = 0;
   gpuvm_segment_.handle = 0;
   gpu_fine_grained_segment_.handle = 0;
   gpu_ext_fine_grained_segment_.handle = 0;
@@ -225,20 +222,20 @@ void Device::setupCpuAgent() {
   }
 
   preferred_numa_node_ = index;
-  cpu_agent_ = cpu_agents_[index].agent;
-  system_segment_ = cpu_agents_[index].fine_grain_pool;
-  system_coarse_segment_ = cpu_agents_[index].coarse_grain_pool;
-  system_kernarg_segment_ = cpu_agents_[index].kern_arg_pool;
-  system_ext_segment_ = cpu_agents_[index].ext_fine_grain_pool;
+  cpu_agent_info_ = &cpu_agents_[index];
+
   ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Numa selects cpu agent[%zu]=0x%zx(fine=0x%zx,"
-          "coarse=0x%zx) for gpu agent=0x%zx CPU<->GPU XGMI=%d", index, cpu_agent_.handle,
-          system_segment_.handle, system_coarse_segment_.handle, bkendDevice_.handle, isXgmi_);
+          "coarse=0x%zx) for gpu agent=0x%zx CPU<->GPU XGMI=%d", index,
+          cpu_agent_info_->agent.handle,
+          cpu_agent_info_->fine_grain_pool.handle,
+          cpu_agent_info_->coarse_grain_pool.handle,
+          bkendDevice_.handle, isXgmi_);
 }
 
 void Device::checkAtomicSupport() {
   std::vector<amd::Device::LinkAttrType> link_attrs;
   link_attrs.push_back(std::make_pair(LinkAttribute::kLinkAtomicSupport, 0));
-  if (findLinkInfo(system_segment_, &link_attrs)) {
+  if (findLinkInfo(cpu_agent_info_->fine_grain_pool, &link_attrs)) {
     if (link_attrs[0].second == 1) {
       info_.pcie_atomics_ = true;
     }
@@ -863,7 +860,7 @@ hsa_status_t Device::iterateGpuMemoryPoolCallback(hsa_amd_memory_pool_t pool, vo
           // If cpu agent cannot access this pool, the device does not support large bar.
           hsa_amd_memory_pool_access_t tmp{};
           hsa_amd_agent_memory_pool_get_info(
-            dev->cpu_agent_,
+            dev->cpu_agent_info_->agent,
             pool,
             HSA_AMD_AGENT_MEMORY_POOL_INFO_ACCESS,
             &tmp);
@@ -1166,7 +1163,7 @@ bool Device::populateOCLDeviceConstants() {
 
   checkAtomicSupport();
 
-  assert(system_segment_.handle != 0);
+  assert(cpu_agent_info_->fine_grain_pool.handle != 0);
   if (HSA_STATUS_SUCCESS != hsa_amd_agent_iterate_memory_pools(
                                 bkendDevice_, Device::iterateGpuMemoryPoolCallback, this)) {
     return false;
@@ -1286,7 +1283,8 @@ bool Device::populateOCLDeviceConstants() {
 
     if (HSA_STATUS_SUCCESS !=
         hsa_amd_memory_pool_get_info(
-            system_segment_, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE, &alloc_granularity_)) {
+            cpu_agent_info_->fine_grain_pool, HSA_AMD_MEMORY_POOL_INFO_RUNTIME_ALLOC_GRANULE,
+            &alloc_granularity_)) {
       return false;
     }
   }
@@ -2005,46 +2003,54 @@ device::Memory* Device::createMemory(size_t size, size_t alignment) const {
 }
 
 // ================================================================================================
-void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const {
-  void* ptr = nullptr;
-
+hsa_amd_memory_pool_t Device::getHostMemoryPool(MemorySegment mem_seg,
+                                                const AgentInfo* agentInfo) const {
+  if (agentInfo == nullptr) {
+    agentInfo = cpu_agent_info_;
+  }
   hsa_amd_memory_pool_t segment{0};
   switch (mem_seg) {
     case kKernArg : {
       if (settings().fgs_kernel_arg_) {
-        segment = system_kernarg_segment_;
+        segment = agentInfo->kern_arg_pool;
         break;
       }
       // Falls through on else case.
     }
     case kNoAtomics :
       // If runtime disables barrier, then all host allocations must have L2 disabled
-      if (system_coarse_segment_.handle != 0) {
-        segment = system_coarse_segment_;
+      if (agentInfo->coarse_grain_pool.handle != 0) {
+        segment = agentInfo->coarse_grain_pool;
         break;
       }
       // Falls through on else case.
     case kAtomics :
-      segment = system_segment_;
+      segment = agentInfo->fine_grain_pool;
       break;
     case kUncachedAtomics :
-      if (system_ext_segment_.handle != 0) {
+      if (agentInfo->ext_fine_grain_pool.handle != 0) {
         ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
                   "Using extended fine grained access system memory pool");
-        segment = system_ext_segment_;
+        segment = agentInfo->ext_fine_grain_pool;
       } else {
         ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
                   "Falling through on fine grained access system memory pool");
-        segment = system_segment_;
+        segment = agentInfo->fine_grain_pool;
       }
       break;
     default :
       guarantee(false, "Invalid Memory Segment");
       break;
   }
-
   assert(segment.handle != 0);
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
+  return segment;
+}
+
+// ================================================================================================
+void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const {
+  void* ptr = nullptr;
+  hsa_amd_memory_pool_t pool = getHostMemoryPool(mem_seg);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx,"
      " numa_node = %d, mem_seg = %d", ptr, size, preferred_numa_node_, static_cast<int>(mem_seg));
   if (stat != HSA_STATUS_SUCCESS) {
@@ -2065,28 +2071,8 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
 // ================================================================================================
 void* Device::hostAgentAlloc(size_t size, const AgentInfo& agentInfo, MemorySegment mem_seg) const {
   void* ptr = nullptr;
-  hsa_amd_memory_pool_t segment = agentInfo.fine_grain_pool;
-  switch (mem_seg) {
-    case kNoAtomics :
-      if (agentInfo.coarse_grain_pool.handle != 0) {
-        segment = agentInfo.coarse_grain_pool;
-      }
-      break;
-    case kUncachedAtomics :
-      if (agentInfo.ext_fine_grain_pool.handle != 0) {
-        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
-                  "Using extended fine grained access system memory pool in hostAgentAlloc");
-        segment = agentInfo.ext_fine_grain_pool;
-      } else {
-        ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
-                  "Falling through on fine grained access system memory pool in hostAgentAlloc");
-      }
-      break;
-    default :
-      break;
-  }
-  assert(segment.handle != 0);
-  hsa_status_t stat = hsa_amd_memory_pool_allocate(segment, size, 0, &ptr);
+  hsa_amd_memory_pool_t pool = getHostMemoryPool(mem_seg, &agentInfo);
+  hsa_status_t stat = hsa_amd_memory_pool_allocate(pool, size, 0, &ptr);
   ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Allocate hsa host memory %p, size 0x%zx", ptr, size);
   if (stat != HSA_STATUS_SUCCESS) {
     LogPrintfError("Fail allocation host memory with err %d", stat);
@@ -2142,6 +2128,21 @@ void* Device::hostNumaAlloc(size_t size, size_t alignment, MemorySegment mem_seg
   numa_free_cpumask(nodeMask);
 #endif // ROCCLR_SUPPORT_NUMA_POLICY
   return ptr;
+}
+
+void* Device::hostLock(void* hostMem, size_t size, const MemorySegment memSegment) const {
+  hsa_amd_memory_pool_t pool = getHostMemoryPool(memSegment);
+  void *deviceMemory = nullptr;
+  hsa_status_t status = hsa_amd_memory_lock_to_pool(hostMem, size,
+      const_cast<hsa_agent_t*>(&bkendDevice_), 1, pool, 0, &deviceMemory);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, hostMem = %p,"
+          " deviceMemory = %p, memSegment = %d", pool, size, hostMem, deviceMemory,
+          static_cast<int>(memSegment));
+  if (status != HSA_STATUS_SUCCESS) {
+    DevLogPrintfError("Failed to lock memory to pool, failed with hsa_status: %d \n", status);
+    deviceMemory = nullptr;
+  }
+  return deviceMemory;
 }
 
 void Device::hostFree(void* ptr, size_t size) const { memFree(ptr, size); }
@@ -2585,11 +2586,11 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
         case amd::MemRangeAttribute::AccessedBy:
           accessed_by = attr.size();
           // Add all GPU devices into the query
-          for (const auto agent : getGpuAgents()) {
+          for (const auto agent : gpu_agents_) {
             attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, agent.handle});
           }
           // Add CPU devices
-          for (const auto agent_info : getCpuAgents()) {
+          for (const auto agent_info : cpu_agents_) {
             attr.push_back({HSA_AMD_SVM_ATTRIB_ACCESS_QUERY, agent_info.agent.handle});
           }
           accessed_by = attr.size() - accessed_by;
@@ -2643,7 +2644,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
             }
           }
           // Find CPU agent returned by ROCr
-          for (auto& agent_info : getCpuAgents()) {
+          for (auto& agent_info : cpu_agents_) {
             if (agent_info.agent.handle == it.value) {
               *reinterpret_cast<int32_t*>(data[idx]) = static_cast<int32_t>(amd::CpuDeviceId);
             }
@@ -2678,7 +2679,7 @@ bool Device::GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                   }
                 }
                 // Find CPU agent returned by ROCr
-                for (auto& agent_info : getCpuAgents()) {
+                for (auto& agent_info : cpu_agents_) {
                   if (agent_info.agent.handle == it.value) {
                     reinterpret_cast<int32_t*>(data[idx])[entry] =
                       static_cast<int32_t>(amd::CpuDeviceId);

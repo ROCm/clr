@@ -341,10 +341,8 @@ class Device : public NullDevice {
   static bool loadHsaModules();
 
   hsa_agent_t getBackendDevice() const { return bkendDevice_; }
-  const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
-
-  static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
-  static const std::vector<AgentInfo>& getCpuAgents() { return cpu_agents_; }
+  //! Get the CPU agent with the least NUMA distance to this GPU
+  const hsa_agent_t &getCpuAgent() const { return cpu_agent_info_->agent; }
 
   void setupCpuAgent(); // Setup the CPU agent which has the least NUMA distance to this GPU
 
@@ -408,7 +406,6 @@ class Device : public NullDevice {
   virtual bool globalFreeMemory(size_t* freeMemory) const;
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = MemorySegment::kNoAtomics) const;
-
   virtual void hostFree(void* ptr, size_t size = 0) const;
 
   bool deviceAllowAccess(void* dst) const;
@@ -459,6 +456,10 @@ class Device : public NullDevice {
   //! Allocate host memory from agent info
   void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, MemorySegment mem_seg) const;
 
+  //! Pin a host pointer allocated by C/C++ or OS allocator (i.e. ordinary system DRAM) and
+  //! return a new device pointer accessible by the GPU agent.
+  void* hostLock(void* hostMem, size_t size, MemorySegment memSegment) const;
+
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }
 
@@ -500,10 +501,6 @@ class Device : public NullDevice {
   VirtualGPUs vgpus_;  //!< The list of all running virtual gpus (lock protected)
 
   VirtualGPU* xferQueue() const;
-
-  hsa_amd_memory_pool_t SystemSegment() const { return system_segment_; }
-  hsa_amd_memory_pool_t SystemExtSegment() const { return system_ext_segment_; }
-  hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
 
   //! Acquire HSA queue. This method can create a new HSA queue or
   //! share previously created
@@ -547,6 +544,7 @@ class Device : public NullDevice {
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0);
 
   const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
+
   const bool isFineGrainSupported() const;
 
   //! Returns True if memory pointer is known to ROCr (excludes HMM allocations)
@@ -588,8 +586,6 @@ class Device : public NullDevice {
   static bool isHsaInitialized_;
   static std::vector<hsa_agent_t> gpu_agents_;
   static std::vector<AgentInfo> cpu_agents_;
-
-  hsa_agent_t cpu_agent_;
   uint32_t preferred_numa_node_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
@@ -598,10 +594,8 @@ class Device : public NullDevice {
   hsa_agent_t* p2p_agents_list_ = nullptr;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;
-  hsa_amd_memory_pool_t system_segment_;
-  hsa_amd_memory_pool_t system_coarse_segment_;
-  hsa_amd_memory_pool_t system_kernarg_segment_;
-  hsa_amd_memory_pool_t system_ext_segment_;
+
+  AgentInfo *cpu_agent_info_;
 
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
@@ -649,7 +643,8 @@ class Device : public NullDevice {
 
   //! Pool of HSA queues with custom CU masks
   std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queueWithCUMaskPool_;
-
+  hsa_amd_memory_pool_t getHostMemoryPool(MemorySegment mem_seg,
+                                          const AgentInfo* agentInfo = nullptr) const;
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;
   uint32_t maxSdmaWriteMask_;
