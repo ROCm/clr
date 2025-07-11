@@ -405,6 +405,10 @@ typedef hipError_t (*t_hipGraphNodeGetDependencies)(hipGraphNode_t node,
 typedef hipError_t (*t_hipGraphNodeGetDependentNodes)(hipGraphNode_t node,
                                                       hipGraphNode_t* pDependentNodes,
                                                       size_t* pNumDependentNodes);
+typedef hipError_t (*t_hipGraphNodeGetDependentNodes_v2)(hipGraphNode_t node,
+                                                        hipGraphNode_t* pDependentNodes,
+                                                        hipGraphEdgeData* edgeData,
+                                                        size_t* pNumDependentNodes);
 typedef hipError_t (*t_hipGraphNodeGetEnabled)(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                                unsigned int* isEnabled);
 typedef hipError_t (*t_hipGraphNodeGetType)(hipGraphNode_t node, hipGraphNodeType* pType);
@@ -1589,9 +1593,10 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 13
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams
+  t_hipGraphNodeGetDependentNodes_v2 hipGraphNodeGetDependentNodes_v2_fn;
 
   // DO NOT EDIT ABOVE!
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 13
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 14
 
   // ******************************************************************************************* //
   //

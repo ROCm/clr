@@ -748,6 +748,15 @@ hipError_t hipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pD
   return hip::GetHipDispatchTable()->hipGraphNodeGetDependentNodes_fn(node, pDependentNodes,
                                                                       pNumDependentNodes);
 }
+hipError_t hipGraphNodeGetDependentNodes_v2(hipGraphNode_t node,
+                                            hipGraphNode_t* pDependentNodes,
+                                            hipGraphEdgeData* edgeData,
+                                            size_t* pNumDependentNodes) {
+  return hip::GetHipDispatchTable()->hipGraphNodeGetDependentNodes_v2_fn(node,
+                                                                         pDependentNodes,
+                                                                         edgeData,
+                                                                         pNumDependentNodes);
+}
 hipError_t hipGraphNodeGetEnabled(hipGraphExec_t hGraphExec, hipGraphNode_t hNode,
                                   unsigned int* isEnabled) {
   return hip::GetHipDispatchTable()->hipGraphNodeGetEnabled_fn(hGraphExec, hNode, isEnabled);

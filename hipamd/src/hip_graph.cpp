@@ -2205,24 +2205,42 @@ hipError_t hipGraphNodeGetDependencies(hipGraphNode_t node, hipGraphNode_t* pDep
   HIP_RETURN(hipSuccess);
 }
 
-hipError_t hipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pDependentNodes,
-                                         size_t* pNumDependentNodes) {
-  HIP_INIT_API(hipGraphNodeGetDependentNodes, node, pDependentNodes, pNumDependentNodes);
+hipError_t ihipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pDependentNodes,
+                                          hipGraphEdgeData* edgeData, size_t* pNumDependentNodes) {
   hip::GraphNode* n = reinterpret_cast<hip::GraphNode*>(node);
   if (!hip::GraphNode::isNodeValid(n) || pNumDependentNodes == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    return hipErrorInvalidValue;
   }
   const std::vector<hip::GraphNode*>& dependents = n->GetEdges();
+  if (pDependentNodes && edgeData) {
+    // TODO: Update logic when support for hipGraphEdgeData is implemented
+    return hipErrorNotSupported;
+  }
   if (pDependentNodes == NULL) {
+    if (edgeData) {
+      return hipErrorInvalidValue;
+    }
+
     *pNumDependentNodes = dependents.size();
-    HIP_RETURN(hipSuccess);
+    return hipSuccess;
   } else if (*pNumDependentNodes <= dependents.size()) {
     for (int i = 0; i < *pNumDependentNodes; i++) {
-      pDependentNodes[i] = reinterpret_cast<hipGraphNode_t>(dependents[i]);
+      auto dependent = reinterpret_cast<hipGraphNode_t>(dependents[i]);
+
+      // TODO: When supported, check if edge has custom data when the support
+      // for that is implemented. If the edge has such and edgeData is NULL
+      // return hipErrorLossyQuery. The prerequisite for this to work
+      // is implementing hipGraphAddDependencies_v2 
+
+      pDependentNodes[i] = dependent;
     }
   } else {
     for (int i = 0; i < dependents.size(); i++) {
-      pDependentNodes[i] = reinterpret_cast<hipGraphNode_t>(dependents[i]);
+      auto dependent = reinterpret_cast<hipGraphNode_t>(dependents[i]);
+
+      // TODO: Same as above
+
+      pDependentNodes[i] = dependent;
     }
     // pNumDependentNodes > actual number of dependents, the remaining entries in pDependentNodes
     // will be set to NULL
@@ -2231,7 +2249,22 @@ hipError_t hipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pD
     }
     *pNumDependentNodes = dependents.size();
   }
-  HIP_RETURN(hipSuccess);
+  
+  return hipSuccess;
+}
+
+hipError_t hipGraphNodeGetDependentNodes(hipGraphNode_t node, hipGraphNode_t* pDependentNodes,
+                                         size_t* pNumDependentNodes) {
+  HIP_INIT_API(hipGraphNodeGetDependentNodes, node, pDependentNodes, pNumDependentNodes);
+
+  HIP_RETURN(ihipGraphNodeGetDependentNodes(node, pDependentNodes, nullptr, pNumDependentNodes));
+}
+
+hipError_t hipGraphNodeGetDependentNodes_v2(hipGraphNode_t node, hipGraphNode_t* pDependentNodes,
+                                            hipGraphEdgeData* edgeData, size_t* pNumDependentNodes) {
+  HIP_INIT_API(hipGraphNodeGetDependentNodes_V2, node, pDependentNodes, edgeData, pNumDependentNodes);
+
+  HIP_RETURN(ihipGraphNodeGetDependentNodes(node, pDependentNodes, edgeData, pNumDependentNodes));
 }
 
 hipError_t hipGraphNodeGetType(hipGraphNode_t node, hipGraphNodeType* pType) {
