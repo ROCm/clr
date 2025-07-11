@@ -226,17 +226,8 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
        }
     }
     if (isCompressed || containGenericTarget) {
-      size_t major = 0, minor = 0;
-      amd::Comgr::get_version(&major, &minor);
-      if ((major == 2 && minor >= 8) || major > 2) {
-        hip_status = ExtractFatBinaryUsingCOMGR(image_, devices);
-        break;
-      } else if (isCompressed) {
-        LogPrintfError("comgr %zu.%zu cannot support compressed mode which requires comgr 2.8+",
-                       major, minor);
-        hip_status = hipErrorNotSupported;
-        break;
-      }
+      hip_status = ExtractFatBinaryUsingCOMGR(image_, devices);
+      break;
     }
     // Create a data object, if it fails return error
     if ((comgr_status = amd::Comgr::create_data(AMD_COMGR_DATA_KIND_FATBIN, &data_object)) !=
