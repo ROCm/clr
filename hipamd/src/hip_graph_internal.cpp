@@ -155,7 +155,16 @@ bool Graph::RunGraphAnalysis() {
 
 // ================================================================================================
 void Graph::InvalidateGraphAnalysis() {
-  graph_analysis_->Invalidate();
+  if (graph_analysis_) {
+    graph_analysis_->Invalidate();
+  }
+}
+
+// ================================================================================================
+void Graph::UpdatePtrs(void* old_ptr, void** new_ptr) {
+  for (auto node : GetNodes()) {
+    node->UpdatePtr(old_ptr, new_ptr);
+  }
 }
 
 // ================================================================================================

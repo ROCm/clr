@@ -318,6 +318,8 @@ class GraphAnalysis {
 
     Type type_;
     GraphNode* node_;
+    size_t size_;
+    size_t offset_;
   };
 
 public:
@@ -336,9 +338,10 @@ public:
     modified |= RemoveUselessEdges();
     
     // Pass 2: coallocation
-    dt_.Build(graph_);
-    FindCoallocatedObjects();
-    CreateAllocationSchedule(AllocationHeuristic::Greedy);
+    //dt_.Build(graph_);
+    SetLeaders();
+    //FindCoallocatedObjects();
+    //CreateAllocationSchedule(AllocationHeuristic::Greedy);
 
     return modified;
   }
@@ -346,8 +349,14 @@ public:
   void Invalidate() {
     graph_ = nullptr;
   }
+
 private:
   void GetValues() {
+    values_ = {};
+    def_use_chains_ = {};
+    use_def_chains_ = {};
+    coallocations_ = {};
+
     auto path_exists = [](GraphNode* s, GraphNode* t) -> bool {
       if (s == nullptr) {
 	return true;
@@ -621,6 +630,27 @@ private:
     return modified;
   }
 
+  void SetLeaders() {
+    // For now: every alloc node is a leader, and the last free node corresponds to it
+    for (auto& value : values_)  {
+      if (value.first_def_->GetType() == hipGraphNodeTypeMemAlloc) {
+	GraphMemFreeNode* free_node = nullptr;
+	for (auto def_chain : value.def_chains_) {
+	  for (auto u : def_chain.second) {
+	    if (u->GetType() == hipGraphNodeTypeMemFree) {
+	      free_node = dynamic_cast<GraphMemFreeNode*>(u);
+	      break;
+	    }
+	  }
+	}
+	dynamic_cast<GraphMemAllocNode*>(value.first_def_)->SetLeader({}, free_node);
+	if (nullptr != free_node) {
+	  free_node->SetLast();
+	}
+      }
+    }
+  }
+
   void FindCoallocatedObjects() {
     std::map<GraphNode*, size_t> distances;
     auto longest_path = [&](GraphNode* search) {
@@ -764,6 +794,15 @@ private:
       return std::find(heap_slots.begin(), heap_slots.end(), object) != heap_slots.end();
     };
 
+    auto get_offset = [&](size_t idx) -> size_t {
+      size_t offset = 0;
+      for (size_t i = 0; i < idx; ++i) {
+	std::cout << heap_slots[i]->GetType() << "\n";
+	offset += dynamic_cast<GraphMemAllocNode*>(heap_slots[i])->Bytesize();
+      }
+      return offset;
+    };
+
     std::vector<AllocatorAction> schedule;
     for (size_t i = 0; i < coallocations_.size(); ++i) {
       auto& coallocated = coallocations_[i].objects_;
@@ -780,7 +819,7 @@ private:
         size_t my_heap_slot = heap_slots.size();
         for (size_t j = 0; j < heap_slots.size(); ++j) {
           if (CanFree(heap_slots[j], coallocations_[i].node_)) {
-            schedule.push_back({AllocatorAction::Type::Free, heap_slots[j]});
+            schedule.push_back({AllocatorAction::Type::Free, heap_slots[j], dynamic_cast<GraphMemAllocNode*>(heap_slots[j])->Bytesize(), get_offset(j)});
             my_heap_slot = j;
             break;
           }
@@ -791,7 +830,7 @@ private:
         } else {
           heap_slots[my_heap_slot] = object;
         }
-        schedule.push_back({AllocatorAction::Type::Allocate, object});
+        schedule.push_back({AllocatorAction::Type::Allocate, object, dynamic_cast<GraphMemAllocNode*>(object)->Bytesize(), get_offset(schedule.size())});
       }
     }
   }

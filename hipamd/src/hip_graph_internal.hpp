@@ -268,6 +268,8 @@ class GraphNode : public hipGraphNodeDOTAttribute {
 
   virtual std::pair<std::set<void*>, std::set<void*>> Values() const { return {}; }
 
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) {}
+
   virtual void SetStream(hip::Stream* stream) { stream_ = stream; }
   //! Updates the grpah node with the execution stream
   void SetStream(
@@ -617,47 +619,8 @@ class Graph {
     }
   }
 
-  void* AllocateMemory(size_t size, hip::Stream* stream, void* dptr) const {
-    // Free memory, if any
-    // Unmapping will be handled by later graph execution
-    if (dptr != nullptr) {
-      size_t offset = 0;
-      auto memory = getMemoryObject(dptr, offset);
-      if (memory) {
-        Free(memory);
-      }
-    }
-
-    auto ptr = Alloc(size);
-    auto allocation_commands = GetAllocationCommands(ptr, stream == nullptr ? *device_->NullStream(false) : *stream);
-    for (auto cmd : allocation_commands) {
-      cmd->enqueue();
-      cmd->awaitCompletion();
-      cmd->release();
-    }
-    return ptr;
-  }
-
-  void* Alloc(size_t size) const {
-    auto ptr = mem_pool_->Alloc(size);
-    return ptr;
-  }
-
   bool IsValidAllocation(void* ptr) const {
     return mem_pool_->IsValidAllocation(ptr);
-  }
-
-  std::vector<amd::Command*> GetAllocationCommands(void* ptr, amd::HostQueue& queue) const {
-    return mem_pool_->GetAllocationCommands(ptr, queue);
-  }
-
-  std::vector<amd::Command*> GetDeallocationCommands(amd::HostQueue& queue) const {
-    return mem_pool_->GetDeallocationCommands(queue);
-  }
-
-  bool Free(amd::Memory* memory) const {
-    // FIXME: assumes that memory belonged to the graph pool
-    return mem_pool_->Free(memory);
   }
 
   void* ReserveAddress(size_t size) const {
@@ -687,25 +650,32 @@ class Graph {
     g_devices[0]->devices()[0]->virtualFree(ptr);
   }
 
-  void FreeMemory(void* dev_ptr, hip::Stream* stream) const {
-    size_t offset = 0;
-    auto memory = getMemoryObject(dev_ptr, offset);
-    if (memory != nullptr) {
-      auto device_id = memory->getUserData().deviceId;
-      // First check if memory belonged to the graph pool
-      bool freed = Free(memory);
-      if (freed) {
-	// Handle any deallocation commands immediately
-	auto deallocation_commands = GetDeallocationCommands(stream == nullptr ? *device_->NullStream(false) : *stream);
-	for (auto cmd : deallocation_commands) {
-	  cmd->enqueue();
-	  cmd->awaitCompletion();
-	  cmd->release();
-	}
-      } else if (!g_devices[device_id]->FreeMemory(memory, stream)) {
-	LogError("Memory didn't belong to any pool!");
-      }
-    }
+  amd::Command* GetSlabMapCommand(amd::GraphSlab* slab, amd::HostQueue& queue) {
+    return mem_pool_->GetSlabMapCommand(slab, queue);
+  }
+
+  amd::Command* GetSlabUnmapCommand(amd::GraphSlab* slab, amd::HostQueue& queue) {
+    return mem_pool_->GetSlabUnmapCommand(slab, queue);
+  }
+
+  amd::Command* GetAllocationCommand(amd::GraphSlab* slab, amd::HostQueue& queue, amd::Command* slab_map_command, size_t size, size_t offset) {
+    return mem_pool_->GetAllocationCommand(slab, queue, slab_map_command, size, offset);
+  }
+
+  amd::GraphSlab* AllocateSlab(size_t size) const {
+    return mem_pool_->AllocateSlab(size);
+  }
+
+  void FreeSlab(amd::GraphSlab* slab) const {
+    mem_pool_->FreeSlab(slab);
+  }
+
+  void* AllocateTemporaryHandle() const {
+    return mem_pool_->AllocateTemporaryHandle();
+  }
+
+  void InvalidateTemporaryHandle() const {
+    mem_pool_->InvalidateTemporaryHandle();
   }
 
   void FreeAllMemory(hip::Stream* stream) const {
@@ -732,6 +702,8 @@ class Graph {
   bool RunGraphAnalysis();
   
   void InvalidateGraphAnalysis();
+
+  void UpdatePtrs(void* old_ptr, void** new_ptr);
 
  protected:
   int max_streams_ = 0;  //!< Maximum number of streams used in the graph launch
@@ -994,6 +966,18 @@ class GraphKernelNode : public GraphNode {
       }
     }
     return {defs, uses};
+  }
+
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    amd::Kernel* kernel = hip::DeviceFunc::asFunction(getFunc(kernelParams_, dev_id_))->kernel();
+    const amd::KernelSignature& signature = kernel->signature();
+    for (unsigned int i = 0; i < numParams_; ++i) {
+      auto ptr = *reinterpret_cast<void**>(kernelParams_.kernelParams[i]);
+      if (ptr == old_ptr) {
+        const amd::KernelParameterDescriptor& desc = signature.at(i);
+        ::memcpy(kernelParams_.kernelParams[i], new_ptr, desc.size_);
+      }
+    }
   }
 
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
@@ -1647,6 +1631,15 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     }
     return {defs, uses};
+  }
+
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    if (dst_ == old_ptr) {
+      dst_ = *new_ptr;
+    }
+    if (src_ == old_ptr) {
+      src_ = *new_ptr;
+    }
   }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) override {
@@ -2448,130 +2441,10 @@ class GraphEmptyNode : public GraphNode {
 };
 
 // ================================================================================================
-class GraphMemAllocNode final : public GraphNode {
-  hipMemAllocNodeParams node_params_;  // Node parameters for memory allocation
-
- public:
-  GraphMemAllocNode(const hipMemAllocNodeParams* node_params)
-      : GraphNode(hipGraphNodeTypeMemAlloc, "solid", "rectangle", "MEM_ALLOC") {
-    node_params_ = *node_params;
-  }
-
-  GraphMemAllocNode(const GraphMemAllocNode& rhs)
-      : GraphNode(rhs) {
-    node_params_ = rhs.node_params_;
-    if (HIP_MEM_POOL_USE_VM) {
-      assert(rhs.node_params_.dptr != nullptr && "Graph MemAlloc runtime can't clone an invalid node!");
-      node_params_.dptr = rhs.node_params_.dptr;
-    }
-  }
-
-  virtual ~GraphMemAllocNode() final {
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      size_t offset = 0;
-      auto memory = getMemoryObject(node_params_.dptr, offset);
-      if (memory) {
-        graph->Free(memory);
-      }
-    }
-  }
-
-  virtual GraphNode* clone() const final { return new GraphMemAllocNode(*this); }
-
-  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
-    return {{node_params_.dptr}, {}};
-  }
-
-  virtual hipError_t CreateCommand(hip::Stream* stream) final {
-    auto error = GraphNode::CreateCommand(stream);
-    if (!HIP_MEM_POOL_USE_VM) {
-      auto ptr = Execute(stream_);
-    } else {
-      auto graph = GetParentGraph();
-      if (graph != nullptr) {
-	auto allocation_commands = graph->GetAllocationCommands(node_params_.dptr, *stream);
-	for (auto cmd : allocation_commands) {
-	  commands_.push_back(cmd);
-	}
-	graph->IncrementMemAllocNodeCount();
-      }
-    }
-    return error;
-  }
-
-  void* ReserveAddress() {
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      // FIXME: 4K is hadcoded for now because checking for alignment would require to have a stream
-      auto aligned_size = amd::alignUp(node_params_.bytesize, 4096);
-      node_params_.dptr = graph->Alloc(aligned_size);
-      ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc reserve VA: %p",
-          node_params_.dptr);
-    }
-    return node_params_.dptr;
-  }
-
-  void* Execute(hip::Stream* stream = nullptr) {
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      auto dptr = graph->AllocateMemory(node_params_.bytesize, stream, node_params_.dptr);
-      node_params_.dptr = dptr;
-    }
-    return node_params_.dptr;
-  }
-
-  void GetParams(hipMemAllocNodeParams* params) const {
-    std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));
-  }
-
-  hipError_t SetParamsInternal(hipMemAllocNodeParams *params) {
-    // Baseline implementation: free previous memory, allocate new memory
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      size_t offset = 0;
-      auto memory = getMemoryObject(node_params_.dptr, offset);
-      if (memory) {
-        graph->Free(memory);
-      }
-    }
-
-    // Now re-allocate memory
-    std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
-    node_params_.dptr = (HIP_MEM_POOL_USE_VM) ? ReserveAddress() : Execute();
-    params->dptr = node_params_.dptr;
-    if (node_params_.dptr == nullptr) {
-      return hipErrorOutOfMemory;
-    }
-
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
-
-    return hipSuccess;
-  }
-
-  hipError_t SetParams(hipMemAllocNodeParams *params) {
-    if (params->bytesize == 0 ||
-	params->poolProps.allocType != hipMemAllocationTypePinned ||
-	params->poolProps.location.type != hipMemLocationTypeDevice) {
-      params->dptr = nullptr;
-      return hipErrorInvalidValue;
-    }
-    if (params->poolProps.location.type == hipMemLocationTypeDevice) {
-      if (params->poolProps.location.id < 0 ||
-	  params->poolProps.location.id >= g_devices.size()) {
-	return hipErrorInvalidValue;
-      }
-    }
-
-    return SetParamsInternal(params);
-  }
-};
-
-// ================================================================================================
 class GraphMemFreeNode : public GraphNode {
   void* device_ptr_;    // Device pointer of the freed memory
+  amd::GraphSlab* slab_ = nullptr;
+  bool is_last_ = false;
 
  public:
   GraphMemFreeNode(void* dptr)
@@ -2587,19 +2460,40 @@ class GraphMemFreeNode : public GraphNode {
     return {{}, {device_ptr_}};
   }
 
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    if (device_ptr_ == old_ptr) {
+      device_ptr_ = *new_ptr;
+    }
+  }
+
+  void UpdateSlab(amd::GraphSlab* slab) {
+    slab_ = slab;
+  }
+
+  void SetLast() {
+    is_last_ = true;
+  }
+
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
     if (!HIP_MEM_POOL_USE_VM) {
       Execute(stream_);
     } else {
+      size_t offset = 0;
+      auto memory = getMemoryObject(device_ptr_, offset);
+      if (memory) {
+	amd::MemObjMap::RemoveMemObj(device_ptr_);
+	memory->release();
+      }
+
       auto graph = GetParentGraph();
-      if (graph != nullptr) {
-	auto deallocation_commands = graph->GetDeallocationCommands(*stream);
-	for (auto cmd : deallocation_commands) {
-	  commands_.push_back(cmd);
+      if (graph != nullptr && is_last_) {
+	assert(slab_ != nullptr);
+	auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
+	if (nullptr != unmap_command) {
+	  commands_.push_back(unmap_command);
 	}
 	graph->DecrementMemAllocNodeCount();
-        ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph FreeMem create: %p", device_ptr_);
       }
     }
     return error;
@@ -2608,7 +2502,17 @@ class GraphMemFreeNode : public GraphNode {
   void Execute(hip::Stream* stream) {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
-      graph->FreeMemory(device_ptr_, stream);
+      size_t offset = 0;
+      auto memory = getMemoryObject(device_ptr_, offset);
+      if (memory != nullptr && memory->getUserData().data != nullptr) {
+	slab_ = reinterpret_cast<amd::GraphSlab*>(memory->getUserData().data);
+	auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
+	if (nullptr != unmap_command) {
+	  unmap_command->enqueue();
+	  unmap_command->awaitCompletion();
+	  unmap_command->release();
+	}
+      }
     }
   }
 
@@ -2644,6 +2548,220 @@ class GraphMemFreeNode : public GraphNode {
   }
 };
 
+// ================================================================================================
+class GraphMemAllocNode final : public GraphNode {
+  hipMemAllocNodeParams node_params_;  // Node parameters for memory allocation
+  std::vector<GraphMemAllocNode*> peers_;
+  GraphMemAllocNode* leader_ = nullptr;
+  GraphMemFreeNode* last_free_node_ = nullptr;
+  amd::GraphSlab* slab_ = nullptr;
+  amd::Command* slab_map_command_ = nullptr;
+  size_t slab_size_;
+  size_t slab_offset_;
+  void* temporary_handle_ = nullptr;
+
+ public:
+  GraphMemAllocNode(const hipMemAllocNodeParams* node_params)
+      : GraphNode(hipGraphNodeTypeMemAlloc, "solid", "rectangle", "MEM_ALLOC") {
+    node_params_ = *node_params;
+  }
+
+  GraphMemAllocNode(const GraphMemAllocNode& rhs)
+      : GraphNode(rhs) {
+    node_params_ = rhs.node_params_;
+    temporary_handle_ = rhs.temporary_handle_;
+    if (HIP_MEM_POOL_USE_VM) {
+      assert(rhs.node_params_.dptr != nullptr && "Graph MemAlloc runtime can't clone an invalid node!");
+      node_params_.dptr = rhs.node_params_.dptr;
+    }
+  }
+
+  virtual ~GraphMemAllocNode() final {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      if (slab_ != nullptr) {
+	if (leader_ == this) {
+	  graph->FreeSlab(slab_);
+	}
+      } else {
+	graph->InvalidateTemporaryHandle();
+      }
+    }
+  }
+
+  virtual GraphNode* clone() const final { return new GraphMemAllocNode(*this); }
+
+  virtual std::pair<std::set<void*>, std::set<void*>> Values() const final {
+    return {{node_params_.dptr}, {}};
+  }
+
+  size_t Bytesize() const {
+    return node_params_.bytesize;
+  }
+
+  void SetLeader(std::vector<GraphMemAllocNode*> peers, GraphMemFreeNode* last_free_node) {
+    peers_ = peers;
+    leader_ = this;
+    slab_size_ = node_params_.bytesize;
+    slab_offset_ = 0;
+    last_free_node_ = last_free_node;
+    for (auto peer : peers) {
+      peer->UpdateLeader(this);
+    }
+  }
+
+  void UpdateLeader(GraphMemAllocNode* leader) {
+    leader_ = leader;
+  }
+
+  void UpdateSlab(amd::GraphSlab* slab, amd::Command* slab_map_command) {
+    slab_ = slab;
+    slab_map_command_ = slab_map_command;
+  }
+
+  void ReleaseSlab() {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      assert(slab_);
+      graph->FreeSlab(slab_);
+      slab_ = nullptr;
+      for (auto peer : peers_) {
+	peer->InvalidateSlab();
+      }
+    }
+  }
+
+  void InvalidateSlab() {
+    slab_ = nullptr;
+  }
+
+  virtual hipError_t CreateCommand(hip::Stream* stream) final {
+    auto error = GraphNode::CreateCommand(stream);
+    if (!HIP_MEM_POOL_USE_VM) {
+      auto ptr = Execute(stream_);
+    } else {
+      auto graph = GetParentGraph();
+
+      if (graph != nullptr) {
+	if (leader_ == this && slab_ == nullptr) {
+	  // This node is the `leader`: it allocates the slab and passes it
+	  // to its peers
+	  slab_ = graph->AllocateSlab(slab_size_);
+	  slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
+	  if (nullptr != slab_map_command_) {
+	    commands_.push_back(slab_map_command_);
+	  }
+
+	  for (auto peer : peers_) {
+	    peer->UpdateSlab(slab_, slab_map_command_);
+	  }
+	  if (last_free_node_) {
+	    last_free_node_->UpdateSlab(slab_);
+	  }
+	}
+
+	// AllocateSlab or UpdateSlab should have been called prior to this
+	assert(slab_ != nullptr);
+
+	node_params_.dptr = (void*) ((size_t) slab_->MemPtr() + slab_offset_);
+	graph->UpdatePtrs(temporary_handle_, &node_params_.dptr);
+
+	// Everyone "allocates" in the slab
+	commands_.push_back(graph->GetAllocationCommand(slab_, *stream, slab_map_command_, node_params_.bytesize, slab_offset_));
+	slab_map_command_ = nullptr;
+
+	graph->IncrementMemAllocNodeCount();
+      }
+    }
+    return error;
+  }
+
+  void* ReserveAddress() {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      temporary_handle_ = graph->AllocateTemporaryHandle();
+      node_params_.dptr = temporary_handle_;
+    }
+    return node_params_.dptr;
+  }
+
+  void* Execute(hip::Stream* stream = nullptr) {
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      slab_size_ = node_params_.bytesize;
+      slab_offset_ = 0;
+      slab_ = graph->AllocateSlab(slab_size_);
+
+      slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
+      if (slab_map_command_) {
+	slab_map_command_->enqueue();
+      }
+      node_params_.dptr = (void*) ((size_t) slab_->MemPtr() + slab_offset_);
+      auto allocation_command = graph->GetAllocationCommand(slab_, *stream, slab_map_command_, node_params_.bytesize, slab_offset_);
+      assert(allocation_command);
+      allocation_command->enqueue();
+
+      if (slab_map_command_) {
+	slab_map_command_->awaitCompletion();
+	slab_map_command_->release();
+      }
+      allocation_command->awaitCompletion();
+      allocation_command->release();
+    }
+    return node_params_.dptr;
+  }
+
+  void GetParams(hipMemAllocNodeParams* params) const {
+    std::memcpy(params, &node_params_, sizeof(hipMemAllocNodeParams));
+  }
+
+  hipError_t SetParamsInternal(hipMemAllocNodeParams *params) {
+    auto graph = GetParentGraph();
+    if (graph == nullptr) {
+      return hipSuccess;
+    }
+
+    if (!HIP_MEM_POOL_USE_VM) {
+      graph->FreeSlab(slab_);
+      node_params_.dptr = Execute();
+    } else {
+      // Two cases
+
+      if (slab_ == nullptr) {
+	// 1. The node hasn't been run yet, in which case do nothing
+	std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
+      } else {
+	// 2. The node has been run, release the slab through the leader 
+	leader_->ReleaseSlab();
+	std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
+      }
+      node_params_.dptr = temporary_handle_;
+    }
+
+    graph->InvalidateGraphAnalysis();
+
+    return hipSuccess;
+  }
+
+  hipError_t SetParams(hipMemAllocNodeParams *params) {
+    if (params->bytesize == 0 ||
+	params->poolProps.allocType != hipMemAllocationTypePinned ||
+	params->poolProps.location.type != hipMemLocationTypeDevice) {
+      params->dptr = nullptr;
+      return hipErrorInvalidValue;
+    }
+    if (params->poolProps.location.type == hipMemLocationTypeDevice) {
+      if (params->poolProps.location.id < 0 ||
+	  params->poolProps.location.id >= g_devices.size()) {
+	return hipErrorInvalidValue;
+      }
+    }
+
+    return SetParamsInternal(params);
+  }
+};
+
+// ================================================================================================
 class GraphDrvMemcpyNode : public GraphNode {
   HIP_MEMCPY3D copyParams_;
 

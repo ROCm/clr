@@ -174,19 +174,13 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
     // can reduce mempool reserved memory efficiency
     size_t offset = 0;
     auto memory = getMemoryObject(dev_ptr, offset);
-    if (memory != nullptr) {
+    if (memory != nullptr && memory->getUserData().data != nullptr) {
+      auto slab = reinterpret_cast<amd::GraphSlab*>(memory->getUserData().data);
       for (auto dev : g_devices) {
-	graph_in_use |= dev->GetGraphMemoryPool()->Free(memory);
-	if (!graph_in_use) {
-	  continue;
-	}
-
-	auto deallocation_commands = dev->GetGraphMemoryPool()->GetDeallocationCommands(*s);
-	for (auto cmd : deallocation_commands) {
-	  cmd->enqueue();
-	  cmd->release();
-	}
-	break;
+	graph_in_use |= dev->GetGraphMemoryPool()->FreeSlab(slab);
+        if (graph_in_use) {
+          break;
+        }
       }
     }
   }

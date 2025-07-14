@@ -29,129 +29,103 @@
 
 namespace amd {
 
-class GraphHeapBlock;
 class GraphVmHeap;
 class GraphVmHeapArray;
 
-class GraphHeapBlock : public amd::HeapObject {
+class GraphSlab : public amd::HeapObject {
 public:
   friend GraphVmHeap;
-  //! Constructor
-  GraphHeapBlock(
-      GraphVmHeap* owner = nullptr,  //!< GraphVmHeap object that owns this heap block
-      size_t size = 0,          //!< Heap block size for allocation
-      size_t offset = 0)        //!< Heap block offset
-      : owner_(owner)
-      , size_(size)
-      , offset_(offset)
-      , next_(nullptr)
-      , prev_(nullptr)
-      , busy_(false)
-      {}
 
-  //! Destructor does some sanity checks
-  ~GraphHeapBlock() { assert(!busy_ && "The blocked must be destroyed explicitly!"); }
+  GraphSlab(GraphVmHeap* owner, size_t size, size_t offset, void* mem_ptr)
+    : owner_(owner),
+      size_(size),
+      offset_(offset),
+      mem_ptr_(mem_ptr),
+      buddy_(nullptr),
+      next_(nullptr),
+      prev_(nullptr),
+      busy_(false),
+      mapped_(false) {}
 
-  //! Gets the offset
-  size_t Offset() const { return offset_; }
+  GraphVmHeap* Owner() const {
+    return owner_;
+  }
 
-  //! Gets the size
-  size_t Size() const { return size_; }
+  void* MemPtr() const {
+    return mem_ptr_;
+  }
 
-  //! Gets the busy flag
-  bool Busy() const { return busy_; }
+  size_t Size() const {
+    return size_;
+  }
+
+  void Mapped() {
+    mapped_.store(true);
+  }
+
+  void Unmapped() {
+    mapped_.store(false);
+  }
 
 private:
-  GraphHeapBlock() = delete;
-  GraphHeapBlock(const GraphHeapBlock&) = delete;
-  GraphHeapBlock& operator=(const GraphHeapBlock&) = delete;
+  GraphSlab() = delete;
+  GraphSlab(const GraphSlab&) = delete;
+  GraphSlab& operator=(const GraphSlab&) = delete;
 
-  GraphVmHeap*     owner_;   //!< Heap that owns this block
-  size_t      size_;    //!< Size of the block in bytes
-  size_t      offset_;  //!< Offset of this block in the heap
-  GraphHeapBlock*  next_;    //!< Next block on the list, or nullptr
-  GraphHeapBlock*  prev_;    //!< Previous block on the list, or nullptr
-  bool        busy_;    //!< True if the block is in use
+  GraphVmHeap* owner_;
+  size_t size_;
+  size_t offset_; //!< stores offset from the owner's base_address_
+  void* mem_ptr_; //!< stores ptr to base_address_ + offset_ + block_alignment_
+  GraphSlab* buddy_;
+  GraphSlab* next_;
+  GraphSlab* prev_;
+
+  std::atomic<bool> busy_;
+  std::atomic<bool> mapped_;
 };
 
 class GraphVmHeap {
-  // Wrapper around STL's atomic that allows to have vectors of atomics
-  template <typename T>
-  struct atomwrapper
-  {
-    std::atomic<T> _a;
-    
-    atomwrapper() : _a() {}
-
-    atomwrapper(const std::atomic<T> &a) : _a(a.load()) {}
-
-    atomwrapper(const atomwrapper &other) : _a(other._a.load()) {}
-
-    atomwrapper &operator=(const atomwrapper &other) { _a.store(other._a.load()); }
-
-    T load() { return _a.load(); }
-    
-    void store(T val) { return _a.store(val); }
-
-    T fetch_add(T val) { return _a.fetch_add(val); }
-
-    T fetch_sub(T val) { return _a.fetch_sub(val); }
-  };
-
   // A command that creates an amd::Buffer for a GraphHeapBlock. Runs after all the physical chunks of the block have been mapped.
   class CreateMemoryCommand : public Command {
     public:
-      CreateMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, GraphHeapBlock* block, Memory* base_memory, size_t block_alignment, GraphVmHeap *vm_heap)
+      CreateMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, GraphSlab* slab, Memory* base_memory, size_t size, size_t offset)
 	:
 	  Command(queue, 0, eventWaitList, 0, nullptr),
 	  ptr_(ptr),
-	  block_(block),
+	  slab_(slab),
 	  base_memory_(base_memory),
-	  block_alignment_(block_alignment),
-	  vm_heap_(vm_heap) {}
+	  size_(size),
+	  offset_(offset) {}
 
       virtual void submit(device::VirtualDevice& device) final {
-	size_t size = block_->Size() - block_alignment_;
-	size_t offset = ((block_->Offset() & ~kChunkSize) == 0) ? block_->Offset() + block_alignment_ : block_->Offset();
-	auto memory = new (base_memory_->getContext()) Buffer(*base_memory_, 0, offset, size);
+	auto memory = new (base_memory_->getContext()) Buffer(*base_memory_, 0, offset_, size_);
 	if (nullptr == memory || !memory->create(nullptr)) {
-	  // FIXME: FreeBlock() ?
+	  LogError("Creating memory inside slab failed.");
 	  return;
 	}
 	MemObjMap::AddMemObj(ptr_, memory);
 	if (memory->getUserData().data == nullptr) {
-	  memory->getUserData().data = block_;
+	  memory->getUserData().data = slab_;
 	}
       }
     private:
       void* ptr_;
-      GraphHeapBlock* block_;
+      GraphSlab* slab_;
       Memory* base_memory_;
-      size_t block_alignment_;
-      GraphVmHeap* vm_heap_;
+      size_t size_;
+      size_t offset_;
   };
 
   // A command that allocates and maps physical chunks of memory  
   class CommitMemoryCommand : public VirtualMapCommand {
     public:
-      CommitMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, size_t size, Memory* memory, GraphVmHeap* vm_heap, size_t chunk_idx)
+      CommitMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, size_t size, Memory* memory, GraphSlab* slab, GraphVmHeap* vm_heap)
 	: VirtualMapCommand(queue, eventWaitList, ptr, size, memory),
 	  vm_heap_(vm_heap),
-	  chunk_idx_(chunk_idx),
+	  slab_(slab),
 	  mptr_(ptr) {}
 
       virtual void submit(device::VirtualDevice& device) final {
-	// This command lost the race, bail
-	if (vm_heap_->mapped_mem_[chunk_idx_].load()) {
-	  return;
-	}
-
-	ScopedLock(*vm_heap_->chunk_locks_[chunk_idx_]);
-
-	if (vm_heap_->mapped_mem_[chunk_idx_].load()) {
-	  return;
-	}
-
 	const auto& dev_info = vm_heap_->device_->info();
 
 	// Allocate physical memory
@@ -174,103 +148,82 @@ class GraphVmHeap {
 	  LogError("SetAccess failed for the commited memory in GraphVmHeap!");
 	}
 
-	// Update mapped size in GraphVmHeap, signal that mapping succeeded
+	// Update mapped size in GraphVmHeap
 	auto mapped_size = vm_heap_->mapped_size_.fetch_add(size_);
 	auto prev_max_mapped_size = vm_heap_->max_mapped_size_.load();
 	while (prev_max_mapped_size < prev_max_mapped_size + size_ &&
 	  !vm_heap_->max_mapped_size_.compare_exchange_weak(prev_max_mapped_size, prev_max_mapped_size + size_)) {}
-	vm_heap_->mapped_mem_[chunk_idx_].store(true);
+
+	slab_->Mapped();
       }
     private:
       GraphVmHeap* vm_heap_;
-      size_t chunk_idx_;
+      GraphSlab* slab_;
       void* mptr_;
   };
 
   // A command that unmaps and deallocates physical chunks of memory
   class UncommitMemoryCommand : public VirtualMapCommand {
     public:
-      UncommitMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, size_t size, Memory* memory, GraphVmHeap* vm_heap, size_t chunk_idx)
-	: VirtualMapCommand(queue, eventWaitList, ptr, size, memory),
-	  vm_heap_(vm_heap),
-	  chunk_idx_(chunk_idx),
-	  mptr_(ptr) {}
+      UncommitMemoryCommand(HostQueue& queue, const Event::EventWaitList& eventWaitList, void* ptr, size_t size, Memory* memory, GraphSlab* slab, GraphVmHeap* vm_heap, bool unmap_guaranteed)
+        : VirtualMapCommand(queue, eventWaitList, ptr, size, memory),
+          vm_heap_(vm_heap),
+	  slab_(slab),
+          mptr_(ptr),
+	  unmap_guaranteed_(unmap_guaranteed) {}
 
       virtual void submit(device::VirtualDevice& device) final {
-	// This command either lost the race or a block was put in the chunk, bail
-	if (!vm_heap_->mapped_mem_[chunk_idx_].load() || vm_heap_->resident_blocks_[chunk_idx_].load() != 0) {
-	  return;
-	}
+        auto busy_size = vm_heap_->va_size_ - vm_heap_->free_size_;
+        uint64_t free_mapped = vm_heap_->mapped_size_.load() - busy_size;
+        // If free mapped memory lower than the threshold, then stop unmapping
+        if (!unmap_guaranteed_ && free_mapped <= vm_heap_->unmap_threshold_) {
+          return;
+        }
 
-	ScopedLock k(*vm_heap_->chunk_locks_[chunk_idx_]);
+        Memory* vaddr_sub_obj = MemObjMap::FindMemObj(mptr_);
+        Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
 
-	// This command either lost the race or a block was put in the chunk, bail
-	if (!vm_heap_->mapped_mem_[chunk_idx_].load() || vm_heap_->resident_blocks_[chunk_idx_].load() != 0) {
-	  return;
-	}
+        // Unmap the physical memory from a virtual address
+        VirtualMapCommand::submit(device);
 
-	auto busy_size = vm_heap_->va_size_ - vm_heap_->free_size_;
-	uint64_t free_mapped = alignDown(vm_heap_->mapped_size_.load() - busy_size, vm_heap_->chunk_size_);
-	// If free mapped memory lower than the threshold, then stop unmapping
-	if (free_mapped <= vm_heap_->unmap_threshold_) {
-	  return;
-	}
+        vaddr_sub_obj->release();
 
-	Memory* vaddr_sub_obj = MemObjMap::FindMemObj(mptr_);
-	Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
+        // Deallocate physical memory
+        SvmBuffer::free(vm_heap_->device_->context(), phys_mem_obj->getSvmPtr());
 
-	// Unmap the physical memory from a virtual address
-	VirtualMapCommand::submit(device);
+        vm_heap_->mapped_size_.fetch_sub(size_);
 
-	vaddr_sub_obj->release();
-
-	// Deallocate physical memory
-	SvmBuffer::free(vm_heap_->device_->context(), phys_mem_obj->getSvmPtr());
-
-	vm_heap_->mapped_size_.fetch_sub(vm_heap_->chunk_size_);
-	vm_heap_->mapped_mem_[chunk_idx_].store(false);
+	slab_->Unmapped();
       }
     private:
       GraphVmHeap* vm_heap_;
-      size_t chunk_idx_;
+      GraphSlab* slab_;
       void* mptr_;
+      bool unmap_guaranteed_;
   };
-
 public:
   friend GraphVmHeapArray;
-  static const size_t kChunkSize = 32 * Mi; //!< Chunk size, must be power of 2
-  static const size_t kMinBlockAlignment = 256;
   typedef std::function<amd::HostQueue&()> GetQueueFunc;
 
   GraphVmHeap(Device* device,        //!< GPU device object
          GetQueueFunc get_queue //!< Function to retrieve a map queue
          )
-      : GraphVmHeap(device, device->info().globalMemSize_ / 8, kChunkSize, get_queue) {
+      : GraphVmHeap(device, device->info().globalMemSize_ / 8, get_queue) {
   }
 
   GraphVmHeap(Device* device,        //!< GPU device object
          size_t  va_size,       //!< The size of the allocated heap (bytes).Virtual address space
-         size_t  chunk_size,    //!< The size of single chunk for physical memory growth
          GetQueueFunc get_queue //!< Function to retrieve a map/unmap queue
          );
 
   //! Heap destructor
   virtual ~GraphVmHeap();
 
-  //! Returns a pointer to the allocated device memory from a heap
-  address Alloc(
-      size_t size,     //! The allocation size
-      bool should_reuse_physical
-      );
-
-  //! Release memory back to the VM heap
-  void Free(amd::Memory* memory);
-
   //! Release all heap blocks
   void FreeAllMemory();
 
   //! Unmaps freed memory based on the threshold
-  void TrimPhysMemory(size_t unmap_threshold, bool immediate = false);
+  void TrimPhysMemory(size_t unmap_threshold);
 
   //! Enable memory unmap threashold (default 0 unmap always)
   void SetUnmapThreshold(uint64_t threshold) { unmap_threshold_ = threshold; }
@@ -295,12 +248,15 @@ public:
     return ((addr >= base_address_) && (addr <= (base_address_ + va_size_))) ? true : false;
   }
 
-  //! Creates commands to map physical memory chunks corresponding to object at ptr
-  std::vector<Command*> GetAllocationCommands(void* ptr, HostQueue& queue);
+  Command* GetSlabMapCommand(GraphSlab* slab, HostQueue& queue);
 
-  //! Creates commands to unmap physical memory chunks
-  std::vector<Command*> GetDeallocationCommands(amd::HostQueue& queue);
+  Command* GetSlabUnmapCommand(GraphSlab* slab, HostQueue& queue, bool unmap_guaranteed = false);
 
+  Command* GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset);
+
+  GraphSlab* AllocateSlab(size_t size);
+
+  void FreeSlab(GraphSlab* slab);
 private:
   GraphVmHeap() = delete;
   GraphVmHeap(const GraphVmHeap&) = delete;
@@ -310,59 +266,41 @@ private:
   bool Create();
 
   //! Reseves address range for memory allocations
-  address ReserveAddressRange(address start, size_t size, size_t alignment);
+  address ReserveAddressRange(address start, size_t size);
 
   //! Releases address range specified by the address
   bool ReleaseAddressRange(void* addr);
 
-  //! Uncommits physical memory from the spcified address
-  bool UncommitMemory(void* addr, size_t size);
+  void UnmapSlab(GraphSlab* slab);
 
-  GraphHeapBlock* AllocBlock(size_t size,  //! The allocation size
-			     bool should_reuse_physical
-                        );
+  GraphSlab* GetSlab(size_t size);
 
-  //! Release memory back to a heap
-  void FreeBlock(GraphHeapBlock* blk);
+  void ReturnSlab(GraphSlab* slab);
 
-  //! Insert a block into a list
-  void InsertBlock(GraphHeapBlock** list, GraphHeapBlock* node);
+  GraphSlab* PopBin(std::vector<GraphSlab*>& bins, size_t bin_idx);
 
-  //! Merge a block into a list
-  void MergeBlock(GraphHeapBlock** list, GraphHeapBlock* node);
+  void RemoveBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab);
 
-  //! Remove a block from a list
-  void DetachBlock(GraphHeapBlock** list, GraphHeapBlock* node);
+  void PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab);
 
-  //! Splits a block into two pieces
-  GraphHeapBlock* SplitBlock(GraphHeapBlock* node, size_t size);
+  void SplitSlab(GraphSlab* slab, size_t bin_idx);
 
-  //! Gets ready to map physical memory into specified block
-  void MapPhysMemory(GraphHeapBlock* block, void* ptr);
-
-  //! Gets ready to unmap physical memory from the specified block
-  void UnmapPhysMemory(GraphHeapBlock* block);
-
-  //! Unmaps physical memory from the specified address
-  void UnmapPhysMemory(size_t offset, size_t size);
-
-  //! Checks that the block already has all necessary physical memory
-  bool BlockFullyMapped(GraphHeapBlock* block, size_t size);
-
-  //! Join two blocks, transferring the size of the second into the first and deleting the second
-  void Join2Blocks(GraphHeapBlock* first, GraphHeapBlock* second) const;
+  GraphSlab* CoalesceSlab(GraphSlab* slab1, GraphSlab* slab2);
 
   //! Returns a queue for VM map/unmap operations
   amd::HostQueue& GetVmQueue() const { return get_vm_queue_(); }
 
+  static constexpr size_t kMinPow2_ = (12); // 4KB
+  static constexpr size_t kMinSplitSize_ = (1 << kMinPow2_);
+  size_t max_bin_idx_;
+  std::vector<GraphSlab*> free_bins_;
+  std::vector<GraphSlab*> busy_bins_;
+
   address       base_address_ = nullptr;  //!< GPU virtual address base of the heap
   Memory*  base_memory_ = nullptr;   //!< VA space base object, used in the view creation
-  GraphHeapBlock*    free_list_ = nullptr;     //!< Head block for free list
-  GraphHeapBlock*    busy_list_ = nullptr;     //!< Head block for busy list
   size_t        free_size_ = 0;           //!< Total free size of the heap (both mapped and unmapped)
   size_t        va_size_ = 0;             //!< Heap virtual address space size
-  size_t        block_alignment_ = 1;     //!< Size of an allocation page
-  size_t        chunk_size_ = 0;          //!< Chunk size (min physical allocation for the growth)
+  size_t        block_alignment_ = 8;     //!< Size of an allocation page
   uint64_t      unmap_threshold_ = 0;     //!< Unmap threshold in bytes,used to release phys memory
   std::atomic<uint64_t>      mapped_size_ = 0;         //!< Size of mapped memory
   std::atomic<uint64_t>      max_mapped_size_ = 0;     //!< Max size of mapped memory in this heap
@@ -371,13 +309,31 @@ private:
   amd::Monitor  lock_;                    //!< Lock to serialise heap accesses
   Device*       device_;                  //!< Device that owns this heap
   GetQueueFunc  get_vm_queue_;            //!< Queue for VM operations
+};
 
-  std::map<GraphHeapBlock*, std::vector<size_t>> blocks_to_map; //!< Blocks that need to be mapped
-  std::set<size_t> chunks_to_unmap;                             //!< Chunks that need to be unmapped
-  std::map<void*, GraphHeapBlock*> heap_block_lookup;           //!< A map from memory pointers to heap blocks
-  std::vector<atomwrapper<uint32_t>> resident_blocks_;          //!< Number of resident blocks per chunk, the size is total_size/chunk_size
-  std::vector<amd::Monitor *> chunk_locks_;                     //!< One lock per physical memory chunk, the size is total_size/chunk_size
-  std::vector<atomwrapper<bool>> mapped_mem_;                   //!< A map of mapped memory, the size is total_size/chunk_size
+class GraphTemporaryHeap {
+public:
+  GraphTemporaryHeap(Device* device_, size_t num_handles);
+
+  void* Allocate();
+
+  void Invalidate();
+
+  bool InRange(void* ptr);
+
+  bool Created() {
+    return created_.load();
+  }
+private:
+  void Create();
+
+  Device* device_;
+  std::atomic<size_t> bump_counter_;
+  std::atomic<size_t> invalidated_handles_;
+  size_t num_handles_;
+  char* base_ptr_;
+  amd::Monitor lock_;
+  std::atomic<bool> created_;
 };
 
 //! Implements an array of vm heaps of different sizes for more efficient management
@@ -385,29 +341,16 @@ class GraphVmHeapArray {
 public:
   GraphVmHeapArray(Device* device,    //!< GPU device object
               GraphVmHeap::GetQueueFunc get_queue  //!< Function to retrieve a map queue
-  ) : heap0_(device, device->info().globalMemSize_ / 4, GraphVmHeap::kChunkSize, get_queue)
-    , heap1_(device, device->info().globalMemSize_ / 4, GraphVmHeap::kChunkSize, get_queue)
-    , heap2_(device, device->info().globalMemSize_ / 4, GraphVmHeap::kChunkSize, get_queue)
-    , heap3_(device, device->info().globalMemSize_ / 4, GraphVmHeap::kChunkSize, get_queue)
-    , large_heap_(device, device->info().globalMemSize_ / 4, GraphVmHeap::kChunkSize, get_queue)
+  ) : heap0_(device, device->info().globalMemSize_ / 4, get_queue)
+    , heap1_(device, device->info().globalMemSize_ / 4, get_queue)
+    , heap2_(device, device->info().globalMemSize_ / 4, get_queue)
+    , heap3_(device, device->info().globalMemSize_ / 4, get_queue)
+    , large_heap_(device, device->info().globalMemSize_, get_queue)
+    , tmp_heap_(device, 32768) //!< 32K handles, should be more than enough
     , device_(device) {}
-
-  //! Returns a pointer to the allocated device memory from a heap
-  address Alloc(
-    size_t size     //! The allocation size
-    );
 
   //! Checks that ptr was allocated from this GraphVmHeapArray
   bool IsValidAllocation(void* ptr);
-
-  //! Creates commands to map physical memory chunks corresponding to object at ptr
-  std::vector<Command*> GetAllocationCommands(void* ptr, HostQueue& queue);
-
-  //! Creates commands to unmap physical memory chunks
-  std::vector<Command*> GetDeallocationCommands(HostQueue& queue);
-
-  //! Release memory back to the VM heap
-  bool Free(amd::Memory* memory);
 
   //! Immediately frees and trims all memory
   void FreeAllMemory(HostQueue& queue);
@@ -430,9 +373,6 @@ public:
   //! Returns the maximum mapped memory size
   void ResetMaxMappedSize();
 
-  //! Checks if memory is active and belongs to the busy heap
-  bool IsBusyMemory(Memory* memory) const;
-
   //! Gets current size of all heaps (both mapped and unmapped)
   size_t TotalSize() const;
 
@@ -441,6 +381,20 @@ public:
 
   //! Gets maximum size of all heaps (both mapped and unmapped)  
   size_t MaxTotalSize() const;
+
+  Command* GetSlabMapCommand(GraphSlab* slab, HostQueue& queue);
+
+  Command* GetSlabUnmapCommand(GraphSlab* slab, HostQueue& queue);
+
+  Command* GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset);
+
+  void* AllocateTemporaryHandle();
+
+  void InvalidateTemporaryHandle();
+
+  GraphSlab* AllocateSlab(size_t size);
+
+  bool FreeSlab(GraphSlab* slab);
 
 private:
   GraphVmHeapArray() = delete;
@@ -456,6 +410,7 @@ private:
   GraphVmHeap  heap2_;
   GraphVmHeap  heap3_;
   GraphVmHeap  large_heap_;
+  GraphTemporaryHeap tmp_heap_;
 
   uint64_t unmap_threshold_ = 0;  //!< Unmap threshold in bytes,used to release phys memory
   Device* device_;                //!< Device that owns this heap

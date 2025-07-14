@@ -29,9 +29,9 @@
 namespace amd {
 
 // ================================================================================================
-address GraphVmHeap::ReserveAddressRange(address start, size_t size, size_t alignment) {
+address GraphVmHeap::ReserveAddressRange(address start, size_t size) {
   // Reserve a virtual address range on the device
-  void* ptr = device_->virtualAlloc(start, size, alignment);
+  void* ptr = device_->virtualAlloc(start, size, 4096);
   // Save base memory object to accelerate access in the future
   base_memory_ = MemObjMap::FindVirtualMemObj(ptr);
   return reinterpret_cast<address>(ptr);
@@ -49,91 +49,33 @@ bool GraphVmHeap::ReleaseAddressRange(void* addr) {
   return true;
 }
 
-// ================================================================================================
-std::vector<Command*> GraphVmHeap::GetAllocationCommands(void* ptr, HostQueue& queue) {
-  ScopedLock k(lock_);
-
-  if (heap_block_lookup.find(ptr) == heap_block_lookup.end()) {
-    return {};
+size_t RoundUpPow2(size_t val) {
+  if (val == 0) {
+    return 1;
   }
-
-  auto block = heap_block_lookup[ptr];
-
-  std::vector<Command*> out;
-
-  const auto& dev_info = device_->info();
-  size_t granularity = dev_info.virtualMemAllocGranularity_;
-  auto padded_size = alignUp(chunk_size_, granularity);
-
-  for (auto chunk_idx : blocks_to_map[block]) {
-    resident_blocks_[chunk_idx].fetch_add(1);
-    auto addr = base_address_ + chunk_idx * chunk_size_;
-    if (!mapped_mem_[chunk_idx].load()) {
-      out.push_back(new CommitMemoryCommand(queue, Command::EventWaitList{}, addr, padded_size, nullptr, this, chunk_idx));
-    }
-  }
-
-  blocks_to_map.erase(block);
-
-  std::vector<Event*> wait_list;
-  for (auto e : out) {
-    wait_list.push_back(e);
-  }
-
-  out.push_back(new CreateMemoryCommand(queue, wait_list, ptr, block, base_memory_, block_alignment_, this));
-
-  return out;
+  val--;
+  val |= val >> 1;
+  val |= val >> 2;
+  val |= val >> 4;
+  val |= val >> 8;
+  val |= val >> 16;
+  val |= val >> 32;
+  val++;
+  return val;
 }
 
-std::vector<Command*> GraphVmHeap::GetDeallocationCommands(HostQueue& queue) {
-  ScopedLock k(lock_);
-
-  std::vector<Command*> out;
-  
-  for (auto chunk_idx : chunks_to_unmap) {
-    auto addr = base_address_ + chunk_idx * chunk_size_;
-    if (resident_blocks_[chunk_idx].load() == 0) {
-      out.push_back(new UncommitMemoryCommand(queue, Command::EventWaitList{}, addr, chunk_size_, nullptr, this, chunk_idx));
-    }
-  }
-
-  chunks_to_unmap = {};
-
-  return out;
+size_t GetPow2(size_t val) {
+  return __builtin_ctzll(val);
 }
 
 // ================================================================================================
-bool GraphVmHeap::UncommitMemory(void* addr, size_t size) {
-  Memory* vaddr_sub_obj = MemObjMap::FindMemObj(addr);
-
-  if (vaddr_sub_obj == nullptr) {
-    return true;
-  }
-
-  Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
-
-  // Unmap the physical memory from a virtual address
-  Command* cmd = new VirtualMapCommand(
-    GetVmQueue(), Command::EventWaitList{}, addr, size, nullptr);
-  cmd->enqueue();
-  cmd->awaitCompletion();
-  cmd->release();
-  vaddr_sub_obj->release();
-  if (phys_mem_obj) {
-    SvmBuffer::free(device_->context(), phys_mem_obj->getSvmPtr());
-  }
-  return true;
-}
-
-// ================================================================================================
-GraphVmHeap::GraphVmHeap(Device* device, size_t va_size, size_t chunk_size, GetQueueFunc get_queue)
-  : block_alignment_(kMinBlockAlignment)
-  , chunk_size_(chunk_size)
-  , lock_(true)
+GraphVmHeap::GraphVmHeap(Device* device, size_t va_size, GetQueueFunc get_queue) :
+   lock_(true)
   , device_(device)
-  , get_vm_queue_(get_queue) {
-  va_size_ = alignUp(va_size, chunk_size);
-  unmap_threshold_ = va_size / 2;
+  , get_vm_queue_(get_queue)
+  , va_size_(RoundUpPow2(va_size)) {
+  assert((double) va_size_ / va_size < 1.1 && "Rounding up GraphVmHeap size to a power of two would result in significant size increase");
+  unmap_threshold_ = va_size_ / 2;
   free_size_ = va_size_;
 }
 
@@ -144,17 +86,9 @@ GraphVmHeap::~GraphVmHeap() {
 
     FreeAllMemory();
 
-    if (mapped_mem_.size() > 0) {
-      // Unmap the entire memory range
-      UnmapPhysMemory(0, va_size_);
-    }
     // Destroy virtual address space
     if (base_address_ != nullptr) {
       ReleaseAddressRange(base_address_);
-    }
-
-    for (auto l : chunk_locks_) {
-      delete l;
     }
   }
 }
@@ -162,26 +96,18 @@ GraphVmHeap::~GraphVmHeap() {
 // ================================================================================================
 bool GraphVmHeap::Create() {
   // Create a new GPU resource
-  base_address_ = ReserveAddressRange(0, va_size_, kChunkSize);
+  base_address_ = ReserveAddressRange(0, va_size_);
   if (base_address_ == nullptr) {
     return false;
   }
   free_size_ = va_size_;
-  // Set up initial free list
-  free_list_ = new GraphHeapBlock(this, va_size_, 0);
-  if (free_list_ == nullptr) {
-    return false;
-  }
-  mapped_mem_.resize(va_size_ / chunk_size_);
 
-  resident_blocks_.resize(va_size_ / chunk_size_);
+  max_bin_idx_ = GetPow2(va_size_) + 1 - kMinPow2_;
+  free_bins_ = std::vector<GraphSlab*>(max_bin_idx_, nullptr);
+  busy_bins_ = std::vector<GraphSlab*>(max_bin_idx_, nullptr);
 
-  chunk_locks_.resize(va_size_ / chunk_size_);
-  for (size_t i = 0; i < chunk_locks_.size(); ++i) {
-    mapped_mem_[i].store(false);
-    resident_blocks_[i].store(0);
-    chunk_locks_[i] = new Monitor(true);
-  }
+  auto initial_slab = new GraphSlab(this, va_size_, 0, base_address_ + block_alignment_);
+  PushBin(free_bins_, max_bin_idx_ - 1, initial_slab);
 
   // Ensures that NullStream exists before VmHeap destructor is called
   GetVmQueue();
@@ -190,99 +116,32 @@ bool GraphVmHeap::Create() {
 }
 
 // ================================================================================================
-void GraphVmHeap::MapPhysMemory(GraphHeapBlock* block, void* ptr) {
-  size_t offset = block->Offset();
-  size_t size = block->Size();
-
-  auto start_chunk = offset / chunk_size_;
-  auto end_chunk = alignUp(offset + size, chunk_size_) / chunk_size_;
-
-  blocks_to_map[block] = {};
-  for (auto i = start_chunk; i < end_chunk; ++i) {
-    blocks_to_map[block].push_back(i);
-  }
-
-  heap_block_lookup[ptr] = block;
-}
-
-// ================================================================================================
-void GraphVmHeap::UnmapPhysMemory(GraphHeapBlock* block) {
-  size_t offset = block->Offset();
-  size_t size = block->Size();
-  
-  auto start_chunk = offset / chunk_size_;
-  auto end_chunk = alignUp(offset + size, chunk_size_) / chunk_size_;
-
-  for (auto i = start_chunk; i < end_chunk; ++i) {
-    if (resident_blocks_[i].fetch_sub(1) == 0) {
-      chunks_to_unmap.insert(i);
-    }
-  }
-}
-
-// ================================================================================================
-void GraphVmHeap::UnmapPhysMemory(size_t offset, size_t size) {
-  auto busy_size = va_size_ - free_size_;
-  uint64_t free_mapped = alignDown(mapped_size_.load() - busy_size, kChunkSize);
-
-  int start_chunk = alignUp(offset, chunk_size_) / chunk_size_;
-  int end_chunk = alignDown(offset + size, chunk_size_) / chunk_size_;
-
-  for (int i = end_chunk - 1; i >= start_chunk; i--) {
-    // If free mapped memory lower than the threshold, then stop unmapping
-    if (free_mapped <= unmap_threshold_) {
-      return;
-    }
-    if (i >= mapped_mem_.size()) {
-      assert(false);
-      LogError("VM heap allocation is beyond the range!");
-      return;
-    }
-    if (mapped_mem_[i].load()) {
-      auto address = base_address_ + i * chunk_size_;
-      if (UncommitMemory(address, chunk_size_)) {
-        mapped_size_.fetch_sub(chunk_size_);
-        free_mapped -= chunk_size_;
-        mapped_mem_[i].store(false);
-      }
-      else {
-        assert(false);
-      }
-    }
-  }
-}
-
-// ================================================================================================
-bool GraphVmHeap::BlockFullyMapped(GraphHeapBlock* block, size_t size) {
-  size_t offset = block->Offset();
-
-  auto start_chunk = offset / chunk_size_;
-  auto end_chunk = alignUp(offset + size, chunk_size_) / chunk_size_;
-
-  for (auto i = start_chunk; i < end_chunk; ++i) {
-    if (!mapped_mem_[i].load()) {
-      return false;
-    }
-  }
-  return true;
-}
-
-// ================================================================================================
-void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold, bool immediate) {
+void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold) {
   ScopedLock k(lock_);
-  auto current = free_list_;
   auto unmap_org = unmap_threshold_;
   unmap_threshold_ = unmap_threshold;
-  while (current != nullptr) {
-    UnmapPhysMemory(current);
-    current = current->next_;
-  }
-  if (immediate) {
-    auto deallocation_commands = GetDeallocationCommands(GetVmQueue());
-    for (auto cmd : deallocation_commands) {
-      cmd->enqueue();
-      cmd->awaitCompletion();
-      cmd->release();
+
+  for (size_t i = 0; i < max_bin_idx_; ++i) {
+    auto current = free_bins_[i];
+    bool done = false;
+    while (current != nullptr) {
+      auto busy_size = va_size_ - free_size_;
+      uint64_t free_mapped = mapped_size_.load() - busy_size;
+      if (free_mapped <= unmap_threshold_) {
+	done = true;
+	break;
+      }
+
+      if (current->mapped_.load()) {
+	auto cmd = GetSlabUnmapCommand(current, GetVmQueue());
+	cmd->enqueue();
+	cmd->awaitCompletion();
+	cmd->release();
+      }
+      current = current->next_;
+    }
+    if (done) {
+      break;
     }
   }
 
@@ -290,7 +149,64 @@ void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold, bool immediate) {
 }
 
 // ================================================================================================
-address GraphVmHeap::Alloc(size_t size, bool should_reuse_physical) {
+void GraphVmHeap::FreeAllMemory() {
+  ScopedLock k(lock_);
+
+  for (size_t i = 0; i < max_bin_idx_; ++i)  {
+    while (busy_bins_[i]) {
+      UnmapSlab(busy_bins_[i]);
+      ReturnSlab(busy_bins_[i]);
+    }
+  }
+}
+
+// ================================================================================================
+Command* GraphVmHeap::GetSlabMapCommand(GraphSlab* slab, HostQueue& queue) {
+  // Slab is already mapped - do nothing
+  if (slab->mapped_.load()) {
+    return nullptr;
+  }
+
+  const auto& dev_info = device_->info();
+  size_t granularity = dev_info.virtualMemAllocGranularity_;
+  auto padded_size = alignUp(slab->size_, granularity);
+  auto addr = base_address_ + slab->offset_;
+  return new CommitMemoryCommand(queue, Command::EventWaitList{}, addr, padded_size, nullptr, slab, this);
+}
+
+// ================================================================================================
+Command* GraphVmHeap::GetSlabUnmapCommand(GraphSlab* slab, HostQueue& queue, bool unmap_guaranteed) {
+  // Slab is already unmapped - do nothing
+  if (!slab->mapped_.load()) {
+    return nullptr;
+  }
+
+  const auto& dev_info = device_->info();
+  size_t granularity = dev_info.virtualMemAllocGranularity_;
+  auto padded_size = alignUp(slab->size_, granularity);
+  auto addr = base_address_ + slab->offset_;
+  return new UncommitMemoryCommand(queue, Command::EventWaitList{}, addr, padded_size, nullptr, slab, this, unmap_guaranteed);
+}
+
+// ================================================================================================
+Command* GraphVmHeap::GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset) {
+  size_t full_offset = block_alignment_ + slab->offset_ + offset;
+  auto ptr = (void*) ((size_t) slab->mem_ptr_ + offset);
+  return new CreateMemoryCommand(queue, wait_command ? Command::EventWaitList{wait_command} : Command::EventWaitList{}, ptr, slab, base_memory_, size, full_offset);
+}
+
+void GraphVmHeap::UnmapSlab(GraphSlab* slab) {
+  auto unmap_command = GetSlabUnmapCommand(slab, GetVmQueue(), true);
+  if (!unmap_command) {
+      return;
+  }
+  unmap_command->enqueue();
+  unmap_command->awaitCompletion();
+  unmap_command->release();
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeap::AllocateSlab(size_t size) {
   ScopedLock k(lock_);
 
   if (!created_) {
@@ -300,281 +216,306 @@ address GraphVmHeap::Alloc(size_t size, bool should_reuse_physical) {
       return nullptr;
     }
   }
-  address ptr = nullptr;
-  size_t offset = 0;
-  auto hb = AllocBlock(size + block_alignment_, should_reuse_physical);
-  if (hb != nullptr) {
-    offset = ((hb->Offset() & ~kChunkSize) == 0) ? hb->Offset() + block_alignment_ : hb->Offset();
-    ptr = base_address_ + offset;
+
+  auto slab = GetSlab(size);
+
+  max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + size);
+
+  return slab;
+}
+
+// ================================================================================================
+void GraphVmHeap::FreeSlab(GraphSlab* slab) {
+  ScopedLock k(lock_);
+
+  assert(created_);
+
+  UnmapSlab(slab);
+  ReturnSlab(slab);
+
+  max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + slab->size_);
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeap::GetSlab(size_t size) {
+  // Get the bin index based on size
+  size_t bin_idx = 0;
+  if (size < kMinSplitSize_) {
+    bin_idx = 0;
   } else {
+    bin_idx = GetPow2(RoundUpPow2(size + block_alignment_)) - kMinPow2_;
+  }
+
+  // Find the smallest matching unallocated slab
+  size_t curr_bin_idx = max_bin_idx_;
+  for (curr_bin_idx = bin_idx; curr_bin_idx < max_bin_idx_; ++curr_bin_idx) {
+    if (free_bins_[curr_bin_idx]) {
+      break;
+    }
+  }
+  assert(curr_bin_idx < max_bin_idx_);
+
+  GraphSlab* curr_slab = PopBin(free_bins_, curr_bin_idx);
+
+  // Split slab until the size is the smallest possible
+  for (; curr_bin_idx != bin_idx; --curr_bin_idx) {
+    SplitSlab(curr_slab, curr_bin_idx - 1);
+  }
+
+  curr_slab->busy_.store(true);
+  curr_slab->mapped_.store(false);
+  PushBin(busy_bins_, bin_idx, curr_slab);
+
+  free_size_ -= curr_slab->size_;
+
+  return curr_slab;
+}
+
+// ================================================================================================
+void GraphVmHeap::ReturnSlab(GraphSlab* slab) {
+  size_t bin_idx = GetPow2(slab->size_) - kMinPow2_;
+  RemoveBin(busy_bins_, bin_idx, slab);
+  GraphSlab* curr_slab = slab;
+
+  free_size_ += slab->size_;
+
+  while (curr_slab->buddy_ && !curr_slab->buddy_->busy_.load()) {
+    RemoveBin(free_bins_, bin_idx, curr_slab->buddy_);
+    curr_slab = CoalesceSlab(curr_slab, curr_slab->buddy_);
+    ++bin_idx;
+  }
+  curr_slab->busy_.store(false);
+  PushBin(free_bins_, bin_idx, curr_slab);
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeap::PopBin(std::vector<GraphSlab*>& bins, size_t bin_idx) {
+  assert(bins[bin_idx] != nullptr);
+  auto slab = bins[bin_idx];
+  bins[bin_idx] = slab->next_;
+  if (bins[bin_idx] != nullptr) {
+    bins[bin_idx]->prev_ = nullptr;
+  }
+  slab->next_ = nullptr;
+  return slab;
+}
+
+// ================================================================================================
+void GraphVmHeap::RemoveBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab) {
+  if (slab->prev_ != nullptr) {
+    slab->prev_->next_ = slab->next_;
+  }
+  if (slab->next_ != nullptr) {
+    slab->next_->prev_ = slab->prev_;
+  }
+  if (bins[bin_idx] == slab) {
+    bins[bin_idx] = slab->next_;
+  }
+  slab->prev_ = nullptr;
+  slab->next_ = nullptr;
+}
+
+// ================================================================================================
+void GraphVmHeap::PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab) {
+  slab->next_ = bins[bin_idx];
+  slab->prev_ = nullptr;
+  if (bins[bin_idx]) {
+    bins[bin_idx]->prev_ = slab;
+  }
+  bins[bin_idx] = slab;
+}
+
+// ================================================================================================
+void GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx) {
+  GraphSlab* new_slab = new GraphSlab(slab->owner_, slab->size_ / 2, slab->offset_ + (slab->size_ / 2), (void*) ((size_t) slab->mem_ptr_ + (slab->size_ / 2)));
+  new_slab->buddy_ = slab;
+  PushBin(free_bins_, bin_idx, new_slab);
+  slab->size_ /= 2;
+  slab->buddy_ = new_slab;
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeap::CoalesceSlab(GraphSlab* slab1, GraphSlab* slab2) {
+  assert(slab1->size_ == slab2->size_);
+  GraphSlab* l = nullptr;
+  GraphSlab* r = nullptr;
+  if (slab1->offset_ < slab2->offset_) {
+    l = slab1;
+    r = slab2;
+  } else {
+    l = slab2;
+    r = slab1;
+  }
+  assert(l->offset_ + l->size_ == r->offset_);
+
+  delete r;
+  l->size_ *= 2;
+  l->buddy_ = nullptr;
+  return l;
+}
+
+// ================================================================================================
+GraphTemporaryHeap::GraphTemporaryHeap(Device* device, size_t num_handles) :
+  device_(device),
+  num_handles_(num_handles), 
+  base_ptr_(nullptr),
+  lock_(true) {
+    bump_counter_.store(0);
+    invalidated_handles_.store(0);
+    created_.store(false);
+  }
+
+// ================================================================================================
+void GraphTemporaryHeap::Create() {
+  ScopedLock k(lock_);
+
+  if (created_.load()) {
+    return;
+  }
+
+  base_ptr_ = reinterpret_cast<char*>(device_->virtualAlloc(nullptr, num_handles_ / 8, 8));
+  created_.store(true);
+}
+
+// ================================================================================================
+void* GraphTemporaryHeap::Allocate() {
+  if (!created_.load()) {
+    Create();
+  }
+
+  size_t my_offset = bump_counter_.fetch_add(1);
+  if (my_offset > num_handles_) {
+    LogError("Vm temporary heap ran out of handles");
     return nullptr;
   }
-  MapPhysMemory(hb, ptr);
-  max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + size);
-  return ptr;
+
+  size_t my_offset_bytes = my_offset / 8;
+  size_t my_offset_bits = my_offset % 8;
+  return (void*) (((size_t) (base_ptr_ + my_offset_bytes)) | my_offset_bits);
 }
 
 // ================================================================================================
-void GraphVmHeap::Free(Memory* memory) {
-  const device::Memory* dev_mem = memory->getDeviceMemory(*device_);
-  void* addr = reinterpret_cast<void*>(dev_mem->virtualAddress());
-  if (addr == nullptr) {
-    addr = memory->getSvmPtr();
-  }
-
-  if (!created_ || (addr < base_address_)) {
-    return;
-  }
-  ScopedLock k(lock_);
-  if (memory->getUserData().data != nullptr) {
-    auto hb = reinterpret_cast<GraphHeapBlock*>(memory->getUserData().data);
-    ClPrint(LOG_INFO, LOG_MEM_POOL, "GraphVmHeap Free: %p offset(%zx + %zx) hb(%p)",
-      addr, hb->Offset(), memory->getSize(), hb);
-    FreeBlock(hb);
-    max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + memory->getSize());
-  }
-  MemObjMap::RemoveMemObj(addr);
-  memory->release();
-}
-
-// ================================================================================================
-void GraphVmHeap::FreeAllMemory() {
-  ScopedLock k(lock_);
-
-  // Release all heap blocks
-  GraphHeapBlock* walk, * next;
-  walk = busy_list_;
-  while (walk) {
-    next = walk->next_;
-    FreeBlock(walk);
-    walk = next;
-  }
-
-  walk = free_list_;
-  while (walk) {
-    next = walk->next_;
-    delete walk;
-    walk = next;
+void GraphTemporaryHeap::Invalidate() {
+  size_t handles_returned = invalidated_handles_.fetch_add(1);
+  size_t handles_allocated = bump_counter_.load();
+  if (handles_allocated == handles_returned && bump_counter_.compare_exchange_weak(handles_allocated, 0)) {
+    invalidated_handles_.store(0);
   }
 }
 
 // ================================================================================================
-GraphHeapBlock* GraphVmHeap::AllocBlock(size_t un_size, bool should_reuse_physical) {
-  assert(un_size != 0);
-  ScopedLock k(lock_);
-  GraphHeapBlock* walk = free_list_;
-  GraphHeapBlock* best = nullptr;
-
-  // Round size
-  auto size = alignUp(un_size, block_alignment_);
-
-  // Walk the free list looking for a suitable block (currently best-fit)
-  while (walk) {
-    if ((walk->size_ > size) &&
-	(best == nullptr || walk->size_ < best->size_) &&
-	(!should_reuse_physical || BlockFullyMapped(walk, size))) {
-      best = walk;
-    } else if (walk->size_ == size && (!should_reuse_physical || BlockFullyMapped(walk, size))) {
-      // No need to split, just move to busy list
-      DetachBlock(&free_list_, walk);
-      walk->busy_ = true;
-      InsertBlock(&busy_list_, walk);
-      free_size_ -= size;
-      return walk;
-    }
-    walk = walk->next_;
-  }
-
-  if (best != nullptr) {
-    // Got one, but need to split it. Keep first part in free list,
-    // put second part into busy list
-    GraphHeapBlock *newblock = SplitBlock(best, size);
-    newblock->busy_ = true;
-    InsertBlock(&busy_list_, newblock);
-    free_size_ -= size;
-    return newblock;
-  }
-
-  return nullptr;
+bool GraphTemporaryHeap::InRange(void* ptr) {
+  return base_ptr_ <= ptr && base_ptr_ + num_handles_ / 8 > ptr;
 }
 
 // ================================================================================================
-void GraphVmHeap::FreeBlock(GraphHeapBlock* blk) {
-  UnmapPhysMemory(blk);
-  DetachBlock(&busy_list_, blk);
-  blk->busy_ = false;
-  free_size_ += blk->size_;
-  MergeBlock(&free_list_, blk);
+void* GraphVmHeapArray::AllocateTemporaryHandle() {
+  return tmp_heap_.Allocate();
 }
 
 // ================================================================================================
-void GraphVmHeap::DetachBlock(GraphHeapBlock** list, GraphHeapBlock* blk) {
-  if (*list == blk) {
-    *list = blk->next_;
-  }
-  if (blk->prev_) {
-    blk->prev_->next_ = blk->next_;
-  }
-  if (blk->next_) {
-    blk->next_->prev_ = blk->prev_;
-  }
+void GraphVmHeapArray::InvalidateTemporaryHandle() {
+  return tmp_heap_.Invalidate();
 }
 
 // ================================================================================================
-void GraphVmHeap::InsertBlock(GraphHeapBlock** head, GraphHeapBlock* blk) {
-  if (nullptr == *head) {
-    *head = blk;
-    blk->prev_ = nullptr;
-    blk->next_ = nullptr;
-    return;
-  }
-
-  // Find the place to insert it at
-  GraphHeapBlock* walk = *head;
-  while (walk->next_ && walk->next_->offset_ < blk->offset_) {
-    walk = walk->next_;
-  }
-
-  // Insert it
-  if (walk == *head) {
-    if (walk->offset_ >= blk->offset_) {
-      *head = blk;
-      blk->prev_ = nullptr;
-      blk->next_ = walk;
-      walk->prev_ = *head;
-      return;
-    }
-  }
-
-  blk->next_ = walk->next_;
-  blk->prev_ = walk;
-  if (walk->next_) {
-      walk->next_->prev_ = blk;
-  }
-  walk->next_ = blk;
+Command* GraphVmHeapArray::GetSlabMapCommand(GraphSlab* slab, HostQueue& queue) {
+  assert(slab->Owner() != nullptr);
+  return slab->Owner()->GetSlabMapCommand(slab, queue);
 }
 
 // ================================================================================================
-GraphHeapBlock* GraphVmHeap::SplitBlock(GraphHeapBlock* blk, size_t tailsize) {
-  // Create a new block from the beginning of the current
-  GraphHeapBlock* nb = new GraphHeapBlock(blk->owner_, tailsize, blk->offset_);
-
-  // Resize the old block
-  blk->offset_ += tailsize;
-  blk->size_ -= tailsize;
-  return nb;
+Command* GraphVmHeapArray::GetSlabUnmapCommand(GraphSlab* slab, HostQueue& queue) {
+  assert(slab->Owner() != nullptr);
+  return slab->Owner()->GetSlabUnmapCommand(slab, queue);
 }
 
 // ================================================================================================
-void GraphVmHeap::Join2Blocks(GraphHeapBlock* first, GraphHeapBlock* second) const {
-  // Do the join
-  first->size_ = first->size_ + second->size_;
-  first->next_ = second->next_;
-  if (second->next_) {
-      second->next_->prev_ = first;
-  }
-  delete second;
+Command* GraphVmHeapArray::GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset) {
+  assert(slab->Owner() != nullptr);
+  return slab->Owner()->GetAllocationCommand(slab, queue, wait_command, size, offset);
 }
 
 // ================================================================================================
-void GraphVmHeap::MergeBlock(GraphHeapBlock** head, GraphHeapBlock* blk) {
-  InsertBlock(head, blk);
-
-  // Merge with successor if possible
-  if ((blk->next_ != nullptr) && (blk->offset_ + blk->size_ == blk->next_->offset_)) {
-      Join2Blocks(blk, blk->next_);
-  }
-
-  // Merge with predecessor if possible
-  if ((blk->prev_ != nullptr) && (blk->prev_->offset_ + blk->prev_->size_ == blk->offset_)) {
-      Join2Blocks(blk->prev_, blk);
-  }
-}
-
-// ================================================================================================
-std::vector<Command*> GraphVmHeapArray::GetAllocationCommands(void* ptr, HostQueue& queue) {
-  uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
-  auto out = vm_heaps_[my_heap]->GetAllocationCommands(ptr, queue);
-  if (!out.empty()) {
-    return out;
-  }
-  if (large_heap_.created_) {
-    return large_heap_.GetAllocationCommands(ptr, queue);
-  }
-  return {};
-}
-
-// ================================================================================================
-std::vector<Command*> GraphVmHeapArray::GetDeallocationCommands(HostQueue& queue) {
-  uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
-  auto out = vm_heaps_[my_heap]->GetDeallocationCommands(queue);
-  if (!out.empty()) {
-    return out;
-  }
-  if (large_heap_.created_) {
-    return large_heap_.GetDeallocationCommands(queue);
-  }
-  return {};
-}
-
-// ================================================================================================
-address GraphVmHeapArray::Alloc(size_t size) {
+GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size) {
   uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
   size_t free_device_memory[2];
   bool should_reuse_physical = false;
   device_->globalFreeMemory(free_device_memory);
   free_device_memory[0] *= 1024;
 
-  if (size + GraphVmHeap::kChunkSize > free_device_memory[0]) {
+  if (size > free_device_memory[0]) {
     // Attempt to salvage #1: try trimming my heap
-    vm_heaps_[my_heap]->TrimPhysMemory(0, true);
+    vm_heaps_[my_heap]->TrimPhysMemory(0);
     device_->globalFreeMemory(free_device_memory);
     free_device_memory[0] *= 1024;
 
-    if (size + GraphVmHeap::kChunkSize > free_device_memory[0]) {
+    if (size > free_device_memory[0]) {
       // Attempt to salvage #2: try trimming everyone
       for (uint32_t i = 0; i < kMaxArraySize; ++i) {
-	vm_heaps_[my_heap]->TrimPhysMemory(0, true);
+        vm_heaps_[my_heap]->TrimPhysMemory(0);
       }
-      large_heap_.TrimPhysMemory(0, true);
+      large_heap_.TrimPhysMemory(0);
 
       device_->globalFreeMemory(free_device_memory);
       free_device_memory[0] *= 1024;
-      if (size + GraphVmHeap::kChunkSize > free_device_memory[0]) {
-	// No way to get more physical memory, vm heap has to reuse existing physical buffer
-	should_reuse_physical = true;
+      if (size > free_device_memory[0]) {
+        // No way to get more physical memory, vm heap has to reuse existing physical buffer
+        should_reuse_physical = true;
       }
     }
   }
 
-  address addr = nullptr;
-  // Try allocating on this thread's heap
-  if (vm_heaps_[my_heap]->free_size_ > (size + GraphVmHeap::kChunkSize)) {
-    addr = vm_heaps_[my_heap]->Alloc(size, should_reuse_physical);
+  GraphSlab* slab = nullptr;
+  // Try allocating from this thread's heap
+  if (vm_heaps_[my_heap]->free_size_ > size) {
+    slab = vm_heaps_[my_heap]->AllocateSlab(size);
   }
-  // If that fails, try allocating on the large heap
-  if (addr == nullptr) {
-    addr = large_heap_.Alloc(size, should_reuse_physical);
+  // If that fails, try allocating from large heap
+  if (slab == nullptr) {
+    slab = large_heap_.AllocateSlab(size);
   }
-  // And if that fails, try allocating from another thread heap.
-  // May introduce contention but that's better than failing
-  if (addr == nullptr) {
+  // If that fails, try allocating from other heaps
+  if (slab == nullptr) {
     for (uint i = 0; i < kMaxArraySize; ++i) {
       if (i == my_heap) {
 	continue;
       }
 
-      addr = vm_heaps_[i]->Alloc(size, should_reuse_physical);
-      if (addr != nullptr) {
+      slab = vm_heaps_[i]->AllocateSlab(size);
+      if (slab != nullptr) {
 	break;
       }
     }
   }
-  return addr;
+  return slab;
 }
 
 // ================================================================================================
+bool GraphVmHeapArray::FreeSlab(GraphSlab* slab) {
+  assert(slab->Owner() != nullptr);
+
+  for (uint i = 0; i < kMaxArraySize; ++i) {
+    if (vm_heaps_[i] == slab->Owner()) {
+      slab->Owner()->FreeSlab(slab);
+      return true;
+    }
+  }
+  if (&large_heap_ == slab->Owner()) {
+    slab->Owner()->FreeSlab(slab);
+    return true;
+  }
+
+  return false;
+}
+
+
+// ================================================================================================
 bool GraphVmHeapArray::IsValidAllocation(void* ptr) {
+  if (tmp_heap_.Created() && tmp_heap_.InRange(ptr)) {
+    return true;
+  }
+
   for (uint i = 0; i < kMaxArraySize; ++i) {
     if (vm_heaps_[i]->created_ && vm_heaps_[i]->InRange(ptr)) {
       return true;
@@ -587,57 +528,15 @@ bool GraphVmHeapArray::IsValidAllocation(void* ptr) {
 }
 
 // ================================================================================================
-bool GraphVmHeapArray::Free(amd::Memory* memory) {
-  const device::Memory* dev_mem = memory->getDeviceMemory(*device_);
-  void* addr = reinterpret_cast<void*>(dev_mem->virtualAddress());
-  if (addr == nullptr) {
-    addr = memory->getSvmPtr();
-  }
-
-  uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
-  if (vm_heaps_[my_heap]->created_ && vm_heaps_[my_heap]->InRange(addr)) {
-    vm_heaps_[my_heap]->Free(memory);
-    return true;
-  } else if (large_heap_.created_ && large_heap_.InRange(addr)) {
-    large_heap_.Free(memory);
-    return true;
-  } else {
-    for (uint i = 0; i < kMaxArraySize; ++i) {
-      if (i == my_heap) {
-	continue;
-      }
-
-      if (vm_heaps_[i]->created_ && vm_heaps_[my_heap]->InRange(addr)) {
-	vm_heaps_[i]->Free(memory);
-	return true;
-      }
-    }
-  }
-  return false;
-}
-
-// ================================================================================================
 void GraphVmHeapArray::FreeAllMemory(HostQueue& queue) {
   for (uint i = 0; i < kMaxArraySize; ++i) {
     if (vm_heaps_[i]->created_) {
       vm_heaps_[i]->FreeAllMemory();
-      auto deallocation_commands = vm_heaps_[i]->GetDeallocationCommands(queue);
-      for (auto cmd : deallocation_commands) {
-	cmd->enqueue();
-	cmd->awaitCompletion();
-	cmd->release();
-      }
     }
   }
 
   if (large_heap_.created_) {
     large_heap_.FreeAllMemory();
-    auto deallocation_commands = large_heap_.GetDeallocationCommands(queue);
-    for (auto cmd : deallocation_commands) {
-      cmd->enqueue();
-      cmd->awaitCompletion();
-      cmd->release();
-    }
   }
 }
 
@@ -720,15 +619,6 @@ void GraphVmHeapArray::ResetMaxMappedSize() {
     vm_heaps_[i]->max_mapped_size_.store(0);
   }
   large_heap_.max_mapped_size_.store(0);
-}
-
-// ================================================================================================
-bool GraphVmHeapArray::IsBusyMemory(Memory* memory) const {
-  if (memory->getUserData().data != nullptr) {
-    auto hb = reinterpret_cast<GraphHeapBlock*>(memory->getUserData().data);
-    return hb->Busy();
-  }
-  return false;
 }
 
 // ================================================================================================
