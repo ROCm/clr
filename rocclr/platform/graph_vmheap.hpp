@@ -36,11 +36,12 @@ class GraphSlab : public amd::HeapObject {
 public:
   friend GraphVmHeap;
 
-  GraphSlab(GraphVmHeap* owner, size_t size, size_t offset, void* mem_ptr)
+  GraphSlab(GraphVmHeap* owner, GraphSlab* parent, size_t size, size_t offset, void* mem_ptr)
     : owner_(owner),
       size_(size),
       offset_(offset),
       mem_ptr_(mem_ptr),
+      parent_(parent),
       buddy_(nullptr),
       next_(nullptr),
       prev_(nullptr),
@@ -76,6 +77,7 @@ private:
   size_t size_;
   size_t offset_; //!< stores offset from the owner's base_address_
   void* mem_ptr_; //!< stores ptr to base_address_ + offset_ + block_alignment_
+  GraphSlab* parent_;
   GraphSlab* buddy_;
   GraphSlab* next_;
   GraphSlab* prev_;
@@ -283,7 +285,7 @@ private:
 
   void PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab);
 
-  void SplitSlab(GraphSlab* slab, size_t bin_idx);
+  GraphSlab* SplitSlab(GraphSlab* slab, size_t bin_idx);
 
   GraphSlab* CoalesceSlab(GraphSlab* slab1, GraphSlab* slab2);
 

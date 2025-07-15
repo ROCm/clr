@@ -106,7 +106,7 @@ bool GraphVmHeap::Create() {
   free_bins_ = std::vector<GraphSlab*>(max_bin_idx_, nullptr);
   busy_bins_ = std::vector<GraphSlab*>(max_bin_idx_, nullptr);
 
-  auto initial_slab = new GraphSlab(this, va_size_, 0, base_address_ + block_alignment_);
+  auto initial_slab = new GraphSlab(this, nullptr, va_size_, 0, base_address_ + block_alignment_);
   PushBin(free_bins_, max_bin_idx_ - 1, initial_slab);
 
   // Ensures that NullStream exists before VmHeap destructor is called
@@ -259,7 +259,7 @@ GraphSlab* GraphVmHeap::GetSlab(size_t size) {
 
   // Split slab until the size is the smallest possible
   for (; curr_bin_idx != bin_idx; --curr_bin_idx) {
-    SplitSlab(curr_slab, curr_bin_idx - 1);
+    curr_slab = SplitSlab(curr_slab, curr_bin_idx - 1);
   }
 
   curr_slab->busy_.store(true);
@@ -279,7 +279,7 @@ void GraphVmHeap::ReturnSlab(GraphSlab* slab) {
 
   free_size_ += slab->size_;
 
-  while (curr_slab->buddy_ && !curr_slab->buddy_->busy_.load()) {
+  while (curr_slab->parent_ && !curr_slab->buddy_->busy_.load()) {
     RemoveBin(free_bins_, bin_idx, curr_slab->buddy_);
     curr_slab = CoalesceSlab(curr_slab, curr_slab->buddy_);
     ++bin_idx;
@@ -326,32 +326,31 @@ void GraphVmHeap::PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSl
 }
 
 // ================================================================================================
-void GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx) {
-  GraphSlab* new_slab = new GraphSlab(slab->owner_, slab->size_ / 2, slab->offset_ + (slab->size_ / 2), (void*) ((size_t) slab->mem_ptr_ + (slab->size_ / 2)));
-  new_slab->buddy_ = slab;
-  PushBin(free_bins_, bin_idx, new_slab);
-  slab->size_ /= 2;
-  slab->buddy_ = new_slab;
+GraphSlab* GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx) {
+  slab->busy_.store(true);
+
+  GraphSlab* left_slab = new GraphSlab(slab->owner_, slab, slab->size_ / 2, slab->offset_, slab->mem_ptr_);
+  GraphSlab* right_slab = new GraphSlab(slab->owner_, slab, slab->size_ / 2, slab->offset_ + (slab->size_ / 2), (void*) ((size_t) slab->mem_ptr_ + (slab->size_ / 2)));
+
+  left_slab->buddy_ = right_slab;
+  right_slab->buddy_ = left_slab;
+
+  PushBin(free_bins_, bin_idx, right_slab);
+  return left_slab;
 }
 
 // ================================================================================================
 GraphSlab* GraphVmHeap::CoalesceSlab(GraphSlab* slab1, GraphSlab* slab2) {
   assert(slab1->size_ == slab2->size_);
-  GraphSlab* l = nullptr;
-  GraphSlab* r = nullptr;
-  if (slab1->offset_ < slab2->offset_) {
-    l = slab1;
-    r = slab2;
-  } else {
-    l = slab2;
-    r = slab1;
-  }
-  assert(l->offset_ + l->size_ == r->offset_);
+  assert(slab1->parent_ == slab2->parent_);
 
-  delete r;
-  l->size_ *= 2;
-  l->buddy_ = nullptr;
-  return l;
+  auto parent = slab1->parent_;
+  parent->busy_.store(false);
+
+  delete slab1;
+  delete slab2;
+
+  return parent;
 }
 
 // ================================================================================================
