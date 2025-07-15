@@ -2199,6 +2199,27 @@ void Device::deviceVmemRelease(uint64_t mem_handle) const {
   }
 }
 
+void* Device::reserveMemory(size_t size, size_t alignment) const {
+  void* ptr = nullptr;
+  // Reserves non registered VA memory using HSA APIs.
+  hsa_status_t status = hsa_amd_vmem_address_reserve_align(&ptr, size, 0, alignment,
+                                                           HSA_AMD_VMEM_ADDRESS_NO_REGISTER);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Reserve hsa device memory %p, size 0x%zx", ptr, size);
+  if (status != HSA_STATUS_SUCCESS) {
+    LogError("Fail to reserve memory");
+    return nullptr;
+  }
+  return ptr;
+}
+
+void Device::releaseMemory(void* ptr, size_t size) const {
+  hsa_status_t hsa_status = hsa_amd_vmem_address_free(ptr, size);
+  ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Free hsa reserved memory %p", ptr);
+  if (hsa_status != HSA_STATUS_SUCCESS) {
+    LogError("hsa_amd_vmem_address_free failed \n");
+  }
+}
+
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain,
                                bool contiguous) const {
 

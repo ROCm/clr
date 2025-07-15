@@ -658,10 +658,8 @@ void Buffer::destroy() {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Destroy system memory
-            if (!(amd::Os::releaseMemory(deviceMemory_, size()))) {
-              ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
-            }
+            // AMD HMM path. Release reserved system memory
+            dev().releaseMemory(deviceMemory_, size());
           } else {
             dev().memFree(deviceMemory_, size());
           }
@@ -809,9 +807,8 @@ bool Buffer::create(bool alloc_local) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Just allocate system memory and KFD will manage it
-            deviceMemory_ =  amd::Os::reserveMemory(
-                0, size(), amd::Os::pageSize(), amd::Os::MEM_PROT_RW);
+            // AMD HMM path. ROCr allocates system memory and KFD will manage it
+            deviceMemory_ = dev().reserveMemory(size(), amd::Os::pageSize());
             if (deviceMemory_ == NULL) {
               return false;
             }
@@ -1069,7 +1066,6 @@ bool Buffer::GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handl
       return false;
     }
   }
-  
   if (dmabuffd <= 0) {
     LogPrintfError("Invalid file descriptor handle: %d returned", dmabuffd);
     return false;
