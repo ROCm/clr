@@ -3401,13 +3401,6 @@ typedef struct hip_api_data_s {
       hipModule_t module;
     } hipModuleUnload;
     struct {
-      size_t* dynamicSmemSize;
-      size_t dynamicSmemSize__val;
-      const void* f;
-      int  numBlocks;
-      int  blockSize;
-    } hipOccupancyAvailableDynamicSMemPerBlock;
-    struct {
       int* numBlocks;
       int numBlocks__val;
       const void* f;
@@ -3762,6 +3755,13 @@ typedef struct hip_api_data_s {
       unsigned int numExtSems;
       hipStream_t stream;
     } hipWaitExternalSemaphoresAsync;
+    struct {
+      size_t* dynamicSmemSize;
+      size_t dynamicSmemSize__val;
+      const void* f;
+      int  numBlocks;
+      int  blockSize;
+    } hipOccupancyAvailableDynamicSMemPerBlock;
   } args;
   uint64_t *phase_data;
 } hip_api_data_t;

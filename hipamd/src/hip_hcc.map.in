@@ -602,7 +602,13 @@ global:
     hipLaunchKernelExC;
     hipDrvLaunchKernelEx;
     hipMemGetHandleForAddressRange;
-    hipOccupancyAvailableDynamicSMemPerBlock;
 local:
     *;
 } hip_6.4;
+
+hip_7.1 {
+global:
+    hipOccupancyAvailableDynamicSMemPerBlock;
+local:
+    *;
+} hip_6.5;

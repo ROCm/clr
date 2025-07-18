@@ -830,6 +830,8 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
 hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags);
+hipError_t hipOccupancyAvailableDynamicSMemPerBlock(size_t* dynamicSmemSize, const void* f,
+                                                    int numBlocks, int blockSize);
 
 }  // namespace hip
 
@@ -1346,6 +1348,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipLaunchKernelExC_fn = hip::hipLaunchKernelExC;
   ptrDispatchTable->hipDrvLaunchKernelEx_fn = hip::hipDrvLaunchKernelEx;
   ptrDispatchTable->hipMemGetHandleForAddressRange_fn = hip::hipMemGetHandleForAddressRange;
+  ptrDispatchTable->hipOccupancyAvailableDynamicSMemPerBlock_fn = hip::hipOccupancyAvailableDynamicSMemPerBlock;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
