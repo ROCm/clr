@@ -275,13 +275,21 @@ unsigned long long atomicAdd_system(unsigned long long* address, unsigned long l
   return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
 
+#if defined(__has_extension) && __has_extension(clang_atomic_attributes)
+#define __HIP_FINE_GRAINED_MEMORY [[clang::atomic(fine_grained_memory)]]
+#else
+#define __HIP_FINE_GRAINED_MEMORY
+#endif
+
 __device__
 inline
 float atomicAdd(float* address, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, val);
 #else
-  return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {  
+    return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -307,7 +315,9 @@ double atomicAdd(double* address, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, val);
 #else
-  return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -371,7 +381,9 @@ float atomicSub(float* address, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, -val);
 #else
-  return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -387,7 +399,9 @@ double atomicSub(double* address, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, -val);
 #else
-  return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -528,12 +542,6 @@ inline
 long long atomicMin_system(long long* address, long long val) {
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
-
-#if defined(__has_extension) && __has_extension(clang_atomic_attributes)
-#define __HIP_FINE_GRAINED_MEMORY [[clang::atomic(fine_grained_memory)]]
-#else
-#define __HIP_FINE_GRAINED_MEMORY
-#endif
 
 __device__
 inline
