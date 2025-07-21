@@ -2095,11 +2095,11 @@ void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg) co
     case kUncachedAtomics :
       if (system_ext_segment_.handle != 0) {
         ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
-                  "Using extended fine grained access system memory pool");
+                "Using extended fine grained access system memory pool");
         segment = system_ext_segment_;
       } else {
         ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
-                  "Falling through on fine grained access system memory pool");
+                "Falling through on fine grained access system memory pool");
         segment = system_segment_;
       }
       break;
