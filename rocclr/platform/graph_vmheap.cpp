@@ -390,7 +390,7 @@ void* GraphTemporaryHeap::Allocate() {
 
   size_t my_offset_bytes = my_offset / 8;
   size_t my_offset_bits = my_offset % 8;
-  return (void*) (((size_t) (base_ptr_ + my_offset_bytes)) | my_offset_bits);
+  return (void*) (((size_t) (base_ptr_ + my_offset_bytes * 8)) | my_offset_bits);
 }
 
 // ================================================================================================
