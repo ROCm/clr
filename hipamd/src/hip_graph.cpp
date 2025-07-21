@@ -296,7 +296,8 @@ hipError_t capturehipExtModuleLaunchKernel(hipStream_t& stream, hipFunction_t& f
                                            hipEvent_t& stopEvent, uint32_t& flags) {
   ClPrint(amd::LOG_INFO, amd::LOG_API,
           "[hipGraph] Current capture node ExtModuleLaunchKernel on stream : %p", stream);
-  return ihipExtLaunchKernel(stream, f, globalWorkSizeX, globalWorkSizeY, globalWorkSizeZ,
+  return ihipExtLaunchKernel(stream, f, globalWorkSizeX / localWorkSizeX,
+                             globalWorkSizeY / localWorkSizeY, globalWorkSizeZ / localWorkSizeZ,
                              localWorkSizeX, localWorkSizeY, localWorkSizeZ, sharedMemBytes,
                              kernelParams, extra, startEvent, stopEvent, flags);
 }
