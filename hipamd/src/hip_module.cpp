@@ -19,7 +19,6 @@
  THE SOFTWARE. */
 
 #include <hip/hip_runtime.h>
-#include <elf/elf.hpp>
 #include <fstream>
 
 #include "hip_internal.hpp"
@@ -40,8 +39,6 @@ extern hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 
 const std::string& FunctionName(const hipFunction_t f) {
   return hip::DeviceFunc::asFunction(f)->kernel()->name();
 }
-
-static uint64_t ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 hipError_t hipModuleUnload(hipModule_t hmod) {
   HIP_INIT_API(hipModuleUnload, hmod);
