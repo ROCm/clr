@@ -656,18 +656,7 @@ __device__ void __named_sync();
 __device__
 inline  __attribute((always_inline))
 long long int __clock64() {
-#if __has_builtin(__builtin_amdgcn_is_invocable) // ZCFS
-  if (__builtin_amdgcn_is_invocable(__builtin_amdgcn_s_memtime))
-    return (long long int)__builtin_amdgcn_s_memtime();
-  else
-    return (long long int)__builtin_readcyclecounter();
-#else // LEGACY BRANCH FOR COMPAT
-  #if __has_builtin(__builtin_amdgcn_s_memtime) && !defined(__SPIRV__)
-    return (long long int)__builtin_amdgcn_s_memtime();
-  #else
-    return (long long int)__builtin_readcyclecounter();
-  #endif
-#endif
+  return (long long int)__builtin_readcyclecounter();
 }
 
 __device__
