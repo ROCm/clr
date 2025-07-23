@@ -397,15 +397,16 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
   if ((stream != nullptr && stream != hipStreamLegacy) &&
       (s->GetCaptureStatus() == hipStreamCaptureStatusActive)) {
     ClPrint(amd::LOG_INFO, amd::LOG_API,
-        "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
+            "[hipGraph] Current capture node EventRecord on stream : %p, Event %p", stream, event);
     s->SetCaptureEvent(event);
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
     e->SetNodesPrevToRecorded(lastCapturedNodes);
     if (flags == hipEventRecordExternal) {
       hip::GraphNode* pGraphNode;
-      status = hipGraphAddEventRecordNode((hipGraphNode_t*) pGraphNode, (hipGraph_t) s->GetCaptureGraph(),
-                                          (hipGraphNode_t*) s->GetLastCapturedNodes().data(),
-                                          s->GetLastCapturedNodes().size(), (hipEvent_t) e);
+      status =
+          hipGraphAddEventRecordNode((hipGraphNode_t*)&pGraphNode, (hipGraph_t)s->GetCaptureGraph(),
+                                     (hipGraphNode_t*)s->GetLastCapturedNodes().data(),
+                                     s->GetLastCapturedNodes().size(), (hipEvent_t)e);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_API, "hipEventRecord add external event node failed");
         return status;
