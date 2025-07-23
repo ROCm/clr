@@ -161,6 +161,13 @@ void Graph::InvalidateGraphAnalysis() {
 }
 
 // ================================================================================================
+void Graph::AllocationSizeChanged(GraphNode* node, size_t previous_size, size_t new_size) {
+  if (graph_analysis_) {
+    graph_analysis_->AllocationSizeChanged(node, previous_size, new_size);
+  }
+}
+
+// ================================================================================================
 void Graph::UpdatePtrs(void* old_ptr, void** new_ptr) {
   for (auto node : GetNodes()) {
     node->UpdatePtr(old_ptr, new_ptr);
@@ -763,7 +770,7 @@ hipError_t GraphExec::Run(hip::Stream* launch_stream) {
        return hipErrorInvalidValue;
     }
   }  else {
-    topoOrder_[0]->GetParentGraph()->graph_analysis_ = new GraphAnalysis();
+    topoOrder_[0]->GetParentGraph()->graph_analysis_ = new ga::GraphAnalysis();
     repeatLaunch_ = true;
   }
 

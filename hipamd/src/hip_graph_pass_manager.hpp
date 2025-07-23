@@ -24,6 +24,7 @@
 #include "hip_graph_internal.hpp"
 
 namespace hip {
+namespace ga {
 
 struct DominatorTreeNode {
   enum Type {
@@ -287,44 +288,333 @@ private:
   std::map<DominatorTreeNode, DominatorTreeNode> postdominator_parents_;
 };
 
-class GraphAnalysis {
-  struct Value {
-    void* val_;
-    std::map<GraphNode*, std::set<GraphNode*>> def_chains_;
-    GraphNode* first_def_;
+struct Coallocation {
+  GraphNode* node_;
+  std::vector<GraphNode*> objects_;
+};
 
-    // Needed for set operations
-    bool operator<(const Value& other) const {
-      return val_ < other.val_;
+struct AllocatorAction {
+  enum class Type {
+    Allocate = 0,
+    Free = 1,
+  };
+
+  Type type_;
+  GraphNode* node_;
+  size_t offset_;
+  std::vector<size_t> dependencies_;
+};
+
+struct Value {
+  void* val_;
+  std::map<GraphNode*, std::set<GraphNode*>> def_chains_;
+  GraphNode* first_def_;
+  GraphNode* free_node_;
+
+  // Needed for set operations
+  bool operator<(const Value& other) const {
+    return val_ < other.val_;
+  }
+};
+
+typedef std::map<GraphNode*, std::set<GraphNode*>> CoarseValues;
+
+class AllocationSchedulerGreedy {
+  // idx is index in the allocation schedule
+  struct SlotDependency {
+    size_t idx;
+    size_t offset;
+    size_t size;
+  };
+
+  struct HeapSlot {
+    size_t offset;
+    size_t size;
+    GraphNode* node;
+    HeapSlot* prev;
+    HeapSlot* next;
+    // Frees that have to be executed before all/part of the slot becomes available
+    std::vector<SlotDependency> dependencies;
+  };
+public:
+  AllocationSchedulerGreedy(std::set<Value>& values, CoarseValues& def_use_chains, std::vector<Coallocation> coallocations)
+    : values_(values),
+      def_use_chains_(def_use_chains),
+      coallocations_(coallocations),
+      heap_slots_(new HeapSlot({0, (size_t) -1, nullptr, nullptr, nullptr, {}})) {
+
+    auto get_lifetime = [&](void* ptr, GraphNode* node) -> size_t {
+      // This should be a shortest path algorithm in the presense of loops
+      // But since there are no loop, it can be a simple DFS
+      std::map<GraphNode*, bool> visited;
+      for (auto def : def_use_chains_) {
+	visited[def.first] = false;
+      }
+      std::function<size_t(void*, GraphNode*, size_t)> DFS = [&](void* ptr, GraphNode* node, size_t distance) -> size_t {
+	if (node->GetType() == hipGraphNodeTypeMemFree) {
+	  void* free_ptr = nullptr;
+	  dynamic_cast<GraphMemFreeNode*>(node)->GetParams(&free_ptr);
+	  if (free_ptr == ptr) {
+	    return distance;
+	  }
+	}
+
+	for (auto use : def_use_chains_[node]) {
+	  if (visited[use]) {
+	    continue;
+	  }
+	  auto dist = DFS(ptr, use, distance + 1);
+	  if (dist != (size_t) -1) {
+	    return dist;
+	  }
+	  visited[use] = true;
+	}
+	return (size_t) -1;
+      };
+
+      return DFS(ptr, node, 0);
+    };
+
+    for (auto& value : values_) {
+      if (value.first_def_->GetType() == hipGraphNodeTypeMemAlloc) {
+	lifetimes_[value.first_def_] = get_lifetime(value.val_, value.first_def_);
+      }
     }
+
+    for (size_t i = 0; i < coallocations_.size(); ++i) {
+      for (auto object : coallocations_[i].objects_) {
+	latest_coallocation_[object] = i;
+      }
+    }
+  }
+
+  ~AllocationSchedulerGreedy() {
+    auto curr_slot = heap_slots_;
+    do {
+      auto tmp = curr_slot;
+      curr_slot = curr_slot->next;
+      delete tmp;
+    } while (curr_slot != nullptr);
+  }
+
+  std::vector<AllocatorAction> Make() {
+    for (size_t i = 0; i < coallocations_.size(); ++i) {
+      auto& coallocated = coallocations_[i].objects_;
+      // Sort by longest lived first
+      std::sort(coallocated.begin(), coallocated.end(), [&](GraphNode* l, GraphNode* r) {
+        return (lifetimes_[l] == lifetimes_[r] && latest_coallocation_[l] > latest_coallocation_[r]) || lifetimes_[l] < lifetimes_[r];
+      });
+
+      //CleanSlots(coallocations_[i].node_);
+
+      for (auto object : coallocated) {
+	if (Allocated(object)) {
+	  continue;
+	}
+
+	size_t my_offset = 0;
+	auto slot = heap_slots_;
+	do {
+	  if (Fits(object, slot) && (Empty(slot) || FreeSlot(coallocations_[i].node_, &slot))) {
+	    AllocateInSlot(object, slot);
+	    my_offset = slot->offset;
+	    break;
+	  }
+
+	  slot = slot->next;
+	} while (slot != nullptr);
+
+	// Get fine-grained dependencies for this allocation
+	// Iterate through slot dependencies backwards (i.e. latest first) until the whole allocation range has been covered
+	std::vector<size_t> dependencies;
+	std::vector<std::pair<size_t, size_t>> uncovered_range = {{my_offset, my_offset + slot->size}};
+	for (auto it = slot->dependencies.rbegin(); it != slot->dependencies.rend(); ++it) {
+	  std::vector<std::pair<size_t, size_t>> new_uncovered_range;
+	  for (auto& range : uncovered_range) {
+	    if (it->offset <= range.first && it->offset + it->size >= range.second) {
+	      // (1) Dependency covers the range completely, do nothing
+	      dependencies.push_back(it->idx);
+	    } else if (it->offset <= range.first && it->offset + it->size < range.second) {
+	      // (2) Dependency begins before the range and ends somewhere in the middle of it
+	      new_uncovered_range.push_back({it->offset + it->size, range.second});
+	      dependencies.push_back(it->idx);
+	    } else if (it->offset > range.first && it->offset < range.second && it->offset + it->size >= range.second) {
+	      // (3) Dependency begins inside the range and ends after the range
+	      new_uncovered_range.push_back({range.first, it->offset});
+	      dependencies.push_back(it->idx);
+	    } else if (it->offset > range.first && it->offset + it->size < range.second) {
+	      // (4) Dependency is inside the range and does not cover it completely, must split in two
+	      new_uncovered_range.push_back({range.first, it->offset});
+	      new_uncovered_range.push_back({it->offset + it->size, range.second});
+	      dependencies.push_back(it->idx);
+	    }
+	  }
+	  if (new_uncovered_range.empty()) {
+	    break;
+	  }
+	  uncovered_range = new_uncovered_range;
+	}
+
+	schedule_.push_back({AllocatorAction::Type::Allocate, object, my_offset, dependencies});
+      }
+    }
+
+    CleanSlots(nullptr);
+
+    return schedule_;
+  }
+private:
+  void CleanSlots(GraphNode* current_node) {
+    auto slot = heap_slots_;
+    do {
+      bool empty = false;
+      if (Empty(slot)) {
+	empty = true;
+      } else if (!current_node || CanFree(slot->node, current_node)) {
+	schedule_.push_back({AllocatorAction::Type::Free, slot->node, slot->offset, {}});
+	slot->node = nullptr;
+	empty = true;
+      }
+      if (empty) {
+	slot = Coalesce(slot);
+      }
+      slot = slot->next;
+    } while (slot != nullptr);
+  }
+
+  bool FreeSlot(GraphNode* current_node, HeapSlot** slot) {
+    if (!CanFree((*slot)->node, current_node)) {
+      return false;
+    }
+    (*slot)->dependencies.push_back({schedule_.size(), (*slot)->offset, (*slot)->size});
+    schedule_.push_back({AllocatorAction::Type::Free, (*slot)->node, (*slot)->offset});
+    (*slot)->node = nullptr;
+    *slot = Coalesce(*slot);
+    return true;
+  }
+
+  void AllocateInSlot(GraphNode* object, HeapSlot* slot) {
+    size_t size = dynamic_cast<GraphMemAllocNode*>(object)->Bytesize();
+    size_t remainder = slot->size - size;
+    HeapSlot *remainder_slot = new HeapSlot({slot->offset + size, remainder, nullptr, slot, slot->next, {}});
+    if (slot->next) {
+      slot->next->prev = remainder_slot;
+    }
+    slot->next = remainder_slot;
+    slot->size = size;
+    slot->node = object;
+  }
+
+  HeapSlot* Coalesce(HeapSlot* slot) {
+    auto curr_slot = slot;
+    // Coalesce with previous
+    if (curr_slot->prev && Empty(curr_slot->prev)) {
+      curr_slot->prev->size += curr_slot->size;
+      curr_slot->prev->next = curr_slot->next;
+      if (curr_slot->next) {
+	curr_slot->next->prev = curr_slot->prev;
+      }
+      curr_slot->prev->dependencies.insert(curr_slot->prev->dependencies.end(), curr_slot->dependencies.begin(), curr_slot->dependencies.end());
+      auto tmp = curr_slot;
+      curr_slot = curr_slot->prev;
+      delete tmp;
+    }
+    // Coalesce with next
+    if (curr_slot->next && Empty(curr_slot->next)) {
+      curr_slot->size += curr_slot->next->size;
+      if (curr_slot->next->next) {
+	curr_slot->next->next->prev = curr_slot;
+      }
+      curr_slot->dependencies.insert(curr_slot->dependencies.end(), curr_slot->next->dependencies.begin(), curr_slot->next->dependencies.end());
+      auto tmp = curr_slot->next;
+      curr_slot->next = curr_slot->next->next;
+      delete tmp;
+    }
+    return curr_slot;
+  }
+
+  bool CanFree(GraphNode* alloc_node, GraphNode* use_node) {
+    auto this_value = *values_.begin();
+    for (auto value : values_) {
+      if (value.first_def_ == alloc_node) {
+	this_value = value;
+	break;
+      }
+    }
+
+    std::map<GraphNode*, bool> visited;
+    for (auto& def : def_use_chains_) {
+      visited[def.first] = false;
+    }
+
+    std::function<bool(Value&, GraphNode*)> DFS = [&](Value& value, GraphNode* node) -> bool {
+      if (value.def_chains_.find(node) != value.def_chains_.end()) {
+	return true;
+      }
+
+      for (auto use : def_use_chains_[node]) {
+	if (visited[use]) {
+	  continue;
+	}
+	auto found = DFS(value, use);
+	if (found) {
+	  return true;
+	}
+	visited[use] = true;
+      }
+      return false;
+    };
+
+    return !DFS(this_value, use_node);
   };
 
-  typedef std::map<GraphNode*, std::set<GraphNode*>> CoarseValues;
+  bool Allocated(GraphNode* object) {
+    auto slot = heap_slots_;
+    do {
+      if (slot->node == object) {
+	return true;
+      }
+      slot = slot->next;
+    } while (slot != nullptr);
+    return false;
+  }
 
-  struct Coallocation {
-    GraphNode* node_;
-    std::vector<GraphNode*> objects_;
-  };
+  bool Fits(GraphNode* object, HeapSlot* heap_slot) {
+    size_t size = dynamic_cast<GraphMemAllocNode*>(object)->Bytesize();
+    return heap_slot->size >= size;
+  }
+
+  bool Empty(HeapSlot* heap_slot) {
+    return heap_slot->node == nullptr;
+  }
+
+  std::set<Value>& values_;
+  CoarseValues& def_use_chains_;
+  std::vector<Coallocation> coallocations_;
+
+  std::map<GraphNode*, size_t> lifetimes_;
+  std::map<GraphNode*, size_t> latest_coallocation_;
+  HeapSlot* heap_slots_;
+  std::vector<AllocatorAction> schedule_;
+};
+
+class GraphAnalysis {
 
   enum class AllocationHeuristic {
     Greedy = 0,
   };
 
-  struct AllocatorAction {
-    enum class Type {
-      Allocate = 0,
-      Free = 1,
-    };
-
-    Type type_;
-    GraphNode* node_;
-    size_t size_;
-    size_t offset_;
-  };
-
 public:
   bool Run(Graph* graph) {
-    if (graph == graph_) {
+    if (needs_reschedule_) {
+      bool simple_offset_scale = SimpleOffsetScale();
+      if (!simple_offset_scale) {
+	all_schedules_ = CreateAllocationSchedule(AllocationHeuristic::Greedy);
+	AddCoallocationEdges();
+      }
+      SetLeaders();
+      return !simple_offset_scale;
+    } else if (graph == graph_) {
       return false;
     }
 
@@ -338,16 +628,21 @@ public:
     modified |= RemoveUselessEdges();
     
     // Pass 2: coallocation
-    //dt_.Build(graph_);
+    FindCoallocatedObjects();
+    all_schedules_ = CreateAllocationSchedule(AllocationHeuristic::Greedy);
+    AddCoallocationEdges();
     SetLeaders();
-    //FindCoallocatedObjects();
-    //CreateAllocationSchedule(AllocationHeuristic::Greedy);
 
     return modified;
   }
 
   void Invalidate() {
     graph_ = nullptr;
+  }
+
+  void AllocationSizeChanged(GraphNode* node, size_t previous_size, size_t new_size) {
+    changed_node_sizes_[node] = {previous_size, new_size};
+    needs_reschedule_ = true;
   }
 
 private:
@@ -393,7 +688,7 @@ private:
       auto uses = dependencies.second;
 
       for (auto def : defs) {
-	Value dep_value = {def, {}, nullptr};
+	Value dep_value = {def, {}, nullptr, nullptr};
 	auto existing_value = values_.find(dep_value);
 	if (existing_value == values_.end()) {
 	  // First time seeing the value
@@ -412,7 +707,7 @@ private:
 	    }
 	  }
 
-	  Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_ };
+	  Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_, existing_value->free_node_ };
 	  if (latest_def == nullptr) {
 	    // This is the new first def
 	    new_value.first_def_ = node;
@@ -437,7 +732,7 @@ private:
       }
 
       for (auto use : uses) {
-	Value dep_value = {use, {}, nullptr};
+	Value dep_value = {use, {}, nullptr, nullptr};
 	auto existing_value = values_.find(dep_value);
 
 	if (existing_value == values_.end()) {
@@ -467,8 +762,22 @@ private:
 	    uses_without_defs[node].insert(use);
 	  }
 	} else {
-	  Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_ };
-	  new_value.def_chains_[latest_def].insert(node);
+	  Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_, existing_value->free_node_ };
+	  if (node->GetType() == hipGraphNodeTypeMemFree) {
+	    new_value.free_node_ = node;
+	  }
+	  if (node->GetType() == hipGraphNodeTypeMemFree && !new_value.def_chains_[latest_def].empty()) {
+	    // Special case for free nodes: all preceding uses become defs
+	    for (auto use : new_value.def_chains_[latest_def]) {
+	      if (new_value.def_chains_.find(use) == new_value.def_chains_.end()) {
+		new_value.def_chains_[use] = {node};
+	      } else {
+		new_value.def_chains_[use].insert(node);
+	      }
+	    }
+	  } else {
+	    new_value.def_chains_[latest_def].insert(node);
+	  }
 	  values_.erase(existing_value);
 	  values_.insert(new_value);
 	}
@@ -481,7 +790,7 @@ private:
       auto node = e.first;
       auto& uses = e.second;
       for (auto use : uses) {
-	Value dep_value = {use, {}, nullptr};
+	Value dep_value = {use, {}, nullptr, nullptr};
 	auto existing_value = values_.find(dep_value);
 	GraphNode* latest_def = nullptr;
 
@@ -502,7 +811,7 @@ private:
 	  continue;
 	}
 
-	Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_ };
+	Value new_value { existing_value->val_, existing_value->def_chains_, existing_value->first_def_, existing_value->free_node_ };
 	if (latest_def == nullptr) {
 	  new_value.def_chains_[node] = new_value.def_chains_[new_value.first_def_];
 	  new_value.first_def_ = node;
@@ -630,28 +939,119 @@ private:
     return modified;
   }
 
-  void SetLeaders() {
-    // For now: every alloc node is a leader, and the last free node corresponds to it
-    for (auto& value : values_)  {
-      if (value.first_def_->GetType() == hipGraphNodeTypeMemAlloc) {
-	GraphMemFreeNode* free_node = nullptr;
-	for (auto def_chain : value.def_chains_) {
-	  for (auto u : def_chain.second) {
-	    if (u->GetType() == hipGraphNodeTypeMemFree) {
-	      free_node = dynamic_cast<GraphMemFreeNode*>(u);
-	      break;
+  bool SimpleOffsetScale() {
+    for (auto& schedule : all_schedules_) {
+      std::set<GraphNode*> allocation_nodes;
+      for (auto& action : schedule) {
+	if (action.type_ == AllocatorAction::Type::Allocate) {
+	  allocation_nodes.insert(action.node_);
+	}
+      }
+
+      double offset_scale = 0.0;
+      for (auto node : allocation_nodes) {
+	double this_scale;
+	if (changed_node_sizes_.find(node) == changed_node_sizes_.end()) {
+	  this_scale = 1.0;
+	} else {
+	  auto changed_size = changed_node_sizes_[node];
+	  this_scale = ((double) changed_size.second) / changed_size.first;
+	}
+	if (offset_scale == 0.0) {
+	  offset_scale = this_scale;
+	} else if (offset_scale != this_scale) {
+	  return false;
+	}
+      }
+
+      for (auto& action : schedule) {
+	action.offset_ *= offset_scale;
+      }
+    }
+
+    return true;
+  }
+
+  void AddCoallocationEdges() {
+    for (auto& schedule : all_schedules_) {
+      auto& leader = schedule[0].node_;
+      for (size_t i = 1; i < schedule.size(); ++i) {
+	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
+	  auto node = schedule[i].node_;
+	  leader->AddEdgeDep(node);
+	  def_use_chains_[leader].insert(node);
+
+	  for (auto dep : schedule[i].dependencies_) {
+	    auto dep_node = schedule[dep].node_;
+	    dep_node->AddEdgeDep(node);
+	    if (def_use_chains_.find(dep_node) == def_use_chains_.end()) {
+	      def_use_chains_[dep_node] = {node};
+	    } else {
+	      def_use_chains_[dep_node].insert(node);
 	    }
 	  }
 	}
-	dynamic_cast<GraphMemAllocNode*>(value.first_def_)->SetLeader({}, free_node);
-	if (nullptr != free_node) {
-	  free_node->SetLast();
-	}
       }
     }
+
+    RemoveUselessEdges();
+  }
+
+  void SetLeaders() {
+    for (auto& schedule : all_schedules_) {
+      GraphMemAllocNode* leader = dynamic_cast<GraphMemAllocNode*>(schedule[0].node_);
+      size_t slab_size = schedule[0].offset_ + leader->Bytesize();
+      leader->SetSlabOffset(schedule[0].offset_);
+
+      std::vector<GraphMemAllocNode*> peers;
+      std::vector<GraphMemFreeNode*> free_nodes;
+      for (size_t i = 1; i < schedule.size(); ++i) {
+	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
+	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(schedule[i].node_);
+	  peers.push_back(alloc_node);
+	  slab_size = std::max(slab_size, schedule[i].offset_ + alloc_node->Bytesize());
+	  alloc_node->SetSlabOffset(schedule[i].offset_);
+	} else {
+	  free_nodes.push_back(dynamic_cast<GraphMemFreeNode*>(schedule[i].node_));
+	}
+      }
+
+      leader->SetLeader(peers, slab_size, free_nodes);
+    }
+
+    changed_node_sizes_ = {};
+    needs_reschedule_ = false;
   }
 
   void FindCoallocatedObjects() {
+    struct CoallocationNode {
+      std::set<size_t> edges;
+    };
+    std::vector<CoallocationNode> nodes;
+
+    auto path_exists = [&](size_t s, size_t t) -> bool {
+      std::vector<bool> visited(nodes.size(), false);
+
+      std::function<bool(size_t, size_t)> DFS = [&](size_t s, size_t t) -> bool {
+	if (s == t) {
+	  return true;
+	}
+
+	visited[s] = true;
+	for (auto e : nodes[s].edges) {
+	  if (!visited[e]) {
+	    auto found = DFS(e, t);
+	    if (found) {
+	      return true;
+	    }
+	  }
+	}
+	return false;
+      };
+
+      return DFS(s, t);
+    };
+
     std::map<GraphNode*, size_t> distances;
     auto longest_path = [&](GraphNode* search) {
       // Iteration in topological order + dynamic programming
@@ -668,6 +1068,7 @@ private:
       return length_to[search];
     };
 
+    std::vector<Coallocation> individual_coallocations;
     for (auto use_chain : use_def_chains_) {
       if (use_chain.second.size() <= 1) {
 	continue;
@@ -682,22 +1083,65 @@ private:
 	}
       }
       if (coallocated.size() > 1) {
-	coallocations_.push_back({node, coallocated});
+	individual_coallocations.push_back({node, coallocated});
 	distances[node] = longest_path(node);
       }
     }
 
+    // Build a graph of coallocations, where E = {(u, v) | there exists GraphNode n s.t. n in u and n in v}
+    nodes = std::vector<CoallocationNode>(individual_coallocations.size());
+    for (size_t i = 0; i < individual_coallocations.size(); ++i) {
+      for (size_t j = i + 1; j < individual_coallocations.size(); ++j) {
+	std::set<GraphNode*> node_set;
+	node_set.insert(individual_coallocations[i].objects_.begin(), individual_coallocations[i].objects_.end());
+	node_set.insert(individual_coallocations[j].objects_.begin(), individual_coallocations[j].objects_.end());
+	if (node_set.size() < individual_coallocations[i].objects_.size() + individual_coallocations[j].objects_.size()) {
+	  nodes[i].edges.insert(j);
+	  nodes[j].edges.insert(i);
+	}
+      }
+    }
+
+    // Build a graph of strongly connected components from the previous graph
+    std::vector<bool> is_scc(nodes.size(), false);
+    std::vector<std::vector<size_t>> scc;
+    for (size_t i = 0; i < nodes.size(); ++i) {
+      if (is_scc[i]) {
+	continue;
+      }
+
+      std::vector<size_t> this_scc;
+      this_scc.push_back(i);
+      for (size_t j = i + 1; j < nodes.size(); ++j) {
+	if (!is_scc[j] && path_exists(i, j)) {
+	  is_scc[j] = true;
+	  this_scc.push_back(j);
+	}
+      }
+
+      scc.push_back(this_scc);
+    }
+
+    // Each strongly connected component should be scheduled separately
+    coallocations_ = std::vector<std::vector<Coallocation>>(scc.size());
+    for (size_t i = 0; i < scc.size(); ++i) {
+      for (auto e : scc[i]) {
+	coallocations_[i].push_back(individual_coallocations[e]);
+      }
+    }
 
     // Sort in ascending order based on the longest distance from the entry
-    std::sort(coallocations_.begin(), coallocations_.end(), [&](Coallocation& l, Coallocation& r) {
-	return distances[l.node_] < distances[r.node_];
-    });
+    for (auto& coallocation : coallocations_) {
+      std::sort(coallocation.begin(), coallocation.end(), [&](Coallocation& l, Coallocation& r) {
+	  return distances[l.node_] < distances[r.node_];
+      });
+    }
   }
 
-  void CreateAllocationSchedule(AllocationHeuristic heuristic) {
+  std::vector<std::vector<AllocatorAction>> CreateAllocationSchedule(AllocationHeuristic heuristic) {
     switch (heuristic) {
       case (AllocationHeuristic::Greedy): {
-	CreateAllocationScheduleGreedy();
+	return CreateAllocationScheduleGreedy();
 	break;
       }
       default: {
@@ -705,134 +1149,29 @@ private:
 	 break;
       }
     }
+    return {};
   }
 
-  void CreateAllocationScheduleGreedy() {
-    auto get_lifetime = [&](void* ptr, GraphNode* node) -> size_t {
-      // This should be a shortest path algorithm in the presense of loops
-      // But since there are no loop, it can be a simple DFS
-      std::map<GraphNode*, bool> visited;
-      for (auto def : def_use_chains_) {
-	visited[def.first] = false;
-      }
-      std::function<size_t(void*, GraphNode*, size_t)> DFS = [&](void* ptr, GraphNode* node, size_t distance) -> size_t {
-	if (node->GetType() == hipGraphNodeTypeMemFree) {
-	  void* free_ptr = nullptr;
-	  dynamic_cast<GraphMemFreeNode*>(node)->GetParams(&free_ptr);
-	  if (free_ptr == ptr) {
-	    return distance;
+  std::vector<std::vector<AllocatorAction>> CreateAllocationScheduleGreedy() {
+    std::vector<std::vector<AllocatorAction>> all_schedules;
+    for (auto& coallocation : coallocations_) {
+      AllocationSchedulerGreedy scheduler(values_, def_use_chains_, coallocation);
+      auto schedule = scheduler.Make();
+
+      for (auto& e : schedule) {
+	if (e.type_ == AllocatorAction::Type::Free) {
+	  for (auto& value : values_) {
+	    if (value.first_def_ == e.node_) {
+	      e.node_ = value.free_node_;
+	      break;
+	    }
 	  }
 	}
-
-	for (auto use : def_use_chains_[node]) {
-	  if (visited[use]) {
-	    continue;
-	  }
-	  auto dist = DFS(ptr, use, distance + 1);
-	  if (dist != (size_t) -1) {
-	    return dist;
-	  }
-	  visited[use] = true;
-	}
-	return (size_t) -1;
-      };
-
-      return DFS(ptr, node, 0);
-    };
-
-    std::map<GraphNode*, size_t> lifetimes;
-    for (auto& value : values_) {
-      if (value.first_def_->GetType() == hipGraphNodeTypeMemAlloc) {
-	lifetimes[value.first_def_] = get_lifetime(value.val_, value.first_def_);
       }
+
+      all_schedules.push_back(schedule);
     }
-
-    std::map<GraphNode*, size_t> latest_coallocation;
-    for (size_t i = 0; i < coallocations_.size(); ++i) {
-      for (auto object : coallocations_[i].objects_) {
-	latest_coallocation[object] = i;
-      }
-    }
-
-    auto CanFree = [&](GraphNode* alloc_node, GraphNode* use_node) {
-      auto this_value = *values_.begin();
-      for (auto value : values_) {
-	if (value.first_def_ == alloc_node) {
-	  this_value = value;
-	  break;
-	}
-      }
-
-      std::map<GraphNode*, bool> visited;
-      for (auto& def : def_use_chains_) {
-	visited[def.first] = false;
-      }
-
-      std::function<bool(Value&, GraphNode*)> DFS = [&](Value& value, GraphNode* node) -> bool {
-	if (value.def_chains_.find(node) != value.def_chains_.end()) {
-	  return true;
-	}
-
-	for (auto use : def_use_chains_[node]) {
-	  if (visited[use]) {
-	    continue;
-	  }
-	  auto found = DFS(value, use);
-	  if (found) {
-	    return true;
-	  }
-	  visited[use] = true;
-	}
-	return false;
-      };
-
-      return !DFS(this_value, use_node);
-    };
-
-    std::vector<GraphNode*> heap_slots;
-    auto Allocated = [&](GraphNode* object) -> bool {
-      return std::find(heap_slots.begin(), heap_slots.end(), object) != heap_slots.end();
-    };
-
-    auto get_offset = [&](size_t idx) -> size_t {
-      size_t offset = 0;
-      for (size_t i = 0; i < idx; ++i) {
-	std::cout << heap_slots[i]->GetType() << "\n";
-	offset += dynamic_cast<GraphMemAllocNode*>(heap_slots[i])->Bytesize();
-      }
-      return offset;
-    };
-
-    std::vector<AllocatorAction> schedule;
-    for (size_t i = 0; i < coallocations_.size(); ++i) {
-      auto& coallocated = coallocations_[i].objects_;
-      // Sort by longest lived first
-      std::sort(coallocated.begin(), coallocated.end(), [&](GraphNode* l, GraphNode* r) {
-        return (lifetimes[l] == lifetimes[r] && latest_coallocation[l] > latest_coallocation[r]) || lifetimes[l] < lifetimes[r];
-      });
-
-      for (auto object : coallocated) {
-	if (Allocated(object)) {
-	  continue;
-	}
-
-        size_t my_heap_slot = heap_slots.size();
-        for (size_t j = 0; j < heap_slots.size(); ++j) {
-          if (CanFree(heap_slots[j], coallocations_[i].node_)) {
-            schedule.push_back({AllocatorAction::Type::Free, heap_slots[j], dynamic_cast<GraphMemAllocNode*>(heap_slots[j])->Bytesize(), get_offset(j)});
-            my_heap_slot = j;
-            break;
-          }
-        }
-
-        if (my_heap_slot == heap_slots.size()) {
-          heap_slots.push_back(object);
-        } else {
-          heap_slots[my_heap_slot] = object;
-        }
-        schedule.push_back({AllocatorAction::Type::Allocate, object, dynamic_cast<GraphMemAllocNode*>(object)->Bytesize(), get_offset(schedule.size())});
-      }
-    }
+    return all_schedules;
   }
 
   Graph* graph_;
@@ -841,7 +1180,11 @@ private:
   std::set<Value> values_;
   CoarseValues def_use_chains_;
   CoarseValues use_def_chains_;
-  std::vector<Coallocation> coallocations_;
+  std::vector<std::vector<Coallocation>> coallocations_;
+  std::vector<std::vector<AllocatorAction>> all_schedules_;
+  std::map<GraphNode*, std::pair<size_t, size_t>> changed_node_sizes_;
+  bool needs_reschedule_ = false;
 };
 
+} // namespace ga
 } // namespace hip

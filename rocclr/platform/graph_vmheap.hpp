@@ -45,6 +45,7 @@ public:
       buddy_(nullptr),
       next_(nullptr),
       prev_(nullptr),
+      refcount_(0),
       busy_(false),
       mapped_(false) {}
 
@@ -68,6 +69,10 @@ public:
     mapped_.store(false);
   }
 
+  size_t DecrementRefcount() {
+    return refcount_.fetch_sub(1);
+  }
+
 private:
   GraphSlab() = delete;
   GraphSlab(const GraphSlab&) = delete;
@@ -82,6 +87,7 @@ private:
   GraphSlab* next_;
   GraphSlab* prev_;
 
+  std::atomic<size_t> refcount_;
   std::atomic<bool> busy_;
   std::atomic<bool> mapped_;
 };
@@ -256,7 +262,7 @@ public:
 
   Command* GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset);
 
-  GraphSlab* AllocateSlab(size_t size);
+  GraphSlab* AllocateSlab(size_t size, size_t num_peers);
 
   void FreeSlab(GraphSlab* slab);
 private:
@@ -394,7 +400,7 @@ public:
 
   void InvalidateTemporaryHandle();
 
-  GraphSlab* AllocateSlab(size_t size);
+  GraphSlab* AllocateSlab(size_t size, size_t num_peers);
 
   bool FreeSlab(GraphSlab* slab);
 

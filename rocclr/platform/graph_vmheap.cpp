@@ -117,6 +117,10 @@ bool GraphVmHeap::Create() {
 
 // ================================================================================================
 void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold) {
+  if (!created_) {
+    return;
+  }
+
   ScopedLock k(lock_);
   auto unmap_org = unmap_threshold_;
   unmap_threshold_ = unmap_threshold;
@@ -206,7 +210,7 @@ void GraphVmHeap::UnmapSlab(GraphSlab* slab) {
 }
 
 // ================================================================================================
-GraphSlab* GraphVmHeap::AllocateSlab(size_t size) {
+GraphSlab* GraphVmHeap::AllocateSlab(size_t size, size_t num_peers) {
   ScopedLock k(lock_);
 
   if (!created_) {
@@ -217,7 +221,12 @@ GraphSlab* GraphVmHeap::AllocateSlab(size_t size) {
     }
   }
 
+  if (size > va_size_) {
+    return nullptr;
+  }
+
   auto slab = GetSlab(size);
+  slab->refcount_.store(num_peers);
 
   max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + size);
 
@@ -436,7 +445,7 @@ Command* GraphVmHeapArray::GetAllocationCommand(GraphSlab* slab, HostQueue& queu
 }
 
 // ================================================================================================
-GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size) {
+GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers) {
   uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
   size_t free_device_memory[2];
   bool should_reuse_physical = false;
@@ -468,11 +477,11 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size) {
   GraphSlab* slab = nullptr;
   // Try allocating from this thread's heap
   if (vm_heaps_[my_heap]->free_size_ > size) {
-    slab = vm_heaps_[my_heap]->AllocateSlab(size);
+    slab = vm_heaps_[my_heap]->AllocateSlab(size, num_peers);
   }
   // If that fails, try allocating from large heap
   if (slab == nullptr) {
-    slab = large_heap_.AllocateSlab(size);
+    slab = large_heap_.AllocateSlab(size, num_peers);
   }
   // If that fails, try allocating from other heaps
   if (slab == nullptr) {
@@ -481,7 +490,7 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size) {
 	continue;
       }
 
-      slab = vm_heaps_[i]->AllocateSlab(size);
+      slab = vm_heaps_[i]->AllocateSlab(size, num_peers);
       if (slab != nullptr) {
 	break;
       }

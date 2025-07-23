@@ -47,7 +47,9 @@ class GraphNode;
 class GraphExec;
 class UserObject;
 class GraphKernelNode;
+namespace ga {
 class GraphAnalysis;
+}
 typedef GraphNode* Node;
 
 class UserObject : public amd::ReferenceCountedObject {
@@ -662,8 +664,8 @@ class Graph {
     return mem_pool_->GetAllocationCommand(slab, queue, slab_map_command, size, offset);
   }
 
-  amd::GraphSlab* AllocateSlab(size_t size) const {
-    return mem_pool_->AllocateSlab(size);
+  amd::GraphSlab* AllocateSlab(size_t size, size_t num_peers) const {
+    return mem_pool_->AllocateSlab(size, num_peers);
   }
 
   void FreeSlab(amd::GraphSlab* slab) const {
@@ -703,6 +705,8 @@ class Graph {
   
   void InvalidateGraphAnalysis();
 
+  void AllocationSizeChanged(GraphNode* node, size_t previous_size, size_t new_size);
+
   void UpdatePtrs(void* old_ptr, void** new_ptr);
 
  protected:
@@ -729,7 +733,7 @@ class Graph {
   std::unordered_set<GraphNode*> capturedNodes_;
   bool graphInstantiated_;
   std::unordered_map<Node, Node> clonedNodes_;
-  GraphAnalysis* graph_analysis_;
+  ga::GraphAnalysis* graph_analysis_;
 };
 
 class GraphExec : public amd::ReferenceCountedObject, public Graph {
@@ -866,9 +870,9 @@ class ChildGraphNode : public GraphNode, public GraphExec {
     }
 
     auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -965,6 +969,7 @@ class GraphKernelNode : public GraphNode {
 	}
       }
     }
+
     return {defs, uses};
   }
 
@@ -1279,10 +1284,10 @@ class GraphKernelNode : public GraphNode {
     if (status != hipSuccess) {
       ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed to set params");
     } else {
-      auto graph = GetParentGraph();
-      if (graph != nullptr) {
-	graph->InvalidateGraphAnalysis();
-      }
+      //auto graph = GetParentGraph();
+      //if (graph != nullptr) {
+      //  graph->InvalidateGraphAnalysis();
+      //}
     }
     return status;
   }
@@ -1473,9 +1478,9 @@ class GraphMemcpyNode : public GraphNode {
     }
     std::memcpy(&copyParams_, params, sizeof(hipMemcpy3DParms));
     auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
     return hipSuccess;
   }
 
@@ -1745,9 +1750,9 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     kind_ = kind;
 
     auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -1913,10 +1918,10 @@ class GraphMemcpyNodeFromSymbol : public GraphMemcpyNode1D {
     offset_ = offset;
     kind_ = kind;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2019,10 +2024,10 @@ class GraphMemcpyNodeToSymbol : public GraphMemcpyNode1D {
     offset_ = offset;
     kind_ = kind;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2198,10 +2203,10 @@ class GraphMemsetNode : public GraphNode {
     std::memcpy(&memsetParams_, params, sizeof(hipMemsetParams));
     depth_ = depth;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2272,10 +2277,10 @@ class GraphEventRecordNode : public GraphNode {
   hipError_t SetParams(hipEvent_t event) {
     event_ = event;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2329,10 +2334,10 @@ class GraphEventWaitNode : public GraphNode {
   hipError_t SetParams(hipEvent_t event) {
     event_ = event;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2402,10 +2407,10 @@ class GraphHostNode : public GraphNode {
   hipError_t SetParams(const hipHostNodeParams* params) {
     std::memcpy(&NodeParams_, params, sizeof(hipHostNodeParams));
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2444,7 +2449,6 @@ class GraphEmptyNode : public GraphNode {
 class GraphMemFreeNode : public GraphNode {
   void* device_ptr_;    // Device pointer of the freed memory
   amd::GraphSlab* slab_ = nullptr;
-  bool is_last_ = false;
 
  public:
   GraphMemFreeNode(void* dptr)
@@ -2470,10 +2474,6 @@ class GraphMemFreeNode : public GraphNode {
     slab_ = slab;
   }
 
-  void SetLast() {
-    is_last_ = true;
-  }
-
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
     if (!HIP_MEM_POOL_USE_VM) {
@@ -2482,19 +2482,19 @@ class GraphMemFreeNode : public GraphNode {
       size_t offset = 0;
       auto memory = getMemoryObject(device_ptr_, offset);
       if (memory) {
-	amd::MemObjMap::RemoveMemObj(device_ptr_);
-	memory->release();
+        amd::MemObjMap::RemoveMemObj(device_ptr_);
+        memory->release();
       }
 
       auto graph = GetParentGraph();
-      if (graph != nullptr && is_last_) {
-	assert(slab_ != nullptr);
-	auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
-	if (nullptr != unmap_command) {
-	  commands_.push_back(unmap_command);
-	}
-	graph->DecrementMemAllocNodeCount();
+      assert(slab_ != nullptr);
+      if (graph != nullptr && slab_->DecrementRefcount() == 0) {
+        auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
+        if (nullptr != unmap_command) {
+          commands_.push_back(unmap_command);
+        }
       }
+      graph->DecrementMemAllocNodeCount();
     }
     return error;
   }
@@ -2539,10 +2539,10 @@ class GraphMemFreeNode : public GraphNode {
 
     device_ptr_ = params->dptr;
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2552,8 +2552,8 @@ class GraphMemFreeNode : public GraphNode {
 class GraphMemAllocNode final : public GraphNode {
   hipMemAllocNodeParams node_params_;  // Node parameters for memory allocation
   std::vector<GraphMemAllocNode*> peers_;
+  std::vector<GraphMemFreeNode*> free_nodes_;
   GraphMemAllocNode* leader_ = nullptr;
-  GraphMemFreeNode* last_free_node_ = nullptr;
   amd::GraphSlab* slab_ = nullptr;
   amd::Command* slab_map_command_ = nullptr;
   size_t slab_size_;
@@ -2570,6 +2570,7 @@ class GraphMemAllocNode final : public GraphNode {
       : GraphNode(rhs) {
     node_params_ = rhs.node_params_;
     temporary_handle_ = rhs.temporary_handle_;
+    slab_ = rhs.slab_;
     if (HIP_MEM_POOL_USE_VM) {
       assert(rhs.node_params_.dptr != nullptr && "Graph MemAlloc runtime can't clone an invalid node!");
       node_params_.dptr = rhs.node_params_.dptr;
@@ -2599,12 +2600,18 @@ class GraphMemAllocNode final : public GraphNode {
     return node_params_.bytesize;
   }
 
-  void SetLeader(std::vector<GraphMemAllocNode*> peers, GraphMemFreeNode* last_free_node) {
+  void SetSlabOffset(size_t slab_offset) {
+    slab_offset_ = slab_offset;
+  }
+
+  void SetLeader(std::vector<GraphMemAllocNode*> peers, size_t slab_size, std::vector<GraphMemFreeNode*> free_nodes) {
+    if (slab_ != nullptr) {
+      ReleaseSlab();
+    }
     peers_ = peers;
+    free_nodes_ = free_nodes;
     leader_ = this;
-    slab_size_ = node_params_.bytesize;
-    slab_offset_ = 0;
-    last_free_node_ = last_free_node;
+    slab_size_ = slab_size;
     for (auto peer : peers) {
       peer->UpdateLeader(this);
     }
@@ -2646,7 +2653,7 @@ class GraphMemAllocNode final : public GraphNode {
 	if (leader_ == this && slab_ == nullptr) {
 	  // This node is the `leader`: it allocates the slab and passes it
 	  // to its peers
-	  slab_ = graph->AllocateSlab(slab_size_);
+	  slab_ = graph->AllocateSlab(slab_size_, peers_.size() + 1);
 	  slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
 	  if (nullptr != slab_map_command_) {
 	    commands_.push_back(slab_map_command_);
@@ -2655,8 +2662,8 @@ class GraphMemAllocNode final : public GraphNode {
 	  for (auto peer : peers_) {
 	    peer->UpdateSlab(slab_, slab_map_command_);
 	  }
-	  if (last_free_node_) {
-	    last_free_node_->UpdateSlab(slab_);
+	  for (auto free_node : free_nodes_) {
+	    free_node->UpdateSlab(slab_);
 	  }
 	}
 
@@ -2690,7 +2697,7 @@ class GraphMemAllocNode final : public GraphNode {
     if (graph != nullptr) {
       slab_size_ = node_params_.bytesize;
       slab_offset_ = 0;
-      slab_ = graph->AllocateSlab(slab_size_);
+      slab_ = graph->AllocateSlab(slab_size_, 1);
 
       slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
       if (slab_map_command_) {
@@ -2721,6 +2728,8 @@ class GraphMemAllocNode final : public GraphNode {
       return hipSuccess;
     }
 
+    size_t prev_bytesize = node_params_.bytesize;
+
     if (!HIP_MEM_POOL_USE_VM) {
       graph->FreeSlab(slab_);
       node_params_.dptr = Execute();
@@ -2738,7 +2747,11 @@ class GraphMemAllocNode final : public GraphNode {
       node_params_.dptr = temporary_handle_;
     }
 
-    graph->InvalidateGraphAnalysis();
+    //graph->InvalidateGraphAnalysis();
+
+    if (node_params_.bytesize != prev_bytesize) {
+      graph->AllocationSizeChanged(this, prev_bytesize, node_params_.bytesize);
+    }
 
     return hipSuccess;
   }
@@ -2821,10 +2834,10 @@ class GraphDrvMemcpyNode : public GraphNode {
     }
     std::memcpy(&copyParams_, params, sizeof(HIP_MEMCPY3D));
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2895,10 +2908,10 @@ class hipGraphExternalSemSignalNode : public GraphNode {
     std::memcpy(&externalSemaphorNodeParam_, pNodeParams,
                 sizeof(hipExternalSemaphoreSignalNodeParams));
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -2955,10 +2968,10 @@ class hipGraphExternalSemWaitNode : public GraphNode {
     std::memcpy(&externalSemaphorNodeParam_, pNodeParams,
                 sizeof(hipExternalSemaphoreWaitNodeParams));
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
@@ -3004,10 +3017,10 @@ class hipGraphBatchMemOpNode : public GraphNode {
   hipError_t SetParams(const hipBatchMemOpNodeParams* pNodeParams) {
     std::memcpy(&batchMemOpNodeParam_, pNodeParams, sizeof(hipBatchMemOpNodeParams));
 
-    auto graph = GetParentGraph();
-    if (graph != nullptr) {
-      graph->InvalidateGraphAnalysis();
-    }
+    //auto graph = GetParentGraph();
+    //if (graph != nullptr) {
+    //  graph->InvalidateGraphAnalysis();
+    //}
 
     return hipSuccess;
   }
