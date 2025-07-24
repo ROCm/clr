@@ -212,10 +212,8 @@ class GraphVmHeap {
 	  unmap_guaranteed_(unmap_guaranteed) {}
 
       virtual void submit(device::VirtualDevice& device) final {
-        auto busy_size = vm_heap_->va_size_ - vm_heap_->free_size_;
-        uint64_t free_mapped = vm_heap_->mapped_size_.load() - busy_size;
         // If free mapped memory lower than the threshold, then stop unmapping
-        if (!unmap_guaranteed_ && free_mapped <= vm_heap_->unmap_threshold_) {
+        if (!unmap_guaranteed_ && !vm_heap_->ShouldUnmap()) {
           return;
         }
 
@@ -298,6 +296,12 @@ public:
   GraphSlab* FetchSlab(size_t slab_id);
 
   void FreeSlab(GraphSlab* slab);
+
+  bool ShouldUnmap() {
+    auto busy_size = va_size_ - free_size_;
+    uint64_t free_mapped = mapped_size_.load() - busy_size;
+    return free_mapped > unmap_threshold_;
+  }
 private:
   GraphVmHeap() = delete;
   GraphVmHeap(const GraphVmHeap&) = delete;
@@ -316,7 +320,9 @@ private:
 
   GraphSlab* GetSlab(size_t size);
 
-  void ReturnSlab(GraphSlab* slab);
+  void ReturnSlab(GraphSlab* slab, bool in_busy=true);
+
+  void CacheSlab(GraphSlab* slab);
 
   GraphSlab* PopBin(std::vector<GraphSlab*>& bins, size_t bin_idx);
 
@@ -336,6 +342,7 @@ private:
   size_t max_bin_idx_;
   std::vector<GraphSlab*> free_bins_;
   std::vector<GraphSlab*> busy_bins_;
+  std::vector<GraphSlab*> cache_bins_;
   std::map<size_t, GraphSlab*> slab_ids;
 
   address       base_address_ = nullptr;  //!< GPU virtual address base of the heap
