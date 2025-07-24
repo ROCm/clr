@@ -599,6 +599,11 @@ private:
 };
 
 class GraphAnalysis {
+  struct AllocationSchedule {
+    std::vector<AllocatorAction> actions_;
+    std::vector<GraphMemAllocNode*> alloc_nodes_;
+    size_t slab_size_;
+  };
 
   enum class AllocationHeuristic {
     Greedy = 0,
@@ -941,15 +946,8 @@ private:
 
   bool SimpleOffsetScale() {
     for (auto& schedule : all_schedules_) {
-      std::set<GraphNode*> allocation_nodes;
-      for (auto& action : schedule) {
-	if (action.type_ == AllocatorAction::Type::Allocate) {
-	  allocation_nodes.insert(action.node_);
-	}
-      }
-
       double offset_scale = 0.0;
-      for (auto node : allocation_nodes) {
+      for (auto node : schedule.alloc_nodes_) {
 	double this_scale;
 	if (changed_node_sizes_.find(node) == changed_node_sizes_.end()) {
 	  this_scale = 1.0;
@@ -964,9 +962,10 @@ private:
 	}
       }
 
-      for (auto& action : schedule) {
+      for (auto& action : schedule.actions_) {
 	action.offset_ *= offset_scale;
       }
+      schedule.slab_size_ *= offset_scale;
     }
 
     return true;
@@ -974,11 +973,11 @@ private:
 
   void AddCoallocationEdges() {
     for (auto& schedule : all_schedules_) {
-      for (size_t i = 1; i < schedule.size(); ++i) {
-	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
-	  auto node = schedule[i].node_;
-	  for (auto dep : schedule[i].dependencies_) {
-	    auto dep_node = schedule[dep].node_;
+      for (auto& action : schedule.actions_) {
+	if (action.type_ == AllocatorAction::Type::Allocate) {
+	  auto node = action.node_;
+	  for (auto dep : action.dependencies_) {
+	    auto dep_node = schedule.actions_[dep].node_;
 	    dep_node->AddEdgeDep(node);
 	    if (def_use_chains_.find(dep_node) == def_use_chains_.end()) {
 	      def_use_chains_[dep_node] = {node};
@@ -996,25 +995,14 @@ private:
   void SetSlabInfo() {
     for (size_t k = 0; k < all_schedules_.size(); ++k) {
       auto& schedule = all_schedules_[k];
-      GraphMemAllocNode* leader = dynamic_cast<GraphMemAllocNode*>(schedule[0].node_);
-      size_t slab_size = schedule[0].offset_ + leader->Bytesize();
 
-      std::vector<GraphMemAllocNode*> peers;
-      for (size_t i = 0; i < schedule.size(); ++i) {
-	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
-	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(schedule[i].node_);
-	  peers.push_back(alloc_node);
-	  slab_size = std::max(slab_size, schedule[i].offset_ + alloc_node->Bytesize());
+      for (auto& action : schedule.actions_) {
+	if (action.type_ == AllocatorAction::Type::Allocate) {
+	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(action.node_);
+	  alloc_node->SetSlabInfo(k, schedule.slab_size_, schedule.alloc_nodes_, action.offset_);
 	} else {
-	  auto free_node = dynamic_cast<GraphMemFreeNode*>(schedule[i].node_);
+	  auto free_node = dynamic_cast<GraphMemFreeNode*>(action.node_);
 	  free_node->SetSlabId(k);
-	}
-      }
-
-      for (size_t i = 0; i < schedule.size(); ++i) {
-	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
-	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(schedule[i].node_);
-	  alloc_node->SetSlabInfo(k, slab_size, peers, schedule[i].offset_);
 	}
       }
     }
@@ -1138,7 +1126,7 @@ private:
     }
   }
 
-  std::vector<std::vector<AllocatorAction>> CreateAllocationSchedule(AllocationHeuristic heuristic) {
+  std::vector<AllocationSchedule> CreateAllocationSchedule(AllocationHeuristic heuristic) {
     switch (heuristic) {
       case (AllocationHeuristic::Greedy): {
 	return CreateAllocationScheduleGreedy();
@@ -1152,14 +1140,21 @@ private:
     return {};
   }
 
-  std::vector<std::vector<AllocatorAction>> CreateAllocationScheduleGreedy() {
-    std::vector<std::vector<AllocatorAction>> all_schedules;
+  std::vector<AllocationSchedule> CreateAllocationScheduleGreedy() {
+    std::vector<AllocationSchedule> all_schedules;
     for (auto& coallocation : coallocations_) {
       AllocationSchedulerGreedy scheduler(values_, def_use_chains_, coallocation);
-      auto schedule = scheduler.Make();
+      auto actions = scheduler.Make();
 
-      for (auto& e : schedule) {
-	if (e.type_ == AllocatorAction::Type::Free) {
+      std::vector<GraphMemAllocNode*> alloc_nodes;
+      size_t slab_size = 0;
+
+      for (auto& e : actions) {
+	if (e.type_ == AllocatorAction::Type::Allocate) {
+	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(e.node_);
+	  alloc_nodes.push_back(alloc_node);
+	  slab_size = std::max(slab_size, e.offset_ + alloc_node->Bytesize());
+	} else if (e.type_ == AllocatorAction::Type::Free) {
 	  for (auto& value : values_) {
 	    if (value.first_def_ == e.node_) {
 	      e.node_ = value.free_node_;
@@ -1169,7 +1164,7 @@ private:
 	}
       }
 
-      all_schedules.push_back(schedule);
+      all_schedules.push_back({actions, alloc_nodes, slab_size});
     }
     return all_schedules;
   }
@@ -1181,7 +1176,7 @@ private:
   CoarseValues def_use_chains_;
   CoarseValues use_def_chains_;
   std::vector<std::vector<Coallocation>> coallocations_;
-  std::vector<std::vector<AllocatorAction>> all_schedules_;
+  std::vector<AllocationSchedule> all_schedules_;
   std::map<GraphNode*, std::pair<size_t, size_t>> changed_node_sizes_;
   bool needs_reschedule_ = false;
 };
