@@ -33,6 +33,7 @@ Some unsupported GPUs such as gfx9, gfx8 and gfx7 are deprecated on Microsoft Wi
     - Cooperative groups  in `hipLaunchCooperativeKernelMultiDevice` and `hipLaunchCooperativeKernel` functions, additional input parameter validation checks are added.
     - `hipPointerGetAttributes` returns `hipSuccess` instead of an error with invalid value `hipErrorInvalidValue`, in case `NULL` host or attribute pointer is passed as input parameter. It now matches the functionality of `cudaPointerGetAttributes` which changed with CUDA 11 and above releases.
     - `hipFree` previously there was an implicit wait which was applicable for all memory allocations, for synchronization purpose. This wait is now disabled for allocations made with `hipMallocAsync` and `hipMallocFromPoolAsync`, to match the behavior of CUDA API `cudaFree`
+    - `hipFreeAsync` now returns `hipSuccess` when the input pointer is NULL, instead of ` hipErrorInvalidValue` , to be consistent with `hipFree`.
 * Changes in hipRTC.
     - Removal of `hipRTC` symbols from HIP Runtime Library.
     Any application using `hipRTC` APIs should link explicitly with the `hipRTC` library. This makes the usage of `hipRTC` library on Linux the same as on Windows and matches the behavior of CUDA `nvRTC`.
@@ -44,13 +45,13 @@ Some unsupported GPUs such as gfx9, gfx8 and gfx7 are deprecated on Microsoft Wi
     - Usage of STD headers, HIP header files only include necessary STL headers.
     - Deprecated structure `HIP_MEMSET_NODE_PARAMS` is removed. Developers can use the definition `hipMemsetParams` instead.
 * API signature/struct changes
-    - API signatures are adjusted in some APIs to match corresponding CUDA APIs. Impacted APIs are as folloing,
+    - API signatures are adjusted in some APIs to match corresponding CUDA APIs. Impacted APIs are as folloing:
       * `hiprtcCreateProgram`
       * `hiprtcCompileProgram`
       * `hipMemcpyHtoD`
       * `hipCtxGetApiVersion`
     - HIP struct change in `hipMemsetParams`, it is updated and compatible with CUDA.
-    - HIP vector constructor change in `hipComplex` initialization, it now generates correct values. The affected constructors will be small vector types such as `float2`, `int4`, etc.
+    - HIP vector constructor change in `hipComplex` initialization now generates correct values. The affected constructors will be small vector types such as `float2`, `int4`, etc.
 * Stream Capture updates
     - Restricted stream capture mode, it is made in HIP APIs via adding the macro `CHECK_STREAM_CAPTURE_SUPPORTED ()`.
 In the previous HIP enumeration `hipStreamCaptureMode`, three capture modes were defined. With checking in the macro, the only supported stream capture mode is now `hipStreamCaptureModeRelaxed`. The rest are not supported, and the macro will return `hipErrorStreamCaptureUnsupported`. This update involves the following APIs, which is allowed only in relaxed stream capture mode,
@@ -60,12 +61,13 @@ In the previous HIP enumeration `hipStreamCaptureMode`, three capture modes were
       * `hipLaunchCooperativeKernelMultiDevice`
       * `hipEventQuery`
       * `hipStreamAddCallback`
-    - Returns error during stream capture, during stream capture, the following HIP APIs now returns specific error `hipErrorStreamCaptureUnsupported` on the AMD platform, but not always `hipSuccess`, to match behavior with CUDA.
+    - Returns error during stream capture. The following HIP APIs now returns specific error `hipErrorStreamCaptureUnsupported` on the AMD platform, but not always `hipSuccess`, to match behavior with CUDA.
       * `hipDeviceSetMemPool`
       * `hipMemPoolCreate`
       * `hipMemPoolDestroy`
       * `hipDeviceSetSharedMemConfig`
       * `hipDeviceSetCacheConfig`
+      * `hipMemcpyWithStream`
 * Error code update
 Returned error/value codes are updated in the following HIP APIs to match the corresponding CUDA APIs.
     - Module Management Related APIs
@@ -128,7 +130,7 @@ In order to match the CUDA runtime behavior more closely, HIP APIs with streams 
       * `hipEventRecord`
       * `hipEventRecordWithFlags`
 * `warpSize` Change
-In order to match the CUDA specification, the `warpSize` variable is no longer `constexpr`. In general, this should be a transparent change; however, if an application was using `warpSize` as a compile-time constant, it will have to be updated to handle the new definition. For more information, see either the discussion of the `warpSize` change within the ROCm 6.4.1 [deprecation notice](https://rocm.docs.amd.com/en/latest/about/release-notes.html#amdgpu-wavefront-size-compiler-macro-deprecation) or the [HIP C++ language extensions](https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_cpp_language_extensions.html#warpsize).
+In order to match the CUDA specification, the `warpSize` variable is no longer `constexpr`. In general, this should be a transparent change; however, if an application was using `warpSize` as a compile-time constant, it will have to be updated to handle the new definition. For more information, see either the discussion of `warpSize` within the [HIP C++ language extensions](https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_cpp_language_extensions.html#warpsize).
 
 ### Optimized
 
