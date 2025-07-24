@@ -602,6 +602,7 @@ class GraphAnalysis {
   struct AllocationSchedule {
     std::vector<AllocatorAction> actions_;
     std::vector<GraphMemAllocNode*> alloc_nodes_;
+    std::vector<GraphMemFreeNode*> free_forwarding_nodes_;
     size_t slab_size_;
   };
 
@@ -656,7 +657,6 @@ private:
     def_use_chains_ = {};
     use_def_chains_ = {};
     coallocations_ = {};
-
     auto path_exists = [](GraphNode* s, GraphNode* t) -> bool {
       if (s == nullptr) {
 	return true;
@@ -979,6 +979,7 @@ private:
 	  for (auto dep : action.dependencies_) {
 	    auto dep_node = schedule.actions_[dep].node_;
 	    dep_node->AddEdgeDep(node);
+
 	    if (def_use_chains_.find(dep_node) == def_use_chains_.end()) {
 	      def_use_chains_[dep_node] = {node};
 	    } else {
@@ -1003,6 +1004,9 @@ private:
 	} else {
 	  auto free_node = dynamic_cast<GraphMemFreeNode*>(action.node_);
 	  free_node->SetSlabId(k);
+	  if (std::find(schedule.free_forwarding_nodes_.begin(), schedule.free_forwarding_nodes_.end(), free_node) != schedule.free_forwarding_nodes_.end()) {
+	    free_node->ForwardsMemory();
+	  }
 	}
       }
     }
@@ -1147,16 +1151,22 @@ private:
       auto actions = scheduler.Make();
 
       std::vector<GraphMemAllocNode*> alloc_nodes;
+      std::vector<GraphMemFreeNode*> free_forwarding_nodes;
       size_t slab_size = 0;
 
+      std::map<GraphNode*, GraphMemAllocNode*> free_alloc_map;
       for (auto& e : actions) {
 	if (e.type_ == AllocatorAction::Type::Allocate) {
 	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(e.node_);
 	  alloc_nodes.push_back(alloc_node);
+	  if (e.dependencies_.size() == 1 && alloc_node->Bytesize() == free_alloc_map[actions[e.dependencies_[0]].node_]->Bytesize()) {
+	    free_forwarding_nodes.push_back(dynamic_cast<GraphMemFreeNode*>(actions[e.dependencies_[0]].node_));
+	  }
 	  slab_size = std::max(slab_size, e.offset_ + alloc_node->Bytesize());
 	} else if (e.type_ == AllocatorAction::Type::Free) {
 	  for (auto& value : values_) {
 	    if (value.first_def_ == e.node_) {
+	      free_alloc_map[value.free_node_] = dynamic_cast<GraphMemAllocNode*>(e.node_);
 	      e.node_ = value.free_node_;
 	      break;
 	    }
@@ -1164,7 +1174,7 @@ private:
 	}
       }
 
-      all_schedules.push_back({actions, alloc_nodes, slab_size});
+      all_schedules.push_back({actions, alloc_nodes, free_forwarding_nodes, slab_size});
     }
     return all_schedules;
   }

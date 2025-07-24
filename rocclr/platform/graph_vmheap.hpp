@@ -124,6 +124,12 @@ class GraphVmHeap {
 	  offset_(offset) {}
 
       virtual void submit(device::VirtualDevice& device) final {
+	size_t offset = 0;
+	auto prev_memory = MemObjMap::FindMemObj(ptr_, &offset);
+	if (prev_memory != nullptr && offset == 0) {
+	  return;
+	}
+
 	auto memory = new (base_memory_->getContext()) Buffer(*base_memory_, 0, offset_, size_);
 	if (nullptr == memory || !memory->create(nullptr)) {
 	  LogError("Creating memory inside slab failed.");

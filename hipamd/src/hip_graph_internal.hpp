@@ -2454,6 +2454,7 @@ class GraphMemFreeNode : public GraphNode {
   void* device_ptr_;    // Device pointer of the freed memory
   size_t slab_id_ = 0;
   amd::GraphSlab* slab_ = nullptr;
+  bool forwards_memory_ = false;
 
  public:
   GraphMemFreeNode(void* dptr)
@@ -2479,6 +2480,10 @@ class GraphMemFreeNode : public GraphNode {
     slab_id_ = slab_id;
   }
 
+  void ForwardsMemory() {
+    forwards_memory_ = true;
+  }
+
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
     auto error = GraphNode::CreateCommand(stream);
     if (!HIP_MEM_POOL_USE_VM) {
@@ -2486,9 +2491,9 @@ class GraphMemFreeNode : public GraphNode {
     } else {
       size_t offset = 0;
       auto memory = getMemoryObject(device_ptr_, offset);
-      if (memory) {
-        amd::MemObjMap::RemoveMemObj(device_ptr_);
-        memory->release();
+      if (memory && !forwards_memory_) {
+	  amd::MemObjMap::RemoveMemObj(device_ptr_);
+	  memory->release();
       }
 
       auto graph = GetParentGraph();
