@@ -45,6 +45,7 @@ public:
       buddy_(nullptr),
       next_(nullptr),
       prev_(nullptr),
+      lock_(true),
       refcount_(0),
       busy_(false),
       mapped_(false) {}
@@ -61,6 +62,10 @@ public:
     return size_;
   }
 
+  bool IsMapped() const {
+    return mapped_.load();
+  }
+
   void Mapped() {
     mapped_.store(true);
   }
@@ -73,6 +78,17 @@ public:
     return refcount_.fetch_sub(1);
   }
 
+  void Lock() {
+      lock_.lock();
+  }
+
+  void Unlock() {
+      lock_.unlock();
+  }
+
+  bool Busy() const {
+    return busy_.load();
+  }
 private:
   GraphSlab() = delete;
   GraphSlab(const GraphSlab&) = delete;
@@ -86,6 +102,8 @@ private:
   GraphSlab* buddy_;
   GraphSlab* next_;
   GraphSlab* prev_;
+
+  Monitor lock_;
 
   std::atomic<size_t> refcount_;
   std::atomic<bool> busy_;
@@ -134,6 +152,17 @@ class GraphVmHeap {
 	  mptr_(ptr) {}
 
       virtual void submit(device::VirtualDevice& device) final {
+	if (slab_->IsMapped()) {
+	  return;
+	}
+
+	slab_->Lock();
+
+	if (slab_->IsMapped()) {
+	  slab_->Unlock();
+	  return;
+	}
+
 	const auto& dev_info = vm_heap_->device_->info();
 
 	// Allocate physical memory
@@ -141,6 +170,7 @@ class GraphVmHeap {
 				       dev_info.memBaseAddrAlign_, nullptr);
 	if (dptr == nullptr) {
 	  LogPrintfError("Failed to allocate physical memory %zd", size_);
+	  slab_->Unlock();
 	  return;
 	}
 
@@ -156,13 +186,14 @@ class GraphVmHeap {
 	  LogError("SetAccess failed for the commited memory in GraphVmHeap!");
 	}
 
+	slab_->Mapped();
+	slab_->Unlock();
+
 	// Update mapped size in GraphVmHeap
 	auto mapped_size = vm_heap_->mapped_size_.fetch_add(size_);
 	auto prev_max_mapped_size = vm_heap_->max_mapped_size_.load();
 	while (prev_max_mapped_size < prev_max_mapped_size + size_ &&
 	  !vm_heap_->max_mapped_size_.compare_exchange_weak(prev_max_mapped_size, prev_max_mapped_size + size_)) {}
-
-	slab_->Mapped();
       }
     private:
       GraphVmHeap* vm_heap_;
@@ -262,7 +293,9 @@ public:
 
   Command* GetAllocationCommand(GraphSlab* slab, HostQueue& queue, Command* wait_command, size_t size, size_t offset);
 
-  GraphSlab* AllocateSlab(size_t size, size_t num_peers);
+  GraphSlab* AllocateSlab(size_t size, size_t num_peers, size_t slab_id);
+
+  GraphSlab* FetchSlab(size_t slab_id);
 
   void FreeSlab(GraphSlab* slab);
 private:
@@ -303,6 +336,7 @@ private:
   size_t max_bin_idx_;
   std::vector<GraphSlab*> free_bins_;
   std::vector<GraphSlab*> busy_bins_;
+  std::map<size_t, GraphSlab*> slab_ids;
 
   address       base_address_ = nullptr;  //!< GPU virtual address base of the heap
   Memory*  base_memory_ = nullptr;   //!< VA space base object, used in the view creation
@@ -400,7 +434,9 @@ public:
 
   void InvalidateTemporaryHandle();
 
-  GraphSlab* AllocateSlab(size_t size, size_t num_peers);
+  GraphSlab* AllocateSlab(size_t size, size_t num_peers, size_t slab_id);
+
+  GraphSlab* FetchSlab(size_t slab_id);
 
   bool FreeSlab(GraphSlab* slab);
 

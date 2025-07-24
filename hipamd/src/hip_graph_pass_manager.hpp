@@ -612,7 +612,7 @@ public:
 	all_schedules_ = CreateAllocationSchedule(AllocationHeuristic::Greedy);
 	AddCoallocationEdges();
       }
-      SetLeaders();
+      SetSlabInfo();
       return !simple_offset_scale;
     } else if (graph == graph_) {
       return false;
@@ -631,7 +631,7 @@ public:
     FindCoallocatedObjects();
     all_schedules_ = CreateAllocationSchedule(AllocationHeuristic::Greedy);
     AddCoallocationEdges();
-    SetLeaders();
+    SetSlabInfo();
 
     return modified;
   }
@@ -974,13 +974,9 @@ private:
 
   void AddCoallocationEdges() {
     for (auto& schedule : all_schedules_) {
-      auto& leader = schedule[0].node_;
       for (size_t i = 1; i < schedule.size(); ++i) {
 	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
 	  auto node = schedule[i].node_;
-	  leader->AddEdgeDep(node);
-	  def_use_chains_[leader].insert(node);
-
 	  for (auto dep : schedule[i].dependencies_) {
 	    auto dep_node = schedule[dep].node_;
 	    dep_node->AddEdgeDep(node);
@@ -997,26 +993,30 @@ private:
     RemoveUselessEdges();
   }
 
-  void SetLeaders() {
-    for (auto& schedule : all_schedules_) {
+  void SetSlabInfo() {
+    for (size_t k = 0; k < all_schedules_.size(); ++k) {
+      auto& schedule = all_schedules_[k];
       GraphMemAllocNode* leader = dynamic_cast<GraphMemAllocNode*>(schedule[0].node_);
       size_t slab_size = schedule[0].offset_ + leader->Bytesize();
-      leader->SetSlabOffset(schedule[0].offset_);
 
       std::vector<GraphMemAllocNode*> peers;
-      std::vector<GraphMemFreeNode*> free_nodes;
-      for (size_t i = 1; i < schedule.size(); ++i) {
+      for (size_t i = 0; i < schedule.size(); ++i) {
 	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
 	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(schedule[i].node_);
 	  peers.push_back(alloc_node);
 	  slab_size = std::max(slab_size, schedule[i].offset_ + alloc_node->Bytesize());
-	  alloc_node->SetSlabOffset(schedule[i].offset_);
 	} else {
-	  free_nodes.push_back(dynamic_cast<GraphMemFreeNode*>(schedule[i].node_));
+	  auto free_node = dynamic_cast<GraphMemFreeNode*>(schedule[i].node_);
+	  free_node->SetSlabId(k);
 	}
       }
 
-      leader->SetLeader(peers, slab_size, free_nodes);
+      for (size_t i = 0; i < schedule.size(); ++i) {
+	if (schedule[i].type_ == AllocatorAction::Type::Allocate) {
+	  auto alloc_node = dynamic_cast<GraphMemAllocNode*>(schedule[i].node_);
+	  alloc_node->SetSlabInfo(k, slab_size, peers, schedule[i].offset_);
+	}
+      }
     }
 
     changed_node_sizes_ = {};

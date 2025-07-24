@@ -664,8 +664,12 @@ class Graph {
     return mem_pool_->GetAllocationCommand(slab, queue, slab_map_command, size, offset);
   }
 
-  amd::GraphSlab* AllocateSlab(size_t size, size_t num_peers) const {
-    return mem_pool_->AllocateSlab(size, num_peers);
+  amd::GraphSlab* AllocateSlab(size_t size, size_t num_peers, size_t slab_id) const {
+    return mem_pool_->AllocateSlab(size, num_peers, slab_id);
+  }
+
+  amd::GraphSlab* FetchSlab(size_t slab_id) {
+    return mem_pool_->FetchSlab(slab_id);
   }
 
   void FreeSlab(amd::GraphSlab* slab) const {
@@ -2448,6 +2452,7 @@ class GraphEmptyNode : public GraphNode {
 // ================================================================================================
 class GraphMemFreeNode : public GraphNode {
   void* device_ptr_;    // Device pointer of the freed memory
+  size_t slab_id_ = 0;
   amd::GraphSlab* slab_ = nullptr;
 
  public:
@@ -2470,8 +2475,8 @@ class GraphMemFreeNode : public GraphNode {
     }
   }
 
-  void UpdateSlab(amd::GraphSlab* slab) {
-    slab_ = slab;
+  void SetSlabId(size_t slab_id) {
+    slab_id_ = slab_id;
   }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
@@ -2487,14 +2492,17 @@ class GraphMemFreeNode : public GraphNode {
       }
 
       auto graph = GetParentGraph();
-      assert(slab_ != nullptr);
-      if (graph != nullptr && slab_->DecrementRefcount() == 0) {
-        auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
-        if (nullptr != unmap_command) {
-          commands_.push_back(unmap_command);
-        }
+      if (graph != nullptr) {
+	slab_ = graph->FetchSlab(slab_id_);
+	assert(slab_ != nullptr);
+	if (slab_->DecrementRefcount() == 0) {
+	  auto unmap_command = graph->GetSlabUnmapCommand(slab_, *stream);
+	  if (nullptr != unmap_command) {
+	    commands_.push_back(unmap_command);
+	  }
+	}
+	graph->DecrementMemAllocNodeCount();
       }
-      graph->DecrementMemAllocNodeCount();
     }
     return error;
   }
@@ -2552,10 +2560,8 @@ class GraphMemFreeNode : public GraphNode {
 class GraphMemAllocNode final : public GraphNode {
   hipMemAllocNodeParams node_params_;  // Node parameters for memory allocation
   std::vector<GraphMemAllocNode*> peers_;
-  std::vector<GraphMemFreeNode*> free_nodes_;
-  GraphMemAllocNode* leader_ = nullptr;
   amd::GraphSlab* slab_ = nullptr;
-  amd::Command* slab_map_command_ = nullptr;
+  size_t slab_id_;
   size_t slab_size_;
   size_t slab_offset_;
   void* temporary_handle_ = nullptr;
@@ -2581,9 +2587,7 @@ class GraphMemAllocNode final : public GraphNode {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
       if (slab_ != nullptr) {
-	if (leader_ == this) {
-	  graph->FreeSlab(slab_);
-	}
+	graph->FreeSlab(slab_);
       } else {
 	graph->InvalidateTemporaryHandle();
       }
@@ -2600,46 +2604,28 @@ class GraphMemAllocNode final : public GraphNode {
     return node_params_.bytesize;
   }
 
-  void SetSlabOffset(size_t slab_offset) {
+  void SetSlabInfo(size_t slab_id, size_t slab_size, std::vector<GraphMemAllocNode*> peers, size_t slab_offset) {
+    slab_ = nullptr;
+    slab_id_ = slab_id;
+    slab_size_ = slab_size;
+    peers_ = peers;
     slab_offset_ = slab_offset;
   }
 
-  void SetLeader(std::vector<GraphMemAllocNode*> peers, size_t slab_size, std::vector<GraphMemFreeNode*> free_nodes) {
-    if (slab_ != nullptr) {
-      ReleaseSlab();
-    }
-    peers_ = peers;
-    free_nodes_ = free_nodes;
-    leader_ = this;
-    slab_size_ = slab_size;
-    for (auto peer : peers) {
-      peer->UpdateLeader(this);
-    }
-  }
-
-  void UpdateLeader(GraphMemAllocNode* leader) {
-    leader_ = leader;
-  }
-
-  void UpdateSlab(amd::GraphSlab* slab, amd::Command* slab_map_command) {
-    slab_ = slab;
-    slab_map_command_ = slab_map_command;
+  void InvalidateSlab() {
+    slab_ = nullptr;
   }
 
   void ReleaseSlab() {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
-      assert(slab_);
-      graph->FreeSlab(slab_);
-      slab_ = nullptr;
-      for (auto peer : peers_) {
-	peer->InvalidateSlab();
+      if (slab_ && slab_->Busy()) {
+	graph->FreeSlab(slab_);
+	for (auto peer : peers_) {
+	  peer->InvalidateSlab();
+	}
       }
     }
-  }
-
-  void InvalidateSlab() {
-    slab_ = nullptr;
   }
 
   virtual hipError_t CreateCommand(hip::Stream* stream) final {
@@ -2650,32 +2636,20 @@ class GraphMemAllocNode final : public GraphNode {
       auto graph = GetParentGraph();
 
       if (graph != nullptr) {
-	if (leader_ == this && slab_ == nullptr) {
-	  // This node is the `leader`: it allocates the slab and passes it
-	  // to its peers
-	  slab_ = graph->AllocateSlab(slab_size_, peers_.size() + 1);
-	  slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
-	  if (nullptr != slab_map_command_) {
-	    commands_.push_back(slab_map_command_);
-	  }
-
-	  for (auto peer : peers_) {
-	    peer->UpdateSlab(slab_, slab_map_command_);
-	  }
-	  for (auto free_node : free_nodes_) {
-	    free_node->UpdateSlab(slab_);
-	  }
-	}
-
-	// AllocateSlab or UpdateSlab should have been called prior to this
+	slab_ = graph->AllocateSlab(slab_size_, peers_.size(), slab_id_);
 	assert(slab_ != nullptr);
+	amd::Command *slab_map_command = nullptr;
+	if (!slab_->IsMapped()) {
+	  slab_map_command = graph->GetSlabMapCommand(slab_, *stream);
+	}
 
 	node_params_.dptr = (void*) ((size_t) slab_->MemPtr() + slab_offset_);
 	graph->UpdatePtrs(temporary_handle_, &node_params_.dptr);
 
-	// Everyone "allocates" in the slab
-	commands_.push_back(graph->GetAllocationCommand(slab_, *stream, slab_map_command_, node_params_.bytesize, slab_offset_));
-	slab_map_command_ = nullptr;
+	if (slab_map_command != nullptr) {
+	  commands_.push_back(slab_map_command);
+	}
+	commands_.push_back(graph->GetAllocationCommand(slab_, *stream, slab_map_command, node_params_.bytesize, slab_offset_));
 
 	graph->IncrementMemAllocNodeCount();
       }
@@ -2697,20 +2671,20 @@ class GraphMemAllocNode final : public GraphNode {
     if (graph != nullptr) {
       slab_size_ = node_params_.bytesize;
       slab_offset_ = 0;
-      slab_ = graph->AllocateSlab(slab_size_, 1);
+      slab_ = graph->AllocateSlab(slab_size_, 1, 0);
 
-      slab_map_command_ = graph->GetSlabMapCommand(slab_, *stream);
-      if (slab_map_command_) {
-	slab_map_command_->enqueue();
+      auto slab_map_command = graph->GetSlabMapCommand(slab_, *stream);
+      if (slab_map_command) {
+	slab_map_command->enqueue();
       }
       node_params_.dptr = (void*) ((size_t) slab_->MemPtr() + slab_offset_);
-      auto allocation_command = graph->GetAllocationCommand(slab_, *stream, slab_map_command_, node_params_.bytesize, slab_offset_);
+      auto allocation_command = graph->GetAllocationCommand(slab_, *stream, slab_map_command, node_params_.bytesize, slab_offset_);
       assert(allocation_command);
       allocation_command->enqueue();
 
-      if (slab_map_command_) {
-	slab_map_command_->awaitCompletion();
-	slab_map_command_->release();
+      if (slab_map_command) {
+	slab_map_command->awaitCompletion();
+	slab_map_command->release();
       }
       allocation_command->awaitCompletion();
       allocation_command->release();
@@ -2741,7 +2715,7 @@ class GraphMemAllocNode final : public GraphNode {
 	std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
       } else {
 	// 2. The node has been run, release the slab through the leader 
-	leader_->ReleaseSlab();
+	ReleaseSlab();
 	std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
       }
       node_params_.dptr = temporary_handle_;

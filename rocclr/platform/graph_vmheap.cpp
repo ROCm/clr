@@ -210,7 +210,7 @@ void GraphVmHeap::UnmapSlab(GraphSlab* slab) {
 }
 
 // ================================================================================================
-GraphSlab* GraphVmHeap::AllocateSlab(size_t size, size_t num_peers) {
+GraphSlab* GraphVmHeap::AllocateSlab(size_t size, size_t num_peers, size_t slab_id) {
   ScopedLock k(lock_);
 
   if (!created_) {
@@ -225,12 +225,28 @@ GraphSlab* GraphVmHeap::AllocateSlab(size_t size, size_t num_peers) {
     return nullptr;
   }
 
+  auto slab_by_id = FetchSlab(slab_id);
+  if (slab_by_id != nullptr) {
+    return slab_by_id;
+  }
+
   auto slab = GetSlab(size);
   slab->refcount_.store(num_peers);
+
+  slab_ids[slab_id] = slab;
 
   max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + size);
 
   return slab;
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeap::FetchSlab(size_t slab_id) {
+  auto slab_by_id = slab_ids.find(slab_id);
+  if (slab_by_id != slab_ids.end()) {
+    return slab_by_id->second;
+  }
+  return nullptr;
 }
 
 // ================================================================================================
@@ -239,8 +255,19 @@ void GraphVmHeap::FreeSlab(GraphSlab* slab) {
 
   assert(created_);
 
+  if (!slab->busy_.load()) {
+    return;
+  }
+
   UnmapSlab(slab);
   ReturnSlab(slab);
+
+  for (auto it = slab_ids.begin(); it != slab_ids.end(); ++it) {
+    if (it->second == slab) {
+      slab_ids.erase(it);
+      break;
+    }
+  }
 
   max_total_size_ = std::max(max_total_size_, va_size_ - free_size_ + slab->size_);
 }
@@ -445,8 +472,9 @@ Command* GraphVmHeapArray::GetAllocationCommand(GraphSlab* slab, HostQueue& queu
 }
 
 // ================================================================================================
-GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers) {
-  uint32_t my_heap = std::hash<std::thread::id>{}(std::this_thread::get_id()) % kMaxArraySize;
+GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers, size_t slab_id) {
+  size_t my_tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+  uint32_t my_heap = my_tid % kMaxArraySize;
   size_t free_device_memory[2];
   bool should_reuse_physical = false;
   device_->globalFreeMemory(free_device_memory);
@@ -477,11 +505,11 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers) {
   GraphSlab* slab = nullptr;
   // Try allocating from this thread's heap
   if (vm_heaps_[my_heap]->free_size_ > size) {
-    slab = vm_heaps_[my_heap]->AllocateSlab(size, num_peers);
+    slab = vm_heaps_[my_heap]->AllocateSlab(size, num_peers, my_tid + slab_id);
   }
   // If that fails, try allocating from large heap
   if (slab == nullptr) {
-    slab = large_heap_.AllocateSlab(size, num_peers);
+    slab = large_heap_.AllocateSlab(size, num_peers, my_tid + slab_id);
   }
   // If that fails, try allocating from other heaps
   if (slab == nullptr) {
@@ -490,7 +518,30 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers) {
 	continue;
       }
 
-      slab = vm_heaps_[i]->AllocateSlab(size, num_peers);
+      slab = vm_heaps_[i]->AllocateSlab(size, num_peers, my_tid + slab_id);
+      if (slab != nullptr) {
+	break;
+      }
+    }
+  }
+  return slab;
+}
+
+// ================================================================================================
+GraphSlab* GraphVmHeapArray::FetchSlab(size_t slab_id) {
+  size_t my_tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+  uint32_t my_heap = my_tid % kMaxArraySize;
+  GraphSlab* slab = vm_heaps_[my_heap]->FetchSlab(my_tid + slab_id);
+  if (slab == nullptr) {
+    slab = large_heap_.FetchSlab(my_tid + slab_id);
+  }
+  if (slab == nullptr) {
+    for (uint i = 0; i < kMaxArraySize; ++i) {
+      if (i == my_heap) {
+	continue;
+      }
+
+      slab = vm_heaps_[i]->FetchSlab(my_tid + slab_id);
       if (slab != nullptr) {
 	break;
       }
