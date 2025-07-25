@@ -100,7 +100,12 @@ hipError_t hipModuleGetFunctionCount(unsigned int* count, hipModule_t mod) {
   if (mod == nullptr) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
   }
-  HIP_RETURN(PlatformState::instance().getFuncCount(count, mod););
+  HIP_RETURN(PlatformState::instance().getFuncCount(count, mod));
+
+hipError_t hipModuleGetLoadingMode(hipModuleLoadingMode_t* mode) {
+  HIP_INIT_API(hipModuleGetLoadingMode, mode);
+
+  HIP_RETURN(hipSuccess);
 }
 
 hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t hmod,

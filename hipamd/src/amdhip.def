@@ -506,3 +506,4 @@ hipMemcpyBatchAsync
 hipMemcpy3DBatchAsync
 hipMemcpy3DPeer
 hipMemcpy3DPeerAsync
+hipModuleGetLoadingMode

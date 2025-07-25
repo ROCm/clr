@@ -622,6 +622,7 @@ global:
     hipMemcpy3DBatchAsync;
     hipMemcpy3DPeer;
     hipMemcpy3DPeerAsync;
+    hipModuleGetLoadingMode;
 local:
     *;
 } hip_6.5;
