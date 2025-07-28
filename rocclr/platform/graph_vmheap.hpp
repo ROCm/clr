@@ -336,7 +336,7 @@ private:
 
   void PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSlab* slab);
 
-  GraphSlab* SplitSlab(GraphSlab* slab, size_t bin_idx);
+  GraphSlab* SplitSlab(GraphSlab* slab, size_t bin_idx, bool cached);
 
   GraphSlab* CoalesceSlab(GraphSlab* slab1, GraphSlab* slab2);
 

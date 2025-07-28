@@ -127,12 +127,13 @@ void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold) {
   unmap_threshold_ = unmap_threshold;
 
   for (size_t i = 0; i < max_bin_idx_; ++i) {
-    auto current = free_bins_[i];
+    if (!cache_bins_[i]) {
+      continue;
+    }
+    auto current = PopBin(cache_bins_, i);
     bool done = false;
     while (current != nullptr) {
-      auto busy_size = va_size_ - free_size_;
-      uint64_t free_mapped = mapped_size_.load() - busy_size;
-      if (free_mapped <= unmap_threshold_) {
+      if (!ShouldUnmap()) {
 	done = true;
 	break;
       }
@@ -143,8 +144,14 @@ void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold) {
 	cmd->awaitCompletion();
 	cmd->release();
       }
-      current = current->next_;
+      ReturnSlab(current);
+      if (cache_bins_[i] != nullptr) {
+	current = PopBin(cache_bins_, i);
+      } else {
+	current = nullptr;
+      }
     }
+
     if (done) {
       break;
     }
@@ -186,8 +193,8 @@ Command* GraphVmHeap::GetSlabMapCommand(GraphSlab* slab, HostQueue& queue) {
 
 // ================================================================================================
 Command* GraphVmHeap::GetSlabUnmapCommand(GraphSlab* slab, HostQueue& queue, bool unmap_guaranteed) {
-  // Slab is already unmapped or it shouldn't be unmapped - do nothing
-  if (!slab->mapped_.load() || (!unmap_guaranteed && !ShouldUnmap())) {
+  // Slab is already unmapped or it is split from a cached slab or it shouldn't be unmapped - do nothing
+  if (!slab->mapped_.load() || slab->parent_->mapped_.load() || (!unmap_guaranteed && !ShouldUnmap())) {
     return nullptr;
   }
 
@@ -266,11 +273,14 @@ void GraphVmHeap::FreeSlab(GraphSlab* slab) {
   }
 
   if (!slab->mapped_.load()) {
+    // Case 1: the returned slab is unmapped, put it in free bins
     ReturnSlab(slab);
-  } else if (ShouldUnmap()) {
+  } else if (ShouldUnmap() && slab->parent_ && !slab->parent_->mapped_.load()) {
+    // Case 2: we should unmap and parent is not mapped, i.e. this is not a cached slab
     UnmapSlab(slab);
     ReturnSlab(slab);
   } else {
+    // Case 3: we either should not unmap or this is a cached block
     CacheSlab(slab);
   }
 
@@ -296,12 +306,23 @@ GraphSlab* GraphVmHeap::GetSlab(size_t size) {
 
   GraphSlab* curr_slab = nullptr;
 
-  // If there is an already-mapped slab in the cache, reuse it
-  if (cache_bins_[bin_idx] != nullptr) {
-    curr_slab = PopBin(cache_bins_, bin_idx);
+  // First try getting a cached (already mapped) slab
+  // Find the smallest matching unallocated slab
+  size_t curr_bin_idx = max_bin_idx_;
+  for (curr_bin_idx = bin_idx; curr_bin_idx < max_bin_idx_; ++curr_bin_idx) {
+    if (cache_bins_[curr_bin_idx]) {
+      break;
+    }
+  }
+  if (curr_bin_idx != max_bin_idx_) {
+    // Split slab until the size is the smallest possible
+    curr_slab = PopBin(cache_bins_, curr_bin_idx);
+    for (; curr_bin_idx != bin_idx; --curr_bin_idx) {
+      curr_slab = SplitSlab(curr_slab, curr_bin_idx - 1, true);
+    }
   } else {
+    // No cached slabs, get a new one
     // Find the smallest matching unallocated slab
-    size_t curr_bin_idx = max_bin_idx_;
     for (curr_bin_idx = bin_idx; curr_bin_idx < max_bin_idx_; ++curr_bin_idx) {
       if (free_bins_[curr_bin_idx]) {
 	break;
@@ -313,7 +334,7 @@ GraphSlab* GraphVmHeap::GetSlab(size_t size) {
 
     // Split slab until the size is the smallest possible
     for (; curr_bin_idx != bin_idx; --curr_bin_idx) {
-      curr_slab = SplitSlab(curr_slab, curr_bin_idx - 1);
+      curr_slab = SplitSlab(curr_slab, curr_bin_idx - 1, false);
     }
     curr_slab->mapped_.store(false);
   }
@@ -351,9 +372,16 @@ void GraphVmHeap::CacheSlab(GraphSlab* slab) {
   RemoveBin(busy_bins_, bin_idx, slab);
 
   free_size_ += slab->size_;
+
+  auto curr_slab = slab;
+  while (curr_slab->parent_ && !curr_slab->buddy_->busy_.load() && curr_slab->buddy_->mapped_.load()) {
+    RemoveBin(cache_bins_, bin_idx, curr_slab->buddy_);
+    curr_slab = CoalesceSlab(curr_slab, curr_slab->buddy_);
+    ++bin_idx;
+  }
   
-  slab->busy_.store(false);
-  PushBin(cache_bins_, bin_idx, slab);
+  curr_slab->busy_.store(false);
+  PushBin(cache_bins_, bin_idx, curr_slab);
 }
 
 // ================================================================================================
@@ -394,7 +422,7 @@ void GraphVmHeap::PushBin(std::vector<GraphSlab*>& bins, size_t bin_idx, GraphSl
 }
 
 // ================================================================================================
-GraphSlab* GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx) {
+GraphSlab* GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx, bool cached) {
   slab->busy_.store(true);
 
   GraphSlab* left_slab = new GraphSlab(slab->owner_, slab, slab->size_ / 2, slab->offset_, slab->mem_ptr_);
@@ -403,7 +431,13 @@ GraphSlab* GraphVmHeap::SplitSlab(GraphSlab* slab, size_t bin_idx) {
   left_slab->buddy_ = right_slab;
   right_slab->buddy_ = left_slab;
 
-  PushBin(free_bins_, bin_idx, right_slab);
+  if (cached) {
+    left_slab->mapped_.store(true);
+    right_slab->mapped_.store(true);
+    PushBin(cache_bins_, bin_idx, right_slab);
+  } else {
+    PushBin(free_bins_, bin_idx, right_slab);
+  }
   return left_slab;
 }
 
