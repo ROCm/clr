@@ -289,7 +289,7 @@ class KernelParameters : protected HeapObject {
   address alloc(device::VirtualDevice& vDev);
 
   //! Capture the arguments from signature and set.
-  bool captureAndSet(void** kernelParams, address kernArgs, address mem);
+  bool captureAndSet(void** kernelParams, address kernArgs, size_t kernArgsSize, address mem);
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values
