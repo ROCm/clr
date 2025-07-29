@@ -161,116 +161,106 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
             __HOST_DEVICE__
             ~Native_vec_() = default;
 
-            __HOST_DEVICE__
-            Native_vec_& operator=(const Native_vec_&) = default;
-            __HOST_DEVICE__
-            Native_vec_& operator=(Native_vec_&&) = default;
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator=(
+                const Native_vec_&) = default;
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator=(Native_vec_&&) =
+                default;
 
-            __HOST_DEVICE__
-            T& operator[](unsigned int idx) noexcept { return d[idx]; }
-            __HOST_DEVICE__
-            T operator[](unsigned int idx) const noexcept { return d[idx]; }
-
-            __HOST_DEVICE__
-            Native_vec_& operator+=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] += x_.d[i];
-                return *this;
+            __HOST_DEVICE__ __attribute__((always_inline)) T& operator[](
+                unsigned int idx) noexcept {
+              return d[idx];
             }
-            __HOST_DEVICE__
-            Native_vec_& operator-=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] -= x_.d[i];
-                return *this;
+            __HOST_DEVICE__ __attribute__((always_inline)) T
+            operator[](unsigned int idx) const noexcept {
+              return d[idx];
             }
 
-            __HOST_DEVICE__
-            Native_vec_& operator*=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] *= x_.d[i];
-                return *this;
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator+=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] += x_.d[i];
+              return *this;
             }
-            __HOST_DEVICE__
-            Native_vec_& operator/=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] /= x_.d[i];
-                return *this;
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator-=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] -= x_.d[i];
+              return *this;
             }
 
-            template<
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator*=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] *= x_.d[i];
+              return *this;
+            }
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator/=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] /= x_.d[i];
+              return *this;
+            }
+
+            template <
                 typename U = T,
                 typename __hip_internal::enable_if<__hip_internal::is_signed<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_ operator-() const noexcept
-            {
-                auto r{*this};
-                for (auto&& x : r.d) x = -x;
-                return r;
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_ operator-() const noexcept {
+              auto r{*this};
+              for (auto&& x : r.d) x = -x;
+              return r;
             }
 
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_ operator~() const noexcept
-            {
-                auto r{*this};
-                for (auto&& x : r.d) x = ~x;
-                return r;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_ operator~() const noexcept {
+              auto r{*this};
+              for (auto&& x : r.d) x = ~x;
+              return r;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator%=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] %= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator%=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] %= x_.d[i];
+              return *this;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator^=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] ^= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator^=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] ^= x_.d[i];
+              return *this;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator|=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] |= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator|=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] |= x_.d[i];
+              return *this;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator&=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] &= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator&=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] &= x_.d[i];
+              return *this;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator>>=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] >>= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator>>=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] >>= x_.d[i];
+              return *this;
             }
-            template<
-                typename U = T,
-                typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* = nullptr>
-            __HOST_DEVICE__
-            Native_vec_& operator<<=(const Native_vec_& x_) noexcept
-            {
-                for (auto i = 0u; i != 3u; ++i) d[i] <<= x_.d[i];
-                return *this;
+            template <typename U = T,
+                      typename __hip_internal::enable_if<__hip_internal::is_integral<U>{}>::type* =
+                          nullptr>
+            __HOST_DEVICE__ __attribute__((always_inline)) Native_vec_& operator<<=(
+                const Native_vec_& x_) noexcept {
+              for (auto i = 0u; i != 3u; ++i) d[i] <<= x_.d[i];
+              return *this;
             }
 #if defined (__INTEL_COMPILER)
             typedef struct {
@@ -280,10 +270,9 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 #else
             using Vec3_cmp = int __attribute__((vector_size(4 * sizeof(int))));
 #endif //INTEL
-            __HOST_DEVICE__
-            Vec3_cmp operator==(const Native_vec_& x_) const noexcept
-            {
-                return Vec3_cmp{d[0] == x_.d[0], d[1] == x_.d[1], d[2] == x_.d[2]};
+            __HOST_DEVICE__ __attribute__((always_inline)) Vec3_cmp
+            operator==(const Native_vec_& x_) const noexcept {
+              return Vec3_cmp{d[0] == x_.d[0], d[1] == x_.d[1], d[2] == x_.d[2]};
             }
         };
 
