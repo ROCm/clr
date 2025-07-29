@@ -362,38 +362,38 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       HIP_vector_type& operator=(HIP_vector_type&&) = default;
 
       // Operators
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       T& operator[](size_t idx) noexcept { return reinterpret_cast<T*>(this)[idx]; }
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       const T& operator[](size_t idx) const noexcept {
         return reinterpret_cast<const T*>(this)[idx];
       }
 
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       HIP_vector_type& operator++() noexcept {
         HIP_vector_type unity = make_vector_type<T, rank>(1);
         return *this += unity;
       }
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       HIP_vector_type operator++(int) noexcept {
         auto tmp(*this);
         ++*this;
         return tmp;
       }
 
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       HIP_vector_type& operator--() noexcept {
         HIP_vector_type unity = make_vector_type<T, rank>(1);
         return *this -= unity;
       }
-      __HOST_DEVICE__
+      __HOST_DEVICE__ __attribute__((always_inline))
       HIP_vector_type operator--(int) noexcept {
         auto tmp(*this);
         --*this;
         return tmp;
       }
 
-      __HOST_DEVICE__ HIP_vector_type& operator+=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator+=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) += get_native_vector(x);
 #else
@@ -403,11 +403,11 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       }
       template <typename U, typename __hip_internal::enable_if<
                     __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator+=(U x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator+=(U x) noexcept {
         return *this += make_vector_type<T, rank>(x);
       }
 
-      __HOST_DEVICE__ HIP_vector_type& operator-=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator-=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) -= get_native_vector(x);
 #else
@@ -421,7 +421,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         return *this -= make_vector_type<T, rank>(x);
       }
 
-      __HOST_DEVICE__ HIP_vector_type& operator*=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator*=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) *= get_native_vector(x);
 #else
@@ -430,23 +430,23 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         return *this;
       }
 
-      friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator*(
+      friend __HOST_DEVICE__ __attribute__((always_inline)) constexpr HIP_vector_type operator*(
           HIP_vector_type x, const HIP_vector_type& y) noexcept {
         return HIP_vector_type{x} *= y;
       }
 
       template <typename U, typename __hip_internal::enable_if<
                     __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator*=(U x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator*=(U x) noexcept {
         return *this *= make_vector_type<T, rank>(x);
       }
 
-      friend __HOST_DEVICE__ inline constexpr HIP_vector_type operator/(
+      friend __HOST_DEVICE__ __attribute__((always_inline)) constexpr HIP_vector_type operator/(
           HIP_vector_type x, const HIP_vector_type& y) noexcept {
         return HIP_vector_type{x} /= y;
       }
 
-      __HOST_DEVICE__ HIP_vector_type& operator/=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator/=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) /= get_native_vector(x);
 #else
@@ -456,13 +456,13 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       }
       template <typename U, typename __hip_internal::enable_if<
                     __hip_internal::is_convertible<U, T>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator/=(U x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator/=(U x) noexcept {
         return *this /= make_vector_type<T, rank>(x);
       }
 
       template <typename U = T, typename __hip_internal::enable_if<
                     __hip_internal::is_signed<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type operator-() const noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type operator-() const noexcept {
         auto tmp(*this);
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(tmp) = -get_native_vector(tmp);
@@ -474,7 +474,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type operator~() const noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type operator~() const noexcept {
         HIP_vector_type r{*this};
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(r) = ~get_native_vector(r);
@@ -486,7 +486,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                     __hip_internal::is_integral<U>{}>::type* = nullptr>
-       __HOST_DEVICE__ HIP_vector_type& operator%=(const HIP_vector_type& x) noexcept {
+       __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator%=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) %= get_native_vector(x);
 #else
@@ -497,7 +497,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator^=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator^=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) ^= get_native_vector(x);
 #else
@@ -508,7 +508,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator|=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator|=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) |= get_native_vector(x);
 #else
@@ -519,7 +519,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-       __HOST_DEVICE__ HIP_vector_type& operator&=(const HIP_vector_type& x) noexcept {
+       __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator&=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) &= get_native_vector(x);
 #else
@@ -530,7 +530,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator>>=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator>>=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) >>= get_native_vector(x);
 #else
@@ -541,7 +541,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
       template<typename U = T, typename __hip_internal::enable_if<
                    __hip_internal::is_integral<U>{}>::type* = nullptr>
-      __HOST_DEVICE__ HIP_vector_type& operator<<=(const HIP_vector_type& x) noexcept {
+      __HOST_DEVICE__ __attribute__((always_inline)) HIP_vector_type& operator<<=(const HIP_vector_type& x) noexcept {
 #if __HIP_USE_NATIVE_VECTOR__
         get_native_vector(*this) <<= get_native_vector(x);
 #else
@@ -553,7 +553,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator+(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -562,7 +562,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator+(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -571,7 +571,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator+(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -581,7 +581,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator-(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -590,7 +590,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator-(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -599,7 +599,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator-(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -609,7 +609,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator*(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -618,7 +618,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator*(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -628,7 +628,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator/(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -637,7 +637,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator/(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -647,7 +647,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     #if __cplusplus >= 201402L
     constexpr
     #endif
@@ -665,7 +665,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     bool operator==(const HIP_vector_type<T, n>& x, U y) noexcept
     {
@@ -673,7 +673,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     bool operator==(U x, const HIP_vector_type<T, n>& y) noexcept
     {
@@ -682,7 +682,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
 
     template<typename T, unsigned int n>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     bool operator!=(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -691,7 +691,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     bool operator!=(const HIP_vector_type<T, n>& x, U y) noexcept
     {
@@ -699,7 +699,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
     }
     template<typename T, unsigned int n, typename U>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     bool operator!=(U x, const HIP_vector_type<T, n>& y) noexcept
     {
@@ -711,7 +711,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator%(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -724,7 +724,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator%(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -737,7 +737,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator%(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -750,7 +750,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator^(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -763,7 +763,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator^(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -776,7 +776,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator^(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -789,7 +789,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator|(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -802,7 +802,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator|(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -815,7 +815,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator|(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -828,7 +828,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator&(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -841,7 +841,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator&(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -854,7 +854,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator&(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -867,7 +867,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator>>(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -880,7 +880,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator>>(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -893,7 +893,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator>>(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -906,7 +906,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         unsigned int n,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator<<(
         const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
@@ -919,7 +919,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename U,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator<<(
         const HIP_vector_type<T, n>& x, U y) noexcept
@@ -933,7 +933,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
         typename __hip_internal::enable_if<__hip_internal::is_arithmetic<U>::value>::type,
         typename __hip_internal::enable_if<__hip_internal::is_integral<T>{}>* = nullptr>
     __HOST_DEVICE__
-    inline
+    __attribute__((always_inline))
     constexpr
     HIP_vector_type<T, n> operator<<(
         U x, const HIP_vector_type<T, n>& y) noexcept
@@ -945,7 +945,7 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
      * Map HIP_vector_type<U, rankU> to HIP_vector_type<T, rankT>
      */
     template <typename T, unsigned int rankT, typename U, unsigned int rankU>
-    __forceinline__ __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 1 && rankU >= 1),
+    __forceinline__  __HOST_DEVICE__ typename __hip_internal::enable_if<(rankT == 1 && rankU >= 1),
                                                             const HIP_vector_type<T, rankT>>::type
     __hipMapVector(const HIP_vector_type<U, rankU>& u) {
       return HIP_vector_type<T, rankT>(static_cast<T>(u.x));
