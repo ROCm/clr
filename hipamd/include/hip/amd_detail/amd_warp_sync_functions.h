@@ -238,7 +238,7 @@ unsigned long long __match_any(T value) {
     retval |= (1 << i);
   }
   int rotv = __lane_id();
-  retval = (retval << rotv) | (retval >> (64 - rotv));
+  retval = (retval << rotv) | (retval >> (static_cast<int>(warpSize) - rotv));
 
   return retval;
 }
