@@ -225,20 +225,32 @@ unsigned long long __match_any(T value) {
       "T can be int, unsigned int, long, unsigned long, long long, unsigned "
       "long long, float or double.");
 
-  unsigned long long retval = 1;
-  union dill { unsigned int i[2]; T val; } dill_ = { .val = value };
-  dill my_dill_ = dill_;
-  for (int i = 1; i < static_cast<int>(warpSize); i++) { 
-    dill_.i[0] = __builtin_amdgcn_mov_dpp(dill_.i[0], 0x134, 0xf, 0xf, 0); //wave_rol1
-    if (dill_.i[0] != my_dill_.i[0]) continue;
-    if constexpr(sizeof(T) == 8) {
-      dill_.i[1] = __builtin_amdgcn_mov_dpp(dill_.i[1], 0x134, 0xf, 0xf, 0);
-      if (dill_.i[1] != my_dill_.i[1]) continue;
+  auto actvmask = __activemask();
+  unsigned long long retval = 0;
+  if (actvmask != ~((decltype(actvmask))0)) {
+    bool done = false;
+    while (__any(!done)) {
+      if (!done) {
+        T chosen = __hip_readfirstlane(value);
+        if (chosen == value) {
+          retval = __activemask();
+          done = true;
+        }
+      }
     }
-    retval |= (1 << i);
+  } else {
+    union dill { unsigned int i[2]; unsigned long long ill; decltype(value) val; } dill_ = { .val = value };
+    retval = 1;
+    for (int i = 1; i < static_cast<int>(warpSize); i++) {
+      if constexpr (sizeof(value) == 8)
+        dill_.ill = __builtin_amdgcn_mov_dpp(dill_.ill, 0x134, 0xf, 0xf, 0); //wave_rol1
+      else
+        dill_.i[0] = __builtin_amdgcn_mov_dpp(dill_.i[0], 0x134, 0xf, 0xf, 0); //wave_rol1
+      retval |= ((decltype(mask))(dill_.val == value)) << i;
+    }
+    int rotv = __lane_id();
+    retval = (retval << rotv) | (retval >> (static_cast<int>(warpSize) - rotv));
   }
-  int rotv = __lane_id();
-  retval = (retval << rotv) | (retval >> (static_cast<int>(warpSize) - rotv));
 
   return retval;
 }
