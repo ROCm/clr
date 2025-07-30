@@ -39,8 +39,14 @@
 #include "hsa/amd_hsa_signal.h"
 
 #include <simde/x86/avx.h>
-#include <simde/x86/avx512.h>
 #include <simde/x86/sse2.h>
+#if defined(SIMDE_VERSION_MAJOR) && \
+    ((SIMDE_VERSION_MAJOR > 0) || \
+    (SIMDE_VERSION_MAJOR == 0 && SIMDE_VERSION_MINOR >= 7))
+
+  #include <simde/x86/avx512.h>
+#endif
+
 
 #include <fstream>
 #include <limits>
