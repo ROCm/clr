@@ -403,6 +403,7 @@ hipError_t GraphExec::AllocKernelArgForGraphNode() {
         SetHiddenHeap();
         initialized = true;
       }
+      reinterpret_cast<hip::GraphKernelNode*>(node)->SetKernargManager(GetKernelArgManager());
     }
     if (node->GraphCaptureEnabled()) {
       status = node->CaptureAndFormPacket(GetKernelArgManager());
@@ -442,6 +443,13 @@ hipError_t GraphExec::CaptureAQLPackets() {
   }
   kernArgManager_->ReadBackOrFlush();
   return status;
+}
+
+// ================================================================================================
+void Graph::UpdatePtrs(void* old_ptr, void** new_ptr) {
+  for (auto node : GetNodes()) {
+    node->UpdatePtr(old_ptr, new_ptr);
+  }
 }
 
 // ================================================================================================

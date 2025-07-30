@@ -227,6 +227,16 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     nodeSet_.erase(this);
   }
 
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) {}
+
+  virtual void* UpdateBuffer() {
+    return nullptr;
+  }
+
+  virtual amd::Command* GetSetParamsCommand(hip::Stream* stream, amd::Command* dependency) {
+    return nullptr;
+  }
+
   // check node validity
   static bool isNodeValid(GraphNode* pGraphNode) {
     amd::ScopedLock lock(nodeSetLock_);
@@ -525,6 +535,8 @@ class Graph {
     graphUserObj_.clear();
     memAllocNodePtrs_.clear();
   }
+
+  void UpdatePtrs(void* old_ptr, void** new_ptr);
 
   void AddManualNodeDuringCapture(GraphNode* node) { capturedNodes_.insert(node); }
 
@@ -910,6 +922,9 @@ class GraphKernelNode : public GraphNode {
   ihipExtKernelEvents kernelEvents_;   //!< Events for Ext launch kernel
   bool hasHiddenHeap_;                 //!< Kernel has hidden heap(device side allocation)
   int coopKernel_;                     //!< Launch cooperative kernel
+  hip::Stream* assigned_stream_;
+  size_t command_idx_ = (size_t) -1;
+  GraphKernelArgManager* kernel_arg_manager_ = nullptr;
 
  public:
   bool HasHiddenHeap() const { return hasHiddenHeap_; }
@@ -934,6 +949,10 @@ class GraphKernelNode : public GraphNode {
       command->enqueue();
       command->release();
     }
+  }
+
+  void SetKernargManager(GraphKernelArgManager* kernel_arg_manager) {
+    kernel_arg_manager_ = kernel_arg_manager;
   }
 
   void PrintAttributes(std::ostream& out, hipGraphDebugDotFlags flag) override {
@@ -1007,6 +1026,24 @@ class GraphKernelNode : public GraphNode {
       label = std::to_string(GetID()) + "\n" + function->name() + "\n";
     }
     return label;
+  }
+
+  void ReCapture() {
+    CaptureAndFormPacket(kernel_arg_manager_);
+  }
+
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    amd::Kernel* kernel = hip::DeviceFunc::asFunction(getFunc(kernelParams_, dev_id_))->kernel();
+    const amd::KernelSignature& signature = kernel->signature();
+    for (unsigned int i = 0; i < numParams_; ++i) {
+      auto ptr = *reinterpret_cast<void**>(kernelParams_.kernelParams[i]);
+      if (ptr == old_ptr) {
+        const amd::KernelParameterDescriptor& desc = signature.at(i);
+        ::memcpy(kernelParams_.kernelParams[i], new_ptr, desc.size_);
+      }
+    }
+
+    ReCapture();
   }
 
   const char* GetShape(hipGraphDebugDotFlags flag) override {
@@ -1162,6 +1199,11 @@ class GraphKernelNode : public GraphNode {
   GraphNode* clone() const override { return new GraphKernelNode(*this); }
 
   hipError_t CreateCommand(hip::Stream* stream) override {
+    if (!isEnabled_) {
+      commands_.push_back(new amd::Marker(*stream, !kMarkerDisableFlush, {}));
+      return hipSuccess;
+    }
+
     hipFunction_t func = getFunc(kernelParams_, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
@@ -1173,7 +1215,7 @@ class GraphKernelNode : public GraphNode {
     if (hipSuccess != status) {
       return status;
     }
-    status = GraphNode::CreateCommand(stream);
+    status = GraphNode::CreateCommand(command_idx_ == (size_t) -1 ? stream : assigned_stream_);
     if (status != hipSuccess) {
       return status;
     }
@@ -1200,14 +1242,17 @@ class GraphKernelNode : public GraphNode {
       return hipErrorInvalidConfiguration;
     }
 
+    size_t new_command_idx = commands_.size();
     status = ihipLaunchKernelCommand(
-        command, func, launch_params, stream, kernelParams_.kernelParams, kernelParams_.extra,
+        command, func, launch_params, command_idx_ == (size_t) -1 ? stream : assigned_stream_, kernelParams_.kernelParams, kernelParams_.extra,
         kernelEvents_.startEvent_, kernelEvents_.stopEvent_, flags, coopKernel_, 0, 0, 0, 0, 0);
     if (signal_is_required_) {
       // Optimize the barriers by adding a signal into the dispatch packet directly
       command->SetProfiling();
     }
+    command_idx_ = commands_.size();
     commands_.emplace_back(command);
+    assigned_stream_ = stream;
     return status;
   }
 
@@ -1583,6 +1628,15 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
     }
     commands_.emplace_back(command);
     return status;
+  }
+
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    if (dst_ == old_ptr) {
+      dst_ = *new_ptr;
+    }
+    if (src_ == old_ptr) {
+      src_ = *new_ptr;
+    }
   }
 
   virtual void EnqueueCommands(hip::Stream* stream) override {
@@ -2224,6 +2278,26 @@ class GraphEventWaitNode : public GraphNode {
 class GraphHostNode : public GraphNode {
   hipHostNodeParams NodeParams_;
 
+  class ConditionalExecCommand : public amd::Command {
+    public:
+      ConditionalExecCommand(amd::HostQueue& queue, const amd::Event::EventWaitList& eventWaitList, void* condition_storage, std::vector<GraphNode*> conditional_nodes)
+	:
+	  Command(queue, 0, eventWaitList, 0, nullptr), 
+	  condition_storage_(condition_storage),
+	  conditional_nodes_(conditional_nodes) {}
+
+      virtual void submit(device::VirtualDevice& device) final {
+	bool condition = *((size_t *) condition_storage_) != 0;
+
+	for (auto node : conditional_nodes_) {
+	  node->SetEnabled(condition);
+	  //reinterpret_cast<GraphKernelNode*>(node)->ReCapture();
+	}
+      }
+    private:
+      void* condition_storage_;
+      std::vector<GraphNode*> conditional_nodes_;
+  };
  public:
   GraphHostNode(const hipHostNodeParams* NodeParams)
       : GraphNode(hipGraphNodeTypeHost, "solid", "rectangle", "HOST") {
@@ -2242,10 +2316,28 @@ class GraphHostNode : public GraphNode {
     if (status != hipSuccess) {
       return status;
     }
-    amd::Command::EventWaitList waitList;
-    commands_.reserve(1);
-    amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
-    commands_.emplace_back(command);
+
+    GraphNode* alloc_node = nullptr;
+    std::vector<GraphNode*> conditional_exec_nodes;
+    for (auto edge : GetEdges()) {
+      if (edge->GetType() == hipGraphNodeTypeMemAlloc) {
+	alloc_node = edge;
+      } else if (edge->GetType() != hipGraphNodeTypeMemFree) {
+	conditional_exec_nodes.push_back(edge);
+      }
+    }
+
+    amd::Command* memcpy_cmd = nullptr;
+    status = ihipMemcpyCommand(memcpy_cmd, alloc_node->UpdateBuffer(), NodeParams_.userData, sizeof(size_t), hipMemcpyDeviceToHost, *stream);
+    commands_.push_back(memcpy_cmd);
+    auto conditional_exec_command = new ConditionalExecCommand(*stream, {memcpy_cmd}, alloc_node->UpdateBuffer(), conditional_exec_nodes);
+    commands_.push_back(conditional_exec_command);
+    commands_.push_back(alloc_node->GetSetParamsCommand(stream, conditional_exec_command));
+
+    //amd::Command::EventWaitList waitList;
+    //commands_.reserve(1);
+    //amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+    //commands_.emplace_back(command);
     return hipSuccess;
   }
 
@@ -2254,25 +2346,25 @@ class GraphHostNode : public GraphNode {
     NodeParams->fn(NodeParams->userData);
   }
 
-  void EnqueueCommands(hip::Stream* stream) override {
-    if (!commands_.empty()) {
-      if (!commands_[0]->setCallback(CL_COMPLETE, GraphHostNode::Callback, &NodeParams_)) {
-        ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during setCallback");
-      }
-      commands_[0]->enqueue();
-      // Add the new barrier to stall the stream, until the callback is done
-      amd::Command::EventWaitList eventWaitList;
-      eventWaitList.push_back(commands_[0]);
-      amd::Command* block_command =
-          new amd::Marker(*commands_[0]->queue(), !kMarkerDisableFlush, eventWaitList);
-      if (block_command == nullptr) {
-        ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during block command creation");
-      }
-      block_command->enqueue();
-      block_command->release();
-      commands_[0]->release();
-    }
-  }
+  //void EnqueueCommands(hip::Stream* stream) override {
+  //  if (!commands_.empty()) {
+  //    if (!commands_[0]->setCallback(CL_COMPLETE, GraphHostNode::Callback, &NodeParams_)) {
+  //      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during setCallback");
+  //    }
+  //    commands_[0]->enqueue();
+  //    // Add the new barrier to stall the stream, until the callback is done
+  //    amd::Command::EventWaitList eventWaitList;
+  //    eventWaitList.push_back(commands_[0]);
+  //    amd::Command* block_command =
+  //        new amd::Marker(*commands_[0]->queue(), !kMarkerDisableFlush, eventWaitList);
+  //    if (block_command == nullptr) {
+  //      ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during block command creation");
+  //    }
+  //    block_command->enqueue();
+  //    block_command->release();
+  //    commands_[0]->release();
+  //  }
+  //}
 
   void GetParams(hipHostNodeParams* params) {
     std::memcpy(params, &NodeParams_, sizeof(hipHostNodeParams));
@@ -2373,10 +2465,33 @@ class GraphMemAllocNode final : public GraphNode {
     Graph* graph_;  // Graph which allocates/maps memory
   };
 
+  class SetParamsCommand : public amd::Command {
+    public:
+      SetParamsCommand(amd::HostQueue& queue, const amd::Event::EventWaitList& eventWaitList, hip::Stream* stream, GraphMemAllocNode* node)
+	:
+	  Command(queue, 0, eventWaitList, 0, nullptr), 
+	  stream_(stream),
+	  node_(node) {}
+
+    virtual void submit(device::VirtualDevice& device) final {
+      node_->SetParams(nullptr);
+    }
+    private:
+      hip::Stream* stream_;
+      GraphMemAllocNode* node_;
+  };
  public:
   GraphMemAllocNode(const hipMemAllocNodeParams* node_params)
       : GraphNode(hipGraphNodeTypeMemAlloc, "solid", "rectangle", "MEM_ALLOC") {
     node_params_ = *node_params;
+  }
+
+  virtual void *UpdateBuffer() final {
+    return &node_params_.bytesize;
+  }
+
+  virtual amd::Command* GetSetParamsCommand(hip::Stream* stream, amd::Command* dependency) final {
+    return new SetParamsCommand(*stream, {dependency}, stream, this);
   }
 
   GraphMemAllocNode(const GraphMemAllocNode& rhs)
@@ -2410,25 +2525,25 @@ class GraphMemAllocNode final : public GraphNode {
       auto ptr = Execute(stream_);
     } else {
       auto graph = GetParentGraph();
-      if (graph != nullptr) {
+      if (graph != nullptr && node_params_.bytesize != 0) {
         assert(va_ != nullptr && "Runtime can't create a command for an invalid node!");
         stream->GetDevice()->GetGraphMemoryPool()->SetGraphInUse();
         // Create command for memory mapping
-        auto cmd = new VirtualMemAllocNode(*stream, amd::Event::EventWaitList{},
-            va_, node_params_.bytesize, nullptr, graph);
-        commands_.push_back(cmd);
-        size_t offset = 0;
-        // Check if memory was already added after first reserve
-        if (getMemoryObject(node_params_.dptr, offset) == nullptr) {
-          // Map VA in the accessible space because the graph execution still has
-          // pointers validation and must find a valid object
-          // @note: Memory can be released outside of the graph and
-          // runtime can't keep a valid mapping since it doesn't know if the graph will
-          // be executed again
-          amd::MemObjMap::AddMemObj(node_params_.dptr, va_);
-        }
-        ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc create: %p",
-            node_params_.dptr);
+	auto cmd = new VirtualMemAllocNode(*stream, amd::Event::EventWaitList{},
+	    va_, node_params_.bytesize, nullptr, graph);
+	commands_.push_back(cmd);
+	size_t offset = 0;
+	// Check if memory was already added after first reserve
+	if (getMemoryObject(node_params_.dptr, offset) == nullptr) {
+	  // Map VA in the accessible space because the graph execution still has
+	  // pointers validation and must find a valid object
+	  // @note: Memory can be released outside of the graph and
+	  // runtime can't keep a valid mapping since it doesn't know if the graph will
+	  // be executed again
+	  amd::MemObjMap::AddMemObj(node_params_.dptr, va_);
+	}
+	ClPrint(amd::LOG_INFO, amd::LOG_MEM_POOL, "Graph MemAlloc create: %p",
+	    node_params_.dptr);
       }
     }
     return error;
@@ -2484,27 +2599,40 @@ class GraphMemAllocNode final : public GraphNode {
     }
 
     // Now re-allocate memory
-    std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
-    node_params_.dptr = (HIP_MEM_POOL_USE_VM) ? ReserveAddress() : Execute();
-    params->dptr = node_params_.dptr;
-    if (node_params_.dptr == nullptr) {
-      return hipErrorOutOfMemory;
+    if (params != nullptr) {
+      std::memcpy(&node_params_, params, sizeof(hipMemAllocNodeParams));
+    }
+    void* old_ptr = node_params_.dptr;
+    if (node_params_.bytesize == 0) {
+      node_params_.dptr = nullptr;
+    } else {
+      node_params_.dptr = (HIP_MEM_POOL_USE_VM) ? ReserveAddress() : Execute();
+    }
+    if (params != nullptr) {
+      params->dptr = node_params_.dptr;
+    }
+
+    auto graph = GetParentGraph();
+    if (graph != nullptr) {
+      graph->UpdatePtrs(old_ptr, &node_params_.dptr);
     }
 
     return hipSuccess;
   }
 
   hipError_t SetParams(hipMemAllocNodeParams *params) {
-    if (params->bytesize == 0 ||
-	params->poolProps.allocType != hipMemAllocationTypePinned ||
-	params->poolProps.location.type != hipMemLocationTypeDevice) {
-      params->dptr = nullptr;
-      return hipErrorInvalidValue;
-    }
-    if (params->poolProps.location.type == hipMemLocationTypeDevice) {
-      if (params->poolProps.location.id < 0 ||
-	  params->poolProps.location.id >= g_devices.size()) {
+    if (params != nullptr) {
+      if (params->bytesize == 0 ||
+	  params->poolProps.allocType != hipMemAllocationTypePinned ||
+	  params->poolProps.location.type != hipMemLocationTypeDevice) {
+	params->dptr = nullptr;
 	return hipErrorInvalidValue;
+      }
+      if (params->poolProps.location.type == hipMemLocationTypeDevice) {
+	if (params->poolProps.location.id < 0 ||
+	    params->poolProps.location.id >= g_devices.size()) {
+	  return hipErrorInvalidValue;
+	}
       }
     }
 
@@ -2573,7 +2701,7 @@ class GraphMemFreeNode : public GraphNode {
       Execute(stream_);
     } else {
       auto graph = GetParentGraph();
-      if (graph != nullptr) {
+      if (graph != nullptr && device_ptr_ != nullptr) {
         const auto& dev_info = stream->device().info();
         auto va = amd::MemObjMap::FindVirtualMemObj(device_ptr_);
         // Unmap virtual address from memory
@@ -2591,6 +2719,12 @@ class GraphMemFreeNode : public GraphNode {
     auto graph = GetParentGraph();
     if (graph != nullptr) {
       graph->FreeMemory(device_ptr_, stream);
+    }
+  }
+
+  virtual void UpdatePtr(void* old_ptr, void** new_ptr) final {
+    if (device_ptr_ == old_ptr) {
+      device_ptr_ = *new_ptr;
     }
   }
 
