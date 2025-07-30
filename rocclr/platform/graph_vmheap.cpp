@@ -127,29 +127,26 @@ void GraphVmHeap::TrimPhysMemory(size_t unmap_threshold) {
   unmap_threshold_ = unmap_threshold;
 
   for (size_t i = 0; i < max_bin_idx_; ++i) {
-    if (!cache_bins_[i]) {
-      continue;
-    }
-    auto current = PopBin(cache_bins_, i);
     bool done = false;
+    auto current = cache_bins_[i];
     while (current != nullptr) {
       if (!ShouldUnmap()) {
-	done = true;
-	break;
+        done = true;
+        break;
       }
 
-      if (current->mapped_.load()) {
-	auto cmd = GetSlabUnmapCommand(current, GetVmQueue());
-	cmd->enqueue();
-	cmd->awaitCompletion();
-	cmd->release();
+      if (current->buddy_->busy_.load()) {
+        current = current->next_;
+        continue;
       }
-      ReturnSlab(current);
-      if (cache_bins_[i] != nullptr) {
-	current = PopBin(cache_bins_, i);
-      } else {
-	current = nullptr;
-      }
+      auto next = current->next_;
+      RemoveBin(cache_bins_, i, current);
+      auto cmd = GetSlabUnmapCommand(current, GetVmQueue());
+      cmd->enqueue();
+      cmd->awaitCompletion();
+      cmd->release();
+      ReturnSlab(current, false);
+      current = next;
     }
 
     if (done) {
@@ -165,14 +162,23 @@ void GraphVmHeap::FreeAllMemory() {
   ScopedLock k(lock_);
 
   for (size_t i = 0; i < max_bin_idx_; ++i)  {
+    while (busy_bins_[i]) {
+      if (!busy_bins_[i]->mapped_.load()) {
+	// Case 1: the slab is unmapped, put it in free bins
+	ReturnSlab(busy_bins_[i]);
+      } else if (busy_bins_[i]->parent_ && !busy_bins_[i]->parent_->mapped_.load()) {
+	// Case 2: parent is not mapped, i.e. this is not a cached slab
+	UnmapSlab(busy_bins_[i]);
+	ReturnSlab(busy_bins_[i]);
+      } else {
+	// Case 3: this is a cached block
+	CacheSlab(busy_bins_[i]);
+      }
+    }
     while (cache_bins_[i]) {
       auto slab = PopBin(cache_bins_, i);
       UnmapSlab(slab);
       ReturnSlab(slab, false);
-    }
-    while (busy_bins_[i]) {
-      UnmapSlab(busy_bins_[i]);
-      ReturnSlab(busy_bins_[i]);
     }
   }
 }
@@ -255,6 +261,12 @@ GraphSlab* GraphVmHeap::AllocateSlab(size_t size, size_t num_peers, size_t slab_
 
 // ================================================================================================
 GraphSlab* GraphVmHeap::FetchSlab(size_t slab_id) {
+  ScopedLock k(lock_);
+
+  if (!created_) {
+    return nullptr;
+  }
+
   auto slab_by_id = slab_ids.find(slab_id);
   if (slab_by_id != slab_ids.end()) {
     return slab_by_id->second;
@@ -362,6 +374,7 @@ void GraphVmHeap::ReturnSlab(GraphSlab* slab, bool in_busy) {
     curr_slab = CoalesceSlab(curr_slab, curr_slab->buddy_);
     ++bin_idx;
   }
+
   curr_slab->busy_.store(false);
   PushBin(free_bins_, bin_idx, curr_slab);
 }
@@ -374,7 +387,7 @@ void GraphVmHeap::CacheSlab(GraphSlab* slab) {
   free_size_ += slab->size_;
 
   auto curr_slab = slab;
-  while (curr_slab->parent_ && !curr_slab->buddy_->busy_.load() && curr_slab->buddy_->mapped_.load()) {
+  while (curr_slab->parent_ && curr_slab->parent_->mapped_.load() && !curr_slab->buddy_->busy_.load() && curr_slab->buddy_->mapped_.load()) {
     RemoveBin(cache_bins_, bin_idx, curr_slab->buddy_);
     curr_slab = CoalesceSlab(curr_slab, curr_slab->buddy_);
     ++bin_idx;
@@ -540,6 +553,7 @@ Command* GraphVmHeapArray::GetAllocationCommand(GraphSlab* slab, HostQueue& queu
 // ================================================================================================
 GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers, size_t slab_id) {
   size_t my_tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+  size_t my_slab_id = (my_tid << 10) | (slab_id & 0x3FF);
   uint32_t my_heap = my_tid % kMaxArraySize;
   size_t free_device_memory[2];
   bool should_reuse_physical = false;
@@ -571,11 +585,11 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers, size_t 
   GraphSlab* slab = nullptr;
   // Try allocating from this thread's heap
   if (vm_heaps_[my_heap]->free_size_ > size) {
-    slab = vm_heaps_[my_heap]->AllocateSlab(size, num_peers, my_tid + slab_id);
+    slab = vm_heaps_[my_heap]->AllocateSlab(size, num_peers, my_slab_id);
   }
   // If that fails, try allocating from large heap
   if (slab == nullptr) {
-    slab = large_heap_.AllocateSlab(size, num_peers, my_tid + slab_id);
+    slab = large_heap_.AllocateSlab(size, num_peers, my_slab_id);
   }
   // If that fails, try allocating from other heaps
   if (slab == nullptr) {
@@ -584,7 +598,7 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers, size_t 
 	continue;
       }
 
-      slab = vm_heaps_[i]->AllocateSlab(size, num_peers, my_tid + slab_id);
+      slab = vm_heaps_[i]->AllocateSlab(size, num_peers, my_slab_id);
       if (slab != nullptr) {
 	break;
       }
@@ -596,10 +610,11 @@ GraphSlab* GraphVmHeapArray::AllocateSlab(size_t size, size_t num_peers, size_t 
 // ================================================================================================
 GraphSlab* GraphVmHeapArray::FetchSlab(size_t slab_id) {
   size_t my_tid = std::hash<std::thread::id>{}(std::this_thread::get_id());
+  size_t my_slab_id = (my_tid << 10) | (slab_id & 0x3FF);
   uint32_t my_heap = my_tid % kMaxArraySize;
-  GraphSlab* slab = vm_heaps_[my_heap]->FetchSlab(my_tid + slab_id);
+  GraphSlab* slab = vm_heaps_[my_heap]->FetchSlab(my_slab_id);
   if (slab == nullptr) {
-    slab = large_heap_.FetchSlab(my_tid + slab_id);
+    slab = large_heap_.FetchSlab(my_slab_id);
   }
   if (slab == nullptr) {
     for (uint i = 0; i < kMaxArraySize; ++i) {
@@ -607,7 +622,7 @@ GraphSlab* GraphVmHeapArray::FetchSlab(size_t slab_id) {
 	continue;
       }
 
-      slab = vm_heaps_[i]->FetchSlab(my_tid + slab_id);
+      slab = vm_heaps_[i]->FetchSlab(my_slab_id);
       if (slab != nullptr) {
 	break;
       }
