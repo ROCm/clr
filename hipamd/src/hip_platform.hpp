@@ -113,6 +113,8 @@ class PlatformState {
 
   size_t UfdMapSize() const { return ufd_map_.size(); }
 
+  bool getLoadingMode();
+
  private:
   // Dynamic Code Object map, keyin module to get the corresponding object
   std::unordered_map<hipModule_t, hip::DynCO*> dynCO_map_;
