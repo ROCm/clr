@@ -324,13 +324,13 @@ void Context::hostFree(void* ptr) const {
 }
 
 void* Context::svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags,
-                        const amd::Device* curDev) {
+                        const amd::Device* curDev, void* svmPtr) {
   unsigned int numSVMDev = svmAllocDevice_.size();
   if (numSVMDev < 1) {
     return nullptr;
   }
 
-  void* svmPtrAlloced = nullptr;
+  void* svmPtrAlloced = svmPtr;
 
   amd::ScopedLock lock(&ctxLock_);
 

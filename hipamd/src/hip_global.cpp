@@ -61,6 +61,9 @@ void __hipGetPCH(const char** pch, unsigned int *size) {
 #endif
 namespace hip {
 
+// forward declaration of methods required for managed variables
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
+
 //Device Vars
 DeviceVar::DeviceVar(std::string name,
                      hipModule_t hmod,
@@ -218,10 +221,17 @@ Var::Var(const std::string& name, DeviceVarKind dVarKind, size_t size, int type,
   dVar_.resize(g_devices.size());
 }
 
-Var::Var(const std::string& name, DeviceVarKind dVarKind, void *pointer, size_t size,
-         unsigned align, FatBinaryInfo** modules) : name_(name), dVarKind_(dVarKind),
-         size_(size), modules_(modules), managedVarPtr_(pointer), align_(align),
-         type_(0), norm_(0) {
+Var::Var(const std::string& name, DeviceVarKind dVarKind, void* pointer, size_t size,
+         unsigned align, FatBinaryInfo** modules)
+    : name_(name),
+      dVarKind_(dVarKind),
+      size_(size),
+      modules_(modules),
+      managedVarPtr_(pointer),
+      allocFlag_(false),
+      align_(align),
+      type_(0),
+      norm_(0) {
   dVar_.resize(g_devices.size());
 }
 
@@ -270,5 +280,19 @@ hipError_t Var::getStatDeviceVar(DeviceVar** dvar, int deviceId) {
   *dvar = dVar_[deviceId];
   return hipSuccess;
 }
-
+// this method is added for allocation of managed var
+hipError_t Var::allocateManagedVarPtr() {
+  void** pointer = static_cast<void**>(managedVarPtr_);
+  // check if it is deffered allocation
+  if (!allocFlag_) {
+   // Allocate managed memory for this var
+   const bool use_host_ptr = true;
+   IHIP_RETURN_ONFAIL(ihipMallocManaged(pointer, size_, align_, use_host_ptr));
+   allocFlag_ = true;
+  }
+  if (dVar_.empty()) {
+   resize_dVar(g_devices.size());
+  }
+  return hipSuccess;
+}
 }; //namespace: hip

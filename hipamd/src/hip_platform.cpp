@@ -35,7 +35,7 @@ constexpr unsigned __hipFatMAGIC2 = 0x48495046;  // "HIPF"
 PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
 
 // forward declaration of methods required for __hipRegisrterManagedVar
-hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 
 struct __CudaFatBinaryWrapper {
   unsigned int magic;
@@ -152,24 +152,42 @@ void __hipRegisterManagedVar(
     void* init_value,  // Initial value to be copied into \p pointer
     const char* name,  // Name of the variable in code object
     size_t size, unsigned align) {
-  HIP_INIT_VOID();
-  hipError_t status = ihipMallocManaged(pointer, size, align);
-  if (status == hipSuccess) {
-    hip::Stream* stream = hip::getNullStream();
-    if (stream != nullptr) {
-      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
-      guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
-                                         status);
-    } else {
-      ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
-    }
-  } else {
-    guarantee(false, "Error during allocation of managed memory!, error: %d", status);
-  }
+  
+  static int enable_deferred_loading{[]() {
+    #ifdef _WIN32 // Don't defer loading for windows
+      return 0;
+    #else
+      char* var = getenv("HIP_ENABLE_DEFERRED_LOADING");
+      return var ? atoi(var) : 1;
+    #endif
+  }()};
+  hipError_t hip_error = hipSuccess;
   hip::Var* var_ptr = new hip::Var(std::string(name), hip::Var::DeviceVarKind::DVK_Managed, pointer,
                                    size, align, reinterpret_cast<hip::FatBinaryInfo**>(hipModule));
-  status = PlatformState::instance().registerStatManagedVar(var_ptr);
+  hipError_t status = PlatformState::instance().registerStatManagedVar(var_ptr);
   guarantee((status == hipSuccess), "Cannot register Static Managed Var, error: %d", status);
+
+  if (enable_deferred_loading) {
+    // Allocate temporary var on host and initialize
+    *pointer = amd::Os::reserveMemory(0, size, align, amd::Os::MEM_PROT_RW);
+    ::memcpy(*pointer, init_value, size);
+  } else {
+    HIP_INIT_VOID();
+    hipError_t status = ihipMallocManaged(pointer, size, align, 0);
+    var_ptr->setAllocFlag(true); // set flag true for managed alloc
+    if (status == hipSuccess) {
+      hip::Stream* stream = hip::getNullStream();
+      if (stream != nullptr) {
+        status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
+        guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
+                                           status);
+      } else {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
+      }
+    } else {
+      guarantee(false, "Error during allocation of managed memory!, error: %d", status);
+    }
+  }
 }
 
 void __hipRegisterTexture(
@@ -741,6 +759,11 @@ void PlatformState::init() {
   initialized_ = true;
   for (auto& it : statCO_.vars_) {
     it.second->resize_dVar(g_devices.size());
+  }
+  for (auto& it : statCO_.managedVars_) {
+    for (auto& var: it.second) {
+      var->resize_dVar(g_devices.size());
+    }
   }
   for (auto& it : statCO_.functions_) {
     it.second->resize_dFunc(g_devices.size());

@@ -656,7 +656,7 @@ void Buffer::destroy() {
 
     if (kind_ != MEMORY_KIND_PTRGIVEN) {
       if (isFineGrain) {
-        if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
+        if (memFlags & (CL_MEM_ALLOC_HOST_PTR)) {
           if (dev().info().hmmSupported_) {
             // AMD HMM path. Release reserved system memory
             dev().releaseMemory(deviceMemory_, size());
@@ -674,6 +674,17 @@ void Buffer::destroy() {
         }
       } else {
         dev().memFree(deviceMemory_, size());
+      }
+    } else {
+      if (memFlags & CL_MEM_USE_HOST_PTR) {
+        // unlock svm host pointer from memory pool
+        if (!dev().info().hmmSupported_) {
+          hsa_amd_memory_unlock(owner()->getSvmPtr());
+        }
+        // destroy system memory
+        if (!(amd::Os::releaseMemory(deviceMemory_, size()))) {
+          ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
+        }
       }
     }
 
@@ -812,7 +823,7 @@ bool Buffer::create(bool alloc_local) {
             if (deviceMemory_ == NULL) {
               return false;
             }
-            // Currently HMM requires cirtain initial calls to mark sysmem allocation as
+            // Currently HMM requires certain initial calls to mark sysmem allocation as
             // GPU accessible or prefetch memory into GPU
             if (!dev().SvmAllocInit(deviceMemory_, size())) {
               ClPrint(amd::LOG_ERROR, amd::LOG_MEM, "SVM init in ROCr failed!");
@@ -863,6 +874,19 @@ bool Buffer::create(bool alloc_local) {
         flags_ |= HostMemoryDirectAccess;
       } else {
         kind_ = MEMORY_KIND_PTRGIVEN;
+      }
+      if (memFlags & CL_MEM_USE_HOST_PTR) {
+        if (dev().info().hmmSupported_) {
+          // Currently HMM requires certain initial calls to mark sysmem allocation as
+          // GPU accessible or prefetch memory into GPU
+          if (!dev().SvmAllocInit(deviceMemory_, size())) {
+            ClPrint(amd::LOG_ERROR, amd::LOG_MEM, "SVM init in ROCr failed!");
+            return false;
+          }
+        } else {
+          deviceMemory_ = dev().hostLock(owner()->getSvmPtr(), size(),
+                                         getHostMemorySegment(memFlags));
+        }
       }
     }
 

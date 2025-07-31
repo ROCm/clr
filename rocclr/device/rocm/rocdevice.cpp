@@ -2288,45 +2288,46 @@ void Device::updateFreeMemory(size_t size, bool free) {
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
   amd::Memory* mem = nullptr;
-
-  if (nullptr == svmPtr) {
-    // create a hidden buffer, which will allocated on the device later
-    mem = new (context) amd::Buffer(context, flags, size,
-                reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr));
-    if (mem == nullptr) {
-      LogError("failed to create a svm mem object!");
-      return nullptr;
-    }
-
-    if (!mem->create(nullptr)) {
-      LogError("failed to create a svm hidden buffer!");
-      mem->release();
-      return nullptr;
-    }
-    // if the device supports SVM FGS, return the committed CPU address directly.
-    Memory* gpuMem = getRocMemory(mem);
-    if (gpuMem == nullptr) {
-      LogError("failed to create GPU memory from svm hidden buffer!");
-      return nullptr;
-    }
-
-    // add the information to context so that we can use it later.
-    if (mem->getSvmPtr() != nullptr) {
-      amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
-    }
-    svmPtr = mem->getSvmPtr();
-  } else {
+  void* svmPtrUsed = reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr); 
+                  
+  if (nullptr != svmPtr) {
     // Find the existing amd::mem object
     mem = amd::MemObjMap::FindMemObj(svmPtr);
-    if (nullptr == mem) {
+    if (mem != nullptr) {
+      return mem->getSvmPtr();
+    } 
+    if (flags & CL_MEM_USE_HOST_PTR ) {
+      svmPtrUsed = svmPtr;
+    } else {
       DevLogPrintfError("Cannot find svm_ptr: 0x%x \n", svmPtr);
       return nullptr;
     }
-
-    svmPtr = mem->getSvmPtr();
+  }     
+  
+  // create a hidden buffer, which will allocated on the device later
+  mem = new (context) amd::Buffer(context, flags, size, svmPtrUsed);
+  if (mem == nullptr) {
+    LogError("failed to create a svm mem object!");
+    return nullptr;
   }
 
-  return svmPtr;
+  if (!mem->create(nullptr)) {
+    LogError("failed to create a svm hidden buffer!");
+    mem->release();
+    return nullptr;
+  }
+  // if the device supports SVM FGS, return the committed CPU address directly.
+  Memory* gpuMem = getRocMemory(mem);
+  if (gpuMem == nullptr) {
+    LogError("failed to create GPU memory from svm hidden buffer!");
+    return nullptr;
+  }
+
+  // add the information to context so that we can use it later.
+  if (mem->getSvmPtr() != nullptr) {
+    amd::MemObjMap::AddMemObj(mem->getSvmPtr(), mem);
+  }
+  return mem->getSvmPtr();
 }
 
 void* Device::virtualAlloc(void* req_addr, size_t size, size_t alignment) {

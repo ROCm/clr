@@ -33,7 +33,7 @@ using namespace llvm::ELF;
 namespace hip {
 hipError_t ihipFree(void* ptr);
 // forward declaration of methods required for managed variables
-hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 namespace {
 // In uncompressed mode
 constexpr char kOffloadBundleUncompressedMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
@@ -718,7 +718,7 @@ hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
     return status;
   }
   // Allocate managed memory for these symbols
-  status = ihipMallocManaged(&pointer, dvar->size());
+  status = ihipMallocManaged(&pointer, dvar->size(), 0, 0);
   guarantee(status == hipSuccess, "Status %d, failed to allocate managed memory", status);
 
   // update as manager variable and set managed memory pointer and size
@@ -875,7 +875,7 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
   auto managedVarsIter = managedVars_.find(module);
   if (managedVarsIter != managedVars_.end()) {
     for (auto& managedVar : managedVarsIter->second) {
-      hipError_t err;
+      hipError_t err = hipSuccess;
       for (auto dev : g_devices) {
         DeviceVar* dvar = nullptr;
         IHIP_RETURN_ONFAIL(managedVar->getDeviceVarPtr(&dvar, dev->deviceId()));
@@ -885,7 +885,12 @@ hipError_t StatCO::removeFatBinary(FatBinaryInfo** module) {
           assert(err == hipSuccess);
         }
       }
-      err = ihipFree(*(static_cast<void**>(managedVar->getManagedVarPtr())));
+      if (managedVar->getAllocFlag()) {  // check if it is a managed or host alloc
+        err = ihipFree(*(static_cast<void**>(managedVar->getManagedVarPtr())));
+      } else {
+        void** pointer = static_cast<void**>(managedVar->getManagedVarPtr());
+        amd::Os::releaseMemory(*pointer, managedVar->getSize());
+      }
       assert(err == hipSuccess);
       delete managedVar;
     }
@@ -1038,21 +1043,21 @@ hipError_t StatCO::initStatManagedVarDevicePtr(int deviceId) {
         // Lazy load
         FatBinaryInfo **module = var->moduleInfo();
         if (*(module) == nullptr) {
-          hipError_t err = digestFatBinary(module_to_hostModule_[module], *module);
+          err = digestFatBinary(module_to_hostModule_[module], *module);
           assert(err == hipSuccess);
         }
-
-        DeviceVar* dvar = nullptr;
-        IHIP_RETURN_ONFAIL(var->getStatDeviceVar(&dvar, deviceId));
-
         hip::Stream* stream = g_devices.at(deviceId)->NullStream();
-        if (stream != nullptr) {
-          err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()), var->getManagedVarPtr(),
-                           dvar->size(), hipMemcpyHostToDevice, *stream);
-        } else {
+        if (stream == nullptr) {
           ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
           return hipErrorInvalidResourceHandle;
         }
+        // Allocate managed var for deferred loading
+        IHIP_RETURN_ONFAIL(var->allocateManagedVarPtr());
+        // Copy from managed var host to device ptr
+        DeviceVar* dvar = nullptr;
+        IHIP_RETURN_ONFAIL(var->getStatDeviceVar(&dvar, deviceId));
+        err = ihipMemcpy(reinterpret_cast<address>(dvar->device_ptr()), var->getManagedVarPtr(),
+                         dvar->size(), hipMemcpyHostToDevice, *stream);
       }
     }
     managedVarsDevicePtrInitalized_[deviceId] = true;

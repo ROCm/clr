@@ -28,7 +28,7 @@
 namespace hip {
 
 // Forward declaraiton of a function
-hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 
 // Make sure HIP defines match ROCclr to avoid double conversion
 static_assert(hipCpuDeviceId == amd::CpuDeviceId, "CPU device ID mismatch with ROCclr!");
@@ -76,7 +76,7 @@ hipError_t hipMallocManaged(void** dev_ptr, size_t size, unsigned int flags) {
     HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
-  HIP_RETURN(ihipMallocManaged(dev_ptr, size), *dev_ptr);
+  HIP_RETURN(ihipMallocManaged(dev_ptr, size, 0, 0), *dev_ptr);
 }
 
 // ================================================================================================
@@ -284,7 +284,7 @@ hipError_t hipStreamAttachMemAsync(hipStream_t stream, void* dev_ptr,
 }
 
 // ================================================================================================
-hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align, bool use_host_ptr) {
   if (ptr == nullptr) {
     return hipErrorInvalidValue;
   } else if (size == 0) {
@@ -299,9 +299,15 @@ hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align) {
 
   // Allocate SVM fine grain buffer with the forced host pointer, avoiding explicit memory
   // allocation in the device driver
-  *ptr = amd::SvmBuffer::malloc(ctx, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR,
-                                size, (align == 0) ? dev.info().memBaseAddrAlign_ : align);
-
+  if (use_host_ptr) {
+    // If the host pointer is already allocated, map it to svm fine grain buffer
+    *ptr = amd::SvmBuffer::malloc(ctx, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_USE_HOST_PTR, size,
+                                  (align == 0) ? dev.info().memBaseAddrAlign_ : align, nullptr,
+                                  *ptr);
+  } else {
+    *ptr = amd::SvmBuffer::malloc(ctx, CL_MEM_SVM_FINE_GRAIN_BUFFER | CL_MEM_ALLOC_HOST_PTR, size,
+                                  (align == 0) ? dev.info().memBaseAddrAlign_ : align);
+  }
   if (*ptr == nullptr) {
     return hipErrorMemoryAllocation;
   }
