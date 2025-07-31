@@ -3300,7 +3300,7 @@ hipError_t hipIpcOpenMemHandle(void** dev_ptr, hipIpcMemHandle_t handle, unsigne
       LogPrintfError(
           "Cannot attach ipc_handle: with ipc_size: %u"
           "ipc_offset: %u flags: %u",
-          ihandle->psize, flags);
+          ihandle->psize, ihandle->poffset, flags);
       HIP_RETURN(hipErrorInvalidDevicePointer);
     }
     amd_mem_obj = getMemoryObject(*dev_ptr, offset);
