@@ -818,9 +818,15 @@ hipError_t hipMemcpy_spt(void* dst, const void* src, size_t sizeBytes, hipMemcpy
 hipError_t hipMemcpyWithStream(void* dst, const void* src, size_t sizeBytes,
                                hipMemcpyKind kind, hipStream_t stream) {
   HIP_INIT_API(hipMemcpyWithStream, dst, src, sizeBytes, kind, stream);
-  STREAM_CAPTURE(hipMemcpyAsync, stream, dst, src, sizeBytes, kind);
   if (!hip::isValid(stream)) {
     HIP_RETURN(hipErrorContextIsDestroyed);
+  }
+
+  // Since this API does a MemcpyAsync + sync, and sync during a graph capture
+  // is not allowed, we raise an error here if user tries to use this during a
+  // stream capture.
+  if (hip::Stream::StreamCaptureOngoing(stream) == true) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
 
   hip::Stream* hip_stream = hip::getStream(stream);
