@@ -1192,7 +1192,7 @@ class GraphKernelNode : public GraphNode {
     }
 
     amd::HIPLaunchParams launch_params(kernelParams_.gridDim.x, kernelParams_.gridDim.y,
-                                       kernelParams_.gridDim.z, kernelParams_.blockDim.x, 
+                                       kernelParams_.gridDim.z, kernelParams_.blockDim.x,
                                        kernelParams_.blockDim.y, kernelParams_.blockDim.z,
                                        kernelParams_.sharedMemBytes, globalWorkSizeX_remainder_,
                                        globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_);
