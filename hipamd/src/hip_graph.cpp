@@ -99,7 +99,8 @@ hipError_t ihipGraphAddKernelNode(hip::GraphNode** pGraphNode, hip::Graph* graph
   amd::HIPLaunchParams launch_params(pNodeParams->gridDim.x, pNodeParams->gridDim.y,
                                      pNodeParams->gridDim.z, pNodeParams->blockDim.x,
                                      pNodeParams->blockDim.y, pNodeParams->blockDim.z,
-                                     pNodeParams->sharedMemBytes);
+                                     pNodeParams->sharedMemBytes, globalWorkSizeX_remainder,
+                                     globalWorkSizeY_remainder, globalWorkSizeZ_remainder);
   if (!launch_params.IsValidConfig()) {
     return hipErrorInvalidConfiguration;
   }
