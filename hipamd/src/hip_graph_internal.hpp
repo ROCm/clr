@@ -957,15 +957,14 @@ class GraphKernelNode : public GraphNode {
     char buffer[4096];
     if (flag == hipGraphDebugDotFlagsVerbose) {
       sprintf(buffer,
-              "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
+              "{\n%s\n| {ID | %d | %s\\<\\<\\<(%u,%u,%u),(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>}\n| {{node "
               "handle | func handle} | {%p | %p}}\n| {accessPolicyWindow | {base_ptr | num_bytes | "
               "hitRatio | hitProp | missProp} | {%p | %zu | %f | %d | %d}}\n| {cooperative | "
               "%u}\n| {priority | %d}\n}",
-              label_, GetID(), function->name().c_str(),
-              kernelParams_.gridDim.x + globalWorkSizeX_remainder_,
-              kernelParams_.gridDim.y + globalWorkSizeY_remainder_,
-              kernelParams_.gridDim.z + globalWorkSizeZ_remainder_,
-              kernelParams_.blockDim.x, kernelParams_.blockDim.y, kernelParams_.blockDim.z,
+              label_, GetID(), function->name().c_str(), kernelParams_.gridDim.x,
+              kernelParams_.gridDim.y, kernelParams_.gridDim.z, kernelParams_.blockDim.x,
+              kernelParams_.blockDim.y, kernelParams_.blockDim.z,
+              globalWorkSizeX_remainder_, globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_,
               kernelParams_.sharedMemBytes, this, kernelParams_.func,
               kernelAttr_.accessPolicyWindow.base_ptr, kernelAttr_.accessPolicyWindow.num_bytes,
               kernelAttr_.accessPolicyWindow.hitRatio, kernelAttr_.accessPolicyWindow.hitProp,
@@ -987,13 +986,12 @@ class GraphKernelNode : public GraphNode {
       label = buffer;
     }
     else if (flag == hipGraphDebugDotFlagsKernelNodeParams) {
-      sprintf(buffer, "%d\n%s\n\\<\\<\\<(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>",
-              GetID(), function->name().c_str(),
-              kernelParams_.gridDim.x + globalWorkSizeX_remainder_,
-              kernelParams_.gridDim.y + globalWorkSizeY_remainder_,
-              kernelParams_.gridDim.z + globalWorkSizeZ_remainder_,
-              kernelParams_.blockDim.x, kernelParams_.blockDim.y,
-              kernelParams_.blockDim.z, kernelParams_.sharedMemBytes);
+      sprintf(buffer, "%d\n%s\n\\<\\<\\<(%u,%u,%u),(%u,%u,%u),(%u,%u,%u),%u\\>\\>\\>",
+              GetID(), function->name().c_str(), kernelParams_.gridDim.x,
+              kernelParams_.gridDim.y, kernelParams_.gridDim.z,
+              kernelParams_.blockDim.x, kernelParams_.blockDim.y, kernelParams_.blockDim.z,
+              globalWorkSizeX_remainder_, globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_,
+              kernelParams_.sharedMemBytes);
       label = buffer;
     }
     else {
