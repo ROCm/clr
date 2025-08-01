@@ -1191,12 +1191,11 @@ class GraphKernelNode : public GraphNode {
       }
     }
 
-    amd::HIPLaunchParams launch_params(kernelParams_.gridDim.x,
-                                       kernelParams_.gridDim.y,
-                                       kernelParams_.gridDim.z,
-                                       kernelParams_.blockDim.x, kernelParams_.blockDim.y,
-                                       kernelParams_.blockDim.z, kernelParams_.sharedMemBytes,
-                                       globalWorkSizeX_remainder_, globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_);
+    amd::HIPLaunchParams launch_params(kernelParams_.gridDim.x, kernelParams_.gridDim.y,
+                                       kernelParams_.gridDim.z, kernelParams_.blockDim.x, 
+                                       kernelParams_.blockDim.y, kernelParams_.blockDim.z,
+                                       kernelParams_.sharedMemBytes, globalWorkSizeX_remainder_,
+                                       globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_);
 
     if (!launch_params.IsValidConfig()) {
       return hipErrorInvalidConfiguration;
@@ -1342,12 +1341,11 @@ class GraphKernelNode : public GraphNode {
   hipError_t validateKernelParams(const hipKernelNodeParams* pNodeParams,
                                   hipFunction_t func, int devId) {
 
-    amd::HIPLaunchParams launch_params(pNodeParams->gridDim.x,
-                                       pNodeParams->gridDim.y,
-                                       pNodeParams->gridDim.z,
-                                       pNodeParams->blockDim.x, pNodeParams->blockDim.y,
-                                       pNodeParams->blockDim.z, pNodeParams->sharedMemBytes,
-                                       globalWorkSizeX_remainder_, globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_);
+    amd::HIPLaunchParams launch_params(pNodeParams->gridDim.x, pNodeParams->gridDim.y,
+                                       pNodeParams->gridDim.z, pNodeParams->blockDim.x,
+                                       pNodeParams->blockDim.y, pNodeParams->blockDim.z,
+                                       pNodeParams->sharedMemBytes, globalWorkSizeX_remainder_,
+                                       globalWorkSizeY_remainder_, globalWorkSizeZ_remainder_);
 
     if (!launch_params.IsValidConfig()) {
       HIP_RETURN(hipErrorInvalidConfiguration);
