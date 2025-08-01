@@ -162,7 +162,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   }
 
   if (dev_ptr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipSuccess);
   }
 
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
