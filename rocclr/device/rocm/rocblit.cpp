@@ -26,6 +26,7 @@
 #include "device/rocm/rocsched.hpp"
 #include "utils/debug.hpp"
 #include <algorithm>
+#include <type_traits>
 
 namespace amd::roc {
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
@@ -506,7 +507,7 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
       // Device to different device
       engine = HwQueueEngine::SdmaInter;
     }
-  }
+ }
 
   gpu().Barriers().SetActiveEngine(engine);
   auto wait_events = gpu().Barriers().WaitingSignal(engine);
@@ -537,12 +538,20 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent,
         copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
       }
 
-      gpu().setLastUsedSdmaEngine(copyMask);
+
+      if (HIP_FORCE_SDMA_COPY_MASK >= 0) {
+        guarantee(HIP_FORCE_SDMA_COPY_MASK < 0xffff, "SDMA Copy Mask is wrong");
+        copyMask = HIP_FORCE_SDMA_COPY_MASK;
+      }
+        gpu().setLastUsedSdmaEngine(copyMask);
     }
 
     if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
+
       // Copy on the first available free engine if ROCr returns a valid mask
       hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
+
+      std::cout<<"Using SDMA Engine: "<<copyEngine<<std::endl;
 
       ClPrint(amd::LOG_DEBUG, amd::LOG_COPY,
               "HSA Copy copy_engine=0x%x, dst=0x%zx, src=0x%zx, "

@@ -273,6 +273,8 @@ release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, true,                              \
         "Set this to true, to avoid host side abort for GPU errors")          \
 release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
          "Force use of SPIRV instead of device specific code object.")        \
+release(uint, HIP_FORCE_SDMA_COPY_MASK, 0,                                    \
+         "Force SDMA Copy mask to select engines")                            \
 
 namespace amd {
 
