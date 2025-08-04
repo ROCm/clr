@@ -655,15 +655,13 @@ get_native_pointer(const HIP_vector_base<T, n>& base_vec) {
       return make_vector_type<T, n>(x) /= y;
     }
 
-    template<typename T, unsigned int n>
-    __HOST_DEVICE__
-    inline
-    #if __cplusplus >= 201402L && !defined(__HIPCC_RTC__)
-    constexpr
-    #endif
-    bool operator==(
-        const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept
-    {
+    template <typename T, unsigned int n>
+    __HOST_DEVICE__ inline
+#if __cplusplus >= 201402L && !defined(__HIPCC_RTC__)
+        constexpr
+#endif
+        bool
+        operator==(const HIP_vector_type<T, n>& x, const HIP_vector_type<T, n>& y) noexcept {
       bool isTrue = true;
       const auto& native_x = get_native_vector(x);
       const auto& native_y = get_native_vector(y);
