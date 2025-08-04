@@ -362,6 +362,7 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
   }
 
   address kernargs = nullptr;
+  size_t kernargs_size = 0;
   // 'extra' is a struct that contains the following info: {
   //   HIP_LAUNCH_PARAM_BUFFER_POINTER, kernargs,
   //   HIP_LAUNCH_PARAM_BUFFER_SIZE, &kernargs_size,
@@ -373,10 +374,22 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
       return hipErrorInvalidValue;
     }
     kernargs = reinterpret_cast<address>(extra[1]);
+    kernargs_size = *reinterpret_cast<size_t*>(extra[3]);
+    const uint32_t numParams = kernel->signature().numParameters();
+    const bool expectsArgs = (numParams > 0);
+    const bool hasArgs = (kernargs != nullptr && kernargs_size > 0);
+    // we either expected args but got none, or didn’t expect any but got some
+    if (expectsArgs == true && hasArgs == false) {
+      return hipErrorInvalidValue;
+    }
+    if (expectsArgs == false && kernargs_size != 0) {
+      return hipErrorLaunchOutOfResources;
+    }
   }
 
   if (DEBUG_HIP_KERNARG_COPY_OPT) {
-    if (CL_SUCCESS != kernelCommand->AllocCaptureSetValidate(kernelParams, kernargs)) {
+    if (CL_SUCCESS != kernelCommand->AllocCaptureSetValidate(kernelParams, kernargs,
+                                                             kernargs_size)) {
       kernelCommand->release();
       return hipErrorOutOfMemory;
     }
@@ -386,8 +399,11 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
       const amd::KernelParameterDescriptor& desc = kernel->signature().at(i);
       if (kernelParams == nullptr) {
         assert(kernargs != nullptr);
-        kernel->parameters().set(i, desc.size_, kernargs + desc.offset_,
-                                 desc.type_ == T_POINTER /*svmBound*/);
+        // only copy if this parameter lies fully inside the passed buffer
+        if (desc.offset_ + desc.size_ <= kernargs_size) {
+          kernel->parameters().set(i, desc.size_, kernargs + desc.offset_,
+                                   desc.type_ == T_POINTER /*svmBound*/);
+        }
       } else {
         kernel->parameters().set(i, desc.size_, kernelParams[i],
                                  desc.type_ == T_POINTER /*svmBound*/);
@@ -891,7 +907,7 @@ hipError_t ihipLaunchCooperativeKernelMultiDevice(hipLaunchParams* launchParamsL
     if (!hip::isValid(launch.stream)) {
       return hipErrorInvalidValue;
     }
-    
+
     if (launch.stream == nullptr || launch.stream == hipStreamLegacy) {
       return hipErrorInvalidResourceHandle;
     }
