@@ -63,7 +63,7 @@
 #define HIP_API_TABLE_STEP_VERSION 0
 #define HIP_COMPILER_API_TABLE_STEP_VERSION 0
 #define HIP_TOOLS_API_TABLE_STEP_VERSION 0
-#define HIP_RUNTIME_API_TABLE_STEP_VERSION 13
+#define HIP_RUNTIME_API_TABLE_STEP_VERSION 14
 
 // HIP API interface
 // HIP compiler dispatch functions
@@ -484,6 +484,8 @@ typedef hipError_t (*t_hipMemAddressReserve)(void** ptr, size_t size, size_t ali
                                              unsigned long long flags);
 typedef hipError_t (*t_hipMemAdvise)(const void* dev_ptr, size_t count, hipMemoryAdvise advice,
                                      int device);
+typedef hipError_t (*t_hipMemAdvise_v2)(const void* dev_ptr, size_t count, hipMemoryAdvise advice,
+                                        hipMemLocation device);
 typedef hipError_t (*t_hipMemAllocHost)(void** ptr, size_t size);
 typedef hipError_t (*t_hipMemAllocPitch)(hipDeviceptr_t* dptr, size_t* pitch, size_t widthInBytes,
                                          size_t height, unsigned int elementSizeBytes);
@@ -1588,10 +1590,11 @@ struct HipDispatchTable {
   t_hipMemGetHandleForAddressRange hipMemGetHandleForAddressRange_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 13
+  t_hipMemAdvise_v2 hipMemAdvise_v2_fn;
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams
 
   // DO NOT EDIT ABOVE!
-  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 13
+  // HIP_RUNTIME_API_TABLE_STEP_VERSION == 14
 
   // ******************************************************************************************* //
   //

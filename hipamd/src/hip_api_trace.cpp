@@ -396,6 +396,7 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size);
 hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void* addr,
                                 unsigned long long flags);
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device);
+hipError_t hipMemAdvise_v2(const void* dev_ptr, size_t count, hipMemoryAdvise advice, hipMemLocation location);
 hipError_t hipMemAllocHost(void** ptr, size_t size);
 hipError_t hipMemAllocPitch(hipDeviceptr_t* dptr, size_t* pitch, size_t widthInBytes, size_t height,
                             unsigned int elementSizeBytes);
@@ -827,7 +828,7 @@ hipError_t hipEventRecordWithFlags(hipEvent_t event, hipStream_t stream, unsigne
 hipError_t hipLaunchKernelExC(const hipLaunchConfig_t* config, const void* fPtr, void** args);
 hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f, void** params,
                                 void** extra);
-hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size,
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags);
 
@@ -1096,6 +1097,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemAddressFree_fn = hip::hipMemAddressFree;
   ptrDispatchTable->hipMemAddressReserve_fn = hip::hipMemAddressReserve;
   ptrDispatchTable->hipMemAdvise_fn = hip::hipMemAdvise;
+  ptrDispatchTable->hipMemAdvise_v2_fn = hip::hipMemAdvise_v2;
   ptrDispatchTable->hipMemAllocHost_fn = hip::hipMemAllocHost;
   ptrDispatchTable->hipMemAllocPitch_fn = hip::hipMemAllocPitch;
   ptrDispatchTable->hipMemCreate_fn = hip::hipMemCreate;
@@ -1989,15 +1991,17 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipLaunchKernelExC_fn, 474);
 HIP_ENFORCE_ABI(HipDispatchTable, hipDrvLaunchKernelEx_fn, 475);
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 12
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetHandleForAddressRange_fn, 476);
+// HIP_RUNTIME_API_TABLE_STEP_VERSION == 13
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAdvise_v2_fn, 477);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 477)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 478)
 
-static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 13,
+static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "
               "pointers and then update this check so it is true");
 #endif

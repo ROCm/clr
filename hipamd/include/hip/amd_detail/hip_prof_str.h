@@ -438,7 +438,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipLinkDestroy = 418,
   HIP_API_ID_hipLaunchKernelExC = 419,
   HIP_API_ID_hipDrvLaunchKernelEx = 420,
-  HIP_API_ID_LAST = 420,
+  HIP_API_ID_hipMemAdvise_v2 = 421,
+  HIP_API_ID_LAST = 421,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -727,6 +728,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipMemAddressFree: return "hipMemAddressFree";
     case HIP_API_ID_hipMemAddressReserve: return "hipMemAddressReserve";
     case HIP_API_ID_hipMemAdvise: return "hipMemAdvise";
+    case HIP_API_ID_hipMemAdvise_v2: return "hipMemAdvise_v2";
     case HIP_API_ID_hipMemAllocHost: return "hipMemAllocHost";
     case HIP_API_ID_hipMemAllocPitch: return "hipMemAllocPitch";
     case HIP_API_ID_hipMemCreate: return "hipMemCreate";
@@ -1142,6 +1144,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipMemAddressFree", name) == 0) return HIP_API_ID_hipMemAddressFree;
   if (strcmp("hipMemAddressReserve", name) == 0) return HIP_API_ID_hipMemAddressReserve;
   if (strcmp("hipMemAdvise", name) == 0) return HIP_API_ID_hipMemAdvise;
+  if (strcmp("hipMemAdvise_v2", name) == 0) return HIP_API_ID_hipMemAdvise_v2;
   if (strcmp("hipMemAllocHost", name) == 0) return HIP_API_ID_hipMemAllocHost;
   if (strcmp("hipMemAllocPitch", name) == 0) return HIP_API_ID_hipMemAllocPitch;
   if (strcmp("hipMemCreate", name) == 0) return HIP_API_ID_hipMemCreate;
@@ -2759,6 +2762,12 @@ typedef struct hip_api_data_s {
       hipMemoryAdvise advice;
       int device;
     } hipMemAdvise;
+    struct {
+      const void* dev_ptr;
+      size_t count;
+      hipMemoryAdvise advice;
+      hipMemLocation location;
+    } hipMemAdvise_v2;
     struct {
       void** ptr;
       void* ptr__val;
@@ -5206,6 +5215,13 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemAdvise.advice = (hipMemoryAdvise)advice; \
   cb_data.args.hipMemAdvise.device = (int)device; \
 };
+// hipMemAdvise_v2[('const void*', 'dev_ptr'), ('size_t', 'count'), ('hipMemoryAdvise', 'advice'), ('hipMemLocation', 'location')]
+#define INIT_hipMemAdvise_v2_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemAdvise_v2.dev_ptr = (const void*)dev_ptr; \
+  cb_data.args.hipMemAdvise_v2.count = (size_t)count; \
+  cb_data.args.hipMemAdvise_v2.advice = (hipMemoryAdvise)advice; \
+  cb_data.args.hipMemAdvise_v2.location = (hipMemLocation)location; \
+};
 // hipMemAllocHost[('void**', 'ptr'), ('size_t', 'size')]
 #define INIT_hipMemAllocHost_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemAllocHost.ptr = (void**)ptr; \
@@ -5601,16 +5617,16 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyHtoAAsync.ByteCount = (size_t)ByteCount; \
   cb_data.args.hipMemcpyHtoAAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes')]
+// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes')]
 #define INIT_hipMemcpyHtoD_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyHtoD.dst = (hipDeviceptr_t)dstDevice; \
-  cb_data.args.hipMemcpyHtoD.src = (void*)srcHost; \
+  cb_data.args.hipMemcpyHtoD.src = (const void*)srcHost; \
   cb_data.args.hipMemcpyHtoD.sizeBytes = (size_t)ByteCount; \
 };
-// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
+// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
 #define INIT_hipMemcpyHtoDAsync_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyHtoDAsync.dst = (hipDeviceptr_t)dstDevice; \
-  cb_data.args.hipMemcpyHtoDAsync.src = (void*)srcHost; \
+  cb_data.args.hipMemcpyHtoDAsync.src = (const void*)srcHost; \
   cb_data.args.hipMemcpyHtoDAsync.sizeBytes = (size_t)ByteCount; \
   cb_data.args.hipMemcpyHtoDAsync.stream = (hipStream_t)stream; \
 };
@@ -6366,7 +6382,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipCtxEnablePeerAccess[('hipCtx_t', 'peerCtx'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipCtxEnablePeerAccess:
       break;
-// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('int*', 'apiVersion')]
+// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('unsigned int*', 'apiVersion')]
     case HIP_API_ID_hipCtxGetApiVersion:
       if (data->args.hipCtxGetApiVersion.apiVersion) data->args.hipCtxGetApiVersion.apiVersion__val = *(data->args.hipCtxGetApiVersion.apiVersion);
       break;
@@ -7306,6 +7322,9 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemAdvise[('const void*', 'dev_ptr'), ('size_t', 'count'), ('hipMemoryAdvise', 'advice'), ('int', 'device')]
     case HIP_API_ID_hipMemAdvise:
       break;
+// hipMemAdvise_v2[('const void*', 'dev_ptr'), ('size_t', 'count'), ('hipMemoryAdvise', 'advice'), ('hipMemLocation', 'location')]
+    case HIP_API_ID_hipMemAdvise_v2:
+      break;
 // hipMemAllocHost[('void**', 'ptr'), ('size_t', 'size')]
     case HIP_API_ID_hipMemAllocHost:
       if (data->args.hipMemAllocHost.ptr) data->args.hipMemAllocHost.ptr__val = *(data->args.hipMemAllocHost.ptr);
@@ -7507,10 +7526,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpyHtoAAsync[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'ByteCount'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyHtoAAsync:
       break;
-// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes')]
+// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes')]
     case HIP_API_ID_hipMemcpyHtoD:
       break;
-// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
+// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyHtoDAsync:
       break;
 // hipMemcpyParam2D[('const hip_Memcpy2D*', 'pCopy')]
@@ -9878,6 +9897,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.count);
       oss << ", advice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.advice);
       oss << ", device="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise.device);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemAdvise_v2:
+      oss << "hipMemAdvise_v2(";
+      oss << "dev_ptr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise_v2.dev_ptr);
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise_v2.count);
+      oss << ", advice="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise_v2.advice);
+      oss << ", location="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemAdvise_v2.location);
       oss << ")";
     break;
     case HIP_API_ID_hipMemAllocHost:

@@ -926,6 +926,9 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device) {
   return hip::GetHipDispatchTable()->hipMemAdvise_fn(dev_ptr, count, advice, device);
 }
+hipError_t hipMemAdvise_v2(const void* dev_ptr, size_t count, hipMemoryAdvise advice, hipMemLocation location) {
+  return hip::GetHipDispatchTable()->hipMemAdvise_v2_fn(dev_ptr, count, advice, location);
+}
 hipError_t hipMemAllocHost(void** ptr, size_t size) {
   return hip::GetHipDispatchTable()->hipMemAllocHost_fn(ptr, size);
 }
@@ -1880,7 +1883,7 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
   return hip::GetHipDispatchTable()->hipDrvLaunchKernelEx_fn(config, f, kernel, extra);
 }
 
-hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size,
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags) {
   return hip::GetHipDispatchTable()->hipMemGetHandleForAddressRange_fn(handle, dptr, size,
