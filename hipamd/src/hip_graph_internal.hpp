@@ -249,6 +249,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
       return status;
     }
 
+    std::for_each(gpuPackets_.begin(), gpuPackets_.end(), [](auto p) { delete[] p; });
     gpuPackets_.clear();
     for (auto& command : commands_) {
       command->setPktCapturingState(true, &gpuPackets_, kernArgMgr, &capturedKernelName_);
