@@ -429,6 +429,9 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, amd::LaunchParams& launch_par
                                   uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
                                   uint32_t firstDevice = 0) {
   int deviceId = hip::Stream::DeviceId(hStream);
+  if (deviceId != ihipGetDevice()) {
+    return hipErrorInvalidResourceHandle;
+  }
   HIP_RETURN_ONFAIL(PlatformState::instance().initStatManagedVarDevicePtr(deviceId));
 
   if (f == nullptr) {

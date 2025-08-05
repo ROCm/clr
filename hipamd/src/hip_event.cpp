@@ -374,7 +374,7 @@ hipError_t hipEventElapsedTime(float* ms, hipEvent_t start, hipEvent_t stop) {
   hip::Event* eStop = reinterpret_cast<hip::Event*>(stop);
 
   if (eStart->deviceId() != eStop->deviceId()) {
-    HIP_RETURN(hipErrorInvalidHandle);
+    HIP_RETURN(hipErrorInvalidResourceHandle);
   }
 
   HIP_RETURN(eStart->elapsedTime(*eStop, *ms), "Elapsed Time = ", *ms);
@@ -414,8 +414,8 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
       s->SetLastCapturedNode(pGraphNode);
     }
   } else {
-    if (g_devices[e->deviceId()]->devices()[0] != &hip_stream->device()) {
-      return hipErrorInvalidHandle;
+    if (e->deviceId() != hip_stream->DeviceId()) {
+      return hipErrorInvalidResourceHandle;
     }
     status = e->addMarker(hip_stream, nullptr, !hip::Event::kBatchFlush);
   }
