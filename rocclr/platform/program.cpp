@@ -93,6 +93,9 @@ Program::~Program() {
 void Program::unload() {
   for (const auto& it : devicePrograms_) {
     device::Program& devProgram = *(it.second);
+    if (!devProgram.isCodeObjectLoaded()) {
+      continue;
+    }
     if (!devProgram.runFiniKernels()) {
       LogError("Error running fini kernels for devprogram");
     }

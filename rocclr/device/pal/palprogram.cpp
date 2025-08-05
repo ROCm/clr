@@ -296,7 +296,7 @@ bool HSAILProgram::createKernels(void* binary, size_t binSize, bool useUniformWo
       std::string kernelName(it);
 
       HSAILKernel* aKernel = new HSAILKernel(kernelName, this, internalKernel);
-      kernels()[kernelName] = aKernel;
+      addKernel(aKernel);
 
       if (!aKernel->init()) {
         buildLog_ += "Error: Kernel initialization failed.\n";
@@ -764,7 +764,7 @@ bool LightningProgram::createKernels(void* binary, size_t binSize, bool useUnifo
         buildLog_ += "[ROC][Kernel] Could not get Code Prop Meta Data \n";
         return false;
       }
-      kernels()[kernelName] = kernel;
+      addKernel(kernel);
 
       if (codeObjectVer() < 5) {
         kernel->setUniformWorkGroupSize(useUniformWorkGroupSize);

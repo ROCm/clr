@@ -115,8 +115,10 @@ class Program : public amd::HeapObject {
   kernels_t kernels_; //!< The kernel entry points this binary.
   type_t type_;       //!< type of this program
 
-  typedef enum { InitKernel = 0, FiniKernel } kernel_kind_t;  //!< Kernel kind
-  bool runInitFiniKernel(kernel_kind_t) const;
+  std::vector<const Kernel*> initKernels_;  //!< Init kernels
+  std::vector<const Kernel*> finiKernels_;  //!< Fini kernels
+
+  bool runInitFiniKernel(const std::vector<const Kernel*>& kernels) const;
 
 #if defined(WITH_COMPILER_LIB)
   static amd::Monitor buildLock_; //!< Global build lock for HSAIL which isn't thread-safe
@@ -223,6 +225,9 @@ class Program : public amd::HeapObject {
   //! Return the symbols vector.
   const kernels_t& kernels() const { return kernels_; }
   kernels_t& kernels() { return kernels_; }
+
+  //! Add kernel to the map and init fini kernel vector.
+  void addKernel(Kernel* k);
 
   //! Return the binary image.
   inline const binary_t binary() const;

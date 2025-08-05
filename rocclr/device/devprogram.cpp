@@ -78,6 +78,8 @@ Program::Program(amd::Device& device, amd::Program& owner)
     : device_(device),
       owner_(owner),
       type_(TYPE_NONE),
+      initKernels_(),
+      finiKernels_(),
       flags_(0),
       clBinary_(nullptr),
       llvmBinary_(),
@@ -119,6 +121,8 @@ Program::~Program() {
 
 // ================================================================================================
 void Program::clear() {
+  initKernels_.clear();
+  finiKernels_.clear();
   // Destroy all device kernels
   for (const auto& it : kernels_) {
     delete it.second;
@@ -2133,6 +2137,16 @@ bool Program::initClBinary(const char* binaryIn, size_t size, amd::Os::FileDesc 
 }
 
 // ================================================================================================
+void Program::addKernel(Kernel* k) {
+  kernels_[k->name()] = k;
+  if (k->isInitKernel()) {
+    initKernels_.push_back(k);
+  } else if (k->isFiniKernel()) {
+    finiKernels_.push_back(k);
+  }
+}
+
+// ================================================================================================
 bool Program::setBinary(const char* binaryIn, size_t size, const device::Program* same_dev_prog,
                         amd::Os::FileDesc fdesc, size_t foffset, std::string uri) {
   if (!initClBinary(binaryIn, size, fdesc, foffset, uri)) {
@@ -2915,60 +2929,56 @@ bool Program::getGlobalVarFromCodeObj(std::vector<std::string>* var_names) const
 // Init Fini Launch Lock
 amd::Monitor Program::initFiniLock_(true);
 
-bool Program::runInitFiniKernel(kernel_kind_t kind) const {
+bool Program::runInitFiniKernel(const std::vector<const Kernel*>& kernels) const {
   amd::HostQueue* queue = nullptr;
 
-  for (const auto& i : kernels_) {
-    const auto &kernel = i.second;
-    if ((kernel->isInitKernel() && kind == kernel_kind_t::InitKernel) ||
-        (kernel->isFiniKernel() && kind == kernel_kind_t::FiniKernel)) {
-      amd::ScopedLock sl(initFiniLock_);
+  for (const auto& kernel: kernels) {
+    amd::ScopedLock sl(initFiniLock_);
 
+    if (queue == nullptr) {
+      queue = new amd::HostQueue(device_().context(), device_(), 0);
       if (queue == nullptr) {
-        queue = new amd::HostQueue(device_().context(), device_(), 0);
-        if (queue == nullptr) {
-          LogError("Unable to create queue");
-          return false;
-        }
-        queue->create();
-      }
-
-      LogPrintfInfo("%s is marked init/fini", i.first.c_str());
-
-      size_t globalWorkOffset[3] = {0};
-      size_t globalWorkSize[3] = {1, 1, 1};
-      size_t localWorkSize[3] = {1, 1, 1};
-      amd::NDRangeContainer ndrange(3, globalWorkOffset, globalWorkSize, localWorkSize);
-      amd::Command::EventWaitList waitList;
-
-      auto symbol = owner_.findSymbol(kernel->name().c_str());
-      amd::Kernel* k = new amd::Kernel(owner_, *symbol, kernel->name().c_str());
-      if (!k) {
-        queue->release();
-        LogError("Unable to create kernel");
+        LogError("Unable to create queue");
         return false;
       }
-
-      amd::NDRangeKernelCommand* kernelCommand =
-          new amd::NDRangeKernelCommand(*queue, waitList, *k, ndrange);
-      if (!kernelCommand) {
-        LogError("Unale to allocate memory to launch kernel");
-        k->release();
-        queue->release();
-        return false;
-      }
-      if (CL_SUCCESS != kernelCommand->captureAndValidate()) {
-        LogError("Kernel Capture and Validate failed");
-        kernelCommand->release();
-        k->release();
-        queue->release();
-        return false;
-      }
-      kernelCommand->enqueue();
-      queue->finish();
-      k->release();
-      kernelCommand->release();
+      queue->create();
     }
+
+    LogPrintfInfo("%s is marked init/fini", kernel->name().c_str());
+
+    size_t globalWorkOffset[3] = {0};
+    size_t globalWorkSize[3] = {1, 1, 1};
+    size_t localWorkSize[3] = {1, 1, 1};
+    amd::NDRangeContainer ndrange(3, globalWorkOffset, globalWorkSize, localWorkSize);
+    amd::Command::EventWaitList waitList;
+
+    auto symbol = owner_.findSymbol(kernel->name().c_str());
+    amd::Kernel* k = new amd::Kernel(owner_, *symbol, kernel->name().c_str());
+    if (!k) {
+      queue->release();
+      LogError("Unable to create kernel");
+      return false;
+    }
+
+    amd::NDRangeKernelCommand* kernelCommand =
+        new amd::NDRangeKernelCommand(*queue, waitList, *k, ndrange);
+    if (!kernelCommand) {
+      LogError("Unale to allocate memory to launch kernel");
+      k->release();
+      queue->release();
+      return false;
+    }
+    if (CL_SUCCESS != kernelCommand->captureAndValidate()) {
+      LogError("Kernel Capture and Validate failed");
+      kernelCommand->release();
+      k->release();
+      queue->release();
+      return false;
+    }
+    kernelCommand->enqueue();
+    queue->finish();
+    k->release();
+    kernelCommand->release();
   }
 
   if (queue != nullptr) {
@@ -2977,7 +2987,7 @@ bool Program::runInitFiniKernel(kernel_kind_t kind) const {
   return true;
 }
 
-bool Program::runInitKernels() { return runInitFiniKernel(kernel_kind_t::InitKernel); }
+bool Program::runInitKernels() { return runInitFiniKernel(initKernels_); }
 
-bool Program::runFiniKernels() { return runInitFiniKernel(kernel_kind_t::FiniKernel); }
+bool Program::runFiniKernels() { return runInitFiniKernel(finiKernels_); }
 } /* namespace amd::device*/
