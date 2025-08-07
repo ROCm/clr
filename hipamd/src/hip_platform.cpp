@@ -397,7 +397,7 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
   }
 
   if (VgprWaves == 0) {
-    // This should not happen ideally, but in case the usedVGPRs_/availableVGPRs_ values are
+    // This should not happen ideally, but in case the value is
     // incorrect, it can lead to a crash. By returning error, API can exit gracefully.
     return hipErrorUnknown;
   }

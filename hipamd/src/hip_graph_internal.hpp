@@ -1200,6 +1200,8 @@ class GraphKernelNode : public GraphNode {
   void GetParams(hipKernelNodeParams* params) { *params = kernelParams_; }
 
   hipError_t SetParams(const hipKernelNodeParams* params) {
+    // Update device ID since new params may require validation for the current device.
+    dev_id_ = ihipGetDevice();
     hipFunction_t func = getFunc(kernelParams_, dev_id_);
     if (!func) {
       return hipErrorInvalidDeviceFunction;
@@ -1226,6 +1228,8 @@ class GraphKernelNode : public GraphNode {
 
   hipError_t SetAttrParams(hipKernelNodeAttrID attr, const hipKernelNodeAttrValue* params) {
     hipDeviceProp_t prop = {0};
+    // Update device ID since new params may require validation for the current device.
+    dev_id_ = ihipGetDevice();
     hipError_t status = ihipGetDeviceProperties(&prop, dev_id_);
     if (hipSuccess != status){
       return status;

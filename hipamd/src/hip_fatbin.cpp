@@ -94,12 +94,7 @@ typedef ComgrUniqueHandle<amd_comgr_data_t> ComgrDataUniqueHandle;
 }  // namespace comgr_helper
 
 FatBinaryInfo::FatBinaryInfo(const char* fname, const void* image)
-    : fdesc_(amd::Os::FDescInit()),
-      fsize_(0),
-      foffset_(0),
-      image_(image),
-      image_mapped_(false),
-      uri_(std::string()) {
+    : foffset_(0), image_(image), image_mapped_(false), uri_(std::string()) {
   if (fname != nullptr) {
     fname_ = std::string(fname);
   } else {
@@ -128,44 +123,24 @@ FatBinaryInfo::~FatBinaryInfo() {
     LogPrintfInfo("~FatBinaryInfo(%p) will delete binary_image_ %p", this, itemData);
     delete[] reinterpret_cast<const char*>(itemData);
   }
-  if (!HIP_USE_RUNTIME_UNBUNDLER) {
-    // Using COMGR Unbundler
-    if (ufd_ && amd::Os::isValidFileDesc(ufd_->fdesc_)) {
-      // Check for ufd_ != nullptr, since sometimes, we never create unique_file_desc.
-      if (ufd_->fsize_ && image_mapped_ && !amd::Os::MemoryUnmapFile(image_, ufd_->fsize_)) {
-        LogPrintfError("Cannot unmap file for fdesc: %d fsize: %d", ufd_->fdesc_, ufd_->fsize_);
-        assert(false);
-      }
-      if (!PlatformState::instance().CloseUniqueFileHandle(ufd_)) {
-        LogPrintfError("Cannot close file for fdesc: %d", ufd_->fdesc_);
-        assert(false);
-      }
+  ReleaseImageAndFile();
+}
+
+void FatBinaryInfo::ReleaseImageAndFile() {
+  // Release image_ and ufd_
+  if (ufd_) {
+    if (image_mapped_ && !amd::Os::MemoryUnmapFile(image_, ufd_->fsize_)) {
+      guarantee(false, "Cannot unmap the file");
     }
 
-    fname_ = std::string();
-    fdesc_ = amd::Os::FDescInit();
-    fsize_ = 0;
-    image_ = nullptr;
-    uri_ = std::string();
-
-  } else {
-    // Using Runtime Unbundler
-    if (amd::Os::isValidFileDesc(fdesc_)) {
-      if (fsize_ && !amd::Os::MemoryUnmapFile(image_, fsize_)) {
-        LogPrintfError("Cannot unmap file for fdesc: %d fsize: %d", fdesc_, fsize_);
-        assert(false);
-      }
-      if (!amd::Os::CloseFileHandle(fdesc_)) {
-        LogPrintfError("Cannot close file for fdesc: %d", fdesc_);
-        assert(false);
-      }
+    if (!PlatformState::instance().CloseUniqueFileHandle(ufd_)) {
+      guarantee(false, "Cannot close file for fdesc: %d", ufd_->fdesc_);
     }
 
-    fname_ = std::string();
-    fdesc_ = amd::Os::FDescInit();
-    fsize_ = 0;
+    ufd_ = nullptr;
     image_ = nullptr;
     uri_ = std::string();
+    image_mapped_ = false;
   }
 }
 
@@ -248,10 +223,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
        if (CodeObject::containGenericTarget(image_)) {
          LogInfo("offload bundle contains generic target code object");
          containGenericTarget = true;
-         return hipErrorNoBinaryForGpu; // This path doesn't support generic target
        }
     }
-    if (isCompressed || HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
+    if (isCompressed || containGenericTarget) {
       size_t major = 0, minor = 0;
       amd::Comgr::get_version(&major, &minor);
       if ((major == 2 && minor >= 8) || major > 2) {
@@ -262,9 +236,6 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
                        major, minor);
         hip_status = hipErrorNotSupported;
         break;
-      } else if (HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION) {
-        HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION = false;
-        LogInfo("HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION = true only works on comgr 2.8+");
       }
     }
     // Create a data object, if it fails return error
@@ -275,20 +246,11 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
       break;
     }
 
-#if !defined(_WIN32)
-    // Using the file descriptor and file size, map the data object.
-    if (amd::Os::isValidFileDesc(fdesc_)) {
-      guarantee(fsize_ > 0, "Cannot have a file size of 0, fdesc: %d fname: %s", fdesc_,
-                fname_.c_str());
-      if ((comgr_status = amd::Comgr::set_data_from_file_slice(
-               data_object, fdesc_, foffset_, fsize_)) != AMD_COMGR_STATUS_SUCCESS) {
-        LogPrintfError("Setting data from file slice failed with status %d ", comgr_status);
-        hip_status = hipErrorInvalidValue;
-        break;
-      }
-    } else
-#endif
-        if (image_ != nullptr) {
+    if (ufd_ != nullptr && amd::Os::isValidFileDesc(ufd_->fdesc_)) {
+      LogPrintfError("Have valid file!%d", ufd_->fdesc_);
+    }
+
+    if (image_ != nullptr) {
       // Using the image ptr, map the data object.
       if ((comgr_status =
                amd::Comgr::set_data(data_object, 4096, reinterpret_cast<const char*>(image_))) !=
@@ -549,21 +511,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
   // Clean up file and memory resouces if hip_status failed for some reason.
   if (hip_status != hipSuccess && hip_status != hipErrorInvalidKernelFile) {
-    if (image_mapped_) {
-      if (!amd::Os::MemoryUnmapFile(image_, ufd_->fsize_))
-        guarantee(false, "Cannot unmap the file");
-
-      image_ = nullptr;
-      image_mapped_ = false;
-    }
-
-    if (amd::Os::isValidFileDesc(fdesc_)) {
-      guarantee(fsize_ > 0, "Size has to greater than 0 too");
-      if (!amd::Os::CloseFileHandle(fdesc_)) guarantee(false, "Cannot close the file handle");
-
-      fdesc_ = 0;
-      fsize_ = 0;
-    }
+    ReleaseImageAndFile();
   }
 
   if (data_object.handle) {
@@ -578,91 +526,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
 
 hipError_t FatBinaryInfo::ExtractFatBinary(const std::vector<hip::Device*>& devices) {
   amd::ScopedLock lock(FatBinaryLock());
-  if (!HIP_USE_RUNTIME_UNBUNDLER) {
-    bool containGenericTarget = false;
-    hipError_t status = ExtractFatBinaryUsingCOMGR(devices, containGenericTarget);
-    if (!containGenericTarget) return status;
-  }
-  hipError_t hip_error = hipSuccess;
-  std::vector<std::pair<const void*, size_t>> code_objs;
 
-  // Copy device names for Extract Code object File
-  std::vector<std::string> device_names;
-  device_names.reserve(devices.size());
-  for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-    device_names.push_back(devices[dev_idx]->devices()[0]->isa().isaName());
-  }
-  if (image_ != nullptr) {
-      // We are directly given image pointer directly, try to extract file desc & file Size
-      hip_error = CodeObject::ExtractCodeObjectFromMemory(image_,
-                  device_names, code_objs, uri_);
-  } else if (fname_.size() > 0) {
-    // We are given file name, get the file desc and file size
-    // Get File Handle & size of the file.
-    if (!amd::Os::GetFileHandle(fname_.c_str(), &fdesc_, &fsize_)) {
-      return hipErrorFileNotFound;
-    }
-    if (fsize_ == 0) {
-      return hipErrorInvalidImage;
-    }
-
-    // Extract the code object from file
-    hip_error = CodeObject::ExtractCodeObjectFromFile(fdesc_, fsize_, &image_,
-                device_names, code_objs, foffset_);
-  } else {
-    return hipErrorInvalidValue;
-  }
-
-  if (hip_error == hipErrorNoBinaryForGpu) {
-    if (fname_.size() > 0) {
-      LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for file: %s", fname_.c_str());
-    } else {
-      LogPrintfError("hipErrorNoBinaryForGpu: Couldn't find binary for ptr: 0x%x", image_);
-    }
-
-    // For the condition: unable to find code object for all devices,
-    // still extract available images to those devices owning them.
-    // This helps users to work with ROCm if there is any supported
-    // GFX on system.
-    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      if (code_objs[dev_idx].first) {
-        // Calculate the offset wrt binary_image and the original image
-        size_t offset_l = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
-                           reinterpret_cast<address>(const_cast<void*>(image_)));
-        hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
-                                  code_objs[dev_idx].second, offset_l);
-        if (hip_error != hipSuccess) {
-          break;
-        }
-      }
-    }
-
-    return hip_error;
-  }
-  const void* binary_image;
-  size_t binary_size;
-  size_t binary_offset;
-
-  if (hip_error == hipErrorInvalidKernelFile) {
-    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      hip_error = AddDevProgram(devices[dev_idx], image_, CodeObject::ElfSize(image_), 0);
-      if (hip_error != hipSuccess) {
-        return hip_error;
-      }
-    }
-  } else if (hip_error == hipSuccess) {
-    for (size_t dev_idx = 0; dev_idx < devices.size(); ++dev_idx) {
-      // Calculate the offset wrt binary_image and the original image
-      binary_offset = (reinterpret_cast<address>(const_cast<void*>(code_objs[dev_idx].first)) -
-                         reinterpret_cast<address>(const_cast<void*>(image_)));
-      hip_error = AddDevProgram(devices[dev_idx], code_objs[dev_idx].first,
-                                code_objs[dev_idx].second, binary_offset);
-      if (hip_error != hipSuccess) {
-        return hip_error;
-      }
-    }
-  }
-  return hipSuccess;
+  bool containGenericTarget = false;
+  return ExtractFatBinaryUsingCOMGR(devices, containGenericTarget);
 }
 
 hipError_t FatBinaryInfo::AddDevProgram(hip::Device* device, const void* binary_image,
@@ -676,7 +542,7 @@ hipError_t FatBinaryInfo::AddDevProgram(hip::Device* device, const void* binary_
   }
   if (CL_SUCCESS !=
       program->addDeviceProgram(*ctx->devices()[0], binary_image, binary_size, false, nullptr,
-                                nullptr, fdesc_, binary_offset, uri_)) {
+                                nullptr, (ufd_ != nullptr ? ufd_->fdesc_ : amd::Os::FDescInit()), binary_offset, uri_)) {
     return hipErrorInvalidKernelFile;
   }
   return hipSuccess;

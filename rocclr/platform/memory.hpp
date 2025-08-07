@@ -238,11 +238,12 @@ class Memory : public amd::RuntimeObject {
          void* svmPtr = NULL, //!< svm host memory address, NULL if no SVM mem object
          size_t alignment = 0 //!< allocation addr alignment
   );
-  Memory(Memory& parent,  //!< Context object
-         Flags flags,     //!< Object's flags
-         size_t offset,   //!< Memory offset
-         size_t size,     //!< Memory size
-         Type type = 0    //!< Memory type
+  Memory(Memory& parent,             //!< Parent Mem obj
+         Flags flags,                //!< Object's flags
+         size_t offset,              //!< Memory offset
+         size_t size,                //!< Memory size
+         Type type = 0,              //!< Memory type
+         Context* context = nullptr  //!< Input context
   );
 
   //! Memory object destructor
@@ -449,8 +450,8 @@ class Buffer : public Memory {
  public:
   Buffer(Context& context, Flags flags, size_t size, void* svmPtr = NULL, size_t alignment = 0)
       : Memory(context, CL_MEM_OBJECT_BUFFER, flags, size, svmPtr, alignment) {}
-  Buffer(Memory& parent, Flags flags, size_t origin, size_t size)
-      : Memory(parent, flags, origin, size) {}
+  Buffer(Memory& parent, Flags flags, size_t origin, size_t size, Context* context = nullptr)
+      : Memory(parent, flags, origin, size, 0, context) {}
 
   bool create(void* initFrom = NULL,     //!< Pointer to the initialization data
               bool sysMemAlloc = false,  //!< Allocate device memory in system memory

@@ -246,7 +246,8 @@ address VmHeap::Alloc(size_t size) {
   } else {
     return nullptr;
   }
-  auto memory = new (base_memory_->getContext()) Buffer(*base_memory_, 0, offset, size);
+  auto memory =
+      new (device_->context()) Buffer(*base_memory_, 0, offset, size, &device_->context());
   if (nullptr == memory || !memory->create(nullptr)) {
     FreeBlock(hb);
     return nullptr;

@@ -102,6 +102,7 @@ static constexpr PalDevice supportedPalDevices[] = {
   {11, 0,  3,  Pal::GfxIpLevel::GfxIp11_0, "gfx1103",       Pal::AsicRevision::HawkPoint2},
   {11, 5,  0,  Pal::GfxIpLevel::GfxIp11_5, "gfx1150",       Pal::AsicRevision::Strix1},
   {11, 5,  1,  Pal::GfxIpLevel::GfxIp11_5, "gfx1151",       Pal::AsicRevision::StrixHalo},
+  {12, 0,  1,  Pal::GfxIpLevel::GfxIp12,   "gfx1201",       Pal::AsicRevision::Navi48},
 };
 
 static std::tuple<const amd::Isa*, const char*> findIsa(uint32_t gfxipMajor, uint32_t gfxipMinor,
@@ -678,8 +679,9 @@ void NullDevice::fillDeviceInfo(const Pal::DeviceProperties& palProp,
       static_cast<size_t>(palProp.gpuMemoryProperties.virtualMemAllocGranularity);
   info_.vgprAllocGranularity_ = palProp.gfxipProperties.shaderCore.vgprAllocGranularity;
   info_.vgprsPerSimd_ = palProp.gfxipProperties.shaderCore.vgprsPerSimd;
+  info_.availableVGPRs_ = palProp.gfxipProperties.shaderCore.numAvailableVgprs;
   info_.sgprsPerSimd_ = palProp.gfxipProperties.shaderCore.sgprsPerSimd;
-  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * 32;
+  info_.availableRegistersPerCU_ = info_.vgprsPerSimd_ * info_.simdPerCU_ * info_.wavefrontWidth_;
 #if IS_WINDOWS
   info_.luidLowPart_ = palProp.osProperties.luidLowPart;
   info_.luidHighPart_ = palProp.osProperties.luidHighPart;

@@ -19,13 +19,16 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
-
-#include "hip_comgr_helper.hpp"
+#include "llvm/BinaryFormat/ELF.h"
 #if defined(_WIN32)
 #include <io.h>
+#if defined(__has_attribute)
+// MS compiler doesn't support __has_attribute
+#undef __has_attribute
 #endif
-
-#include "../src/amd_hsa_elf.hpp"
+#endif
+#include "hip_comgr_helper.hpp"
+using namespace llvm::ELF;
 
 namespace hip {
 
@@ -42,7 +45,7 @@ constexpr char const* OFFLOAD_KIND_HIP = "hip";
 constexpr char const* OFFLOAD_KIND_HIPV4 = "hipv4";
 constexpr char const* OFFLOAD_KIND_HCC = "hcc";
 constexpr char const* AMDGCN_TARGET_TRIPLE = "amdgcn-amd-amdhsa-";
-constexpr char const* SPIRV_BUNDLE_ENTRY_ID = "hip-spirv64-amd-amdhsa-amdgcnspirv";
+constexpr char const* SPIRV_BUNDLE_ENTRY_ID = "hip-spirv64-amd-amdhsa-unknown-amdgcnspirv";
 
 static constexpr size_t bundle_magic_string_size =
     strLiteralLength(CLANG_OFFLOAD_BUNDLER_MAGIC_STR);
@@ -59,8 +62,6 @@ struct __ClangOffloadBundleHeader {
   uint64_t numOfCodeObjects;
   __ClangOffloadBundleInfo desc[1];
 };
-
-uint64_t ElfSize(const void* emi) { return amd::Elf::getElfSize(emi); }
 
 static bool getProcName(uint32_t EFlags, std::string& proc_name, bool& xnackSupported,
                         bool& sramEccSupported) {

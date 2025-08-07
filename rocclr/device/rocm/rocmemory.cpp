@@ -658,10 +658,8 @@ void Buffer::destroy() {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Destroy system memory
-            if (!(amd::Os::releaseMemory(deviceMemory_, size()))) {
-              ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
-            }
+            // AMD HMM path. Release reserved system memory
+            dev().releaseMemory(deviceMemory_, size());
           } else {
             dev().memFree(deviceMemory_, size());
           }
@@ -809,9 +807,8 @@ bool Buffer::create(bool alloc_local) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Just allocate system memory and KFD will manage it
-            deviceMemory_ =  amd::Os::reserveMemory(
-                0, size(), amd::Os::pageSize(), amd::Os::MEM_PROT_RW);
+            // AMD HMM path. ROCr allocates system memory and KFD will manage it
+            deviceMemory_ = dev().reserveMemory(size(), amd::Os::pageSize());
             if (deviceMemory_ == NULL) {
               return false;
             }
@@ -825,10 +822,7 @@ bool Buffer::create(bool alloc_local) {
             deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
           }
         } else if (memFlags & CL_MEM_FOLLOW_USER_NUMA_POLICY) {
-          deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) == 0
-                      ? Device::MemorySegment::kNoAtomics :
-                      ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
-                      Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics));
+          deviceMemory_ = dev().hostNumaAlloc(size(), 1, getHostMemorySegment(memFlags));
         } else if (memFlags & ROCCLR_MEM_HSA_SIGNAL_MEMORY) {
           // TODO: ROCr will introduce a new attribute enum that implies a non-blocking signal,
           // replace "HSA_AMD_SIGNAL_AMD_GPU_ONLY" with this new enum when it is ready.
@@ -852,10 +846,7 @@ bool Buffer::create(bool alloc_local) {
           // Disable host access to force blit path for memeory writes.
           flags_ &= ~HostMemoryDirectAccess;
         } else {
-          deviceMemory_ = dev().hostAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) == 0
-                 ? Device::MemorySegment::kNoAtomics :
-                 ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
-                 Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics));
+          deviceMemory_ = dev().hostAlloc(size(), 1, getHostMemorySegment(memFlags));
         }
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
@@ -1012,28 +1003,8 @@ bool Buffer::create(bool alloc_local) {
     owner()->setHostMem(deviceMemory_);
   } else if (owner()->getSvmPtr() != owner()->getHostMem()) {
     if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-      hsa_amd_memory_pool_t pool = dev().SystemSegment(); // Default
-      if ((memFlags & CL_MEM_SVM_ATOMICS) == 0) {
-        if (dev().SystemCoarseSegment().handle != 0) {
-          pool = dev().SystemCoarseSegment();
-        }
-      } else if ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0) {
-        if (dev().SystemExtSegment().handle != 0) {
-          pool = dev().SystemExtSegment();
-          ClPrint(amd::LOG_DEBUG, amd::LOG_MEM,
-                  "Using extended fine grained access system memory pool to lock");
-        }
-      }
-      hsa_agent_t hsa_agent = dev().getBackendDevice();
-      hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(),
-          owner()->getSize(), &hsa_agent, 1, pool, 0, &deviceMemory_);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, HostPtr = %p,"
-              " DevPtr = %p, memFlags = 0x%xh", pool, owner()->getSize(),
-              owner()->getHostMem(), deviceMemory_, memFlags);
-      if (status != HSA_STATUS_SUCCESS) {
-        DevLogPrintfError("Failed to lock memory to pool, failed with hsa_status: %d \n", status);
-        deviceMemory_ = nullptr;
-      }
+      deviceMemory_ = dev().hostLock(owner()->getHostMem(), owner()->getSize(),
+                                     getHostMemorySegment(memFlags));
     } else {
       deviceMemory_ = owner()->getHostMem();
     }
@@ -1095,7 +1066,6 @@ bool Buffer::GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handl
       return false;
     }
   }
-  
   if (dmabuffd <= 0) {
     LogPrintfError("Invalid file descriptor handle: %d returned", dmabuffd);
     return false;

@@ -218,8 +218,8 @@ class Kernel : public amd::HeapObject {
     size_t usedGPRs_;                 //!< GPRs used by the program
     size_t availableSGPRs_;           //!< SGPRs available to the program
     size_t usedSGPRs_;                //!< SGPRs used by the program
-    size_t availableVGPRs_;           //!< VGPRs available to the program
-    size_t usedVGPRs_;                //!< VGPRs used by the program
+    size_t availableVGPRs_;           //!< VGPRs addressable to the program per thread in DWORDs
+    size_t usedVGPRs_;                //!< VGPRs used by the program per thread in DWORDs
     size_t availableLDSSize_;         //!< available LDS size
     size_t usedLDSSize_;              //!< used LDS size
     size_t availableStackSize_;       //!< available stack size

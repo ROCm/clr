@@ -91,22 +91,22 @@ public:
   amd::Monitor& FatBinaryLock() { return fb_lock_; }
 
 private:
-  std::string fname_;        //!< File name
-  amd::Os::FileDesc fdesc_;  //!< File descriptor
-  size_t fsize_;             //!< Total file size
-  size_t foffset_;           //!< File Offset where the fat binary is present.
+ void ReleaseImageAndFile();
 
-  // Even when file is passed image will be mmapped till ~desctructor.
-  const void* image_;        //!< Image
-  bool image_mapped_;        //!< flag to detect if image is mapped
+ std::string fname_;  //!< File name
+ size_t foffset_;     //!< File Offset where the fat binary is present.
 
-  // Only used for FBs where image is directly passed
-  std::string uri_;          //!< Uniform resource indicator
+ // Even when file is passed image will be mmapped till ~desctructor.
+ const void* image_;  //!< Image
+ bool image_mapped_;  //!< flag to detect if image is mapped
 
-  std::vector<amd::Program*> dev_programs_;  //!< Program info per Device
+ // Only used for FBs where image is directly passed
+ std::string uri_;  //!< Uniform resource indicator
 
-  std::shared_ptr<UniqueFD> ufd_; //!< Unique file descriptor
-  amd::Monitor fb_lock_{true};    //!< Lock for the fat binary access
+ std::vector<amd::Program*> dev_programs_;  //!< Program info per Device
+
+ std::shared_ptr<UniqueFD> ufd_;  //!< Unique file descriptor
+ amd::Monitor fb_lock_{true};     //!< Lock for the fat binary access
 };
 
 }; // namespace hip

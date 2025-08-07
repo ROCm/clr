@@ -552,10 +552,12 @@ struct Info : public amd::EmbeddedObject {
   uint32_t wavefrontWidth_;
   //! Available number of SGPRs
   uint32_t availableSGPRs_;
-  //! Available number of VGPRs
-  uint32_t availableVGPRs_;
-  //! Available number of registers per CU
-  uint32_t availableRegistersPerCU_;
+
+  uint32_t availableVGPRs_; //!< Number of addressable VGPRs per thread in DWORDs
+  uint32_t vgprsPerSimd_;   //!< Number of VGPRs per SIMD in DWORDs
+  uint32_t vgprAllocGranularity_; //!< Number of VGPRs allocation granularity per thread in DWORDs
+  uint32_t availableRegistersPerCU_; //!< Number of VGPRs per CU in DWORDs
+
   //! Number of global memory channels
   uint32_t globalMemChannels_;
   //! Number of banks in each global memory channel
@@ -650,9 +652,7 @@ struct Info : public amd::EmbeddedObject {
   uint32_t driverNodeId_;
   //! Number of Physical SGPRs per SIMD
   uint32_t sgprsPerSimd_;
-  //! Number of VGPRs per SIMD
-  uint32_t vgprsPerSimd_;
-  uint32_t vgprAllocGranularity_;
+
   uint32_t numSDMAengines_; //!< Number of available SDMA engines
 
   uint32_t luidLowPart_;        //!< Luid low 4 bytes, available in Windows only

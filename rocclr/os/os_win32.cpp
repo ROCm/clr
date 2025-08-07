@@ -739,7 +739,6 @@ void Os::PrintLibraryLocation() {
           (LPCSTR)&Os::loadLibrary, &hm)) {
     char cszDllPath[1024] = {0};
     if (GetModuleFileNameA(hm, cszDllPath, sizeof(cszDllPath))) {
-      printf("HIP Library Path: %s\n", cszDllPath);
       ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HIP Library Path: %s", cszDllPath);
       return;
     }
