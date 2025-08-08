@@ -336,6 +336,7 @@ class Kernel : public amd::HeapObject {
 
   const uint32_t WorkitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
   void SetWorkitemPrivateSegmentByteSize(uint32_t size) { workitemPrivateSegmentByteSize_ = size; }
+
   const bool KernalHasDynamicCallStack() const { return kernelHasDynamicCallStack_; }
 
   const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
