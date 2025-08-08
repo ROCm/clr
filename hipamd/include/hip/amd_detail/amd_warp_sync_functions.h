@@ -225,9 +225,9 @@ unsigned long long __match_any(T value) {
       "T can be int, unsigned int, long, unsigned long, long long, unsigned "
       "long long, float or double.");
 
-  auto actvmask = __activemask();
+  unsigned long long actvmask = __activemask();
   unsigned long long retval = 0;
-  if (actvmask != ~((decltype(actvmask))0)) {
+  if (actvmask != ~0ull) {
     bool done = false;
     while (__any(!done)) {
       if (!done) {
@@ -243,11 +243,13 @@ unsigned long long __match_any(T value) {
     retval = 1;
     for (int i = 1; i < static_cast<int>(warpSize); i++) {
       if constexpr (sizeof(value) == 8)
-        dill_.ill = __builtin_amdgcn_mov_dpp(dill_.ill, 0x134, 0xf, 0xf, 0); //wave_rol1
+        dill_.ill = __builtin_amdgcn_mov_dpp(dill_.ill, 0x134 /*dpp_ctrl=wave_rol1*/, 0xf/*row_mask*/, 0xf/*clmn_mask*/, 1/*bound_ctrl*/);
       else
-        dill_.i[0] = __builtin_amdgcn_mov_dpp(dill_.i[0], 0x134, 0xf, 0xf, 0); //wave_rol1
+        dill_.i[0] = __builtin_amdgcn_mov_dpp(dill_.i[0], 0x134 /*dpp_ctrl=wave_rol1*/, 0xf/*full*/, 0xf/*full*/, 1/*bound_ctrl*/);
       retval |= ((decltype(mask))(dill_.val == value)) << i;
     }
+    //At this point each lane has a rotated match_any mask, where it is in the LSB.
+    //So we just need to rotate the mask by the lane's actual position to get the correct mask.
     int rotv = __lane_id();
     retval = (retval << rotv) | (retval >> (static_cast<int>(warpSize) - rotv));
   }
