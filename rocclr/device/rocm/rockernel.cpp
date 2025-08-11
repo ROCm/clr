@@ -132,8 +132,12 @@ bool Kernel::postLoad() {
     }
   }
 
-  uint32_t wavefront_size = 0;
-  if (hsa_agent_get_info(program()->rocDevice().getBackendDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
+  // This can be set in code object and the value might be different than what HSA reports
+  // For example on Navi GPUs someone using -mwavefrontsize64
+  // We set the value to HSA if the value is uninitialized
+  uint32_t wavefront_size = workGroupInfo_.wavefrontPerSIMD_;
+  if (wavefront_size == 0 &&
+      hsa_agent_get_info(program()->rocDevice().getBackendDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
                          &wavefront_size) != HSA_STATUS_SUCCESS) {
     DevLogPrintfError("[ROC][Kernel] Cannot get Wavefront Size, failed with hsa_status: %d \n",
                       hsaStatus);
@@ -169,7 +173,6 @@ bool Kernel::postLoad() {
   workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
   workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   workGroupInfo_.wavefrontPerSIMD_ = program()->rocDevice().info().maxWorkItemSizes_[0] / wavefront_size;
-  workGroupInfo_.wavefrontSize_ = wavefront_size;
   workGroupInfo_.constMemSize_ = const_size_bytes;
   workGroupInfo_.maxDynamicSharedSizeBytes_ = static_cast<int>(workGroupInfo_.availableLDSSize_ -
                                                                workGroupInfo_.localMemSize_);
