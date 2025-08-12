@@ -241,6 +241,9 @@ unsigned long long __match_any(T value) {
   } else {
     union dill { unsigned int i[2]; unsigned long long ill; decltype(value) val; } dill_ = { .val = value };
     retval = 1;
+    //Do a full rotate of the wave lanes, using dpp with "wave_fol1" control (ID: 0x134).
+    //wave_rol1 dpp rotates the value from each lane to one lane right across the whole wave.
+    //In doing so each lane gets a mask of matches with all other lanes in the wave.
     for (int i = 1; i < static_cast<int>(warpSize); i++) {
       if constexpr (sizeof(value) == 8)
         dill_.ill = __builtin_amdgcn_mov_dpp(dill_.ill, 0x134 /*dpp_ctrl=wave_rol1*/, 0xf/*row_mask*/, 0xf/*clmn_mask*/, 1/*bound_ctrl*/);
