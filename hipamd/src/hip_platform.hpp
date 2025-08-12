@@ -113,7 +113,7 @@ class PlatformState {
 
   size_t UfdMapSize() const { return ufd_map_.size(); }
 
-  bool getLoadingMode();
+  void getLoadingMode(hipModuleLoadingMode_t* mode);
 
  private:
   // Dynamic Code Object map, keyin module to get the corresponding object

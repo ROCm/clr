@@ -88,6 +88,10 @@ void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunctio
                                       char* deviceFunction, const char* deviceName,
                                       unsigned int threadLimit, uint3* tid, uint3* bid,
                                       dim3* blockDim, dim3* gridDim, int* wSize) {
+  static int enable_deferred_loading{[]() {
+    char* var = getenv("HIP_ENABLE_DEFERRED_LOADING");
+    return var ? atoi(var) : 1;
+  }()};
   hipError_t hip_error = hipSuccess;
   // Compiler might share same hostFunction and hence it's needless to have another
   // hip::Function and hip::Function is stored in map with hostFunction as key.
@@ -97,7 +101,7 @@ void __hipRegisterFunction(hip::FatBinaryInfo** modules, const void* hostFunctio
     hip_error = PlatformState::instance().registerStatFunction(hostFunction, func);
   }
   guarantee((hip_error == hipSuccess), "Cannot register Static function, error: %d", hip_error);
-  if (!PlatformState::instance().getLoadingMode()) {
+  if (!enable_deferred_loading) {
     HIP_INIT_VOID();
     hipFunction_t hfunc = nullptr;
 
@@ -1057,17 +1061,15 @@ void PlatformState::setDynamicLibraryHandle(void* handle){
   dynamicLibraryHandle_ = handle;
 }
 
-// 1 = lazy, 0 = eager
-bool PlatformState::getLoadingMode() {
-  const char* var = getenv("HIP_ENABLE_DEFERRED_LOADING");
-  const char* mod_load_str = getenv("HIP_MODULE_LOADING");
-  bool loading_mode = 1;
-  if (mod_load_str) {
-    if(!(strcmp(mod_load_str, "eager") && strcmp(mod_load_str, "EAGER"))) {
-      loading_mode = 0;
-    }
+void PlatformState::getLoadingMode(hipModuleLoadingMode_t* mode) {
+  *mode = HIP_MODULE_LAZY_LOADING;
+  std::string mod_loading_mode;
+  if (!flagIsDefault(HIP_MODULE_LOADING)) {
+      mod_loading_mode = HIP_MODULE_LOADING;
   }
-  return loading_mode && (var ? atoi(var) : 1);
+  if (mod_loading_mode == "EAGER" || mod_loading_mode == "eager") {
+    *mode = HIP_MODULE_EAGER_LOADING;
+  }
 }
 
 
