@@ -72,20 +72,21 @@ bool HostQueue::terminate() {
       if (lastCommand != nullptr) {
         // Check if CPU batch wasn't flushed for completion with the last command
         if (GetSubmissionBatch() != nullptr) {
-            auto command = new Marker(*this, false);
-            if (command != nullptr) {
-              ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
-              command->enqueue();
-              lastCommand = command;
-            }
+          auto command = new Marker(*this, false);
+          if (command != nullptr) {
+            ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
+            command->enqueue();
+            lastCommand->release();
+            lastCommand = command;
+          }
         }
         if (device_.gpu_error_ == CL_SUCCESS) {
-	  lastCommand->awaitCompletion();
+          lastCommand->awaitCompletion();
         }
         // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
         // after lastCommand->awaitCompletion() is called.
         if (lastEnqueueCommand_ != nullptr) {
-          lastEnqueueCommand_ ->release(); // lastEnqueueCommand_ should be a marker
+          lastEnqueueCommand_->release();  // lastEnqueueCommand_ should be a marker
           lastEnqueueCommand_ = nullptr;
         }
         lastCommand->release();
