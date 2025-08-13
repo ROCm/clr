@@ -249,7 +249,7 @@ unsigned long long __match_any(T value) {
         dill_.ill = __builtin_amdgcn_mov_dpp(dill_.ill, 0x134 /*dpp_ctrl=wave_rol1*/, 0xf/*row_mask*/, 0xf/*clmn_mask*/, 1/*bound_ctrl*/);
       else
         dill_.i[0] = __builtin_amdgcn_mov_dpp(dill_.i[0], 0x134 /*dpp_ctrl=wave_rol1*/, 0xf/*full*/, 0xf/*full*/, 1/*bound_ctrl*/);
-      retval |= ((decltype(mask))(dill_.val == value)) << i;
+      retval |= ((unsigned long long)(dill_.val == value)) << i;
     }
     //At this point each lane has a rotated match_any mask, where it is in the LSB.
     //So we just need to rotate the mask by the lane's actual position to get the correct mask.
