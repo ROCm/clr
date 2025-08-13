@@ -387,12 +387,16 @@ hipError_t hipMallocFromPoolAsync(
   STREAM_CAPTURE(hipMallocAsync, stream, mem_pool, size, dev_ptr);
 
   auto mpool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
-  auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
-    hip::getCurrentDevice()->NullStream() : reinterpret_cast<hip::Stream*>(stream);
-  *dev_ptr = mpool->AllocateMemory(size, hip_stream);
-  if (*dev_ptr == nullptr) {
+  auto hip_stream = (stream == nullptr || stream == hipStreamLegacy)
+      ? hip::getCurrentDevice()->NullStream()
+      : reinterpret_cast<hip::Stream*>(stream);
+
+  auto allocated_ptr = mpool->AllocateMemory(size, hip_stream);
+  if (allocated_ptr == nullptr) {
     HIP_RETURN(hipErrorOutOfMemory);
   }
+
+  *dev_ptr = allocated_ptr;
   HIP_RETURN(hipSuccess);
 }
 
