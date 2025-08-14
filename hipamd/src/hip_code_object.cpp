@@ -137,6 +137,9 @@ hipError_t DynCO::getFuncCount(unsigned int* count) {
   if (count == nullptr) {
     return hipErrorInvalidValue;
   }
+  if(!dyn_func_loaded_) {
+    IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
+  }
   *count = functions_.size();
   return hipSuccess;
 }
