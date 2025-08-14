@@ -3117,7 +3117,7 @@ hipError_t ihipMemset3DCommand(std::vector<amd::Command*> &commands, hipPitchedP
 
 
 hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent,
-                        hipStream_t stream, bool isAsync = false) {
+                        hipStream_t stream, bool isAsync = false, size_t elementSize = 1) {
   auto sizeBytes = extent.width * extent.height * extent.depth;
 
   if (sizeBytes == 0) {
@@ -3142,7 +3142,7 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
   }
   hip::Stream* hip_stream = hip::getStream(stream);
   std::vector<amd::Command*> commands;
-  status = ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, hip_stream);
+  status = ihipMemset3DCommand(commands, pitchedDevPtr, value, extent, hip_stream, elementSize);
   if (status != hipSuccess) {
     return status;
   }
@@ -3157,9 +3157,10 @@ hipError_t ihipMemset3D(hipPitchedPtr pitchedDevPtr, int value, hipExtent extent
 }
 
 hipError_t hipMemset2D_common(void* dst, size_t pitch, int value, size_t width,
-                              size_t height, hipStream_t stream=nullptr) {
+                              size_t height, hipStream_t stream=nullptr, size_t elementSize = 1) {
   CHECK_STREAM_CAPTURING();
-  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream);
+  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream, false,
+                       elementSize);
 }
 
 hipError_t hipMemset2D_spt(void* dst, size_t pitch, int value, size_t width, size_t height) {
@@ -3173,11 +3174,11 @@ hipError_t hipMemset2D(void* dst, size_t pitch, int value, size_t width, size_t 
   HIP_RETURN(hipMemset2D_common(dst, pitch, value, width, height));
 }
 
-hipError_t hipMemset2DAsync_common(void* dst, size_t pitch, int value,
-                            size_t width, size_t height, hipStream_t stream) {
+hipError_t hipMemset2DAsync_common(void* dst, size_t pitch, int value, size_t width, size_t height,
+                                   hipStream_t stream, size_t elementSize = 1) {
   STREAM_CAPTURE(hipMemset2DAsync, stream, dst, pitch, value, width, height);
-
-  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream, true);
+  return ihipMemset3D({dst, pitch, width, height}, value, {width, height, 1}, stream, true,
+                       elementSize);
 }
 
 hipError_t hipMemset2DAsync(void* dst, size_t pitch, int value,
@@ -3191,6 +3192,48 @@ hipError_t hipMemset2DAsync_spt(void* dst, size_t pitch, int value,
   HIP_INIT_API(hipMemset2DAsync, dst, pitch, value, width, height, stream);
   PER_THREAD_DEFAULT_STREAM(stream);
   HIP_RETURN(hipMemset2DAsync_common(dst, pitch, value, width, height, stream));
+}
+
+hipError_t hipMemsetD2D8(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                         size_t height) {
+  HIP_INIT_API(hipMemsetD2D8, dst, dstPitch, value, width, height);
+  HIP_RETURN(hipMemset2D_common(dst, dstPitch, value, width, height, nullptr,
+                                sizeof(unsigned char)));
+}
+
+hipError_t hipMemsetD2D8Async(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                              size_t height, hipStream_t stream) {
+  HIP_INIT_API(hipMemsetD2D8Async, dst, dstPitch, value, width, height, stream);
+  HIP_RETURN(hipMemset2DAsync_common(dst, dstPitch, value, width, height, stream,
+                                     sizeof(unsigned char)));
+}
+
+hipError_t hipMemsetD2D16(hipDeviceptr_t dst, size_t dstPitch, unsigned short value, size_t width,
+                          size_t height) {
+  HIP_INIT_API(hipMemsetD2D16, dst, dstPitch, value, width, height);
+  HIP_RETURN(hipMemset2D_common(dst, dstPitch, value, width, height, nullptr,
+                                sizeof(unsigned short)));
+}
+
+hipError_t hipMemsetD2D16Async(hipDeviceptr_t dst, size_t dstPitch, unsigned short value,
+                               size_t width, size_t height, hipStream_t stream) {
+  HIP_INIT_API(hipMemsetD2D16Async, dst, dstPitch, value, width, height, stream);
+  HIP_RETURN(hipMemset2DAsync_common(dst, dstPitch, value, width, height, stream,
+                                     sizeof(unsigned short)));
+}
+
+hipError_t hipMemsetD2D32(hipDeviceptr_t dst, size_t dstPitch, unsigned int value, size_t width,
+                          size_t height) {
+  HIP_INIT_API(hipMemsetD2D32, dst, dstPitch, value, width, height);
+  HIP_RETURN(hipMemset2D_common(dst, dstPitch, value, width, height, nullptr,
+                                sizeof(unsigned int)));
+}
+
+hipError_t hipMemsetD2D32Async(hipDeviceptr_t dst, size_t dstPitch, unsigned int value,
+                               size_t width, size_t height, hipStream_t stream) {
+  HIP_INIT_API(hipMemsetD2D32Async, dst, dstPitch, value, width, height, stream);
+  HIP_RETURN(hipMemset2DAsync_common(dst, dstPitch, value, width, height, stream,
+                                     sizeof(unsigned int)));
 }
 
 // ================================================================================================

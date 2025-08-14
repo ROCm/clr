@@ -1889,3 +1889,30 @@ hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, siz
   return hip::GetHipDispatchTable()->hipMemGetHandleForAddressRange_fn(handle, dptr, size,
                                                                        handleType, flags);
 }
+hipError_t hipMemsetD2D8(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                         size_t height) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D8_fn(dst, dstPitch, value, width, height);
+}
+hipError_t hipMemsetD2D8Async(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                              size_t height, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D8Async_fn(dst, dstPitch, value, width, height,
+                                                           stream);
+}
+hipError_t hipMemsetD2D16(hipDeviceptr_t dst, size_t dstPitch, unsigned short value, size_t width,
+                         size_t height) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D16_fn(dst, dstPitch, value, width, height);
+}
+hipError_t hipMemsetD2D16Async(hipDeviceptr_t dst, size_t dstPitch, unsigned short value, size_t width,
+                              size_t height, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D16Async_fn(dst, dstPitch, value, width, height,
+                                                           stream);
+}
+hipError_t hipMemsetD2D32(hipDeviceptr_t dst, size_t dstPitch, unsigned int value, size_t width,
+                         size_t height) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D32_fn(dst, dstPitch, value, width, height);
+}
+hipError_t hipMemsetD2D32Async(hipDeviceptr_t dst, size_t dstPitch, unsigned int value, size_t width,
+                              size_t height, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemsetD2D32Async_fn(dst, dstPitch, value, width, height,
+                                                           stream);
+}

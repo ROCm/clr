@@ -493,3 +493,9 @@ hipLinkDestroy
 hipLaunchKernelExC
 hipDrvLaunchKernelEx
 hipModuleGetFunctionCount
+hipMemsetD2D8
+hipMemsetD2D8Async
+hipMemsetD2D16
+hipMemsetD2D16Async
+hipMemsetD2D32
+hipMemsetD2D32Async

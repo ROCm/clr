@@ -8,6 +8,12 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 
 * New HIP APIs
     - `hipModuleGetFunctionCount`  returns the number of functions within a module
+    - `hipMemsetD2D8` Used for setting 2D memory range with specified 8-bit values
+    - `hipMemsetD2D8Async` Used for setting 2D memory range with specified 8-bit values asynchronously
+    - `hipMemsetD2D16` Used for setting 2D memory range with specified 16-bit values
+    - `hipMemsetD2D16Async` Used for setting 2D memory range with specified 16-bit values asynchronously
+    - `hipMemsetD2D32` Used for setting 2D memory range with specified 32-bit values
+    - `hipMemsetD2D32Async` Used for setting 2D memory range with specified 32-bit values asynchronously
 
 ## HIP 7.0 for ROCm 7.0
 

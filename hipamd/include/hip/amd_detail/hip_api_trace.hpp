@@ -1046,7 +1046,19 @@ typedef hipError_t (*t_hipMemGetHandleForAddressRange)(void* handle, hipDevicept
                                                        size_t size,
                                                        hipMemRangeHandleType handleType,
                                                        unsigned long long flags);
-
+typedef hipError_t (*t_hipMemsetD2D8)(hipDeviceptr_t dst, size_t dstPitch, unsigned char value,
+                                      size_t width, size_t height);
+typedef hipError_t (*t_hipMemsetD2D8Async)(hipDeviceptr_t dst, size_t dstPitch, unsigned char value,
+                                           size_t width, size_t height, hipStream_t stream);
+typedef hipError_t (*t_hipMemsetD2D16)(hipDeviceptr_t dst, size_t dstPitch, unsigned short value,
+                                       size_t width, size_t height);
+typedef hipError_t (*t_hipMemsetD2D16Async)(hipDeviceptr_t dst, size_t dstPitch,
+                                            unsigned short value, size_t width, size_t height,
+                                            hipStream_t stream);
+typedef hipError_t (*t_hipMemsetD2D32)(hipDeviceptr_t dst, size_t dstPitch, unsigned int value,
+                                       size_t width, size_t height);
+typedef hipError_t (*t_hipMemsetD2D32Async)(hipDeviceptr_t dst, size_t dstPitch, unsigned int value,
+                                            size_t width, size_t height, hipStream_t stream);
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1590,6 +1602,12 @@ struct HipDispatchTable {
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 13
   t_hipModuleGetFunctionCount hipModuleGetFunctionCount_fn;
+  t_hipMemsetD2D8 hipMemsetD2D8_fn;
+  t_hipMemsetD2D8Async hipMemsetD2D8Async_fn;
+  t_hipMemsetD2D16 hipMemsetD2D16_fn;
+  t_hipMemsetD2D16Async hipMemsetD2D16Async_fn;
+  t_hipMemsetD2D32 hipMemsetD2D32_fn;
+  t_hipMemsetD2D32Async hipMemsetD2D32Async_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 14
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams

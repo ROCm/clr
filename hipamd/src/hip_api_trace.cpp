@@ -831,6 +831,18 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
 hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags);
+hipError_t hipMemsetD2D8(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                         size_t height);
+hipError_t hipMemsetD2D8Async(hipDeviceptr_t dst, size_t dstPitch, unsigned char value, size_t width,
+                              size_t height, hipStream_t stream);
+hipError_t hipMemsetD2D16(hipDeviceptr_t dst, size_t dstPitch, unsigned short value, size_t width,
+                          size_t height);
+hipError_t hipMemsetD2D16Async(hipDeviceptr_t dst, size_t dstPitch, unsigned short value,
+                               size_t width, size_t height, hipStream_t stream);
+hipError_t hipMemsetD2D32(hipDeviceptr_t dst, size_t dstPitch, unsigned int value, size_t width,
+                          size_t height);
+hipError_t hipMemsetD2D32Async(hipDeviceptr_t dst, size_t dstPitch, unsigned int value,
+                               size_t width, size_t height, hipStream_t stream);
 
 }  // namespace hip
 
@@ -1348,6 +1360,12 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipLaunchKernelExC_fn = hip::hipLaunchKernelExC;
   ptrDispatchTable->hipDrvLaunchKernelEx_fn = hip::hipDrvLaunchKernelEx;
   ptrDispatchTable->hipMemGetHandleForAddressRange_fn = hip::hipMemGetHandleForAddressRange;
+  ptrDispatchTable->hipMemsetD2D8_fn = hip::hipMemsetD2D8;
+  ptrDispatchTable->hipMemsetD2D8Async_fn = hip::hipMemsetD2D8Async;
+  ptrDispatchTable->hipMemsetD2D16_fn = hip::hipMemsetD2D16;
+  ptrDispatchTable->hipMemsetD2D16Async_fn = hip::hipMemsetD2D16Async;
+  ptrDispatchTable->hipMemsetD2D32_fn = hip::hipMemsetD2D32;
+  ptrDispatchTable->hipMemsetD2D32Async_fn = hip::hipMemsetD2D32Async;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -1993,13 +2011,20 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipDrvLaunchKernelEx_fn, 475);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemGetHandleForAddressRange_fn, 476);
 // HIP_RUNTIME_API_TABLE_STEP_VERSION == 13
 HIP_ENFORCE_ABI(HipDispatchTable, hipModuleGetFunctionCount_fn, 477);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D8_fn, 478);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D8Async_fn, 479);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D16_fn, 480);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D16Async_fn, 481);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D32_fn, 482);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D32Async_fn, 483);
+
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 478)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 484)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

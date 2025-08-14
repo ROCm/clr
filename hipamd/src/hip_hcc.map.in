@@ -609,6 +609,12 @@ local:
 hip_7.1 {
 global:
     hipModuleGetFunctionCount;
+    hipMemsetD2D8;
+    hipMemsetD2D8Async;
+    hipMemsetD2D16;
+    hipMemsetD2D16Async;
+    hipMemsetD2D32;
+    hipMemsetD2D32Async;
 local:
     *;
 } hip_6.5;

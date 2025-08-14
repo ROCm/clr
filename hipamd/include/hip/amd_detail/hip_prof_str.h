@@ -439,7 +439,13 @@ enum hip_api_id_t {
   HIP_API_ID_hipLaunchKernelExC = 419,
   HIP_API_ID_hipDrvLaunchKernelEx = 420,
   HIP_API_ID_hipModuleGetFunctionCount = 421,
-  HIP_API_ID_LAST = 421,
+  HIP_API_ID_hipMemsetD2D16 = 422,
+  HIP_API_ID_hipMemsetD2D16Async = 423,
+  HIP_API_ID_hipMemsetD2D32 = 424,
+  HIP_API_ID_hipMemsetD2D32Async = 425,
+  HIP_API_ID_hipMemsetD2D8 = 426,
+  HIP_API_ID_hipMemsetD2D8Async = 427,
+  HIP_API_ID_LAST = 427,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -802,6 +808,12 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipMemsetAsync: return "hipMemsetAsync";
     case HIP_API_ID_hipMemsetD16: return "hipMemsetD16";
     case HIP_API_ID_hipMemsetD16Async: return "hipMemsetD16Async";
+    case HIP_API_ID_hipMemsetD2D16: return "hipMemsetD2D16";
+    case HIP_API_ID_hipMemsetD2D16Async: return "hipMemsetD2D16Async";
+    case HIP_API_ID_hipMemsetD2D32: return "hipMemsetD2D32";
+    case HIP_API_ID_hipMemsetD2D32Async: return "hipMemsetD2D32Async";
+    case HIP_API_ID_hipMemsetD2D8: return "hipMemsetD2D8";
+    case HIP_API_ID_hipMemsetD2D8Async: return "hipMemsetD2D8Async";
     case HIP_API_ID_hipMemsetD32: return "hipMemsetD32";
     case HIP_API_ID_hipMemsetD32Async: return "hipMemsetD32Async";
     case HIP_API_ID_hipMemsetD8: return "hipMemsetD8";
@@ -1218,6 +1230,12 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipMemsetAsync", name) == 0) return HIP_API_ID_hipMemsetAsync;
   if (strcmp("hipMemsetD16", name) == 0) return HIP_API_ID_hipMemsetD16;
   if (strcmp("hipMemsetD16Async", name) == 0) return HIP_API_ID_hipMemsetD16Async;
+  if (strcmp("hipMemsetD2D16", name) == 0) return HIP_API_ID_hipMemsetD2D16;
+  if (strcmp("hipMemsetD2D16Async", name) == 0) return HIP_API_ID_hipMemsetD2D16Async;
+  if (strcmp("hipMemsetD2D32", name) == 0) return HIP_API_ID_hipMemsetD2D32;
+  if (strcmp("hipMemsetD2D32Async", name) == 0) return HIP_API_ID_hipMemsetD2D32Async;
+  if (strcmp("hipMemsetD2D8", name) == 0) return HIP_API_ID_hipMemsetD2D8;
+  if (strcmp("hipMemsetD2D8Async", name) == 0) return HIP_API_ID_hipMemsetD2D8Async;
   if (strcmp("hipMemsetD32", name) == 0) return HIP_API_ID_hipMemsetD32;
   if (strcmp("hipMemsetD32Async", name) == 0) return HIP_API_ID_hipMemsetD32Async;
   if (strcmp("hipMemsetD8", name) == 0) return HIP_API_ID_hipMemsetD8;
@@ -3247,6 +3265,51 @@ typedef struct hip_api_data_s {
       size_t count;
       hipStream_t stream;
     } hipMemsetD16Async;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned short value;
+      size_t width;
+      size_t height;
+    } hipMemsetD2D16;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned short value;
+      size_t width;
+      size_t height;
+      hipStream_t stream;
+    } hipMemsetD2D16Async;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned int value;
+      size_t width;
+      size_t height;
+    } hipMemsetD2D32;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned int value;
+      size_t width;
+      size_t height;
+      hipStream_t stream;
+    } hipMemsetD2D32Async;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned char value;
+      size_t width;
+      size_t height;
+    } hipMemsetD2D8;
+    struct {
+      hipDeviceptr_t dst;
+      size_t dstPitch;
+      unsigned char value;
+      size_t width;
+      size_t height;
+      hipStream_t stream;
+    } hipMemsetD2D8Async;
     struct {
       hipDeviceptr_t dest;
       int value;
@@ -5609,16 +5672,16 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyHtoAAsync.ByteCount = (size_t)ByteCount; \
   cb_data.args.hipMemcpyHtoAAsync.stream = (hipStream_t)stream; \
 };
-// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes')]
+// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes')]
 #define INIT_hipMemcpyHtoD_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyHtoD.dst = (hipDeviceptr_t)dstDevice; \
-  cb_data.args.hipMemcpyHtoD.src = (void*)srcHost; \
+  cb_data.args.hipMemcpyHtoD.src = (const void*)srcHost; \
   cb_data.args.hipMemcpyHtoD.sizeBytes = (size_t)ByteCount; \
 };
-// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
+// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
 #define INIT_hipMemcpyHtoDAsync_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyHtoDAsync.dst = (hipDeviceptr_t)dstDevice; \
-  cb_data.args.hipMemcpyHtoDAsync.src = (void*)srcHost; \
+  cb_data.args.hipMemcpyHtoDAsync.src = (const void*)srcHost; \
   cb_data.args.hipMemcpyHtoDAsync.sizeBytes = (size_t)ByteCount; \
   cb_data.args.hipMemcpyHtoDAsync.stream = (hipStream_t)stream; \
 };
@@ -5737,6 +5800,57 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemsetD16Async.value = (unsigned short)value; \
   cb_data.args.hipMemsetD16Async.count = (size_t)count; \
   cb_data.args.hipMemsetD16Async.stream = (hipStream_t)stream; \
+};
+// hipMemsetD2D16[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned short', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+#define INIT_hipMemsetD2D16_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D16.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D16.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D16.value = (unsigned short)value; \
+  cb_data.args.hipMemsetD2D16.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D16.height = (size_t)height; \
+};
+// hipMemsetD2D16Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned short', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+#define INIT_hipMemsetD2D16Async_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D16Async.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D16Async.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D16Async.value = (unsigned short)value; \
+  cb_data.args.hipMemsetD2D16Async.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D16Async.height = (size_t)height; \
+  cb_data.args.hipMemsetD2D16Async.stream = (hipStream_t)stream; \
+};
+// hipMemsetD2D32[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned int', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+#define INIT_hipMemsetD2D32_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D32.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D32.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D32.value = (unsigned int)value; \
+  cb_data.args.hipMemsetD2D32.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D32.height = (size_t)height; \
+};
+// hipMemsetD2D32Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned int', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+#define INIT_hipMemsetD2D32Async_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D32Async.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D32Async.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D32Async.value = (unsigned int)value; \
+  cb_data.args.hipMemsetD2D32Async.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D32Async.height = (size_t)height; \
+  cb_data.args.hipMemsetD2D32Async.stream = (hipStream_t)stream; \
+};
+// hipMemsetD2D8[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned char', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+#define INIT_hipMemsetD2D8_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D8.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D8.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D8.value = (unsigned char)value; \
+  cb_data.args.hipMemsetD2D8.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D8.height = (size_t)height; \
+};
+// hipMemsetD2D8Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned char', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+#define INIT_hipMemsetD2D8Async_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemsetD2D8Async.dst = (hipDeviceptr_t)dst; \
+  cb_data.args.hipMemsetD2D8Async.dstPitch = (size_t)dstPitch; \
+  cb_data.args.hipMemsetD2D8Async.value = (unsigned char)value; \
+  cb_data.args.hipMemsetD2D8Async.width = (size_t)width; \
+  cb_data.args.hipMemsetD2D8Async.height = (size_t)height; \
+  cb_data.args.hipMemsetD2D8Async.stream = (hipStream_t)stream; \
 };
 // hipMemsetD32[('hipDeviceptr_t', 'dest'), ('int', 'value'), ('size_t', 'count')]
 #define INIT_hipMemsetD32_CB_ARGS_DATA(cb_data) { \
@@ -6380,7 +6494,7 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipCtxEnablePeerAccess[('hipCtx_t', 'peerCtx'), ('unsigned int', 'flags')]
     case HIP_API_ID_hipCtxEnablePeerAccess:
       break;
-// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('int*', 'apiVersion')]
+// hipCtxGetApiVersion[('hipCtx_t', 'ctx'), ('unsigned int*', 'apiVersion')]
     case HIP_API_ID_hipCtxGetApiVersion:
       if (data->args.hipCtxGetApiVersion.apiVersion) data->args.hipCtxGetApiVersion.apiVersion__val = *(data->args.hipCtxGetApiVersion.apiVersion);
       break;
@@ -7521,10 +7635,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipMemcpyHtoAAsync[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('const void*', 'srcHost'), ('size_t', 'ByteCount'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyHtoAAsync:
       break;
-// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes')]
+// hipMemcpyHtoD[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes')]
     case HIP_API_ID_hipMemcpyHtoD:
       break;
-// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
+// hipMemcpyHtoDAsync[('hipDeviceptr_t', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyHtoDAsync:
       break;
 // hipMemcpyParam2D[('const hip_Memcpy2D*', 'pCopy')]
@@ -7576,6 +7690,24 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipMemsetD16Async[('hipDeviceptr_t', 'dest'), ('unsigned short', 'value'), ('size_t', 'count'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemsetD16Async:
+      break;
+// hipMemsetD2D16[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned short', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+    case HIP_API_ID_hipMemsetD2D16:
+      break;
+// hipMemsetD2D16Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned short', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemsetD2D16Async:
+      break;
+// hipMemsetD2D32[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned int', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+    case HIP_API_ID_hipMemsetD2D32:
+      break;
+// hipMemsetD2D32Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned int', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemsetD2D32Async:
+      break;
+// hipMemsetD2D8[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned char', 'value'), ('size_t', 'width'), ('size_t', 'height')]
+    case HIP_API_ID_hipMemsetD2D8:
+      break;
+// hipMemsetD2D8Async[('hipDeviceptr_t', 'dst'), ('size_t', 'dstPitch'), ('unsigned char', 'value'), ('size_t', 'width'), ('size_t', 'height'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemsetD2D8Async:
       break;
 // hipMemsetD32[('hipDeviceptr_t', 'dest'), ('int', 'value'), ('size_t', 'count')]
     case HIP_API_ID_hipMemsetD32:
@@ -10529,6 +10661,63 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.value);
       oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.count);
       oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD16Async.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D16:
+      oss << "hipMemsetD2D16(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16.height);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D16Async:
+      oss << "hipMemsetD2D16Async(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.height);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D16Async.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D32:
+      oss << "hipMemsetD2D32(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32.height);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D32Async:
+      oss << "hipMemsetD2D32Async(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.height);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D32Async.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D8:
+      oss << "hipMemsetD2D8(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8.height);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemsetD2D8Async:
+      oss << "hipMemsetD2D8Async(";
+      oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.dst);
+      oss << ", dstPitch="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.dstPitch);
+      oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.value);
+      oss << ", width="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.width);
+      oss << ", height="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.height);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemsetD2D8Async.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemsetD32:
