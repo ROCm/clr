@@ -1565,6 +1565,20 @@ class Isa {
     return localMemBanks_;
   }
 
+#if defined(USE_COMGR_LIBRARY)
+  /// @returns This Isa's available sgprs per wavefront
+  size_t sgprPerWavefront() const {
+    setAvailableSgprVgprCached();
+    return sgprPerWavefront_;
+  }
+
+  /// @returns This Isa's available vgprs per wavefront
+  size_t vgprPerWavefront() const {
+    setAvailableSgprVgprCached();
+    return vgprPerWavefront_;
+  }
+#endif
+
   /// @returns True if @p codeObjectIsa and @p agentIsa are compatible,
   /// false otherwise.
   static bool isCompatible(const Isa &codeObjectIsa, const Isa &agentIsa);
@@ -1604,10 +1618,18 @@ class Isa {
         simdInstructionWidth_(simdInstructionWidth),
         memChannelBankWidth_(memChannelBankWidth),
         localMemSizePerCU_(localMemSizePerCU),
-        localMemBanks_(localMemBanks) {}
+        localMemBanks_(localMemBanks),
+        sgprPerWavefront_(0),
+        vgprPerWavefront_(0) {}
 
   // @brief Returns the begin and end iterators for the suppported ISAs.
   static std::pair<const Isa*, const Isa*> supportedIsas();
+
+#if defined(USE_COMGR_LIBRARY)
+  // @brief Populate this Isa's available sgprs/vgprs per wavefront from comgr.
+  // Only called once per Isa.
+  void setAvailableSgprVgprCached() const;
+#endif
 
   // @brief Isa's target ID name. Used for LLVM COde Object Manager
   // compilations.
@@ -1631,6 +1653,10 @@ class Isa {
   uint32_t memChannelBankWidth_;   //!< Memory channel bank width.
   uint32_t localMemSizePerCU_;     //!< Local memory size per CU.
   uint32_t localMemBanks_;         //!< Number of banks of local memory.
+
+  mutable size_t sgprPerWavefront_;        //!< Number of sgpr per wavefront.
+  mutable size_t vgprPerWavefront_;        //!< Number of vgpr per wavefront.
+  mutable std::once_flag setSgprVgprFlag;  //!< Once flag for sgpr and vgpr retrieval.
 }; // class Isa
 
 /*! \addtogroup Runtime

@@ -47,11 +47,6 @@ bool Kernel::postLoad() {
   workGroupInfo_.availableLDSSize_ = device().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
 
-  if (!SetAvailableSgprVgpr()) {
-    DevLogError("Cannot set available SGPR/VGPR\n");
-    return false;
-  }
-
   // Get the kernel code handle
   hsa_status_t hsaStatus;
   hsa_executable_symbol_t symbol;
@@ -145,6 +140,8 @@ bool Kernel::postLoad() {
   }
   assert(wavefront_size > 0);
 
+  workGroupInfo_.availableVGPRs_ = device().isa().vgprPerWavefront();
+  workGroupInfo_.availableSGPRs_ = device().isa().sgprPerWavefront();
   workGroupInfo_.privateMemSize_ = workitemPrivateSegmentByteSize_;
   workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
