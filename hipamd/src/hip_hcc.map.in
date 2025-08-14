@@ -605,3 +605,10 @@ global:
 local:
     *;
 } hip_6.4;
+
+hip_7.1 {
+global:
+    hipModuleGetFunctionCount;
+local:
+    *;
+} hip_6.5;

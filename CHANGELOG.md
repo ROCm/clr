@@ -2,6 +2,13 @@
 
 Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs.amd.com/projects/HIP/en/latest/index.html)
 
+## HIP 7.1 for ROCm 7.1
+
+### Added
+
+* New HIP APIs
+    - `hipModuleGetFunctionCount`  returns the number of functions within a module
+
 ## HIP 7.0 for ROCm 7.0
 
 ### Added

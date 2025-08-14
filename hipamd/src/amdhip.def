@@ -492,3 +492,4 @@ hipLinkCreate
 hipLinkDestroy
 hipLaunchKernelExC
 hipDrvLaunchKernelEx
+hipModuleGetFunctionCount

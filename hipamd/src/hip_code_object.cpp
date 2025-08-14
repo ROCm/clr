@@ -124,6 +124,15 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   return it->second->getDynFunc(hfunc, module_);
 }
 
+hipError_t DynCO::getFuncCount(unsigned int* count) {
+  amd::ScopedLock lock(dclock_);
+  if (count == nullptr) {
+    return hipErrorInvalidValue;
+  }
+  *count = functions_.size();
+  return hipSuccess;
+}
+
 bool DynCO::isValidDynFunc(const void* hfunc) {
   amd::ScopedLock lock(dclock_);
   return std::any_of(functions_.begin(), functions_.end(),

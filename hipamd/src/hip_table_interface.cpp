@@ -1220,6 +1220,9 @@ hipError_t hipMipmappedArrayGetLevel(hipArray_t* pLevelArray, hipMipmappedArray_
 hipError_t hipModuleGetFunction(hipFunction_t* function, hipModule_t module, const char* kname) {
   return hip::GetHipDispatchTable()->hipModuleGetFunction_fn(function, module, kname);
 }
+hipError_t hipModuleGetFunctionCount(unsigned int* count, hipModule_t mod) {
+  return hip::GetHipDispatchTable()->hipModuleGetFunctionCount_fn(count, mod);
+}
 hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t hmod,
                               const char* name) {
   return hip::GetHipDispatchTable()->hipModuleGetGlobal_fn(dptr, bytes, hmod, name);

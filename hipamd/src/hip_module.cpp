@@ -89,6 +89,15 @@ hipError_t hipModuleGetFunction(hipFunction_t* hfunc, hipModule_t hmod, const ch
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipModuleGetFunctionCount(unsigned int* count, hipModule_t mod) {
+  HIP_INIT_API(hipModuleGetFunctionCount, count, mod);
+
+  if (mod == nullptr) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+  HIP_RETURN(PlatformState::instance().getFuncCount(count, mod););
+}
+
 hipError_t hipModuleGetGlobal(hipDeviceptr_t* dptr, size_t* bytes, hipModule_t hmod,
                               const char* name) {
   HIP_INIT_API(hipModuleGetGlobal, dptr, bytes, hmod, name);
