@@ -380,6 +380,7 @@ hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
     assert(kernelParams == nullptr);
     if (extra[0] != HIP_LAUNCH_PARAM_BUFFER_POINTER || extra[2] != HIP_LAUNCH_PARAM_BUFFER_SIZE ||
         extra[4] != HIP_LAUNCH_PARAM_END) {
+      kernelCommand->release();
       return hipErrorInvalidValue;
     }
     kernargs = reinterpret_cast<address>(extra[1]);
