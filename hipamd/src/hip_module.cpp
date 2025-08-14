@@ -101,6 +101,7 @@ hipError_t hipModuleGetFunctionCount(unsigned int* count, hipModule_t mod) {
     HIP_RETURN(hipErrorInvalidResourceHandle);
   }
   HIP_RETURN(PlatformState::instance().getFuncCount(count, mod));
+}
 
 hipError_t hipModuleGetLoadingMode(hipModuleLoadingMode_t* mode) {
   HIP_INIT_API(hipModuleGetLoadingMode, mode);
