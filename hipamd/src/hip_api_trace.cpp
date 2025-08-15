@@ -535,6 +535,7 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigne
                                  unsigned int blockDimY, unsigned int blockDimZ,
                                  unsigned int sharedMemBytes, hipStream_t stream,
                                  void** kernelParams, void** extra);
+hipError_t hipModuleLoadFatBinary(hipModule_t* module, const void* fatbin);
 hipError_t hipModuleLoad(hipModule_t* module, const char* fname);
 hipError_t hipModuleLoadData(hipModule_t* module, const void* image);
 hipError_t hipModuleLoadDataEx(hipModule_t* module, const void* image, unsigned int numOptions,
@@ -1197,6 +1198,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipModuleLaunchCooperativeKernelMultiDevice_fn =
       hip::hipModuleLaunchCooperativeKernelMultiDevice;
   ptrDispatchTable->hipModuleLaunchKernel_fn = hip::hipModuleLaunchKernel;
+  ptrDispatchTable->hipModuleLoadFatBinary_fn = hip::hipModuleLoadFatBinary;
   ptrDispatchTable->hipModuleLoad_fn = hip::hipModuleLoad;
   ptrDispatchTable->hipModuleLoadData_fn = hip::hipModuleLoadData;
   ptrDispatchTable->hipModuleLoadDataEx_fn = hip::hipModuleLoadDataEx;
@@ -2024,13 +2026,14 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D32_fn, 482);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D32Async_fn, 483);
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetAttribute_fn, 484);
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamSetAttribute_fn, 485);
+HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLoadFatBinary_fn, 486);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 486)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 487)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

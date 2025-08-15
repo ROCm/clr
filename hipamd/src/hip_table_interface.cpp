@@ -1254,6 +1254,9 @@ hipError_t hipModuleLaunchKernel(hipFunction_t f, unsigned int gridDimX, unsigne
       f, gridDimX, gridDimY, gridDimZ, blockDimX, blockDimY, blockDimZ, sharedMemBytes, stream,
       kernelParams, extra);
 }
+hipError_t hipModuleLoadFatBinary(hipModule_t* module, const void* fatbin) {
+  return hip::GetHipDispatchTable()->hipModuleLoadFatBinary_fn(module, fatbin);
+}
 hipError_t hipModuleLoad(hipModule_t* module, const char* fname) {
   return hip::GetHipDispatchTable()->hipModuleLoad_fn(module, fname);
 }

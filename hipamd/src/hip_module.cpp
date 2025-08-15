@@ -48,6 +48,11 @@ hipError_t hipModuleUnload(hipModule_t hmod) {
   CHECK_STREAM_CAPTURE_SUPPORTED();
   HIP_RETURN(PlatformState::instance().unloadModule(hmod));
 }
+hipError_t hipModuleLoadFatBinary(hipModule_t* module, const void* fatbin) {
+  HIP_INIT_API(hipModuleLoadFatBinary, module, fatbin);
+  HIP_RETURN(PlatformState::instance().loadModule(module, 0, fatbin));
+  HIP_RETURN(hipSuccess);
+}
 
 hipError_t hipModuleLoad(hipModule_t* module, const char* fname) {
   HIP_INIT_API(hipModuleLoad, module, fname);

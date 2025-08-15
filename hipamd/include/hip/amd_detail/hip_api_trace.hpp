@@ -1063,6 +1063,7 @@ typedef hipError_t (*t_hipStreamSetAttribute)(hipStream_t stream, hipStreamAttrI
                                  const hipStreamAttrValue *value);
 typedef hipError_t (*t_hipStreamGetAttribute)(hipStream_t stream, hipStreamAttrID attr,
                                               hipStreamAttrValue *value_out);
+typedef hipError_t (*t_hipModuleLoadFatBinary)(hipModule_t* module, const void* fatbin);
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1615,6 +1616,7 @@ struct HipDispatchTable {
   t_hipMemsetD2D32Async hipMemsetD2D32Async_fn;
   t_hipStreamGetAttribute hipStreamGetAttribute_fn;
   t_hipStreamSetAttribute hipStreamSetAttribute_fn;
+  t_hipModuleLoadFatBinary hipModuleLoadFatBinary_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 14
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams

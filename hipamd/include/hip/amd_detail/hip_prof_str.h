@@ -447,7 +447,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemsetD2D8Async = 427,
   HIP_API_ID_hipStreamGetAttribute = 428,
   HIP_API_ID_hipStreamSetAttribute = 429,
-  HIP_API_ID_LAST = 429,
+  HIP_API_ID_hipModuleLoadFatBinary = 430,
+  HIP_API_ID_LAST = 430,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -829,6 +830,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipModuleLaunchCooperativeKernel: return "hipModuleLaunchCooperativeKernel";
     case HIP_API_ID_hipModuleLaunchCooperativeKernelMultiDevice: return "hipModuleLaunchCooperativeKernelMultiDevice";
     case HIP_API_ID_hipModuleLaunchKernel: return "hipModuleLaunchKernel";
+    case HIP_API_ID_hipModuleLoadFatBinary: return "hipModuleLoadFatBinary";
     case HIP_API_ID_hipModuleLoad: return "hipModuleLoad";
     case HIP_API_ID_hipModuleLoadData: return "hipModuleLoadData";
     case HIP_API_ID_hipModuleLoadDataEx: return "hipModuleLoadDataEx";
@@ -1253,6 +1255,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipModuleLaunchCooperativeKernel", name) == 0) return HIP_API_ID_hipModuleLaunchCooperativeKernel;
   if (strcmp("hipModuleLaunchCooperativeKernelMultiDevice", name) == 0) return HIP_API_ID_hipModuleLaunchCooperativeKernelMultiDevice;
   if (strcmp("hipModuleLaunchKernel", name) == 0) return HIP_API_ID_hipModuleLaunchKernel;
+  if (strcmp("hipModuleLoadFatBinary", name) == 0) return HIP_API_ID_hipModuleLoadFatBinary;
   if (strcmp("hipModuleLoad", name) == 0) return HIP_API_ID_hipModuleLoad;
   if (strcmp("hipModuleLoadData", name) == 0) return HIP_API_ID_hipModuleLoadData;
   if (strcmp("hipModuleLoadDataEx", name) == 0) return HIP_API_ID_hipModuleLoadDataEx;
@@ -3416,6 +3419,11 @@ typedef struct hip_api_data_s {
       void** extra;
       void* extra__val;
     } hipModuleLaunchKernel;
+    struct {
+      hipModule_t* module;
+      hipModule_t module__val;
+      const void* fatbin;
+    } hipModuleLoadFatBinary;
     struct {
       hipModule_t* module;
       hipModule_t module__val;
@@ -5964,6 +5972,11 @@ typedef struct hip_api_data_s {
   cb_data.args.hipModuleLaunchKernel.kernelParams = (void**)kernelParams; \
   cb_data.args.hipModuleLaunchKernel.extra = (void**)extra; \
 };
+// hipModuleLoadFatBinary[('hipModule_t*', 'module'), ('const void*', 'fatbin')]
+#define INIT_hipModuleLoadFatBinary_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipModuleLoadFatBinary.module = (hipModule_t*)module; \
+  cb_data.args.hipModuleLoadFatBinary.fatbin = (const void*)fatbin; \
+};
 // hipModuleLoad[('hipModule_t*', 'module'), ('const char*', 'fname')]
 #define INIT_hipModuleLoad_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipModuleLoad.module = (hipModule_t*)module; \
@@ -7785,6 +7798,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipModuleLaunchKernel:
       if (data->args.hipModuleLaunchKernel.kernelParams) data->args.hipModuleLaunchKernel.kernelParams__val = *(data->args.hipModuleLaunchKernel.kernelParams);
       if (data->args.hipModuleLaunchKernel.extra) data->args.hipModuleLaunchKernel.extra__val = *(data->args.hipModuleLaunchKernel.extra);
+      break;
+// hipModuleLoadFatBinary[('hipModule_t*', 'module'), ('const void*', 'fatbin')]
+    case HIP_API_ID_hipModuleLoadFatBinary:
+      if (data->args.hipModuleLoadFatBinary.module) data->args.hipModuleLoadFatBinary.module__val = *(data->args.hipModuleLoadFatBinary.module);
       break;
 // hipModuleLoad[('hipModule_t*', 'module'), ('const char*', 'fname')]
     case HIP_API_ID_hipModuleLoad:
@@ -10871,6 +10888,13 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", kernelParams="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.kernelParams__val); }
       if (data->args.hipModuleLaunchKernel.extra == NULL) oss << ", extra=NULL";
       else { oss << ", extra="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLaunchKernel.extra__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipModuleLoadFatBinary:
+      oss << "hipModuleLoadFatBinary(";
+      if (data->args.hipModuleLoadFatBinary.module == NULL) oss << "module=NULL";
+      else { oss << "module="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadFatBinary.module__val); }
+      oss << ", fatbin="; roctracer::hip_support::detail::operator<<(oss, data->args.hipModuleLoadFatBinary.fatbin);
       oss << ")";
     break;
     case HIP_API_ID_hipModuleLoad:
