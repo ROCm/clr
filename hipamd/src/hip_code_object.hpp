@@ -117,10 +117,7 @@ public:
   hipError_t getDeviceVar(DeviceVar** dvar, std::string var_name);
 
   hipError_t getManagedVarPointer(std::string name, void** pointer, size_t* size_ptr) {
-    if (!dyn_data_loaded_) {
-      IHIP_RETURN_ONFAIL(populateDynGlobalVars());
-    }
-
+    IHIP_RETURN_ONFAIL(populateDynGlobalVars());
     auto it = vars_.find(name);
     if (it != vars_.end() && it->second->getVarKind() == Var::DVK_Managed) {
       if (pointer != nullptr) {

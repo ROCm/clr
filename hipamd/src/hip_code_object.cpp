@@ -119,9 +119,7 @@ hipError_t DynCO::getDynFunc(hipFunction_t* hfunc, std::string func_name) {
   if (hfunc == nullptr) {
     return hipErrorInvalidValue;
   }
-  if(!dyn_func_loaded_) {
-    IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
-  }
+  IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
   auto it = functions_.find(func_name);
   if (it == functions_.end()) {
     LogPrintfError("Cannot find the function: %s ", func_name.c_str());
@@ -137,18 +135,14 @@ hipError_t DynCO::getFuncCount(unsigned int* count) {
   if (count == nullptr) {
     return hipErrorInvalidValue;
   }
-  if(!dyn_func_loaded_) {
-    IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
-  }
+  IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
   *count = functions_.size();
   return hipSuccess;
 }
 
 bool DynCO::isValidDynFunc(const void* hfunc) {
   amd::ScopedLock lock(dclock_);
-  if(!dyn_func_loaded_) {
-    IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
-  }
+  IHIP_RETURN_ONFAIL(populateDynGlobalFuncs());
   return std::any_of(functions_.begin(), functions_.end(),
                      [&](auto& it) { return it.second->isValidDynFunc(hfunc); });
 }
@@ -209,6 +203,9 @@ hipError_t DynCO::initDynManagedVars(const std::string& managedVar) {
 hipError_t DynCO::populateDynGlobalVars() {
   amd::ScopedLock lock(dclock_);
   hipError_t err = hipSuccess;
+  if (dyn_data_loaded_) {
+    return err;
+  }
   std::vector<std::string> var_names;
   std::string managedVarExt = ".managed";
   // For Dynamic Modules there is only one hipFatBinaryDevInfo_
@@ -238,7 +235,9 @@ hipError_t DynCO::populateDynGlobalVars() {
 
 hipError_t DynCO::populateDynGlobalFuncs() {
   amd::ScopedLock lock(dclock_);
-
+  if(dyn_func_loaded_) {
+    return hipSuccess;
+  }
   std::vector<std::string> func_names;
   device::Program* dev_program = fb_info_->GetProgram(ihipGetDevice())
                                      ->getDeviceProgram(*hip::getCurrentDevice()->devices()[0]);
