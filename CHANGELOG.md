@@ -21,6 +21,10 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipMemcpy3DBatchAsync` Performs a batch of 3D memory copied asynchronously
     - `hipMemcpy3DPeer` Copies memory between devices
     - `hipMemcpy3DPeerAsync`Copied memory between devices asynchronously
+    - `hipMemsetD2D32Async` Used for setting 2D memory range with specified 32-bit values
+      asynchronously
+* Changed HIP APIs
+    - `hipMemCreate`  now can take hipDeviceMallocUncached as a flag to allocate uncached memory
 
 ## HIP 7.0 for ROCm 7.0
 
