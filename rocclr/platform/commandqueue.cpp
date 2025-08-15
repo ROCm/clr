@@ -41,7 +41,8 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
       tail_(nullptr),
-      isActive_(false) {
+      isActive_(false),
+      sync_policy_(amd::SyncPolicy::Auto) {
   if (GPU_FORCE_QUEUE_PROFILING) {
     properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
@@ -198,9 +199,10 @@ void HostQueue::finish(bool cpu_wait) {
     }
     command->enqueue();
   }
+
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
+  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion, GetSyncPolicy())) {
     ClPrint(LOG_DEBUG, LOG_CMD,
             "No HW event or batch size is less than %zu, "
             "await command completion",

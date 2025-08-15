@@ -98,7 +98,9 @@ class Event {
   std::vector<hip::GraphNode*> nodesPrevToRecorded_;
  protected:
   bool CheckHwEvent() {
-    return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, false, flags_);
+    amd::SyncPolicy policy = (flags_ == hipEventBlockingSync) ? amd::SyncPolicy::Blocking :
+                                                                amd::SyncPolicy::Auto;
+    return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, false, policy);
   }
 
  public:

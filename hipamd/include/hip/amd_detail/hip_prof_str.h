@@ -445,7 +445,9 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemsetD2D32Async = 425,
   HIP_API_ID_hipMemsetD2D8 = 426,
   HIP_API_ID_hipMemsetD2D8Async = 427,
-  HIP_API_ID_LAST = 427,
+  HIP_API_ID_hipStreamGetAttribute = 428,
+  HIP_API_ID_hipStreamSetAttribute = 429,
+  HIP_API_ID_LAST = 429,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -860,6 +862,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamCreateWithPriority: return "hipStreamCreateWithPriority";
     case HIP_API_ID_hipStreamDestroy: return "hipStreamDestroy";
     case HIP_API_ID_hipStreamEndCapture: return "hipStreamEndCapture";
+    case HIP_API_ID_hipStreamGetAttribute: return "hipStreamGetAttribute";
     case HIP_API_ID_hipStreamGetCaptureInfo: return "hipStreamGetCaptureInfo";
     case HIP_API_ID_hipStreamGetCaptureInfo_v2: return "hipStreamGetCaptureInfo_v2";
     case HIP_API_ID_hipStreamGetDevice: return "hipStreamGetDevice";
@@ -867,6 +870,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipStreamGetPriority: return "hipStreamGetPriority";
     case HIP_API_ID_hipStreamIsCapturing: return "hipStreamIsCapturing";
     case HIP_API_ID_hipStreamQuery: return "hipStreamQuery";
+    case HIP_API_ID_hipStreamSetAttribute: return "hipStreamSetAttribute";
     case HIP_API_ID_hipStreamSynchronize: return "hipStreamSynchronize";
     case HIP_API_ID_hipStreamUpdateCaptureDependencies: return "hipStreamUpdateCaptureDependencies";
     case HIP_API_ID_hipStreamWaitEvent: return "hipStreamWaitEvent";
@@ -1282,6 +1286,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamCreateWithPriority", name) == 0) return HIP_API_ID_hipStreamCreateWithPriority;
   if (strcmp("hipStreamDestroy", name) == 0) return HIP_API_ID_hipStreamDestroy;
   if (strcmp("hipStreamEndCapture", name) == 0) return HIP_API_ID_hipStreamEndCapture;
+  if (strcmp("hipStreamGetAttribute", name) == 0) return HIP_API_ID_hipStreamGetAttribute;
   if (strcmp("hipStreamGetCaptureInfo", name) == 0) return HIP_API_ID_hipStreamGetCaptureInfo;
   if (strcmp("hipStreamGetCaptureInfo_v2", name) == 0) return HIP_API_ID_hipStreamGetCaptureInfo_v2;
   if (strcmp("hipStreamGetDevice", name) == 0) return HIP_API_ID_hipStreamGetDevice;
@@ -1289,6 +1294,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipStreamGetPriority", name) == 0) return HIP_API_ID_hipStreamGetPriority;
   if (strcmp("hipStreamIsCapturing", name) == 0) return HIP_API_ID_hipStreamIsCapturing;
   if (strcmp("hipStreamQuery", name) == 0) return HIP_API_ID_hipStreamQuery;
+  if (strcmp("hipStreamSetAttribute", name) == 0) return HIP_API_ID_hipStreamSetAttribute;
   if (strcmp("hipStreamSynchronize", name) == 0) return HIP_API_ID_hipStreamSynchronize;
   if (strcmp("hipStreamUpdateCaptureDependencies", name) == 0) return HIP_API_ID_hipStreamUpdateCaptureDependencies;
   if (strcmp("hipStreamWaitEvent", name) == 0) return HIP_API_ID_hipStreamWaitEvent;
@@ -3593,6 +3599,12 @@ typedef struct hip_api_data_s {
     } hipStreamEndCapture;
     struct {
       hipStream_t stream;
+      hipLaunchAttributeID attr;
+      const hipLaunchAttributeValue* value_out;
+      hipLaunchAttributeValue value_out__val;
+    } hipStreamGetAttribute;
+    struct {
+      hipStream_t stream;
       hipStreamCaptureStatus* pCaptureStatus;
       hipStreamCaptureStatus pCaptureStatus__val;
       unsigned long long* pId;
@@ -3634,6 +3646,12 @@ typedef struct hip_api_data_s {
     struct {
       hipStream_t stream;
     } hipStreamQuery;
+    struct {
+      hipStream_t stream;
+      hipLaunchAttributeID attr;
+      const hipLaunchAttributeValue* value;
+      hipLaunchAttributeValue value__val;
+    } hipStreamSetAttribute;
     struct {
       hipStream_t stream;
     } hipStreamSynchronize;
@@ -6138,6 +6156,9 @@ typedef struct hip_api_data_s {
   cb_data.args.hipStreamEndCapture.stream = (hipStream_t)stream; \
   cb_data.args.hipStreamEndCapture.pGraph = (hipGraph_t*)pGraph; \
 };
+// hipStreamGetAttribute[('hipStream_t', 'stream'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value_out')]
+#define INIT_hipStreamGetAttribute_CB_ARGS_DATA(cb_data) { \
+};
 // hipStreamGetCaptureInfo[('hipStream_t', 'stream'), ('hipStreamCaptureStatus*', 'pCaptureStatus'), ('unsigned long long*', 'pId')]
 #define INIT_hipStreamGetCaptureInfo_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamGetCaptureInfo.stream = (hipStream_t)stream; \
@@ -6176,6 +6197,9 @@ typedef struct hip_api_data_s {
 // hipStreamQuery[('hipStream_t', 'stream')]
 #define INIT_hipStreamQuery_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipStreamQuery.stream = (hipStream_t)stream; \
+};
+// hipStreamSetAttribute[('hipStream_t', 'stream'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value')]
+#define INIT_hipStreamSetAttribute_CB_ARGS_DATA(cb_data) { \
 };
 // hipStreamSynchronize[('hipStream_t', 'stream')]
 #define INIT_hipStreamSynchronize_CB_ARGS_DATA(cb_data) { \
@@ -7889,6 +7913,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipStreamEndCapture:
       if (data->args.hipStreamEndCapture.pGraph) data->args.hipStreamEndCapture.pGraph__val = *(data->args.hipStreamEndCapture.pGraph);
       break;
+// hipStreamGetAttribute[('hipStream_t', 'stream'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value_out')]
+    case HIP_API_ID_hipStreamGetAttribute:
+      if (data->args.hipStreamGetAttribute.value_out) data->args.hipStreamGetAttribute.value_out__val = *(data->args.hipStreamGetAttribute.value_out);
+      break;
 // hipStreamGetCaptureInfo[('hipStream_t', 'stream'), ('hipStreamCaptureStatus*', 'pCaptureStatus'), ('unsigned long long*', 'pId')]
     case HIP_API_ID_hipStreamGetCaptureInfo:
       if (data->args.hipStreamGetCaptureInfo.pCaptureStatus) data->args.hipStreamGetCaptureInfo.pCaptureStatus__val = *(data->args.hipStreamGetCaptureInfo.pCaptureStatus);
@@ -7920,6 +7948,10 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipStreamQuery[('hipStream_t', 'stream')]
     case HIP_API_ID_hipStreamQuery:
+      break;
+// hipStreamSetAttribute[('hipStream_t', 'stream'), ('hipLaunchAttributeID', 'attr'), ('const hipLaunchAttributeValue*', 'value')]
+    case HIP_API_ID_hipStreamSetAttribute:
+      if (data->args.hipStreamSetAttribute.value) data->args.hipStreamSetAttribute.value__val = *(data->args.hipStreamSetAttribute.value);
       break;
 // hipStreamSynchronize[('hipStream_t', 'stream')]
     case HIP_API_ID_hipStreamSynchronize:
@@ -11094,6 +11126,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       else { oss << ", pGraph="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamEndCapture.pGraph__val); }
       oss << ")";
     break;
+    case HIP_API_ID_hipStreamGetAttribute:
+      oss << "hipStreamGetAttribute(";
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetAttribute.stream);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetAttribute.attr);
+      if (data->args.hipStreamGetAttribute.value_out == NULL) oss << ", value_out=NULL";
+      else { oss << ", value_out="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetAttribute.value_out__val); }
+      oss << ")";
+    break;
     case HIP_API_ID_hipStreamGetCaptureInfo:
       oss << "hipStreamGetCaptureInfo(";
       oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamGetCaptureInfo.stream);
@@ -11149,6 +11189,14 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
     case HIP_API_ID_hipStreamQuery:
       oss << "hipStreamQuery(";
       oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamQuery.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipStreamSetAttribute:
+      oss << "hipStreamSetAttribute(";
+      oss << "stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamSetAttribute.stream);
+      oss << ", attr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamSetAttribute.attr);
+      if (data->args.hipStreamSetAttribute.value == NULL) oss << ", value=NULL";
+      else { oss << ", value="; roctracer::hip_support::detail::operator<<(oss, data->args.hipStreamSetAttribute.value__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipStreamSynchronize:

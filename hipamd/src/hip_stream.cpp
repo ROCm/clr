@@ -820,4 +820,76 @@ hipError_t hipStreamGetDevice(hipStream_t stream, hipDevice_t* device) {
 
   HIP_RETURN(hipSuccess);
 }
+// ================================================================================================
+hipError_t hipStreamSetAttribute(hipStream_t stream, hipStreamAttrID attr,
+                                 const hipStreamAttrValue *value) {
+  HIP_INIT_API(hipStreamSetAttribute, stream, attr, value);
+  hipError_t status = hipSuccess;
+  if (value == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+
+  getStreamPerThread(stream);
+
+  // if stream is capturing, don't allow changing stream attributes
+  if (hip::Stream::StreamCaptureOngoing(stream) == true) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+
+  switch (attr) {
+    case hipStreamAttributeSynchronizationPolicy: {
+      hipSynchronizationPolicy syncPolicy = value->syncPolicy;
+      // validate sync policy
+      if (syncPolicy < hipSyncPolicyAuto || syncPolicy > hipSyncPolicyBlockingSync) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      s->SetSyncPolicy(static_cast<amd::SyncPolicy>(syncPolicy));
+      break;
+    }
+    default: {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
+  HIP_RETURN(hipSuccess);
+}
+
+hipError_t hipStreamGetAttribute(hipStream_t stream, hipStreamAttrID attr,
+                                 hipStreamAttrValue *value_out) {
+  HIP_INIT_API(hipStreamGetAttribute, stream, attr, value_out);
+
+  if (value_out == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+
+  getStreamPerThread(stream);
+
+  hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
+
+  switch(attr) {
+    case hipStreamAttributeSynchronizationPolicy: {
+      value_out->syncPolicy = static_cast<hipSynchronizationPolicy>(s->GetSyncPolicy());
+      break;
+    }
+    case hipStreamAttributePriority: {
+      value_out->priority = s->GetPriority();
+      break;
+    }
+    default: {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
+  HIP_RETURN(hipSuccess);
+}
 } // hip namespace

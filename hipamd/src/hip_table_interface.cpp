@@ -1883,7 +1883,7 @@ hipError_t hipDrvLaunchKernelEx(const HIP_LAUNCH_CONFIG* config, hipFunction_t f
   return hip::GetHipDispatchTable()->hipDrvLaunchKernelEx_fn(config, f, kernel, extra);
 }
 
-hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size,
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags) {
   return hip::GetHipDispatchTable()->hipMemGetHandleForAddressRange_fn(handle, dptr, size,
@@ -1915,4 +1915,12 @@ hipError_t hipMemsetD2D32Async(hipDeviceptr_t dst, size_t dstPitch, unsigned int
                               size_t height, hipStream_t stream) {
   return hip::GetHipDispatchTable()->hipMemsetD2D32Async_fn(dst, dstPitch, value, width, height,
                                                            stream);
+}
+hipError_t hipStreamSetAttribute(hipStream_t stream, hipStreamAttrID attr,
+                                 const hipStreamAttrValue *value) {
+  return hip::GetHipDispatchTable()->hipStreamSetAttribute_fn(stream, attr, value);
+}
+hipError_t hipStreamGetAttribute(hipStream_t stream, hipStreamAttrID attr,
+                                 hipStreamAttrValue *value) {
+  return hip::GetHipDispatchTable()->hipStreamGetAttribute_fn(stream, attr, value);
 }

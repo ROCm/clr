@@ -1383,6 +1383,14 @@ class VirtualDevice : public amd::HeapObject {
 namespace amd {
 /*! IHIP IPC MEMORY Structure */
 #define AMD_IPC_MEM_HANDLE_SIZE 32
+
+typedef enum SyncPolicy {
+    Auto = 1,
+    Spin = 2,
+    Yield = 3,
+    Blocking = 4
+} SyncPolicy;
+
 //! MemoryObject map lookup  class
 class MemObjMap : public AllStatic {
  public:
@@ -2050,9 +2058,9 @@ class Device : public RuntimeObject {
 
   // Returns the status of HW event, associated with amd::Event
   virtual bool IsHwEventReady(
-      const amd::Event& event,    //!< AMD event for HW status validation
-      bool wait = false,          //!< If true then forces the event completion
-      uint32_t hip_event_flags = 0 //!< flags associated with the event. 0 = hipEventDefault
+      const amd::Event& event,      //!< AMD event for HW status validation
+      bool wait = false,            //!< If true then forces the event completion
+      amd::SyncPolicy policy = amd::SyncPolicy::Auto
       ) const {
     return false;
   };

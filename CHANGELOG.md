@@ -14,6 +14,8 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipMemsetD2D16Async` Used for setting 2D memory range with specified 16-bit values asynchronously
     - `hipMemsetD2D32` Used for setting 2D memory range with specified 32-bit values
     - `hipMemsetD2D32Async` Used for setting 2D memory range with specified 32-bit values asynchronously
+    - `hipStreamSetAttribute` sets attributes such as synchronization policy for a given stream
+    - `hipStreamGetAttribute` returns attributes such as priority for a given stream
 
 ## HIP 7.0 for ROCm 7.0
 

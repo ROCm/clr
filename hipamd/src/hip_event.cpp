@@ -76,7 +76,9 @@ hipError_t Event::synchronize() {
   auto hip_device = g_devices[deviceId()];
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (!hip_device->devices()[0]->IsHwEventReady(*event_, kWaitCompletion, flags_)) {
+  amd::SyncPolicy policy = (flags_ == hipEventBlockingSync) ? amd::SyncPolicy::Blocking :
+                                                              amd::SyncPolicy::Auto;
+  if (!hip_device->devices()[0]->IsHwEventReady(*event_, kWaitCompletion, policy)) {
     event_->awaitCompletion();
   }
   return hipSuccess;
@@ -88,7 +90,9 @@ bool Event::awaitEventCompletion() {
 }
 
 bool EventDD::awaitEventCompletion() {
-  return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, true, flags_);
+  amd::SyncPolicy policy = (flags_ == hipEventBlockingSync) ? amd::SyncPolicy::Blocking :
+                                                              amd::SyncPolicy::Auto;
+  return g_devices[deviceId()]->devices()[0]->IsHwEventReady(*event_, true, policy);
 }
 
 hipError_t Event::elapsedTime(Event& eStop, float& ms) {

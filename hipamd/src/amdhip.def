@@ -499,3 +499,5 @@ hipMemsetD2D16
 hipMemsetD2D16Async
 hipMemsetD2D32
 hipMemsetD2D32Async
+hipStreamGetAttribute
+hipStreamSetAttribute
