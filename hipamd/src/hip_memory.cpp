@@ -1087,18 +1087,11 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
        case CL_MEM_OBJECT_IMAGE1D:
        case CL_MEM_OBJECT_IMAGE2D:
        case CL_MEM_OBJECT_IMAGE3D:
-         image = new (context) amd::Image(*buffer->asBuffer(),
-                                          imageType,
-                                          CL_MEM_READ_WRITE,
-                                          imageFormat,
-                                          imageWidth,
-                                          (imageHeight == 0) ? 1 : imageHeight,
-                                          (imageDepth == 0) ? 1 : imageDepth,
-                                          imageRowPitch,
-                                          imageSlicePitch,
-                                          numMipLevels,
-                                          offset);
-       break;
+         image = new (buffer->getContext())
+             amd::Image(*buffer->asBuffer(), imageType, CL_MEM_READ_WRITE, imageFormat, imageWidth,
+                        (imageHeight == 0) ? 1 : imageHeight, (imageDepth == 0) ? 1 : imageDepth,
+                        imageRowPitch, imageSlicePitch, numMipLevels, offset);
+         break;
        default:
         LogPrintfError("Cannot create image of imageType: 0x%x for external buffer", imageType);
      }
@@ -1106,17 +1099,10 @@ amd::Image* ihipImageCreate(const cl_channel_order channelOrder,
     switch (imageType) {
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
     case CL_MEM_OBJECT_IMAGE2D:
-      image = new (context) amd::Image(*buffer->asBuffer(),
-                                       imageType,
-                                       CL_MEM_READ_WRITE,
-                                       imageFormat,
-                                       (imageWidth == 0) ? 1 : imageWidth,
-                                       (imageHeight == 0) ? 1 : imageHeight,
-                                       (imageDepth == 0) ? 1 : imageDepth,
-                                       imageRowPitch,
-                                       imageSlicePitch,
-                                       numMipLevels,
-                                       offset);
+      image = new (buffer->getContext()) amd::Image(
+          *buffer->asBuffer(), imageType, CL_MEM_READ_WRITE, imageFormat,
+          (imageWidth == 0) ? 1 : imageWidth, (imageHeight == 0) ? 1 : imageHeight,
+          (imageDepth == 0) ? 1 : imageDepth, imageRowPitch, imageSlicePitch, numMipLevels, offset);
       break;
     default:
       LogPrintfError("Cannot create image of imageType: 0x%x", imageType);
@@ -4353,7 +4339,7 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
                                    (size_t)mipmapDesc->offset, buf));
 }
 
-hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
+hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size,
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags) {
   HIP_INIT_API(hipMemGetHandleForAddressRange, handle, dptr, size, handleType, flags);
