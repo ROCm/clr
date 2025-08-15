@@ -19,8 +19,9 @@
  THE SOFTWARE. */
 
 #include <hip/hip_runtime.h>
-
 #include "hip_event.hpp"
+#include "hip_graph_internal.hpp"
+
 #if !defined(_MSC_VER)
 #include <unistd.h>
 #endif
@@ -406,16 +407,16 @@ hipError_t hipEventRecord_common(hipEvent_t event, hipStream_t stream, unsigned 
     std::vector<hip::GraphNode*> lastCapturedNodes = s->GetLastCapturedNodes();
     e->SetNodesPrevToRecorded(lastCapturedNodes);
     if (flags == hipEventRecordExternal) {
-      hip::GraphNode* pGraphNode;
-      status =
-          hipGraphAddEventRecordNode((hipGraphNode_t*)&pGraphNode, (hipGraph_t)s->GetCaptureGraph(),
-                                     (hipGraphNode_t*)s->GetLastCapturedNodes().data(),
-                                     s->GetLastCapturedNodes().size(), (hipEvent_t)e);
+      hip::GraphNode* node = new hip::GraphEventRecordNode(reinterpret_cast<hipEvent_t>(e));
+      hipError_t status = hip::ihipGraphAddNode(
+          node, reinterpret_cast<hip::Graph*>(s->GetCaptureGraph()),
+          reinterpret_cast<hip::GraphNode* const*>(s->GetLastCapturedNodes().data()),
+          s->GetLastCapturedNodes().size(), false);
       if (status != hipSuccess) {
         ClPrint(amd::LOG_ERROR, amd::LOG_API, "hipEventRecord add external event node failed");
         return status;
       }
-      s->SetLastCapturedNode(pGraphNode);
+      s->SetLastCapturedNode(node);
     }
   } else {
     if (e->deviceId() != hip_stream->DeviceId()) {
