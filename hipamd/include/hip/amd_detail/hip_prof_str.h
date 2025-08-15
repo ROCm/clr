@@ -448,7 +448,11 @@ enum hip_api_id_t {
   HIP_API_ID_hipStreamGetAttribute = 428,
   HIP_API_ID_hipStreamSetAttribute = 429,
   HIP_API_ID_hipModuleLoadFatBinary = 430,
-  HIP_API_ID_LAST = 430,
+  HIP_API_ID_hipMemcpy3DBatchAsync = 431,
+  HIP_API_ID_hipMemcpy3DPeer = 432,
+  HIP_API_ID_hipMemcpy3DPeerAsync = 433,
+  HIP_API_ID_hipMemcpyBatchAsync = 434,
+  HIP_API_ID_LAST = 434,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -778,11 +782,15 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipMemcpy2DToArrayAsync: return "hipMemcpy2DToArrayAsync";
     case HIP_API_ID_hipMemcpy3D: return "hipMemcpy3D";
     case HIP_API_ID_hipMemcpy3DAsync: return "hipMemcpy3DAsync";
+    case HIP_API_ID_hipMemcpy3DBatchAsync: return "hipMemcpy3DBatchAsync";
+    case HIP_API_ID_hipMemcpy3DPeer: return "hipMemcpy3DPeer";
+    case HIP_API_ID_hipMemcpy3DPeerAsync: return "hipMemcpy3DPeerAsync";
     case HIP_API_ID_hipMemcpyAsync: return "hipMemcpyAsync";
     case HIP_API_ID_hipMemcpyAtoA: return "hipMemcpyAtoA";
     case HIP_API_ID_hipMemcpyAtoD: return "hipMemcpyAtoD";
     case HIP_API_ID_hipMemcpyAtoH: return "hipMemcpyAtoH";
     case HIP_API_ID_hipMemcpyAtoHAsync: return "hipMemcpyAtoHAsync";
+    case HIP_API_ID_hipMemcpyBatchAsync: return "hipMemcpyBatchAsync";
     case HIP_API_ID_hipMemcpyDtoA: return "hipMemcpyDtoA";
     case HIP_API_ID_hipMemcpyDtoD: return "hipMemcpyDtoD";
     case HIP_API_ID_hipMemcpyDtoDAsync: return "hipMemcpyDtoDAsync";
@@ -1203,11 +1211,15 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipMemcpy2DToArrayAsync", name) == 0) return HIP_API_ID_hipMemcpy2DToArrayAsync;
   if (strcmp("hipMemcpy3D", name) == 0) return HIP_API_ID_hipMemcpy3D;
   if (strcmp("hipMemcpy3DAsync", name) == 0) return HIP_API_ID_hipMemcpy3DAsync;
+  if (strcmp("hipMemcpy3DBatchAsync", name) == 0) return HIP_API_ID_hipMemcpy3DBatchAsync;
+  if (strcmp("hipMemcpy3DPeer", name) == 0) return HIP_API_ID_hipMemcpy3DPeer;
+  if (strcmp("hipMemcpy3DPeerAsync", name) == 0) return HIP_API_ID_hipMemcpy3DPeerAsync;
   if (strcmp("hipMemcpyAsync", name) == 0) return HIP_API_ID_hipMemcpyAsync;
   if (strcmp("hipMemcpyAtoA", name) == 0) return HIP_API_ID_hipMemcpyAtoA;
   if (strcmp("hipMemcpyAtoD", name) == 0) return HIP_API_ID_hipMemcpyAtoD;
   if (strcmp("hipMemcpyAtoH", name) == 0) return HIP_API_ID_hipMemcpyAtoH;
   if (strcmp("hipMemcpyAtoHAsync", name) == 0) return HIP_API_ID_hipMemcpyAtoHAsync;
+  if (strcmp("hipMemcpyBatchAsync", name) == 0) return HIP_API_ID_hipMemcpyBatchAsync;
   if (strcmp("hipMemcpyDtoA", name) == 0) return HIP_API_ID_hipMemcpyDtoA;
   if (strcmp("hipMemcpyDtoD", name) == 0) return HIP_API_ID_hipMemcpyDtoD;
   if (strcmp("hipMemcpyDtoDAsync", name) == 0) return HIP_API_ID_hipMemcpyDtoDAsync;
@@ -3065,6 +3077,24 @@ typedef struct hip_api_data_s {
       hipStream_t stream;
     } hipMemcpy3DAsync;
     struct {
+      size_t numOps;
+      hipMemcpy3DBatchOp* opList;
+      hipMemcpy3DBatchOp opList__val;
+      size_t* failIdx;
+      size_t failIdx__val;
+      unsigned long long flags;
+      hipStream_t stream;
+    } hipMemcpy3DBatchAsync;
+    struct {
+      hipMemcpy3DPeerParms* p;
+      hipMemcpy3DPeerParms p__val;
+    } hipMemcpy3DPeer;
+    struct {
+      hipMemcpy3DPeerParms* p;
+      hipMemcpy3DPeerParms p__val;
+      hipStream_t stream;
+    } hipMemcpy3DPeerAsync;
+    struct {
       void* dst;
       const void* src;
       size_t sizeBytes;
@@ -3097,6 +3127,23 @@ typedef struct hip_api_data_s {
       size_t ByteCount;
       hipStream_t stream;
     } hipMemcpyAtoHAsync;
+    struct {
+      void** dsts;
+      void* dsts__val;
+      void** srcs;
+      void* srcs__val;
+      size_t* sizes;
+      size_t sizes__val;
+      size_t count;
+      hipMemcpyAttributes* attrs;
+      hipMemcpyAttributes attrs__val;
+      size_t* attrsIdxs;
+      size_t attrsIdxs__val;
+      size_t numAttrs;
+      size_t* failIdx;
+      size_t failIdx__val;
+      hipStream_t stream;
+    } hipMemcpyBatchAsync;
     struct {
       hipArray_t dstArray;
       size_t dstOffset;
@@ -5586,6 +5633,23 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpy3DAsync.p = (const hipMemcpy3DParms*)p; \
   cb_data.args.hipMemcpy3DAsync.stream = (hipStream_t)stream; \
 };
+// hipMemcpy3DBatchAsync[('size_t', 'numOps'), ('hipMemcpy3DBatchOp*', 'opList'), ('size_t*', 'failIdx'), ('unsigned long long', 'flags'), ('hipStream_t', 'stream')]
+#define INIT_hipMemcpy3DBatchAsync_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemcpy3DBatchAsync.numOps = (size_t)numOps; \
+  cb_data.args.hipMemcpy3DBatchAsync.opList = (hipMemcpy3DBatchOp*)opList; \
+  cb_data.args.hipMemcpy3DBatchAsync.failIdx = (size_t*)failIdx; \
+  cb_data.args.hipMemcpy3DBatchAsync.flags = (unsigned long long)flags; \
+  cb_data.args.hipMemcpy3DBatchAsync.stream = (hipStream_t)stream; \
+};
+// hipMemcpy3DPeer[('hipMemcpy3DPeerParms*', 'p')]
+#define INIT_hipMemcpy3DPeer_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemcpy3DPeer.p = (hipMemcpy3DPeerParms*)p; \
+};
+// hipMemcpy3DPeerAsync[('hipMemcpy3DPeerParms*', 'p'), ('hipStream_t', 'stream')]
+#define INIT_hipMemcpy3DPeerAsync_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemcpy3DPeerAsync.p = (hipMemcpy3DPeerParms*)p; \
+  cb_data.args.hipMemcpy3DPeerAsync.stream = (hipStream_t)stream; \
+};
 // hipMemcpyAsync[('void*', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
 #define INIT_hipMemcpyAsync_CB_ARGS_DATA(cb_data) { \
   cb_data.args.hipMemcpyAsync.dst = (void*)dst; \
@@ -5623,6 +5687,18 @@ typedef struct hip_api_data_s {
   cb_data.args.hipMemcpyAtoHAsync.srcOffset = (size_t)srcOffset; \
   cb_data.args.hipMemcpyAtoHAsync.ByteCount = (size_t)ByteCount; \
   cb_data.args.hipMemcpyAtoHAsync.stream = (hipStream_t)stream; \
+};
+// hipMemcpyBatchAsync[('void**', 'dsts'), ('void**', 'srcs'), ('size_t*', 'sizes'), ('size_t', 'count'), ('hipMemcpyAttributes*', 'attrs'), ('size_t*', 'attrsIdxs'), ('size_t', 'numAttrs'), ('size_t*', 'failIdx'), ('hipStream_t', 'stream')]
+#define INIT_hipMemcpyBatchAsync_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipMemcpyBatchAsync.dsts = (void**)dsts; \
+  cb_data.args.hipMemcpyBatchAsync.srcs = (void**)srcs; \
+  cb_data.args.hipMemcpyBatchAsync.sizes = (size_t*)sizes; \
+  cb_data.args.hipMemcpyBatchAsync.count = (size_t)count; \
+  cb_data.args.hipMemcpyBatchAsync.attrs = (hipMemcpyAttributes*)attrs; \
+  cb_data.args.hipMemcpyBatchAsync.attrsIdxs = (size_t*)attrsIdxs; \
+  cb_data.args.hipMemcpyBatchAsync.numAttrs = (size_t)numAttrs; \
+  cb_data.args.hipMemcpyBatchAsync.failIdx = (size_t*)failIdx; \
+  cb_data.args.hipMemcpyBatchAsync.stream = (hipStream_t)stream; \
 };
 // hipMemcpyDtoA[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('hipDeviceptr_t', 'srcDevice'), ('size_t', 'ByteCount')]
 #define INIT_hipMemcpyDtoA_CB_ARGS_DATA(cb_data) { \
@@ -7627,6 +7703,19 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
     case HIP_API_ID_hipMemcpy3DAsync:
       if (data->args.hipMemcpy3DAsync.p) data->args.hipMemcpy3DAsync.p__val = *(data->args.hipMemcpy3DAsync.p);
       break;
+// hipMemcpy3DBatchAsync[('size_t', 'numOps'), ('hipMemcpy3DBatchOp*', 'opList'), ('size_t*', 'failIdx'), ('unsigned long long', 'flags'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemcpy3DBatchAsync:
+      if (data->args.hipMemcpy3DBatchAsync.opList) data->args.hipMemcpy3DBatchAsync.opList__val = *(data->args.hipMemcpy3DBatchAsync.opList);
+      if (data->args.hipMemcpy3DBatchAsync.failIdx) data->args.hipMemcpy3DBatchAsync.failIdx__val = *(data->args.hipMemcpy3DBatchAsync.failIdx);
+      break;
+// hipMemcpy3DPeer[('hipMemcpy3DPeerParms*', 'p')]
+    case HIP_API_ID_hipMemcpy3DPeer:
+      if (data->args.hipMemcpy3DPeer.p) data->args.hipMemcpy3DPeer.p__val = *(data->args.hipMemcpy3DPeer.p);
+      break;
+// hipMemcpy3DPeerAsync[('hipMemcpy3DPeerParms*', 'p'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemcpy3DPeerAsync:
+      if (data->args.hipMemcpy3DPeerAsync.p) data->args.hipMemcpy3DPeerAsync.p__val = *(data->args.hipMemcpy3DPeerAsync.p);
+      break;
 // hipMemcpyAsync[('void*', 'dst'), ('const void*', 'src'), ('size_t', 'sizeBytes'), ('hipMemcpyKind', 'kind'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyAsync:
       break;
@@ -7641,6 +7730,15 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
       break;
 // hipMemcpyAtoHAsync[('void*', 'dstHost'), ('hipArray_t', 'srcArray'), ('size_t', 'srcOffset'), ('size_t', 'ByteCount'), ('hipStream_t', 'stream')]
     case HIP_API_ID_hipMemcpyAtoHAsync:
+      break;
+// hipMemcpyBatchAsync[('void**', 'dsts'), ('void**', 'srcs'), ('size_t*', 'sizes'), ('size_t', 'count'), ('hipMemcpyAttributes*', 'attrs'), ('size_t*', 'attrsIdxs'), ('size_t', 'numAttrs'), ('size_t*', 'failIdx'), ('hipStream_t', 'stream')]
+    case HIP_API_ID_hipMemcpyBatchAsync:
+      if (data->args.hipMemcpyBatchAsync.dsts) data->args.hipMemcpyBatchAsync.dsts__val = *(data->args.hipMemcpyBatchAsync.dsts);
+      if (data->args.hipMemcpyBatchAsync.srcs) data->args.hipMemcpyBatchAsync.srcs__val = *(data->args.hipMemcpyBatchAsync.srcs);
+      if (data->args.hipMemcpyBatchAsync.sizes) data->args.hipMemcpyBatchAsync.sizes__val = *(data->args.hipMemcpyBatchAsync.sizes);
+      if (data->args.hipMemcpyBatchAsync.attrs) data->args.hipMemcpyBatchAsync.attrs__val = *(data->args.hipMemcpyBatchAsync.attrs);
+      if (data->args.hipMemcpyBatchAsync.attrsIdxs) data->args.hipMemcpyBatchAsync.attrsIdxs__val = *(data->args.hipMemcpyBatchAsync.attrsIdxs);
+      if (data->args.hipMemcpyBatchAsync.failIdx) data->args.hipMemcpyBatchAsync.failIdx__val = *(data->args.hipMemcpyBatchAsync.failIdx);
       break;
 // hipMemcpyDtoA[('hipArray_t', 'dstArray'), ('size_t', 'dstOffset'), ('hipDeviceptr_t', 'srcDevice'), ('size_t', 'ByteCount')]
     case HIP_API_ID_hipMemcpyDtoA:
@@ -10436,6 +10534,30 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DAsync.stream);
       oss << ")";
     break;
+    case HIP_API_ID_hipMemcpy3DBatchAsync:
+      oss << "hipMemcpy3DBatchAsync(";
+      oss << "numOps="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DBatchAsync.numOps);
+      if (data->args.hipMemcpy3DBatchAsync.opList == NULL) oss << ", opList=NULL";
+      else { oss << ", opList="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DBatchAsync.opList__val); }
+      if (data->args.hipMemcpy3DBatchAsync.failIdx == NULL) oss << ", failIdx=NULL";
+      else { oss << ", failIdx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DBatchAsync.failIdx__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DBatchAsync.flags);
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DBatchAsync.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemcpy3DPeer:
+      oss << "hipMemcpy3DPeer(";
+      if (data->args.hipMemcpy3DPeer.p == NULL) oss << "p=NULL";
+      else { oss << "p="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DPeer.p__val); }
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemcpy3DPeerAsync:
+      oss << "hipMemcpy3DPeerAsync(";
+      if (data->args.hipMemcpy3DPeerAsync.p == NULL) oss << "p=NULL";
+      else { oss << "p="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DPeerAsync.p__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpy3DPeerAsync.stream);
+      oss << ")";
+    break;
     case HIP_API_ID_hipMemcpyAsync:
       oss << "hipMemcpyAsync(";
       oss << "dst="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAsync.dst);
@@ -10477,6 +10599,25 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       oss << ", srcOffset="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoHAsync.srcOffset);
       oss << ", ByteCount="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoHAsync.ByteCount);
       oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyAtoHAsync.stream);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipMemcpyBatchAsync:
+      oss << "hipMemcpyBatchAsync(";
+      if (data->args.hipMemcpyBatchAsync.dsts == NULL) oss << "dsts=NULL";
+      else { oss << "dsts="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.dsts__val); }
+      if (data->args.hipMemcpyBatchAsync.srcs == NULL) oss << ", srcs=NULL";
+      else { oss << ", srcs="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.srcs__val); }
+      if (data->args.hipMemcpyBatchAsync.sizes == NULL) oss << ", sizes=NULL";
+      else { oss << ", sizes="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.sizes__val); }
+      oss << ", count="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.count);
+      if (data->args.hipMemcpyBatchAsync.attrs == NULL) oss << ", attrs=NULL";
+      else { oss << ", attrs="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.attrs__val); }
+      if (data->args.hipMemcpyBatchAsync.attrsIdxs == NULL) oss << ", attrsIdxs=NULL";
+      else { oss << ", attrsIdxs="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.attrsIdxs__val); }
+      oss << ", numAttrs="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.numAttrs);
+      if (data->args.hipMemcpyBatchAsync.failIdx == NULL) oss << ", failIdx=NULL";
+      else { oss << ", failIdx="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.failIdx__val); }
+      oss << ", stream="; roctracer::hip_support::detail::operator<<(oss, data->args.hipMemcpyBatchAsync.stream);
       oss << ")";
     break;
     case HIP_API_ID_hipMemcpyDtoA:

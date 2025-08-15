@@ -502,3 +502,7 @@ hipMemsetD2D32Async
 hipStreamGetAttribute
 hipStreamSetAttribute
 hipModuleLoadFatBinary
+hipMemcpyBatchAsync
+hipMemcpy3DBatchAsync
+hipMemcpy3DPeer
+hipMemcpy3DPeerAsync

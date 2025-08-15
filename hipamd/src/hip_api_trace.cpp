@@ -848,6 +848,13 @@ hipError_t hipStreamGetAttribute(hipStream_t stream, hipStreamAttrID attr,
                                  hipStreamAttrValue *value);
 hipError_t hipStreamSetAttribute(hipStream_t stream, hipStreamAttrID attr,
                                  const hipStreamAttrValue *value);
+hipError_t hipMemcpyBatchAsync(void **dsts, void **srcs, size_t *sizes, size_t count,
+                               hipMemcpyAttributes *attrs, size_t *attrsIdxs, size_t numAttrs,
+                               size_t *failIdx, hipStream_t stream);
+hipError_t hipMemcpy3DBatchAsync(size_t numOps, struct hipMemcpy3DBatchOp *opList, size_t *failIdx,
+                                 unsigned long long flags, hipStream_t stream);
+hipError_t hipMemcpy3DPeer(hipMemcpy3DPeerParms *p);
+hipError_t hipMemcpy3DPeerAsync(hipMemcpy3DPeerParms *p, hipStream_t stream);
 }  // namespace hip
 
 namespace hip {
@@ -1373,6 +1380,10 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemsetD2D32Async_fn = hip::hipMemsetD2D32Async;
   ptrDispatchTable->hipStreamGetAttribute_fn = hip::hipStreamGetAttribute;
   ptrDispatchTable->hipStreamSetAttribute_fn = hip::hipStreamSetAttribute;
+  ptrDispatchTable->hipMemcpyBatchAsync_fn = hip::hipMemcpyBatchAsync;
+  ptrDispatchTable->hipMemcpy3DBatchAsync_fn = hip::hipMemcpy3DBatchAsync;
+  ptrDispatchTable->hipMemcpy3DPeer_fn = hip::hipMemcpy3DPeer;
+  ptrDispatchTable->hipMemcpy3DPeerAsync_fn = hip::hipMemcpy3DPeerAsync;
 }
 
 #if HIP_ROCPROFILER_REGISTER > 0
@@ -2027,13 +2038,17 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemsetD2D32Async_fn, 483);
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamGetAttribute_fn, 484);
 HIP_ENFORCE_ABI(HipDispatchTable, hipStreamSetAttribute_fn, 485);
 HIP_ENFORCE_ABI(HipDispatchTable, hipModuleLoadFatBinary_fn, 486);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyBatchAsync_fn, 487);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DBatchAsync_fn, 488);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeer_fn, 489);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeerAsync_fn, 490);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 487)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 491)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

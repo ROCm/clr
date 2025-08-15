@@ -1927,3 +1927,20 @@ hipError_t hipStreamGetAttribute(hipStream_t stream, hipStreamAttrID attr,
                                  hipStreamAttrValue *value) {
   return hip::GetHipDispatchTable()->hipStreamGetAttribute_fn(stream, attr, value);
 }
+hipError_t hipMemcpyBatchAsync(void **dsts, void **srcs, size_t *sizes, size_t count,
+                               hipMemcpyAttributes *attrs, size_t *attrsIdxs, size_t numAttrs,
+                               size_t *failIdx, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemcpyBatchAsync_fn(dsts, srcs, sizes,  count, attrs,
+                                                          attrsIdxs, numAttrs, failIdx, stream);
+}
+hipError_t hipMemcpy3DBatchAsync(size_t numOps, struct hipMemcpy3DBatchOp *opList, size_t *failIdx,
+                                 unsigned long long flags, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemcpy3DBatchAsync_fn(numOps, opList, failIdx, flags,
+                                                              stream);
+}
+hipError_t hipMemcpy3DPeer(hipMemcpy3DPeerParms *p) {
+  return hip::GetHipDispatchTable()->hipMemcpy3DPeer_fn(p);
+}
+hipError_t hipMemcpy3DPeerAsync(hipMemcpy3DPeerParms *p, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemcpy3DPeerAsync_fn(p, stream);
+}

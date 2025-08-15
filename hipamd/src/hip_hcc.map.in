@@ -618,6 +618,10 @@ global:
     hipStreamGetAttribute;
     hipStreamSetAttribute;
     hipModuleLoadFatBinary;
+    hipMemcpyBatchAsync;
+    hipMemcpy3DBatchAsync;
+    hipMemcpy3DPeer;
+    hipMemcpy3DPeerAsync;
 local:
     *;
 } hip_6.5;

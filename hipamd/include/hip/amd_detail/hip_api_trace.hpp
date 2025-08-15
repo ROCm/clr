@@ -1064,6 +1064,14 @@ typedef hipError_t (*t_hipStreamSetAttribute)(hipStream_t stream, hipStreamAttrI
 typedef hipError_t (*t_hipStreamGetAttribute)(hipStream_t stream, hipStreamAttrID attr,
                                               hipStreamAttrValue *value_out);
 typedef hipError_t (*t_hipModuleLoadFatBinary)(hipModule_t* module, const void* fatbin);
+typedef hipError_t (*t_hipMemcpyBatchAsync) (void **dsts, void **srcs, size_t *sizes, size_t count,
+                                             hipMemcpyAttributes *attrs, size_t *attrsIdxs,
+                                             size_t numAttrs, size_t *failIdx, hipStream_t stream);
+typedef hipError_t (*t_hipMemcpy3DBatchAsync) (size_t numOps, struct hipMemcpy3DBatchOp *opList,
+                                               size_t *failIdx, unsigned long long flags,
+                                               hipStream_t stream);
+typedef hipError_t (*t_hipMemcpy3DPeer) (hipMemcpy3DPeerParms *p);
+typedef hipError_t (*t_hipMemcpy3DPeerAsync) (hipMemcpy3DPeerParms *p, hipStream_t stream);
 
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
@@ -1617,6 +1625,10 @@ struct HipDispatchTable {
   t_hipStreamGetAttribute hipStreamGetAttribute_fn;
   t_hipStreamSetAttribute hipStreamSetAttribute_fn;
   t_hipModuleLoadFatBinary hipModuleLoadFatBinary_fn;
+  t_hipMemcpyBatchAsync hipMemcpyBatchAsync_fn;
+  t_hipMemcpy3DBatchAsync hipMemcpy3DBatchAsync_fn;
+  t_hipMemcpy3DPeer hipMemcpy3DPeer_fn;
+  t_hipMemcpy3DPeerAsync hipMemcpy3DPeerAsync_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 14
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams

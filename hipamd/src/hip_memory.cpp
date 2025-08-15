@@ -2759,7 +2759,7 @@ hipError_t ihipMemcpy3DCommand(amd::Command*& command, const hipMemcpy3DParms* p
   return ihipGetMemcpyParam3DCommand(command, &desc, stream);
 }
 
-hipError_t ihipMemcpy3D(const hipMemcpy3DParms* p, hipStream_t stream, bool isAsync = false) {
+hipError_t ihipMemcpy3D(const hipMemcpy3DParms* p, hipStream_t stream, bool isAsync) {
   hipError_t status = ihipMemcpy3D_validate(p);
   if (status != hipSuccess) {
     return status;
@@ -2808,8 +2808,70 @@ hipError_t hipDrvMemcpy3D(const HIP_MEMCPY3D* pCopy) {
 
 hipError_t hipDrvMemcpy3DAsync(const HIP_MEMCPY3D* pCopy, hipStream_t stream) {
   HIP_INIT_API(hipDrvMemcpy3DAsync, pCopy, stream);
-
   HIP_RETURN_DURATION(ihipMemcpyParam3D(pCopy, stream, true));
+}
+
+hipError_t hipMemcpyBatchAsync(void **dsts, void **srcs, size_t *sizes, size_t count,
+                               hipMemcpyAttributes *attrs, size_t *attrsIdxs, size_t numAttrs,
+                               size_t *failIdx, hipStream_t stream) {
+  HIP_INIT_API(hipMemcpyBatchAsync, dsts, srcs, sizes,  count, attrs, attrsIdxs, numAttrs, failIdx,
+             stream);
+  // validate stream
+  if(!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+  // validate inputs
+  if (dsts == nullptr || srcs == nullptr || sizes == nullptr || failIdx == nullptr ||
+      count == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  // no support for memcpy attributes
+  if (numAttrs > 0) {
+    HIP_RETURN(hipErrorNotSupported);
+  }
+
+  hipError_t status = hipSuccess;
+
+  *failIdx = SIZE_MAX;
+  for (int i = 0; i < count; ++i) {
+    if (sizes[i] == 0) {
+      *failIdx = i;
+      status = hipErrorInvalidValue;
+      break;
+    }
+    status = ihipMemcpy(dsts[i], srcs[i], sizes[i], hipMemcpyDefault, *hip::getStream(stream),
+                        true, true);
+    if (status != hipSuccess) {
+      *failIdx = i;
+      break;
+    }
+  }
+  HIP_RETURN(status);
+}
+
+hipError_t hipMemcpy3DBatchAsync(size_t numOps, struct hipMemcpy3DBatchOp *opList, size_t *failIdx,
+                                 unsigned long long flags, hipStream_t stream) {
+  HIP_INIT_API(hipMemcpy3DBatchAsync, numOps, opList, failIdx, flags, stream);
+  if (flags != 0 || opList == nullptr || numOps == 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::isValid(stream)) {
+    HIP_RETURN(hipErrorInvalidResourceHandle);
+  }
+
+  hipError_t status = hipSuccess;
+
+  *failIdx = SIZE_MAX;
+  for (int i = 0; i < numOps; ++i) {
+    hipMemcpy3DParms parms = getMemcpy3DParms(opList[i]);
+    status = ihipMemcpy3D(&parms, stream, true);
+    if (status != hipSuccess) {
+      *failIdx = i;
+      break;
+    }
+  }
+  HIP_RETURN(status);
 }
 
 hipError_t packFillMemoryCommand(amd::Command*& command, amd::Memory* memory, size_t offset,

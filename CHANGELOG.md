@@ -17,6 +17,10 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipStreamSetAttribute` sets attributes such as synchronization policy for a given stream
     - `hipStreamGetAttribute` returns attributes such as priority for a given stream
     - `hipModuleLoadFatBinary`  loads fatbin binary to a module
+    - `hipMemcpyBatchAsync` Performs a batch of 1D or 2D memory copied asynchronously
+    - `hipMemcpy3DBatchAsync` Performs a batch of 3D memory copied asynchronously
+    - `hipMemcpy3DPeer` Copies memory between devices
+    - `hipMemcpy3DPeerAsync`Copied memory between devices asynchronously
 
 ## HIP 7.0 for ROCm 7.0
 
