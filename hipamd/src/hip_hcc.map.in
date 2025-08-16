@@ -622,6 +622,8 @@ global:
     hipMemcpy3DBatchAsync;
     hipMemcpy3DPeer;
     hipMemcpy3DPeerAsync;
+    hipGetDriverEntryPoint;
+    hipGetDriverEntryPoint_spt;
 local:
     *;
 } hip_6.5;

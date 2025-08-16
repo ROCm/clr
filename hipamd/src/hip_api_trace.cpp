@@ -186,6 +186,10 @@ hipError_t hipGetDeviceCount(int* count);
 hipError_t hipGetDeviceFlags(unsigned int* flags);
 hipError_t hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* prop, int deviceId);
 hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device);
+hipError_t hipGetDriverEntryPoint(const char* symbol, void** funcPtr, unsigned long long flags,
+                                  hipDriverEntryPointQueryResult* status);
+hipError_t hipGetDriverEntryPoint_spt(const char* symbol, void** funcPtr, unsigned long long flags,
+                                      hipDriverEntryPointQueryResult* status);
 const char* hipGetErrorName(hipError_t hip_error);
 const char* hipGetErrorString(hipError_t hipError);
 hipError_t hipGetLastError(void);
@@ -1340,6 +1344,8 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipGetStreamDeviceId_fn = hip::hipGetStreamDeviceId;
   ptrDispatchTable->hipDrvGraphAddMemsetNode_fn = hip::hipDrvGraphAddMemsetNode;
   ptrDispatchTable->hipGetDevicePropertiesR0000_fn = hip::hipGetDevicePropertiesR0000;
+  ptrDispatchTable->hipGetDriverEntryPoint_fn = hip::hipGetDriverEntryPoint;
+  ptrDispatchTable->hipGetDriverEntryPoint_spt_fn = hip::hipGetDriverEntryPoint_spt;
   ptrDispatchTable->hipExtGetLastError_fn = hip::hipExtGetLastError;
   ptrDispatchTable->hipTexRefGetBorderColor_fn =  hip::hipTexRefGetBorderColor;
   ptrDispatchTable->hipTexRefGetArray_fn = hip::hipTexRefGetArray;
@@ -2042,13 +2048,15 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpyBatchAsync_fn, 487);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DBatchAsync_fn, 488);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeer_fn, 489);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeerAsync_fn, 490);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDriverEntryPoint_fn, 491);
+HIP_ENFORCE_ABI(HipDispatchTable, hipGetDriverEntryPoint_spt_fn, 492);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 491)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 493)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

@@ -452,7 +452,8 @@ enum hip_api_id_t {
   HIP_API_ID_hipMemcpy3DPeer = 432,
   HIP_API_ID_hipMemcpy3DPeerAsync = 433,
   HIP_API_ID_hipMemcpyBatchAsync = 434,
-  HIP_API_ID_LAST = 434,
+  HIP_API_ID_hipGetDriverEntryPoint = 435,
+  HIP_API_ID_LAST = 435,
 
   HIP_API_ID_hipChooseDevice = HIP_API_ID_CONCAT(HIP_API_ID_,hipChooseDevice),
   HIP_API_ID_hipGetDeviceProperties = HIP_API_ID_CONCAT(HIP_API_ID_,hipGetDeviceProperties),
@@ -465,6 +466,7 @@ enum hip_api_id_t {
   HIP_API_ID_hipDestroyTextureObject = HIP_API_ID_NONE,
   HIP_API_ID_hipDeviceGetCount = HIP_API_ID_NONE,
   HIP_API_ID_hipDeviceGetTexture1DLinearMaxWidth = HIP_API_ID_NONE,
+  HIP_API_ID_hipGetDriverEntryPoint_spt = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureAlignmentOffset = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceDesc = HIP_API_ID_NONE,
   HIP_API_ID_hipGetTextureObjectResourceViewDesc = HIP_API_ID_NONE,
@@ -602,6 +604,7 @@ static inline const char* hip_api_name(const uint32_t id) {
     case HIP_API_ID_hipGetDeviceFlags: return "hipGetDeviceFlags";
     case HIP_API_ID_hipGetDevicePropertiesR0000: return "hipGetDevicePropertiesR0000";
     case HIP_API_ID_hipGetDevicePropertiesR0600: return "hipGetDevicePropertiesR0600";
+    case HIP_API_ID_hipGetDriverEntryPoint: return "hipGetDriverEntryPoint";
     case HIP_API_ID_hipGetErrorString: return "hipGetErrorString";
     case HIP_API_ID_hipGetFuncBySymbol: return "hipGetFuncBySymbol";
     case HIP_API_ID_hipGetLastError: return "hipGetLastError";
@@ -1031,6 +1034,7 @@ static inline uint32_t hipApiIdByName(const char* name) {
   if (strcmp("hipGetDeviceFlags", name) == 0) return HIP_API_ID_hipGetDeviceFlags;
   if (strcmp("hipGetDevicePropertiesR0000", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0000;
   if (strcmp("hipGetDevicePropertiesR0600", name) == 0) return HIP_API_ID_hipGetDevicePropertiesR0600;
+  if (strcmp("hipGetDriverEntryPoint", name) == 0) return HIP_API_ID_hipGetDriverEntryPoint;
   if (strcmp("hipGetErrorString", name) == 0) return HIP_API_ID_hipGetErrorString;
   if (strcmp("hipGetFuncBySymbol", name) == 0) return HIP_API_ID_hipGetFuncBySymbol;
   if (strcmp("hipGetLastError", name) == 0) return HIP_API_ID_hipGetLastError;
@@ -1908,6 +1912,15 @@ typedef struct hip_api_data_s {
       hipDeviceProp_tR0600 prop__val;
       int deviceId;
     } hipGetDevicePropertiesR0600;
+    struct {
+      const char* symbol;
+      char symbol__val;
+      void** funcPtr;
+      void* funcPtr__val;
+      unsigned long long flags;
+      hipDriverEntryPointQueryResult* driverStatus;
+      hipDriverEntryPointQueryResult driverStatus__val;
+    } hipGetDriverEntryPoint;
     struct {
       hipFunction_t* functionPtr;
       hipFunction_t functionPtr__val;
@@ -4481,6 +4494,13 @@ typedef struct hip_api_data_s {
   cb_data.args.hipGetDevicePropertiesR0600.prop = (hipDeviceProp_tR0600*)prop; \
   cb_data.args.hipGetDevicePropertiesR0600.deviceId = (int)device; \
 };
+// hipGetDriverEntryPoint[('const char*', 'symbol'), ('void**', 'funcPtr'), ('unsigned long long', 'flags'), ('hipDriverEntryPointQueryResult*', 'driverStatus')]
+#define INIT_hipGetDriverEntryPoint_CB_ARGS_DATA(cb_data) { \
+  cb_data.args.hipGetDriverEntryPoint.symbol = (symbol) ? strdup(symbol) : NULL; \
+  cb_data.args.hipGetDriverEntryPoint.funcPtr = (void**)funcPtr; \
+  cb_data.args.hipGetDriverEntryPoint.flags = (unsigned long long)flags; \
+  cb_data.args.hipGetDriverEntryPoint.driverStatus = (hipDriverEntryPointQueryResult*)status; \
+};
 // hipGetErrorString[]
 #define INIT_hipGetErrorString_CB_ARGS_DATA(cb_data) { \
 };
@@ -6496,6 +6516,8 @@ typedef struct hip_api_data_s {
 #define INIT_hipDeviceGetCount_CB_ARGS_DATA(cb_data) {};
 // hipDeviceGetTexture1DLinearMaxWidth()
 #define INIT_hipDeviceGetTexture1DLinearMaxWidth_CB_ARGS_DATA(cb_data) {};
+// hipGetDriverEntryPoint_spt()
+#define INIT_hipGetDriverEntryPoint_spt_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureAlignmentOffset()
 #define INIT_hipGetTextureAlignmentOffset_CB_ARGS_DATA(cb_data) {};
 // hipGetTextureObjectResourceDesc()
@@ -6968,6 +6990,12 @@ static inline void hipApiArgsInit(hip_api_id_t id, hip_api_data_t* data) {
 // hipGetDevicePropertiesR0600[('hipDeviceProp_tR0600*', 'prop'), ('int', 'deviceId')]
     case HIP_API_ID_hipGetDevicePropertiesR0600:
       if (data->args.hipGetDevicePropertiesR0600.prop) data->args.hipGetDevicePropertiesR0600.prop__val = *(data->args.hipGetDevicePropertiesR0600.prop);
+      break;
+// hipGetDriverEntryPoint[('const char*', 'symbol'), ('void**', 'funcPtr'), ('unsigned long long', 'flags'), ('hipDriverEntryPointQueryResult*', 'driverStatus')]
+    case HIP_API_ID_hipGetDriverEntryPoint:
+      if (data->args.hipGetDriverEntryPoint.symbol) data->args.hipGetDriverEntryPoint.symbol__val = *(data->args.hipGetDriverEntryPoint.symbol);
+      if (data->args.hipGetDriverEntryPoint.funcPtr) data->args.hipGetDriverEntryPoint.funcPtr__val = *(data->args.hipGetDriverEntryPoint.funcPtr);
+      if (data->args.hipGetDriverEntryPoint.driverStatus) data->args.hipGetDriverEntryPoint.driverStatus__val = *(data->args.hipGetDriverEntryPoint.driverStatus);
       break;
 // hipGetErrorString[]
     case HIP_API_ID_hipGetErrorString:
@@ -9000,6 +9028,17 @@ static inline const char* hipApiString(hip_api_id_t id, const hip_api_data_t* da
       if (data->args.hipGetDevicePropertiesR0600.prop == NULL) oss << "prop=NULL";
       else { oss << "prop="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDevicePropertiesR0600.prop__val); }
       oss << ", deviceId="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDevicePropertiesR0600.deviceId);
+      oss << ")";
+    break;
+    case HIP_API_ID_hipGetDriverEntryPoint:
+      oss << "hipGetDriverEntryPoint(";
+      if (data->args.hipGetDriverEntryPoint.symbol == NULL) oss << "symbol=NULL";
+      else { oss << "symbol="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDriverEntryPoint.symbol__val); }
+      if (data->args.hipGetDriverEntryPoint.funcPtr == NULL) oss << ", funcPtr=NULL";
+      else { oss << ", funcPtr="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDriverEntryPoint.funcPtr__val); }
+      oss << ", flags="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDriverEntryPoint.flags);
+      if (data->args.hipGetDriverEntryPoint.driverStatus == NULL) oss << ", driverStatus=NULL";
+      else { oss << ", driverStatus="; roctracer::hip_support::detail::operator<<(oss, data->args.hipGetDriverEntryPoint.driverStatus__val); }
       oss << ")";
     break;
     case HIP_API_ID_hipGetErrorString:

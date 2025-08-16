@@ -41,6 +41,7 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
     - `hipDrvLaunchKernelEx`  dispatches the device kernel represented by a HIP function object.
     - `hipMemGetHandleForAddressRange`  gets a handle for the address range requested.
     - `num_threads`  Total number of threads in the group. The legacy API size is alias.
+    - `hipGetDriverEntryPoint ` gets function pointer of a HIP API.
 * New support for Open Compute Project (OCP) floating-point `FP4`/`FP6`/`FP8` as the following. For details, see [Low precision floating point document](https://rocm.docs.amd.com/projects/HIP/en/latest/reference/low_fp_types.html).
     - Data types for `FP4`/`FP6`/`FP8`.
     - HIP APIs for `FP4`/`FP6`/`FP8`, which are compatible with corresponding CUDA APIs.

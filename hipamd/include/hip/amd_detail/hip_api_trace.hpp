@@ -1073,6 +1073,13 @@ typedef hipError_t (*t_hipMemcpy3DBatchAsync) (size_t numOps, struct hipMemcpy3D
 typedef hipError_t (*t_hipMemcpy3DPeer) (hipMemcpy3DPeerParms *p);
 typedef hipError_t (*t_hipMemcpy3DPeerAsync) (hipMemcpy3DPeerParms *p, hipStream_t stream);
 
+typedef hipError_t (*t_hipGetDriverEntryPoint)(const char* symbol, void** funcPtr,
+                                               unsigned long long flags,
+                                               hipDriverEntryPointQueryResult* status);
+typedef hipError_t (*t_hipGetDriverEntryPoint_spt)(const char* symbol, void** funcPtr,
+                                                   unsigned long long flags,
+                                                   hipDriverEntryPointQueryResult* status);
+
 // HIP Compiler dispatch table
 struct HipCompilerDispatchTable {
   // HIP_COMPILER_API_TABLE_STEP_VERSION == 0
@@ -1629,6 +1636,8 @@ struct HipDispatchTable {
   t_hipMemcpy3DBatchAsync hipMemcpy3DBatchAsync_fn;
   t_hipMemcpy3DPeer hipMemcpy3DPeer_fn;
   t_hipMemcpy3DPeerAsync hipMemcpy3DPeerAsync_fn;
+  t_hipGetDriverEntryPoint hipGetDriverEntryPoint_fn;
+  t_hipGetDriverEntryPoint_spt hipGetDriverEntryPoint_spt_fn;
 
   // HIP_RUNTIME_API_TABLE_STEP_VERSION = 14
   // removed HIP_MEMSET_NODE_PARAMS replaced by hipMemsetParams

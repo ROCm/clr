@@ -506,3 +506,5 @@ hipMemcpyBatchAsync
 hipMemcpy3DBatchAsync
 hipMemcpy3DPeer
 hipMemcpy3DPeerAsync
+hipGetDriverEntryPoint
+hipGetDriverEntryPoint_spt

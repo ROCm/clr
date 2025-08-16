@@ -419,6 +419,16 @@ extern "C" hipError_t hipGetDevicePropertiesR0600(hipDeviceProp_tR0600* prop, in
 extern "C" hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   return hip::GetHipDispatchTable()->hipGetDevicePropertiesR0000_fn(prop, device);
 }
+hipError_t hipGetDriverEntryPoint(const char* symbol, void** funcPtr, unsigned long long flags,
+                                  hipDriverEntryPointQueryResult* status) {
+  return hip::GetHipDispatchTable()->hipGetDriverEntryPoint_fn(symbol, funcPtr, flags,
+                                                            status);
+}
+hipError_t hipGetDriverEntryPoint_spt(const char* symbol, void** funcPtr, unsigned long long flags,
+                                  hipDriverEntryPointQueryResult* status) {
+  return hip::GetHipDispatchTable()->hipGetDriverEntryPoint_spt_fn(symbol, funcPtr, flags,
+                                                                   status);
+}
 const char* hipGetErrorName(hipError_t hip_error) {
   return hip::GetHipDispatchTable()->hipGetErrorName_fn(hip_error);
 }
