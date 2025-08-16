@@ -2109,9 +2109,10 @@ void VirtualGPU::submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd) {
     hsa_signal_t active = Barriers().ActiveSignal(kInitSignalValueOne, timestamp_);
 
     // Find the requested agent for the transfer
-    hsa_agent_t agent = (cmd.cpu_access() ||
-        (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory)) ?
-        dev().getCpuAgent() : (static_cast<const roc::Device*>(cmd.device()))->getBackendDevice();
+    hsa_agent_t agent =
+        (cmd.cpu_access() || (dev().settings().hmmFlags_ & Settings::Hmm::EnableSystemMemory))
+        ? dev().getCpuAgent(cmd.numa_id())
+        : (static_cast<const roc::Device*>(cmd.device()))->getBackendDevice();
 
     // Initiate a prefetch command
     hsa_status_t status = hsa_amd_svm_prefetch_async(

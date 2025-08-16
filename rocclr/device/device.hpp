@@ -2023,8 +2023,8 @@ class Device : public RuntimeObject {
   /**
    * @return True if the device successfully applied the SVM attributes in HMM for device memory
    */
-  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
-                                amd::MemoryAdvice advice, bool use_cpu = false) const {
+  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
+                                bool use_cpu = false, int numa_id = kDefaultNumaNode) const {
     ShouldNotCallThis();
     return false;
   }
@@ -2286,8 +2286,8 @@ class Device : public RuntimeObject {
   static amd::Monitor lockP2P_;
   Monitor* vaCacheAccess_;                            //!< Lock to serialize VA caching access
   std::map<uintptr_t, device::Memory*>* vaCacheMap_;  //!< VA cache map
-  uint32_t index_;  //!< Unique device index
-
+  uint32_t index_;                                    //!< Unique device index
+  static constexpr int kDefaultNumaNode = -1;         //! Default NUMA node value for SVM operations
   // Tracks all amd::Memory objects allocated via hostcall for this device.
   std::vector<amd::Memory*> hostcall_allocated_memories_;
 };

@@ -508,3 +508,5 @@ hipMemcpy3DPeer
 hipMemcpy3DPeerAsync
 hipGetDriverEntryPoint
 hipGetDriverEntryPoint_spt
+hipMemPrefetchAsync_v2
+hipMemAdvise_v2

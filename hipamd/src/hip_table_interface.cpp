@@ -936,6 +936,10 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device) {
   return hip::GetHipDispatchTable()->hipMemAdvise_fn(dev_ptr, count, advice, device);
 }
+hipError_t hipMemAdvise_v2(const void* dev_ptr, size_t count, hipMemoryAdvise advice,
+                           hipMemLocation location) {
+  return hip::GetHipDispatchTable()->hipMemAdvise_v2_fn(dev_ptr, count, advice, location);
+}
 hipError_t hipMemAllocHost(void** ptr, size_t size) {
   return hip::GetHipDispatchTable()->hipMemAllocHost_fn(ptr, size);
 }
@@ -1029,6 +1033,11 @@ hipError_t hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold) {
 }
 hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t stream) {
   return hip::GetHipDispatchTable()->hipMemPrefetchAsync_fn(dev_ptr, count, device, stream);
+}
+hipError_t hipMemPrefetchAsync_v2(const void* dev_ptr, size_t count, hipMemLocation location,
+                                  unsigned int flags, hipStream_t stream) {
+  return hip::GetHipDispatchTable()->hipMemPrefetchAsync_v2_fn(dev_ptr, count, location, flags,
+                                                               stream);
 }
 hipError_t hipMemPtrGetInfo(void* ptr, size_t* size) {
   return hip::GetHipDispatchTable()->hipMemPtrGetInfo_fn(ptr, size);

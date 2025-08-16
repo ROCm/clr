@@ -345,6 +345,15 @@ class Device : public NullDevice {
   //! Get the CPU agent with the least NUMA distance to this GPU
   const hsa_agent_t &getCpuAgent() const { return cpu_agent_info_->agent; }
 
+  //! Get the CPU agent that is in a 'index' NUMA node
+  const hsa_agent_t getCpuAgent(int index) const {
+    if ((index < 0) || (index >= cpu_agents_.size())) {
+      // Return default CPU agent
+      return cpu_agent_info_->agent;
+    }
+    return cpu_agents_[index].agent;
+  }
+
   void setupCpuAgent(); // Setup the CPU agent which has the least NUMA distance to this GPU
 
   void checkAtomicSupport(); //!< Check the support for pcie atomics
@@ -425,8 +434,8 @@ class Device : public NullDevice {
 
   virtual void svmFree(void* ptr) const;
 
-  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
-                                amd::MemoryAdvice advice, bool use_cpu = false) const;
+  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
+                                bool use_cpu = false, int numa_id = kDefaultNumaNode) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
   virtual size_t ScratchLimitCurrent() const final;
@@ -578,8 +587,11 @@ class Device : public NullDevice {
   //! Construct a new physical HSA device
   Device(hsa_agent_t bkendDevice);
 
+  static constexpr int kDefaultNumaNode = -1;
+
   bool SetSvmAttributesInt(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
-                           bool first_alloc = false, bool use_cpu = false) const;
+                           bool first_alloc = false, bool use_cpu = false,
+                           int numa_id = kDefaultNumaNode) const;
   static constexpr hsa_signal_value_t InitSignalValue = 1;
 
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;

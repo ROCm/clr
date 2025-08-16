@@ -400,6 +400,8 @@ hipError_t hipMemAddressFree(void* devPtr, size_t size);
 hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void* addr,
                                 unsigned long long flags);
 hipError_t hipMemAdvise(const void* dev_ptr, size_t count, hipMemoryAdvise advice, int device);
+hipError_t hipMemAdvise_v2(const void* dev_ptr, size_t count, hipMemoryAdvise advice,
+                           hipMemLocation location);
 hipError_t hipMemAllocHost(void** ptr, size_t size);
 hipError_t hipMemAllocPitch(hipDeviceptr_t* dptr, size_t* pitch, size_t widthInBytes, size_t height,
                             unsigned int elementSizeBytes);
@@ -441,6 +443,8 @@ hipError_t hipMemPoolSetAccess(hipMemPool_t mem_pool, const hipMemAccessDesc* de
 hipError_t hipMemPoolSetAttribute(hipMemPool_t mem_pool, hipMemPoolAttr attr, void* value);
 hipError_t hipMemPoolTrimTo(hipMemPool_t mem_pool, size_t min_bytes_to_hold);
 hipError_t hipMemPrefetchAsync(const void* dev_ptr, size_t count, int device, hipStream_t stream);
+hipError_t hipMemPrefetchAsync_v2(const void* dev_ptr, size_t count, hipMemLocation location,
+                                  unsigned int flags, hipStream_t stream);
 hipError_t hipMemPtrGetInfo(void* ptr, size_t* size);
 hipError_t hipMemRangeGetAttribute(void* data, size_t data_size, hipMemRangeAttribute attribute,
                                    const void* dev_ptr, size_t count);
@@ -1124,6 +1128,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemAddressFree_fn = hip::hipMemAddressFree;
   ptrDispatchTable->hipMemAddressReserve_fn = hip::hipMemAddressReserve;
   ptrDispatchTable->hipMemAdvise_fn = hip::hipMemAdvise;
+  ptrDispatchTable->hipMemAdvise_v2_fn = hip::hipMemAdvise_v2;
   ptrDispatchTable->hipMemAllocHost_fn = hip::hipMemAllocHost;
   ptrDispatchTable->hipMemAllocPitch_fn = hip::hipMemAllocPitch;
   ptrDispatchTable->hipMemCreate_fn = hip::hipMemCreate;
@@ -1150,6 +1155,7 @@ void UpdateDispatchTable(HipDispatchTable* ptrDispatchTable) {
   ptrDispatchTable->hipMemPoolSetAttribute_fn = hip::hipMemPoolSetAttribute;
   ptrDispatchTable->hipMemPoolTrimTo_fn = hip::hipMemPoolTrimTo;
   ptrDispatchTable->hipMemPrefetchAsync_fn = hip::hipMemPrefetchAsync;
+  ptrDispatchTable->hipMemPrefetchAsync_v2_fn = hip::hipMemPrefetchAsync_v2;
   ptrDispatchTable->hipMemPtrGetInfo_fn = hip::hipMemPtrGetInfo;
   ptrDispatchTable->hipMemRangeGetAttribute_fn = hip::hipMemRangeGetAttribute;
   ptrDispatchTable->hipMemRangeGetAttributes_fn = hip::hipMemRangeGetAttributes;
@@ -2050,13 +2056,15 @@ HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeer_fn, 489);
 HIP_ENFORCE_ABI(HipDispatchTable, hipMemcpy3DPeerAsync_fn, 490);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetDriverEntryPoint_fn, 491);
 HIP_ENFORCE_ABI(HipDispatchTable, hipGetDriverEntryPoint_spt_fn, 492);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemPrefetchAsync_v2_fn, 493);
+HIP_ENFORCE_ABI(HipDispatchTable, hipMemAdvise_v2_fn, 494);
 // if HIP_ENFORCE_ABI entries are added for each new function pointer in the table, the number below
 // will be +1 of the number in the last HIP_ENFORCE_ABI line. E.g.:
 //
 //  HIP_ENFORCE_ABI(<table>, <functor>, 8)
 //
 //  HIP_ENFORCE_ABI_VERSIONING(<table>, 9) <- 8 + 1 = 9
-HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 493)
+HIP_ENFORCE_ABI_VERSIONING(HipDispatchTable, 495)
 
 static_assert(HIP_RUNTIME_API_TABLE_MAJOR_VERSION == 0 && HIP_RUNTIME_API_TABLE_STEP_VERSION == 14,
               "If you get this error, add new HIP_ENFORCE_ABI(...) code for the new function "

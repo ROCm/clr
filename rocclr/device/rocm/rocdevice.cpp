@@ -2288,22 +2288,22 @@ void Device::updateFreeMemory(size_t size, bool free) {
 void* Device::svmAlloc(amd::Context& context, size_t size, size_t alignment, cl_svm_mem_flags flags,
                        void* svmPtr) const {
   amd::Memory* mem = nullptr;
-  void* svmPtrUsed = reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr); 
-                  
+  void* svmPtrUsed = reinterpret_cast<void*>(amd::Memory::MemoryType::kSvmMemoryPtr);
+
   if (nullptr != svmPtr) {
     // Find the existing amd::mem object
     mem = amd::MemObjMap::FindMemObj(svmPtr);
     if (mem != nullptr) {
       return mem->getSvmPtr();
-    } 
+    }
     if (flags & CL_MEM_USE_HOST_PTR ) {
       svmPtrUsed = svmPtr;
     } else {
       DevLogPrintfError("Cannot find svm_ptr: 0x%x \n", svmPtr);
       return nullptr;
     }
-  }     
-  
+  }
+
   // create a hidden buffer, which will allocated on the device later
   mem = new (context) amd::Buffer(context, flags, size, svmPtrUsed);
   if (mem == nullptr) {
@@ -2468,8 +2468,8 @@ amd::Memory* Device::ImportShareableVMMHandle(void* osHandle) {
 }
 
 // ================================================================================================
-bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
-                              amd::MemoryAdvice advice, bool first_alloc, bool use_cpu) const {
+bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
+                                 bool first_alloc, bool use_cpu, int numa_id) const {
   if ((settings().hmmFlags_ & Settings::Hmm::EnableSvmTracking) && !first_alloc) {
     amd::Memory* svm_mem = amd::MemObjMap::FindMemObj(dev_ptr);
     if ((nullptr == svm_mem) || ((svm_mem->getMemFlags() & CL_MEM_ALLOC_HOST_PTR) == 0) ||
@@ -2492,7 +2492,7 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
         break;
       case amd::MemoryAdvice::SetPreferredLocation:
         if (use_cpu) {
-          attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getCpuAgent().handle});
+          attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getCpuAgent(numa_id).handle});
         } else {
           attr.push_back({HSA_AMD_SVM_ATTRIB_PREFERRED_LOCATION, getBackendDevice().handle});
         }
@@ -2552,7 +2552,7 @@ bool Device::SetSvmAttributesInt(const void* dev_ptr, size_t count,
 
 // ================================================================================================
 bool Device::SetSvmAttributes(const void* dev_ptr, size_t count,
-                              amd::MemoryAdvice advice, bool use_cpu) const {
+                              amd::MemoryAdvice advice, bool use_cpu, int numa_id) const {
   constexpr bool kFirstAlloc = false;
   return SetSvmAttributesInt(dev_ptr, count, advice, kFirstAlloc, use_cpu);
 }
