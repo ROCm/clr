@@ -26,6 +26,11 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 * Changed HIP APIs
     - `hipMemCreate`  now can take hipDeviceMallocUncached as a flag to allocate uncached memory
 
+### Optimized
+
+* Improved hip module loading latency
+* Optimized kernel metadata retrieval during module post load
+
 ## HIP 7.0 for ROCm 7.0
 
 ### Added
