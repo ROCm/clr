@@ -62,7 +62,7 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
   const auto& dev_info = g_devices[0]->devices()[0]->info();
   if (size == 0 || ((size % dev_info.virtualMemAllocGranularity_) != 0)
       || ((alignment & (alignment - 1)) != 0)) {
-    HIP_RETURN(hipErrorMemoryAllocation);
+    HIP_RETURN(hipErrorInvalidValue);
   }
 
   // Initialize the ptr, single virtual alloc call would reserve va range for all devices.
@@ -74,7 +74,7 @@ hipError_t hipMemAddressReserve(void** ptr, size_t size, size_t alignment, void*
 
   // If requested address was not allocated, printf error message.
   if (addr != nullptr && addr == *ptr) {
-    LogPrintfError("Requested address : 0x%x was not allocated. Allocated address : 0x%x ", *ptr);
+    LogPrintfError("Requested address was not allocated. Allocated address : 0x%x ", *ptr);
   }
 
   HIP_RETURN(hipSuccess);
@@ -85,14 +85,21 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
   HIP_INIT_API(hipMemCreate, handle, size, prop, flags);
 
   //  Currently we do not support Pinned memory
-  if (handle == nullptr || size == 0 || flags != 0 || prop == nullptr ||
-      prop->type != hipMemAllocationTypePinned || prop->location.type != hipMemLocationTypeDevice ||
-      prop->location.id >= g_devices.size()) {
+  if (handle == nullptr || size == 0 || prop == nullptr ||
+      prop->type != hipMemAllocationTypePinned || prop->location.type != hipMemLocationTypeDevice) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  if (prop->requestedHandleType != hipMemHandleTypeNone
-      && prop->requestedHandleType != hipMemHandleTypePosixFileDescriptor) {
+  if (flags != hipDeviceMallocUncached && flags != 0) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
+  if (prop->location.id < 0 || prop->location.id >= g_devices.size()) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+
+  if (prop->requestedHandleTypes != hipMemHandleTypeNone
+      && prop->requestedHandleTypes != hipMemHandleTypePosixFileDescriptor) {
     HIP_RETURN(hipErrorNotSupported);
   }
 
@@ -109,8 +116,12 @@ hipError_t hipMemCreate(hipMemGenericAllocationHandle_t* handle, size_t size,
   amd::Context* amdContext = g_devices[prop->location.id]->asContext();
 
   // When ROCCLR_MEM_PHYMEM is set, ROCr impl gets and stores unique hsa handle. Flag no-op on PAL.
-  void* ptr = amd::SvmBuffer::malloc(*amdContext, ROCCLR_MEM_PHYMEM, size,
-                                     dev_info.memBaseAddrAlign_, nullptr);
+  uint64_t ihipFlags = ROCCLR_MEM_PHYMEM;
+  if (flags == hipDeviceMallocUncached) {
+    ihipFlags |= ROCCLR_MEM_HSA_UNCACHED | CL_MEM_SVM_ATOMICS;
+  }
+  void* ptr =
+      amd::SvmBuffer::malloc(*amdContext, ihipFlags, size, dev_info.memBaseAddrAlign_, nullptr);
 
   // Handle out of memory cases,
   if (ptr == nullptr) {
@@ -144,15 +155,19 @@ hipError_t hipMemExportToShareableHandle(void* shareableHandle,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (shareableHandle == nullptr) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+
   hip::GenericAllocation* ga = reinterpret_cast<hip::GenericAllocation*>(handle);
   if (ga == nullptr) {
     LogError("Generic Allocation is nullptr");
     HIP_RETURN(hipErrorNotInitialized);
   }
 
-  if (ga->GetProperties().requestedHandleType != handleType) {
-    LogPrintfError("HandleType mismatch memoryHandleType: %d, requestedHandleType: %d",
-                    ga->GetProperties().requestedHandleType, handleType);
+  if (ga->GetProperties().requestedHandleTypes != handleType) {
+    LogPrintfError("HandleType mismatch memoryHandleType: %d, requestedHandleTypes: %d",
+                    ga->GetProperties().requestedHandleTypes, handleType);
     HIP_RETURN(hipErrorInvalidValue);
   }
 
@@ -236,7 +251,7 @@ hipError_t hipMemImportFromShareableHandle(hipMemGenericAllocationHandle_t* hand
   prop.type = hipMemAllocationTypePinned;
   prop.location.type = hipMemLocationTypeDevice;
   prop.location.id = hip::getCurrentDevice()->deviceId();
-  prop.requestedHandleType = shHandleType;
+  prop.requestedHandleTypes = shHandleType;
 
   phys_mem_obj->getUserData().deviceId = hip::getCurrentDevice()->deviceId();
   phys_mem_obj->getUserData().data = new hip::GenericAllocation(*phys_mem_obj, 0, prop);
@@ -326,13 +341,41 @@ hipError_t hipMemSetAccess(void* ptr, size_t size, const hipMemAccessDesc* desc,
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  // Ensure that the specified size parameter matches the total size of a complete set of
+  // sub-buffers, disallowing partial sub-buffer coverage
+  auto mem_object = amd::MemObjMap::FindMemObj(ptr);
+  if (mem_object && mem_object->parent()) {
+    size_t accumulated_buffer_size = 0;
+    for (auto sub_buffer : mem_object->parent()->subBuffers()) {
+      accumulated_buffer_size += sub_buffer->getSize();
+      if (accumulated_buffer_size > size) {
+        HIP_RETURN(hipErrorInvalidValue);
+      } else if (accumulated_buffer_size == size) {
+        break;
+      }
+    }
+
+    if (accumulated_buffer_size != size) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+  }
+
   for (size_t desc_idx = 0; desc_idx < count; ++desc_idx) {
+    if (desc[desc_idx].location.type != hipMemLocationTypeDevice) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+
     if (desc[desc_idx].location.id >= g_devices.size()) {
       HIP_RETURN(hipErrorInvalidValue)
     }
 
     auto& dev = g_devices[desc[desc_idx].location.id];
     amd::Device::VmmAccess access_flags = static_cast<amd::Device::VmmAccess>(desc[desc_idx].flags);
+    if (access_flags != amd::Device::VmmAccess::kNone &&
+        access_flags != amd::Device::VmmAccess::kReadOnly &&
+        access_flags != amd::Device::VmmAccess::kReadWrite) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
 
     if (!dev->devices()[0]->SetMemAccess(ptr, size, access_flags)) {
       HIP_RETURN(hipErrorInvalidValue);
@@ -349,31 +392,57 @@ hipError_t hipMemUnmap(void* ptr, size_t size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  // Helper lambda to get the next sub-buffer pointer
+  auto next_subbuffer_ptr = [](const amd::Memory* mem) -> address {
+    return reinterpret_cast<address>(mem->getSvmPtr()) + mem->getSize();
+  };
+
   amd::Memory* vaddr_sub_obj = amd::MemObjMap::FindMemObj(ptr);
-  if (vaddr_sub_obj == nullptr && vaddr_sub_obj->getSize() != size) {
+  // Validate that the size is within range
+  if (vaddr_sub_obj == nullptr ||
+      (vaddr_sub_obj->parent() != nullptr &&
+       size > (vaddr_sub_obj->parent()->getSize() - vaddr_sub_obj->getOrigin()))) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
-  if (phys_mem_obj == nullptr) {
+  address end_address = reinterpret_cast<address>(vaddr_sub_obj->getSvmPtr()) + size;
+  size_t total_processed_size = 0;
+  amd::Memory* check_obj = vaddr_sub_obj;
+  // Validate that the size matches the sum of sub-buffer sizes
+  while (check_obj && next_subbuffer_ptr(check_obj) <= end_address) {
+    if (size > total_processed_size && size < total_processed_size + check_obj->getSize()) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
+    total_processed_size += check_obj->getSize();
+    check_obj = amd::MemObjMap::FindMemObj(next_subbuffer_ptr(check_obj));
+  }
+  if (total_processed_size != size) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  auto& queue = *g_devices[phys_mem_obj->getUserData().deviceId]->NullStream();
+  // Unmap all sub-buffers in the range
+  while (vaddr_sub_obj && next_subbuffer_ptr(vaddr_sub_obj) <= end_address) {
+    amd::Memory* phys_mem_obj = vaddr_sub_obj->getUserData().phys_mem_obj;
+    if (phys_mem_obj == nullptr) {
+      HIP_RETURN(hipErrorInvalidValue);
+    }
 
-  amd::Command* cmd = new amd::VirtualMapCommand(queue, amd::Command::EventWaitList{}, ptr, size,
-                                                 nullptr);
-  cmd->enqueue();
-  cmd->awaitCompletion();
-  cmd->release();
-  vaddr_sub_obj->release();
+    amd::Command* cmd = new amd::VirtualMapCommand(
+        *hip::getCurrentDevice()->NullStream(), amd::Command::EventWaitList{},
+        vaddr_sub_obj->getSvmPtr(), vaddr_sub_obj->getSize(), nullptr);
+    cmd->enqueue();
+    cmd->awaitCompletion();
+    cmd->release();
+    // restore the original pa of the generic allocation
+    hip::GenericAllocation* ga =
+        reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
+    ga->release();
 
-  // restore the original pa of the generic allocation
-  hip::GenericAllocation* ga
-    = reinterpret_cast<hip::GenericAllocation*>(phys_mem_obj->getUserData().data);
-  ga->release();
+    address next_ptr = next_subbuffer_ptr(vaddr_sub_obj);
+    vaddr_sub_obj->release();
+    vaddr_sub_obj = amd::MemObjMap::FindMemObj(next_ptr);
+  }
 
   HIP_RETURN(hipSuccess);
 }
-} //namespace hip
-
+}  // namespace hip

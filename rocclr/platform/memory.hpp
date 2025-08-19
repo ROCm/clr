@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2023 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -18,8 +18,7 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE. */
 
-#ifndef MEMORY_H_
-#define MEMORY_H_
+#pragma once
 
 #include "top.hpp"
 #include "utils/flags.hpp"
@@ -217,7 +216,6 @@ class Memory : public amd::RuntimeObject {
   uint32_t uniqueId_ = 0;
   //! used to save the user data during memory allocation.
   UserData userData_;
-
  private:
   //! Disable default assignment operator
   Memory& operator=(const Memory&);
@@ -226,8 +224,9 @@ class Memory : public amd::RuntimeObject {
   Memory(const Memory&);
 
   Monitor lockMemoryOps_;          //!< Lock to serialize memory operations
-  std::list<Memory*> subBuffers_;  //!< List of all subbuffers for this memory object
+  std::set<Memory*> subBuffers_;   //!< List of all subbuffers for this memory object
   device::Memory* svmBase_;        //!< svmBase allocation for MGPU case
+  size_t alignment_ = 0;           //!< alignment for allocation address
 
  protected:
   //! The constructor creates a memory object but does not allocate either host memory
@@ -236,13 +235,15 @@ class Memory : public amd::RuntimeObject {
          Type type,           //!< Memory type
          Flags flags,         //!< Object's flags
          size_t size,         //!< Memory size
-         void* svmPtr = NULL  //!< svm host memory address, NULL if no SVM mem object
+         void* svmPtr = NULL, //!< svm host memory address, NULL if no SVM mem object
+         size_t alignment = 0 //!< allocation addr alignment
   );
-  Memory(Memory& parent,  //!< Context object
-         Flags flags,     //!< Object's flags
-         size_t offset,   //!< Memory offset
-         size_t size,     //!< Memory size
-         Type type = 0    //!< Memory type
+  Memory(Memory& parent,             //!< Parent Mem obj
+         Flags flags,                //!< Object's flags
+         size_t offset,              //!< Memory offset
+         size_t size,                //!< Memory size
+         Type type = 0,              //!< Memory type
+         Context* context = nullptr  //!< Input context
   );
 
   //! Memory object destructor
@@ -286,7 +287,7 @@ class Memory : public amd::RuntimeObject {
   void removeSubBuffer(Memory* item);
 
   //! Returns the list of all subbuffers
-  std::list<Memory*>& subBuffers() { return subBuffers_; }
+  std::set<Memory*>& subBuffers() { return subBuffers_; }
 
   //! Returns the number of devices
   size_t numDevices() const { return numDevices_; }
@@ -330,11 +331,18 @@ class Memory : public amd::RuntimeObject {
 
   // Accessors
   Memory* parent() const { return parent_; }
-  void SetParent(amd::Memory* parent) { parent_ = parent; }
+  void SetParent(amd::Memory* parent) {
+    parent_ = parent;
+    if (parent != nullptr) {
+      parent_->isParent_ = true;
+      parent_->retain();
+    }
+  }
   bool isParent() const { return isParent_; }
   bool ImageView() const { return image_view_; }
 
   size_t getOrigin() const { return origin_; }
+  void setOrigin(size_t origin) { origin_ = origin; }
   size_t getSize() const { return size_; }
   Flags getMemFlags() const { return flags_; }
   Type getType() const { return type_; }
@@ -420,6 +428,9 @@ class Memory : public amd::RuntimeObject {
 
   //! Validate memory access for vmm memory
   bool ValidateMemAccess(const Device& dev, bool read_write);
+
+  //! Get alignment_
+  size_t getAlignment() const { return alignment_; }
 };
 
 //! Buffers are a specialization of memory. Just a wrapper, really,
@@ -437,10 +448,10 @@ class Buffer : public Memory {
       : Memory(context, type, flags, size) {}
 
  public:
-  Buffer(Context& context, Flags flags, size_t size, void* svmPtr = NULL)
-      : Memory(context, CL_MEM_OBJECT_BUFFER, flags, size, svmPtr) {}
-  Buffer(Memory& parent, Flags flags, size_t origin, size_t size)
-      : Memory(parent, flags, origin, size) {}
+  Buffer(Context& context, Flags flags, size_t size, void* svmPtr = NULL, size_t alignment = 0)
+      : Memory(context, CL_MEM_OBJECT_BUFFER, flags, size, svmPtr, alignment) {}
+  Buffer(Memory& parent, Flags flags, size_t origin, size_t size, Context* context = nullptr)
+      : Memory(parent, flags, origin, size, 0, context) {}
 
   bool create(void* initFrom = NULL,     //!< Pointer to the initialization data
               bool sysMemAlloc = false,  //!< Allocate device memory in system memory
@@ -665,8 +676,7 @@ class SvmBuffer : AllStatic {
  public:
   //! Allocate a shared buffer that is accessible by all devices in the context
   static void* malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment,
-                      const amd::Device* curDev = nullptr);
-
+                      const amd::Device* curDev = nullptr, void* hostptr = nullptr);
   //! Release shared buffer
   static void free(const Context& context, void* ptr);
 
@@ -711,7 +721,4 @@ class IpcBuffer : public Buffer {
   const void* handle_;  //!< Ipc handle, associated with this memory object
 };
 
-
 }  // namespace amd
-
-#endif  // MEMORY_H_

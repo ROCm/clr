@@ -20,19 +20,20 @@ If you need to build static clr library, `rocm-llvm-dev` package should be insta
 ### Linux
 
 - Clone this repository
-```
-cd clr && mkdir build && cd build
-```
+
+- `cd clr && mkdir build && cd build`
+
 - For HIP:
 
-`cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR`
+    - `cmake .. -DCLR_BUILD_HIP=ON -DHIP_COMMON_DIR=$HIP_COMMON_DIR -DHIPCC_BIN_DIR=$HIPCC_BIN_DIR`
 
+        - `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
 
-  `HIP_COMMON_DIR` points to [HIP](https://github.com/ROCm/HIP)
+        - `HIPCC_BIN_DIR` points to hipcc directory, if you have ROCm installed you can point it to `$ROCM_PATH/bin`
 
 - For OpenCL™:
 
-`cmake .. -DCLR_BUILD_OCL=ON`
+    - `cmake .. -DCLR_BUILD_OCL=ON`
 
 - Build and install
 

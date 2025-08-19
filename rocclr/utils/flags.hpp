@@ -202,6 +202,8 @@ release(bool, HIP_MEM_POOL_SUPPORT, true,                                     \
         "Enables memory pool support in HIP")                                 \
 release(bool, HIP_MEM_POOL_USE_VM, true,                                      \
         "Enables memory pool support in HIP")                                 \
+release(bool, DEBUG_HIP_MEM_POOL_VMHEAP, true,                                \
+        "Enables virtual memory for memory pools")                            \
 release(bool, PAL_HIP_IPC_FLAG, true,                                         \
         "Enable interprocess flag for device allocation in PAL HIP")          \
 release(uint, PAL_FORCE_ASIC_REVISION, 0,                                     \
@@ -231,8 +233,6 @@ release(bool, ROC_SKIP_KERNEL_ARG_COPY, false,                                \
         "If true, then runtime can skip kernel arg copy")                     \
 release(bool, GPU_STREAMOPS_CP_WAIT, false,                                   \
         "Force the stream wait memory operation to wait on CP.")              \
-release(bool, HIP_USE_RUNTIME_UNBUNDLER, false,                               \
-        "Force this to use Runtime code object unbundler.")                   \
 release(bool, HIPRTC_USE_RUNTIME_UNBUNDLER, false,                            \
         "Set this to true to force runtime unbundler in hiprtc.")             \
 release(size_t, HIP_INITIAL_DM_SIZE, 8 * Mi,                                  \
@@ -255,8 +255,6 @@ release(bool, DEBUG_HIP_FORCE_ASYNC_QUEUE, false,                             \
         "Forces grpahs into async queue mode. DEBUG_HIP_FORCE_GRAPH_QUEUES must be 1") \
 release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
         "Forces the number of streams for the graph parallel execution")      \
-release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
-        "Force to always use new comgr unbundling action")                    \
 release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
         "Blocks synchronization on CPU until the callback processing is done")\
 release(uint, DEBUG_CLR_MAX_BATCH_SIZE, 1000,                                 \
@@ -265,15 +263,16 @@ release(bool, DEBUG_CLR_SYSMEM_POOL, false,                                   \
         "Use sysmem pool implementation in runtime for amd commands")         \
 release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
         "Enable/Disable multiple kern arg copies")                            \
-release(bool, DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR, false,                   \
-        "Use std::mutex in amd::monitor")                                     \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
-release(bool, DEBUG_CLR_SKIP_RELEASE_SCOPE, false,                            \
-        "Forces release scope to SCOPE_NONE for aql packets")                 \
-release(uint, DEBUG_HIP_7_PREVIEW, 0,                                         \
-        "Enables specific backward incompatible changes support before 7.0,"  \
-        "using the mask. By default the changes are disabled and is set to 0")\
+release(bool, DEBUG_HIP_DYNAMIC_QUEUES, false,                                \
+        "Forces dynamic queue management")                                    \
+release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, true,                              \
+        "Set this to true, to avoid host side abort for GPU errors")          \
+release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
+        "Force use of SPIRV instead of device specific code object.")         \
+release(uint, DEBUG_CLR_BATCH_CPU_SYNC_SIZE, 8,                               \
+        "Forces the minimum batch size for CPU sync")                         \
 
 namespace amd {
 

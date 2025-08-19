@@ -1,4 +1,4 @@
-/* Copyright (c) 2010 - 2022 Advanced Micro Devices, Inc.
+/* Copyright (c) 2010 - 2025 Advanced Micro Devices, Inc.
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -77,7 +77,8 @@ void HostMemoryReference::deallocateMemory(const Context& context) {
   }
 }
 
-Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr)
+Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmPtr,
+               size_t alignment)
     : numDevices_(0),
       deviceMemories_(NULL),
       destructorCallbacks_(NULL),
@@ -96,16 +97,17 @@ Memory::Memory(Context& context, Type type, Flags flags, size_t size, void* svmP
       svmHostAddress_(svmPtr),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_(true) /* Memory Ops Lock */ {
+      lockMemoryOps_(true),
+      alignment_(alignment) /* Memory Ops Lock */ {
   svmPtrCommited_ = (flags & CL_MEM_SVM_FINE_GRAIN_BUFFER) ? true : false;
   canBeCached_ = true;
 }
 
-Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type type)
+Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type type, Context* new_ctx)
     : numDevices_(0),
       deviceMemories_(NULL),
       destructorCallbacks_(NULL),
-      context_(parent.getContext()),
+      context_((new_ctx != nullptr) ? *new_ctx : parent.getContext()),
       parent_(&parent),
       type_((type == 0) ? parent.type_ : type),
       hostMemRef_(NULL),
@@ -120,7 +122,7 @@ Memory::Memory(Memory& parent, Flags flags, size_t origin, size_t size, Type typ
       svmHostAddress_(parent.getSvmPtr()),
       resOffset_(0),
       flagsEx_(0),
-      lockMemoryOps_(true)  /* Memory Ops Lock */ {
+      lockMemoryOps_(true) /* Memory Ops Lock */ {
   svmPtrCommited_ = parent.isSvmPtrCommited();
   canBeCached_ = true;
   parent_->retain();
@@ -192,12 +194,12 @@ void Memory::operator delete(void* p, const Context& context) { Memory::operator
 
 void Memory::addSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.push_back(view);
+  subBuffers_.emplace(view);
 }
 
 void Memory::removeSubBuffer(Memory* view) {
   amd::ScopedLock lock(lockMemoryOps());
-  subBuffers_.remove(view);
+  subBuffers_.erase(view);
 }
 
 bool Memory::allocHostMemory(void* initFrom, bool allocHostMem, bool forceCopy) {
@@ -414,6 +416,14 @@ device::Memory* Memory::getDeviceMemory(const Device& dev, bool alloc) {
 
 // ================================================================================================
 Memory::~Memory() {
+
+  if (ipcShared()) {
+    amd::MemObjMap::RemoveIpcHandleMemObj(this);
+    auto device = context_().devices()[0];
+    if (device != nullptr) {
+      device->IpcDetach(this);
+    }
+  }
   // For_each destructor callback:
   DestructorCallBackEntry* entry;
   for (entry = destructorCallbacks_; entry != nullptr; entry = entry->next_) {
@@ -675,10 +685,6 @@ bool Image::validateDimensions(const std::vector<amd::Device*>& devices, cl_mem_
       }
     // Fall through...
     case CL_MEM_OBJECT_IMAGE2D:
-      if ((width == 0) || (height == 0)) {
-        DevLogPrintfError("Invalid dimensions width: %u height: %u \n", width, height);
-        return false;
-      }
       for (const auto dev : devices) {
         if ((dev->info().image2DMaxHeight_ >= height) && (dev->info().image2DMaxWidth_ >= width)) {
           return true;
@@ -714,10 +720,6 @@ bool Image::validateDimensions(const std::vector<amd::Device*>& devices, cl_mem_
       }
       break;
     case CL_MEM_OBJECT_IMAGE1D_BUFFER:
-      if (width == 0) {
-        DevLogError("Invalid dimension \n");
-        return false;
-      }
       for (const auto& dev : devices) {
         if (dev->info().imageMaxBufferSize_ >= width) {
           return true;
@@ -1551,8 +1553,8 @@ bool SvmBuffer::Contains(uintptr_t ptr) {
 
 // The allocation flags are ignored for now.
 void* SvmBuffer::malloc(Context& context, cl_svm_mem_flags flags, size_t size, size_t alignment,
-                        const amd::Device* curDev) {
-  void* ret = context.svmAlloc(size, alignment, flags, curDev);
+                        const amd::Device* curDev, void* hostptr) {
+  void* ret = context.svmAlloc(size, alignment, flags, curDev, hostptr);
   if (ret == nullptr) {
     LogError("Unable to allocate aligned memory");
     return nullptr;

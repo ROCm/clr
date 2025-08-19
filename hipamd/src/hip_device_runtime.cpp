@@ -21,6 +21,7 @@
 #include <hip/hip_runtime.h>
 
 #include "hip_internal.hpp"
+#include "hip_platform.hpp"
 
 #undef hipChooseDevice
 #undef hipDeviceProp_t
@@ -284,8 +285,11 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     case hipDeviceAttributePciDeviceId:
       *pi = prop.pciDeviceID;
       break;
-    case hipDeviceAttributePciDomainID:
+    case hipDeviceAttributePciDomainId:
       *pi = prop.pciDomainID;
+      break;
+    case hipDeviceAttributePciChipId:
+      *pi = static_cast<int>(g_devices[device]->devices()[0]->info().pcieDeviceId_);
       break;
     case hipDeviceAttributePersistingL2CacheMaxSize:
       *pi = prop.persistingL2CacheMaxSize;
@@ -445,6 +449,12 @@ hipError_t hipDeviceGetAttribute(int* pi, hipDeviceAttribute_t attr, int device)
     case hipDeviceAttributeAccessPolicyMaxWindowSize:
       *pi = prop.accessPolicyMaxWindowSize;
        break;
+    case hipDeviceAttributeNumberOfXccs:
+      *pi = static_cast<int>(g_devices[device]->devices()[0]->info().numberOfXccs_);
+       break;
+    case hipDeviceAttributeMaxAvailableVgprsPerThread:
+      *pi = static_cast<int>(g_devices[device]->devices()[0]->info().availableVGPRs_);
+       break;
     default:
       HIP_RETURN(hipErrorInvalidValue);
   }
@@ -519,6 +529,15 @@ hipError_t hipDeviceGetLimit(size_t* pValue, hipLimit_t limit) {
     case hipLimitStackSize:
       *pValue = hip::getCurrentDevice()->devices()[0]->StackSize();
       break;
+    case hipExtLimitScratchMin:
+      *pValue = hip::getCurrentDevice()->devices()[0]->info().scratchLimitMin;
+      break;
+    case hipExtLimitScratchMax:
+      *pValue = hip::getCurrentDevice()->devices()[0]->info().scratchLimitMax;;
+      break;
+    case hipExtLimitScratchCurrent:
+      *pValue = hip::getCurrentDevice()->devices()[0]->ScratchLimitCurrent();
+      break;
     default:
       LogPrintfError("UnsupportedLimit = %d is passed", limit);
       HIP_RETURN(hipErrorUnsupportedLimit);
@@ -579,6 +598,10 @@ hipError_t hipDeviceSetCacheConfig(hipFuncCache_t cacheConfig) {
     HIP_RETURN(hipErrorInvalidValue);
   }
 
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
@@ -601,6 +624,11 @@ hipError_t hipDeviceSetLimit(hipLimit_t limit, size_t value) {
         HIP_RETURN(hipErrorInvalidValue);
       }
       break;
+    case hipExtLimitScratchCurrent:
+      if (!hip::getCurrentDevice()->devices()[0]->UpdateScratchLimitCurrent(value)) {
+        HIP_RETURN(hipErrorInvalidValue);
+      }
+      break;
     default:
       LogPrintfError("UnsupportedLimit = %d is passed", limit);
       HIP_RETURN(hipErrorUnsupportedLimit);
@@ -614,6 +642,11 @@ hipError_t hipDeviceSetSharedMemConfig(hipSharedMemConfig config) {
       config != hipSharedMemBankSizeEightByte) {
     HIP_RETURN(hipErrorInvalidValue);
   }
+
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
+
   // No way to set cache config yet.
 
   HIP_RETURN(hipSuccess);
@@ -642,7 +675,7 @@ hipError_t hipDeviceSynchronize() {
   CHECK_SUPPORTED_DURING_CAPTURE();
   constexpr bool kDoWaitForCpu = false;
   hip::getCurrentDevice()->SyncAllStreams(kDoWaitForCpu);
-  HIP_RETURN(hipSuccess);
+  HIP_RETURN_DURATION(hipSuccess);
 }
 
 int ihipGetDevice() {
@@ -684,9 +717,64 @@ hipError_t hipGetDeviceFlags(unsigned int* flags) {
   HIP_RETURN(hipSuccess);
 }
 
+hipError_t hipGetDriverEntryPoint_common(const char* symbol, void** funcPtr, unsigned long long flags,
+                                  hipDriverEntryPointQueryResult* status) {
+  std::string symbolString = symbol;
+  if (symbol == nullptr || symbolString == "" || funcPtr == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  if (flags != hipEnableDefault && flags != hipEnableLegacyStream
+      && flags != hipEnablePerThreadDefaultStream) {
+    return hipErrorInvalidValue;
+  }
+
+  void* handle = hip::PlatformState::instance().getDynamicLibraryHandle();
+  if (handle == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  if (flags == hipEnablePerThreadDefaultStream) {
+      symbolString += "_spt";
+  }
+
+  *funcPtr = amd::Os::getSymbol(handle, symbolString.c_str());
+  if (funcPtr == nullptr) {
+    if (flags == hipEnablePerThreadDefaultStream) {
+      *funcPtr = amd::Os::getSymbol(handle, symbol);
+    }
+    if (funcPtr == nullptr) {
+      if (status != nullptr) {
+        *status = hipDriverEntryPointSymbolNotFound;
+      }
+      return hipErrorInvalidValue;
+    }
+  }
+
+  if (status != nullptr) {
+    *status = hipDriverEntryPointSuccess;
+  }
+
+  return hipSuccess;
+}
+
+hipError_t hipGetDriverEntryPoint(const char* symbol, void** funcPtr, unsigned long long flags,
+                                  hipDriverEntryPointQueryResult* status) {
+  HIP_INIT_API(hipGetDriverEntryPoint, symbol, funcPtr, flags, status);
+  HIP_RETURN(hipGetDriverEntryPoint_common(symbol, funcPtr, flags, status));
+}
+
+hipError_t hipGetDriverEntryPoint_spt(const char* symbol, void** funcPtr, unsigned long long flags,
+                                      hipDriverEntryPointQueryResult* status) {
+  HIP_INIT_API(hipGetDriverEntryPoint, symbol, funcPtr, flags, status);
+  flags = (flags == hipEnableDefault) ? hipEnablePerThreadDefaultStream : flags;
+  HIP_RETURN(hipGetDriverEntryPoint_common(symbol, funcPtr, flags, status));
+}
+
 hipError_t hipSetDevice(int device) {
   HIP_INIT_API_NO_RETURN(hipSetDevice, device);
 
+  hip::tls.isSetDeviceCalled = true;
   // Check if the device is already set
   if (hip::tls.device_ != nullptr && hip::tls.device_->deviceId() == device) {
     HIP_RETURN(hipSuccess);
@@ -752,10 +840,31 @@ hipError_t hipSetDeviceFlags(unsigned int flags) {
 
 hipError_t hipSetValidDevices(int* device_arr, int len) {
   HIP_INIT_API(hipSetValidDevices, device_arr, len);
+  // HIP runtime will go ahead with the default behavior of trying devices
+  // from a default list sequentially, if the len passed is 0
+  if (len == 0) {
+    HIP_RETURN(hipSuccess);
+  }
+  int count = 0;
+  HIP_RETURN_ONFAIL(ihipDeviceGetCount(&count));
 
-  assert(0 && "Unimplemented");
+  if (device_arr == nullptr || len < 0 || len > count) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
 
-  HIP_RETURN(hipErrorNotSupported);
+  for (int i = 0; i < len; ++i) {
+    if (device_arr[i] < 0 || device_arr[i] >= count) {
+      HIP_RETURN(hipErrorInvalidDevice);
+    }
+  }
+
+  if (tls.isSetDeviceCalled) {
+    HIP_RETURN(hipSuccess);
+  }
+  tls.device_ = g_devices[device_arr[0]];
+  uint32_t preferredNumaNode = (tls.device_)->devices()[0]->getPreferredNumaNode();
+  amd::Os::setPreferredNumaNode(preferredNumaNode);
+  HIP_RETURN(hipSuccess);
 }
 } //namespace hip
 

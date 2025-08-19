@@ -128,8 +128,8 @@ class CommandQueue : public RuntimeObject {
       : properties_(propMask, properties),
         rtCUs_(rtCUs),
         priority_(priority),
-        queueLock_("CommandQueue::queueLock"),
-        lastCmdLock_("LastQueuedCommand"),
+        queueLock_(),
+        lastCmdLock_(),
         device_(device),
         context_(context),
         cuMask_(cuMask) {}
@@ -233,6 +233,9 @@ class HostQueue : public CommandQueue {
   //! Finish all queued commands
   void finish(bool cpu_wait = false);
 
+  //! Wait until finish of one command
+  void finishCommand(Command* command);
+
   //! Check if hostQueue empty snapshot
   bool isEmpty();
 
@@ -247,6 +250,9 @@ class HostQueue : public CommandQueue {
 
   //! Get the submitted batch
   Command* GetSubmissionBatch() const { return head_; }
+
+  //! Get the current batch size
+  size_t GetSubmissionBatchSize() const { return size_; }
 
   //! Insert a command into the linked list of submitted commands
   void FormSubmissionBatch(Command* command) {
@@ -301,6 +307,13 @@ class HostQueue : public CommandQueue {
     return thread_.vdev()->getQueueID();
   }
 
+  //! Returns Synchronization Policy for the current stream
+  amd::SyncPolicy GetSyncPolicy() const { return sync_policy_; }
+  //! Set Synchronization Policy used by Queue
+  void SetSyncPolicy(amd::SyncPolicy value) {
+    sync_policy_ = value;
+  }
+
 private:
   Command* head_;     //!< Head of the batch list
   Command* tail_;     //!< Tail of the batch list
@@ -309,6 +322,8 @@ private:
   //! True if this command queue is active
   bool isActive_;
   bool forceDestroy_ = false;  //!< Destroy the queue in the current state
+
+  amd::SyncPolicy sync_policy_;    //!< Used for controlling stream synchronization
 };
 
 class DeviceQueue : public CommandQueue {

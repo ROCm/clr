@@ -86,10 +86,9 @@ public:
   typedef union {
     struct {
       uint32_t  done_            :  1; //!< True if signal is done
-      uint32_t  forceHostWait_   :  1; //!< Force Host Wait for dependency signals
       uint32_t  isPacketDispatch_:  1; //!< True if the packet, used with the signal, is dispatch
       uint32_t  interrupt_       :  1; //!< True if the signal will trigger an interrupt
-      uint32_t  reserved_        : 28;
+      uint32_t  reserved_        : 29;
     };
     uint32_t data_;
   } Flags;
@@ -104,7 +103,6 @@ public:
       signal_.handle = 0;
       flags_.data_ = 0;
       flags_.done_ = true;
-      flags_.forceHostWait_ = true;
     }
 
   virtual ~ProfilingSignal();
@@ -180,11 +178,10 @@ class NullDevice : public amd::Device {
     ShouldNotReachHere();
     return nullptr;
   }
-  device::Memory* createMemory(size_t size) const override {
+  device::Memory* createMemory(size_t size, size_t alignment = 0) const override {
     ShouldNotReachHere();
     return nullptr;
   }
-
   //! Sampler object allocation
   bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                      device::Sampler** sampler   //!< device sampler object
@@ -294,11 +291,11 @@ class NullDevice : public amd::Device {
   }
 
   bool IsHwEventReady(const amd::Event& event, bool wait = false,
-                      uint32_t hip_event_flags = 0) const override {
+                      amd::SyncPolicy policy = amd::SyncPolicy::Auto)
+                      const override {
     return false;
   }
 
-  bool IsHwEventReadyForcedWait(const amd::Event& event) const override { return false; }
   void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const override{};
   void ReleaseGlobalSignal(void* signal) const override {}
 
@@ -326,56 +323,13 @@ struct AgentInfo {
   hsa_amd_memory_pool_t fine_grain_pool;
   hsa_amd_memory_pool_t coarse_grain_pool;
   hsa_amd_memory_pool_t kern_arg_pool;
-  hsa_amd_memory_pool_t ext_fine_grain_pool_;
+  hsa_amd_memory_pool_t ext_fine_grain_pool;
 };
 
 //! A HSA device ordinal (physical HSA device)
 class Device : public NullDevice {
  public:
-  //! Transfer buffers
-  class XferBuffers : public amd::HeapObject {
-   public:
-    static const size_t MaxXferBufListSize = 8;
-
-    //! Default constructor
-    XferBuffers(const Device& device, size_t bufSize)
-        : bufSize_(bufSize), acquiredCnt_(0), gpuDevice_(device) {}
-
-    //! Default destructor
-    ~XferBuffers();
-
-    //! Creates the xfer buffers object
-    bool create();
-
-    //! Acquires an instance of the transfer buffers
-    Memory& acquire();
-
-    //! Releases transfer buffer
-    void release(VirtualGPU& gpu,  //!< Virual GPU object used with the buffer
-                 Memory& buffer    //!< Transfer buffer for release
-                 );
-
-    //! Returns the buffer's size for transfer
-    size_t bufSize() const { return bufSize_; }
-
-   private:
-    //! Disable copy constructor
-    XferBuffers(const XferBuffers&);
-
-    //! Disable assignment operator
-    XferBuffers& operator=(const XferBuffers&);
-
-    //! Get device object
-    const Device& dev() const { return gpuDevice_; }
-
-    size_t bufSize_;                  //!< Staged buffer size
-    std::list<Memory*> freeBuffers_;  //!< The list of free buffers
-    std::atomic_uint acquiredCnt_;   //!< The total number of acquired buffers
-    amd::Monitor lock_;               //!< Stgaed buffer acquire/release lock
-    const Device& gpuDevice_;         //!< GPU device object
-  };
-
-  //! Initialise the whole HSA device subsystem (CAL init, device enumeration, etc).
+  //! Initialise the whole HSA device subsystem (init, device enumeration, etc).
   static bool init();
   static void tearDown();
 
@@ -388,10 +342,17 @@ class Device : public NullDevice {
   static bool loadHsaModules();
 
   hsa_agent_t getBackendDevice() const { return bkendDevice_; }
-  const hsa_agent_t &getCpuAgent() const { return cpu_agent_; } // Get the CPU agent with the least NUMA distance to this GPU
+  //! Get the CPU agent with the least NUMA distance to this GPU
+  const hsa_agent_t &getCpuAgent() const { return cpu_agent_info_->agent; }
 
-  static const std::vector<hsa_agent_t>& getGpuAgents() { return gpu_agents_; }
-  static const std::vector<AgentInfo>& getCpuAgents() { return cpu_agents_; }
+  //! Get the CPU agent that is in a 'index' NUMA node
+  const hsa_agent_t getCpuAgent(int index) const {
+    if ((index < 0) || (index >= cpu_agents_.size())) {
+      // Return default CPU agent
+      return cpu_agent_info_->agent;
+    }
+    return cpu_agents_[index].agent;
+  }
 
   void setupCpuAgent(); // Setup the CPU agent which has the least NUMA distance to this GPU
 
@@ -415,8 +376,7 @@ class Device : public NullDevice {
   virtual device::Program* createProgram(amd::Program& owner, amd::option::Options* options = nullptr);
 
   virtual device::Memory* createMemory(amd::Memory& owner) const;
-  virtual device::Memory* createMemory(size_t size) const;
-
+  virtual device::Memory* createMemory(size_t size, size_t alignment = 0) const;
   //! Sampler object allocation
   virtual bool createSampler(const amd::Sampler& owner,  //!< abstraction layer sampler object
                              device::Sampler** sampler   //!< device sampler object
@@ -454,10 +414,8 @@ class Device : public NullDevice {
 
   //! Gets free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;
-
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = MemorySegment::kNoAtomics) const;
-
   virtual void hostFree(void* ptr, size_t size = 0) const;
 
   bool deviceAllowAccess(void* dst) const;
@@ -467,7 +425,8 @@ class Device : public NullDevice {
   uint64_t deviceVmemAlloc(size_t size, uint64_t flags) const;
   void* deviceLocalAlloc(size_t size, bool atomics = false, bool pseudo_fine_grain=false,
                          bool contiguous = false) const;
-
+  void* reserveMemory(size_t size, size_t alignment) const;
+  void releaseMemory(void* ptr, size_t size) const;
   void memFree(void* ptr, size_t size) const;
 
   virtual void* svmAlloc(amd::Context& context, size_t size, size_t alignment,
@@ -475,11 +434,12 @@ class Device : public NullDevice {
 
   virtual void svmFree(void* ptr) const;
 
-  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count,
-                                amd::MemoryAdvice advice, bool use_cpu = false) const;
+  virtual bool SetSvmAttributes(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
+                                bool use_cpu = false, int numa_id = kDefaultNumaNode) const;
   virtual bool GetSvmAttributes(void** data, size_t* data_sizes, int* attributes,
                                 size_t num_attributes, const void* dev_ptr, size_t count) const;
-
+  virtual size_t ScratchLimitCurrent() const final;
+  virtual bool UpdateScratchLimitCurrent(size_t limit) const final;
   virtual void* virtualAlloc(void* req_addr, size_t size, size_t alignment);
   virtual bool virtualFree(void* addr);
 
@@ -497,16 +457,22 @@ class Device : public NullDevice {
                             cl_set_device_clock_mode_output_amd* pSetClockModeOutput);
 
   virtual bool IsHwEventReady(const amd::Event& event, bool wait = false,
-                              uint32_t hip_event_flags = 0) const;
-  virtual bool IsHwEventReadyForcedWait(const amd::Event& event) const;
+                              amd::SyncPolicy policy = amd::SyncPolicy::Auto)
+                              const;
   virtual void getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* end) const;
   virtual void ReleaseGlobalSignal(void* signal) const;
+  virtual bool CreateUserEvent(amd::UserEvent* event) const;
+  virtual void SetUserEvent(amd::UserEvent* event) const;
 
   //! Allocate host memory in terms of numa policy set by user
-  void* hostNumaAlloc(size_t size, size_t alignment, bool atomics = false) const;
+  void* hostNumaAlloc(size_t size, size_t alignment, MemorySegment mem_seg) const;
 
   //! Allocate host memory from agent info
-  void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, bool atomics = false) const;
+  void* hostAgentAlloc(size_t size, const AgentInfo& agentInfo, MemorySegment mem_seg) const;
+
+  //! Pin a host pointer allocated by C/C++ or OS allocator (i.e. ordinary system DRAM) and
+  //! return a new device pointer accessible by the GPU agent.
+  void* hostLock(void* hostMem, size_t size, MemorySegment memSegment) const;
 
   //! Returns transfer engine object
   const device::BlitManager& xferMgr() const { return xferQueue()->blitMgr(); }
@@ -520,9 +486,6 @@ class Device : public NullDevice {
 
   //! Adds a map target to the cache
   bool addMapTarget(amd::Memory* memory) const;
-
-  //! Returns transfer buffer object
-  XferBuffers& xferRead() const { return *xferRead_; }
 
   //! Returns a ROC memory object from AMD memory object
   roc::Memory* getRocMemory(amd::Memory* mem  //!< Pointer to AMD memory object
@@ -543,9 +506,6 @@ class Device : public NullDevice {
   // Update the global free memory size
   void updateFreeMemory(size_t size, bool free);
 
-  bool AcquireExclusiveGpuAccess();
-  void ReleaseExclusiveGpuAccess(VirtualGPU& vgpu) const;
-
   //! Returns the lock object for the virtual gpus list
   amd::Monitor& vgpusAccess() const { return vgpusAccess_; }
 
@@ -556,18 +516,19 @@ class Device : public NullDevice {
 
   VirtualGPU* xferQueue() const;
 
-  hsa_amd_memory_pool_t SystemSegment() const { return system_segment_; }
-
-  hsa_amd_memory_pool_t SystemCoarseSegment() const { return system_coarse_segment_; }
-
   //! Acquire HSA queue. This method can create a new HSA queue or
   //! share previously created
   hsa_queue_t* acquireQueue(uint32_t queue_size_hint, bool coop_queue = false,
                             const std::vector<uint32_t>& cuMask = {},
-                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal);
+                            amd::CommandQueue::Priority priority = amd::CommandQueue::Priority::Normal,
+                            bool managed = false);
 
   //! Release HSA queue
-  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {}, bool coop_queue = false);
+  void releaseQueue(hsa_queue_t*, const std::vector<uint32_t>& cuMask = {},
+                    bool coop_queue = false, bool managed = false);
+
+  hsa_queue_t* AcquireActiveNormalQueue();
+  bool ReleaseActiveNormalQueue(hsa_queue_t* queue);
 
   //! For the given HSA queue, return an existing hostcall buffer or create a
   //! new one. queuePool_ keeps a mapping from HSA queue to hostcall buffer.
@@ -590,9 +551,14 @@ class Device : public NullDevice {
 
   void getGlobalCUMask(std::string cuMaskStr);
 
+  static hsa_status_t BackendErrorCallBackHandler(const hsa_amd_event_t* event, void* data);
+
+  static void RegisterBackendErrorCb();
+
   virtual amd::Memory* GetArenaMemObj(const void* ptr, size_t& offset, size_t size = 0);
 
   const uint32_t getPreferredNumaNode() const { return preferred_numa_node_; }
+
   const bool isFineGrainSupported() const;
 
   //! Returns True if memory pointer is known to ROCr (excludes HMM allocations)
@@ -602,10 +568,18 @@ class Device : public NullDevice {
   void HiddenHeapAlloc(const VirtualGPU& gpu);
   //! Init hidden heap for device memory allocations
   void HiddenHeapInit(const VirtualGPU& gpu);
-  uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
-  void resetSDMAMask(const device::BlitManager* handle) const;
   void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;
   bool isXgmi() const { return isXgmi_; }
+
+  //! Returns the map of code objects to kernels
+  const auto& KernelMap() const { return kernel_map_; }
+  //! Adds a kernel to the kernel map
+  void AddKernel(Kernel& gpuKernel) const;
+  //! Removes a kernel from the kernel map
+  void RemoveKernel(Kernel& gpuKernel) const;
+
+  // Returns the number of allocated normal queues on this device
+  uint32_t NumNormalQueues() const { return num_normal_queues_.load(); }
 
  private:
   bool create();
@@ -613,8 +587,11 @@ class Device : public NullDevice {
   //! Construct a new physical HSA device
   Device(hsa_agent_t bkendDevice);
 
+  static constexpr int kDefaultNumaNode = -1;
+
   bool SetSvmAttributesInt(const void* dev_ptr, size_t count, amd::MemoryAdvice advice,
-                           bool first_alloc = false, bool use_cpu = false) const;
+                           bool first_alloc = false, bool use_cpu = false,
+                           int numa_id = kDefaultNumaNode) const;
   static constexpr hsa_signal_value_t InitSignalValue = 1;
 
   static hsa_ven_amd_loader_1_00_pfn_t amd_loader_ext_table;
@@ -626,8 +603,6 @@ class Device : public NullDevice {
   static bool isHsaInitialized_;
   static std::vector<hsa_agent_t> gpu_agents_;
   static std::vector<AgentInfo> cpu_agents_;
-
-  hsa_agent_t cpu_agent_;
   uint32_t preferred_numa_node_;
   std::vector<hsa_agent_t> p2p_agents_;  //!< List of P2P agents available for this device
   mutable std::mutex lock_allow_access_; //!< To serialize allow_access calls
@@ -636,9 +611,9 @@ class Device : public NullDevice {
   hsa_agent_t* p2p_agents_list_ = nullptr;
   hsa_profile_t agent_profile_;
   hsa_amd_memory_pool_t group_segment_;
-  hsa_amd_memory_pool_t system_segment_;
-  hsa_amd_memory_pool_t system_coarse_segment_;
-  hsa_amd_memory_pool_t system_kernarg_segment_;
+
+  AgentInfo *cpu_agent_info_;
+
   hsa_amd_memory_pool_t gpuvm_segment_;
   hsa_amd_memory_pool_t gpu_fine_grained_segment_;
   hsa_amd_memory_pool_t gpu_ext_fine_grained_segment_;
@@ -650,19 +625,30 @@ class Device : public NullDevice {
   static constexpr bool offlineDevice_ = false;
   VirtualGPU* xferQueue_;  //!< Transfer queue, created on demand
 
-  XferBuffers* xferRead_;   //!< Transfer buffers read
   std::atomic<size_t> freeMem_;   //!< Total of free memory available
   mutable amd::Monitor vgpusAccess_;     //!< Lock to serialise virtual gpu list access
   bool hsa_exclusive_gpu_access_;  //!< TRUE if current device was moved into exclusive GPU access mode
   static address mg_sync_;  //!< MGPU grid launch sync memory (SVM location)
 
   struct QueueInfo {
-    int refCount;
-    void* hostcallBuffer_;
+    int refCount;           //! Reference counter. Shows how many time the queue was shared
+    void* hostcallBuffer_;  //! Host call buffer for the HSA queue
   };
 
+  struct QueueCompare {
+    // Customized queue compare operator to make sure the queues are sorted in the creation order
+    bool operator()(hsa_queue_t* lhs, hsa_queue_t* rhs) const {
+      if (DEBUG_HIP_DYNAMIC_QUEUES) {
+        return (lhs->id < rhs->id) ? true : false;
+      } else {
+        return (lhs < rhs) ? true : false;
+      }
+    }
+  };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queuePool_;
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queuePool_;
+  amd::Monitor active_queue_access_;                //!< Lock to serialise virtual gpu list access
+  std::atomic<uint32_t> num_normal_queues_{0};      //!< The total number of allocated normal queues
 
   //! returns a hsa queue from queuePool with least refCount and updates the refCount as well
   hsa_queue_t* getQueueFromPool(const uint qIndex);
@@ -673,14 +659,19 @@ class Device : public NullDevice {
                             std::vector<LinkAttrType>* link_attr);
 
   //! Pool of HSA queues with custom CU masks
-  std::vector<std::map<hsa_queue_t*, QueueInfo>> queueWithCUMaskPool_;
-
+  std::vector<std::map<hsa_queue_t*, QueueInfo, QueueCompare>> queueWithCUMaskPool_;
+  hsa_amd_memory_pool_t getHostMemoryPool(MemorySegment mem_seg,
+                                          const AgentInfo* agentInfo = nullptr) const;
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;
   uint32_t maxSdmaWriteMask_;
-  //! Map of SDMA engineId<->stream
-  mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
   bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
+
+  //! Code object to kernel info map (used in the crash dump analysis)
+  mutable std::map<uint64_t, Kernel&> kernel_map_;
+
+  //! Friend function callbackQueue can access and set device class variables.
+  friend void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data);
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
@@ -694,6 +685,9 @@ class Device : public NullDevice {
 #endif
 #endif
 };                                // class roc::Device
+
+void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data);
+
 }  // namespace amd::roc
 
 /**

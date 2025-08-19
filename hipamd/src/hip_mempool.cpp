@@ -59,7 +59,9 @@ hipError_t hipDeviceSetMemPool(int device, hipMemPool_t mem_pool) {
   if ((mem_pool == nullptr) || (device >= g_devices.size())) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
   auto poolDevice = reinterpret_cast<hip::MemoryPool*>(mem_pool)->Device();
   if (poolDevice->deviceId() != device) {
     HIP_RETURN(hipErrorInvalidDevice);
@@ -85,9 +87,7 @@ hipError_t hipMallocAsync(void** dev_ptr, size_t size, hipStream_t stream) {
   if (dev_ptr == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
   if (size == 0) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);
@@ -147,9 +147,7 @@ class FreeAsyncCommand : public amd::Command {
 hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   HIP_INIT_API(hipFreeAsync, dev_ptr, stream);
 
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
 
   hip::Stream* s = reinterpret_cast<hip::Stream*>(stream);
   auto hip_stream = (stream == nullptr || stream == hipStreamLegacy) ?
@@ -164,7 +162,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
   }
 
   if (dev_ptr == nullptr) {
-    HIP_RETURN(hipErrorInvalidValue);
+    HIP_RETURN(hipSuccess);
   }
 
   STREAM_CAPTURE(hipFreeAsync, stream, dev_ptr);
@@ -202,7 +200,7 @@ hipError_t hipFreeAsync(void* dev_ptr, hipStream_t stream) {
       event = new hip::Event(0);
       if (event != nullptr) {
         if (hipSuccess !=
-            event->addMarker(reinterpret_cast<hipStream_t>(hip_stream), nullptr, true)) {
+            event->addMarker(hip_stream, nullptr)) {
           delete event;
           event = nullptr;
         } else {
@@ -328,7 +326,9 @@ hipError_t hipMemPoolCreate(hipMemPool_t* mem_pool, const hipMemPoolProps* pool_
   if (IS_WINDOWS && pool_props->handleTypes == hipMemHandleTypePosixFileDescriptor) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
+  }
   auto device = g_devices[pool_props->location.id];
   auto pool = new hip::MemoryPool(device, pool_props);
   if (pool == nullptr) {
@@ -343,6 +343,9 @@ hipError_t hipMemPoolDestroy(hipMemPool_t mem_pool) {
   HIP_INIT_API(hipMemPoolDestroy, mem_pool);
   if (mem_pool == nullptr) {
     HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (!hip::tls.capture_streams_.empty() || !g_captureStreams.empty()) {
+    HIP_RETURN(hipErrorStreamCaptureUnsupported);
   }
   hip::MemoryPool* hip_mem_pool = reinterpret_cast<hip::MemoryPool*>(mem_pool);
 
@@ -376,9 +379,7 @@ hipError_t hipMallocFromPoolAsync(
   if ((dev_ptr == nullptr) || (mem_pool == nullptr)) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-  if (!hip::isValid(stream)) {
-    HIP_RETURN(hipErrorInvalidHandle);
-  }
+  getStreamPerThread(stream);
   if (size == 0) {
     *dev_ptr = nullptr;
     HIP_RETURN(hipSuccess);

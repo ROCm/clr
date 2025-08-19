@@ -51,12 +51,12 @@
 bool amd::ClGlEvent::waitForFence() {
   GLenum ret;
   // get fence id associated with fence event
-  GLsync gs = !command().data().empty() ? reinterpret_cast<GLsync>(command().data().back())
-                                          : nullptr;
+  GLsync gs =
+      !command().data().empty() ? reinterpret_cast<GLsync>(command().data().back()) : nullptr;
   if (!gs) return false;
 
-// Try to use DC and GLRC of current thread, if it doesn't exist
-// create a new GL context on this thread, which is shared with the original context
+  // Try to use DC and GLRC of current thread, if it doesn't exist
+  // create a new GL context on this thread, which is shared with the original context
 
 #ifdef _WIN32
   HDC tempDC_ = context().glenv()->wglGetCurrentDC_();
@@ -149,13 +149,9 @@ amd::GLFunctions::SetIntEnv::~SetIntEnv() {
   env_->getLock().unlock();
 }
 
-amd::GLFunctions::Lock::Lock(GLFunctions* env) : env_(env) {
-    env_->getLock().lock();
-}
+amd::GLFunctions::Lock::Lock(GLFunctions* env) : env_(env) { env_->getLock().lock(); }
 
-amd::GLFunctions::Lock::~Lock() {
-    env_->getLock().unlock();
-}
+amd::GLFunctions::Lock::~Lock() { env_->getLock().unlock(); }
 
 amd::GLFunctions::GLFunctions(HMODULE h, bool isEGL)
     : libHandle_(h),
@@ -188,7 +184,7 @@ amd::GLFunctions::GLFunctions(HMODULE h, bool isEGL)
 #endif  //!_WIN32
 {
 #define VERIFY_POINTER(p)                                                                          \
-  if (nullptr == p) {                                                                                 \
+  if (nullptr == p) {                                                                              \
     missed_++;                                                                                     \
   }
 
@@ -225,6 +221,8 @@ amd::GLFunctions::GLFunctions(HMODULE h, bool isEGL)
       VERIFY_POINTER(XOpenDisplay_)
       XCloseDisplay_ = (PFNXCloseDisplay)GETPROCADDRESS(hXModule, "XCloseDisplay");
       VERIFY_POINTER(XCloseDisplay_)
+      XFree_ = (PFNXFree)GETPROCADDRESS(hXModule, "XFree");
+      VERIFY_POINTER(XFree_)
     } else {
       missed_ += 2;
     }
@@ -296,7 +294,7 @@ bool amd::GLFunctions::update(intptr_t hglrc) {
 
   origCtx_ = (GLXContext)hglrc;
   if (intCtx_ != nullptr) {
-    glXDestroyContext_(Dpy_,intCtx_);
+    glXDestroyContext_(Dpy_, intCtx_);
   }
 
   int attribList[] = {GLX_RGBA, None};
@@ -305,7 +303,10 @@ bool amd::GLFunctions::update(intptr_t hglrc) {
   if (!(vis = glXChooseVisual_(intDpy_, defaultScreen, attribList))) {
     return false;
   }
-  if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
+  intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true);
+  XFree_(vis);
+
+  if (!intCtx_) {
     return false;
   }
 #endif
@@ -389,7 +390,10 @@ bool amd::GLFunctions::init(intptr_t hdc, intptr_t hglrc) {
     if (!(vis = glXChooseVisual_(intDpy_, defaultScreen, attribList))) {
       return false;
     }
-    if (!(intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true))) {
+    intCtx_ = glXCreateContext_(intDpy_, vis, origCtx_, true);
+    XFree_(vis);
+
+    if (!intCtx_) {
       return false;
     }
     return true;
@@ -462,13 +466,11 @@ bool amd::GLFunctions::restoreEnv() {
 }
 
 
-
-
-
 //! Function getCLFormatFromGL returns "true" if GL format
 //! is compatible with CL format, "false" otherwise.
 bool amd::getCLFormatFromGL(const amd::Context& amdContext, GLint gliInternalFormat,
-                       cl_image_format* pclImageFormat, int* piBytesPerPixel, cl_mem_flags flags) {
+                            cl_image_format* pclImageFormat, int* piBytesPerPixel,
+                            cl_mem_flags flags) {
   bool bRetVal = false;
 
   /*

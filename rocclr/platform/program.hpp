@@ -80,7 +80,8 @@ class Context;
 //! A collection of binaries for devices in the associated context.
 class Program : public RuntimeObject {
  public:
-  typedef std::tuple<const uint8_t* /*image*/, size_t /*size*/,  bool /*allocated*/> binary_t;
+  typedef std::tuple<const uint8_t* /*image*/, std::pair<size_t /*size*/, size_t /* file_offset */>,
+                     bool /*allocated*/> binary_t;
   typedef std::set<Device const*> devicelist_t;
   typedef std::unordered_map<Device const*, binary_t> devicebinary_t;
   typedef std::unordered_map<Device const*, device::Program*> deviceprograms_t;
@@ -106,7 +107,6 @@ class Program : public RuntimeObject {
 
   std::vector<std::string> headerNames_;
   std::vector<std::string> headers_;
-  std::vector<std::string> precompiledHeaders_; //!< Precompiled Headers
   std::string sourceCode_;   //!< Strings that make up the source code
   Language language_;        //!< Input source language
   devicebinary_t binary_;    //!< The binary image, provided by the app
@@ -180,8 +180,6 @@ class Program : public RuntimeObject {
   //! Append to source code.
   void appendToSource(const char* newCode) { sourceCode_.append(newCode); }
 
-  void addPreCompiledHeader(const std::string& pch) { precompiledHeaders_.push_back(pch); }
-
   //! Return the program log.
   const std::string& programLog() const { return programLog_; }
 
@@ -239,6 +237,11 @@ class Program : public RuntimeObject {
 
   //! Actions to perform during program unload
   void unload();
+
+  //! Returns the program built status
+  bool IsProgramBuilt(const Device& device) {
+    return CL_BUILD_SUCCESS == devicePrograms_[&device]->buildStatus();
+  }
 };
 
 /*! @}

@@ -185,12 +185,6 @@ set(CPACK_DEBIAN_BINARY_PACKAGE_NAME "hip-runtime-amd")
 set(CPACK_RPM_BINARY_PACKAGE_NAME "hip-runtime-amd")
 
 set(CPACK_COMPONENT_BINARY_DESCRIPTION "HIP:Heterogenous-computing Interface for Portability [RUNTIME - AMD]")
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-#This is used for softlinking hip-target files
-   configure_file(hip-runtime-amd.postinst ${CMAKE_CURRENT_BINARY_DIR}/binary/postinst @ONLY)
-   configure_file(hip-runtime-amd.prerm    ${CMAKE_CURRENT_BINARY_DIR}/binary/prerm @ONLY)
-   set(CPACK_DEBIAN_BINARY_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst;${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
-endif()
 # Set Runtime Package  dependencies
 set(HIP_RUNTIME_ROCM_PKG_DEPENDENCIES "hsa-rocr, rocminfo, comgr, rocm-core")
 # Add rocprofiler-register dependencies
@@ -198,25 +192,37 @@ if(HIP_ENABLE_ROCPROFILER_REGISTER)
    set(HIP_RUNTIME_ROCM_PKG_DEPENDENCIES "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, rocprofiler-register")
 endif()
 
-set(HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES "libnuma1, libstdc++6, libgcc-s1, libc6")
+set(HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES "libnuma1, libstdc++6, libc6")
+
+if(DEB10_DISTRO)
+  # On Debian Buster only: libgcc_s.so.1 is in the package libgcc1
+  set(HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES "${HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES}, libgcc1")
+else()
+  set(HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES "${HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES}, libgcc-s1")
+endif()
+
 set(CPACK_DEBIAN_BINARY_PACKAGE_DEPENDS "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_DEB_STDPKG_DEPENDENCIES}")
 
 set(CPACK_DEBIAN_BINARY_PACKAGE_PROVIDES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 set(CPACK_DEBIAN_BINARY_PACKAGE_REPLACES "hip-rocclr (= ${CPACK_PACKAGE_VERSION})")
 
 set(CPACK_RPM_BINARY_PACKAGE_ARCHITECTURE "${CMAKE_SYSTEM_PROCESSOR}")
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-   set(CPACK_RPM_BINARY_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/postinst")
-   set(CPACK_RPM_BINARY_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/binary/prerm")
-endif()
 string(REPLACE "-" "_" HIP_BASE_VERSION ${CPACK_PACKAGE_VERSION})
+
 if(EL7_DISTRO)
   # centos: In centos using parenthesis is causing error. So set the specific dependencies
   set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, numactl-libs, libstdc++, libgcc")
 else()
   # RHEL/SLES
-  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, (numactl-libs or libnuma1), (libstdc++ or libstdc++6), (libgcc or libgcc_s1)")
+  set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "glibc, (numactl-libs or libnuma1), (libstdc++ or libstdc++6)")
+  if(DEB10_DISTRO)
+    # On Debian Buster only: libgcc_s.so.1 is in the package libgcc1
+    set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}, libgcc1")
+  else()
+    set(HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES "${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}, (libgcc or libgcc_s1)" )
+  endif()
 endif()
+
 set(CPACK_RPM_BINARY_PACKAGE_REQUIRES "${HIP_RUNTIME_ROCM_PKG_DEPENDENCIES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
 
 set(CPACK_RPM_BINARY_PACKAGE_PROVIDES "hip-rocclr = ${HIP_BASE_VERSION}")
@@ -237,13 +243,15 @@ configure_file(hip-devel.prerm    ${CMAKE_CURRENT_BINARY_DIR}/dev/prerm @ONLY)
 set(CPACK_DEBIAN_DEV_PACKAGE_CONTROL_EXTRA "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst;${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
 # Dev/devel package dependencies
 set(HIP_DEV_ROCM_PKG_DEPENDENCIES "hip-runtime-amd, rocm-llvm, rocm-core")
-set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, liburi-perl, libc6, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-dev")
+set(CPACK_DEBIAN_DEV_PACKAGE_RECOMMENDS "perl (>= 5.0), libfile-copy-recursive-perl, libfile-listing-perl, libfile-which-perl, liburi-perl")
+set(CPACK_DEBIAN_DEV_PACKAGE_DEPENDS "libc6, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-dev, hipcc")
 set(CPACK_DEBIAN_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_DEBIAN_DEV_PACKAGE_REPLACES "hip-base")
 
 set(CPACK_RPM_DEV_POST_INSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/postinst")
 set(CPACK_RPM_DEV_PRE_UNINSTALL_SCRIPT_FILE "${CMAKE_CURRENT_BINARY_DIR}/dev/prerm")
-set(CPACK_RPM_DEV_PACKAGE_REQUIRES "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI, file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-devel")
+set(CPACK_RPM_DEV_PACKAGE_SUGGESTS "perl >= 5.0, perl-File-Which, perl-File-Listing, perl-URI")
+set(CPACK_RPM_DEV_PACKAGE_REQUIRES "file, ${HIP_DEV_ROCM_PKG_DEPENDENCIES}, hsa-rocr-devel, hipcc")
 
 set(CPACK_RPM_DEV_PACKAGE_PROVIDES "hip-base")
 set(CPACK_RPM_DEV_PACKAGE_OBSOLETES "hip-base")
@@ -312,13 +320,15 @@ if(NOT BUILD_SHARED_LIBS)
 
    set(CPACK_RPM_STATIC_PACKAGE_REQUIRES "${CPACK_RPM_DEV_PACKAGE_REQUIRES}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-devel" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
+   string(REGEX REPLACE ",? ?hipcc" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
    string(REGEX REPLACE ",? ?hip-runtime-amd" "" CPACK_RPM_STATIC_PACKAGE_REQUIRES ${CPACK_RPM_STATIC_PACKAGE_REQUIRES})
-   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, rocminfo-static-devel, comgr-static-devel")
+   string(APPEND CPACK_RPM_STATIC_PACKAGE_REQUIRES  ", hsa-rocr-static-devel, hipcc-static-devel, rocminfo-static-devel, comgr-static-devel")
 
    set(CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS "${CPACK_DEBIAN_DEV_PACKAGE_DEPENDS}, ${HIP_RUNTIME_RPM_STDPKG_DEPENDENCIES}")
    string(REGEX REPLACE ",? ?hsa-rocr-dev" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
+   string(REGEX REPLACE ",? ?hipcc" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
    string(REGEX REPLACE ",? ?hip-runtime-amd" "" CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS ${CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS})
-   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, rocminfo-static-dev, comgr-static-dev")
+   string(APPEND CPACK_DEBIAN_STATIC_PACKAGE_DEPENDS  ", hsa-rocr-static-dev, hipcc-static-dev, rocminfo-static-dev, comgr-static-dev")
 endif()
 include(CPack)
 #static package generation

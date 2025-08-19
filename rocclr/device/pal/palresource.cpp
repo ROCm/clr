@@ -82,7 +82,8 @@ GpuMemoryReference* GpuMemoryReference::Create(const Device& dev,
       return nullptr;
     }
   }
-  if (!createInfo.flags.sdiExternal) {
+  memRef->va_range_ = createInfo.flags.virtualAlloc;
+  if (!createInfo.flags.sdiExternal && !createInfo.flags.virtualAlloc) {
     // Update free memory size counters
     dev.updateAllocedMemory(memRef->gpuMem_->Desc().heaps[0], memRef->gpuMem_->Desc().size, false);
   }
@@ -280,7 +281,7 @@ GpuMemoryReference::~GpuMemoryReference() {
     iMem()->Unmap();
   }
   if (!(iMem()->Desc().flags.isShared || iMem()->Desc().flags.isExternal ||
-        iMem()->Desc().flags.isExternPhys)) {
+        iMem()->Desc().flags.isExternPhys || va_range_)) {
     // Update free memory size counters
     device_.updateAllocedMemory(iMem()->Desc().heaps[0], iMem()->Desc().size, true);
   }
@@ -791,7 +792,7 @@ bool Resource::CreateInterop(CreateParams* params) {
 
     if (!dev().resGLAssociate(oglRes->glPlatformContext_, oglRes->handle_, glType_,
                               &openInfo.hExternalResource, &glInteropMbRes_, &offset_, desc_.format_
-#ifdef ATI_OS_WIN
+#if IS_WINDOWS
                               ,
                               openInfo.doppDesktopInfo
 #endif
@@ -807,6 +808,7 @@ bool Resource::CreateInterop(CreateParams* params) {
     if (vparams->handle_) {
       openInfo.hExternalResource = vparams->handle_;
     } else if (vparams->name_) {
+#if IS_WINDOWS
       Pal::ExternalHandleInfo eHandleInfo = {};
       eHandleInfo.objectType = Pal::ExternalObjectType::Allocation;
       eHandleInfo.pNtObjectName = reinterpret_cast<const wchar_t*>(vparams->name_);
@@ -818,10 +820,13 @@ bool Resource::CreateInterop(CreateParams* params) {
           dev().iDev()->OpenExternalHandleFromName(eHandleInfo, &openInfo.hExternalResource)) {
         return false;
       }
+#else
+      return false;
+#endif
     }
     openInfo.flags.ntHandle = vparams->nt_handle_;
   }
-#ifdef ATI_OS_WIN
+#if IS_WINDOWS
   else {
     D3DInteropParams* d3dRes = reinterpret_cast<D3DInteropParams*>(params);
     openInfo.hExternalResource = d3dRes->handle_;
@@ -882,7 +887,7 @@ bool Resource::CreateInterop(CreateParams* params) {
       switch (misc) {
         case 1:  // NV12 or P010 formats
           switch (layer) {
-            case -1:
+            case std::numeric_limits<uint>::max():
             case 0:
               break;
             case 1:
@@ -898,7 +903,7 @@ bool Resource::CreateInterop(CreateParams* params) {
           break;
         case 2:  // YV12 format
           switch (layer) {
-            case -1:
+            case std::numeric_limits<uint>::max():
             case 0:
               break;
             case 1:
@@ -1043,12 +1048,7 @@ bool Resource::CreateInterop(CreateParams* params) {
     //! and OGL decompresses 24bit DEPTH into D24S8 for OGL compatibility
     if ((desc().format_.image_channel_order == CL_DEPTH_STENCIL) &&
         (desc().format_.image_channel_data_type == CL_UNORM_INT24)) {
-      if (dev().settings().gfx10Plus_) {
-        hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
-      } else {
-        hwState_[1] &= ~0x3c000000;
-        hwState_[1] = (hwState_[1] & ~0x3f00000) | 0x1400000;
-      }
+      hwState_[1] = (hwState_[1] & ~0x1ff00000) | 0x08d00000;
     }
     hwState_[8] = GetHSAILImageFormatType(desc().format_);
     hwState_[9] = GetHSAILImageOrderType(desc().format_);
@@ -1197,6 +1197,7 @@ bool Resource::CreateSvm(CreateParams* params, Pal::gpusize svmPtr) {
                                                   createInfo.pReservedGpuVaOwner, &subOffset_);
     if (memRef_ == nullptr) {
       createInfo.alignment = dev().properties().gpuMemoryProperties.fragmentSize;
+      createInfo.size = amd::alignUp (createInfo.size, createInfo.alignment);
       memRef_ = GpuMemoryReference::Create(dev(), createInfo);
     }
   }
@@ -1253,7 +1254,7 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
 
   // Force remote allocation if it was requested in the settings
   if (dev().settings().remoteAlloc_ && ((memoryType() == Local) || (memoryType() == Persistent))) {
-    if (dev().settings().apuSystem_ && dev().settings().viPlus_) {
+    if (dev().settings().apuSystem_) {
       desc_.type_ = Remote;
     } else {
       desc_.type_ = RemoteUSWC;
@@ -1313,8 +1314,8 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
         (nullptr != params->owner_->getSvmPtr())) {
       svmPtr = reinterpret_cast<Pal::gpusize>(params->owner_->getSvmPtr());
       desc_.SVMRes_ = true;
-      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
       desc_.reserved_va_ = (svmPtr == 1) ? false : true;
+      svmPtr = (svmPtr == 1) ? 0 : svmPtr;
       if (params->owner_->getMemFlags() & CL_MEM_SVM_ATOMICS) {
         desc_.gl2CacheDisabled_ = true;
       }
@@ -1327,7 +1328,9 @@ bool Resource::create(MemoryType memType, CreateParams* params, bool forceLinear
   Pal::GpuMemoryCreateInfo createInfo = {};
   createInfo.size = desc().width_ * elementSize_;
   createInfo.size = amd::alignUp(createInfo.size, MaxGpuAlignment);
-  createInfo.alignment = desc().scratch_ ? 64 * Ki : MaxGpuAlignment;
+  createInfo.alignment = (params && params->alignment_ != 0)
+                         ? params->alignment_
+                         : (desc().scratch_ ? 64 * Ki : MaxGpuAlignment);
   createInfo.vaRange = Pal::VaRange::Default;
   createInfo.priority = Pal::GpuMemPriority::Normal;
 
@@ -1512,7 +1515,7 @@ bool Resource::partialMemCopyTo(VirtualGPU& gpu, const amd::Coord3D& srcOrigin,
     // Make sure linear pitch in bytes is 4 bytes aligned
     if (((gpuMemoryRowPitch % 4) != 0) ||
         // another DRM restriciton... SI has 4 pixels
-        (gpuMemoryOffset % 4 != 0) || (dev().settings().sdamPageFaultWar_ && (imageOffsetx != 0))) {
+        (gpuMemoryOffset % 4 != 0) || (imageOffsetx != 0)) {
       return false;
     }
   }
@@ -2208,7 +2211,7 @@ bool MemorySubAllocator::Free(amd::Monitor* monitor, GpuMemoryReference* ref, Pa
     it->second->Free(offset);
     // If this suballocator empty, then release memory chunk
     // while keeping at least one chunk available, if retain_final_chunk is true
-    if (it->second->IsEmpty() && !(retain_final_chunk_ && heaps_.size() == 1)) {
+    if (it->second->IsEmpty() && (!(retain_final_chunk_ && heaps_.size() == 1) || !amd::IS_HIP)) {
       delete it->second;
       heaps_.erase(it);
       release_mem = true;
@@ -2233,7 +2236,7 @@ bool ResourceCache::addGpuMemory(Resource::Descriptor* desc, GpuMemoryReference*
   // Check if runtime can free suballocation
   if (desc->type_ == Resource::VaRange) {
     // We do no sub allocate VA Range.
-    result = true;
+    result = false;
   } else if ((desc->type_ == Resource::Local) && !desc->SVMRes_) {
     result = mem_sub_alloc_local_.Free(&lockCacheOps_, ref, offset);
   } else if ((desc->type_ == Resource::Local) && desc->SVMRes_) {

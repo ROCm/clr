@@ -24,6 +24,12 @@
 #include "platform/runtime.hpp"
 #include "rocclr/utils/flags.hpp"
 #include "rocclr/utils/versions.hpp"
+#include "rocclr/os/os.hpp"
+
+#include <hip/amd_detail/hip_api_trace.hpp>
+namespace hip {
+const HipToolsDispatchTable* GetHipToolsDispatchTable();
+}  // namespace hip
 
 namespace hip {
 std::once_flag g_ihipInitialized;
@@ -39,15 +45,23 @@ void init(bool* status) {
 #if DISABLE_DIRECT_DISPATCH
   constexpr bool kDirectDispatch = false;
 #else
-  constexpr bool kDirectDispatch = IS_LINUX;
+#ifndef WITHOUT_HSA_BACKEND
+  constexpr bool kDirectDispatch = true;
+#else
+  constexpr bool kDirectDispatch = false;
+#endif
 #endif
   AMD_DIRECT_DISPATCH = flagIsDefault(AMD_DIRECT_DISPATCH) ? kDirectDispatch : AMD_DIRECT_DISPATCH;
   if (!amd::Runtime::init()) {
     *status = false;
     return;
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "Direct Dispatch: %d", AMD_DIRECT_DISPATCH);
 
+  ClPrint(amd::LOG_INFO, amd::LOG_INIT, "HIP Version: %d.%d.%d.%s, Direct Dispatch: %d",
+          HIP_VERSION_MAJOR, HIP_VERSION_MINOR, HIP_VERSION_PATCH, HIP_VERSION_GITHASH,
+          AMD_DIRECT_DISPATCH);
+  // Print the current path of the library
+  amd::Os::PrintLibraryLocation();
   const std::vector<amd::Device*>& devices = amd::Device::getDevices(CL_DEVICE_TYPE_GPU, false);
   const size_t deviceCount = devices.size();
   g_devices.reserve(deviceCount);  // Pre-allocate space for better performance
@@ -63,6 +77,24 @@ void init(bool* status) {
     }
     g_devices.push_back(device);
     amd::RuntimeTearDown::RegisterObject(device);
+  }
+
+  if (hip::GetHipToolsDispatchTable()->__hipReportDevices_fn != nullptr) {
+    size_t numDevices = g_devices.size();
+
+    std::vector<hipUUID> uuids(numDevices);
+
+    int i = 0;
+    for (const auto& dev : g_devices) {
+      auto* deviceHandle = dev->devices()[0];
+      const auto& info = deviceHandle->info();
+      memcpy(uuids[i].bytes, info.uuid_, sizeof(info.uuid_));
+      // if assert fails, the memcpy bytes param needs to be addressed
+      static_assert(sizeof(info.uuid_) == sizeof(uuids[0].bytes), "error ABI issue");
+      ++i;
+    }
+
+    hip::GetHipToolsDispatchTable()->__hipReportDevices_fn(numDevices, uuids.data());
   }
 
   amd::Context* hContext = new amd::Context(devices, amd::Context::Info());
@@ -105,17 +137,17 @@ hip::Stream* getStream(hipStream_t stream, bool wait) {
 }
 
 // ================================================================================================
-hip::Stream* getNullStream(amd::Context& ctx) {
+hip::Stream* getNullStream(amd::Context& ctx, bool wait) {
   for (auto& it : g_devices) {
     if (it->asContext() == &ctx) {
-      return it->NullStream();
+      return it->NullStream(wait);
     }
   }
   // If it's a pure SVM allocation with system memory access, then it shouldn't matter which device
   // runtime selects by default
   if (hip::host_context == &ctx) {
     // Return current...
-    return getNullStream();
+    return getNullStream(wait);
   }
   return nullptr;
 }
@@ -294,19 +326,13 @@ hipError_t hipCtxGetDevice(hipDevice_t* device) {
   HIP_RETURN(hipErrorInvalidContext);
 }
 
-hipError_t hipCtxGetApiVersion(hipCtx_t ctx, int* apiVersion) {
+hipError_t hipCtxGetApiVersion(hipCtx_t ctx, unsigned int* apiVersion) {
   HIP_INIT_API(hipCtxGetApiVersion, apiVersion);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetCacheConfig(hipFuncCache_t* cacheConfig) {
   HIP_INIT_API(hipCtxGetCacheConfig, cacheConfig);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
@@ -317,33 +343,21 @@ hipError_t hipCtxSetCacheConfig(hipFuncCache_t cacheConfig) {
       cacheConfig != hipFuncCachePreferL1 && cacheConfig != hipFuncCachePreferEqual) {
     HIP_RETURN(hipErrorInvalidValue);
   }
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSetSharedMemConfig(hipSharedMemConfig config) {
   HIP_INIT_API(hipCtxSetSharedMemConfig, config);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxSynchronize(void) {
   HIP_INIT_API(hipCtxSynchronize, 1);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 
 hipError_t hipCtxGetFlags(unsigned int* flags) {
   HIP_INIT_API(hipCtxGetFlags, flags);
-
-  assert(0 && "Unimplemented");
-
   HIP_RETURN(hipErrorNotSupported);
 }
 

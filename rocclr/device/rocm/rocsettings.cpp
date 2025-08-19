@@ -53,8 +53,6 @@ Settings::Settings() {
   // Disable image DMA by default (ROCM runtime doesn't support it)
   imageDMA_ = false;
 
-  stagedXferRead_ = true;
-  stagedXferWrite_ = true;
   stagedXferSize_ = flagIsDefault(GPU_STAGING_BUFFER_SIZE)
       ? 1 * Mi : GPU_STAGING_BUFFER_SIZE * Mi;
 
@@ -97,6 +95,10 @@ Settings::Settings() {
   kernel_arg_impl_ = KernelArgImpl::HostKernelArgs;
   gwsInitSupported_ = true;
   limit_blit_wg_ = 16;
+
+  dynamic_queues_ = amd::IS_HIP ? DEBUG_HIP_DYNAMIC_QUEUES : false;
+  // note: OCL user events don't allow CPU blocking calls in DD mode
+  blocking_blit_ = amd::IS_HIP || !AMD_DIRECT_DISPATCH;
 }
 
 // ================================================================================================
@@ -117,7 +119,6 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
     apuSystem_ = true;
   } else {
     pinnedXferSize_ = std::max(pinnedXferSize_, pinnedMinXferSize_);
-    stagedXferSize_ = std::max(stagedXferSize_, pinnedMinXferSize_ + 4 * Ki);
   }
   enableXNACK_ = enableXNACK;
   hsailExplicitXnack_ = enableXNACK;
@@ -164,7 +165,7 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
   }
 
   if ((gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10) ||
-     ((gfxipMajor == 9 && gfxipMinor == 4 &&
+     ((gfxipMajor == 9 && gfxipMinor >= 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2)))) {
     // Enable Barrier Value packet is only for MI2XX/300
     barrier_value_packet_ = true;
@@ -188,7 +189,7 @@ bool Settings::create(bool fullProfile, const amd::Isa& isa,
 
   lcWavefrontSize64_ = !enableWave32Mode_;
 
-  if (gfxipMajor > 10 || (gfxipMajor == 9 && gfxipMinor == 4)) {
+  if (gfxipMajor > 10 || (gfxipMajor == 9 && gfxipMinor >= 4)) {
     gwsInitSupported_ = false;
   }
 
@@ -207,10 +208,6 @@ void Settings::override() {
 
   if (!flagIsDefault(GPU_XFER_BUFFER_SIZE)) {
     xferBufSize_ = GPU_XFER_BUFFER_SIZE * Ki;
-  }
-
-  if (!flagIsDefault(GPU_PINNED_MIN_XFER_SIZE)) {
-    pinnedMinXferSize_ = std::min(GPU_PINNED_MIN_XFER_SIZE * Ki, pinnedXferSize_);
   }
 
   if (!flagIsDefault(AMD_GPU_FORCE_SINGLE_FP_DENORM)) {
@@ -246,7 +243,7 @@ void Settings::setKernelArgImpl(const amd::Isa& isa, bool isXgmi, bool hasValidH
   const uint32_t gfxipMinor = isa.versionMinor();
   const uint32_t gfxStepping = isa.versionStepping();
 
-  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor == 4 &&
+  const bool isGfx94x = gfxipMajor == 9 && gfxipMinor >= 4 &&
       (gfxStepping == 0 || gfxStepping == 1 || gfxStepping == 2);
   const bool isGfx90a = (gfxipMajor == 9 && gfxipMinor == 0 && gfxStepping == 10);
   const bool isPreGfx908 =

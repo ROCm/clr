@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2015 - 2022 Advanced Micro Devices, Inc. All rights reserved.
+Copyright (c) 2015 - 2025 Advanced Micro Devices, Inc. All rights reserved.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,7 @@ THE SOFTWARE.
 #define GENERIC_GRID_LAUNCH 1
 #endif
 
-#if defined(__clang__) && defined(__HIP__)
-
+#if defined(__cplusplus)
 namespace __hip_internal {
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
@@ -44,6 +43,11 @@ typedef signed char int8_t;
 typedef signed short int16_t;
 typedef signed int int32_t;
 typedef signed long long int64_t;
+#if defined(_MSC_VER)
+typedef unsigned long long size_t;
+#else
+typedef unsigned long size_t;
+#endif
 
 template <class _Tp, _Tp __v> struct integral_constant {
   static constexpr const _Tp value = __v;
@@ -112,6 +116,57 @@ template<typename _Tp, bool = is_arithmetic<_Tp>::value>
 template<typename _Tp>
   struct is_signed<_Tp, true> : public true_or_false_type<_Tp(-1) < _Tp(0)> {};
 
+template<class T>
+    auto test_returnable(int) -> decltype(
+        void(static_cast<T(*)()>(nullptr)), true_type{});
+template<class>
+    auto test_returnable(...) -> false_type;
+
+template<class T>
+    struct type_identity { using type = T; };
+
+template<class T> // Note that `cv void&` is a substitution failure
+    auto try_add_lvalue_reference(int) -> type_identity<T&>;
+template<class T> // Handle T = cv void case
+    auto try_add_lvalue_reference(...) -> type_identity<T>;
+
+template<class T>
+    auto try_add_rvalue_reference(int) -> type_identity<T&&>;
+template<class T>
+    auto try_add_rvalue_reference(...) -> type_identity<T>;
+
+template<class T>
+struct add_lvalue_reference
+    : decltype(try_add_lvalue_reference<T>(0)) {};
+
+template<class T>
+struct add_rvalue_reference
+    : decltype(try_add_rvalue_reference<T>(0)) {};
+
+template<typename T>
+typename add_rvalue_reference<T>::type declval() noexcept;
+
+template<class From, class To>
+    auto test_implicitly_convertible(int) -> decltype(
+        void(declval<void(&)(To)>()(declval<From>())), true_type{});
+
+template<class, class>
+    auto test_implicitly_convertible(...) -> false_type;
+
+template<class T> struct remove_cv { typedef T type; };
+template<class T> struct remove_cv<const T> { typedef T type; };
+template<class T> struct remove_cv<volatile T> { typedef T type; };
+template<class T> struct remove_cv<const volatile T> { typedef T type; };
+
+template<class T>
+struct is_void : public is_same<void, typename remove_cv<T>::type> {};
+
+template<class From, class To>
+struct is_convertible : public integral_constant<bool,
+    (decltype(test_returnable<To>(0))::value &&
+     decltype(test_implicitly_convertible<From, To>(0))::value) ||
+    (is_void<From>::value && is_void<To>::value)> {};
+
 template<typename _CharT> struct char_traits;
 template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_istream;
 template<typename _CharT, typename _Traits = char_traits<_CharT>> class basic_ostream;
@@ -131,6 +186,34 @@ template<typename _Tp>
 
 template <bool B, class T, class F> struct conditional { using type = T; };
 template <class T, class F> struct conditional<false, T, F> { using type = F; };
+
+template<class T>
+struct alignment_of : integral_constant<size_t, alignof(T)> {};
+
+template<typename T, T... Ints>
+struct integer_sequence {
+    using value_type = T;
+    static constexpr size_t size() noexcept { return sizeof...(Ints); }
+};
+
+template<size_t... Ints>
+using index_sequence = integer_sequence<size_t, Ints...>;
+
+template <size_t _hip_N, size_t... Ints>
+struct make_index_sequence_impl : make_index_sequence_impl<_hip_N - 1, _hip_N - 1, Ints...> {};
+
+template<size_t... Ints>
+struct make_index_sequence_impl<0, Ints...> {
+    using type = index_sequence<Ints...>;
+};
+
+template <size_t _hip_N>
+using make_index_sequence = typename make_index_sequence_impl<_hip_N>::type;
+
+template <size_t... Ints>
+constexpr index_sequence<Ints...> make_index_sequence_value(index_sequence<Ints...>) {
+    return {};
+}
 }
 typedef __hip_internal::uint8_t __hip_uint8_t;
 typedef __hip_internal::uint16_t __hip_uint16_t;
@@ -140,7 +223,9 @@ typedef __hip_internal::int8_t __hip_int8_t;
 typedef __hip_internal::int16_t __hip_int16_t;
 typedef __hip_internal::int32_t __hip_int32_t;
 typedef __hip_internal::int64_t __hip_int64_t;
+#endif // defined(__cplusplus)
 
+#if defined(__clang__) && defined(__HIP__)
 #if !__CLANG_HIP_RUNTIME_WRAPPER_INCLUDED__
 #define __host__ __attribute__((host))
 #define __device__ __attribute__((device))
@@ -179,6 +264,6 @@ typedef __hip_internal::int64_t __hip_int64_t;
 #define __constant__
 
 #define __hip_img_chk__
-#endif
+#endif  // defined(__clang__) && defined(__HIP__)
 
 #endif

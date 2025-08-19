@@ -104,21 +104,20 @@ address KernelParameters::alloc(device::VirtualDevice& vDev) {
 }
 
 // =================================================================================================
-bool KernelParameters::captureAndSet(void** kernelParams, address kernArgs, address mem) {
-
+bool KernelParameters::captureAndSet(void** kernelParams, address kernArgs, size_t kernArgsSize,
+                                     address mem) {
+  amd::Memory** memories = reinterpret_cast<amd::Memory**>(mem + memoryObjOffset());
   for (size_t idx = 0; idx < signature_.numParameters(); ++idx) {
     KernelParameterDescriptor& desc = signature_.params()[idx];
-    void* value = nullptr;
-    if (kernelParams != nullptr) {
-      value = kernelParams[idx];
-    } else {
-      value = kernArgs + desc.offset_;
-    }
+    void* value = kernelParams ? kernelParams[idx] : kernArgs + desc.offset_;
     void* param = mem + desc.offset_;
     uint32_t uint32_value = 0;
     uint64_t uint64_value = 0;
+    // if using the 'extra' path and this parameter lies beyond supplied size, write zero
+    if (kernelParams == nullptr && ((desc.offset_ + desc.size_) > kernArgsSize)) {
+      value = &uint64_value;
+    }
     Memory* memArg = nullptr;
-    amd::Memory** memories = reinterpret_cast<amd::Memory**>(mem + memoryObjOffset());
     if (desc.type_ == T_POINTER && (desc.addressQualifier_ != CL_KERNEL_ARG_ADDRESS_LOCAL)) {
       LP64_SWITCH(uint32_value, uint64_value) = *(LP64_SWITCH(uint32_t*, uint64_t*))value;
       memArg = amd::MemObjMap::FindMemObj(*reinterpret_cast<const void* const*>(value));
@@ -282,6 +281,11 @@ address KernelParameters::capture(device::VirtualDevice& vDev, uint64_t lclMemSi
       } else if (desc.type_ == T_SAMPLER) {
         Sampler* samplerArg = samplerObjects_[desc.info_.arrayIndex_];
         if (samplerArg != nullptr) {
+          device::Sampler* deviceSampler = samplerArg->getDeviceSampler(device);
+          if (!deviceSampler) {
+            *error = CL_INVALID_CONTEXT;
+            break;
+          }
           samplerArg->retain();
           // todo: It's uint64_t type
           *reinterpret_cast<uintptr_t*>(mem + desc.offset_) = static_cast<uintptr_t>(

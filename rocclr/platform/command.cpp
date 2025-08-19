@@ -42,8 +42,8 @@ Event::Event(HostQueue& queue, bool profilingEnabled)
       hw_event_(nullptr),
       notify_event_(nullptr),
       device_(&queue.device()),
-      profilingInfo_(profilingEnabled),
-      event_scope_(Device::kCacheStateInvalid) {
+      profilingInfo_(profilingEnabled) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 
@@ -53,8 +53,8 @@ Event::Event()
       status_(CL_SUBMITTED),
       hw_event_(nullptr),
       notify_event_(nullptr),
-      device_(nullptr),
-      event_scope_(Device::kCacheStateInvalid) {
+      device_(nullptr) {
+  event_entry_scope_.store(Device::kCacheStateInvalid, std::memory_order_relaxed);
   notified_.clear();
 }
 
@@ -269,7 +269,9 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
     ScopedLock l(notify_lock_);
     if ((status() > CL_COMPLETE) && (nullptr != queue) &&
         // If HW event was assigned, then notification can be ignored, since a barrier was issued
-        (HwEvent() == nullptr) &&
+        // @note: Force the marker always in OCL for now, since OCL events require precise
+        // sequence of the status update
+        ((HwEvent() == nullptr) || !amd::IS_HIP) &&
         !notified_.test_and_set()) {
       // Make sure the queue is draining the enqueued commands.
       amd::Command* command = new amd::Marker(*queue, false, nullWaitList, this, cpu_wait);
@@ -277,7 +279,6 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       // Save notification, associated with the current event
       notify_event_ = command;
@@ -290,7 +291,6 @@ bool Event::notifyCmdQueue(bool cpu_wait) {
         notified_.clear();
         return false;
       }
-      ClPrint(LOG_DEBUG, LOG_CMD, "Queue marker to command queue: %p", queue);
       command->enqueue();
       command->release();
     }
@@ -356,8 +356,8 @@ void Command::enqueue() {
     Agent::postEventCreate(as_cl(static_cast<Event*>(this)), type_);
   }
 
-  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p",
-          amd::activity_prof::getOclCommandKindString(this->type()), this);
+  ClPrint(LOG_DEBUG, LOG_CMD, "Command (%s) enqueued: %p to queue: %p",
+          amd::activity_prof::getOclCommandKindString(this->type()), this, queue_);
 
   // Direct dispatch logic below will submit the command immediately, but the command status
   // update will occur later after flush() with a wait
@@ -366,8 +366,17 @@ void Command::enqueue() {
 
     // Notify all commands about the waiter. Barrier will be sent in order to obtain
     // HSA signal for a wait on the current queue
-    for (const auto& event : eventWaitList()) {
-      event->notifyCmdQueue(!kCpuWait);
+    for (const auto &event: eventWaitList()) {
+      if (!amd::IS_HIP && event->command().type() == CL_COMMAND_USER) {
+        if (event->status() >= CL_COMPLETE) {
+          reinterpret_cast<amd::UserEvent*>(event)->AddDependent(this);
+        } else {
+          setStatus(CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST);
+          return;
+        }
+      } else {
+        event->notifyCmdQueue(!kCpuWait);
+      }
     }
 
     // The batch update must be lock protected to avoid a race condition
@@ -412,20 +421,21 @@ const Context& Command::context() const { return queue_->context(); }
 NDRangeKernelCommand::NDRangeKernelCommand(HostQueue& queue, const EventWaitList& eventWaitList,
                                            Kernel& kernel, const NDRangeContainer& sizes,
                                            uint32_t sharedMemBytes, uint32_t extraParam,
-                                           uint32_t gridId, uint32_t numGrids,
-                                           uint64_t prevGridSum, uint64_t allGridSum,
-                                           uint32_t firstDevice, bool forceProfiling) :
-    Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList, AMD_SERIALIZE_KERNEL |
-                                                            (HIP_LAUNCH_BLOCKING << 1)),
-    kernel_(kernel),
-    sizes_(sizes),
-    sharedMemBytes_(sharedMemBytes),
-    extraParam_(extraParam),
-    gridId_(gridId),
-    numGrids_(numGrids),
-    prevGridSum_(prevGridSum),
-    allGridSum_(allGridSum),
-    firstDevice_(firstDevice) {
+                                           uint32_t gridId, uint32_t numGrids, uint64_t prevGridSum,
+                                           uint64_t allGridSum, uint32_t firstDevice,
+                                           bool forceProfiling)
+    : Command(queue, CL_COMMAND_NDRANGE_KERNEL, eventWaitList,
+              AMD_SERIALIZE_KERNEL | (HIP_LAUNCH_BLOCKING << 1)),
+      kernel_(kernel),
+      sizes_(sizes),
+      sharedMemBytes_(sharedMemBytes),
+      extraParam_(extraParam),
+      gridId_(gridId),
+      numGrids_(numGrids),
+      prevGridSum_(prevGridSum),
+      allGridSum_(allGridSum),
+      firstDevice_(firstDevice),
+      parameters_(nullptr) {
   auto& device = queue.device();
   auto devKernel = const_cast<device::Kernel*>(kernel.getDeviceKernel(device));
   if (cooperativeGroups()) {
@@ -655,9 +665,10 @@ bool MigrateMemObjectsCommand::validateMemory() {
 }
 
 // =================================================================================================
-int32_t NDRangeKernelCommand::AllocCaptureSetValidate(void** kernelParams, address kernArgs) {
+int32_t NDRangeKernelCommand::AllocCaptureSetValidate(void** kernelParams, address kernArgs,
+                                                      size_t kernArgsSize) {
   const amd::Device& device = queue()->device();
-   // Validate the kernel before submission
+  // Validate the kernel before submission
   if (!queue()->device().validateKernel(kernel(), queue()->vdev(), cooperativeGroups())) {
     return CL_OUT_OF_RESOURCES;
   }
@@ -668,7 +679,7 @@ int32_t NDRangeKernelCommand::AllocCaptureSetValidate(void** kernelParams, addre
     return CL_OUT_OF_RESOURCES;
   }
 
-  if (!kernel().parameters().captureAndSet(kernelParams, kernArgs, parameters_)) {
+  if (!kernel().parameters().captureAndSet(kernelParams, kernArgs, kernArgsSize, parameters_)) {
     LogError("Cannot capture and set the kernel parameters");
     return CL_OUT_OF_RESOURCES;
   }

@@ -36,10 +36,9 @@
  *
  * \param flags is a bit-field that is used to specify allocation and usage
  * information such as the memory arena that should be used to allocate the pipe
- * object and how it will be used. Only CL_MEM_READ_ONLY, CL_MEM_WRITE_ONLY,
- * CL_MEM_READ_WRITE and CL_MEM_HOST_NO_ACCESS can be specified when creating a
- * pipe object. If value specified for flags is 0, the default is used which is
- * CL_MEM_READ_WRITE.
+ * object and how it will be used. Only CL_MEM_READ_WRITE and CL_MEM_HOST_NO_ACCESS
+ * can be specified when creating a pipe object. If value specified for flags is 0,
+ * the default is used which is CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS.
  *
  * \param pipe_packet_size is the size in bytes of a pipe packet.
  *
@@ -71,7 +70,7 @@
  * - CL_OUT_OF_HOST_MEMORY if there is a failure to allocate resources required
  *   by the OpenCL implementation on the host.
  *
- * \version 2.0r19
+ * \version 2.0r29
  */
 RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
                   (cl_context context, cl_mem_flags flags, cl_uint pipe_packet_size,
@@ -79,19 +78,22 @@ RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
                    cl_int* errcode_ret)) {
   if (!is_valid(context)) {
     *not_null(errcode_ret) = CL_INVALID_CONTEXT;
-    return NULL;
+    return nullptr;
+  }
+
+  const cl_mem_flags validFlags = (CL_MEM_READ_WRITE | CL_MEM_HOST_NO_ACCESS);
+
+  if (flags == 0) {
+    flags = validFlags;
   }
 
   // check flags for validity
-  cl_bitfield temp =
-      flags & (CL_MEM_READ_WRITE | CL_MEM_WRITE_ONLY | CL_MEM_READ_ONLY | CL_MEM_HOST_NO_ACCESS);
+  cl_bitfield temp = flags & ~validFlags;
 
-  if (temp &&
-      !(CL_MEM_READ_WRITE == temp || CL_MEM_WRITE_ONLY == temp || CL_MEM_READ_ONLY == temp ||
-        CL_MEM_HOST_NO_ACCESS == temp)) {
+  if (temp) {
     *not_null(errcode_ret) = CL_INVALID_VALUE;
     LogWarning("invalid parameter \"flags\"");
-    return (cl_mem)0;
+    return nullptr;
   }
 
   size_t size = sizeof(struct clk_pipe_t) + pipe_packet_size * pipe_max_packets;
@@ -109,7 +111,7 @@ RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
   if (pipe_packet_size == 0 || pipe_max_packets == 0 || !sizePass) {
     *not_null(errcode_ret) = CL_INVALID_PIPE_SIZE;
     LogWarning("invalid parameter \"size = 0 or size > CL_DEVICE_PIPE_MAX_PACKET_SIZE\"");
-    return (cl_mem)0;
+    return nullptr;
   }
 
   amd::Context& amdContext = *as_amd(context);
@@ -117,13 +119,13 @@ RUNTIME_ENTRY_RET(cl_mem, clCreatePipe,
       amd::Pipe(amdContext, flags, size, (size_t)pipe_packet_size, (size_t)pipe_max_packets);
   if (mem == NULL) {
     *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;
-    return (cl_mem)0;
+    return nullptr;
   }
 
   if (!mem->create()) {
     *not_null(errcode_ret) = CL_MEM_OBJECT_ALLOCATION_FAILURE;
     mem->release();
-    return NULL;
+    return nullptr;
   }
 
   *not_null(errcode_ret) = CL_SUCCESS;

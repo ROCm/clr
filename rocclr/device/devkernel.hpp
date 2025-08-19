@@ -218,8 +218,8 @@ class Kernel : public amd::HeapObject {
     size_t usedGPRs_;                 //!< GPRs used by the program
     size_t availableSGPRs_;           //!< SGPRs available to the program
     size_t usedSGPRs_;                //!< SGPRs used by the program
-    size_t availableVGPRs_;           //!< VGPRs available to the program
-    size_t usedVGPRs_;                //!< VGPRs used by the program
+    size_t availableVGPRs_;           //!< VGPRs addressable to the program per thread in DWORDs
+    size_t usedVGPRs_;                //!< VGPRs used by the program per thread in DWORDs
     size_t availableLDSSize_;         //!< available LDS size
     size_t usedLDSSize_;              //!< used LDS size
     size_t availableStackSize_;       //!< available stack size
@@ -336,6 +336,7 @@ class Kernel : public amd::HeapObject {
 
   const uint32_t WorkitemPrivateSegmentByteSize() const { return workitemPrivateSegmentByteSize_; }
   void SetWorkitemPrivateSegmentByteSize(uint32_t size) { workitemPrivateSegmentByteSize_ = size; }
+
   const bool KernalHasDynamicCallStack() const { return kernelHasDynamicCallStack_; }
 
   const uint32_t KernargSegmentByteSize() const { return kernargSegmentByteSize_; }
@@ -365,9 +366,6 @@ class Kernel : public amd::HeapObject {
 
   //! Retrieve kernel attribute and code properties metadata
   bool GetAttrCodePropMetadata();
-
-  //! Retrieve the available SGPRs and VGPRs
-  bool SetAvailableSgprVgpr();
 
   //! Retrieve the printf string metadata
   bool GetPrintfStr(std::vector<std::string>* printfStr);

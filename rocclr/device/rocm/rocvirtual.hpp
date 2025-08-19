@@ -23,6 +23,7 @@
 #include "platform/commandqueue.hpp"
 #include "rocdefs.hpp"
 #include "rocdevice.hpp"
+#include "utils/flags.hpp"
 #include "utils/util.hpp"
 #include "hsa/hsa.h"
 #include "hsa/hsa_ext_image.h"
@@ -31,6 +32,7 @@
 #include "hsa/hsa_ven_amd_aqlprofile.h"
 #include "rocsched.hpp"
 #include "device/device.hpp"
+#include "os/os.hpp"
 #include <stack>
 
 namespace amd::roc {
@@ -46,41 +48,42 @@ constexpr static hsa_signal_value_t kInitSignalValueOne = 1;
 constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
-// Active wait time out incase same sdma engine is used again,
-// then just wait instead of adding dependency wait signal.
-constexpr static uint64_t kForcedTimeout10us = 10;
+constexpr static uint64_t kTimeout4Secs = 4 * M;
 
-template <bool active_wait_timeout = false>
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yield = false) {
+
+  hsa_wait_state_t wait_state = HSA_WAIT_STATE_BLOCKED;
+  if (active_wait) {
+    wait_state = HSA_WAIT_STATE_ACTIVE;
+  }
+
   if (hsa_signal_load_relaxed(signal) > 0) {
-    uint64_t timeout = kTimeout100us;
-    if (active_wait) {
-      timeout = kUnlimitedWait;
-    }
-    if (active_wait_timeout) {
-      // If forced wait is set, then wait for 10us, else dont wait. (ns * K = us)
-      timeout = (forced_wait ? kForcedTimeout10us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
-      if (timeout == 0) {
-        return false;
-      }
-    }
-
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
-            signal.handle, timeout);
-
-    // Active wait with a timeout
-    if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                  timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
-      if (active_wait_timeout) {
-        return false;
-      }
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
-              signal.handle);
-
-      // Wait until the completion with CPU suspend
+    // When it is blocked wait, we wait in active state for 100 us before proceeding to wait in
+    // blocked state indefinitely.
+    if (!active_wait) {
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
+              signal.handle, kTimeout100us);
       if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
-        return false;
+                                    kTimeout100us, HSA_WAIT_STATE_ACTIVE) != 0) {
+        if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsGPUInError()) {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Device not Stable, while waiting for Signal ="
+                  "(0x%lx) for %d ns", signal.handle, kTimeout100us);
+          return true;
+        }
+      }
+    }
+
+    // This is unlimited wait, but we wait for 4 secs and check if the device is
+    // unstable, if so we return, otherwise we continue to wait in the while loop.
+    while (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
+                                     kTimeout4Secs, wait_state) != 0) {
+      if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsGPUInError()) {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Device not Stable, while waiting for Signal ="
+                  "(0x%lx) for %d ns", signal.handle, kTimeout4Secs);
+        return true;
+      }
+      if (yield && wait_state == HSA_WAIT_STATE_ACTIVE) {
+        amd::Os::yield();
       }
     }
   }
@@ -269,7 +272,7 @@ class VirtualGPU : public device::VirtualDevice {
 
     //! Finds a free signal for the upcomming operation
     hsa_signal_t ActiveSignal(hsa_signal_value_t init_val = kInitSignalValueOne,
-                              Timestamp* ts = nullptr, bool forceHostWait = true);
+                              Timestamp* ts = nullptr, bool attach_signal = true);
 
     //! Wait for the curent active signal. Can idle the queue
     bool WaitCurrent() {
@@ -282,8 +285,7 @@ class VirtualGPU : public device::VirtualDevice {
     HwQueueEngine GetActiveEngine() const { return engine_; }
 
     //! Returns the last submitted signal for a wait
-    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute,
-                                             bool forceHostWait = true);
+    std::vector<hsa_signal_t>& WaitingSignal(HwQueueEngine engine = HwQueueEngine::Compute);
 
     //! Resets current signal back to the previous one. It's necessary in a case of ROCr failure.
     void ResetCurrentSignal();
@@ -343,7 +345,7 @@ class VirtualGPU : public device::VirtualDevice {
   const Device& dev() const { return roc_device_; }
 
   void profilingBegin(amd::Command& command, bool sdmaProfiling = false);
-  void profilingEnd(amd::Command& command);
+  void profilingEnd(bool clearHwEvent = false);
 
   void updateCommandsState(amd::Command* list) const;
 
@@ -383,11 +385,6 @@ class VirtualGPU : public device::VirtualDevice {
   void submitSvmUnmapMemory(amd::SvmUnmapMemoryCommand& cmd);
   void submitSvmPrefetchAsync(amd::SvmPrefetchAsyncCommand& cmd);
 
-  // { roc OpenCL integration
-  // Added these stub (no-ops) implementation of pure virtual methods,
-  // when integrating HSA and OpenCL branches.
-  // TODO: After inegration, whoever is working on VirtualGPU should write
-  // actual implementation.
   virtual void submitSignal(amd::SignalCommand& cmd) {}
   virtual void submitMakeBuffersResident(amd::MakeBuffersResidentCommand& cmd) {}
 
@@ -397,6 +394,8 @@ class VirtualGPU : public device::VirtualDevice {
   virtual void submitExternalSemaphoreCmd(amd::ExternalSemaphoreCmd& cmd){}
 
   virtual address allocKernelArguments(size_t size, size_t alignment) final;
+  virtual void ReleaseAllHwQueues() final;
+  virtual void ReleaseHwQueue() final;
 
   /**
    * @brief Waits on an outstanding kernel without regard to how
@@ -408,6 +407,7 @@ class VirtualGPU : public device::VirtualDevice {
 
   hsa_agent_t gpu_device() const { return gpu_device_; }
   hsa_queue_t* gpu_queue() { return gpu_queue_; }
+  void set_gpu_queue(hsa_queue_t* gpu_queue) { gpu_queue_ = gpu_queue; }
 
   // Return pointer to PrintfDbg
   PrintfDbg* printfDbg() const { return printfdbg_; }
@@ -449,16 +449,21 @@ class VirtualGPU : public device::VirtualDevice {
   HwQueueTracker& Barriers() { return barriers_; }
 
   Timestamp* timestamp() const { return timestamp_; }
+  amd::Command* command() const { return command_; }
 
   void* allocKernArg(size_t size, size_t alignment);
   bool isFenceDirty() const { return fence_dirty_; }
-  void HiddenHeapInit();
+  void setFenceDirty(bool state) { fence_dirty_ = state; }
+  void WaitCompleteSignal(hsa_signal_t signal);
 
+  void HiddenHeapInit();
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
   uint32_t getLastUsedSdmaEngine() const { return lastUsedSdmaEngineMask_.load(); }
-  uint64_t getQueueID() { return gpu_queue_->id; }
+  uint64_t getQueueID();
 
-  // } roc OpenCL integration
+  //! Analyzes a crashed AQL queue to find a broken AQL packet
+  void AnalyzeAqlQueue() const;
+
  private:
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();
@@ -531,6 +536,33 @@ class VirtualGPU : public device::VirtualDevice {
   //! Resets the current queue state. Note: should be called after AQL queue becomes idle
   void ResetQueueStates();
 
+  //! Track the progress of the queue based on the last write index and completion signal
+  template <typename AqlPacket>
+  inline void TrackQueueProgress(const AqlPacket& packet, uint64_t index) {
+    // Track the progress of the current virtual queue
+    last_write_index_ = index;
+    // Update the last completion signal if the packet has one
+    if (packet.completion_signal.handle != 0) {
+      last_barrier_index_ = index;
+      last_completion_signal_ = packet.completion_signal;
+    }
+  }
+
+  //! Returns true if the queue is considered as idle. That means all submitted packets are complete.
+  //! Note: it doesn't track the state of caches
+  bool IsQueueIdle() const {
+    bool result = false;
+    // Make sure the last packet contained a completion signal
+    if (last_barrier_index_ == last_write_index_) {
+      if ((last_write_index_ == 0) && (last_completion_signal_.handle == 0)) {
+        result = true;
+      } else {
+        result = (hsa_signal_load_relaxed(last_completion_signal_) == 0);
+      }
+    }
+    return result;
+  }
+
   std::vector<amd::Memory*> pinnedMems_;   //!< Pinned memory list
 
   //! Queue state flags
@@ -547,8 +579,9 @@ class VirtualGPU : public device::VirtualDevice {
   };
 
   Timestamp* timestamp_;
+  amd::Command* command_;   //!< Current command
   hsa_agent_t gpu_device_;  //!< Physical device
-  hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
+  hsa_queue_t* gpu_queue_;  //!< Active queue associated with a vgpu
   hsa_barrier_and_packet_t barrier_packet_;
   hsa_amd_barrier_value_packet_t barrier_value_packet_;
 
@@ -564,9 +597,7 @@ class VirtualGPU : public device::VirtualDevice {
                                   //!< one thread
   uint schedulerThreads_;         //!< The number of scheduler threads
 
-  amd::Memory* schedulerParam_;
   hsa_queue_t* schedulerQueue_;
-  hsa_signal_t schedulerSignal_;
 
   HwQueueTracker  barriers_;      //!< Tracks active barriers in ROCr
 
@@ -596,9 +627,11 @@ class VirtualGPU : public device::VirtualDevice {
   bool fence_dirty_;                    //!< Fence modified flag
 
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
+  uint64_t last_write_index_ = 0;       //!< The last HW queue write index for any packet
+  uint64_t last_barrier_index_ = 0;     //!< The last HW queue write index for a packet
+                                        //!< with a complition signal
+  hsa_signal_t last_completion_signal_{}; //!< The last completion signal
 
   using KernelArgImpl = device::Settings::KernelArgImpl;
-
-  amd::Command* currCmd_ = nullptr;  //!< Current command under capture
 };
 }

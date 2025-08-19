@@ -32,6 +32,7 @@ namespace hip {
 
 // ================================================================================================
 hip::Stream* Device::NullStream(bool wait) {
+  ClPrint(amd::LOG_DEBUG, amd::LOG_WAIT, "NullStream %p, wait %d", null_stream_, wait);
   if (null_stream_ == nullptr) {
     amd::ScopedLock lock(lock_);
     if (null_stream_ == nullptr) {
@@ -39,6 +40,7 @@ hip::Stream* Device::NullStream(bool wait) {
       // Stream creation might be failed from rcor and in that case, vdev is null.
       if (null_stream_->vdev() == nullptr) {
         Stream::Destroy(null_stream_);
+        null_stream_ = nullptr;
       }
     }
   }
@@ -187,6 +189,7 @@ void Device::WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stre
 
   if (wait_null_stream) {
     if (null_stream_) {
+      ClPrint(amd::LOG_DEBUG, amd::LOG_WAIT, "Waiting on nullstream %p", null_stream_);
       waitForStream(null_stream_);
     }
   } else {
@@ -197,9 +200,11 @@ void Device::WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stre
         ((active_stream->Flags() & hipStreamNonBlocking) == 0) &&
         // and it's not the current stream
         (active_stream != blocking_stream)) {
+        ClPrint(amd::LOG_DEBUG, amd::LOG_WAIT, "Waiting on active stream %p", active_stream);
         // Get the last valid command
         waitForStream(active_stream);
       }
+      command->release();
     }
   }
 
@@ -315,7 +320,7 @@ bool Device::existsActiveStreamForDevice() {
 
 // ================================================================================================
 Device::~Device() {
-  if (default_mem_pool_ != nullptr) {
+  if ((IS_LINUX || !DEBUG_HIP_MEM_POOL_VMHEAP) && (default_mem_pool_ != nullptr)) {
     default_mem_pool_->release();
   }
 
@@ -464,6 +469,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   }
   auto* deviceHandle = g_devices[device]->devices()[0];
 
+  constexpr auto pixel_size_max = 16;
   constexpr auto int32_max = static_cast<uint64_t>(std::numeric_limits<int32_t>::max());
   constexpr auto uint16_max = static_cast<uint64_t>(std::numeric_limits<uint16_t>::max()) + 1;
   hipDeviceProp_tR0600 deviceProps = {0};
@@ -486,14 +492,14 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
-  deviceProps.memoryBusWidth = info.globalMemChannels_;
+  deviceProps.memoryBusWidth = info.vramBusBitWidth_;
   deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
   deviceProps.major = isa.versionMajor();
   deviceProps.minor = isa.versionMinor();
   deviceProps.multiProcessorCount = info.maxComputeUnits_;
   deviceProps.l2CacheSize = info.l2CacheSize_;
   deviceProps.maxThreadsPerMultiProcessor = info.maxThreadsPerCU_;
-  deviceProps.maxBlocksPerMultiProcessor = int(info.maxThreadsPerCU_ / info.maxWorkGroupSize_);
+  deviceProps.maxBlocksPerMultiProcessor = int(info.maxThreadsPerCU_ / info.wavefrontWidth_);
   deviceProps.computeMode = 0;
   deviceProps.clockInstructionRate = info.timeStampFrequency_;
   deviceProps.arch.hasGlobalInt32Atomics = 1;
@@ -531,7 +537,7 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.cooperativeMultiDeviceUnmatchedSharedMem = info.cooperativeMultiDeviceGroups_;
 
   deviceProps.maxTexture1DLinear =
-      std::min(16 * info.imageMaxBufferSize_, int32_max);  // Max pixel size is 16 bytes
+      std::min(pixel_size_max * info.imageMaxBufferSize_, int32_max);
   deviceProps.maxTexture1DMipmap = std::min(16 * info.imageMaxBufferSize_, int32_max);
   deviceProps.maxTexture1D = deviceProps.maxSurface1D = std::min(info.image1DMaxWidth_, int32_max);
   deviceProps.maxTexture2D[0] = deviceProps.maxSurface2D[0] =
@@ -618,9 +624,9 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
   deviceProps.maxTexture2DGather[0] = 0;
   deviceProps.maxTexture2DGather[1] = 0;
   // Textures bound to pitch memory
-  deviceProps.maxTexture2DLinear[0] = 0;
-  deviceProps.maxTexture2DLinear[1] = 0;
-  deviceProps.maxTexture2DLinear[2] = 0;
+  deviceProps.maxTexture2DLinear[0] = std::min(info.image2DMaxWidth_, int32_max);
+  deviceProps.maxTexture2DLinear[1] = std::min(info.image2DMaxHeight_, int32_max);
+  deviceProps.maxTexture2DLinear[2] = std::min(pixel_size_max * info.image2DMaxWidth_, int32_max);
   // Alternate 3D texture
   deviceProps.maxTexture3DAlt[0] = 0;
   deviceProps.maxTexture3DAlt[1] = 0;
@@ -687,7 +693,7 @@ hipError_t hipGetDevicePropertiesR0000(hipDeviceProp_tR0000* prop, int device) {
   deviceProps.maxGridSize[2] = uint16_max;
   deviceProps.clockRate = info.maxEngineClockFrequency_ * 1000;
   deviceProps.memoryClockRate = info.maxMemoryClockFrequency_ * 1000;
-  deviceProps.memoryBusWidth = info.globalMemChannels_;
+  deviceProps.memoryBusWidth = info.vramBusBitWidth_;
   deviceProps.totalConstMem = std::min(info.maxConstantBufferSize_, int32_max);
   deviceProps.major = isa.versionMajor();
   deviceProps.minor = isa.versionMinor();

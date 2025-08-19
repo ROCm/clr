@@ -24,7 +24,7 @@
 #include <cstring>
 
 void OCLGLCommon::open(unsigned int test, char *units, double &conversion,
-                       unsigned int deviceId) {
+                       unsigned int &deviceId) {
   // OpenCL Initialization
   OCLTestImp::open(test, units, conversion, deviceId);
   CHECK_RESULT((error_ != CL_SUCCESS), "Error opening test (%d)", error_);
@@ -51,6 +51,8 @@ void OCLGLCommon::open(unsigned int test, char *units, double &conversion,
   CHECK_RESULT((retVal == CL_SUCCESS), "Error opening test (%d)", error_);
 
   createCLContextFromGLContext(hGL_);
+  // Device id may change to match the GL context. Return the id to caller
+  deviceId = _deviceId;
 }
 
 bool OCLGLCommon::IsGLEnabled(unsigned int test, char *units,

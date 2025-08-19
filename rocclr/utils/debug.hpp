@@ -65,17 +65,8 @@ enum LogMask {
   LOG_MEM       = 131072, //!< (0x20000) Memory allocation
   LOG_MEM_POOL  = 262144, //!< (0x40000) Memory pool allocation, including memory in graphs
   LOG_TS        = 524288, //!< (0x80000) Timestamp details
+  LOG_COMGR     = 1048576,//!< (0x100000) Comgr path information print
   LOG_ALWAYS    = -1      //!< (0xFFFFFFFF) Log always even mask flag is zero
-};
-
-// Flags to support backward incompatible changes before 7.0
-enum BreakingHipChange7 {
-  CHANGE_HIP_GET_LAST_ERROR         = 1 << 0,        //!< (0x1)     HIP_GET_LAST_ERROR
-  CHANGE_HIP_POINTER_GET_ATTRIBUTES = 1 << 1,        //!< (0x2)     HIP_POINTER_GET_ATTRIBUTES
-  CHANGE_HIP_LAUNCH_KERNEL          = 1 << 2,        //!< (0x4)     HIP_LAUNCH_KERNEL
-  CHANGE_HIP_MODULE_LOAD            = 1 << 3,        //!< (0x8)     HIP_MODULE_LOAD
-  CHANGE_HIP_TEXTURE_API            = 1 << 4,        //!< (0x10)    HIP_TEXTURE_API
-  CHANGE_HIP_STREAM_CAPTURE_API     = 1 << 5,        //!< (0x20)    HIP_STREAM_CAPTURE_API
 };
 
 //! \brief log file output
@@ -218,6 +209,8 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
     }                                                                                              \
   } while (false)
 
+#define IsLogEnabled(level, mask) (AMD_LOG_LEVEL >= level && (AMD_LOG_MASK & mask || AMD_LOG_MASK == amd::LOG_ALWAYS))
+
 //called on entry and exit, calculates duration with local starttime variable defined in HIP_INIT_API
 #define HIPPrintDuration(level, mask, startTimeUs, format, ...)                                    \
   do {                                                                                             \
@@ -244,6 +237,7 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #else /*CL_LOG*/
 #define ClPrint(level, mask, format, ...) (void)(0)
 #define ClCondPrint(level, mask, condition, format, ...) (void)(0)
+#define HIPPrintDuration(level, mask, startTimeUs, format, ...) (void)(0)
 #endif /*CL_LOG*/
 
 #define ClTrace(level, mask) ClPrint(level, mask, "%s", __func__)
@@ -252,13 +246,13 @@ inline void warning(const char* msg) { amd::report_warning(msg); }
 #define LogError(msg) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, msg)
 #define LogWarning(msg) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, msg)
 
-#define LogPrintfDebug(format, ...) ClPrint(amd::LOG_DEBUG, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfError(format, ...) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfWarning(format, ...) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, format, __VA_ARGS__)
-#define LogPrintfInfo(format, ...) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, format, __VA_ARGS__)
+#define LogPrintfDebug(format, ...) ClPrint(amd::LOG_DEBUG, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfError(format, ...) ClPrint(amd::LOG_ERROR, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfWarning(format, ...) ClPrint(amd::LOG_WARNING, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
+#define LogPrintfInfo(format, ...) ClPrint(amd::LOG_INFO, amd::LOG_ALWAYS, format, ##__VA_ARGS__)
 
 #if (defined(DEBUG) || defined(DEV_LOG_ENABLE))
-  #define DevLogPrintfError(format, ...) LogPrintfError(format, __VA_ARGS__)
+  #define DevLogPrintfError(format, ...)  LogPrintfError(format, ##__VA_ARGS__)
   #define DevLogError(msg) LogError(msg)
 #else
   #define DevLogPrintfError(format, ...)

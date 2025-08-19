@@ -182,8 +182,11 @@ void UberTraceCaptureMgr::PreDispatch(VirtualGPU* gpu, const HSAILKernel& kernel
 
   // Increment dispatch count in RenderOp trace controller
   Pal::IQueue* pQueue = gpu->queue(MainEngine).iQueue_;
-  trace_controller_->RecordRenderOp(pQueue,
-                                    GpuUtil::RenderOpTraceController::RenderOp::RenderOpDispatch);
+  GpuUtil::RenderOpCounts opCounts =
+  {
+      .dispatchCount = 1u,
+  };
+  trace_controller_->RecordRenderOps(pQueue,opCounts);
 
   if (trace_session_->GetTraceSessionState() == GpuUtil::TraceSessionState::Running) {
     RgpSqttMarkerEventType apiEvent = RgpSqttMarkerEventType::CmdNDRangeKernel;

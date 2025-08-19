@@ -23,182 +23,44 @@
 
 #include "top.hpp"
 #include "utils/flags.hpp"
-#include "thread/semaphore.hpp"
-#include "thread/thread.hpp"
 #include <condition_variable>
 #include <mutex>
 #include <atomic>
 #include <tuple>
 #include <utility>
+#include <variant>
+#include "os/os.hpp"
 
 namespace amd {
 
-/*! \addtogroup Threads
- *  @{
- *
- *  \addtogroup Synchronization
- *  @{
- */
-
-namespace details {
-
-template <class T, class AllocClass = HeapObject> struct SimplyLinkedNode : public AllocClass {
-  typedef SimplyLinkedNode<T, AllocClass> Node;
-
- protected:
-  std::atomic<Node*> next_; /*!< \brief The next element. */
-  T volatile item_;
-
+class Monitor {
  public:
-  //! \brief Return the next element in the linked-list.
-  Node* next() const { return next_; }
-  //! \brief Return the item.
-  T item() const { return item_; }
-
-  //! \brief Set the next element pointer.
-  void setNext(Node* next) { next_ = next; }
-  //! \brief Set the item.
-  void setItem(T item) { item_ = item; }
-
-  //! \brief Swap the next element pointer.
-  Node* swapNext(Node* next) { return next_.swap(next); }
-
-  //! \brief Compare and set the next element pointer.
-  bool compareAndSetNext(Node* compare, Node* next) {
-    return next_.compare_exchange_strong(compare, next);
-  }
-};
-
-}  // namespace details
-
-class MonitorBase {
-public:
-  virtual ~MonitorBase() = 0;
-  virtual bool tryLock() = 0;
-  virtual void lock() = 0;
-  virtual void unlock() = 0;
-  virtual void wait() = 0;
-  virtual void notify() = 0;
-  virtual void notifyAll() = 0;
-};
-
-namespace legacy_monitor {
-class Monitor final: public HeapObject, public MonitorBase {
-  typedef details::SimplyLinkedNode<Semaphore*, StackObject> LinkedNode;
-
- private:
-  static constexpr intptr_t kLockBit = 0x1;
-
-  static constexpr int kMaxSpinIter = 55;      //!< Total number of spin iterations.
-  static constexpr int kMaxReadSpinIter = 50;  //!< Read iterations before yielding
-
-  /*! Linked list of semaphores the contending threads are waiting on
-   *  and main lock.
-   */
-  std::atomic_intptr_t contendersList_;
-
-  //! Semaphore of the next thread to contend for the lock.
-  std::atomic_intptr_t onDeck_;
-  //! Linked list of the suspended threads resume semaphores.
-  LinkedNode* volatile waitersList_;
-
-  //! Thread owning this monitor.
-  Thread* volatile owner_;
-  //! The amount of times this monitor was acquired by the owner.
-  uint32_t lockCount_;
-  //! True if this is a recursive mutex, false otherwise.
-  const bool recursive_;
-
- private:
-  //! Finish locking the mutex (contented case).
-  void finishLock();
-  //! Finish unlocking the mutex (contented case).
-  void finishUnlock();
-
- protected:
-  //! Try to spin-acquire the lock, return true if successful.
-  bool trySpinLock();
-
-  /*! \brief Return true if the lock is owned.
-   *
-   *  \note The user is responsible for the memory ordering.
-   */
-  bool isLocked() const { return (contendersList_ & kLockBit) != 0; }
-
-  //! Return this monitor's owner thread (NULL if unlocked).
-  Thread* owner() const { return owner_; }
-
-  //! Set the owner.
-  void setOwner(Thread* thread) { owner_ = thread; }
-
- public:
-  explicit Monitor(bool recursive = false);
-  ~Monitor() {}
-
-  //! Try to acquire the lock, return true if successful.
-  bool tryLock();
-
-  //! Acquire the lock or suspend the calling thread.
-  void lock();
-
-  //! Release the lock and wake a single waiting thread if any.
-  void unlock();
-
-  /*! \brief Give up the lock and go to sleep.
-   *
-   *  Calling wait() causes the current thread to go to sleep until
-   *  another thread calls notify()/notifyAll().
-   *
-   *  \note The monitor must be owned before calling wait().
-   */
-  void wait();
-  /*! \brief Wake up a single thread waiting on this monitor.
-   *
-   *  \note The monitor must be owned before calling notify().
-   */
-  void notify();
-  /*! \brief Wake up all threads that are waiting on this monitor.
-   *
-   *  \note The monitor must be owned before calling notifyAll().
-   */
-  void notifyAll();
-};
-
-
-} // namespace legacy_monitor
-
-namespace mutex_monitor {
-class Monitor final: public HeapObject, public MonitorBase {
- public:
-  explicit Monitor(bool recursive = false)
-      : recursive_(recursive) {
-    if (recursive)
-      new (&rec_mutex_) std::recursive_mutex();
-    else
-      new (&mutex_) std::mutex();
-  }
-
-  ~Monitor() {
-    // Caller must make sure the mutext is unlocked.
-    if (recursive_)
-      rec_mutex_.~recursive_mutex();
-    else
-      mutex_.~mutex();
+  explicit Monitor(bool recursive = false) : recursive_(recursive) {
+    waits_.store(0); // 0 waiting thread initially
+    notifyState_.store(notifyState::notNotified); // initially not notified
+    if (recursive) {
+      mutex_.emplace<std::recursive_mutex>();
+    } else {
+      mutex_.emplace<std::mutex>();
+    }
   }
 
   //! Try to acquire the lock, return true if successful, false if failed.
   bool tryLock() {
-    return recursive_ ? rec_mutex_.try_lock() : mutex_.try_lock();
+    return recursive_ ? std::get<std::recursive_mutex>(mutex_).try_lock() :
+                        std::get<std::mutex>(mutex_).try_lock();
   }
 
   //! Acquire the lock or suspend the calling thread.
   void lock() {
-    recursive_ ? rec_mutex_.lock() : mutex_.lock();
+    recursive_ ? std::get<std::recursive_mutex>(mutex_).lock() :
+                 std::get<std::mutex>(mutex_).lock();
   }
 
   //! Release the lock and wake a single waiting thread if any.
   void unlock() {
-    recursive_ ? rec_mutex_.unlock() : mutex_.unlock();
+    recursive_ ? std::get<std::recursive_mutex>(mutex_).unlock() :
+                 std::get<std::mutex>(mutex_).unlock();
   }
 
   /*! \brief Give up the lock and go to sleep.
@@ -209,57 +71,116 @@ class Monitor final: public HeapObject, public MonitorBase {
    *  \note The monitor must be owned before calling wait().
    */
   void wait() {
-    assert(recursive_ == false && "wait() doesn't support recursive mode");
-    // the mutex must be locked by caller
-    std::unique_lock lk(mutex_, std::adopt_lock);
-    cv_.wait(lk);
-    // the mutex is locked again
+    assert(recursive_ == false && "Error: wait() doesn't support recursive mode");
+    assert(waits_.load(std::memory_order_acquire) >= 0 && "Error: waits_.load() < 0");
+    std::mutex& mut = std::get<std::mutex>(mutex_);
+    std::unique_lock lk(mut, std::adopt_lock);
+
+    int c = 0;
+    while (unlikely(notifyState_.load(std::memory_order_acquire) == notifyState::allNotified)) {
+      lk.unlock();
+      // NotifyAll() processing already in progress, don't enter now.
+      // The new wait() shoule be processed by next notifyAll().
+      if (c < maxReadSpinIter_) {
+        Os::spinPause();
+        c++;
+      }
+      // and then SMP friendly
+      else {
+        Os::yield();
+      }
+      lk.lock();
+    }
+    waits_.fetch_add(1, std::memory_order_acq_rel);
+
+    lk.unlock();
+    // fast path
+    c = 0;
+    while (c < maxCount_ &&
+      (notifyState_.load(std::memory_order_acquire) == notifyState::notNotified)) {
+      // First, be SMT friendly
+      if (c < maxReadSpinIter_) {
+        Os::spinPause();
+      }
+      // and then SMP friendly
+      else {
+        Os::yield();
+      }
+      c++;
+    }
+    assert(c <= maxCount_ && "Error: c > maxCount_");
+
+    lk.lock();
+
+    if (c == maxCount_) {
+      // In case notify() is called between loop and here
+      notifyState expextedNotifyState = notifyState::oneNotified;
+      if (notifyState_.load(std::memory_order_acquire) != notifyState::allNotified &&
+        !notifyState_.compare_exchange_strong(expextedNotifyState,
+         notifyState::notNotified, std::memory_order_acq_rel, std::memory_order_acquire)) {
+        // Still not notified, so enter slow path
+        cv_.wait(lk); // slow path
+        expextedNotifyState = notifyState::oneNotified;
+        // To reset notifyState::oneNotified to notifyState::notNotified state if notifyState_ is
+        // notifyState::oneNotified.
+        // This will happen when notify() is called during cv_.wait(lk). Will do nothing
+        // if notifyState_ is notifyState::notNoftifed or notifyState::allNotified.
+        notifyState_.compare_exchange_strong(expextedNotifyState, notifyState::notNotified,
+          std::memory_order_acq_rel, std::memory_order_acquire);
+      }
+    }
+    // the mutex is locked again before exiting...
     lk.release();  // Release the ownership so that the caller should unlock the mutex
+    if (waits_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+      // No waiter indicates that notify() or notifyAll() processing has ended
+      notifyState_.store(notifyState::notNotified, std::memory_order_release);
+    }
   }
 
   /*! \brief Wake up a single thread waiting on this monitor.
    *
-   *  \note The monitor may or may not be owned before calling notify().
+   *  \note The monitor need be owned before calling notify().
    */
-  void notify() { cv_.notify_one(); }
+  void notify() {
+    // If notifyState_ is notifyState::oneNotified or notifyState::allNotified, this will be
+    // skipped.
+    if (notifyState_.load(std::memory_order_acquire) == notifyState::notNotified &&
+        waits_.load(std::memory_order_acquire) > 0 ) {
+      notifyState_.store(notifyState::oneNotified, std::memory_order_release);
+      cv_.notify_one();
+    }
+  }
 
   /*! \brief Wake up all threads that are waiting on this monitor.
    *
-   *  \note The monitor may or may not be owned before calling notifyAll().
+   *  \note The monitor need be owned before calling notifyAll().
    */
-  void notifyAll() { cv_.notify_all(); }
+  void notifyAll() {
+    // If notifyState_ is notifyState::allNotified, this will be skipped.  So notifyAll()
+    // can still be called if notify() is just called as notifyAll() covers notify()
+    if ( notifyState_.load(std::memory_order_acquire) != notifyState::allNotified &&
+         waits_.load(std::memory_order_acquire) > 0 ) {
+      // One notification is enough
+      notifyState_.store(notifyState::allNotified, std::memory_order_release);
+      cv_.notify_all();
+    }
+  }
 
  private:
-  union {
-    std::mutex mutex_;
-    std::recursive_mutex rec_mutex_;
+
+  std::variant<std::monostate, std::mutex, std::recursive_mutex> mutex_;
+
+  enum class notifyState{
+    notNotified = 0,
+    oneNotified = 1,
+    allNotified = 2
   };
   std::condition_variable cv_; //!< The condition variable for sync on the mutex
   const bool recursive_; //!< True if this is a recursive mutex, false otherwise.
-};
-} // namespace mutex_monitor
-
-// Monitor API wrapper to user
-class Monitor {
-public:
-  explicit Monitor(bool recursive = false) {
-    if (DEBUG_CLR_USE_STDMUTEX_IN_AMD_MONITOR) {
-      monitor_ = new mutex_monitor::Monitor(recursive);
-    }
-    else {
-      monitor_ = new legacy_monitor::Monitor(recursive);
-    }
-  }
-  inline ~Monitor() { delete monitor_; };
-  inline bool tryLock() { return monitor_->tryLock(); }
-  inline void lock() { monitor_->lock(); }
-  inline void unlock() { monitor_->unlock(); }
-  inline void wait() { monitor_->wait(); }
-  inline void notify() { monitor_->notify(); }
-  inline void notifyAll() { monitor_->notifyAll(); }
-
-private:
-  MonitorBase* monitor_;
+  std::atomic<int> waits_;
+  std::atomic<notifyState> notifyState_;
+  const int maxCount_{ 55 }; //!< Max count of spins in wait()
+  const int maxReadSpinIter_{ 50 };
 };
 
 class ScopedLock : StackObject {

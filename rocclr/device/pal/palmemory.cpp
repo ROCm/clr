@@ -26,6 +26,7 @@
 #include "device/device.hpp"
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palblit.hpp"
+#include "utils/flags.hpp"
 
 #ifdef _WIN32
 #include <d3d10_1.h>
@@ -114,11 +115,9 @@ bool Memory::create(Resource::MemoryType memType, Resource::CreateParams* params
       memType = Persistent;
     }
 
-    if (dev().settings().apuSystem_) {
-      const Pal::GpuMemoryHeapProperties& invisibleHeap = dev().GetGpuHeapInvisible();
+    if (amd::IS_HIP && dev().settings().apuSystem_) {
       Pal::gpusize totalAlloc = dev().TotalAlloc();
-      if (invisibleHeap.logicalSize > 0 && memType == Local &&
-          (totalAlloc > (invisibleHeap.logicalSize * 0.75))) {
+      if (memType == Local && totalAlloc > dev().GetMaxFrameBuffer()) {
         memType = RemoteUSWC;
       }
     }
@@ -1032,8 +1031,10 @@ Memory* Buffer::createBufferView(amd::Memory& subBufferOwner) const {
 // ================================================================================================
 bool Buffer::ExportHandle(void* handle) const {
   Pal::GpuMemoryExportInfo exportInfo = {};
+#if IS_WINDOWS
   // Set default flags in case they are not provided by application
   exportInfo.accessFlags = GENERIC_READ | GENERIC_WRITE;
+#endif
   *reinterpret_cast<Pal::OsExternalHandle*>(handle) = iMem()->ExportExternalHandle(exportInfo);
   return true;
 }

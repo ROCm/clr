@@ -29,6 +29,7 @@
 #include "device/pal/paldevice.hpp"
 #include "device/pal/palvirtual.hpp"
 #include "amd_hsa_kernel_code.h"
+#include "AMDHSAKernelDescriptor.h"
 #include "device/pal/palprintf.hpp"
 #include "hsa.h"
 
@@ -87,6 +88,9 @@ class HSAILKernel : public device::Kernel {
   //! Returns pointer on CPU to AQL code info
   const amd_kernel_code_t* cpuAqlCode() const { return &akc_; }
 
+  //! Returns pointer on CPU to AQL kernel descriptor info
+  const llvm::amdhsa::kernel_descriptor_t* cpuAqlKd() const { return &akd_; }
+
   //! Returns memory object with AQL code
   uint64_t gpuAqlCode() const { return code_; }
 
@@ -130,8 +134,11 @@ class HSAILKernel : public device::Kernel {
   void setWorkGroupInfo(const uint32_t privateSegmentSize, const uint32_t groupSegmentSize,
                         const uint16_t numSGPRs, const uint16_t numVGPRs);
 
-  amd_kernel_code_t akc_;       //!< AQL kernel code on CPU
-  uint index_;                  //!< Kernel index in the program
+  union {
+    amd_kernel_code_t akc_;                  //!< AQL kernel code on CPU, used by HSAIL
+    llvm::amdhsa::kernel_descriptor_t akd_;  //!< AQL kernel descriptor on CPU, used by LC
+  };
+  uint index_;                             //!< Kernel index in the program
 
   uint64_t code_;    //!< GPU memory pointer to the kernel
   size_t codeSize_;  //!< Size of ISA code
@@ -146,6 +153,8 @@ class LightningKernel : public HSAILKernel {
   const LightningProgram& prog() const;
 
 #if defined(USE_COMGR_LIBRARY)
+  //! Get the kernel descriptor and copy the code object from the program CPU segment
+  bool setKernelDescriptor(amd::hsa::loader::Symbol* sym, llvm::amdhsa::kernel_descriptor_t* akd);
   //! Initializes the metadata required for this kernel
   bool init();
 

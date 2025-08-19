@@ -48,10 +48,8 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hinst, DWORD reason, LPVOID reserved) {
     case DLL_PROCESS_DETACH:
       amd::Runtime::setLibraryDetached();
       break;
-    case DLL_THREAD_DETACH: {
-      amd::Thread* thread = amd::Thread::current();
-      delete thread;
-    } break;
+    case DLL_THREAD_DETACH:
+      break;
     default:
       break;
   }

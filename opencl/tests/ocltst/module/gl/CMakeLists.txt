@@ -47,7 +47,7 @@ target_include_directories(oclgl
 
 target_link_libraries(oclgl
     PRIVATE
-        ${GLEW_LIBRARIES}
+        GLEW::GLEW
         ${OPENGL_LIBRARIES})
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../../../../cmake")

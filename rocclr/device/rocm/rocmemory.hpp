@@ -128,7 +128,7 @@ class Memory : public device::Memory {
 
   // Free / deregister device memory.
   virtual void destroy() = 0;
-  hsa_status_t interopMapBuffer(int fd);
+  hsa_status_t interopMapBuffer(amd::Os::FileDesc fdn);
 
   // Place interop object into HSA's flat address space
   bool createInteropBuffer(GLenum targetType, int miplevel);
@@ -151,6 +151,14 @@ class Memory : public device::Memory {
 
   void* persistent_host_ptr_;  //!< Host accessible pointer for persistent memory
 
+  // Get MemorySegment type in terms of host memory allocation flags
+  Device::MemorySegment getHostMemorySegment(const unsigned int memFlags) {
+    return (memFlags & CL_MEM_SVM_ATOMICS) == 0
+           ? Device::MemorySegment::kNoAtomics :
+           ((memFlags & ROCCLR_MEM_HSA_UNCACHED) != 0 ?
+             Device::MemorySegment::kUncachedAtomics : Device::MemorySegment::kAtomics);
+  }
+
  private:
   // Disable copy constructor
   Memory(const Memory&);
@@ -172,6 +180,8 @@ class Buffer : public roc::Memory {
   virtual bool create(bool local_alloc = false);
 
   virtual bool ExportHandle(void* handle) const final;
+
+  virtual bool GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) final;
 
   // Recreate the device memory using new size and alignment.
   bool recreate(size_t newSize, size_t newAlignment, bool forceSystem);
@@ -250,6 +260,7 @@ class Image : public roc::Memory {
   hsa_access_permission_t permission_;
   hsa_ext_image_data_info_t deviceImageInfo_;
   hsa_ext_image_t hsaImageObject_;
+  bool ownsHsaImageObject_ = true;
 
   void* originalDeviceMemory_;
   amd::Image* copyImageBuffer_ = nullptr;

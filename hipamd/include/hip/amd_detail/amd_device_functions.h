@@ -60,7 +60,7 @@ __device__ static inline int __clz(int input) {
 }
 
 __device__ static inline int __clzll(long long int input) {
-    return __ockl_clz_u64((uint64_t)input);
+    return __ockl_clz_u64((__hip_uint64_t)input);
 }
 
 __device__ static inline int __ffs(unsigned int input) {
@@ -82,9 +82,9 @@ __device__ static inline int __ffsll(long long int input) {
 // Given a 32/64-bit value exec mask and an integer value base (between 0 and WAVEFRONT_SIZE),
 // find the n-th (given by offset) set bit in the exec mask from the base bit, and return the bit position.
 // If not found, return -1.
-__device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset) {
-  uint64_t temp_mask = mask;
-  int32_t temp_offset = offset;
+__device__  static __hip_int32_t __fns64(__hip_uint64_t mask, __hip_uint32_t base, __hip_int32_t offset) {
+  __hip_uint64_t temp_mask = mask;
+  __hip_int32_t temp_offset = offset;
 
   if (offset == 0) {
     temp_mask &= (1 << base);
@@ -99,10 +99,10 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
   temp_mask = temp_mask & ((~0ULL) << base);
   if (__builtin_popcountll(temp_mask) < temp_offset)
     return -1;
-  int32_t total = 0;
+  __hip_int32_t total = 0;
   for (int i = 0x20; i > 0; i >>= 1) {
-    uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
-    int32_t pcnt = __builtin_popcountll(temp_mask_lo);
+    __hip_uint64_t temp_mask_lo = temp_mask & ((1ULL << i) - 1);
+    __hip_int32_t pcnt = __builtin_popcountll(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -118,9 +118,9 @@ __device__  static int32_t __fns64(uint64_t mask, uint32_t base, int32_t offset)
     return total;
 }
 
-__device__ static int32_t __fns32(uint32_t mask, uint32_t base, int32_t offset) {
-  uint32_t temp_mask = mask;
-  int32_t temp_offset = offset;
+__device__ static __hip_int32_t __fns32(__hip_uint64_t mask, __hip_uint32_t base, __hip_int32_t offset) {
+  __hip_uint32_t temp_mask = mask;
+  __hip_int32_t temp_offset = offset;
   if (offset == 0) {
     temp_mask &= (1 << base);
     temp_offset = 1;
@@ -133,10 +133,10 @@ __device__ static int32_t __fns32(uint32_t mask, uint32_t base, int32_t offset) 
   temp_mask = temp_mask & ((~0U) << base);
   if (__builtin_popcount(temp_mask) < temp_offset)
     return -1;
-  int32_t total = 0;
+  __hip_int32_t total = 0;
   for (int i = 0x10; i > 0; i >>= 1) {
-    uint32_t temp_mask_lo = temp_mask & ((1U << i) - 1);
-    int32_t pcnt = __builtin_popcount(temp_mask_lo);
+    __hip_uint32_t temp_mask_lo = temp_mask & ((1U << i) - 1);
+    __hip_int32_t pcnt = __builtin_popcount(temp_mask_lo);
     if (pcnt < temp_offset) {
       temp_mask = temp_mask >> i;
       temp_offset -= pcnt;
@@ -153,7 +153,7 @@ __device__ static int32_t __fns32(uint32_t mask, uint32_t base, int32_t offset) 
 }
 
 // Wrapper around __fns32() to make porting from CUDA easier
-__device__ static int32_t __fns(unsigned int mask, unsigned int base, int offset) {
+__device__ static __hip_int32_t __fns(unsigned int mask, unsigned int base, int offset) {
     return __fns32(mask, base, offset);
 }
 
@@ -165,45 +165,45 @@ __device__ static inline unsigned long long int __brevll(unsigned long long int 
     return __builtin_bitreverse64(input);
 }
 
-__device__ static inline unsigned int __lastbit_u32_u64(uint64_t input) {
+__device__ static inline unsigned int __lastbit_u32_u64(__hip_uint64_t input) {
     return input == 0 ? -1 : __builtin_ctzl(input);
 }
 
 __device__ static inline unsigned int __bitextract_u32(unsigned int src0, unsigned int src1, unsigned int src2) {
-    uint32_t offset = src1 & 31;
-    uint32_t width = src2 & 31;
+    __hip_uint32_t offset = src1 & 31;
+    __hip_uint32_t width = src2 & 31;
     return width == 0 ? 0 : (src0 << (32 - offset - width)) >> (32 - width);
 }
 
-__device__ static inline uint64_t __bitextract_u64(uint64_t src0, unsigned int src1, unsigned int src2) {
-    uint64_t offset = src1 & 63;
-    uint64_t width = src2 & 63;
+__device__ static inline __hip_uint64_t __bitextract_u64(__hip_uint64_t src0, unsigned int src1, unsigned int src2) {
+    __hip_uint64_t offset = src1 & 63;
+    __hip_uint64_t width = src2 & 63;
     return width == 0 ? 0 : (src0 << (64 - offset - width)) >> (64 - width);
 }
 
 __device__ static inline unsigned int __bitinsert_u32(unsigned int src0, unsigned int src1, unsigned int src2, unsigned int src3) {
-    uint32_t offset = src2 & 31;
-    uint32_t width = src3 & 31;
-    uint32_t mask = (1 << width) - 1;
+    __hip_uint32_t offset = src2 & 31;
+    __hip_uint32_t width = src3 & 31;
+    __hip_uint32_t mask = (1 << width) - 1;
     return ((src0 & ~(mask << offset)) | ((src1 & mask) << offset));
 }
 
-__device__ static inline uint64_t __bitinsert_u64(uint64_t src0, uint64_t src1, unsigned int src2, unsigned int src3) {
-    uint64_t offset = src2 & 63;
-    uint64_t width = src3 & 63;
-    uint64_t mask = (1ULL << width) - 1;
+__device__ static inline __hip_uint64_t __bitinsert_u64(__hip_uint64_t src0, __hip_uint64_t src1, unsigned int src2, unsigned int src3) {
+    __hip_uint64_t offset = src2 & 63;
+    __hip_uint64_t width = src3 & 63;
+    __hip_uint64_t mask = (1ULL << width) - 1;
     return ((src0 & ~(mask << offset)) | ((src1 & mask) << offset));
 }
 
 __device__ inline unsigned int __funnelshift_l(unsigned int lo, unsigned int hi, unsigned int shift)
 {
-    uint32_t mask_shift = shift & 31;
+    __hip_uint32_t mask_shift = shift & 31;
     return mask_shift == 0 ? hi : __builtin_amdgcn_alignbit(hi, lo, 32 - mask_shift);
 }
 
 __device__ inline unsigned int __funnelshift_lc(unsigned int lo, unsigned int hi, unsigned int shift)
 {
-    uint32_t min_shift = shift >= 32 ? 32 : shift;
+    __hip_uint32_t min_shift = shift >= 32 ? 32 : shift;
     return min_shift == 0 ? hi : __builtin_amdgcn_alignbit(hi, lo, 32 - min_shift);
 }
 
@@ -404,41 +404,47 @@ __device__ static inline int __double2loint(double x) {
     return tmp[0];
 }
 
-__device__ static inline int __double2int_rd(double x) { return (int)__ocml_floor_f64(x); }
-__device__ static inline int __double2int_rn(double x) { return (int)__ocml_rint_f64(x); }
-__device__ static inline int __double2int_ru(double x) { return (int)__ocml_ceil_f64(x); }
+__device__ static inline int __double2int_rd(double x) {
+  return (int)__builtin_elementwise_floor(x);
+}
+__device__ static inline int __double2int_rn(double x) {
+  return (int)__builtin_elementwise_rint(x);
+}
+__device__ static inline int __double2int_ru(double x) {
+  return (int)__builtin_elementwise_ceil(x);
+}
 __device__ static inline int __double2int_rz(double x) { return (int)x; }
 
 __device__ static inline long long int __double2ll_rd(double x) {
-  return (long long)__ocml_floor_f64(x);
+  return (long long)__builtin_elementwise_floor(x);
 }
 __device__ static inline long long int __double2ll_rn(double x) {
-  return (long long)__ocml_rint_f64(x);
+  return (long long)__builtin_elementwise_rint(x);
 }
 __device__ static inline long long int __double2ll_ru(double x) {
-  return (long long)__ocml_ceil_f64(x);
+  return (long long)__builtin_elementwise_ceil(x);
 }
 __device__ static inline long long int __double2ll_rz(double x) { return (long long)x; }
 
 __device__ static inline unsigned int __double2uint_rd(double x) {
-  return (unsigned int)__ocml_floor_f64(x);
+  return (unsigned int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned int __double2uint_rn(double x) {
-  return (unsigned int)__ocml_rint_f64(x);
+  return (unsigned int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned int __double2uint_ru(double x) {
-  return (unsigned int)__ocml_ceil_f64(x);
+  return (unsigned int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned int __double2uint_rz(double x) { return (unsigned int)x; }
 
 __device__ static inline unsigned long long int __double2ull_rd(double x) {
-  return (unsigned long long int)__ocml_floor_f64(x);
+  return (unsigned long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned long long int __double2ull_rn(double x) {
-  return (unsigned long long int)__ocml_rint_f64(x);
+  return (unsigned long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned long long int __double2ull_ru(double x) {
-  return (unsigned long long int)__ocml_ceil_f64(x);
+  return (unsigned long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned long long int __double2ull_rz(double x) {
   return (unsigned long long int)x;
@@ -466,41 +472,41 @@ CUDA implements half as unsigned short whereas, HIP doesn't.
 
 */
 
-__device__ static inline int __float2int_rd(float x) { return (int)__ocml_floor_f32(x); }
-__device__ static inline int __float2int_rn(float x) { return (int)__ocml_rint_f32(x); }
-__device__ static inline int __float2int_ru(float x) { return (int)__ocml_ceil_f32(x); }
-__device__ static inline int __float2int_rz(float x) { return (int)__ocml_trunc_f32(x); }
+__device__ static inline int __float2int_rd(float x) { return (int)__builtin_elementwise_floor(x); }
+__device__ static inline int __float2int_rn(float x) { return (int)__builtin_elementwise_rint(x); }
+__device__ static inline int __float2int_ru(float x) { return (int)__builtin_elementwise_ceil(x); }
+__device__ static inline int __float2int_rz(float x) { return (int)__builtin_elementwise_trunc(x); }
 
 __device__ static inline long long int __float2ll_rd(float x) {
-  return (long long int)__ocml_floor_f32(x);
+  return (long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline long long int __float2ll_rn(float x) {
-  return (long long int)__ocml_rint_f32(x);
+  return (long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline long long int __float2ll_ru(float x) {
-  return (long long int)__ocml_ceil_f32(x);
+  return (long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline long long int __float2ll_rz(float x) { return (long long int)x; }
 
 __device__ static inline unsigned int __float2uint_rd(float x) {
-  return (unsigned int)__ocml_floor_f32(x);
+  return (unsigned int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned int __float2uint_rn(float x) {
-  return (unsigned int)__ocml_rint_f32(x);
+  return (unsigned int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned int __float2uint_ru(float x) {
-  return (unsigned int)__ocml_ceil_f32(x);
+  return (unsigned int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned int __float2uint_rz(float x) { return (unsigned int)x; }
 
 __device__ static inline unsigned long long int __float2ull_rd(float x) {
-  return (unsigned long long int)__ocml_floor_f32(x);
+  return (unsigned long long int)__builtin_elementwise_floor(x);
 }
 __device__ static inline unsigned long long int __float2ull_rn(float x) {
-  return (unsigned long long int)__ocml_rint_f32(x);
+  return (unsigned long long int)__builtin_elementwise_rint(x);
 }
 __device__ static inline unsigned long long int __float2ull_ru(float x) {
-  return (unsigned long long int)__ocml_ceil_f32(x);
+  return (unsigned long long int)__builtin_elementwise_ceil(x);
 }
 __device__ static inline unsigned long long int __float2ull_rz(float x) {
   return (unsigned long long int)x;
@@ -525,9 +531,9 @@ __device__ static inline unsigned int __float_as_uint(float x) {
 }
 
 __device__ static inline double __hiloint2double(int hi, int lo) {
-    static_assert(sizeof(double) == sizeof(uint64_t), "");
+    static_assert(sizeof(double) == sizeof(__hip_uint64_t), "");
 
-    uint64_t tmp0 = (static_cast<uint64_t>(hi) << 32ull) | static_cast<uint32_t>(lo);
+    __hip_uint64_t tmp0 = (static_cast<__hip_uint64_t>(hi) << 32ull) | static_cast<__hip_uint32_t>(lo);
     double tmp1;
     __builtin_memcpy(&tmp1, &tmp0, sizeof(tmp0));
 
@@ -650,13 +656,7 @@ __device__ void __named_sync();
 __device__
 inline  __attribute((always_inline))
 long long int __clock64() {
-#if __has_builtin(__builtin_amdgcn_s_memtime)
-  // Exists on gfx8, gfx9, gfx10.1, gfx10.2, gfx10.3
-  return (long long int) __builtin_amdgcn_s_memtime();
-#else
-  // Subject to change when better solution available
-  return (long long int) __builtin_readcyclecounter();
-#endif
+  return (long long int)__builtin_readcyclecounter();
 }
 
 __device__
@@ -689,32 +689,32 @@ void __named_sync() { __builtin_amdgcn_s_barrier(); }
 // hip.amdgcn.bc - lanemask
 __device__
 inline
-uint64_t  __lanemask_gt()
+__hip_uint64_t  __lanemask_gt()
 {
-    uint32_t lane = __ockl_lane_u32();
+    __hip_uint32_t lane = __ockl_lane_u32();
     if (lane == 63)
       return 0;
-    uint64_t ballot = __ballot64(1);
-    uint64_t mask = (~((uint64_t)0)) << (lane + 1);
+    __hip_uint64_t ballot = __ballot64(1);
+    __hip_uint64_t mask = (~((__hip_uint64_t)0)) << (lane + 1);
     return mask & ballot;
 }
 
 __device__
 inline
-uint64_t __lanemask_lt()
+__hip_uint64_t __lanemask_lt()
 {
-    uint32_t lane = __ockl_lane_u32();
-    int64_t ballot = __ballot64(1);
-    uint64_t mask = ((uint64_t)1 << lane) - (uint64_t)1;
+    __hip_uint32_t lane = __ockl_lane_u32();
+    __hip_int64_t ballot = __ballot64(1);
+    __hip_uint64_t mask = ((__hip_uint64_t)1 << lane) - (__hip_uint64_t)1;
     return mask & ballot;
 }
 
 __device__
 inline
-uint64_t  __lanemask_eq()
+__hip_uint64_t  __lanemask_eq()
 {
-    uint32_t lane = __ockl_lane_u32();
-    int64_t mask = ((uint64_t)1 << lane);
+    __hip_uint32_t lane = __ockl_lane_u32();
+    __hip_int64_t mask = ((__hip_uint64_t)1 << lane);
     return mask;
 }
 
@@ -828,14 +828,14 @@ int __syncthreads_or(int predicate)
   CU_ID       11:8    Compute Unit the wave is assigned to.
   SH_ID       12      Shader Array (within an SE) the wave is assigned to.
   SE_ID       15:13   Shader Engine the wave is assigned to for gfx908, gfx90a
-              14:13   Shader Engine the wave is assigned to for gfx940-942
+              14:13   Shader Engine the wave is assigned to for 942
   TG_ID       19:16   Thread-group ID
   VM_ID       23:20   Virtual Memory ID
   QUEUE_ID    26:24   Queue from which this wave was dispatched.
   STATE_ID    29:27   State ID (graphics only, not compute).
   ME_ID       31:30   Micro-engine ID.
 
-  XCC_ID Register bit structure for gfx940
+  XCC_ID Register bit structure for 942/950
   XCC_ID      3:0     XCC the wave is assigned to.
  */
 
@@ -860,7 +860,7 @@ int __syncthreads_or(int predicate)
 #if (defined(__gfx908__) || defined(__gfx90a__) || \
      defined(__GFX11__))
   #define HW_ID_SE_ID_SIZE    3
-#else //4 SEs/XCC for gfx940-942
+#else //4 SEs/XCC for 942
   #define HW_ID_SE_ID_SIZE    2
 #endif
 #if (defined(__GFX10__) || defined(__GFX11__))
@@ -871,14 +871,14 @@ int __syncthreads_or(int predicate)
   #define HW_ID_SE_ID_OFFSET  13
 #endif
 
-#if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+#if (defined(__gfx942__) || defined(__gfx950__))
+  #define __gfx94plus_clr__
   #define XCC_ID                   20
   #define XCC_ID_XCC_ID_SIZE       4
   #define XCC_ID_XCC_ID_OFFSET     0
 #endif
 
-#if (!defined(__HIP_NO_IMAGE_SUPPORT) && \
-    (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__)))
+#if !defined(__HIP_NO_IMAGE_SUPPORT) && defined(__gfx94plus_clr__)
   #define __HIP_NO_IMAGE_SUPPORT   1
 #endif
 
@@ -913,7 +913,7 @@ unsigned __smid(void)
             GETREG_IMMED(HW_ID_CU_ID_SIZE - 1, HW_ID_CU_ID_OFFSET, HW_ID));
       #endif
     #else
-      #if (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+      #if defined(__gfx94plus_clr__)
       unsigned xcc_id = __builtin_amdgcn_s_getreg(
             GETREG_IMMED(XCC_ID_XCC_ID_SIZE - 1, XCC_ID_XCC_ID_OFFSET, XCC_ID));
       #endif
@@ -929,7 +929,7 @@ unsigned __smid(void)
       #endif
       return temp;
       //TODO : CU Mode impl
-    #elif (defined(__gfx940__) || defined(__gfx941__) || defined(__gfx942__))
+    #elif defined(__gfx94plus_clr__)
       unsigned temp = xcc_id;
       temp = (temp << HW_ID_SE_ID_SIZE) | se_id;
       temp = (temp << HW_ID_CU_ID_SIZE) | cu_id;

@@ -1,5 +1,4 @@
 cmake_minimum_required (VERSION 3.5)
-
 project(OpenCL_Headers_Tests)
 
 enable_testing()

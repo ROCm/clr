@@ -115,8 +115,10 @@ class Program : public amd::HeapObject {
   kernels_t kernels_; //!< The kernel entry points this binary.
   type_t type_;       //!< type of this program
 
-  typedef enum { InitKernel = 0, FiniKernel } kernel_kind_t;  //!< Kernel kind
-  bool runInitFiniKernel(kernel_kind_t) const;
+  std::vector<const Kernel*> initKernels_;  //!< Init kernels
+  std::vector<const Kernel*> finiKernels_;  //!< Fini kernels
+
+  bool runInitFiniKernel(const std::vector<const Kernel*>& kernels) const;
 
 #if defined(WITH_COMPILER_LIB)
   static amd::Monitor buildLock_; //!< Global build lock for HSAIL which isn't thread-safe
@@ -194,7 +196,7 @@ class Program : public amd::HeapObject {
 
   //! Build the device program.
   int32_t build(const std::string& sourceCode, const char* origOptions,
-                amd::option::Options* options, const std::vector<std::string>& preCompiledHeaders);
+                amd::option::Options* options);
 
   //! Load the device program.
   bool load();
@@ -223,6 +225,9 @@ class Program : public amd::HeapObject {
   //! Return the symbols vector.
   const kernels_t& kernels() const { return kernels_; }
   kernels_t& kernels() { return kernels_; }
+
+  //! Add kernel to the map and init fini kernel vector.
+  void addKernel(Kernel* k);
 
   //! Return the binary image.
   inline const binary_t binary() const;
@@ -319,11 +324,10 @@ class Program : public amd::HeapObject {
   *
   *  \return True if we successefully compiled a GPU program
   */
-  virtual bool compileImpl(
-      const std::string& sourceCode,  //!< the program's source code
-      const std::vector<const std::string*>& headers, const char** headerIncludeNames,
-      amd::option::Options* options,                      //!< compile options's object
-      const std::vector<std::string>& preCompiledHeaders  //!< precompiled headers
+  virtual bool compileImpl(const std::string& sourceCode,  //!< the program's source code
+                           const std::vector<const std::string*>& headers,
+                           const char** headerIncludeNames,
+                           amd::option::Options* options  //!< compile options's object
   );
 
   //! Link the device program.
@@ -406,8 +410,7 @@ class Program : public amd::HeapObject {
 
   //! Compile the device program with LC path
   bool compileImplLC(const std::string& sourceCode, const std::vector<const std::string*>& headers,
-                     const char** headerIncludeNames, amd::option::Options* options,
-                     const std::vector<std::string>& preCompiledHeaders);
+                     const char** headerIncludeNames, amd::option::Options* options);
 
   //! Compile the device program with HSAIL path
   bool compileImplHSAIL(const std::string& sourceCode,
@@ -446,10 +449,6 @@ class Program : public amd::HeapObject {
   amd_comgr_status_t addCodeObjData(const char *source,
     const size_t size, const amd_comgr_data_kind_t type,
     const char* name, amd_comgr_data_set_t* dataSet);
-
-  //! Add precompiled headers to the data set
-  amd_comgr_status_t addPreCompiledHeader(amd_comgr_data_set_t* dataSet,
-                                          const std::vector<std::string>& preCompiledHeaders);
 
   //! Create action for the specified language, target and options
   amd_comgr_status_t createAction(const amd_comgr_language_t oclver,

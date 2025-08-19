@@ -17,7 +17,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.16.8)
 project(hip)
 
 include(GNUInstallDirs)
@@ -45,7 +44,6 @@ list(APPEND CMAKE_MODULE_PATH ${HIP_COMMON_DIR}/cmake)
 #############################
 option(__HIP_ENABLE_PCH "Enable/Disable pre-compiled hip headers" ON)
 option(HIP_OFFICIAL_BUILD "Enable/Disable for mainline/staging builds" OFF)
-option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorg with backward compatibility" OFF)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
 
 if(MSVC)
@@ -53,7 +51,8 @@ if(MSVC)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG:FULL")
 endif()
 
-set(HIPCC_BIN_DIR "" CACHE STRING "HIPCC and HIPCONFIG binary directories")
+# Set default HIPCC_BIN_DIR to /opt/rocm/bin
+set(HIPCC_BIN_DIR "/opt/rocm/bin" CACHE STRING "HIPCC and HIPCONFIG binary directories")
 
 if(__HIP_ENABLE_PCH)
   set(_pchStatus 1)
@@ -180,6 +179,23 @@ if ( PROC_RESULT EQUAL "0" AND NOT EVAL_RESULT STREQUAL "" )
   endif() # end check string el7
 endif()
 message(STATUS "CPACK_RPM_PACKAGE_RELEASE: ${CPACK_RPM_PACKAGE_RELEASE}")
+
+set (DEB10_DISTRO "FALSE")
+execute_process( COMMAND sh "-c" "cat /etc/os-release | grep \"^NAME=\""
+                 RESULT_VARIABLE PROC_RESULT_NAME
+                 OUTPUT_VARIABLE OS_NAME_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+execute_process( COMMAND sh "-c" "cat /etc/os-release | grep \"^VERSION_ID=\""
+                 RESULT_VARIABLE PROC_RESULT_VERSION
+                 OUTPUT_VARIABLE OS_VERSION_ID_RESULT
+                 OUTPUT_STRIP_TRAILING_WHITESPACE )
+
+if ( PROC_RESULT_NAME EQUAL "0" AND NOT OS_NAME_RESULT STREQUAL "" AND
+     PROC_RESULT_VERSION EQUAL "0" AND NOT OS_VERSION_ID_RESULT STREQUAL "")
+  if ( "${OS_NAME_RESULT}" STREQUAL "NAME=\"Debian GNU/Linux\"" AND "${OS_VERSION_ID_RESULT}" STREQUAL "VERSION_ID=\"10\"")
+     set ( DEB10_DISTRO "TRUE" )
+  endif()
+endif()
 
 add_to_config(_versionInfo HIP_PACKAGING_VERSION_PATCH)
 add_to_config(_versionInfo CPACK_DEBIAN_PACKAGE_RELEASE)
@@ -393,14 +409,13 @@ endif()
 install(FILES ${PROJECT_BINARY_DIR}/include/hip/hip_version.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/hip)
 
+set(HIP_INSTALLS_HIPCC OFF)
 if (NOT ${HIPCC_BIN_DIR} STREQUAL "")
   file(TO_CMAKE_PATH "${HIPCC_BIN_DIR}" HIPCC_BIN_DIR)
   if(EXISTS ${HIPCC_BIN_DIR})
+    set(HIP_INSTALLS_HIPCC ON)
     install(PROGRAMS ${HIPCC_BIN_DIR}/${HIPCC_EXECUTABLE} DESTINATION bin)
     install(PROGRAMS ${HIPCC_BIN_DIR}/${HIPCONFIG_EXECUTABLE} DESTINATION bin)
-    install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.pl DESTINATION bin)
-    install(PROGRAMS ${HIPCC_BIN_DIR}/hipconfig.pl DESTINATION bin)
-    install(PROGRAMS ${HIPCC_BIN_DIR}/hipvars.pm DESTINATION bin)
 
     if(NOT UNIX)
       install(PROGRAMS ${HIPCC_BIN_DIR}/hipcc.bat DESTINATION bin)
@@ -466,27 +481,4 @@ if(HIP_HIPCC_EXECUTABLE)
     if(CPPCHECK_EXE)
         add_dependencies(analyze cppcheck)
     endif()
-endif()
-
-#File reorg Backward compatibility function
-if(NOT WIN32)
-    if(FILE_REORG_BACKWARD_COMPATIBILITY)
-    # To enabe/disable #error in wrapper header files
-        if(NOT DEFINED ROCM_HEADER_WRAPPER_WERROR)
-            if(DEFINED ENV{ROCM_HEADER_WRAPPER_WERROR})
-                set(ROCM_HEADER_WRAPPER_WERROR "$ENV{ROCM_HEADER_WRAPPER_WERROR}"
-                    CACHE STRING "Header wrapper warnings as errors.")
-            else()
-                set(ROCM_HEADER_WRAPPER_WERROR "OFF" CACHE STRING "Header wrapper warnings as errors.")
-            endif()
-        endif()
-
-        if(ROCM_HEADER_WRAPPER_WERROR)
-            set(deprecated_error 1)
-        else()
-            set(deprecated_error 0)
-        endif()
-
-        include(hip-backward-compat.cmake)
-    endif() #FILE_REORG_BACKWARD_COMPATIBILITY
 endif()

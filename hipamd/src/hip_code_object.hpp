@@ -35,6 +35,52 @@ THE SOFTWARE.
 #include "platform/program.hpp"
 
 namespace hip {
+namespace symbols {
+// In uncompressed mode
+constexpr char kOffloadBundleUncompressedMagicStr[] = "__CLANG_OFFLOAD_BUNDLE__";
+static constexpr size_t kOffloadBundleUncompressedMagicStrSize =
+    sizeof(kOffloadBundleUncompressedMagicStr);
+
+// In compressed mode
+constexpr char kOffloadBundleCompressedMagicStr[] = "CCOB";
+static constexpr size_t kOffloadBundleCompressedMagicStrSize =
+    sizeof(kOffloadBundleCompressedMagicStr);
+
+constexpr char kOffloadKindHip[] = "hip";
+constexpr char kOffloadKindHipv4[] = "hipv4";
+constexpr char kOffloadKindHcc[] = "hcc";
+constexpr char kAmdgcnTargetTriple[] = "amdgcn-amd-amdhsa-";
+constexpr char kHipFatBinName[] = "hipfatbin";
+constexpr char kHipFatBinName_[] = "hipfatbin-";
+constexpr char kOffloadKindHipv4_[] = "hipv4-";  // bundled code objects need the prefix
+constexpr char kOffloadHipV4FatBinName_[] = "hipfatbin-hipv4-";
+
+// Clang Offload bundler description & Header in uncompressed mode.
+struct ClangOffloadBundleInfo {
+  uint64_t offset;
+  uint64_t size;
+  uint64_t bundleEntryIdSize;
+  const char bundleEntryId[1];
+};
+
+struct ClangOffloadBundleUncompressedHeader {
+  const char magic[kOffloadBundleUncompressedMagicStrSize - 1];
+  uint64_t numOfCodeObjects;
+  ClangOffloadBundleInfo desc[1];
+};
+
+// Clang Offload bundler description & Header in compressed mode.
+struct ClangOffloadBundleCompressedHeader {
+  const char magic[kOffloadBundleCompressedMagicStrSize - 1];
+  uint16_t versionNumber;
+  uint16_t compressionMethod;
+  uint32_t totalSize;
+  uint32_t uncompressedBinarySize;
+  uint64_t Hash;
+  const char compressedBinarydesc[1];
+};
+}  // namespace symbols
+
 //Forward Declaration for friend usage
 class PlatformState;
 
@@ -43,67 +89,10 @@ class CodeObject {
  public:
   virtual ~CodeObject() {}
 
-  // Functions to add_dev_prog and build
-  static hipError_t add_program(int deviceId, hipModule_t hmod, const void* binary_ptr,
-                                size_t binary_size);
-  static hipError_t build_module(hipModule_t hmod, const std::vector<amd::Device*>& devices);
-
-  // Given an file desc and file size, extracts to code object for corresponding devices,
-  // return code_objs{binary_ptr, binary_size}, which could be used to determine foffset
-  static hipError_t ExtractCodeObjectFromFile(amd::Os::FileDesc fdesc, size_t fsize,
-                    const void ** image, const std::vector<std::string>& device_names,
-                    std::vector<std::pair<const void*, size_t>>& code_objs, size_t foffset);
-
-  // Given an ptr to memory, extracts to code object for corresponding devices,
-  // returns code_objs{binary_ptr, binary_size} and uniform resource indicator
-  static hipError_t ExtractCodeObjectFromMemory(const void* data,
-                    const std::vector<std::string>& device_names,
-                    std::vector<std::pair<const void*, size_t>>& code_objs,
-                    std::string& uri);
-
-  static uint64_t ElfSize(const void* emi);
-
-  static bool IsClangOffloadMagicBundle(const void* data, bool& isCompressed);
-
-  static uint32_t getGenericVersion(const void* image);
-
-  static bool isGenericTarget(const void* image);
-
-  static bool containGenericTarget(const void *data);
-
-  // Return size of fat bin
-  static size_t getFatbinSize(const void* data, const bool isCompressed = false);
-
-  /**
-     *  @brief Extract code object from fatbin using comgr unbundling action
-     *
-     *  @param[in]  data the bundle data(fatbin or loaded module data). It can be in uncompressed,
-     *              compressed and even SPIR-V(to be supported later) mode.
-     *  @param[in]  size the size of the bundle data
-     *  @param[in]  agent_triple_target_ids isa names of concerned devices
-     *  @param[out] code_objs the buffer address and size pairs of extracted code objects of
-     *              concerned devices
-     *  Returned error code
-     *
-     *  @return #hipSuccess, #hipErrorInvalidKernelFile, #hipErrorInvalidValue,
-     *          #hipErrorNoBinaryForGpu
-     *
-     *  @see FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const void* data,
-     *                                             const std::vector<hip::Device*>& devices)
-     */
-  static hipError_t extractCodeObjectFromFatBinaryUsingComgr(
-      const void* data, size_t size, const std::vector<std::string>& devices,
-      std::vector<std::pair<const void*, size_t>>& code_objs);
-
  protected:
-  //Given an ptr to image or file, extracts to code object
-  //for corresponding devices
-  static hipError_t extractCodeObjectFromFatBinary(const void*,
-                    const std::vector<std::string>&,
-                    std::vector<std::pair<const void*, size_t>>&);
-
   CodeObject() {}
-private:
+
+ private:
   friend const std::vector<hipModule_t>& modules();
 };
 
@@ -122,6 +111,7 @@ public:
 
   //Gets GlobalVar/Functions from a dynamically loaded code object
   hipError_t getDynFunc(hipFunction_t* hfunc, std::string func_name);
+  hipError_t getFuncCount(unsigned int* count);
   bool isValidDynFunc(const void* hfunc);
   hipError_t getDeviceVar(DeviceVar** dvar, std::string var_name);
 
@@ -190,10 +180,14 @@ private:
   //Populated during __hipRegisterVars
   std::unordered_map<const void*, Var*> vars_;
   //Populated during __hipRegisterManagedVar
-  std::vector<Var*> managedVars_;
+  std::unordered_map<FatBinaryInfo**, std::vector<Var*> > managedVars_;
+  //Reverse mapping of modules to speed up removal
+  std::unordered_map<FatBinaryInfo**, const void*> module_to_hostModule_;
+  std::unordered_map<FatBinaryInfo**, std::vector<const void*> > module_to_hostFunctions_;
+  std::unordered_map<FatBinaryInfo**, std::vector<const void*> > module_to_hostVars_;
   std::unordered_map<int, bool> managedVarsDevicePtrInitalized_;
 };
 
-}; // namespace hip
+};  // namespace hip
 
 #endif /* HIP_CODE_OBJECT_HPP */

@@ -18,12 +18,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-cmake_minimum_required(VERSION 3.5)
-
-if (POLICY CMP0072)
-        cmake_policy(SET CMP0072 NEW)
-endif()
-
 # ROCclr abstracts the usage of multiple AMD compilers and runtimes.
 # It is possible to support multiple backends concurrently in the same binary.
 option(ROCCLR_ENABLE_HSAIL "Enable support for HSAIL compiler" OFF)
@@ -86,16 +80,32 @@ target_sources(rocclr PRIVATE
   ${ROCCLR_SRC_DIR}/platform/commandqueue.cpp
   ${ROCCLR_SRC_DIR}/platform/context.cpp
   ${ROCCLR_SRC_DIR}/platform/kernel.cpp
+  ${ROCCLR_SRC_DIR}/platform/vmheap.cpp
   ${ROCCLR_SRC_DIR}/platform/memory.cpp
   ${ROCCLR_SRC_DIR}/platform/ndrange.cpp
   ${ROCCLR_SRC_DIR}/platform/program.cpp
   ${ROCCLR_SRC_DIR}/platform/runtime.cpp
   ${ROCCLR_SRC_DIR}/platform/interop_gl.cpp
-  ${ROCCLR_SRC_DIR}/thread/monitor.cpp
-  ${ROCCLR_SRC_DIR}/thread/semaphore.cpp
   ${ROCCLR_SRC_DIR}/thread/thread.cpp
   ${ROCCLR_SRC_DIR}/utils/debug.cpp
   ${ROCCLR_SRC_DIR}/utils/flags.cpp)
+
+find_package(Git)
+
+set(ROCCLR_VERSION_GITHASH "not_found")
+if(GIT_FOUND)
+  # Get commit short hash
+  execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+    RESULT_VARIABLE git_result
+    OUTPUT_VARIABLE git_output
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if (git_result EQUAL 0)
+    set(ROCCLR_VERSION_GITHASH ${git_output})
+  endif()
+endif()
+
+target_compile_definitions(rocclr PRIVATE ROCCLR_VERSION_GITHASH="${ROCCLR_VERSION_GITHASH}")
 
 if(WIN32)
   target_sources(rocclr PRIVATE

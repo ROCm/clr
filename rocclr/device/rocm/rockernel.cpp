@@ -27,28 +27,12 @@
 
 namespace amd::roc {
 
-Kernel::Kernel(std::string name, Program* prog, const uint64_t& kernelCodeHandle,
-               const uint32_t workgroupGroupSegmentByteSize,
-               const uint32_t workitemPrivateSegmentByteSize, const uint32_t kernargSegmentByteSize,
-               const uint32_t kernargSegmentAlignment)
-    : device::Kernel(prog->device(), name, *prog) {
-  kernelCodeHandle_ = kernelCodeHandle;
-  workgroupGroupSegmentByteSize_ = workgroupGroupSegmentByteSize;
-  workitemPrivateSegmentByteSize_ = workitemPrivateSegmentByteSize;
-  kernargSegmentByteSize_ = kernargSegmentByteSize;
-  kernargSegmentAlignment_ = kernargSegmentAlignment;
-}
-
-Kernel::Kernel(std::string name, Program* prog)
-    : device::Kernel(prog->device(), name, *prog) {
-}
-
 #if defined(USE_COMGR_LIBRARY)
-bool LightningKernel::init() {
+bool Kernel::init() {
   return GetAttrCodePropMetadata();
 }
 
-bool LightningKernel::postLoad() {
+bool Kernel::postLoad() {
   // Set the kernel symbol name and size/alignment based on the kernel metadata
   // NOTE: kernel name is used to get the kernel code handle in V2,
   //       but kernel symbol name is used in V3
@@ -62,11 +46,6 @@ bool LightningKernel::postLoad() {
   // Set the workgroup information for the kernel
   workGroupInfo_.availableLDSSize_ = device().info().localMemSizePerCU_;
   assert(workGroupInfo_.availableLDSSize_ > 0);
-
-  if (!SetAvailableSgprVgpr()) {
-    DevLogError("Cannot set available SGPR/VGPR\n");
-    return false;
-  }
 
   // Get the kernel code handle
   hsa_status_t hsaStatus;
@@ -148,8 +127,12 @@ bool LightningKernel::postLoad() {
     }
   }
 
-  uint32_t wavefront_size = 0;
-  if (hsa_agent_get_info(program()->rocDevice().getBackendDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
+  // This can be set in code object and the value might be different than what HSA reports
+  // For example on Navi GPUs someone using -mwavefrontsize64
+  // We set the value to HSA if the value is uninitialized
+  uint32_t wavefront_size = workGroupInfo_.wavefrontPerSIMD_;
+  if (wavefront_size == 0 &&
+      hsa_agent_get_info(program()->rocDevice().getBackendDevice(), HSA_AGENT_INFO_WAVEFRONT_SIZE,
                          &wavefront_size) != HSA_STATUS_SUCCESS) {
     DevLogPrintfError("[ROC][Kernel] Cannot get Wavefront Size, failed with hsa_status: %d \n",
                       hsaStatus);
@@ -157,36 +140,15 @@ bool LightningKernel::postLoad() {
   }
   assert(wavefront_size > 0);
 
-  size_t const_size_bytes = 0;
-  hsa_executable_iterate_symbols(
-      program()->hsaExecutable(),
-      [](hsa_executable_t executable, hsa_executable_symbol_t symbol,
-         void *const_size_bytes) -> hsa_status_t {
-        bool variable_is_const = false;
-        hsa_status_t hsaStat = hsa_executable_symbol_get_info(
-            symbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_IS_CONST, &variable_is_const);
-
-        if (hsaStat == HSA_STATUS_SUCCESS && variable_is_const) {
-          uint32_t variable_size = 0;
-          if (hsa_executable_symbol_get_info(
-                  symbol, HSA_EXECUTABLE_SYMBOL_INFO_VARIABLE_SIZE,
-                  &variable_size) == HSA_STATUS_SUCCESS) {
-            *(static_cast<size_t *>(const_size_bytes)) += variable_size;
-          }
-        }
-
-        return HSA_STATUS_SUCCESS;
-      },
-      &const_size_bytes);
-
+  workGroupInfo_.availableVGPRs_ = device().isa().vgprPerWavefront();
+  workGroupInfo_.availableSGPRs_ = device().isa().sgprPerWavefront();
   workGroupInfo_.privateMemSize_ = workitemPrivateSegmentByteSize_;
   workGroupInfo_.localMemSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.usedLDSSize_ = workgroupGroupSegmentByteSize_;
   workGroupInfo_.preferredSizeMultiple_ = wavefront_size;
   workGroupInfo_.usedStackSize_ = kernelHasDynamicCallStack_;
   workGroupInfo_.wavefrontPerSIMD_ = program()->rocDevice().info().maxWorkItemSizes_[0] / wavefront_size;
-  workGroupInfo_.wavefrontSize_ = wavefront_size;
-  workGroupInfo_.constMemSize_ = const_size_bytes;
+  workGroupInfo_.constMemSize_ = 0;
   workGroupInfo_.maxDynamicSharedSizeBytes_ = static_cast<int>(workGroupInfo_.availableLDSSize_ -
                                                                workGroupInfo_.localMemSize_);
   if (workGroupInfo_.size_ == 0) {
@@ -202,6 +164,8 @@ bool LightningKernel::postLoad() {
   if (!printfStr.empty()) {
     InitPrintf(printfStr);
   }
+  // Add kernel to the map of all kernels on the device
+  program()->rocDevice().AddKernel(*this);
   return true;
 }
 #endif  // defined(USE_COMGR_LIBRARY)

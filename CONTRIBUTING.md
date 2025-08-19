@@ -53,7 +53,7 @@ clr is a C++ runtime API implementation on the AMD platform. It allows codeing i
     - Tabs should be expanded to spaces.
     - Use 4 spaces indentation.
 - Capitalization and Naming
-    - Prefer camelCase for HIP interfaces and internal symbols.  Note HCC uses _ for separator.
+    - Prefer camelCase for HIP interfaces and internal symbols.  Note `HIP_CLANG` uses `_` for separator.
       This guideline is not yet consistently followed in HIP code - eventual compliance is aspirational.
     - Member variables should begin with a leading "_".  This allows them to be easily distinguished from other variables or functions.
 

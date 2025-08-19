@@ -22,6 +22,7 @@
 #include "thread/monitor.hpp"
 #include "device/device.hpp"
 #include "platform/context.hpp"
+#include "utils/flags.hpp"
 
 /*!
  * \file commandQueue.cpp
@@ -40,7 +41,8 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
       lastEnqueueCommand_(nullptr),
       head_(nullptr),
       tail_(nullptr),
-      isActive_(false) {
+      isActive_(false),
+      sync_policy_(amd::SyncPolicy::Auto) {
   if (GPU_FORCE_QUEUE_PROFILING) {
     properties().set(CL_QUEUE_PROFILING_ENABLE);
   }
@@ -51,7 +53,10 @@ HostQueue::HostQueue(Context& context, Device& device, cl_command_queue_properti
     if (thread_.state() >= Thread::INITIALIZED) {
       ScopedLock sl(queueLock_);
       thread_.start(this);
-      queueLock_.wait();
+      // wait for HostQueue::loop() to update acceptingCommands_ as true
+      while (!thread_.acceptingCommands_) {
+        queueLock_.wait();
+      }
     }
   }
 }
@@ -68,18 +73,21 @@ bool HostQueue::terminate() {
       if (lastCommand != nullptr) {
         // Check if CPU batch wasn't flushed for completion with the last command
         if (GetSubmissionBatch() != nullptr) {
-            auto command = new Marker(*this, false);
-            if (command != nullptr) {
-              ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
-              command->enqueue();
-              lastCommand = command;
-            }
+          auto command = new Marker(*this, false);
+          if (command != nullptr) {
+            ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
+            command->enqueue();
+            lastCommand->release();
+            lastCommand = command;
+          }
         }
-        lastCommand->awaitCompletion();
+        if (device_.gpu_error_ == CL_SUCCESS) {
+          lastCommand->awaitCompletion();
+        }
         // Note that if lastCommand isn't a marker, it may not be lastEnqueueCommand_ now
         // after lastCommand->awaitCompletion() is called.
         if (lastEnqueueCommand_ != nullptr) {
-          lastEnqueueCommand_ ->release(); // lastEnqueueCommand_ should be a marker
+          lastEnqueueCommand_->release();  // lastEnqueueCommand_ should be a marker
           lastEnqueueCommand_ = nullptr;
         }
         lastCommand->release();
@@ -133,13 +141,33 @@ bool HostQueue::terminate() {
   return true;
 }
 
+void HostQueue::finishCommand(Command* command) {
+  if (command == nullptr) {
+    command = getLastQueuedCommand(true);
+    if (command != nullptr) {
+      ClPrint(LOG_DEBUG, LOG_CMD, "No command, awaiting complete status on host");
+      command->awaitCompletion();
+      command->release();
+    }
+    return;
+  }
+  // Check hardware event status for the specific command
+  static constexpr bool kWaitCompletion = true;
+  if (!device().IsHwEventReady(command->event(), kWaitCompletion)) {
+    ClPrint(LOG_DEBUG, LOG_CMD, "No HW event, awaiting complete status on host");
+    command->awaitCompletion();
+  }
+}
+
 void HostQueue::finish(bool cpu_wait) {
   Command* command = nullptr;
+  size_t minBatchSize = 0;
+
   if (IS_HIP) {
+    minBatchSize = DEBUG_CLR_BATCH_CPU_SYNC_SIZE;
+
     command = getLastQueuedCommand(true);
     if (command == nullptr) {
-      assert(GetSubmissionBatch() == nullptr &&
-        "Can't claim the queue is finished with the active batch!");
       return;
     }
     // Force blocking wait if requested. That allows to avoid a build up of unreleased CPU commands
@@ -147,24 +175,38 @@ void HostQueue::finish(bool cpu_wait) {
         (vdev()->QueuedAsyncHandlers().load() > DEBUG_HIP_BLOCK_SYNC)) {
       cpu_wait = true;
     }
+  } else {
+    // Force CPU wait for OpenCL, since the tests may check OCL command status after finish
+    cpu_wait = true;
   }
+
+  size_t batchSize = GetSubmissionBatchSize();
+  ClPrint(LOG_DEBUG, LOG_CMD,
+          "finish() called with batch size: %zu, cpu_wait: %d, "
+          "fence dirty: %d",
+          batchSize, cpu_wait, vdev()->isFenceDirty());
+
   // Force marker if the batch wasn't sent for CPU update or fence is dirty
   if (nullptr == command || (GetSubmissionBatch() != nullptr) || vdev()->isFenceDirty()) {
     if (nullptr != command) {
       command->release();
     }
+    const Command::EventWaitList nullWaitList = {};
     // Send a finish to make sure we finished all commands
-    command = new Marker(*this, false);
+    command = new Marker(*this, false, nullWaitList, nullptr, batchSize < minBatchSize);
     if (command == NULL) {
       return;
     }
-    ClPrint(LOG_DEBUG, LOG_CMD, "Marker queued to ensure finish");
     command->enqueue();
   }
+
   // Check HW status of the ROCcrl event. Note: not all ROCclr modes support HW status
   static constexpr bool kWaitCompletion = true;
-  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion)) {
-    ClPrint(LOG_DEBUG, LOG_CMD, "HW Event not ready, awaiting completion instead");
+  if (cpu_wait || !device().IsHwEventReady(command->event(), kWaitCompletion, GetSyncPolicy())) {
+    ClPrint(LOG_DEBUG, LOG_CMD,
+            "No HW event or batch size is less than %zu, "
+            "await command completion",
+            minBatchSize);
     command->awaitCompletion();
 
     if (IS_HIP) {
@@ -180,14 +222,18 @@ void HostQueue::finish(bool cpu_wait) {
     }
   }
 
+  // Release all HW queues, which are idle or nearly idle
+  vdev()->ReleaseAllHwQueues();
+
   command->release();
-  ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
+  ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished for host queue : %p", this);
 }
 
 void HostQueue::loop(device::VirtualDevice* virtualDevice) {
   // Notify the caller that the queue is ready to accept commands.
   {
     ScopedLock sl(queueLock_);
+    // Notify HostQueue() that acceptingCommands_ is updated to true
     thread_.acceptingCommands_ = true;
     queueLock_.notify();
   }
@@ -251,7 +297,7 @@ void HostQueue::loop(device::VirtualDevice* virtualDevice) {
     // Submit to the device queue.
     command->submit(*virtualDevice);
 
-    // if this is a user invisible marker command, then flush
+    // if this is a user invisible marker with a waiting event, then flush
     if (0 == command->type()) {
       virtualDevice->flush(head);
       tail = head = NULL;

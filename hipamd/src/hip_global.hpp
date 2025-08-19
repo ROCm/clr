@@ -111,7 +111,7 @@ public:
   Var(const std::string& name, DeviceVarKind dVarKind, size_t size, int type, int norm,
       FatBinaryInfo** modules = nullptr);
 
-  Var(const std::string& name, DeviceVarKind dVarKind, void *pointer, size_t size, unsigned align,
+  Var(const std::string& name, DeviceVarKind dVarKind, void* pointer, size_t size, unsigned align,
       FatBinaryInfo** modules = nullptr);
 
   ~Var();
@@ -124,20 +124,28 @@ public:
 
   hipError_t getDeviceVarPtr(DeviceVar** dvar, int deviceId);
 
+  hipError_t allocateManagedVarPtr();
+
   void resize_dVar(size_t size) { dVar_.resize(size); }
+  //bool isEmpty_dVar() const { return dVar_.empty(); }
+
 
   FatBinaryInfo** moduleInfo() { return modules_; };
   DeviceVarKind getVarKind() const { return dVarKind_; }
   size_t getSize() const { return size_; }
+  size_t getAlignment() const { return align_; }
   std::string getName() const { return name_; }
 
-  void* getManagedVarPtr() { return managedVarPtr_; };
+  void* getManagedVarPtr() const { return managedVarPtr_; }
   void setManagedVarInfo(void* pointer, size_t size) {
     managedVarPtr_ = pointer;
     size_ = size;
     dVarKind_ = DVK_Managed;
   }
-private:
+  bool getAllocFlag() const { return allocFlag_; }
+  void setAllocFlag(bool val) { allocFlag_ = val; }
+
+ private:
   std::vector<DeviceVar*> dVar_;   // DeviceVarObj per Device
   std::string name_;               // Variable name (not unique identifier)
   DeviceVarKind dVarKind_;         // Variable kind
@@ -145,9 +153,9 @@ private:
   int type_;                       // Type(Textures/Surfaces only)
   int norm_;                       // Type(Textures/Surfaces only)
   FatBinaryInfo** modules_;        // static module where it is referenced
-
-  void *managedVarPtr_;            // Managed memory pointer with size_ & align_
-  unsigned int align_;             // Managed memory alignment
+  void* managedVarPtr_;            // Managed memory pointer with size_ & align_
+  size_t align_;                   // Managed memory alignment
+  bool allocFlag_;                 // 0 : host alloc, 1: managed alloc
 };
 
 }; //namespace: hip

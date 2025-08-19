@@ -24,6 +24,7 @@
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
 #include "platform/runtime.hpp"
+#include "utils/flags.hpp"
 
 #include <unordered_map>
 #include <mutex>
@@ -34,7 +35,7 @@ constexpr unsigned __hipFatMAGIC2 = 0x48495046;  // "HIPF"
 PlatformState* PlatformState::platform_;  // Initiaized as nullptr by default
 
 // forward declaration of methods required for __hipRegisrterManagedVar
-hipError_t ihipMallocManaged(void** ptr, size_t size, unsigned int align = 0);
+hipError_t ihipMallocManaged(void** ptr, size_t size, size_t align = 0, bool use_host_ptr = 0);
 
 struct __CudaFatBinaryWrapper {
   unsigned int magic;
@@ -50,11 +51,10 @@ hipError_t ihipCreateGlobalVarObj(const char* name, hipModule_t hmod, amd::Memor
                                   hipDeviceptr_t* dptr, size_t* bytes);
 
 extern hipError_t ihipModuleLaunchKernel(
-    hipFunction_t f, uint32_t gridDimX, uint32_t gridDimY, uint32_t gridDimZ, uint32_t blockDimX,
-    uint32_t blockDimY, uint32_t blockDimZ, uint32_t sharedMemBytes, hipStream_t hStream,
-    void** kernelParams, void** extra, hipEvent_t startEvent, hipEvent_t stopEvent,
-    uint32_t flags = 0, uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
-    uint64_t prevGridSum = 0, uint64_t allGridSum = 0, uint32_t firstDevice = 0);
+    hipFunction_t f, amd::LaunchParams& launch_params, hipStream_t hStream, void** kernelParams,
+    void** extra, hipEvent_t startEvent, hipEvent_t stopEvent, uint32_t flags = 0,
+    uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0, uint64_t prevGridSum = 0,
+    uint64_t allGridSum = 0, uint32_t firstDevice = 0);
 static bool isCompatibleCodeObject(const std::string& codeobj_target_id, const char* device_name) {
   // Workaround for device name mismatch.
   // Device name may contain feature strings delimited by '+', e.g.
@@ -152,24 +152,42 @@ void __hipRegisterManagedVar(
     void* init_value,  // Initial value to be copied into \p pointer
     const char* name,  // Name of the variable in code object
     size_t size, unsigned align) {
-  HIP_INIT_VOID();
-  hipError_t status = ihipMallocManaged(pointer, size, align);
-  if (status == hipSuccess) {
-    hip::Stream* stream = hip::getNullStream();
-    if (stream != nullptr) {
-      status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
-      guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
-                                         status);
-    } else {
-      ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
-    }
-  } else {
-    guarantee(false, "Error during allocation of managed memory!, error: %d", status);
-  }
+  
+  static int enable_deferred_loading{[]() {
+    #ifdef _WIN32 // Don't defer loading for windows
+      return 0;
+    #else
+      char* var = getenv("HIP_ENABLE_DEFERRED_LOADING");
+      return var ? atoi(var) : 1;
+    #endif
+  }()};
+  hipError_t hip_error = hipSuccess;
   hip::Var* var_ptr = new hip::Var(std::string(name), hip::Var::DeviceVarKind::DVK_Managed, pointer,
                                    size, align, reinterpret_cast<hip::FatBinaryInfo**>(hipModule));
-  status = PlatformState::instance().registerStatManagedVar(var_ptr);
+  hipError_t status = PlatformState::instance().registerStatManagedVar(var_ptr);
   guarantee((status == hipSuccess), "Cannot register Static Managed Var, error: %d", status);
+
+  if (enable_deferred_loading) {
+    // Allocate temporary var on host and initialize
+    *pointer = amd::Os::reserveMemory(0, size, align, amd::Os::MEM_PROT_RW);
+    ::memcpy(*pointer, init_value, size);
+  } else {
+    HIP_INIT_VOID();
+    hipError_t status = ihipMallocManaged(pointer, size, align, 0);
+    var_ptr->setAllocFlag(true); // set flag true for managed alloc
+    if (status == hipSuccess) {
+      hip::Stream* stream = hip::getNullStream();
+      if (stream != nullptr) {
+        status = ihipMemcpy(*pointer, init_value, size, hipMemcpyHostToDevice, *stream);
+        guarantee((status == hipSuccess), "Error during memcpy to managed memory, error:%d!",
+                                           status);
+      } else {
+        ClPrint(amd::LOG_ERROR, amd::LOG_API, "Host Queue is NULL");
+      }
+    } else {
+      guarantee(false, "Error during allocation of managed memory!, error: %d", status);
+    }
+  }
 }
 
 void __hipRegisterTexture(
@@ -186,13 +204,16 @@ void __hipRegisterTexture(
 
 void __hipUnregisterFatBinary(hip::FatBinaryInfo** modules) {
   static std::once_flag unregister_device_sync;
-  std::call_once(unregister_device_sync, [](){
-    for (auto& hipDevice : g_devices) {
-      // By synchronizing devices ensure that all HSA signal handlers
-      // complete before removeFatBinary
-      hipDevice->SyncAllStreams(true);
-    }
-  });
+  // If SKIP ABORT is set and GPU is in error, dont need to sync streams.
+  if (!HIP_SKIP_ABORT_ON_GPU_ERROR || !amd::Device::IsGPUInError()) {
+    std::call_once(unregister_device_sync, [](){
+      for (auto& hipDevice : g_devices) {
+        // By synchronizing devices ensure that all HSA signal handlers
+        // complete before removeFatBinary
+        hipDevice->SyncAllStreams(true);
+      }
+    });
+  }
   hipError_t err = PlatformState::instance().removeFatBinary(modules);
   guarantee((err == hipSuccess), "Cannot Unregister Fat Binary, error:%d", err);
 }
@@ -394,7 +415,7 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
   }
 
   if (VgprWaves == 0) {
-    // This should not happen ideally, but in case the usedVGPRs_/availableVGPRs_ values are
+    // This should not happen ideally, but in case the value is
     // incorrect, it can lead to a crash. By returning error, API can exit gracefully.
     return hipErrorUnknown;
   }
@@ -405,8 +426,14 @@ hipError_t ihipOccupancyMaxActiveBlocksPerMultiprocessor(
     const size_t SgprWaves = maxSGPRs / amd::alignUp(wrkGrpInfo->usedSGPRs_, 16);
     GprWaves = std::min(VgprWaves, SgprWaves);
   }
-  uint32_t simdPerCU = (device.isa().versionMajor() <= 9) ? device.info().simdPerCU_
-                                                          : (wrkGrpInfo->isWGPMode_ ? 4 : 2);
+
+  // The table contains SIMD per CU, not per WGP, so when WGP mode is set on kernel metadata,
+  // multiply the number of SIMDs by 2, to account for 2CUs in 1 WGP.
+  uint32_t simdPerCU = device.isa().simdPerCU();
+  if (wrkGrpInfo->isWGPMode_) {
+    simdPerCU  *= 2;
+  }
+
   const size_t alu_occupancy = simdPerCU * std::min(MaxWavesPerSimd, GprWaves);
   const int alu_limited_threads = alu_occupancy * wrkGrpInfo->wavefrontSize_;
 
@@ -641,18 +668,14 @@ hipError_t ihipLaunchKernel(const void* hostFunction, dim3 gridDim, dim3 blockDi
     return hipErrorInvalidConfiguration;
   }
 
-  size_t globalWorkSizeX = static_cast<size_t>(gridDim.x) * blockDim.x;
-  size_t globalWorkSizeY = static_cast<size_t>(gridDim.y) * blockDim.y;
-  size_t globalWorkSizeZ = static_cast<size_t>(gridDim.z) * blockDim.z;
-  if (globalWorkSizeX > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeY > std::numeric_limits<uint32_t>::max() ||
-      globalWorkSizeZ > std::numeric_limits<uint32_t>::max()) {
+  amd::HIPLaunchParams launch_params(gridDim.x, gridDim.y, gridDim.z, blockDim.x, blockDim.y,
+                                     blockDim.z, sharedMemBytes);
+  if (!launch_params.IsValidConfig()) {
     return hipErrorInvalidConfiguration;
   }
-  return ihipModuleLaunchKernel(
-      func, static_cast<uint32_t>(globalWorkSizeX), static_cast<uint32_t>(globalWorkSizeY),
-      static_cast<uint32_t>(globalWorkSizeZ), blockDim.x, blockDim.y, blockDim.z, sharedMemBytes,
-      stream, args, nullptr, startEvent, stopEvent, flags);
+
+  return ihipModuleLaunchKernel(func, launch_params, stream, args, nullptr,
+                                startEvent, stopEvent, flags);
 }
 
 // conversion routines between float and half precision
@@ -734,14 +757,13 @@ void PlatformState::init() {
     return;
   }
   initialized_ = true;
-  for (auto& it : statCO_.modules_) {
-    hipError_t err = digestFatBinary(it.first, it.second);
-    if (err != hipSuccess) {
-      HIP_ERROR_PRINT(err, "continue parsing remaining modules");
-    }
-  }
   for (auto& it : statCO_.vars_) {
     it.second->resize_dVar(g_devices.size());
+  }
+  for (auto& it : statCO_.managedVars_) {
+    for (auto& var: it.second) {
+      var->resize_dVar(g_devices.size());
+    }
   }
   for (auto& it : statCO_.functions_) {
     it.second->resize_dFunc(g_devices.size());
@@ -810,6 +832,17 @@ hipError_t PlatformState::getDynFunc(hipFunction_t* hfunc, hipModule_t hmod,
   }
 
   return it->second->getDynFunc(hfunc, func_name);
+}
+
+hipError_t PlatformState::getFuncCount(unsigned int* count, hipModule_t hmod) {
+  amd::ScopedLock lock(lock_);
+
+  auto it = dynCO_map_.find(hmod);
+  if (it == dynCO_map_.end()) {
+    LogPrintfError("Cannot find the module: 0x%x", hmod);
+    return hipErrorNotFound;
+  }
+  return it->second->getFuncCount(count);
 }
 
 bool PlatformState::isValidDynFunc(const void* hfunc) {

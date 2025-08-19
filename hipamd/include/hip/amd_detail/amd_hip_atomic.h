@@ -26,9 +26,6 @@ THE SOFTWARE.
 #include "amd_device_functions.h"
 #endif
 
-
-#if __has_builtin(__hip_atomic_compare_exchange_strong)
-
 template<bool B, typename T, typename F> struct Cond_t;
 
 template<typename T, typename F> struct Cond_t<true, T, F> { using type = T; };
@@ -131,7 +128,6 @@ unsigned short int atomicCAS_system(unsigned short int* address, unsigned short 
                                        __HIP_MEMORY_SCOPE_SYSTEM);
   return compare;
 }
-
 
 __device__
 inline
@@ -279,13 +275,21 @@ unsigned long long atomicAdd_system(unsigned long long* address, unsigned long l
   return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
 
+#if defined(__has_extension) && __has_extension(clang_atomic_attributes)
+#define __HIP_FINE_GRAINED_MEMORY [[clang::atomic(fine_grained_memory)]]
+#else
+#define __HIP_FINE_GRAINED_MEMORY
+#endif
+
 __device__
 inline
 float atomicAdd(float* address, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, val);
 #else
-  return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {  
+    return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -302,7 +306,7 @@ __device__
 inline
 void atomicAddNoRet(float* address, float val)
 {
-    __ockl_atomic_add_noret_f32(address, val);
+  unsafeAtomicAdd(address, val);
 }
 
 __device__
@@ -311,7 +315,9 @@ double atomicAdd(double* address, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, val);
 #else
-  return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -375,7 +381,9 @@ float atomicSub(float* address, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, -val);
 #else
-  return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -391,7 +399,9 @@ double atomicSub(double* address, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicAdd(address, -val);
 #else
-  return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_add(address, -val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  }
 #endif
 }
 
@@ -476,154 +486,61 @@ double atomicExch_system(double* address, double val) {
 __device__
 inline
 int atomicMin(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](int x, int y) { return x < y; }, [=]() {
-      return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 int atomicMin_system(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](int x, int y) { return x < y; }, [=]() {
-      return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned int atomicMin(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned int x, unsigned int y) { return x < y; }, [=]() {
-      return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-
 }
 
 __device__
 inline
 unsigned int atomicMin_system(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned int x, unsigned int y) { return x < y; }, [=]() {
-      return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
-unsigned long long atomicMin(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long x, unsigned long y) { return x < y; },
-    [=]() {
-    return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
+unsigned long atomicMin(unsigned long* address, unsigned long val) {
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long atomicMin_system(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long x, unsigned long y) { return x < y; },
-    [=]() {
-    return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long long atomicMin(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long long x, unsigned long long y) { return x < y; },
-    [=]() {
-    return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long long atomicMin_system(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long long x, unsigned long long y) { return x < y; },
-    [=]() {
-    return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 long long atomicMin(long long* address, long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-      address, val, [](long long x, long long y) { return x < y; },
-      [=]() {
-        return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-      });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif  // __gfx941__
 }
 
 __device__
 inline
 long long atomicMin_system(long long* address, long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-      address, val, [](long long x, long long y) { return x < y; },
-      [=]() {
-        return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      });
-#else
   return __hip_atomic_fetch_min(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif  // __gfx941__
 }
 
 __device__
@@ -632,20 +549,9 @@ float atomicMin(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x80000000U == u.b;
-
-  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-  return value;
 #endif
 }
 
@@ -655,20 +561,9 @@ float atomicMin_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x80000000U == u.b;
-
-  float value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-  return value;
 #endif
 }
 
@@ -678,20 +573,9 @@ double atomicMin(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-
-  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0)))  {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-  return value;
 #endif
 }
 
@@ -701,173 +585,69 @@ double atomicMin_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMin(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u{val};
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-
-  double value = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool done = false;
-  while (!done && (value > val || (neg_zero && value == 0.0)))  {
-    done = __hip_atomic_compare_exchange_strong(addr, &value, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_min(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-  return value;
 #endif
 }
 
 __device__
 inline
 int atomicMax(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](int x, int y) { return y < x; }, [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 int atomicMax_system(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](int x, int y) { return y < x; }, [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned int atomicMax(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned int x, unsigned int y) { return y < x; }, [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned int atomicMax_system(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned int x, unsigned int y) { return y < x; }, [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long atomicMax(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long x, unsigned long y) { return y < x; },
-    [=]() {
-    return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long atomicMax_system(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long x, unsigned long y) { return y < x; },
-    [=]() {
-    return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long long atomicMax(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long long x, unsigned long long y) { return y < x; },
-    [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 unsigned long long atomicMax_system(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long long x, unsigned long long y) { return y < x; },
-    [=]() {
-      return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED,
-                                    __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
 }
-
 __device__
 inline
 long long atomicMax(long long* address, long long val) {
-  #if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-      address, val, [](long long x, long long y) { return y < x; },
-      [=]() {
-        return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-      });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
 }
 
 __device__
 inline
 long long atomicMax_system(long long* address, long long val) {
-#if defined(__gfx941__)
-  return hip_cas_extrema_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-      address, val, [](long long x, long long y) { return y < x; },
-      [=]() {
-        return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-      });
-#else
   return __hip_atomic_fetch_max(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif  // __gfx941__
 }
 
 __device__
@@ -876,21 +656,9 @@ float atomicMax(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool neg_zero = 0x80000000U == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-    neg_zero = 0x80000000U == u.b;
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-  return u.a;
 #endif
 }
 
@@ -900,21 +668,9 @@ float atomicMax_system(float* addr, float val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    float a;
-    unsigned int b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool neg_zero = 0x80000000U == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0f))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-    neg_zero = 0x80000000U == u.b;
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-  return u.a;
 #endif
 }
 
@@ -924,21 +680,9 @@ double atomicMax(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-    neg_zero = 0x8000000000000000ULL == u.b;
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
   }
-  return u.a;
 #endif
 }
 
@@ -948,625 +692,10 @@ double atomicMax_system(double* addr, double val) {
 #if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
   return unsafeAtomicMax(addr, val);
 #else
-  typedef union u_hold {
-    double a;
-    unsigned long long b;
-  } u_hold_t;
-  u_hold_t u;
-
-  u.a = __hip_atomic_load(addr, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-  bool neg_zero = 0x8000000000000000ULL == u.b;
-  bool done = false;
-  while (!done && (u.a < val || (neg_zero && val == 0.0))) {
-    done = __hip_atomic_compare_exchange_strong(addr, &u.a, val,
-               __ATOMIC_RELAXED, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-    neg_zero = 0x8000000000000000ULL == u.b;
+  __HIP_FINE_GRAINED_MEMORY {
+    return __hip_atomic_fetch_max(addr, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
   }
-  return u.a;
 #endif
-}
-
-__device__
-inline
-unsigned int atomicInc(unsigned int* address, unsigned int val)
-{
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned int& x, unsigned int y) { x = (x >= y) ? 0 : (x + 1); },
-    [=]() {
-    return
-      __builtin_amdgcn_atomic_inc32(address, val, __ATOMIC_RELAXED, "agent");
-  });
-#else
-    return __builtin_amdgcn_atomic_inc32(address, val, __ATOMIC_RELAXED, "agent");
-#endif // __gfx941__
-
-}
-
-__device__
-inline
-unsigned int atomicDec(unsigned int* address, unsigned int val)
-{
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned int& x, unsigned int y) { x = (!x || x > y) ? y : (x - 1); },
-    [=]() {
-    return
-      __builtin_amdgcn_atomic_dec32(address, val, __ATOMIC_RELAXED, "agent");
-  });
-#else
-  return __builtin_amdgcn_atomic_dec32(address, val, __ATOMIC_RELAXED, "agent");
-#endif // __gfx941__
-    
-}
-
-__device__
-inline
-int atomicAnd(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](int& x, int y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-int atomicAnd_system(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](int& x, int y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicAnd(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned int& x, unsigned int y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicAnd_system(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned int& x, unsigned int y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicAnd(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned long& x, unsigned long y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicAnd_system(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned long& x, unsigned long y) { x &= y; }, [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicAnd(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long long& x, unsigned long long y) { x &= y; },
-    [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicAnd_system(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long long& x, unsigned long long y) { x &= y; },
-    [=]() {
-    return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-int atomicOr(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](int& x, int y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-int atomicOr_system(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](int& x, int y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicOr(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned int& x, unsigned int y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicOr_system(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned int& x, unsigned int y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicOr(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned long& x, unsigned long y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicOr_system(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned long& x, unsigned long y) { x |= y; }, [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicOr(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long long& x, unsigned long long y) { x |= y; },
-    [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicOr_system(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address,
-    val,
-    [](unsigned long long& x, unsigned long long y) { x |= y; },
-    [=]() {
-    return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED,
-                                 __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-int atomicXor(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](int& x, int y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-int atomicXor_system(int* address, int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](int& x, int y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicXor(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned int& x, unsigned int y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned int atomicXor_system(unsigned int* address, unsigned int val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned int& x, unsigned int y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicXor(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address, val, [](unsigned long& x, unsigned long y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long atomicXor_system(unsigned long* address, unsigned long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM>(
-    address, val, [](unsigned long& x, unsigned long y) { x ^= y; }, [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_SYSTEM);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicXor(unsigned long long* address, unsigned long long val) {
-#if defined(__gfx941__)
-  return hip_cas_expander<__ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT>(
-    address,
-    val,
-    [](unsigned long long& x, unsigned long long y) { x ^= y; },
-    [=]() {
-    return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED,
-                                  __HIP_MEMORY_SCOPE_AGENT);
-  });
-#else
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
-#endif // __gfx941__
-}
-
-__device__
-inline
-unsigned long long atomicXor_system(unsigned long long* address, unsigned long long val) {
-  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
-}
-
-#else // __hip_atomic_compare_exchange_strong
-__device__
-inline
-unsigned short int atomicCAS(unsigned short int* address, unsigned short int compare,
-                             unsigned short int val)
-{
-    __atomic_compare_exchange_n(
-        address, &compare, val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-
-    return compare;
-}
-
-__device__
-inline
-int atomicCAS(int* address, int compare, int val)
-{
-    __atomic_compare_exchange_n(
-        address, &compare, val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-
-    return compare;
-}
-__device__
-inline
-unsigned int atomicCAS(
-    unsigned int* address, unsigned int compare, unsigned int val)
-{
-    __atomic_compare_exchange_n(
-        address, &compare, val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-
-    return compare;
-}
-__device__
-inline
-unsigned long long atomicCAS(
-    unsigned long long* address,
-    unsigned long long compare,
-    unsigned long long val)
-{
-    __atomic_compare_exchange_n(
-        address, &compare, val, false, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
-
-    return compare;
-}
-
-__device__
-inline
-int atomicAdd(int* address, int val)
-{
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicAdd(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicAdd(
-    unsigned long long* address, unsigned long long val)
-{
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-float atomicAdd(float* address, float val)
-{
-#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
-    return unsafeAtomicAdd(address, val);
-#else
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
-#endif
-}
-
-#if !defined(__HIPCC_RTC__)
-HIP_DEPRECATED("use atomicAdd instead")
-#endif // !defined(__HIPCC_RTC__)
-__device__
-inline
-void atomicAddNoRet(float* address, float val)
-{
-    __ockl_atomic_add_noret_f32(address, val);
-}
-
-__device__
-inline
-double atomicAdd(double* address, double val)
-{
-#if defined(__AMDGCN_UNSAFE_FP_ATOMICS__)
-    return unsafeAtomicAdd(address, val);
-#else
-    return __atomic_fetch_add(address, val, __ATOMIC_RELAXED);
-#endif
-}
-
-__device__
-inline
-int atomicSub(int* address, int val)
-{
-    return __atomic_fetch_sub(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicSub(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_sub(address, val, __ATOMIC_RELAXED);
-}
-
-__device__
-inline
-int atomicExch(int* address, int val)
-{
-    return __atomic_exchange_n(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicExch(unsigned int* address, unsigned int val)
-{
-    return __atomic_exchange_n(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicExch(unsigned long long* address, unsigned long long val)
-{
-    return __atomic_exchange_n(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-float atomicExch(float* address, float val)
-{
-    return __uint_as_float(__atomic_exchange_n(
-        reinterpret_cast<unsigned int*>(address),
-        __float_as_uint(val),
-        __ATOMIC_RELAXED));
-}
-
-__device__
-inline
-int atomicMin(int* address, int val)
-{
-    return __atomic_fetch_min(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicMin(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_min(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicMin(
-    unsigned long long* address, unsigned long long val)
-{
-    unsigned long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
-    while (val < tmp) {
-        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
-
-        if (tmp1 != tmp) { tmp = tmp1; continue; }
-
-        tmp = atomicCAS(address, tmp, val);
-    }
-
-    return tmp;
-}
-__device__ inline long long atomicMin(long long* address, long long val) {
-    long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
-    while (val < tmp) {
-        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
-
-        if (tmp1 != tmp) {
-          tmp = tmp1;
-          continue;
-        }
-
-        tmp = atomicCAS(address, tmp, val);
-    }
-    return tmp;
-}
-
-__device__
-inline
-int atomicMax(int* address, int val)
-{
-    return __atomic_fetch_max(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicMax(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_max(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicMax(
-    unsigned long long* address, unsigned long long val)
-{
-    unsigned long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
-    while (tmp < val) {
-        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
-
-        if (tmp1 != tmp) { tmp = tmp1; continue; }
-
-        tmp = atomicCAS(address, tmp, val);
-    }
-
-    return tmp;
-}
-__device__ inline long long atomicMax(long long* address, long long val) {
-    long long tmp{__atomic_load_n(address, __ATOMIC_RELAXED)};
-    while (tmp < val) {
-        const auto tmp1 = __atomic_load_n(address, __ATOMIC_RELAXED);
-
-        if (tmp1 != tmp) {
-          tmp = tmp1;
-          continue;
-        }
-
-        tmp = atomicCAS(address, tmp, val);
-    }
-    return tmp;
 }
 
 __device__
@@ -1585,62 +714,144 @@ unsigned int atomicDec(unsigned int* address, unsigned int val)
 
 __device__
 inline
-int atomicAnd(int* address, int val)
-{
-    return __atomic_fetch_and(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicAnd(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_and(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicAnd(
-    unsigned long long* address, unsigned long long val)
-{
-    return __atomic_fetch_and(address, val, __ATOMIC_RELAXED);
+int atomicAnd(int* address, int val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 }
 
 __device__
 inline
-int atomicOr(int* address, int val)
-{
-    return __atomic_fetch_or(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicOr(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_or(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicOr(
-    unsigned long long* address, unsigned long long val)
-{
-    return __atomic_fetch_or(address, val, __ATOMIC_RELAXED);
+int atomicAnd_system(int* address, int val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
 }
 
 __device__
 inline
-int atomicXor(int* address, int val)
-{
-    return __atomic_fetch_xor(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned int atomicXor(unsigned int* address, unsigned int val)
-{
-    return __atomic_fetch_xor(address, val, __ATOMIC_RELAXED);
-}
-__device__
-inline
-unsigned long long atomicXor(
-    unsigned long long* address, unsigned long long val)
-{
-    return __atomic_fetch_xor(address, val, __ATOMIC_RELAXED);
+unsigned int atomicAnd(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
 }
 
-#endif // __hip_atomic_compare_exchange_strong
+__device__
+inline
+unsigned int atomicAnd_system(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long atomicAnd(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long atomicAnd_system(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long long atomicAnd(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long long atomicAnd_system(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_and(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+int atomicOr(int* address, int val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+int atomicOr_system(int* address, int val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned int atomicOr(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned int atomicOr_system(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long atomicOr(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long atomicOr_system(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long long atomicOr(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long long atomicOr_system(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_or(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+int atomicXor(int* address, int val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+int atomicXor_system(int* address, int val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned int atomicXor(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned int atomicXor_system(unsigned int* address, unsigned int val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long atomicXor(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long atomicXor_system(unsigned long* address, unsigned long val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}
+
+__device__
+inline
+unsigned long long atomicXor(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_AGENT);
+}
+
+__device__
+inline
+unsigned long long atomicXor_system(unsigned long long* address, unsigned long long val) {
+  return __hip_atomic_fetch_xor(address, val, __ATOMIC_RELAXED, __HIP_MEMORY_SCOPE_SYSTEM);
+}

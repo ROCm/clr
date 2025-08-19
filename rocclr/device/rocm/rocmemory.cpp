@@ -204,11 +204,17 @@ void Memory::cpuUnmap(device::VirtualDevice& vDev) {
 }
 
 // ================================================================================================
-hsa_status_t Memory::interopMapBuffer(int fd) {
+hsa_status_t Memory::interopMapBuffer(amd::Os::FileDesc fdn) {
   hsa_agent_t agent = dev().getBackendDevice();
   size_t size;
   size_t metadata_size = 0;
   void* metadata;
+#if IS_WINDOWS
+  int fd = 0;
+  assert(!"Unimplemented");
+#else
+  auto fd = fdn;
+#endif
   hsa_status_t status = hsa_amd_interop_map_buffer(
       1, &agent, fd, 0, &size, &interop_deviceMemory_,
       &metadata_size, (const void**)&metadata);
@@ -232,7 +238,7 @@ hsa_status_t Memory::interopMapBuffer(int fd) {
 // Setup an interop buffer (dmabuf handle) as an OpenCL buffer
 // ================================================================================================
 bool Memory::createInteropBuffer(GLenum targetType, int miplevel) {
-#if defined(_WIN32)
+#if IS_WINDOWS
   return false;
 #else
   assert(owner()->isInterop() && "Object is not an interop object.");
@@ -656,12 +662,10 @@ void Buffer::destroy() {
 
     if (kind_ != MEMORY_KIND_PTRGIVEN) {
       if (isFineGrain) {
-        if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
+        if (memFlags & (CL_MEM_ALLOC_HOST_PTR)) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Destroy system memory
-            if (!(amd::Os::releaseMemory(deviceMemory_, size()))) {
-              ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
-            }
+            // AMD HMM path. Release reserved system memory
+            dev().releaseMemory(deviceMemory_, size());
           } else {
             dev().memFree(deviceMemory_, size());
           }
@@ -676,6 +680,17 @@ void Buffer::destroy() {
         }
       } else {
         dev().memFree(deviceMemory_, size());
+      }
+    } else {
+      if (memFlags & CL_MEM_USE_HOST_PTR) {
+        // unlock svm host pointer from memory pool
+        if (!dev().info().hmmSupported_) {
+          hsa_amd_memory_unlock(owner()->getSvmPtr());
+        }
+        // destroy system memory
+        if (!(amd::Os::releaseMemory(deviceMemory_, size()))) {
+          ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "[ROCClr] munmap failed \n");
+        }
       }
     }
 
@@ -809,13 +824,12 @@ bool Buffer::create(bool alloc_local) {
       if (isFineGrain) {
         if (memFlags & CL_MEM_ALLOC_HOST_PTR) {
           if (dev().info().hmmSupported_) {
-            // AMD HMM path. Just allocate system memory and KFD will manage it
-            deviceMemory_ =  amd::Os::reserveMemory(
-                0, size(), amd::Os::pageSize(), amd::Os::MEM_PROT_RW);
+            // AMD HMM path. ROCr allocates system memory and KFD will manage it
+            deviceMemory_ = dev().reserveMemory(size(), amd::Os::pageSize());
             if (deviceMemory_ == NULL) {
               return false;
             }
-            // Currently HMM requires cirtain initial calls to mark sysmem allocation as
+            // Currently HMM requires certain initial calls to mark sysmem allocation as
             // GPU accessible or prefetch memory into GPU
             if (!dev().SvmAllocInit(deviceMemory_, size())) {
               ClPrint(amd::LOG_ERROR, amd::LOG_MEM, "SVM init in ROCr failed!");
@@ -825,7 +839,7 @@ bool Buffer::create(bool alloc_local) {
             deviceMemory_ = dev().hostAlloc(size(), 1, Device::MemorySegment::kNoAtomics);
           }
         } else if (memFlags & CL_MEM_FOLLOW_USER_NUMA_POLICY) {
-          deviceMemory_ = dev().hostNumaAlloc(size(), 1, (memFlags & CL_MEM_SVM_ATOMICS) != 0);
+          deviceMemory_ = dev().hostNumaAlloc(size(), 1, getHostMemorySegment(memFlags));
         } else if (memFlags & ROCCLR_MEM_HSA_SIGNAL_MEMORY) {
           // TODO: ROCr will introduce a new attribute enum that implies a non-blocking signal,
           // replace "HSA_AMD_SIGNAL_AMD_GPU_ONLY" with this new enum when it is ready.
@@ -843,15 +857,12 @@ bool Buffer::create(bool alloc_local) {
             return false;
           }
 
-          deviceMemory_ = const_cast<long int*>(signalValuePtr);  // conversion to void * is
-                                                                  // implicit
+          deviceMemory_ = const_cast<void*>(reinterpret_cast<volatile void*>(signalValuePtr));
 
           // Disable host access to force blit path for memeory writes.
           flags_ &= ~HostMemoryDirectAccess;
         } else {
-          deviceMemory_ = dev().hostAlloc(size(), 1, ((memFlags & CL_MEM_SVM_ATOMICS) != 0)
-                                                       ? Device::MemorySegment::kAtomics
-                                                       : Device::MemorySegment::kNoAtomics);
+          deviceMemory_ = dev().hostAlloc(size(), 1, getHostMemorySegment(memFlags));
         }
       } else {
         assert(!isHostMemDirectAccess() && "Runtime doesn't support direct access to GPU memory!");
@@ -868,6 +879,19 @@ bool Buffer::create(bool alloc_local) {
         flags_ |= HostMemoryDirectAccess;
       } else {
         kind_ = MEMORY_KIND_PTRGIVEN;
+      }
+      if (memFlags & CL_MEM_USE_HOST_PTR) {
+        if (dev().info().hmmSupported_) {
+          // Currently HMM requires certain initial calls to mark sysmem allocation as
+          // GPU accessible or prefetch memory into GPU
+          if (!dev().SvmAllocInit(deviceMemory_, size())) {
+            ClPrint(amd::LOG_ERROR, amd::LOG_MEM, "SVM init in ROCr failed!");
+            return false;
+          }
+        } else {
+          deviceMemory_ = dev().hostLock(owner()->getSvmPtr(), size(),
+                                         getHostMemorySegment(memFlags));
+        }
       }
     }
 
@@ -1008,19 +1032,8 @@ bool Buffer::create(bool alloc_local) {
     owner()->setHostMem(deviceMemory_);
   } else if (owner()->getSvmPtr() != owner()->getHostMem()) {
     if (memFlags & (CL_MEM_USE_HOST_PTR | CL_MEM_ALLOC_HOST_PTR)) {
-      hsa_amd_memory_pool_t pool = (memFlags & CL_MEM_SVM_ATOMICS) ?
-                                    dev().SystemSegment() :
-                                    (dev().SystemCoarseSegment().handle != 0 ?
-                                        dev().SystemCoarseSegment() : dev().SystemSegment());
-      hsa_agent_t hsa_agent = dev().getBackendDevice();
-      hsa_status_t status = hsa_amd_memory_lock_to_pool(owner()->getHostMem(),
-          owner()->getSize(), &hsa_agent, 1, pool, 0, &deviceMemory_);
-      ClPrint(amd::LOG_DEBUG, amd::LOG_MEM, "Locking to pool %p, size 0x%zx, HostPtr = %p,"
-              " DevPtr = %p", pool, owner()->getSize(), owner()->getHostMem(), deviceMemory_ );
-      if (status != HSA_STATUS_SUCCESS) {
-        DevLogPrintfError("Failed to lock memory to pool, failed with hsa_status: %d \n", status);
-        deviceMemory_ = nullptr;
-      }
+      deviceMemory_ = dev().hostLock(owner()->getHostMem(), owner()->getSize(),
+                                     getHostMemorySegment(memFlags));
     } else {
       deviceMemory_ = owner()->getHostMem();
     }
@@ -1046,6 +1059,49 @@ bool Buffer::ExportHandle(void* handle) const {
     LogPrintfError("Failed to create memory for IPC, failed with hsa_status: %d \n", hsa_status);
     return false;
   }
+  return true;
+}
+
+// ================================================================================================
+bool Buffer::GetFDHandleForMem(void* dev_ptr, size_t size, bool vmm, void* handle) {
+  int dmabuffd = -1;
+  size_t offset = 0;
+
+  // In case of vmm, we use a different set of APIs for retrieving the dmabuffd.
+  if (vmm) {
+    hsa_amd_vmem_alloc_handle_t mem_handle;
+
+    // Retrieve the corresponding phys_mem handle for the mapped dev_ptr.
+    hsa_status_t hsa_status = hsa_amd_vmem_retain_alloc_handle(&mem_handle, dev_ptr);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot retain alloc handle for dev_ptr: 0x%x hsa returned status: %d",
+                     dev_ptr, hsa_status);
+      return false;
+    }
+
+    // Now, retrieve the shareable handle (fd in linux) for the phys_mem handle.
+    hsa_status = hsa_amd_vmem_export_shareable_handle(&dmabuffd, mem_handle, 0);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot get shareable handle for mem_handle: %lu, hsa returned status: %d",
+                      mem_handle, hsa_status);
+      return false;
+    }
+  } else {
+    // Retrieve a shareable handle for the device ptr.
+    hsa_status_t hsa_status = hsa_amd_portable_export_dmabuf(dev_ptr, size, &dmabuffd, &offset);
+    if (hsa_status != HSA_STATUS_SUCCESS) {
+      LogPrintfError("Cannot export a portable fd for dev_ptr: 0x%x with size: %lu,"
+                     "hsa returned status: %d", dev_ptr, size, hsa_status);
+      return false;
+    }
+  }
+  if (dmabuffd <= 0) {
+    LogPrintfError("Invalid file descriptor handle: %d returned", dmabuffd);
+    return false;
+  }
+
+  // As per spec, handle passed through HIP API is ptr to int.
+  *(reinterpret_cast<int*>(handle)) = dmabuffd;
   return true;
 }
 
@@ -1252,6 +1308,7 @@ bool Image::create(bool alloc_local) {
     permission_      = orgImage->permission_;
     deviceMemory_    = orgImage->deviceMemory_;
     hsaImageObject_  = orgImage->hsaImageObject_;
+    ownsHsaImageObject_ = false;
     return true;
   }
 
@@ -1490,7 +1547,7 @@ void Image::destroy() {
 
   delete copyImageBuffer_;
 
-  if (hsaImageObject_.handle != 0) {
+  if (hsaImageObject_.handle != 0 && ownsHsaImageObject_) {
     hsa_status_t status = hsa_ext_image_destroy(dev().getBackendDevice(), hsaImageObject_);
     assert(status == HSA_STATUS_SUCCESS);
   }

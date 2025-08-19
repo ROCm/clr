@@ -234,6 +234,12 @@ struct __half2_raw {
     {
         return __internal_half2float(static_cast<__half_raw>(x).x);
     }
+    inline
+    float2 __half22float2(__half2 x)
+    {
+        return float2{__internal_half2float(static_cast<__half2_raw>(x).x),
+                      __internal_half2float(static_cast<__half2_raw>(x).x)};
+    }
 
     inline
     float __low2float(__half2 x)

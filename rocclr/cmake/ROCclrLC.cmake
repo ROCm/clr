@@ -18,13 +18,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-find_package(amd_comgr 2.9 REQUIRED CONFIG
+find_package(amd_comgr 2.9 CONFIG
   PATHS
     /opt/rocm/
     ${ROCM_INSTALL_PATH}
   PATH_SUFFIXES
     cmake/amd_comgr
     lib/cmake/amd_comgr)
+
+if (NOT amd_comgr_FOUND)
+  find_package(amd_comgr 3.0 REQUIRED CONFIG
+    PATHS
+      /opt/rocm/
+      ${ROCM_INSTALL_PATH}
+    PATH_SUFFIXES
+      cmake/amd_comgr
+      lib/cmake/amd_comgr)
+endif()
 
 target_compile_definitions(rocclr PUBLIC WITH_LIGHTNING_COMPILER USE_COMGR_LIBRARY)
 if(BUILD_SHARED_LIBS)

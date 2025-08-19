@@ -483,8 +483,10 @@ hsa_kernel_dispatch_packet_t* HSAILKernel::loadArguments(
   hsaDisp->completion_signal.handle = 0;
   memcpy(aqlArgBuf + argsBufferSize(), hsaDisp, sizeof(hsa_kernel_dispatch_packet_t));
 
-  if (AMD_HSA_BITS_GET(akc_.kernel_code_properties,
-                       AMD_KERNEL_CODE_PROPERTIES_ENABLE_SGPR_QUEUE_PTR)) {
+  static_assert(offsetof(amd_kernel_code_t, kernel_code_properties) ==
+                offsetof(llvm::amdhsa::kernel_descriptor_t, kernel_code_properties));
+  if (AMD_HSA_BITS_GET(akd_.kernel_code_properties,
+                       llvm::amdhsa::KERNEL_CODE_PROPERTY_ENABLE_SGPR_QUEUE_PTR)) {
     gpu.addVmMemory(gpu.hsaQueueMem());
   }
 
@@ -511,7 +513,7 @@ bool LightningKernel::postLoad() {
 
   auto sym = prog().getSymbol(symbolName().c_str(), &agent);
 
-  if (!setKernelCode(sym, &akc_)) {
+  if (!setKernelDescriptor(sym, &akd_)) {
     return false;
   }
   if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_DYNAMIC_CALLSTACK,
@@ -571,6 +573,23 @@ bool LightningKernel::postLoad() {
 
   return true;
 }
+
+bool LightningKernel::setKernelDescriptor(amd::hsa::loader::Symbol* sym,
+    llvm::amdhsa::kernel_descriptor_t* akd) {
+    if (!sym) {
+        return false;
+    }
+    if (!sym->GetInfo(HSA_EXECUTABLE_SYMBOL_INFO_KERNEL_OBJECT, reinterpret_cast<void*>(&code_))) {
+        return false;
+    }
+
+    // Copy code object of this kernel from the program CPU segment
+    memcpy(akd, reinterpret_cast<void*>(prog().findHostKernelAddress(code_)),
+        sizeof(llvm::amdhsa::kernel_descriptor_t));
+
+    return true;
+}
+
 #endif  // defined(USE_COMGR_LIBRARY)
 
 }  // namespace amd::pal

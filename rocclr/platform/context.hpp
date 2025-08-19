@@ -153,7 +153,7 @@ class Context : public RuntimeObject {
    * @param curDev The current device
    */
   void* svmAlloc(size_t size, size_t alignment, cl_svm_mem_flags flags = CL_MEM_READ_WRITE,
-                 const amd::Device* curDev = nullptr);
+                 const amd::Device* curDev = nullptr, void* svmPtr = nullptr);
 
   /**
    * Release SVM buffer

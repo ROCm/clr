@@ -289,7 +289,7 @@ class KernelParameters : protected HeapObject {
   address alloc(device::VirtualDevice& vDev);
 
   //! Capture the arguments from signature and set.
-  bool captureAndSet(void** kernelParams, address kernArgs, address mem);
+  bool captureAndSet(void** kernelParams, address kernArgs, size_t kernArgsSize, address mem);
 };
 
 /*! \brief Encapsulates a __kernel function and the argument values
@@ -412,7 +412,7 @@ class Kernel : public RuntimeObject {
   static const KernelFieldMapV3Type kKernelFieldMapV3[];
   static const ArgValueKindV3Type kArgValueKindV3[];
   static const ArgFieldMapV3Type kArgFieldMapV3[];
-#endif 
+#endif
 };  // defined(USE_COMGR_LIBRARY)
 
 

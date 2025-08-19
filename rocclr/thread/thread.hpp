@@ -22,7 +22,6 @@
 #define THREAD_HPP_
 
 #include "top.hpp"
-#include "thread/semaphore.hpp"
 #include "os/os.hpp"
 
 #include <string>
@@ -60,12 +59,6 @@ class Thread : public HeapObject {
   volatile ThreadState state_;
   //! The argument passed to run()
   void* data_;
-
-  //! \cond ignore
-  Semaphore* created_;  //!< To notify the parent thread.
-  Semaphore* lock_;     //!< For mutex support (during contention).
-  Semaphore* suspend_;  //!< For wait/suspend support.
-  //! \endcond
 
   Monitor* selfSuspendLock_;  //!< For self suspend/resume.
 
@@ -148,11 +141,6 @@ class Thread : public HeapObject {
   //! Return this thread's stack bottom.
   address stackBottom() const { return stackBase() - stackSize(); }
 
-  //! Return this thread's contend semaphore.
-  Semaphore& lockSemaphore() const { return *lock_; }
-  //! Return this thread's resume semaphore.
-  Semaphore& suspendSemaphore() const { return *suspend_; }
-
   //! Set this thread's affinity to the given cpu.
   void setAffinity(uint cpu_id) const { Os::setThreadAffinity(handle_, cpu_id); }
 
@@ -160,22 +148,6 @@ class Thread : public HeapObject {
   void setAffinity(const Os::ThreadAffinityMask& mask) const {
     Os::setThreadAffinity(handle_, mask);
   }
-
-  //! Yield to threads of the same priority of higher
-  static void yield() { Os::yield(); }
-};
-
-class HostThread : public Thread {
- private:
-  //! A HostThread does not have a run function
-  virtual void run(void* data) { ShouldNotCallThis(); }
-
- public:
-  //! Construct a new HostThread
-  HostThread();
-
-  //! Return true is this is the host thread.
-  bool isHostThread() const { return true; };
 };
 
 /*! @}

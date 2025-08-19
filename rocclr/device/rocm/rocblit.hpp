@@ -208,8 +208,11 @@ class DmaBlitManager : public device::HostBlitManager {
   }
 
  protected:
-  static constexpr uint MaxPinnedBuffers = 4;
-
+  struct BufferState{
+    address buffer_;         //!< Staging Buffer or Pinned Host Mem Address
+    amd::Memory* pinnedMem_; //!< Pinned Memory
+    size_t copySize_;        //!< last copy size
+  };
   //! Synchronizes the blit operations if necessary
   inline void synchronize() const;
 
@@ -237,11 +240,32 @@ class DmaBlitManager : public device::HostBlitManager {
                              const_address src, hsa_agent_t& srcAgent, size_t size,
                              amd::CopyMetadata& copyMetadata) const;
 
-  const size_t MinSizeForPinnedTransfer;
+  // Get Pinned Host Memory or Staging Buffer
+  void getBuffer(const_address hostMem,         //!< Host Mem Address
+                 size_t size,            //!< Transfer Size
+                 bool enablePin,         //!< True when Pinning is enabled
+                 bool first_tx,          //!< True for first copy
+                 BufferState &buffer     //!< State of Buffer
+                ) const;
+
+  // Release Pinned host memory
+  void releaseBuffer(BufferState &buff //!< True if last copy used Pinned resource
+                    ) const;
+
+  bool hsaCopyStagedOrPinned(const_address hostSrc,             //!< Src buffer address
+                             address hostDst,                   //!< Dst Buffer address
+                             size_t size,                       //!< Size in bytes
+                             bool hostToDev,                    //!< True for H2D copy
+                             amd::CopyMetadata& copyMetadata,   //!< copy MetaData
+                             bool enPinning = false             //!< True if pinning required
+                            ) const;
+
+  const size_t PinXferSize;                   //!< Copy size for Pinned Copy
+  const size_t MinSizeForPinnedXfer;          //!< Mininum copy size for Pinned Copy
+  const size_t StagingXferSize;               //!< Copy size for Staging Buffer Copy
+
   bool completeOperation_;                    //!< DMA blit manager must complete operation
   amd::Context* context_;                     //!< A dummy context
-  mutable size_t sdmaEngineRetainCount_;      //!< Keeps track of memcopies to either get the last
-                                              //!< used SDMA engine or fetch the new mask
   uint32_t sdmaEngineReadMask_;               //!< SDMA Engine Read Mask
   uint32_t sdmaEngineWriteMask_;              //!< SDMA Engine Write Mask
 
@@ -251,17 +275,6 @@ class DmaBlitManager : public device::HostBlitManager {
 
   //! Disable operator=
   DmaBlitManager& operator=(const DmaBlitManager&);
-
-  //! Assits in transferring data from Host to Local or vice versa
-  //! taking into account the Hsail profile supported by Hsa Agent
-  bool hsaCopyStaged(const_address hostSrc,           //!< Contains source data to be copied
-                     address hostDst,                 //!< Destination buffer address for copying
-                     size_t size,                     //!< Size of data to copy in bytes
-                     bool hostToDev,                  //!< True if data is copied from H2D
-                     amd::CopyMetadata& copyMetadata  //!< Memory copy MetaData
-                     ) const;
-
-  bool forceHostWaitFunc(size_t copy_size) const;
 };
 
 //! Kernel Blit Manager
@@ -279,13 +292,13 @@ class KernelBlitManager : public DmaBlitManager {
     Scheduler,
     GwsInit,
     InitHeap,
+    BatchMemOp,
     BlitLinearTotal,
     FillImage = BlitLinearTotal,
     BlitCopyImage,
     BlitCopyImage1DA,
     BlitCopyImageToBuffer,
     BlitCopyBufferToImage,
-    BatchMemOp,
     BlitTotal
   };
 
@@ -479,10 +492,8 @@ class KernelBlitManager : public DmaBlitManager {
                          ) const;
 
   bool runScheduler(uint64_t vqVM,
-                    amd::Memory* schedulerParam,
                     hsa_queue_t* schedulerQueue,
-                    hsa_signal_t& schedulerSignal,
-                    uint threads);
+                    uint threads, uint64_t aql_wrap);
 
   //! Runs a blit kernel for GWS init
   bool RunGwsInit(uint32_t value             //!< Initial value for GWS resource
@@ -595,10 +606,10 @@ static const char* BlitName[KernelBlitManager::BlitTotal] = {
     "__amd_rocclr_copyBufferRect",    "__amd_rocclr_copyBufferRectAligned",
     "__amd_rocclr_streamOpsWrite",    "__amd_rocclr_streamOpsWait",
     "__amd_rocclr_scheduler",         "__amd_rocclr_gwsInit",
-    "__amd_rocclr_initHeap",          "__amd_rocclr_fillImage",
-    "__amd_rocclr_copyImage",         "__amd_rocclr_copyImage1DA",
-    "__amd_rocclr_copyImageToBuffer", "__amd_rocclr_copyBufferToImage",
-    "__amd_rocclr_batchMemOp"};
+    "__amd_rocclr_initHeap",          "__amd_rocclr_batchMemOp",
+    "__amd_rocclr_fillImage",         "__amd_rocclr_copyImage",
+    "__amd_rocclr_copyImage1DA",      "__amd_rocclr_copyImageToBuffer",
+    "__amd_rocclr_copyBufferToImage"};
 
 inline void KernelBlitManager::setArgument(amd::Kernel* kernel, size_t index,
                                            size_t size, const void* value, size_t offset,

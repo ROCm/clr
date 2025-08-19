@@ -76,46 +76,25 @@ not_null(T* ptrOrNull)
     return amd::NotNullReference<T>(ptrOrNull);
 }
 
-#define VDI_CHECK_THREAD(thread)                                             \
-    (thread != NULL || ((thread = new amd::HostThread()) != NULL             \
-            && thread == amd::Thread::current()))
-
 #define RUNTIME_ENTRY_RET(ret, func, args)                                   \
 CL_API_ENTRY ret CL_API_CALL                                                 \
 func args                                                                    \
 {                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!VDI_CHECK_THREAD(thread)) {                                         \
-        *not_null(errcode_ret) = CL_OUT_OF_HOST_MEMORY;                      \
-        return (ret) 0;                                                      \
-    }
 
 #define RUNTIME_ENTRY_RET_NOERRCODE(ret, func, args)                         \
 CL_API_ENTRY ret CL_API_CALL                                                 \
 func args                                                                    \
 {                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!VDI_CHECK_THREAD(thread)) {                                         \
-        return (ret) 0;                                                      \
-    }
 
 #define RUNTIME_ENTRY(ret, func, args)                                       \
 CL_API_ENTRY ret CL_API_CALL                                                 \
 func args                                                                    \
 {                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!VDI_CHECK_THREAD(thread)) {                                         \
-        return CL_OUT_OF_HOST_MEMORY;                                        \
-    }
 
 #define RUNTIME_ENTRY_VOID(ret, func, args)                                  \
 CL_API_ENTRY ret CL_API_CALL                                                 \
 func args                                                                    \
 {                                                                            \
-    amd::Thread* thread = amd::Thread::current();                            \
-    if (!VDI_CHECK_THREAD(thread)) {                                         \
-        return;                                                              \
-    }
 
 #define RUNTIME_EXIT                                                         \
     /* FIXME_lmoriche: we should check to thread->lastError here! */         \

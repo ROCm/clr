@@ -1,10 +1,3 @@
-cmake_minimum_required(VERSION 3.5.1)
-
-if (POLICY CMP0048)
-  cmake_policy(SET CMP0048 NEW)
-  set(PROJ_VERSION VERSION 1.5.0)
-endif()
-
 project(opencl)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -17,7 +10,6 @@ include(GNUInstallDirs)
 option(BUILD_TESTS "Enable building OpenCL tests" OFF)
 option(BUILD_ICD "Enable building OpenCL ICD Loader" OFF)
 option(EMU_ENV "Enable building for emulation environment" OFF)
-option(FILE_REORG_BACKWARD_COMPATIBILITY "Enable File Reorganization backward compatibility" OFF)
 option(ENABLE_ADDRESS_SANITIZER "Option to enable ASAN build" OFF)
 
 # Add flags to generate PDB files with full symbolic information
@@ -110,42 +102,45 @@ if(NOT DEFINED ROCM_PATH)
 endif()
 message (STATUS "ROCM Installation path(ROCM_PATH): ${ROCM_PATH}")
 
+configure_file(
+  packaging/amdocl64.icd
+  ${CMAKE_BINARY_DIR}/opencl/packages/opencl/${OPENCL_AMD_ICD_FILE}
+  COPYONLY
+)
+install(
+  FILES ${CMAKE_BINARY_DIR}/opencl/packages/opencl/${OPENCL_AMD_ICD_FILE}
+  DESTINATION /${CMAKE_INSTALL_SYSCONFDIR}/OpenCL/vendors
+  COMPONENT binary
+  EXCLUDE_FROM_ALL
+)
+
+configure_file(
+  packaging/rocm-opencl.conf
+  ${CMAKE_BINARY_DIR}/opencl/packages/opencl/10-rocm-opencl.conf
+  COPYONLY
+)
+install(
+  FILES ${CMAKE_BINARY_DIR}/opencl/packages/opencl/10-rocm-opencl.conf
+  DESTINATION /${CMAKE_INSTALL_SYSCONFDIR}/ld.so.conf.d
+  COMPONENT binary
+  EXCLUDE_FROM_ALL
+)
+
 #Package: rocm-opencl,rocm-opencl-dev/devel,rocm-ocl-icd
 
 set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/opencl)
 configure_file(packaging/rocm-opencl.postinst ${BUILD_DIR}/postinst @ONLY)
-configure_file(packaging/rocm-opencl.prerm ${BUILD_DIR}/prerm @ONLY)
+configure_file(packaging/rocm-opencl.postrm ${BUILD_DIR}/postrm @ONLY)
 configure_file(packaging/rocm-opencl.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
 configure_file(packaging/rocm-opencl.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
 
 if(BUILD_ICD)
   set(BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/rocm-ocl-icd)
   configure_file(packaging/rocm-ocl-icd.postinst ${BUILD_DIR}/postinst @ONLY)
-  configure_file(packaging/rocm-ocl-icd.prerm ${BUILD_DIR}/prerm @ONLY)
+  configure_file(packaging/rocm-ocl-icd.postrm ${BUILD_DIR}/postrm @ONLY)
   configure_file(packaging/rocm-ocl-icd.rpm_post ${BUILD_DIR}/rpm_post @ONLY)
   configure_file(packaging/rocm-ocl-icd.rpm_postun ${BUILD_DIR}/rpm_postun @ONLY)
 endif()
 
 add_subdirectory(packaging)
-
-#File reorg Backward compatibility function
-if(FILE_REORG_BACKWARD_COMPATIBILITY)
-# To enable/disable #error in wrapper header files
-    if(NOT DEFINED ROCM_HEADER_WRAPPER_WERROR)
-      if(DEFINED ENV{ROCM_HEADER_WRAPPER_WERROR})
-          set(ROCM_HEADER_WRAPPER_WERROR "$ENV{ROCM_HEADER_WRAPPER_WERROR}"
-                  CACHE STRING "Header wrapper warnings as errors.")
-      else()
-          set(ROCM_HEADER_WRAPPER_WERROR "OFF" CACHE STRING "Header wrapper warnings as errors.")
-      endif()
-  endif()
-  if(ROCM_HEADER_WRAPPER_WERROR)
-      set(deprecated_error 1)
-  else()
-      set(deprecated_error 0)
-  endif()
-
-  include(opencl-backward-compat.cmake)
-endif()
-
 endif()

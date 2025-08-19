@@ -41,11 +41,9 @@ void ihipHtoHMemcpy(void* dst, const void* src, size_t sizeBytes, hip::Stream& s
 
 bool IsHtoHMemcpy(void* dst, const void* src);
 
-hipError_t ihipLaunchKernel_validate(hipFunction_t f, uint32_t globalWorkSizeX,
-                                     uint32_t globalWorkSizeY, uint32_t globalWorkSizeZ,
-                                     uint32_t blockDimX, uint32_t blockDimY, uint32_t blockDimZ,
-                                     uint32_t sharedMemBytes, void** kernelParams, void** extra,
-                                     int deviceId, uint32_t params);
+hipError_t ihipLaunchKernel_validate(hipFunction_t f, const amd::LaunchParams& launch_params,
+                                     void** kernelParams, void** extra, int deviceId,
+                                     uint32_t params);
 
 hipError_t ihipMemset_validate(void* dst, int64_t value, size_t valueSize, size_t sizeBytes);
 
@@ -53,9 +51,7 @@ hipError_t ihipMemset3D_validate(hipPitchedPtr pitchedDevPtr, int value, hipExte
                                  size_t sizeBytes);
 
 hipError_t ihipLaunchKernelCommand(amd::Command*& command, hipFunction_t f,
-                                   uint32_t globalWorkSizeX, uint32_t globalWorkSizeY,
-                                   uint32_t globalWorkSizeZ, uint32_t blockDimX, uint32_t blockDimY,
-                                   uint32_t blockDimZ, uint32_t sharedMemBytes, hip::Stream* stream,
+                                   amd::LaunchParams& launch_params, hip::Stream* stream,
                                    void** kernelParams, void** extra, hipEvent_t startEvent,
                                    hipEvent_t stopEvent, uint32_t flags, uint32_t params,
                                    uint32_t gridId, uint32_t numGrids, uint64_t prevGridSum,

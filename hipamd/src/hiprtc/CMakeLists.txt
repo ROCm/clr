@@ -24,12 +24,7 @@
 # Depends on: rocclr, so find_package(rocclr) will be required
 # Building hip header requires hip include folders with hip_version.h
 
-cmake_minimum_required(VERSION 3.16.1)
 option(BUILD_SHARED_LIBS "Build the shared library" ON)
-
-if (POLICY CMP0074)
-  cmake_policy(SET CMP0074 NEW)
-endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
@@ -73,7 +68,7 @@ if(BUILD_SHARED_LIBS)
   endif()
 endif()
 
-target_sources(hiprtc PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
+target_sources(hiprtc PRIVATE hiprtc.cpp ../hip_comgr_helper.cpp hiprtcInternal.cpp)
 
 set_target_properties(hiprtc PROPERTIES
   CXX_STANDARD 17
@@ -132,8 +127,24 @@ add_to_config(_versionInfo HIP_VERSION_GITHASH)
 
 # Enable preprocessed hiprtc-builtins library
 include(HIPRTC RESULT_VARIABLE HIPRTC_CMAKE)
-# Requires clang and to create this library.
-find_program(clang clang HINTS ${ROCM_PATH}/llvm/bin ${ROCM_PATH})
+# Set binary roots to <PackageName>_ROOT cmake and environment variables similar to CMP0074
+# to allow find_program to use LLVM_ROOT and Clang_ROOT
+if(DEFINED ENV{LLVM_ROOT})
+    set(ENV_LLVM_BIN $ENV{LLVM_ROOT}/bin)
+endif()
+if(DEFINED LLVM_ROOT)
+    set(LLVM_BIN ${LLVM_ROOT}/bin)
+endif()
+
+if(DEFINED ENV{Clang_ROOT})
+    set(ENV_Clang_BIN $ENV{Clang_ROOT}/bin)
+endif()
+
+if(DEFINED Clang_ROOT)
+    set(Clang_BIN ${Clang_ROOT}/bin)
+endif()
+# Requires clang to create this library.
+find_program(clang clang HINTS ${Clang_BIN} ${ENV_Clang_BIN} ${ROCM_PATH}/llvm/bin ${ROCM_PATH})
 set(HIPRTC_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/hip_rtc_gen")
 set(HIPRTC_GEN_HEADER "${HIPRTC_GEN_DIR}/hipRTC_header.h")
 set(HIPRTC_GEN_MCIN "${HIPRTC_GEN_DIR}/hipRTC_header.mcin")
@@ -221,17 +232,8 @@ add_custom_command(
   COMMAND ${clang} -O3 --rocm-path=${PROJECT_SOURCE_DIR}/include/.. -std=c++14 -nogpulib -nogpuinc -emit-llvm -c -isystem ${HIP_COMMON_INCLUDE_DIR} -isystem ${PROJECT_BINARY_DIR}/include -isystem ${CMAKE_CURRENT_SOURCE_DIR}/include --cuda-device-only -D__HIPCC_RTC__ --offload-arch=gfx906 -x hip-cpp-output ${HIPRTC_GEN_PREPROCESSED} -o ${HIPRTC_GEN_DIR}/tmp.bc
   DEPENDS ${clang} ${HIPRTC_GEN_PREPROCESSED})
 
-target_link_libraries(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
+target_sources(hiprtc PRIVATE ${HIPRTC_GEN_OBJ})
 target_compile_definitions(hiprtc PRIVATE __HIP_ENABLE_RTC)
-
-if(NOT WIN32)
-  if (BUILD_SHARED_LIBS)
-    target_sources(amdhip64 PRIVATE hiprtc.cpp hiprtcComgrHelper.cpp hiprtcInternal.cpp)
-  endif()
-endif()
-
-list(APPEND HIPRTC_OBJECTS ${HIPRTC_GEN_OBJ})
-set(HIPRTC_OBJECTS ${HIPRTC_OBJECTS} PARENT_SCOPE)
 
 add_dependencies(hiprtc hiprtc-builtins)
 install(TARGETS hiprtc-builtins

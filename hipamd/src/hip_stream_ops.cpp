@@ -25,12 +25,20 @@
 namespace hip {
 hipError_t ihipBatchMemOperation(hipStream_t stream, cl_command_type cmdType, unsigned int count,
                                  hipStreamBatchMemOpParams* paramArray, unsigned int flags) {
-  if (paramArray == nullptr || flags != 0 || count > 256) {
+  if (paramArray == nullptr || flags != 0 || count == 0 || count > 256) {
     return hipErrorInvalidValue;
   }
 
   if (!hip::isValid(stream)) {
     return hipErrorContextIsDestroyed;
+  }
+
+  // Validate operations in paramArray
+  for (unsigned int i = 0; i < count; i++) {
+    // These operations are currently not supported
+    if (paramArray[i].operation == hipStreamMemOpBarrier || hipStreamMemOpFlushRemoteWrites) {
+      return hipErrorInvalidValue;
+    }
   }
 
   hip::Stream* hip_stream = hip::getStream(stream);

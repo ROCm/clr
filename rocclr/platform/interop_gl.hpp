@@ -242,6 +242,7 @@ protected:
     // X11 typedef
     typedef Display* (*PFNXOpenDisplay)(_Xconst char* display_name );
     typedef int (*PFNXCloseDisplay)(Display* display );
+    typedef int (*PFNXFree)(void* data );
 
     //glx typedefs
     typedef GLXDrawable (*PFNglXGetCurrentDrawable)();
@@ -335,6 +336,7 @@ public:
     //pointers to X11 functions
     PFNXOpenDisplay XOpenDisplay_;
     PFNXCloseDisplay XCloseDisplay_;
+    PFNXFree XFree_;
 
     //pointers to GLX functions
     PFNglXGetCurrentDrawable glXGetCurrentDrawable_;

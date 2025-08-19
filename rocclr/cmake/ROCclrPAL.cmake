@@ -20,7 +20,7 @@
 
 set(PAL_CLIENT "OCL")
 
-set(PAL_CLIENT_INTERFACE_MAJOR_VERSION     872)
+set(PAL_CLIENT_INTERFACE_MAJOR_VERSION     932)
 set(GPUOPEN_CLIENT_INTERFACE_MAJOR_VERSION 42)
 set(GPUOPEN_CLIENT_INTERFACE_MINOR_VERSION 0)
 set(AMD_DK_ROOT $ENV{DK_ROOT})
@@ -51,8 +51,12 @@ set(PAL_BUILD_PHOENIX1      ON)
 # Please do not set above flags in staging and mainline in new ASICs
 
 set(PAL_BRANCHDEFS          ON)
+if (AMD_COMPUTE_WIN)
+  find_package(AMD_PAL_LIB)
+else()
+  find_package(AMD_PAL)
+endif()
 
-find_package(AMD_PAL)
 find_package(AMD_HSA_LOADER)
 
 target_sources(rocclr PRIVATE

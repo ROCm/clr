@@ -21,6 +21,8 @@
 #include <hip/hip_runtime.h>
 
 #include "hip_internal.hpp"
+#include "hip_conversions.hpp"
+
 
 namespace hip {
 
@@ -189,7 +191,7 @@ hipError_t hipDeviceEnablePeerAccess(int peerDeviceId, unsigned int flags) {
 hipError_t hipMemcpyPeer(void* dst, int dstDevice, const void* src, int srcDevice,
                          size_t sizeBytes) {
   HIP_INIT_API(hipMemcpyPeer, dst, dstDevice, src, srcDevice, sizeBytes);
-
+  CHECK_STREAM_CAPTURING();
   if (srcDevice >= static_cast<int>(g_devices.size()) ||
       dstDevice >= static_cast<int>(g_devices.size()) ||
       srcDevice < 0 || dstDevice < 0) {
@@ -209,14 +211,45 @@ hipError_t hipMemcpyPeerAsync(void* dst, int dstDevice, const void* src, int src
       srcDevice < 0 || dstDevice < 0) {
     HIP_RETURN(hipErrorInvalidDevice);
   }
-  if (!hip::isValid(stream)) {
-    return hipErrorContextIsDestroyed;
-  }
+  getStreamPerThread(stream);
   hip::Stream* hip_stream = hip::getStream(stream);
   if (hip_stream == nullptr) {
     return hipErrorInvalidValue;
   }
   HIP_RETURN(ihipMemcpy(dst, src, sizeBytes, hipMemcpyDeviceToDevice, *hip_stream, true, true));
+}
+
+hipError_t hipMemcpy3DPeer(hipMemcpy3DPeerParms *p) {
+  HIP_INIT_API(hipMemcpy3DPeer, p);
+  if (p == NULL) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (p->srcDevice >= static_cast<int>(g_devices.size()) ||
+      p->dstDevice >= static_cast<int>(g_devices.size()) || p->srcDevice < 0 || p->dstDevice < 0) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+  hipMemcpy3DParms copyParms = getMemcpy3DParms(*p);
+  HIP_RETURN(ihipMemcpy3D(&copyParms, nullptr));
+}
+
+hipError_t hipMemcpy3DPeerAsync(hipMemcpy3DPeerParms *p, hipStream_t stream) {
+  HIP_INIT_API(hipMemcpy3DPeerAsync, p, stream);
+  if (p == NULL) {
+    HIP_RETURN(hipErrorInvalidValue);
+  }
+  if (p->srcDevice >= static_cast<int>(g_devices.size()) ||
+      p->dstDevice >= static_cast<int>(g_devices.size()) || p->srcDevice < 0 || p->dstDevice < 0) {
+    HIP_RETURN(hipErrorInvalidDevice);
+  }
+
+  getStreamPerThread(stream);
+  hip::Stream* hip_stream = hip::getStream(stream);
+  if (hip_stream == nullptr) {
+    return hipErrorInvalidValue;
+  }
+
+  hipMemcpy3DParms copyParms = getMemcpy3DParms(*p);
+  HIP_RETURN(ihipMemcpy3D(&copyParms), stream, true);
 }
 
 hipError_t hipCtxEnablePeerAccess(hipCtx_t peerCtx, unsigned int flags) {

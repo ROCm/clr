@@ -65,6 +65,7 @@
 #include "OCLStablePState.h"
 #include "OCLThreadTrace.h"
 #include "OCLUnalignedCopy.h"
+#include "OCLCreatePipe.h"
 
 //
 //  Helper macro for adding tests
@@ -118,6 +119,11 @@ TestEntry TestList[] = {
     TEST(OCLReadWriteImage),
     TEST(OCLStablePState),
     TEST(OCLP2PBuffer),
+    
+    // Disabled until new Windows driver release that contains the
+    // clCreatePipe changes
+    // TEST(OCLCreatePipe),
+
     // Failures in Linux. IOL doesn't support tiling aperture and Cypress linear
     // image writes TEST(OCLPersistent),
 };
