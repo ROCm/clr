@@ -2238,11 +2238,14 @@ class GraphHostNode : public GraphNode {
     }
     amd::Command::EventWaitList waitList;
     commands_.reserve(1);
-    amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
-    if (command == nullptr) {
+    try {
+      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+      commands_.emplace_back(command);
+    } catch (const std::bad_alloc&) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+              "[hipGraph] Failed to new amd::Marker in GraphHostNode!\n");
       return hipErrorOutOfMemory;
     }
-    commands_.emplace_back(command);
     return hipSuccess;
   }
 
@@ -2260,14 +2263,15 @@ class GraphHostNode : public GraphNode {
       // Add the new barrier to stall the stream, until the callback is done
       amd::Command::EventWaitList eventWaitList;
       eventWaitList.push_back(commands_[0]);
-      amd::Command* block_command =
-          new amd::Marker(*commands_[0]->queue(), !kMarkerDisableFlush, eventWaitList);
-      if (block_command == nullptr) {
+      try {
+        amd::Command* block_command =
+            new amd::Marker(*commands_[0]->queue(), !kMarkerDisableFlush, eventWaitList);
+        block_command->enqueue();
+        block_command->release();
+        commands_[0]->release();
+      } catch (const std::bad_alloc&) {
         ClPrint(amd::LOG_ERROR, amd::LOG_CODE, "[hipGraph] Failed during block command creation");
       }
-      block_command->enqueue();
-      block_command->release();
-      commands_[0]->release();
     }
   }
 
@@ -2302,11 +2306,14 @@ class GraphEmptyNode : public GraphNode {
     if (DEBUG_HIP_FORCE_GRAPH_QUEUES != 1) {
       amd::Command::EventWaitList waitList;
       commands_.reserve(1);
-      amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
-      if (command == nullptr) {
+      try {
+        amd::Command* command = new amd::Marker(*stream, !kMarkerDisableFlush, waitList);
+        commands_.emplace_back(command);
+      } catch (const std::bad_alloc&) {
+        ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+                "[hipGraph] Failed to new amd::Marker in GraphEmptyNode!\n");
         return hipErrorOutOfMemory;
       }
-      commands_.emplace_back(command);
     }
     return hipSuccess;
   }
@@ -2664,14 +2671,17 @@ class hipGraphExternalSemSignalNode : public GraphNode {
     commands_.reserve(numExtSems);
     for (unsigned int i = 0; i < numExtSems; i++) {
       if (externalSemaphorNodeParam_.extSemArray[i] != nullptr) {
-        amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
-                                      externalSemaphorNodeParam_.extSemArray[i],
-                                      externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
-                                      amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
-        if (command == nullptr) {
+        try {
+          amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
+                                        externalSemaphorNodeParam_.extSemArray[i],
+                                        externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
+                                        amd::ExternalSemaphoreCmd::COMMAND_SIGNAL_EXTSEMAPHORE);
+          commands_.emplace_back(command);
+        } catch (const std::bad_alloc&) {
+          ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+                  "[hipGraph] Failed to new amd::ExternalSemaphoreCmd in hipGraphExternalSemSignalNode!\n");
           return hipErrorOutOfMemory;
         }
-        commands_.emplace_back(command);
       } else {
         return hipErrorInvalidValue;
       }
@@ -2718,14 +2728,17 @@ class hipGraphExternalSemWaitNode : public GraphNode {
     commands_.reserve(numExtSems);
     for (unsigned int i = 0; i < numExtSems; i++) {
       if (externalSemaphorNodeParam_.extSemArray[i] != nullptr) {
-        amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
-                                    externalSemaphorNodeParam_.extSemArray[i],
-                                    externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
-                                    amd::ExternalSemaphoreCmd::COMMAND_WAIT_EXTSEMAPHORE);
-        if (command == nullptr) {
+        try {
+          amd::ExternalSemaphoreCmd* command = new amd::ExternalSemaphoreCmd(*stream,
+                                      externalSemaphorNodeParam_.extSemArray[i],
+                                      externalSemaphorNodeParam_.paramsArray[i].params.fence.value,
+                                      amd::ExternalSemaphoreCmd::COMMAND_WAIT_EXTSEMAPHORE);
+          commands_.emplace_back(command);
+        } catch (const std::bad_alloc&) {
+          ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+                  "[hipGraph] Failed to new amd::ExternalSemaphoreCmd in hipGraphExternalSemWaitNode!\n");
           return hipErrorOutOfMemory;
         }
-        commands_.emplace_back(command);
       } else {
         return hipErrorInvalidValue;
       }
@@ -2767,14 +2780,20 @@ class hipGraphBatchMemOpNode : public GraphNode {
       return status;
     }
     amd::Command::EventWaitList waitList;
-    amd::BatchMemoryOperationCommand* command = new amd::BatchMemoryOperationCommand(
-        *stream, ROCCLR_COMMAND_BATCH_STREAM, batchMemOpNodeParam_.count,
-        batchMemOpNodeParam_.flags, waitList, batchMemOpNodeParam_.paramArray,
-        sizeof(hipStreamBatchMemOpParams));
-    if (command == nullptr) {
+    try {
+      amd::BatchMemoryOperationCommand* command = new amd::BatchMemoryOperationCommand(
+          *stream, ROCCLR_COMMAND_BATCH_STREAM, batchMemOpNodeParam_.count,
+          batchMemOpNodeParam_.flags, waitList, batchMemOpNodeParam_.paramArray,
+          sizeof(hipStreamBatchMemOpParams));
+      if (command == nullptr) {
+        return hipErrorOutOfMemory;
+      }
+      commands_.emplace_back(command);
+    } catch (const std::bad_alloc&) {
+      ClPrint(amd::LOG_ERROR, amd::LOG_CODE,
+              "[hipGraph] Failed to new amd::BatchMemoryOperationCommand in hipGraphBatchMemOpNode!\n");
       return hipErrorOutOfMemory;
     }
-    commands_.emplace_back(command);
     return hipSuccess;
   }
 
