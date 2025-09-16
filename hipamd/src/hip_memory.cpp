@@ -1284,14 +1284,15 @@ hipError_t hipHostGetFlags(unsigned int* flagsPtr, void* hostPtr) {
 hipError_t ihipHostRegister(void* hostPtr, size_t sizeBytes, unsigned int flags) {
   if (hostPtr == nullptr || sizeBytes == 0 ||
       flags & ~(hipHostRegisterPortable | hipHostRegisterMapped |
-          hipExtHostRegisterCoarseGrained | hipExtHostRegisterUncached)) {
+          hipExtHostRegisterCoarseGrained | hipExtHostRegisterUncached | hipHostRegisterIoMemory)) {
     return hipErrorInvalidValue;
   } else {
     unsigned int memFlags = CL_MEM_USE_HOST_PTR | CL_MEM_SVM_ATOMICS;
-    if (flags & hipExtHostRegisterUncached) {
+    if (flags & (hipExtHostRegisterUncached | hipHostRegisterIoMemory)) {
       if (IS_WINDOWS) {
         return hipErrorInvalidValue;
       }
+      printf("flags: 0x%08x, hipExtHostRegisterUncached: 0x%08x, hipHostRegisterIoMemory: 0x%08x\n", flags, hipExtHostRegisterUncached, hipHostRegisterIoMemory);
       memFlags |= ROCCLR_MEM_HSA_UNCACHED;
     }
 
