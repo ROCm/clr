@@ -4533,6 +4533,7 @@ hipError_t hipExternalMemoryGetMappedMipmappedArray(
                                    (size_t)mipmapDesc->offset, buf));
 }
 
+#if 0
 hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, size_t size, 
                                           hipMemRangeHandleType handleType,
                                           unsigned long long flags) {
@@ -4550,5 +4551,6 @@ hipError_t hipMemGetHandleForAddressRange(void* handle, hipDeviceptr_t dptr, siz
 
   HIP_RETURN(hipSuccess);
 }
+#endif
 
 }  // namespace hip
