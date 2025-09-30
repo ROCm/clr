@@ -1253,6 +1253,12 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
   kernarg_pool_size_ = 0;
   kernarg_pool_cur_offset_ = 0;
 
+  // Initialize packets with brace initialization
+  barrier_packet_ = {};
+  barrier_value_packet_ = {};
+  barrier_packet_.header = kInvalidAql;
+  barrier_value_packet_.header.header = kInvalidAql;
+
   if (device.settings().fenceScopeAgent_) {
     dispatchPacketHeaderNoSync_ =
       (HSA_PACKET_TYPE_KERNEL_DISPATCH << HSA_PACKET_HEADER_TYPE) |
@@ -1353,8 +1359,9 @@ bool VirtualGPU::create() {
     return false;
   }
 
-  // Initialize barrier and barrier value packets
-  memset(&barrier_packet_, 0, sizeof(barrier_packet_));
+  // Initialize packets with brace initialization
+  barrier_packet_ = {};
+  barrier_value_packet_ = {};
   barrier_packet_.header = kInvalidAql;
   barrier_value_packet_.header.header = kInvalidAql;
 
