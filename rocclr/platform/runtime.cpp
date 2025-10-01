@@ -128,11 +128,11 @@ void RuntimeTearDown::RegisterObject(ReferenceCountedObject* obj) {
 
 class RuntimeTearDown runtime_tear_down;
 
-uint retain() {
+uint ReferenceCountedObject::retain() {
   return referenceCount_.fetch_add(1, std::memory_order_acq_rel) + 1;
 }
 
-uint release() {
+uint ReferenceCountedObject::release() {
   uint newCount = referenceCount_.fetch_sub(1, std::memory_order_acq_rel) - 1;
   if (newCount == 0) {
     // acquire ensures we see all writes from other threads before deletion
