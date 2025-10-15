@@ -164,7 +164,7 @@ class Program : public amd::HeapObject {
 
 #if defined(USE_COMGR_LIBRARY)
   amd_comgr_metadata_node_t metadata_ = {};                             //!< COMgr metadata
-  uint32_t codeObjectVer_;                                              //!< version of code object
+  uint32_t codeObjectVer_ = 0;                                          //!< version of code object
   std::map<std::string, amd_comgr_metadata_node_t> kernelMetadataMap_;  //!< Map of kernel metadata
 #endif
   //! Sanitizer lock - lock when launching init/fini kernels
