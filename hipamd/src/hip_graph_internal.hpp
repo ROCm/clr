@@ -34,6 +34,7 @@
 #include "hip_platform.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_vm.hpp"
+#include "hip_comgr_helper.hpp"
 
 typedef struct ihipExtKernelEvents {
   hipEvent_t startEvent_;
@@ -153,10 +154,19 @@ class hipGraphNodeDOTAttribute {
                  label->find("Bjlk") != std::string::npos ||
                  label->find("Alik") != std::string::npos) {
       color = "orange";
+    } else if (label->find("MEM") != std::string::npos) {
+      color = "lightblue";
     }
-    if (label->length() > 32) {
-        *label = label->substr(0,30) + "..";
+    std::string demangled;
+    helpers::demangleName(*label, demangled);
+
+    if (std::string_view pref("ncclDevKernel_"); demangled.find(pref) == 0) {
+      demangled = demangled.substr(pref.length());
     }
+    if (demangled.length() > 30) {
+      demangled = demangled.substr(0,30) + "..";
+    }
+    *label = demangled;
     return color;
   }
 
@@ -451,24 +461,16 @@ class GraphNode : public hipGraphNodeDOTAttribute {
          color = GetColorAndShortenLabel(&label);
 
     out << "[";
-    out << "style";
-    out << "=\"";
-    out << style_;
-    out << "\"";
+    out << "style=\"" << style_ << "\"";
     if (!color.empty()) {
-      out << "color=\"" << color << "\"";
+      out << "fillcolor=\"" << color << "\"style=\"filled\"";
     }
-    out << "shape";
-    out << "=\"";
-    out << GetShape(flag);
-    out << "\"";
-    out << "label";
-    out << "=\"";
-    out << label;
+    out << "shape=\"" << GetShape(flag) << "\"";
+    out << "label=\"" << label;
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "\nStreamId:" << stream_id_;
-      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
-      out << "\nDeviceId:" << dev_id_;
+      // out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      // out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
@@ -968,7 +970,7 @@ class GraphKernelNode : public GraphNode {
         ? out << "\n"
         : out << "\"";
     if (!color.empty()) {
-      out << "color=\"" << color << "\"";
+      out << "fillcolor=\"" << color << "\"style=\"filled\"";
     }
     out << "shape";
     out << "=\"";
@@ -979,8 +981,8 @@ class GraphKernelNode : public GraphNode {
     out << label;
     if (DEBUG_HIP_GRAPH_DOT_PRINT) {
       out << "\nStreamId:" << stream_id_;
-      out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
-      out << "\nDeviceId:" << dev_id_;
+      // out << "\nSignalIsRequired: " << ((signal_is_required_) ? "true" : "false");
+      // out << "\nDeviceId:" << dev_id_;
     }
     out << "\"";
     out << "];";
@@ -1397,7 +1399,7 @@ class GraphMemcpyNode : public GraphNode {
 
  public:
   GraphMemcpyNode(const hipMemcpy3DParms* pCopyParams)
-      : GraphNode(hipGraphNodeTypeMemcpy, "solid", "trapezium", "MEMCPY") {
+      : GraphNode(hipGraphNodeTypeMemcpy, "solid", "box", "MEMCPY") {
     if (pCopyParams) {
       copyParams_ = *pCopyParams;
     }
@@ -1530,7 +1532,7 @@ class GraphMemcpyNode : public GraphNode {
           copyParams_.extent.depth);
       label = buffer;
     } else {
-      label = std::to_string(GetID()) + "\nMEMCPY\n(" + memcpyDirection + ")";
+      label = "MEMCPY\n(" + memcpyDirection + ")";
     }
     return label;
   }
@@ -1733,7 +1735,7 @@ class GraphMemcpyNode1D : public GraphMemcpyNode {
           (size_t)0, (size_t)0, (size_t)0, count_, (size_t)1, (size_t)1);
       label = buffer;
     } else {
-      label = std::to_string(GetID()) + "\n" + label_ + "\n(" + memcpyDirection + "," +
+      label = std::string(label_) + "\n(" + memcpyDirection + "," +
           std::to_string(count_) + ")";
     }
     return label;
@@ -1964,7 +1966,7 @@ class GraphMemsetNode : public GraphNode {
  public:
   GraphMemsetNode(const hipMemsetParams* pMemsetParams, size_t depth = 1, size_t arrWidth = 1,
                   size_t arrHeight = 1)
-      : GraphNode(hipGraphNodeTypeMemset, "solid", "invtrapezium", "MEMSET") {
+      : GraphNode(hipGraphNodeTypeMemset, "solid", "box", "MEMSET") {
     memsetParams_ = *pMemsetParams;
     depth_ = depth;
     arrWidth_ = arrWidth;
@@ -2006,7 +2008,7 @@ class GraphMemsetNode : public GraphNode {
       } else {
         sizeBytes = memsetParams_.width * memsetParams_.height * depth_ * memsetParams_.elementSize;
       }
-      label = std::to_string(GetID()) + "\n" + label_ + "\n(" +
+      label = std::string(label_) + "\n(" +
           std::to_string(memsetParams_.value) + "," + std::to_string(sizeBytes) + ")";
     }
     return label;
