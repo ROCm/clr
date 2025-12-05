@@ -44,6 +44,9 @@
 #include <functional>
 #include <vector>
 
+#define XPUT(fmt, ...) fprintf(stderr, fmt"\n", ##__VA_ARGS__);
+#define OOPS() XPUT("%s:%d", __FILE__, __LINE__)
+
 namespace amd {
 
 /*! \addtogroup Runtime
@@ -256,7 +259,7 @@ union CopyMetadata {
 // Interface to callback to allocate kernel args from the graph kernel arg pool.
 class GraphKernelArgManager {
  public:
-  virtual address AllocKernArg(size_t size, size_t alignment) = 0;
+  virtual address AllocKernArg(size_t size, size_t alignment, int devId) = 0;
 };
 
 /*! \brief An operation that is submitted to a command queue.
@@ -351,7 +354,7 @@ class Command : public Event {
   }
 
   address getKernArgOffset(int size, int alignment) {
-    return graphKernArgMgr_->AllocKernArg(size, alignment);
+    return graphKernArgMgr_->AllocKernArg(size, alignment, 0);
   }
 
   //! Overload new/delete for fast commands allocation/destruction
@@ -1202,7 +1205,11 @@ class NDRangeKernelCommand : public Command {
                        uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
                        uint32_t firstDevice = 0, bool forceProfiling = false);
 
-  virtual void submit(device::VirtualDevice& device) { device.submitKernel(*this); }
+  virtual void submit(device::VirtualDevice& device) { 
+    OOPS()
+    device.submitKernel(*this); 
+    OOPS()
+  }
 
   //! Release all resources associated with this command (
   void releaseResources();
@@ -1350,6 +1357,7 @@ class AccumulateCommand : public Command {
  private:
   //! Kernel names and timestamps list for activity profiling
   std::vector<std::string> kernelNames_;
+  const std::vector<std::string>* kernelNamesRef_ = nullptr;
   std::vector<std::pair<uint64_t, uint64_t>> tsList_;
 
  public:
@@ -1369,9 +1377,14 @@ class AccumulateCommand : public Command {
     tsList_.push_back(std::make_pair(startTs, endTs));
   }
 
+  //! Set kernel names by reference
+  void setKernelNamesRef(const std::vector<std::string>* kernelNames) {
+    kernelNamesRef_ = kernelNames;
+  }
+
   //! Return the kernel names
   const std::vector<std::string>& getKernelNames() const {
-    return kernelNames_;
+    return kernelNamesRef_ != nullptr ? *kernelNamesRef_ : kernelNames_;
   }
 
   //! Return the kernel timestamps

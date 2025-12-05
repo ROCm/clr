@@ -365,6 +365,13 @@ class VirtualGPU : public device::VirtualDevice {
     return false;
   }
 
+  //! Dispatches multiple AQL packets in a single batch operation
+  bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
+                              const std::vector<std::string>& kernelNames,
+                              amd::AccumulateCommand* vcmd = nullptr) {
+    return false;
+  }
+
   void resetFenceDirty() {}
 
   //! Returns GPU device object associated with this kernel

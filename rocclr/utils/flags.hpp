@@ -257,6 +257,10 @@ release(bool, DEBUG_HIP_FORCE_ASYNC_QUEUE, false,                             \
         "Forces grpahs into async queue mode. DEBUG_HIP_FORCE_GRAPH_QUEUES must be 1") \
 release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
         "Forces the number of streams for the graph parallel execution")      \
+release(uint, DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING, 1,                          \
+        "0 = Disable, 1 = Enable, 2 = Force")                                 \
+release(uint, DEBUG_HIP_GRAPH_BATCH_SIZE, 256,                                \
+        "Number of graph nodes to batch at a time")                           \
 release(bool, HIP_ALWAYS_USE_NEW_COMGR_UNBUNDLING_ACTION, false,              \
         "Force to always use new comgr unbundling action")                    \
 release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \

@@ -1350,6 +1350,10 @@ class VirtualDevice : public amd::HeapObject {
   virtual bool isFenceDirty() const = 0;
   //! Init hidden heap for device memory allocations
   virtual void HiddenHeapInit() = 0;
+  //! Dispatches multiple AQL packets in a single batch operation
+  virtual bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
+                                      const std::vector<std::string>& kernelNames,
+                                      amd::AccumulateCommand* vcmd = nullptr) = 0 ;
   //! Dispatch captured AQL packet
   virtual bool dispatchAqlPacket(uint8_t* aqlpacket,
                                  const std::string& kernelName,
@@ -1851,7 +1855,7 @@ class Device : public RuntimeObject {
   }
 
   virtual void* deviceLocalAlloc(size_t size, bool atomics = false,
-                                 bool pseudo_fine_grain = false, bool contiguous = false) const {
+          bool pseudo_fine_grain = false, bool contiguous = false, bool exec = false) const {
     ShouldNotCallThis();
     return NULL;
   }

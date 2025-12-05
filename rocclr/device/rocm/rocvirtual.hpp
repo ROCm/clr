@@ -448,7 +448,8 @@ class VirtualGPU : public device::VirtualDevice {
   amd::Command* command() const { return command_; }
 
   void* allocKernArg(size_t size, size_t alignment);
-  bool isFenceDirty() const { return fence_dirty_; }
+  bool isFenceDirty() const { return fence_dirty_.load(std::memory_order_acquire); }
+  void setFenceDirty(bool state) { fence_dirty_.store(state, std::memory_order_release); }
   void HiddenHeapInit();
 
   void setLastUsedSdmaEngine(uint32_t mask) { lastUsedSdmaEngineMask_ = mask; }
@@ -469,9 +470,17 @@ class VirtualGPU : public device::VirtualDevice {
                          const uint8_t* aqlPacket = nullptr, bool attach_signal = false);
   bool dispatchAqlPacket(hsa_barrier_and_packet_t* packet, uint16_t header,
                         uint16_t rest, bool blocking = true, bool attach_signal = false);
+  //! Dispatches multiple AQL packets in a single batch operation
+  bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
+                              const std::vector<std::string>& kernelNames,
+                              amd::AccumulateCommand* vcmd = nullptr);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               bool attach_signal = false);
+  //! Dispatches multiple AQL packets with a single doorbell ring
+  template <typename AqlPacket> bool dispatchGenericAqlPacketBatch(const std::vector<AqlPacket*>& packets,
+                                                                   bool blocking, bool attach_signal = false,
+                                                                   const std::vector<std::string>* kernelNames = nullptr);
 
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
@@ -620,7 +629,7 @@ class VirtualGPU : public device::VirtualDevice {
                                         //!< but ROC profiler expects D2H or H2D detection
   int fence_state_;                     //!< Fence scope
                                         //!< kUnknown/kFlushedToDevice/kFlushedToSystem
-  bool fence_dirty_;                    //!< Fence modified flag
+  std::atomic<bool> fence_dirty_;      //!< Fence modified flag
 
   std::atomic<uint> lastUsedSdmaEngineMask_;     //!< Last Used SDMA Engine mask
   uint64_t last_write_index_ = 0;       //!< The last HW queue write index for any packet

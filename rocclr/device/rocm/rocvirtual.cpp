@@ -53,6 +53,8 @@
 #endif
 #endif
 
+
+
 /**
 * HSA image object size in bytes (see HSAIL spec)
 */
@@ -1184,6 +1186,256 @@ inline bool VirtualGPU::dispatchAqlPacket(
   profilingEnd();
 
   return true;
+}
+
+
+// ================================================================================================
+template <typename AqlPacket>
+bool VirtualGPU::dispatchGenericAqlPacketBatch(const std::vector<AqlPacket*>& packets,
+                                               bool blocking, bool attach_signal,
+                                               const std::vector<std::string>* kernelNames) {
+  if (packets.empty()) {
+    return false;
+  }
+
+  const uint32_t queueSize = gpu_queue_->size;
+  const uint32_t queueMask = queueSize - 1;
+  const uint32_t sw_queue_size = queueMask;
+  const size_t numPackets = packets.size();
+  size_t kMaxBatchSize = DEBUG_HIP_GRAPH_BATCH_SIZE;
+  const size_t kGpuLagPackets = 16;
+
+  // Staggered copy pattern: powers of 2 (1, 2, 4, 8.. to DEBUG_HIP_GRAPH_BATCH_SIZE
+  size_t processedPackets = 0;
+  size_t batchSize = 1;
+
+  while (processedPackets < numPackets) {
+    uint64_t currentReadIndex = hsa_queue_load_read_index_scacquire(gpu_queue_);
+    uint64_t currentWriteIndex = hsa_queue_load_write_index_relaxed(gpu_queue_);
+
+    if (currentWriteIndex - currentReadIndex >= kGpuLagPackets) {
+      //GPU is busy, so we can copy more packets
+      batchSize = DEBUG_HIP_GRAPH_BATCH_SIZE;
+    }
+
+    // Process all remaining packets in one batch
+    if (processedPackets + batchSize > numPackets) {
+      batchSize = numPackets - processedPackets;
+    }
+
+    // Check if we have enough space in the queue for this batch
+    // If queue is full, reset batch size to 1 and wait
+    if (currentWriteIndex + batchSize - currentReadIndex >= sw_queue_size) {
+      batchSize = 1;
+    }
+
+    // Now reserve space for the batch
+    uint64_t startIndex = hsa_queue_add_write_index_screlease(gpu_queue_, batchSize);
+
+    // Make sure the slot is free for usage
+    while ((startIndex - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= sw_queue_size) {
+      amd::Os::yield();
+    }
+
+    setFenceDirty(true);
+
+    // Save header of first packet in this batch
+    AqlPacket* firstPacket = packets[processedPackets];
+    uint16_t firstPacketHeader = firstPacket->header;
+    uint16_t firstPacketRest = firstPacket->setup;
+    // Separate header for doorbell ring that can be modified
+    uint16_t doorbellHeader = firstPacketHeader;
+
+    // Save header of last packet in this batch (if different from first)
+    AqlPacket* lastPacket = packets[processedPackets + batchSize - 1];
+    uint16_t lastPacketHeader = lastPacket->header;
+
+    // Process batchSize packets
+    for (size_t i = 0; i < batchSize; ++i) {
+      size_t packetIndex = processedPackets + i;
+      uint64_t index = startIndex + i;
+
+      AqlPacket* packet = packets[packetIndex];
+
+      bool attachSignal = timestamp_ != nullptr || attach_signal;
+
+      packet->completion_signal =
+          Barriers().ActiveSignal(kInitSignalValueOne, timestamp_, attachSignal);
+
+      if (std::is_same<decltype(packet), hsa_kernel_dispatch_packet_t*>::value &&
+          timestamp_ != nullptr) {
+        // If profiling is enabled, store the correlation ID in the dispatch packet
+        if (amd::activity_prof::IsEnabled(OP_ID_DISPATCH)) {
+          auto dispatchPacket = reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet);
+          dispatchPacket->reserved2 = timestamp_->command().profilingInfo().correlation_id_;
+        }
+
+        ProfilingSignal* current_signal = Barriers().GetLastSignal();
+        current_signal->flags_.isPacketDispatch_ = true;
+      }
+
+      //Add blocking command if needed (only for the last packet)
+      if (blocking && (packetIndex == numPackets - 1)) {
+        if (packet->completion_signal.handle == 0) {
+          packet->completion_signal = Barriers().ActiveSignal();
+        }
+      }
+
+      AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
+
+      // For first packet in batch, invalidate header before writing
+      bool isFirstPacket = (i == 0);
+      bool isLastPacket = (i == batchSize - 1);
+
+      if (isFirstPacket) {
+        if (addSystemScope_) {
+          // Add system scope on the acq on first packet (modify doorbell header)
+          doorbellHeader &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE);
+          doorbellHeader |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE);
+        }
+        // Invalidate the header of the first packet in the batch
+        packet->header = (HSA_PACKET_TYPE_INVALID << HSA_PACKET_HEADER_TYPE);
+      }
+
+      // For the end packet in batch set flags
+      if (isLastPacket) {
+        if (addSystemScope_) {
+          // If batch has only 1 packet, update doorbell header for release scope
+          // (packet->header is already invalid, so don't modify it)
+          if (batchSize == 1) {
+            doorbellHeader &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+            doorbellHeader |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+          } else {
+            // Add system scope on the release on last packet (different from first)
+            packet->header &= ~(HSA_FENCE_SCOPE_AGENT << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+            packet->header |= (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE);
+          }
+          addSystemScope_ = false;
+        }
+        // Use doorbellHeader for single packet batch (packet->header is invalid),
+        // else use packet->header
+        uint16_t headerForFenceState = (batchSize == 1) ? doorbellHeader : packet->header;
+        auto expected_fence_state =
+            extractAqlBits(headerForFenceState, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                           HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE);
+        // Reset fence_dirty_ flag if we submit a packet with system scopes
+        if (expected_fence_state == amd::Device::kCacheStateSystem) {
+          setFenceDirty(false);
+        }
+        fence_state_ = static_cast<Device::CacheState>(expected_fence_state);
+      }
+
+      // Copy the packet to the queue
+      *aql_loc = *packet;
+
+      // Print kernel name for kernel dispatch packets
+      if (kernelNames && packetIndex < kernelNames->size()) {
+        // Use doorbellHeader for first packet (packet->header is invalid), else use packet->header
+        uint16_t headerForPrint = isFirstPacket ? doorbellHeader : packet->header;
+        uint8_t packetType =
+            extractAqlBits(headerForPrint, HSA_PACKET_HEADER_TYPE, HSA_PACKET_HEADER_WIDTH_TYPE);
+        if (packetType == HSA_PACKET_TYPE_KERNEL_DISPATCH) {
+          ClPrint(amd::LOG_EXTRA_DEBUG, amd::LOG_KERN, "Graph ShaderName : %s, device id : %u",
+                  (*kernelNames)[packetIndex].c_str(), dev().index());
+
+          ClPrint(amd::LOG_EXTRA_DEBUG, amd::LOG_AQL,
+                  "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
+                  "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
+                  "setup=%d, grid=[%u, %u, %u], workgroup=[%u, %u, %u], "
+                  "private_seg_size=%u, group_seg_size=%u, kernel_obj=0x%zx, "
+                  "kernarg_address=0x%zx, completion_signal=0x%zx, correlation_id=%zu, "
+                  "rptr=%u, wptr=%u",
+                  gpu_queue_, gpu_queue_->base_address, gpu_queue_->id, headerForPrint, packetType,
+                  extractAqlBits(headerForPrint, HSA_PACKET_HEADER_BARRIER,
+                                 HSA_PACKET_HEADER_WIDTH_BARRIER),
+                  extractAqlBits(headerForPrint, HSA_PACKET_HEADER_SCACQUIRE_FENCE_SCOPE,
+                                 HSA_PACKET_HEADER_WIDTH_SCACQUIRE_FENCE_SCOPE),
+                  extractAqlBits(headerForPrint, HSA_PACKET_HEADER_SCRELEASE_FENCE_SCOPE,
+                                 HSA_PACKET_HEADER_WIDTH_SCRELEASE_FENCE_SCOPE),
+                  packet->setup,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_x,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_y,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->grid_size_z,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_x,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_y,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->workgroup_size_z,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->private_segment_size,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->group_segment_size,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernel_object,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->kernarg_address,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->completion_signal,
+                  reinterpret_cast<hsa_kernel_dispatch_packet_t*>(packet)->reserved2,
+                  hsa_queue_load_read_index_scacquire(gpu_queue_), index);
+        }
+      }
+
+      // Restore the header of the first packet
+      if (isFirstPacket) {
+        packet->header = firstPacketHeader;
+      }
+
+      // Restore the header of the last packet (if different from first)
+      if (isLastPacket && batchSize > 1) {
+        packet->header = lastPacketHeader;
+      }
+    }
+
+    // Write valid header for the first packet in the batch
+    AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[startIndex & queueMask];
+    packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), doorbellHeader, firstPacketRest);
+
+    // Ring doorbell for this batch
+    hsa_signal_store_screlease(gpu_queue_->doorbell_signal, startIndex);
+
+    processedPackets += batchSize;
+
+    TrackQueueProgress(*packets[processedPackets - 1], startIndex + batchSize - 1);
+    // Double the batch size for next iteration, cap at DEBUG_HIP_GRAPH_BATCH_SIZE
+    if (batchSize < kMaxBatchSize) {
+      batchSize *= 2;
+    }
+  }
+
+  // Mark the flag indicating if a dispatch is outstanding
+  hasPendingDispatch_ = true;
+
+  // Wait on signal for the last packet if blocking
+  if (blocking) {
+    LogInfo("Runtime reached the AQL queue limit. SW is much ahead of HW. Blocking AQL queue!");
+    if (!Barriers().WaitCurrent()) {
+      LogPrintfError("Failed blocking queue wait with signal [0x%lx]",
+                     packets.back()->completion_signal.handle);
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// ================================================================================================
+bool VirtualGPU::dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
+                                        const std::vector<std::string>& kernelNames,
+                                        amd::AccumulateCommand* vcmd) {
+  if (vcmd == nullptr || packets.empty() || packets.size() != kernelNames.size()) {
+    return false;
+  }
+
+  amd::ScopedLock lock(execution());
+  profilingBegin(*vcmd);
+
+  dispatchBlockingWait();
+
+  vcmd->setKernelNamesRef(&kernelNames);
+
+  // Dispatch all packets with a single doorbell ring
+  // Cast packets vector to AQL packets vector on the fly
+  const auto& aqlPackets =
+      reinterpret_cast<const std::vector<hsa_kernel_dispatch_packet_t*>&>(packets);
+  bool result = dispatchGenericAqlPacketBatch(aqlPackets, false, false, &kernelNames);
+
+  profilingEnd();
+
+  return result;
 }
 
 // ================================================================================================
@@ -3318,7 +3570,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   size_t ldsUsage = gpuKernel.WorkgroupGroupSegmentByteSize();
   bool imageBufferWrtBack = false; // Image buffer write back is required
   std::vector<device::Memory*> wrtBackImageBuffer; // Array of images for write back
-
+OOPS()
   // Check memory dependency and SVM objects
   bool coopGroups = (vcmd != nullptr) ? vcmd->cooperativeGroups() : false;
   if (!processMemObjects(kernel, parameters, ldsUsage, coopGroups,
@@ -3326,23 +3578,23 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     LogError("Wrong memory objects!");
     return false;
   }
-
+OOPS()
   // Init PrintfDbg object if printf is enabled.
   bool printfEnabled = (gpuKernel.printfInfo().size() > 0) ? true : false;
   if (!printfDbg()->init(printfEnabled)) {
     LogError("\nPrintfDbg object initialization failed!");
     return false;
   }
-
+OOPS()
   const amd::KernelSignature& signature = kernel.signature();
   const amd::KernelParameters& kernelParams = kernel.parameters();
-
+OOPS()
   amd::Memory* const* memories =
       reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
   bool isGraphCapture = command_ != nullptr && command_->getPktCapturingState();
 
   ClPrint(amd::LOG_INFO, amd::LOG_KERN, "ShaderName : %s", gpuKernel.getDemangledName().c_str());
-
+OOPS()
   amd::NDRange local_size(sizes.local());
   address hidden_arguments = const_cast<address>(parameters);
   // Calculate local size if it wasn't provided
@@ -3354,9 +3606,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     global[i] = static_cast<uint32_t>(sizes.global()[i]);
     local[i] = static_cast<uint16_t>(local_size[i]);
   }
-
+OOPS()
   // Check if runtime has to setup hidden arguments
   for (uint32_t i = signature.numParameters(); i < signature.numParametersAll(); ++i) {
+    OOPS()
     const auto& it = signature.at(i);
     switch (it.info_.oclObject_) {
       case amd::KernelParameterDescriptor::HiddenNone:
@@ -3527,18 +3780,25 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         WriteAqlArgAt(hidden_arguments, sharedMemBytes, it.size_, it.offset_);
         break;
     }
+    OOPS()
   }
+  OOPS()
   address argBuffer = hidden_arguments;
   size_t argSize = std::min(gpuKernel.KernargSegmentByteSize(), signature.paramsSize());
-
+OOPS()
   // Find all parameters for the current kernel
   if (!kernel.parameters().deviceKernelArgs() || gpuKernel.isInternalKernel()) {
     // Allocate buffer to hold kernel arguments
+    OOPS()
     if (isGraphCapture) {
+      OOPS()
       argBuffer = command_->getKernArgOffset(gpuKernel.KernargSegmentByteSize(),
                                              gpuKernel.KernargSegmentAlignment());
+                                             OOPS()
       command_->SetKernelName(gpuKernel.name());
+      OOPS()
     } else {
+      OOPS()
       ClPrint(amd::LOG_INFO, amd::LOG_KERN, "KernargSegmentByteSize = %lu "
               "KernargSegmentAlignment = %lu", gpuKernel.KernargSegmentByteSize(),
               gpuKernel.KernargSegmentAlignment());
@@ -3546,9 +3806,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
           allocKernArg(gpuKernel.KernargSegmentByteSize(),
                        gpuKernel.KernargSegmentAlignment()));
     }
-
+OOPS()
+    XPUT("nontemporalMemcpy size: %zu argBuffer %p params: %p",argSize, argBuffer, parameters);
     nontemporalMemcpy(argBuffer, parameters, argSize);
-
+OOPS()
     if (roc_device_.info().largeBar_ && !isGraphCapture) {
       const auto kernArgImpl = dev().settings().kernel_arg_impl_;
       if (kernArgImpl == KernelArgImpl::DeviceKernelArgsHDP) {
@@ -3560,9 +3821,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         _mm_mfence();
         auto kSentinel = *reinterpret_cast<volatile unsigned char*>(argBuffer + argSize - 1);
       }
+      OOPS()
     }
+    OOPS()
   }
-
+OOPS()
   // Check for group memory overflow
   //! @todo Check should be in HSA - here we should have at most an assert
   assert(dev().info().localMemSizePerCU_ > 0);
@@ -3570,7 +3833,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     LogError("No local memory available\n");
     return false;
   }
-
+OOPS()
   // Initialize the dispatch Packet
   hsa_kernel_dispatch_packet_t dispatchPacket{};
 
@@ -3588,6 +3851,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
   dispatchPacket.kernarg_address = argBuffer;
   dispatchPacket.group_segment_size = ldsUsage + sharedMemBytes;
   dispatchPacket.private_segment_size = devKernel->workGroupInfo()->privateMemSize_;
+  OOPS()
   if ((devKernel->workGroupInfo()->usedStackSize_ & 0x1) == 0x1) {
     dispatchPacket.private_segment_size = std::max<uint64_t>(dev().StackSize(),
                                            dispatchPacket.private_segment_size);
@@ -3601,6 +3865,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       return false;
     }
   }
+  OOPS()
 
   // Pass the header accordingly
   auto aqlHeaderWithOrder = aqlHeader_;
@@ -3613,6 +3878,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       addSystemScope_ = true;
     }
   }
+  OOPS()
 
   // Copy scheduler's AQL packet for possible relaunch from the scheduler itself
   if (aql_packet != nullptr) {
@@ -3623,8 +3889,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                          (HSA_FENCE_SCOPE_SYSTEM << HSA_PACKET_HEADER_RELEASE_FENCE_SCOPE);
     aql_packet->setup = sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS;
   }
+  OOPS()
 
   if (isGraphCapture) {
+    OOPS()
     // Dispatch the packet
     if (!dispatchAqlPacket(&dispatchPacket, aqlHeaderWithOrder,
                            (sizes.dimensions() << HSA_KERNEL_DISPATCH_PACKET_SETUP_DIMENSIONS),
@@ -3639,6 +3907,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
       return false;
     }
   }
+  OOPS()
 
   // Output printf buffer
   if (!printfDbg()->output(*this, printfEnabled, gpuKernel.printfInfo())) {
@@ -3654,9 +3923,11 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
           schedulerSignal_, schedulerThreads_);
     }
   }
+  OOPS()
 
   // Check if image buffer write back is required
   if (imageBufferWrtBack) {
+    OOPS()
     // Make sure the original kernel execution is done
     releaseGpuMemoryFence();
     for (const auto imageBuffer : wrtBackImageBuffer) {
@@ -3671,6 +3942,7 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
                                                 image->getRowPitch(), image->getSlicePitch());
     }
   }
+  OOPS()
   return true;
 }
 
@@ -3729,20 +4001,22 @@ void VirtualGPU::submitKernel(amd::NDRangeKernelCommand& vcmd) {
 
     queue->profilingEnd();
   } else {
+      OOPS()
     // Make sure VirtualGPU has an exclusive access to the resources
     amd::ScopedLock lock(execution());
-
+  OOPS()
     profilingBegin(vcmd);
-
+  OOPS()
     // Submit kernel to HW
     if (!submitKernelInternal(vcmd.sizes(), vcmd.kernel(), vcmd.parameters(),
       static_cast<void*>(as_cl(&vcmd.event())), vcmd.sharedMemBytes(), &vcmd)) {
       LogError("AQL dispatch failed!");
       vcmd.setStatus(CL_INVALID_OPERATION);
     }
-
+  OOPS()
     profilingEnd();
   }
+    OOPS()
 }
 
 // ================================================================================================

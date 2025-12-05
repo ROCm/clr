@@ -2264,7 +2264,7 @@ void Device::deviceVmemRelease(uint64_t mem_handle) const {
 }
 
 void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain,
-                               bool contiguous) const {
+                               bool contiguous, bool executable) const {
 
   const hsa_amd_memory_pool_t& pool = (pseudo_fine_grain && gpu_ext_fine_grained_segment_.handle)
                                        ? gpu_ext_fine_grained_segment_
@@ -2280,6 +2280,9 @@ void* Device::deviceLocalAlloc(size_t size, bool atomics, bool pseudo_fine_grain
   uint32_t hsa_mem_flags = 0;
   if (contiguous) {
     hsa_mem_flags = HSA_AMD_MEMORY_POOL_CONTIGUOUS_FLAG;
+  }
+  if (executable) {
+    hsa_mem_flags |= HSA_AMD_MEMORY_POOL_EXECUTABLE_FLAG;
   }
 
   void* ptr = nullptr;
