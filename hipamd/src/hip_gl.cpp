@@ -235,13 +235,7 @@ hipError_t hipGraphicsSubResourceGetMappedArray(hipArray_t* array, hipGraphicsRe
     HIP_RETURN(hipErrorInvalidValue);
   }
 
-  size_t height = image->getHeight();
-  size_t width = image->getWidth();
-  size_t depth = image->getDepth();
-  size_t max_dim = std::max({height, width, depth});
-  unsigned int max_mipLevel = 1 + static_cast<unsigned int>(std::floor(std::log2(max_dim)));
-
-  if (mipLevel > max_mipLevel) {
+  if (mipLevel >= image->getMipLevels()) {
     LogError("invalid mipLevel");
     HIP_RETURN(hipErrorInvalidValue);
   }
