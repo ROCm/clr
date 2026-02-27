@@ -3189,8 +3189,6 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     }
   }
 
-  amd::Memory* const* memories =
-      reinterpret_cast<amd::Memory* const*>(parameters + kernelParams.memoryObjOffset());
   bool isGraphCapture = currCmd_ != nullptr && currCmd_->getPktCapturingState();
   for (int j = 0; j < iteration; j++) {
     // Reset global size for dimension dim if split is needed
