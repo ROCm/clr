@@ -2729,8 +2729,11 @@ bool KernelBlitManager::copyBuffer(device::Memory& srcMemory, device::Memory& ds
   bool nonP2PIpcOrDirectAccess =
       !isP2pOrIpc && neitherMemoryIsHostDirectAccess && !isSdmaPreference;
 
+  bool sdmaPermanentBypass = HIP_HANG_RECOVERY_ENABLE &&
+      const_cast<Device&>(dev()).sdmaTracker().IsPermanentBypass();
   const bool useShaderCopyPath = hwlCopyDisabled || smallSizeWithNonSdmaPreference ||
-                                 nonP2PIpcOrDirectAccess || isBlitPreference;
+                                 nonP2PIpcOrDirectAccess || isBlitPreference ||
+                                 sdmaPermanentBypass;
 
   if (!useShaderCopyPath) {
     if (amd::IS_HIP) {

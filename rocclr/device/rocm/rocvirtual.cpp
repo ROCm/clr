@@ -662,9 +662,18 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
   if (Hsa::signal_load_relaxed(signal->signal_) > 0) {
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host wait on completion_signal=0x%zx",
             signal->signal_.handle);
-    if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
+    bool aborted = false;
+    if (!WaitForSignal(signal->signal_, gpu_.ActiveWait(), false, &aborted)) {
       LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
       return false;
+    }
+    if (HIP_HANG_RECOVERY_ENABLE && aborted) {
+      auto& dev = const_cast<Device&>(gpu_.dev());
+      dev.ActivateHangRecovery();
+      dev.sdmaTracker().ForcePermanentBypass();
+      LogPrintfWarning("[HIP-RECOVERY] Signal 0x%lx aborted — "
+                       "hang recovery activated, SDMA permanently bypassed",
+                       signal->signal_.handle);
     }
   }
 

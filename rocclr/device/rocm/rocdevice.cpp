@@ -44,6 +44,9 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+#include <signal.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #define OPENCL_VERSION_STR XSTR(OPENCL_MAJOR) "." XSTR(OPENCL_MINOR)
 #define OPENCL_C_VERSION_STR XSTR(OPENCL_C_MAJOR) "." XSTR(OPENCL_C_MINOR)
@@ -71,6 +74,55 @@ std::vector<hsa_agent_t> roc::Device::gpu_agents_;
 std::vector<AgentInfo> roc::Device::cpu_agents_;
 
 address Device::mg_sync_ = nullptr;
+
+std::atomic<bool> Device::g_hang_recovery_active_{false};
+
+static struct sigaction g_old_sigabrt_action;
+static std::atomic<bool> g_abort_handler_installed{false};
+
+static void hangRecoveryAbortHandler(int sig, siginfo_t* info, void* ctx) {
+  if (Device::g_hang_recovery_active_.load(std::memory_order_acquire)) {
+    char msg[128];
+    int len = snprintf(msg, sizeof(msg),
+      "[HIP-RECOVERY] SIGABRT intercepted — freezing caller thread (tid=%d)\n",
+      (int)syscall(SYS_gettid));
+    if (len > 0) write(STDERR_FILENO, msg, len);
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = hangRecoveryAbortHandler;
+    sa.sa_flags = SA_SIGINFO | SA_RESTART;
+    sigemptyset(&sa.sa_mask);
+    sigaction(SIGABRT, &sa, nullptr);
+    sigset_t unblock;
+    sigemptyset(&unblock);
+    sigaddset(&unblock, SIGABRT);
+    sigprocmask(SIG_UNBLOCK, &unblock, nullptr);
+    while (1) pause();
+    __builtin_unreachable();
+  }
+  if (g_old_sigabrt_action.sa_flags & SA_SIGINFO) {
+    if (g_old_sigabrt_action.sa_sigaction) {
+      g_old_sigabrt_action.sa_sigaction(sig, info, ctx);
+    }
+  } else {
+    if (g_old_sigabrt_action.sa_handler == SIG_DFL) {
+      signal(SIGABRT, SIG_DFL);
+      raise(SIGABRT);
+    } else if (g_old_sigabrt_action.sa_handler != SIG_IGN) {
+      g_old_sigabrt_action.sa_handler(sig);
+    }
+  }
+}
+
+void Device::InstallAbortHandler() {
+  if (g_abort_handler_installed.exchange(true, std::memory_order_acq_rel)) return;
+  struct sigaction sa;
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_sigaction = hangRecoveryAbortHandler;
+  sa.sa_flags = SA_SIGINFO | SA_RESTART;
+  sigemptyset(&sa.sa_mask);
+  sigaction(SIGABRT, &sa, &g_old_sigabrt_action);
+}
 
 bool NullDevice::create(const amd::Isa& isa) {
   if (!isa.runtimeRocSupported()) {
@@ -3522,6 +3574,19 @@ hsa_status_t Device::BackendErrorCallBackHandler(const hsa_amd_event_t* event, v
   }
 
   gpu_error_ = gpu_error;
+
+  if (HIP_HANG_RECOVERY_ENABLE) {
+    HIP_DLOG("[HIP-RECOVERY] GPU event type %d — activating recovery\n",
+             event->event_type);
+    for (auto* dev : amd::Device::devices()) {
+      auto* rocDev = static_cast<Device*>(dev);
+      if (rocDev) {
+        rocDev->ActivateHangRecovery();
+        rocDev->sdmaTracker().ForcePermanentBypass();
+      }
+    }
+  }
+
   return HSA_STATUS_SUCCESS;
 }
 
@@ -3879,13 +3944,24 @@ cl_int ConvertHSAErrorIntoCLError(hsa_status_t hsa_status) {
 void callbackQueue(hsa_status_t status, hsa_queue_t* queue, void* data) {
   if (status != HSA_STATUS_SUCCESS && status != HSA_STATUS_INFO_BREAK) {
     Device* dev = reinterpret_cast<Device*>(data);
+
+    if (HIP_HANG_RECOVERY_ENABLE && dev->IsInHangRecovery()) {
+      const char* errorMsg = 0;
+      Hsa::status_string(status, &errorMsg);
+      ClPrint(amd::LOG_NONE, amd::LOG_ALWAYS,
+              "[HIP-RECOVERY] Queue %p error suppressed (hang recovery active): %s code: 0x%x",
+              queue->base_address, errorMsg, status);
+      HIP_DLOG("[HIP-DEBUG] callbackQueue: suppressed abort for queue=%p, status=0x%x\n",
+               queue->base_address, status);
+      return;
+    }
+
     for (auto it : dev->vgpus()) {
       roc::VirtualGPU* vgpu = reinterpret_cast<roc::VirtualGPU*>(it);
       if (vgpu->gpu_queue() == queue) {
         vgpu->AnalyzeAqlQueue();
       }
     }
-    // Abort on device exceptions.
     const char* errorMsg = 0;
     Hsa::status_string(status, &errorMsg);
     if (status == HSA_STATUS_ERROR_OUT_OF_RESOURCES) {

@@ -356,6 +356,9 @@ hipError_t hipStreamGetId(hipStream_t stream, unsigned long long* streamId) {
 
 // ================================================================================================
 hipError_t hipStreamSynchronize_common(hipStream_t stream) {
+  if (HIP_HANG_RECOVERY_ENABLE && amd::Device::IsGPUInError()) {
+    return hipSuccess;
+  }
   getStreamPerThread(stream);
 
   if (stream == nullptr) {
