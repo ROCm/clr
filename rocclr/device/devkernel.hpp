@@ -180,7 +180,7 @@ struct PrintfInfo {
 };
 
 //! \class DeviceKernel, which will contain the common fields for any device
-class Kernel : public amd::HeapObject {
+class Kernel {
  public:
   typedef std::vector<amd::KernelParameterDescriptor> parameters_t;
 
