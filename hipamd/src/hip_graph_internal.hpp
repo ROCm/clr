@@ -172,6 +172,10 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
   using KernelArgImpl = device::Settings::KernelArgImpl;
 };
 
+// Minimum instrumentation hook for nextID-race detection. Defined in
+// hip_graph_internal.cpp. Read-only observer; gated by HIP_RACEDETECT env var.
+void RaceDetect_OnNodeConstructed(int id, void* node);
+
 class GraphNode : public hipGraphNodeDOTAttribute {
  public:
   GraphNode(hipGraphNodeType type, const char* style = "", const char* shape = "",
@@ -187,6 +191,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
         hipGraphNodeDOTAttribute(style, shape, label) {
     amd::ScopedLock lock(nodeSetLock_);
     nodeSet_.insert(this);
+    RaceDetect_OnNodeConstructed(id_, this);
   }
   /// Copy Constructor
   GraphNode(const GraphNode& node) : hipGraphNodeDOTAttribute(node) {

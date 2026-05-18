@@ -6,6 +6,49 @@
 
 #include "hip_graph_internal.hpp"
 
+#include <cstdio>
+#include <cstdlib>
+#include <mutex>
+#include <unordered_map>
+
+// ---------------------------------------------------------------------------
+// Minimum race-detect instrumentation for GraphNode::nextID.
+// Read-only observer (does not change runtime behavior). Builds a hashmap of
+// id_ -> first-seen GraphNode*, and on a duplicate insert prints one line
+// starting with "BUG DETECTED" to stderr. Enabled by env var to keep cost zero
+// when not investigating.
+// ---------------------------------------------------------------------------
+namespace {
+std::mutex g_id_dict_mu;
+std::unordered_map<int, void*> g_id_dict;
+bool g_racedetect_enabled() {
+  static bool v = (std::getenv("HIP_RACEDETECT") != nullptr);
+  return v;
+}
+}  // namespace
+
+namespace hip {
+void RaceDetect_OnNodeConstructed(int id, void* node) {
+  if (!g_racedetect_enabled()) return;
+  static std::atomic<bool> announced{false};
+  if (!announced.exchange(true)) {
+    std::fprintf(stderr,
+                 "RACEDETECT: enabled, hooking GraphNode constructor "
+                 "(first call observed)\n");
+    std::fflush(stderr);
+  }
+  std::lock_guard<std::mutex> g(g_id_dict_mu);
+  auto [it, inserted] = g_id_dict.try_emplace(id, node);
+  if (!inserted) {
+    std::fprintf(stderr,
+                 "BUG DETECTED: nextID race -- id=%d assigned to two distinct "
+                 "GraphNode objects: first=%p second=%p\n",
+                 id, it->second, node);
+    std::fflush(stderr);
+  }
+}
+}  // namespace hip
+
 #define CASE_STRING(X, C)                                                                          \
   case X:                                                                                          \
     case_string = #C;                                                                              \
