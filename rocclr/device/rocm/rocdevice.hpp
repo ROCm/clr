@@ -625,13 +625,16 @@ class Device : public NullDevice {
   };
 
   struct QueueCompare {
-    // Customized queue compare operator to make sure the queues are sorted in the creation order
+    // Sort queues by their HSA-assigned id, which is a process-global monotonic
+    // counter (ROCR-Runtime Queue::GetQueueId). This keeps queuePool_ sorted in
+    // queue creation order so that getQueueFromPool() scans and round-robins
+    // deterministically. Ordering by the hsa_queue_t pointer value would make
+    // selection depend on heap/ASLR layout, which differs across processes and
+    // yields non-deterministic queue assignment across ranks of a distributed
+    // job (two streams that should overlap can land on the same HW queue on
+    // some ranks but not others).
     bool operator()(hsa_queue_t* lhs, hsa_queue_t* rhs) const {
-      if (DEBUG_HIP_DYNAMIC_QUEUES) {
-        return (lhs->id < rhs->id) ? true : false;
-      } else {
-        return (lhs < rhs) ? true : false;
-      }
+      return lhs->id < rhs->id;
     }
   };
   //! a vector for keeping Pool of HSA queues with low, normal and high priorities for recycling
