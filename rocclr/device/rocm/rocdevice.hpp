@@ -779,6 +779,9 @@ class Device : public NullDevice {
   };
   mutable SdmaEngineAllocator sdma_engine_allocator_;
 
+  SdmaHealthTracker sdma_tracker_;
+  std::atomic<bool> hang_recovery_mode_{false};
+
   //! Code object to kernel info map (used in the crash dump analysis)
   mutable std::map<uint64_t, Kernel&> kernel_map_;
 
@@ -787,6 +790,33 @@ class Device : public NullDevice {
 
  public:
   std::atomic<uint> numOfVgpus_;  //!< Virtual gpu unique index
+
+  struct SdmaHealthTracker {
+    std::atomic<bool> permanent_bypass_{false};
+
+    void ForcePermanentBypass() {
+      permanent_bypass_.store(true, std::memory_order_release);
+      HIP_DLOG("[HIP-DEBUG] SdmaHealthTracker: PERMANENT SDMA bypass activated\n");
+    }
+
+    bool IsPermanentBypass() const {
+      return permanent_bypass_.load(std::memory_order_acquire);
+    }
+  };
+
+  SdmaHealthTracker& sdmaTracker() { return sdma_tracker_; }
+
+  void ActivateHangRecovery() {
+    hang_recovery_mode_.store(true, std::memory_order_release);
+    g_hang_recovery_active_.store(true, std::memory_order_release);
+    InstallAbortHandler();
+  }
+  bool IsInHangRecovery() const {
+    return hang_recovery_mode_.load(std::memory_order_acquire);
+  }
+
+  static std::atomic<bool> g_hang_recovery_active_;
+  static void InstallAbortHandler();
 
   //! Returns the valid SDMA engine bitmask for the given operation type.
   uint32_t GetSdmaValidMask(HwQueueEngine engine_type) const {

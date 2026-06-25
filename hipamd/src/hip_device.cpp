@@ -11,6 +11,7 @@
 #include "hip_internal.hpp"
 #include "hip_mempool_impl.hpp"
 #include "hip_platform.hpp"
+#include "device/rocm/rocdebuglog.hpp"
 
 #undef hipGetDeviceProperties
 #undef hipDeviceProp_t
@@ -195,19 +196,32 @@ void Device::WaitActiveStreams(hip::Stream* blocking_stream, bool wait_null_stre
     }
   }
 
+  if (HIP_HANG_RECOVERY_ENABLE) {
+    thread_local uint64_t idle_call_count = 0;
+    if (eventWaitList.empty() && !submitMarker) {
+      idle_call_count++;
+      if (idle_call_count == 10000 || idle_call_count == 100000) {
+        HIP_DLOG("[HIP-DEBUG] WaitActiveStreams WARNING: possible cascade hang, "
+                 "idle_calls=%lu, blocking_stream=%p\n",
+                 idle_call_count, (void*)blocking_stream);
+        LogPrintfWarning("[HIP-HANG] WaitActiveStreams spinning for %lu iterations",
+                         idle_call_count);
+      }
+    } else {
+      idle_call_count = 0;
+    }
+  }
+
   if (!eventWaitList.empty() || submitMarker) {
     auto* marker = new amd::Marker(*blocking_stream, kMarkerDisableFlush, eventWaitList);
     marker->enqueue();
     marker->release();
   }
 
-  // Release all active commands; safe after the marker was enqueued
   for (const auto& cmd : eventWaitList) {
     cmd->release();
   }
 
-  // Release active queue references now that the marker has been fully enqueued
-  // and no longer needs to access the queues via eventWaitList commands
   for (const auto& q : activeQueues) {
     q->release();
   }

@@ -13,9 +13,12 @@
 #include "utils/util.hpp"
 #include "rocprintf.hpp"
 #include "rocsched.hpp"
+#include "rocdebuglog.hpp"
 #include "device/device.hpp"
 #include "os/os.hpp"
 #include <atomic>
+#include <chrono>
+#include <sys/syscall.h>
 #include <condition_variable>
 #include <mutex>
 #include <stack>
@@ -37,15 +40,23 @@ constexpr static uint64_t kInvalidQueueIndex = std::numeric_limits<uint64_t>::ma
 
 constexpr static uint64_t kTimeout4Secs = 4 * M;
 
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yield = false) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yield = false,
+                          bool* out_aborted = nullptr) {
+  if (out_aborted) *out_aborted = false;
+
   hsa_wait_state_t wait_state = HSA_WAIT_STATE_BLOCKED;
   if (active_wait) {
     wait_state = HSA_WAIT_STATE_ACTIVE;
   }
 
   if (Hsa::signal_load_relaxed(signal) > 0) {
-    // When it is blocked wait, we wait in active state for 100 us before proceeding to wait in
-    // blocked state indefinitely.
+    auto wait_start = std::chrono::steady_clock::now();
+
+    if (HIP_HANG_RECOVERY_ENABLE) {
+      HIP_DLOG("[HIP-DEBUG] WaitForSignal ENTER: signal=0x%lx, active=%d, tid=%d\n",
+               signal.handle, active_wait ? 1 : 0, (int)syscall(SYS_gettid));
+    }
+
     if (!active_wait) {
       ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
               signal.handle, kTimeout100us);
@@ -61,8 +72,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
       }
     }
 
-    // This is unlimited wait, but we wait for 4 secs and check if the device is
-    // unstable, if so we return, otherwise we continue to wait in the while loop.
+    const long max_wait_ms = HIP_HANG_RECOVERY_ENABLE
+        ? static_cast<long>(HIP_MAX_SIGNAL_WAIT) * 1000L : 0;
+
     while (Hsa::signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                      kTimeout4Secs, wait_state) != 0) {
       if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsGPUInError()) {
@@ -72,8 +84,38 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
                 signal.handle, kTimeout4Secs);
         return true;
       }
+
+      if (HIP_HANG_RECOVERY_ENABLE) {
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - wait_start).count();
+        HIP_DLOG("[HIP-DEBUG] WaitForSignal STALL: signal=0x%lx, "
+                 "elapsed=%ldms, tid=%d\n",
+                 signal.handle, (long)elapsed, (int)syscall(SYS_gettid));
+
+        if (max_wait_ms > 0 && elapsed >= max_wait_ms) {
+          HIP_DLOG("[HIP-DEBUG] WaitForSignal TIMEOUT: signal=0x%lx HUNG for %ldms "
+                   "(limit=%lds), forcing recovery. tid=%d\n",
+                   signal.handle, (long)elapsed, (long)HIP_MAX_SIGNAL_WAIT,
+                   (int)syscall(SYS_gettid));
+          LogPrintfWarning("[HIP-HANG] Signal 0x%lx hung for %ld ms, forcing recovery",
+                           signal.handle, (long)elapsed);
+          Hsa::signal_silent_store_relaxed(signal, 0);
+          if (out_aborted) *out_aborted = true;
+          return true;
+        }
+      }
+
       if (yield && wait_state == HSA_WAIT_STATE_ACTIVE) {
         amd::Os::yield();
+      }
+    }
+
+    if (HIP_HANG_RECOVERY_ENABLE) {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - wait_start).count();
+      if (elapsed > 100) {
+        HIP_DLOG("[HIP-DEBUG] WaitForSignal DONE: signal=0x%lx, elapsed=%ldms, tid=%d\n",
+                 signal.handle, (long)elapsed, (int)syscall(SYS_gettid));
       }
     }
   }

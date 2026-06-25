@@ -406,6 +406,9 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, amd::LaunchParams& launch_par
                                   uint32_t params = 0, uint32_t gridId = 0, uint32_t numGrids = 0,
                                   uint64_t prevGridSum = 0, uint64_t allGridSum = 0,
                                   uint32_t firstDevice = 0) {
+  if (HIP_HANG_RECOVERY_ENABLE && amd::Device::IsGPUInError()) {
+    return hipErrorLaunchFailure;
+  }
   int deviceId = hip::Stream::DeviceId(hStream);
 
   // Ensure the stream's device matches the current device,
@@ -480,10 +483,16 @@ hipError_t ihipModuleLaunchKernel(hipFunction_t f, amd::LaunchParams& launch_par
   }
 
   if (command->status() == CL_INVALID_OPERATION) {
+    if (HIP_HANG_RECOVERY_ENABLE && amd::Device::IsGPUInError()) {
+      return hipErrorLaunchFailure;
+    }
     command->release();
     return hipErrorIllegalState;
   }
 
+  if (HIP_HANG_RECOVERY_ENABLE && amd::Device::IsGPUInError()) {
+    return hipErrorLaunchFailure;
+  }
   command->release();
 
   return hipSuccess;

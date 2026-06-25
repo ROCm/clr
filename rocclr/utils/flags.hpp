@@ -260,6 +260,12 @@ release(bool, DEBUG_HIP_IGNORE_STREAM_PRIORITY, false,                        \
         "Ignore priority streams")                                            \
 release(uint, HIP_SKIP_ABORT_ON_GPU_ERROR, true,                              \
         "Set this to true, to avoid host side abort for GPU errors")          \
+release(uint, HIP_HANG_RECOVERY_ENABLE, 0,                                    \
+        "Enable hang recovery features: signal timeout abort, SDMA bypass,"   \
+        " SIGABRT handler. 0=off (default), 1=on")                           \
+release(uint, HIP_MAX_SIGNAL_WAIT, 60,                                        \
+        "Max seconds to wait for signal before abort when hang recovery"      \
+        " enabled. 0=infinite")                                              \
 release(bool, HIP_FORCE_SPIRV_CODEOBJECT, false,                              \
         "Force use of SPIRV instead of device specific code object.")         \
 release(uint, DEBUG_CLR_BATCH_CPU_SYNC_SIZE, 8,                               \
