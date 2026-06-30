@@ -9,6 +9,7 @@
 
 #include "hip_internal.hpp"
 
+#include <atomic>
 #include <cstdint>
 
 #if defined(HIP_ROCPROFILER_REGISTER) && HIP_ROCPROFILER_REGISTER > 0
@@ -1485,15 +1486,33 @@ template <typename Tp> void ToolsInit(Tp* table) {
 #endif
 }
 
-template <typename Tp> Tp& GetDispatchTableImpl() {
+// Populates the dispatch table and, when register_tools is set, performs profiler registration
+// exactly once.
+//
+// Profiler registration (ToolsInit) must NOT run while the caller's function-local-static guard
+// is held: ToolsInit can dlopen tool libraries whose constructors call back into
+// GetHip*DispatchTable(), re-entering that same non-recursive __cxa_guard and deadlocking. The
+// getters therefore split the work into two calls: the first (register_tools == false) populates
+// the table under the getter's static guard, the second (register_tools == true) runs once the
+// guard has been released. A function-local, constant-initialized std::atomic (no guard of its
+// own) gates ToolsInit with a single CAS, so any re-entrant call observes it already claimed and
+// returns the populated table instead of recursing.
+template <typename Tp> Tp& GetDispatchTableImpl(bool register_tools = false) {
   // using a static inside a function prevents static initialization fiascos
   static auto dispatch_table = Tp{};
+  static std::atomic<bool> tools_registered{false};
 
-  // Change all the function pointers to point to the HIP runtime implementation functions
-  UpdateDispatchTable(&dispatch_table);
+  if (!register_tools) {
+    // Change all the function pointers to point to the HIP runtime implementation functions
+    UpdateDispatchTable(&dispatch_table);
+    return dispatch_table;
+  }
 
   // Profiler Registration, may wrap the function pointers
-  ToolsInit(&dispatch_table);
+  bool expected = false;
+  if (tools_registered.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+    ToolsInit(&dispatch_table);
+  }
 
   return dispatch_table;
 }
@@ -1511,14 +1530,18 @@ template <typename Tp> Tp& GetDispatchTableImpl() {
 #endif
 NO_VECTORIZE const HipDispatchTable* GetHipDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipDispatchTable>();
+  // Register the profiler after the static guard above is released to avoid re-entrant deadlock.
+  GetDispatchTableImpl<HipDispatchTable>(/*register_tools=*/true);
   return _v;
 }
 NO_VECTORIZE const HipCompilerDispatchTable* GetHipCompilerDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipCompilerDispatchTable>();
+  GetDispatchTableImpl<HipCompilerDispatchTable>(/*register_tools=*/true);
   return _v;
 }
 const HipToolsDispatchTable* GetHipToolsDispatchTable() {
   static auto* _v = &GetDispatchTableImpl<HipToolsDispatchTable>();
+  GetDispatchTableImpl<HipToolsDispatchTable>(/*register_tools=*/true);
   return _v;
 }
 }  // namespace hip
