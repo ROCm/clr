@@ -269,6 +269,9 @@ release(uint, DEBUG_CLR_MAX_D2H_CPU_PIN, 0,                                   \
         "Uses CPU D2H copies for less or equal sizes for pinned")             \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
+release(bool, DEBUG_CLR_SDMA_ROUND_ROBIN, false,                               \
+        "Round-robin SDMA engine selection instead of always picking the "    \
+        "lowest available engine")                                           \
 
 namespace amd {
 

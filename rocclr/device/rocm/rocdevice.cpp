@@ -3601,8 +3601,26 @@ uint32_t Device::AllocateSdmaEngine(const device::BlitManager* handle, bool read
     return 0;
   }
 
-  // Pick the lowest available engine bit.
-  uint32_t selected = availableMask & (~availableMask + 1);
+  uint32_t selected = 0;
+  if (DEBUG_CLR_SDMA_ROUND_ROBIN) {
+    // Round-robin through the available engines instead of always picking the
+    // lowest bit. Streams frequently allocate/release (e.g. every finish()),
+    // so always favoring the lowest engine would leave the others under-used
+    // whenever only one stream is active at a time.
+    constexpr uint32_t kNumMaskBits = sizeof(uint32_t) * 8;
+    uint32_t start = nextSdmaRrEngine_.fetch_add(1, std::memory_order_relaxed) % kNumMaskBits;
+    for (uint32_t i = 0; i < kNumMaskBits; ++i) {
+      uint32_t bit = (start + i) % kNumMaskBits;
+      uint32_t mask = 1u << bit;
+      if (availableMask & mask) {
+        selected = mask;
+        break;
+      }
+    }
+  } else {
+    // Default: pick the lowest available engine bit.
+    selected = availableMask & (~availableMask + 1);
+  }
   sdmaEngineAssignments_[handle] = selected;
 
   return selected;

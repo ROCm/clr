@@ -680,6 +680,10 @@ class Device : public NullDevice {
   mutable amd::Monitor sdmaEngineLock_;  //!< Protects sdmaEngineAssignments_
   //! Per-stream SDMA engine assignments: stream handle -> exclusive engine mask
   mutable std::map<const device::BlitManager*, uint32_t> sdmaEngineAssignments_;
+  //! Round-robin cursor for AllocateSdmaEngine(), so repeated allocate/release
+  //! cycles (e.g. from HostQueue::finish()) spread new assignments across all
+  //! available SDMA engines instead of always favoring the lowest-numbered one.
+  mutable std::atomic<uint32_t> nextSdmaRrEngine_{0};
   bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
 
  public:
