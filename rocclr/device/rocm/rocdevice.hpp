@@ -598,11 +598,9 @@ class Device : public NullDevice {
   void HiddenHeapAlloc(const VirtualGPU& gpu);
   //! Init hidden heap for device memory allocations
   void HiddenHeapInit(const VirtualGPU& gpu);
-  //! Allocates (or returns the cached) exclusive SDMA engine for a stream, so
-  //! consecutive copies from that stream don't bounce between engines.
-  uint32_t AllocateSdmaEngine(const device::BlitManager* handle, bool readEngine) const;
-  //! Releases the SDMA engine assignment for a stream (called on stream destruction)
-  void ReleaseSdmaEngine(const device::BlitManager* handle) const;
+  uint32_t fetchSDMAMask(const device::BlitManager* handle, bool readEngine = true) const;
+  void resetSDMAMask(const device::BlitManager* handle) const;
+  void getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const;
   bool isXgmi() const { return isXgmi_; }
 
  private:
@@ -677,9 +675,8 @@ class Device : public NullDevice {
   //! Read and Write mask for device<->host
   uint32_t maxSdmaReadMask_;
   uint32_t maxSdmaWriteMask_;
-  mutable amd::Monitor sdmaEngineLock_;  //!< Protects sdmaEngineAssignments_
-  //! Per-stream SDMA engine assignments: stream handle -> exclusive engine mask
-  mutable std::map<const device::BlitManager*, uint32_t> sdmaEngineAssignments_;
+  //! Map of SDMA engineId<->stream
+  mutable std::map<uint32_t, const device::BlitManager*> engineAssignMap_;
   bool isXgmi_; //!< Flag to indicate if there is XGMI between CPU<->GPU
 
  public:
