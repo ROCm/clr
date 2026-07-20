@@ -192,7 +192,8 @@ Device::Device(hsa_agent_t bkendDevice)
     , numOfVgpus_(0)
     , preferred_numa_node_(0)
     , maxSdmaReadMask_(0)
-    , maxSdmaWriteMask_(0) {
+    , maxSdmaWriteMask_(0)
+    , sdmaEngineLock_("SDMA Engine Allocation Lock", true) {
   group_segment_.handle = 0;
   system_segment_.handle = 0;
   system_coarse_segment_.handle = 0;
@@ -1284,11 +1285,6 @@ bool Device::populateOCLDeviceConstants() {
                          &info_.numSDMAengines_)) {
     return false;
   }
-
-  for (uint32_t i = 0; i < info_.numSDMAengines_; i++) {
-    engineAssignMap_[1 << i] = 0;
-  }
-
 
   checkAtomicSupport();
 
@@ -3576,43 +3572,46 @@ void Device::HiddenHeapInit(const VirtualGPU& gpu) {
 }
 
 // ================================================================================================
-uint32_t Device::fetchSDMAMask(const device::BlitManager* handle, bool readEngine) const {
-  uint32_t engine = 0;
-  {
-    amd::ScopedLock lock(vgpusAccess());
-    for (auto it = engineAssignMap_.rbegin(); it != engineAssignMap_.rend(); ++it) {
-      // If blitManager handle is in the map return the engine ID else
-      // add to the map
-      if (it->second == handle) {
-        engine = it->first;
-        break;
-      } else if (it->second == 0) {
-        it->second = handle;
-        engine = it->first;
-        break;
-      }
-    }
+uint32_t Device::AllocateSdmaEngine(const device::BlitManager* handle, bool readEngine) const {
+  amd::ScopedLock lock(sdmaEngineLock_);
+
+  uint32_t validEngineMask = readEngine ? maxSdmaReadMask_ : maxSdmaWriteMask_;
+
+  auto it = sdmaEngineAssignments_.find(handle);
+  if (it != sdmaEngineAssignments_.end()) {
+    // Note: the cached engine may not be valid for the requested direction if it
+    // was assigned for the other one; that's an accepted limitation of caching a
+    // single engine per stream instead of one per direction.
+    return it->second & validEngineMask;
   }
 
-  return (readEngine ? maxSdmaReadMask_ : maxSdmaWriteMask_) & engine;
+  // Engines already claimed by other streams are off-limits, so each stream keeps
+  // its own exclusive engine instead of racing with others for a "free" one.
+  uint32_t allocatedMask = 0;
+  for (const auto& assignment : sdmaEngineAssignments_) {
+    allocatedMask |= assignment.second;
+  }
+
+  uint32_t availableMask = validEngineMask & ~allocatedMask;
+  if (availableMask == 0) {
+    ClPrint(amd::LOG_WARNING, amd::LOG_COPY,
+            "No unallocated SDMA engines available for stream %p "
+            "(valid_mask=0x%x, allocated_mask=0x%x)",
+            handle, validEngineMask, allocatedMask);
+    return 0;
+  }
+
+  // Pick the lowest available engine bit.
+  uint32_t selected = availableMask & (~availableMask + 1);
+  sdmaEngineAssignments_[handle] = selected;
+
+  return selected;
 }
 
 // ================================================================================================
-void Device::getSdmaRWMasks(uint32_t* readMask, uint32_t* writeMask) const {
-  *readMask = maxSdmaReadMask_;
-  *writeMask = maxSdmaWriteMask_;
-}
-
-// ================================================================================================
-void Device::resetSDMAMask(const device::BlitManager* handle) const {
-  amd::ScopedLock lock(vgpusAccess());
-
-  for (auto& it : engineAssignMap_) {
-    if (it.second == handle) {
-      it.second = 0;
-      break;
-    }
-  }
+void Device::ReleaseSdmaEngine(const device::BlitManager* handle) const {
+  amd::ScopedLock lock(sdmaEngineLock_);
+  sdmaEngineAssignments_.erase(handle);
 }
 
 // ================================================================================================

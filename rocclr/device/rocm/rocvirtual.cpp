@@ -229,9 +229,6 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   // Save callback signal
   hsa_signal_t callback_signal = ts->GetCallbackSignal();
 
-  // Reset last used SDMA engine mask
-  ts->gpu()->setLastUsedSdmaEngine(0);
-
   // Update the batch, since signal is complete
   ts->gpu()->updateCommandsState(ts->command().GetBatchHead());
 
@@ -1223,8 +1220,7 @@ VirtualGPU::VirtualGPU(Device& device, bool profiling, bool cooperative,
       priority_(priority),
       copy_command_type_(0),
       fence_state_(Device::CacheState::kCacheStateInvalid),
-      fence_dirty_(false),
-      lastUsedSdmaEngineMask_(0)
+      fence_dirty_(false)
 {
   index_ = device.numOfVgpus_++;
   gpu_device_ = device.getBackendDevice();

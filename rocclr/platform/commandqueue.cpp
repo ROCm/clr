@@ -21,6 +21,7 @@
 #include "commandqueue.hpp"
 #include "thread/monitor.hpp"
 #include "device/device.hpp"
+#include "device/blit.hpp"
 #include "platform/context.hpp"
 
 /*!
@@ -172,6 +173,13 @@ void HostQueue::finish(bool cpu_wait) {
   }
 
   command->release();
+
+  // Release any SDMA engine exclusively assigned to this stream now that all
+  // its work has completed, so idle streams do not starve active ones of the
+  // small number of physical SDMA engines. It will be re-acquired lazily on
+  // the next SDMA copy from this stream.
+  vdev()->blitMgr().releaseSdmaEngine();
+
   ClPrint(LOG_DEBUG, LOG_CMD, "All commands finished");
 }
 

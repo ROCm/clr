@@ -32,10 +32,15 @@ DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
       completeOperation_(false),
-      context_(nullptr),
-      sdmaEngineRetainCount_(0) {
-        dev().getSdmaRWMasks(&sdmaEngineReadMask_, &sdmaEngineWriteMask_);
-      }
+      context_(nullptr) {}
+
+// ================================================================================================
+void DmaBlitManager::releaseSdmaEngine() const {
+  if (assignedSdmaEngine_ != 0) {
+    dev().ReleaseSdmaEngine(this);
+    assignedSdmaEngine_ = 0;
+  }
+}
 
 inline void DmaBlitManager::synchronize() const {
   if (syncOperation_) {
@@ -674,39 +679,24 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   }
 
   uint32_t copyMask = 0;
-  uint32_t freeEngineMask = 0;
-  bool kUseRegularCopyApi = 0;
-  constexpr size_t kRetainCountThreshold = 8;
+  bool kUseRegularCopyApi = false;
   bool forceSDMA = (copyMetadata.copyEnginePreference_ ==
                       amd::CopyMetadata::CopyEnginePreference::SDMA);
   HwQueueEngine engine = HwQueueEngine::Unknown;
 
-  // Determine engine and assign a copy mask for the new versatile ROCr API
-  // If engine preferred is SDMA, assign the SdmaWrite path
+  // Determine the copy direction. The actual engine is resolved below via
+  // Device::AllocateSdmaEngine(), which gives this stream a stable, exclusive
+  // engine so consecutive copies don't bounce between engines.
   if ((srcAgent.handle == dev().getCpuAgent().handle) &&
       (dstAgent.handle != dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaWrite;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, false);
-    if (copyMask == 0) {
-      // Track the HtoD copies and increment the count. The last used SDMA engine might be busy
-      // and using it everytime can cause contention. When the count exceeds the threshold,
-      // reset it so as to check the engine status and fetch the new mask.
-      sdmaEngineRetainCount_ = (sdmaEngineRetainCount_ > kRetainCountThreshold)
-                               ? 0 : sdmaEngineRetainCount_++;
-    }
   } else if ((srcAgent.handle != dev().getCpuAgent().handle) &&
              (dstAgent.handle == dev().getCpuAgent().handle)) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
-    if (copyMask == 0 && sdmaEngineRetainCount_ > 0) {
-      // Track the DtoH copies and decrement the count.
-      sdmaEngineRetainCount_--;
-    }
   }
 
   if (engine == HwQueueEngine::Unknown && forceSDMA) {
     engine = HwQueueEngine::SdmaRead;
-    copyMask = kUseRegularCopyApi ? 0 : dev().fetchSDMAMask(this, true);
   }
 
   // Check if host wait has to be forced
@@ -716,27 +706,22 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   hsa_signal_t active = gpu().Barriers().ActiveSignal(kInitSignalValueOne, gpu().timestamp(),
                                                       forceHostWait);
 
-  if (!kUseRegularCopyApi && engine != HwQueueEngine::Unknown) {
-    if (copyMask == 0) {
-      if (sdmaEngineRetainCount_) {
-        // Check if there a recently used SDMA engine for the stream
-        copyMask = gpu().getLastUsedSdmaEngine();
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Last copy mask 0x%x", copyMask);
-        copyMask &= (engine == HwQueueEngine::SdmaRead ?
-                    sdmaEngineReadMask_ : sdmaEngineWriteMask_);
-      }
-      if (copyMask == 0) {
-        // Check SDMA engine status
-        status = hsa_amd_memory_copy_engine_status(dstAgent, srcAgent, &freeEngineMask);
-        ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Query copy engine status %x, "
-                "free_engine mask 0x%x", status, freeEngineMask);
-        // Return a mask with the rightmost bit set
-        copyMask = freeEngineMask - (freeEngineMask & (freeEngineMask - 1));
-        gpu().setLastUsedSdmaEngine(copyMask);
+  if (engine != HwQueueEngine::Unknown) {
+    // Note: the cached engine is reused for both read and write copies from this
+    // stream, matching the assumption that a stream keeps a single exclusive engine.
+    if (assignedSdmaEngine_ != 0) {
+      copyMask = assignedSdmaEngine_;
+      ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Using assigned SDMA engine 0x%x", copyMask);
+    } else {
+      copyMask = dev().AllocateSdmaEngine(this, engine == HwQueueEngine::SdmaRead);
+      if (copyMask != 0) {
+        assignedSdmaEngine_ = copyMask;
+        ClPrint(amd::LOG_INFO, amd::LOG_COPY, "Allocated SDMA engine 0x%x for this stream",
+                copyMask);
       }
     }
 
-    if (copyMask != 0 && status == HSA_STATUS_SUCCESS) {
+    if (copyMask != 0) {
       // Copy on the first available free engine if ROCr returns a valid mask
       hsa_amd_sdma_engine_id_t copyEngine = static_cast<hsa_amd_sdma_engine_id_t>(copyMask);
 
@@ -887,7 +872,7 @@ KernelBlitManager::~KernelBlitManager() {
     }
   }
 
-  dev().resetSDMAMask(this);
+  releaseSdmaEngine();
 
   if (nullptr != program_) {
     program_->release();

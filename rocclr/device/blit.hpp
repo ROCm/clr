@@ -239,6 +239,11 @@ class BlitManager : public amd::HeapObject {
   //! Returns Xfer queue lock
   virtual amd::Monitor* lockXfer() const { return nullptr; }
 
+  //! Releases any SDMA engine exclusively assigned to this blit manager so it
+  //! can be reused by other streams; no-op unless overridden (e.g. ROCm).
+  //! Called when the owning stream/queue goes idle (see HostQueue::finish()).
+  virtual void releaseSdmaEngine() const {}
+
   virtual bool initHeap(device::Memory* heap_to_initialize,
                         device::Memory* initial_blocks,
                         uint heap_size,
