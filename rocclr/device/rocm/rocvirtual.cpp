@@ -3339,6 +3339,18 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
         return false;
       }
     }
+
+    // dispatchPacket.completion_signal is usually 0 here: dispatchGenericAqlPacket()
+    // only assigns a real completion_signal when timestamp_ != nullptr (i.e. this
+    // specific command is profiled), which most individual kernel dispatches are not
+    // -- they're batched behind a later marker that gets the real signal instead.
+    // What HostQueue::finish()/WaitCurrent() actually block on is the tracker's
+    // *current* signal (Barriers().GetLastSignal()), which every dispatch shares/
+    // advances regardless of per-packet profiling. Log that instead so a stuck
+    // "wait for signal 0x..." backtrace can be grepped straight back to the last
+    // kernel dispatched against that same signal.
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "KernelDispatch : %s, signal=0x%zx",
+            gpuKernel.name().c_str(), Barriers().GetLastSignal()->signal_.handle);
   }
 
   // Output printf buffer
