@@ -81,6 +81,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
         return false;
       }
     }
+
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host wait for Signal = (0x%lx) returned",
+            signal.handle);
   }
 
   return true;

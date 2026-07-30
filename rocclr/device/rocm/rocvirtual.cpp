@@ -210,10 +210,6 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
                                   &HsaAmdSignalHandler, ts);
               if (HSA_STATUS_SUCCESS != result) {
                 LogError("hsa_amd_signal_async_handler() failed to requeue the handler!");
-              } else {
-                ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Requeue handler : value(%d), timestamp(%p),"
-                        "handle(0x%lx)", static_cast<uint32_t>(val), headTs,
-                        headTs->HwProfiling() ? headTs->Signals()[0]->signal_.handle : 0);
               }
               return false;
             }
@@ -223,9 +219,6 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
       head = head->getNext();
     }
   }
-  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(0x%lx)",
-    static_cast<uint32_t>(value), arg, ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
-
   // Save callback signal
   hsa_signal_t callback_signal = ts->GetCallbackSignal();
 
@@ -472,9 +465,6 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
             HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
         if (HSA_STATUS_SUCCESS != result) {
           LogError("hsa_amd_signal_async_handler() failed to set the handler!");
-        } else {
-          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
-            prof_signal->signal_.handle, prof_signal);
         }
         // Update the current command/marker with HW event
         prof_signal->retain();
@@ -535,6 +525,14 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
   for (uint32_t i = 0; i < external_signals_.size(); ++i) {
     // Early signal status check
     if (hsa_signal_load_relaxed(external_signals_[i]->signal_) > 0) {
+      // Cross-engine dependency: this queue is switching to/using engine `engine` and must
+      // wait for a not-yet-completed signal from a prior dispatch (kernel or barrier/marker).
+      // Match signal= against the earlier "KernelDispatch"/"BarrierDispatch" log to find which
+      // dispatch this wait depends on, and against "Host active wait for Signal .../returned"
+      // below to see if/when that dependency actually clears.
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "WaitingSignal : engine=%d waiting on signal=0x%zx",
+              static_cast<int>(engine), external_signals_[i]->signal_.handle);
       const Settings& settings = gpu_.dev().settings();
       // Actively wait on CPU to avoid extra overheads of signal tracking on GPU.
       // For small copies set forced wait
@@ -1088,6 +1086,12 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
           barrier_packet_.dep_signal[2], barrier_packet_.dep_signal[3],
           barrier_packet_.dep_signal[4], barrier_packet_.completion_signal);
 
+  // Barrier-AND packet <-> signal mapping (covers amd::Marker and other internal barrier
+  // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
+  // log to see which barrier a stuck wait belongs to.
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : signal=0x%zx",
+          barrier_packet_.completion_signal.handle);
+
   // Clear dependent signals for the next packet
   barrier_packet_.dep_signal[0] = hsa_signal_t{};
   barrier_packet_.dep_signal[1] = hsa_signal_t{};
@@ -1166,6 +1170,12 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
           barrier_value_packet_.cond == 0 ? "EQ" : barrier_value_packet_.cond == 1 ?
                                         "NE" : barrier_value_packet_.cond == 2 ? "LT" : "GTE",
           barrier_value_packet_.completion_signal);
+
+  // BarrierValue packet <-> signal mapping (covers amd::Marker and other internal barrier
+  // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
+  // log to see which barrier a stuck wait belongs to.
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : signal=0x%zx",
+          barrier_value_packet_.completion_signal.handle);
 }
 
 // ================================================================================================

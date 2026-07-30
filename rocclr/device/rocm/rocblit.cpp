@@ -770,6 +770,18 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
   }
 
   if (status == HSA_STATUS_SUCCESS) {
+    // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
+    // (visible under LOG_SIG) can be traced back to the direct (non-staged) copy that owns
+    // the signal. Covers same-device D2D, cross-device P2P, and large pinned H2D/D2H.
+    // Note: classify off srcAgent/dstAgent (the real resolved HSA agents), not `engine` --
+    // when forceSDMA is set without a genuine host-side agent, engine falls back to
+    // SdmaRead as a generic "use SDMA" marker, which would otherwise misclassify D2D/P2P
+    // copies (e.g. hipMemcpyDeviceToDeviceNoCU) as D2H.
+    const char* copyType = (srcAgent.handle == dev().getCpuAgent().handle) ? "H2D" :
+                           (dstAgent.handle == dev().getCpuAgent().handle) ? "D2H" :
+                           (&srcMemory.dev() != &dstMemory.dev()) ? "P2P" : "D2D";
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : %s, size=%zu, signal=0x%zx",
+            copyType, size[0], active.handle);
     gpu().addSystemScope();
   } else {
     gpu().Barriers().ResetCurrentSignal();
@@ -829,6 +841,10 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
         LogPrintfError("Hsa copy from host to device failed with code %d", status);
         return false;
       }
+      // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
+      // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : H2D, size=%zu, signal=0x%zx",
+              size, active.handle);
       gpu().Barriers().WaitCurrent();
       totalSize -= size;
       offset += size;
@@ -854,6 +870,10 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
             hsaBuffer, hostSrc + offset, size, active.handle);
 
     if (status == HSA_STATUS_SUCCESS) {
+      // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
+      // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : D2H, size=%zu, signal=0x%zx",
+              size, active.handle);
       gpu().Barriers().WaitCurrent();
       memcpy(hostDst + offset, hsaBuffer, size);
     } else {
