@@ -30,6 +30,9 @@
 #include "rocprintf.hpp"
 #include "hsa/hsa_ven_amd_aqlprofile.h"
 #include "rocsched.hpp"
+#include <execinfo.h>
+#include <cstdlib>
+#include <cstdio>
 
 namespace amd::roc {
 class Device;
@@ -48,37 +51,81 @@ constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 // then just wait instead of adding dependency wait signal.
 constexpr static uint64_t kForcedTimeout10us = 10;
 
+// Hard deadlock-detection bound: any wait that would otherwise block forever
+// (kUnlimitedWait) is instead capped at this duration. If the signal still
+// hasn't completed after this long, treat it as a genuine hang and abort
+// with a stack trace rather than block the process indefinitely.
+constexpr static uint64_t kDeadlockTimeout = 600 * G;  // 10 minutes, in ns
+
+inline void AbortOnSignalTimeout(hsa_signal_t signal) {
+  // Flush any buffered async log lines (e.g. the KernelDispatch/BarrierDispatch/CopyDispatch
+  // entries that led up to this wait) so they land in the log file ahead of the fatal message,
+  // instead of being lost when the process aborts.
+  if (amd::IsAsyncLoggingEnabled()) {
+    amd::FlushAsyncLogsInCurrentThread();
+  }
+  // Write to amd::outFile rather than stderr directly: this is stderr by default, but becomes
+  // the actual configured log file when AMD_LOG_LEVEL_FILE is set, so the backtrace ends up
+  // wherever the rest of the signal-wait log already goes.
+  fprintf(amd::outFile,
+          "FATAL: signal wait (handle=0x%lx) exceeded the %lu s deadlock timeout; aborting.\n",
+          signal.handle, static_cast<unsigned long>(kDeadlockTimeout / G));
+  fflush(amd::outFile);
+  constexpr int kMaxFrames = 64;
+  void* frames[kMaxFrames];
+  int num_frames = backtrace(frames, kMaxFrames);
+  backtrace_symbols_fd(frames, num_frames, fileno(amd::outFile));
+  fflush(amd::outFile);
+  abort();
+}
+
 template <bool active_wait_timeout = false>
 inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
   if (hsa_signal_load_relaxed(signal) > 0) {
     uint64_t timeout = kTimeout100us;
+    bool unlimited_wait = false;
     if (active_wait) {
-      timeout = kUnlimitedWait;
+      timeout = kDeadlockTimeout;
+      unlimited_wait = true;
     }
     if (active_wait_timeout) {
       // If forced wait is set, then wait for 10us, else dont wait. (ns * K = us)
       timeout = (forced_wait ? kForcedTimeout10us : ROC_ACTIVE_WAIT_TIMEOUT) * K;
+      unlimited_wait = false;
       if (timeout == 0) {
         return false;
       }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %lu ns",
             signal.handle, timeout);
 
     // Active wait with a timeout
     if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                   timeout, HSA_WAIT_STATE_ACTIVE) != 0) {
       if (active_wait_timeout) {
+        // Bounded probe (e.g. from WaitingSignal()'s cross-engine check) didn't see the
+        // signal complete within its short window; give up here instead of blocking, and
+        // let the caller fall back to CPU blocking wait or GPU-side signal tracking.
+        ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+                "Host active wait for Signal = (0x%lx) timed out (bounded probe), returning false",
+                signal.handle);
         return false;
+      }
+      if (unlimited_wait) {
+        // This active wait was meant to never time out; hitting kDeadlockTimeout here
+        // means the signal is genuinely stuck.
+        AbortOnSignalTimeout(signal);
       }
       ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
               signal.handle);
 
-      // Wait until the completion with CPU suspend
+      // Wait until the completion with CPU suspend. This path is only reached when
+      // active_wait_timeout is false, so it is always meant to wait indefinitely --
+      // bound it by kDeadlockTimeout and abort if it's still not done by then.
       if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    kUnlimitedWait, HSA_WAIT_STATE_BLOCKED) != 0) {
-        return false;
+                                    kDeadlockTimeout, HSA_WAIT_STATE_BLOCKED) != 0) {
+        AbortOnSignalTimeout(signal);
       }
     }
 
