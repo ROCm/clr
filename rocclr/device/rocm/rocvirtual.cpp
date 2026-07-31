@@ -210,6 +210,10 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
                                   &HsaAmdSignalHandler, ts);
               if (HSA_STATUS_SUCCESS != result) {
                 LogError("hsa_amd_signal_async_handler() failed to requeue the handler!");
+              } else {
+                ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Requeue handler : value(%d), timestamp(%p),"
+                        "handle(0x%lx)", static_cast<uint32_t>(val), headTs,
+                        headTs->HwProfiling() ? headTs->Signals()[0]->signal_.handle : 0);
               }
               return false;
             }
@@ -219,6 +223,9 @@ bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
       head = head->getNext();
     }
   }
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(0x%lx)",
+    static_cast<uint32_t>(value), arg, ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
+
   // Save callback signal
   hsa_signal_t callback_signal = ts->GetCallbackSignal();
 
@@ -465,6 +472,9 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(
             HSA_SIGNAL_CONDITION_LT, init_value, &HsaAmdSignalHandler, ts);
         if (HSA_STATUS_SUCCESS != result) {
           LogError("hsa_amd_signal_async_handler() failed to set the handler!");
+        } else {
+          ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Set Handler: handle(0x%lx), timestamp(%p)",
+            prof_signal->signal_.handle, prof_signal);
         }
         // Update the current command/marker with HW event
         prof_signal->retain();
@@ -1089,8 +1099,8 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   // Barrier-AND packet <-> signal mapping (covers amd::Marker and other internal barrier
   // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
   // log to see which barrier a stuck wait belongs to.
-  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : signal=0x%zx",
-          barrier_packet_.completion_signal.handle);
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : device_id=%u, queue_id=%lu, signal=0x%zx",
+          dev().index(), gpu_queue_->id, barrier_packet_.completion_signal.handle);
 
   // Clear dependent signals for the next packet
   barrier_packet_.dep_signal[0] = hsa_signal_t{};
@@ -1174,8 +1184,8 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   // BarrierValue packet <-> signal mapping (covers amd::Marker and other internal barrier
   // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
   // log to see which barrier a stuck wait belongs to.
-  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : signal=0x%zx",
-          barrier_value_packet_.completion_signal.handle);
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "BarrierDispatch : device_id=%u, queue_id=%lu, signal=0x%zx",
+          dev().index(), gpu_queue_->id, barrier_value_packet_.completion_signal.handle);
 }
 
 // ================================================================================================
@@ -3359,8 +3369,9 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes,
     // advances regardless of per-packet profiling. Log that instead so a stuck
     // "wait for signal 0x..." backtrace can be grepped straight back to the last
     // kernel dispatched against that same signal.
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "KernelDispatch : %s, signal=0x%zx",
-            gpuKernel.name().c_str(), Barriers().GetLastSignal()->signal_.handle);
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "KernelDispatch : %s, device_id=%u, queue_id=%lu, signal=0x%zx",
+            gpuKernel.name().c_str(), dev().index(), gpu_queue_->id,
+            Barriers().GetLastSignal()->signal_.handle);
   }
 
   // Output printf buffer

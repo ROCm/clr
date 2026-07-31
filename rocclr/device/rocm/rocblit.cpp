@@ -780,8 +780,9 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
     const char* copyType = (srcAgent.handle == dev().getCpuAgent().handle) ? "H2D" :
                            (dstAgent.handle == dev().getCpuAgent().handle) ? "D2H" :
                            (&srcMemory.dev() != &dstMemory.dev()) ? "P2P" : "D2D";
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : %s, size=%zu, signal=0x%zx",
-            copyType, size[0], active.handle);
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+            "CopyDispatch : %s, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
+            copyType, dev().index(), gpu().gpu_queue()->id, size[0], active.handle);
     gpu().addSystemScope();
   } else {
     gpu().Barriers().ResetCurrentSignal();
@@ -843,8 +844,9 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       }
       // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
       // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : H2D, size=%zu, signal=0x%zx",
-              size, active.handle);
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "CopyDispatch : H2D, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
+              dev().index(), gpu().gpu_queue()->id, size, active.handle);
       gpu().Barriers().WaitCurrent();
       totalSize -= size;
       offset += size;
@@ -872,8 +874,9 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
     if (status == HSA_STATUS_SUCCESS) {
       // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
       // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "CopyDispatch : D2H, size=%zu, signal=0x%zx",
-              size, active.handle);
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "CopyDispatch : D2H, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
+              dev().index(), gpu().gpu_queue()->id, size, active.handle);
       gpu().Barriers().WaitCurrent();
       memcpy(hostDst + offset, hsaBuffer, size);
     } else {

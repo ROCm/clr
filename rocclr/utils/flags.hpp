@@ -190,6 +190,10 @@ release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Use Blit until this size(in KB) for copies")                         \
 release(uint, ROC_ACTIVE_WAIT_TIMEOUT, 0,                                     \
         "Forces active wait of GPU interrup for the timeout(us)")             \
+release(bool, ROC_SIGNAL_DEADLOCK_ABORT, false,                               \
+        "Bound waits that would otherwise block forever to a 10 minute"      \
+        " timeout and abort with a stack trace if still not signaled."       \
+        " Disabled by default.")                                             \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
 release(bool, ROC_CPU_WAIT_FOR_SIGNAL, true,                                  \

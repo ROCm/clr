@@ -85,7 +85,7 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
     uint64_t timeout = kTimeout100us;
     bool unlimited_wait = false;
     if (active_wait) {
-      timeout = kDeadlockTimeout;
+      timeout = ROC_SIGNAL_DEADLOCK_ABORT ? kDeadlockTimeout : kUnlimitedWait;
       unlimited_wait = true;
     }
     if (active_wait_timeout) {
@@ -112,7 +112,7 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
                 signal.handle);
         return false;
       }
-      if (unlimited_wait) {
+      if (unlimited_wait && ROC_SIGNAL_DEADLOCK_ABORT) {
         // This active wait was meant to never time out; hitting kDeadlockTimeout here
         // means the signal is genuinely stuck.
         AbortOnSignalTimeout(signal);
@@ -121,11 +121,17 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
               signal.handle);
 
       // Wait until the completion with CPU suspend. This path is only reached when
-      // active_wait_timeout is false, so it is always meant to wait indefinitely --
-      // bound it by kDeadlockTimeout and abort if it's still not done by then.
+      // active_wait_timeout is false, so it is always meant to wait indefinitely.
+      // When ROC_SIGNAL_DEADLOCK_ABORT is enabled, bound it by kDeadlockTimeout and
+      // abort with a stack trace if it's still not done by then; otherwise (default)
+      // wait indefinitely, matching the original behavior.
       if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    kDeadlockTimeout, HSA_WAIT_STATE_BLOCKED) != 0) {
-        AbortOnSignalTimeout(signal);
+                                    ROC_SIGNAL_DEADLOCK_ABORT ? kDeadlockTimeout : kUnlimitedWait,
+                                    HSA_WAIT_STATE_BLOCKED) != 0) {
+        if (ROC_SIGNAL_DEADLOCK_ABORT) {
+          AbortOnSignalTimeout(signal);
+        }
+        return false;
       }
     }
 
