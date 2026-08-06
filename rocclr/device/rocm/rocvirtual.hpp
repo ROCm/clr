@@ -79,8 +79,18 @@ inline void AbortOnSignalTimeout(hsa_signal_t signal) {
   abort();
 }
 
+// device_id/queue_id are purely for log correlation and trail the pre-existing
+// active_wait/forced_wait params (rather than being inserted before them) so that
+// call sites which aren't tied to one specific hw queue (e.g. Device::SvmAllocInit's
+// SVM prefetch wait, Device::IsHwEventReady{,ForcedWait}'s generic event wait, which
+// isn't necessarily on `this` device's queue) can keep passing active_wait/forced_wait
+// positionally and simply omit them; they'll log the sentinel device_id=0xffffffff,
+// queue_id=0 instead of silently having a bool misread as one of these two.
 template <bool active_wait_timeout = false>
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool forced_wait = false) {
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false,
+                           bool forced_wait = false,
+                           uint32_t device_id = static_cast<uint32_t>(-1),
+                           uint64_t queue_id = 0) {
   if (hsa_signal_load_relaxed(signal) > 0) {
     uint64_t timeout = kTimeout100us;
     bool unlimited_wait = false;
@@ -97,8 +107,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
       }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %lu ns",
-            signal.handle, timeout);
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+            "Host active wait for Signal = (0x%lx) for %lu ns, device_id=%u, queue_id=%lu",
+            signal.handle, timeout, device_id, queue_id);
 
     // Active wait with a timeout
     if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
@@ -108,8 +119,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
         // signal complete within its short window; give up here instead of blocking, and
         // let the caller fall back to CPU blocking wait or GPU-side signal tracking.
         ClPrint(amd::LOG_INFO, amd::LOG_SIG,
-                "Host active wait for Signal = (0x%lx) timed out (bounded probe), returning false",
-                signal.handle);
+                "Host active wait for Signal = (0x%lx) timed out (bounded probe), returning "
+                "false, device_id=%u, queue_id=%lu",
+                signal.handle, device_id, queue_id);
         return false;
       }
       if (unlimited_wait && ROC_SIGNAL_DEADLOCK_ABORT) {
@@ -117,8 +129,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
         // means the signal is genuinely stuck.
         AbortOnSignalTimeout(signal);
       }
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host blocked wait for Signal = (0x%lx)",
-              signal.handle);
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "Host blocked wait for Signal = (0x%lx), device_id=%u, queue_id=%lu",
+              signal.handle, device_id, queue_id);
 
       // Wait until the completion with CPU suspend. This path is only reached when
       // active_wait_timeout is false, so it is always meant to wait indefinitely.
@@ -135,8 +148,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool fo
       }
     }
 
-    ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host wait for Signal = (0x%lx) returned",
-            signal.handle);
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+            "Host wait for Signal = (0x%lx) returned, device_id=%u, queue_id=%lu",
+            signal.handle, device_id, queue_id);
   }
 
   return true;
@@ -418,7 +432,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool releaseGpuMemoryFence(bool skip_copy_wait = false, bool force_barrier = false);
 
   hsa_agent_t gpu_device() const { return gpu_device_; }
-  hsa_queue_t* gpu_queue() { return gpu_queue_; }
+  hsa_queue_t* gpu_queue() const { return gpu_queue_; }
 
   // Return pointer to PrintfDbg
   PrintfDbg* printfDbg() const { return printfdbg_; }

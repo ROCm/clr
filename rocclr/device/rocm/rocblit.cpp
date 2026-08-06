@@ -26,8 +26,29 @@
 #include "device/rocm/rocsched.hpp"
 #include "utils/debug.hpp"
 #include <algorithm>
+#include <cstdio>
 
 namespace amd::roc {
+
+// Joins every signal a CopyDispatch was submitted with into "0x.., 0x.., ..." for the
+// LOG_SIG dep_signal field. Async copies (unlike Barrier-AND's fixed 5-slot dep_signal)
+// take an arbitrarily long wait_events array, so this can't be a fixed-width printf field.
+static std::string JoinDepSignals(const std::vector<hsa_signal_t>& wait_events) {
+  if (wait_events.empty()) {
+    return "none";
+  }
+  std::string result;
+  char buf[24];
+  for (size_t i = 0; i < wait_events.size(); ++i) {
+    if (i > 0) {
+      result += ", ";
+    }
+    snprintf(buf, sizeof(buf), "0x%zx", wait_events[i].handle);
+    result += buf;
+  }
+  return result;
+}
+
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedTransfer(dev().settings().pinnedMinXferSize_),
@@ -781,8 +802,10 @@ bool DmaBlitManager::hsaCopy(const Memory& srcMemory, const Memory& dstMemory,
                            (dstAgent.handle == dev().getCpuAgent().handle) ? "D2H" :
                            (&srcMemory.dev() != &dstMemory.dev()) ? "P2P" : "D2D";
     ClPrint(amd::LOG_INFO, amd::LOG_SIG,
-            "CopyDispatch : %s, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
-            copyType, dev().index(), gpu().gpu_queue()->id, size[0], active.handle);
+            "CopyDispatch : %s, device_id=%u, queue_id=%lu, size=%zu, dep_count=%zu, "
+            "dep_signal=[%s], completion_signal=0x%zx",
+            copyType, dev().index(), gpu().gpu_queue()->id, size[0], wait_events.size(),
+            JoinDepSignals(wait_events).c_str(), active.handle);
     gpu().addSystemScope();
   } else {
     gpu().Barriers().ResetCurrentSignal();
@@ -845,8 +868,10 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
       // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
       ClPrint(amd::LOG_INFO, amd::LOG_SIG,
-              "CopyDispatch : H2D, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
-              dev().index(), gpu().gpu_queue()->id, size, active.handle);
+              "CopyDispatch : H2D, device_id=%u, queue_id=%lu, size=%zu, dep_count=%zu, "
+              "dep_signal=[%s], completion_signal=0x%zx",
+              dev().index(), gpu().gpu_queue()->id, size, wait_events.size(),
+              JoinDepSignals(wait_events).c_str(), active.handle);
       gpu().Barriers().WaitCurrent();
       totalSize -= size;
       offset += size;
@@ -875,8 +900,10 @@ bool DmaBlitManager::hsaCopyStaged(const_address hostSrc, address hostDst, size_
       // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
       // (visible under LOG_SIG) can be traced back to the staged copy that owns the signal.
       ClPrint(amd::LOG_INFO, amd::LOG_SIG,
-              "CopyDispatch : D2H, device_id=%u, queue_id=%lu, size=%zu, signal=0x%zx",
-              dev().index(), gpu().gpu_queue()->id, size, active.handle);
+              "CopyDispatch : D2H, device_id=%u, queue_id=%lu, size=%zu, dep_count=%zu, "
+              "dep_signal=[%s], completion_signal=0x%zx",
+              dev().index(), gpu().gpu_queue()->id, size, wait_events.size(),
+              JoinDepSignals(wait_events).c_str(), active.handle);
       gpu().Barriers().WaitCurrent();
       memcpy(hostDst + offset, hsaBuffer, size);
     } else {
@@ -2863,7 +2890,8 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, amd::Memory* schedulerParam,
   }
   releaseArguments(parameters);
 
-  if (!WaitForSignal(schedulerSignal)) {
+  if (!WaitForSignal(schedulerSignal, false, false, gpu().dev().index(),
+                     gpu().gpu_queue()->id)) {
     LogWarning("Failed schedulerSignal wait");
     return false;
   }
