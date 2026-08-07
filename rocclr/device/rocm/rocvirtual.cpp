@@ -281,8 +281,9 @@ void Timestamp::ExtractSignalTiming(ProfilingSignal* signal,
 bool HsaAmdSignalHandler(hsa_signal_value_t value, void* arg) {
   Timestamp* ts = reinterpret_cast<Timestamp*>(arg);
 
-  ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Handler: value(%d), timestamp(%p), handle(0x%lx)",
-          static_cast<uint32_t>(value), arg,
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+          "Handler: device_id=%u, queue_id=%lu, value(%d), timestamp(%p), handle(0x%lx)",
+          ts->gpu()->dev().index(), ts->gpu()->gpu_queue()->id, static_cast<uint32_t>(value), arg,
           ts->HwProfiling() ? ts->Signals()[0]->signal_.handle : 0);
 
   // Save callback signal
@@ -619,7 +620,7 @@ hsa_signal_t VirtualGPU::HwQueueTracker::ActiveSignal(hsa_signal_value_t init_va
         } else {
           ClPrint(amd::LOG_INFO, amd::LOG_SIG,
                   "Set Handler: handle(0x%lx), timestamp(%p), blocking CB=%d",
-                  prof_signal->signal_.handle, prof_signal,
+                  prof_signal->signal_.handle, ts,
                   ts->command().Callback() != nullptr && ts->GetBlocking());
         }
       }
@@ -673,6 +674,15 @@ std::vector<hsa_signal_t>& VirtualGPU::HwQueueTracker::WaitingSignal(HwQueueEngi
   for (uint32_t i = 0; i < external_signals_.size(); ++i) {
     // Early signal status check
     if (Hsa::signal_load_relaxed(external_signals_[i]->signal_) > 0) {
+      // Cross-engine dependency: this queue is switching to/using engine `engine` and must
+      // wait for a not-yet-completed signal from a prior dispatch (kernel or barrier/marker).
+      // Match signal= against the earlier "KernelDispatch"/"BarrierDispatch" log to find which
+      // dispatch this wait depends on, and against "Host active wait for Signal .../returned"
+      // below to see if/when that dependency actually clears.
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "WaitingSignal : device_id=%u, queue_id=%lu, engine=%d waiting on signal=0x%zx",
+              gpu_.dev().index(), gpu_.gpu_queue()->id, static_cast<int>(engine),
+              external_signals_[i]->signal_.handle);
       const Settings& settings = gpu_.dev().settings();
       if (settings.cpu_wait_for_signal_) {
         // Wait on CPU for completion if requested
@@ -695,7 +705,8 @@ bool VirtualGPU::HwQueueTracker::CpuWaitForSignal(ProfilingSignal* signal) {
   if (Hsa::signal_load_relaxed(signal->signal_) > 0) {
     ClPrint(amd::LOG_DEBUG, amd::LOG_COPY, "Host wait on completion_signal=0x%zx",
             signal->signal_.handle);
-    if (!WaitForSignal(signal->signal_, gpu_.ActiveWait())) {
+    if (!WaitForSignal(signal->signal_, gpu_.ActiveWait(), false, gpu_.dev().index(),
+                       gpu_.gpu_queue()->id)) {
       LogPrintfError("Failed signal [0x%lx] wait", signal->signal_);
       return false;
     }
@@ -728,7 +739,8 @@ void VirtualGPU::HwQueueTracker::WaitNext() {
   ProfilingSignal* signal = signal_list_[next];
   // Only wait, there is no need to save timestamp for the next signal
   // It will be saved when the signal is actually used
-  WaitForSignal(signal->signal_, gpu_.ActiveWait());
+  WaitForSignal(signal->signal_, gpu_.ActiveWait(), false, gpu_.dev().index(),
+                gpu_.gpu_queue()->id);
 }
 
 // ================================================================================================
@@ -1581,6 +1593,20 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
           barrier_packet_.dep_signal[2], barrier_packet_.dep_signal[3],
           barrier_packet_.dep_signal[4], barrier_packet_.completion_signal, read, index);
 
+  // Barrier-AND packet <-> signal mapping (covers amd::Marker and other internal barrier
+  // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
+  // log to see which barrier a stuck wait belongs to. dep_signal is the full 5-slot
+  // wait-list this packet was submitted with (0x0 entries are unused slots); a signal
+  // that never shows up as anyone's completion_signal but appears here is a dependency
+  // that was never satisfied.
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+          "BarrierDispatch : device_id=%u, queue_id=%lu, "
+          "dep_signal=[0x%zx, 0x%zx, 0x%zx, 0x%zx, 0x%zx], completion_signal=0x%zx",
+          dev().index(), gpu_queue_->id,
+          barrier_packet_.dep_signal[0].handle, barrier_packet_.dep_signal[1].handle,
+          barrier_packet_.dep_signal[2].handle, barrier_packet_.dep_signal[3].handle,
+          barrier_packet_.dep_signal[4].handle, barrier_packet_.completion_signal.handle);
+
   // Clear dependent signals for the next packet
   barrier_packet_.dep_signal[0] = hsa_signal_t{};
   barrier_packet_.dep_signal[1] = hsa_signal_t{};
@@ -1672,6 +1698,25 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
           : barrier_value_packet_.cond == 2 ? "LT"
                                             : "GTE",
           barrier_value_packet_.completion_signal, read, index);
+
+  // BarrierValue packet <-> signal mapping (covers amd::Marker and other internal barrier
+  // dispatches, e.g. hipEventRecord). Correlate with the "Host wait for Signal = (0x...)"
+  // log to see which barrier a stuck wait belongs to. Unlike Barrier-AND, this packet type
+  // has a single dependency expressed as signal/value/mask/cond (dep_signal=0x0 means no
+  // dependency was attached -- e.g. a plain profiling marker).
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+          "BarrierDispatch : device_id=%u, queue_id=%lu, "
+          "dep_signal=0x%zx (value=0x%llx, mask=0x%llx, cond=%s), completion_signal=0x%zx",
+          dev().index(), gpu_queue_->id,
+          barrier_value_packet_.signal.handle,
+          barrier_value_packet_.value,
+          barrier_value_packet_.mask,
+          barrier_value_packet_.cond == 0   ? "EQ"
+          : barrier_value_packet_.cond == 1 ? "NE"
+          : barrier_value_packet_.cond == 2 ? "LT"
+                                            : "GTE",
+          barrier_value_packet_.completion_signal.handle);
+
   // Clear dependent signals for the next packet
   barrier_value_packet_.signal = hsa_signal_t{};
 }
@@ -1947,7 +1992,8 @@ address VirtualGPU::ManagedBuffer::Acquire(uint32_t size, uint32_t alignment) {
     // Get the next chunk
     active_chunk_ = ++active_chunk_ % num_chunk_signals_;
     // Make sure the new active chunk is free
-    bool test = WaitForSignal(pool_signal_[active_chunk_], gpu_.ActiveWait());
+    bool test = WaitForSignal(pool_signal_[active_chunk_], gpu_.ActiveWait(), false,
+                              gpu_.dev().index(), gpu_.gpu_queue()->id);
     assert(test && "Runtime can't fail a wait for chunk!");
     // Make sure the current offset matches the new chunk to avoid possible overlaps
     // between chunks and issues during recycle
@@ -3924,6 +3970,32 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const 
       return false;
     }
   }
+
+  // completion_signal below is dispatchPacket's own field and is usually 0x0 here:
+  // dispatchGenericAqlPacket()-equivalent dispatch only assigns a real completion_signal
+  // when timestamp_ != nullptr (i.e. this specific command is profiled), which most
+  // individual kernel dispatches are not -- they're batched behind a later marker that
+  // gets the real signal instead. hsa_kernel_dispatch_packet_t also has no dep_signal
+  // field at all: AQL kernel-dispatch packets can't express dependencies directly, only
+  // via a preceding Barrier-AND/Barrier-Value packet, so there is nothing to log there.
+  // last_barrier_signal is Barriers().GetLastSignal() -- the tracker's *current* signal,
+  // which every dispatch through *this* VirtualGPU shares/advances regardless of
+  // per-packet profiling. IMPORTANT SCOPING NOTE: barriers_ is a plain (non-pointer)
+  // member of VirtualGPU, so it is private per VirtualGPU/hipStream and is NOT shared
+  // even when gpu_queue_ (the real hw AQL queue) is shared across VirtualGPUs via queue
+  // pooling. So this value only bounds this kernel between *this same calling thread's*
+  // own previous and next barrier -- it says nothing about interleaved dispatches from
+  // another thread pooled onto the same device_id/queue_id. For that, correlate by
+  // device_id+queue_id across all threads' BarrierDispatch/CopyDispatch log lines
+  // instead. Within one thread's own timeline, though, this lets a stuck "wait for
+  // signal 0x..." backtrace be grepped straight back to the last kernel dispatched
+  // against that same signal.
+  ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+          "KernelDispatch : %s, device_id=%u, queue_id=%lu, completion_signal=0x%zx, "
+          "last_barrier_signal=0x%zx",
+          gpuKernel.name().c_str(), dev().index(), gpu_queue_->id,
+          dispatchPacket.completion_signal.handle,
+          Barriers().GetLastSignal()->signal_.handle);
 
   // Output printf buffer
   if (!printfDbg()->output(*this, printfEnabled, gpuKernel.printfInfo())) {

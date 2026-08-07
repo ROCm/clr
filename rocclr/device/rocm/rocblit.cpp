@@ -26,8 +26,29 @@
 #include "device/rocm/rocsched.hpp"
 #include "utils/debug.hpp"
 #include <algorithm>
+#include <cstdio>
 
 namespace amd::roc {
+
+// Joins every signal a CopyDispatch was submitted with into "0x.., 0x.., ..." for the
+// LOG_SIG dep_signal field. Async copies (unlike Barrier-AND's fixed 5-slot dep_signal)
+// take an arbitrarily long wait_events array, so this can't be a fixed-width printf field.
+static std::string JoinDepSignals(const std::vector<hsa_signal_t>& wait_events) {
+  if (wait_events.empty()) {
+    return "none";
+  }
+  std::string result;
+  char buf[24];
+  for (size_t i = 0; i < wait_events.size(); ++i) {
+    if (i > 0) {
+      result += ", ";
+    }
+    snprintf(buf, sizeof(buf), "0x%zx", wait_events[i].handle);
+    result += buf;
+  }
+  return result;
+}
+
 DmaBlitManager::DmaBlitManager(VirtualGPU& gpu, Setup setup)
     : HostBlitManager(gpu, setup),
       MinSizeForPinnedXfer(dev().settings().pinnedMinXferSize_),
@@ -572,6 +593,19 @@ inline bool DmaBlitManager::rocrCopyBuffer(address dst, hsa_agent_t& dstAgent, c
   }
 
   if (status == HSA_STATUS_SUCCESS) {
+    // Copy dispatch <-> signal mapping, so a stuck WaitCurrent()/CpuWaitForSignal() wait
+    // (visible under LOG_SIG) can be traced back to the copy that owns the signal. Covers
+    // same-device D2D, cross-device P2P, and H2D/D2H (direct or staged/pinned) alike, since
+    // they all funnel through this one function. Classify off `engine` (already resolved
+    // above from the real srcAgent/dstAgent), not the raw agents themselves.
+    const char* copyType = (engine == HwQueueEngine::SdmaWrite) ? "H2D" :
+                           (engine == HwQueueEngine::SdmaRead) ? "D2H" :
+                           (engine == HwQueueEngine::SdmaInter) ? "P2P" : "D2D";
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+            "CopyDispatch : %s, device_id=%u, queue_id=%lu, size=%zu, dep_count=%zu, "
+            "dep_signal=[%s], completion_signal=0x%zx",
+            copyType, dev().index(), gpu().gpu_queue()->id, size, wait_events.size(),
+            JoinDepSignals(wait_events).c_str(), active.handle);
     gpu().addSystemScope();
     // The ROCR copy api guarantees coherency after the copy
     gpu().setFenceDirty(false);
@@ -2773,7 +2807,8 @@ bool KernelBlitManager::runScheduler(uint64_t vqVM, hsa_queue_t* schedulerQueue,
     // The scheduler can enqueue extra commands, but the real queue write index didn't have any
     // progress. That leads to hangs and requires blocking. Then the wait causes problems
     // in DD mode with device enqueue and user events, because device enqueue is blocking below
-    if (!WaitForSignal(sp->complete_signal)) {
+    if (!WaitForSignal(sp->complete_signal, false, false, gpu().dev().index(),
+                       gpu().gpu_queue()->id)) {
       LogWarning("Failed schedulerSignal wait");
       return false;
     }

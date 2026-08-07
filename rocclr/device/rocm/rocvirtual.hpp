@@ -46,7 +46,15 @@ constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 constexpr static uint64_t kTimeout4Secs = 4 * M;
 
-inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yield = false) {
+// device_id/queue_id are purely for log correlation and trail the pre-existing
+// active_wait/yield params so that call sites which aren't tied to one specific hw
+// queue (e.g. Device::SvmAllocInit's SVM prefetch wait, Device::IsHwEventReady's
+// generic event wait) can keep passing active_wait/yield positionally and simply
+// omit them; they'll log the sentinel device_id=0xffffffff, queue_id=0 instead of
+// silently having a bool misread as one of these two.
+inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yield = false,
+                          uint32_t device_id = static_cast<uint32_t>(-1),
+                          uint64_t queue_id = 0) {
   hsa_wait_state_t wait_state = HSA_WAIT_STATE_BLOCKED;
   if (active_wait) {
     wait_state = HSA_WAIT_STATE_ACTIVE;
@@ -56,8 +64,9 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
     // When it is blocked wait, we wait in active state for 100 us before proceeding to wait in
     // blocked state indefinitely.
     if (!active_wait) {
-      ClPrint(amd::LOG_INFO, amd::LOG_SIG, "Host active wait for Signal = (0x%lx) for %d ns",
-              signal.handle, kTimeout100us);
+      ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+              "Host active wait for Signal = (0x%lx) for %d ns, device_id=%u, queue_id=%lu",
+              signal.handle, kTimeout100us, device_id, queue_id);
       if (Hsa::signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                     kTimeout100us, HSA_WAIT_STATE_ACTIVE) != 0) {
         if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsGPUInError()) {
@@ -85,6 +94,10 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
         amd::Os::yield();
       }
     }
+
+    ClPrint(amd::LOG_INFO, amd::LOG_SIG,
+            "Host wait for Signal = (0x%lx) returned, device_id=%u, queue_id=%lu",
+            signal.handle, device_id, queue_id);
   }
 
   return true;
@@ -404,7 +417,7 @@ class VirtualGPU : public device::VirtualDevice {
   bool releaseGpuMemoryFence(bool skip_copy_wait = false);
 
   hsa_agent_t gpu_device() const { return gpu_device_; }
-  hsa_queue_t* gpu_queue() { return gpu_queue_; }
+  hsa_queue_t* gpu_queue() const { return gpu_queue_; }
   void set_gpu_queue(hsa_queue_t* gpu_queue) { gpu_queue_ = gpu_queue; }
 
   // Return pointer to PrintfDbg
