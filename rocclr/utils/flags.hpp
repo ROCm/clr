@@ -190,10 +190,16 @@ release(size_t, GPU_FORCE_BLIT_COPY_SIZE, 0,                                  \
         "Use Blit until this size(in KB) for copies")                         \
 release(uint, ROC_ACTIVE_WAIT_TIMEOUT, 0,                                     \
         "Forces active wait of GPU interrup for the timeout(us)")             \
-release(bool, ROC_SIGNAL_DEADLOCK_ABORT, false,                               \
-        "Bound waits that would otherwise block forever to a 10 minute"      \
-        " timeout and abort with a stack trace if still not signaled."       \
-        " Disabled by default.")                                             \
+release(bool, ROC_SIGNAL_DEADLOCK_LOG, false,                                 \
+        "Detect waits that would otherwise block forever and haven't"        \
+        " signaled after ROC_SIGNAL_DEADLOCK_TIMEOUT seconds: flush the log" \
+        " and dump a stack trace once, then permanently freeze that thread"  \
+        " (no abort, no further waiting on the signal even if it later"      \
+        " completes), so the process stays alive with its stuck state"       \
+        " preserved for live investigation. Disabled by default.")           \
+release(uint, ROC_SIGNAL_DEADLOCK_TIMEOUT, 600,                               \
+        "Seconds a wait may block before ROC_SIGNAL_DEADLOCK_LOG (see"       \
+        " there) treats it as stuck. Ignored unless that flag is enabled.")  \
 release(bool, ROC_ENABLE_LARGE_BAR, true,                                     \
         "Enable Large Bar if supported by the device")                        \
 release(bool, ROC_CPU_WAIT_FOR_SIGNAL, true,                                  \

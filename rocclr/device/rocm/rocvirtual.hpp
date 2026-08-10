@@ -51,16 +51,28 @@ constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 // then just wait instead of adding dependency wait signal.
 constexpr static uint64_t kForcedTimeout10us = 10;
 
-// Hard deadlock-detection bound: any wait that would otherwise block forever
-// (kUnlimitedWait) is instead capped at this duration. If the signal still
-// hasn't completed after this long, treat it as a genuine hang and abort
-// with a stack trace rather than block the process indefinitely.
-constexpr static uint64_t kDeadlockTimeout = 600 * G;  // 10 minutes, in ns
+// Deadlock-detection bound: any wait that would otherwise block forever
+// (kUnlimitedWait) is instead capped at this duration once, purely to trigger
+// a one-time diagnostic capture. It is NOT an abort deadline: once the
+// diagnostic fires, this thread is permanently frozen (see FreezeThreadForever()
+// below) rather than continuing to wait on the signal, so the process (and its
+// live GPU/queue state) stays around exactly as it was for inspection (gdb,
+// umr_queue_doctor, etc.) instead of being torn down -- or silently resuming
+// and erasing the evidence if the signal happens to complete afterward.
+// Configurable via ROC_SIGNAL_DEADLOCK_TIMEOUT (seconds, default 600 = 10
+// minutes); not a compile-time constant since flags are only known at runtime.
+inline uint64_t DeadlockTimeoutNs() {
+  return static_cast<uint64_t>(ROC_SIGNAL_DEADLOCK_TIMEOUT) * G;
+}
 
-inline void AbortOnSignalTimeout(hsa_signal_t signal) {
+// Fires once when a wait crosses the deadlock-detection window without the signal completing.
+// Flushes the log and dumps a stack trace so there's a permanent record of where/
+// when the stall was first detected, but deliberately does NOT abort. The caller
+// must follow this with FreezeThreadForever() -- this function only logs.
+inline void LogSignalTimeoutOnce(hsa_signal_t signal) {
   // Flush any buffered async log lines (e.g. the KernelDispatch/BarrierDispatch/CopyDispatch
-  // entries that led up to this wait) so they land in the log file ahead of the fatal message,
-  // instead of being lost when the process aborts.
+  // entries that led up to this wait) so they land in the log file ahead of this diagnostic,
+  // instead of sitting in an unflushed buffer indefinitely.
   if (amd::IsAsyncLoggingEnabled()) {
     amd::FlushAsyncLogsInCurrentThread();
   }
@@ -68,15 +80,32 @@ inline void AbortOnSignalTimeout(hsa_signal_t signal) {
   // the actual configured log file when AMD_LOG_LEVEL_FILE is set, so the backtrace ends up
   // wherever the rest of the signal-wait log already goes.
   fprintf(amd::outFile,
-          "FATAL: signal wait (handle=0x%lx) exceeded the %lu s deadlock timeout; aborting.\n",
-          signal.handle, static_cast<unsigned long>(kDeadlockTimeout / G));
+          "WARNING: signal wait (handle=0x%lx) exceeded the %lu s deadlock-detection window; "
+          "freezing this thread permanently (no abort, no further waiting on the signal) so "
+          "the process state can be inspected live.\n",
+          signal.handle, static_cast<unsigned long>(DeadlockTimeoutNs() / G));
   fflush(amd::outFile);
   constexpr int kMaxFrames = 64;
   void* frames[kMaxFrames];
   int num_frames = backtrace(frames, kMaxFrames);
   backtrace_symbols_fd(frames, num_frames, fileno(amd::outFile));
   fflush(amd::outFile);
-  abort();
+}
+
+// Permanently parks the calling thread here -- never returns. Used after
+// LogSignalTimeoutOnce() to preserve a stuck thread's exact state for live
+// investigation. Deliberately does NOT wait on the signal at all (via
+// hsa_signal_wait_scacquire or anything else tied to its completion): even if
+// the signal is later satisfied by something else, this thread must not resume
+// and silently move on, since that would erase the evidence (stack, registers,
+// whatever GPU/queue state prompted the stall) we froze it here to preserve.
+[[noreturn]] inline void FreezeThreadForever() {
+  while (true) {
+    // The exact duration is irrelevant -- this loop is never meant to exit.
+    // Sleeping (instead of a tight spin) avoids needlessly burning a CPU core
+    // for however long the process is left running in this state.
+    amd::Os::sleep(3600 * 1000);
+  }
 }
 
 // device_id/queue_id are purely for log correlation and trail the pre-existing
@@ -95,7 +124,7 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false,
     uint64_t timeout = kTimeout100us;
     bool unlimited_wait = false;
     if (active_wait) {
-      timeout = ROC_SIGNAL_DEADLOCK_ABORT ? kDeadlockTimeout : kUnlimitedWait;
+      timeout = ROC_SIGNAL_DEADLOCK_LOG ? DeadlockTimeoutNs() : kUnlimitedWait;
       unlimited_wait = true;
     }
     if (active_wait_timeout) {
@@ -124,25 +153,41 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false,
                 signal.handle, device_id, queue_id);
         return false;
       }
-      if (unlimited_wait && ROC_SIGNAL_DEADLOCK_ABORT) {
-        // This active wait was meant to never time out; hitting kDeadlockTimeout here
+      // Tracks whether this wait has already been flagged as stuck (during this
+      // active-wait phase, just below), so the blocked-wait phase further down
+      // freezes immediately instead of attempting a real wait of its own.
+      bool logged_stuck = false;
+      if (unlimited_wait && ROC_SIGNAL_DEADLOCK_LOG) {
+        // This active wait was meant to never time out; hitting the deadlock-detection window here
         // means the signal is genuinely stuck.
-        AbortOnSignalTimeout(signal);
+        LogSignalTimeoutOnce(signal);
+        logged_stuck = true;
       }
       ClPrint(amd::LOG_INFO, amd::LOG_SIG,
               "Host blocked wait for Signal = (0x%lx), device_id=%u, queue_id=%lu",
               signal.handle, device_id, queue_id);
 
+      if (logged_stuck) {
+        // Already flagged as stuck above -- don't attempt any further wait on the
+        // signal at all (real or "unlimited"); freeze here permanently instead.
+        FreezeThreadForever();
+      }
+
       // Wait until the completion with CPU suspend. This path is only reached when
       // active_wait_timeout is false, so it is always meant to wait indefinitely.
-      // When ROC_SIGNAL_DEADLOCK_ABORT is enabled, bound it by kDeadlockTimeout and
-      // abort with a stack trace if it's still not done by then; otherwise (default)
-      // wait indefinitely, matching the original behavior.
+      // When ROC_SIGNAL_DEADLOCK_LOG is enabled, bound it by DeadlockTimeoutNs() purely
+      // to trigger the one-time diagnostic below if it's still not done by then;
+      // otherwise (default) wait indefinitely, matching the original behavior.
       if (hsa_signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
-                                    ROC_SIGNAL_DEADLOCK_ABORT ? kDeadlockTimeout : kUnlimitedWait,
+                                    ROC_SIGNAL_DEADLOCK_LOG ? DeadlockTimeoutNs() : kUnlimitedWait,
                                     HSA_WAIT_STATE_BLOCKED) != 0) {
-        if (ROC_SIGNAL_DEADLOCK_ABORT) {
-          AbortOnSignalTimeout(signal);
+        if (ROC_SIGNAL_DEADLOCK_LOG) {
+          // First (and only) time this wait crosses the deadlock-detection window: log once, then
+          // freeze this thread permanently -- deliberately not a real wait of any kind,
+          // so it stays parked here even if the signal is later satisfied by something
+          // else, instead of silently resuming and erasing the evidence.
+          LogSignalTimeoutOnce(signal);
+          FreezeThreadForever();
         }
         return false;
       }
