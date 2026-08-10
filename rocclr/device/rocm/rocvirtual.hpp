@@ -30,6 +30,9 @@
 #include "device/device.hpp"
 #include "os/os.hpp"
 #include <stack>
+#include <execinfo.h>
+#include <cstdlib>
+#include <cstdio>
 
 namespace amd::roc {
 class Device;
@@ -45,6 +48,57 @@ constexpr static uint64_t kTimeout100us = 100 * K;
 constexpr static uint64_t kUnlimitedWait = std::numeric_limits<uint64_t>::max();
 
 constexpr static uint64_t kTimeout4Secs = 4 * M;
+
+// Deadlock-detection bound: any wait that would otherwise block forever
+// (kUnlimitedWait) is instead capped at this duration once, purely to trigger
+// a one-time diagnostic capture. It is NOT an abort deadline: once the
+// diagnostic fires, this thread is permanently frozen (see FreezeThreadForever()
+// below) rather than continuing to wait on the signal, so the process (and its
+// live GPU/queue state) stays around exactly as it was for inspection (gdb,
+// umr_queue_doctor, etc.) instead of being torn down -- or silently resuming
+// and erasing the evidence if the signal happens to complete afterward.
+// Configurable via ROC_SIGNAL_DEADLOCK_TIMEOUT (seconds, default 600 = 10
+// minutes); not a compile-time constant since flags are only known at runtime.
+inline uint64_t DeadlockTimeoutNs() {
+  return static_cast<uint64_t>(ROC_SIGNAL_DEADLOCK_TIMEOUT) * G;
+}
+
+// Fires once when a wait crosses the deadlock-detection window without the signal completing.
+// Dumps a stack trace so there's a permanent record of where/when the stall was first
+// detected, but deliberately does NOT abort. The caller must follow this with
+// FreezeThreadForever() -- this function only logs.
+inline void LogSignalTimeoutOnce(hsa_signal_t signal) {
+  // Write to amd::outFile rather than stderr directly: this is stderr by default, but becomes
+  // the actual configured log file when AMD_LOG_LEVEL_FILE is set, so the backtrace ends up
+  // wherever the rest of the signal-wait log already goes.
+  fprintf(amd::outFile,
+          "WARNING: signal wait (handle=0x%lx) exceeded the %lu s deadlock-detection window; "
+          "freezing this thread permanently (no abort, no further waiting on the signal) so "
+          "the process state can be inspected live.\n",
+          signal.handle, static_cast<unsigned long>(DeadlockTimeoutNs() / G));
+  fflush(amd::outFile);
+  constexpr int kMaxFrames = 64;
+  void* frames[kMaxFrames];
+  int num_frames = backtrace(frames, kMaxFrames);
+  backtrace_symbols_fd(frames, num_frames, fileno(amd::outFile));
+  fflush(amd::outFile);
+}
+
+// Permanently parks the calling thread here -- never returns. Used after
+// LogSignalTimeoutOnce() to preserve a stuck thread's exact state for live
+// investigation. Deliberately does NOT wait on the signal at all (via
+// Hsa::signal_wait_scacquire or anything else tied to its completion): even if
+// the signal is later satisfied by something else, this thread must not resume
+// and silently move on, since that would erase the evidence (stack, registers,
+// whatever GPU/queue state prompted the stall) we froze it here to preserve.
+[[noreturn]] inline void FreezeThreadForever() {
+  while (true) {
+    // The exact duration is irrelevant -- this loop is never meant to exit.
+    // Sleeping (instead of a tight spin) avoids needlessly burning a CPU core
+    // for however long the process is left running in this state.
+    amd::Os::sleep(3600 * 1000);
+  }
+}
 
 // device_id/queue_id are purely for log correlation and trail the pre-existing
 // active_wait/yield params so that call sites which aren't tied to one specific hw
@@ -81,6 +135,11 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
 
     // This is unlimited wait, but we wait for 4 secs and check if the device is
     // unstable, if so we return, otherwise we continue to wait in the while loop.
+    // When ROC_SIGNAL_DEADLOCK_LOG is enabled, also track cumulative elapsed time so a
+    // wait that's genuinely stuck (not just repeatedly checking device stability) gets
+    // flagged exactly once via LogSignalTimeoutOnce() and then permanently frozen instead
+    // of retrying forever silently.
+    uint64_t elapsed_ns = 0;
     while (Hsa::signal_wait_scacquire(signal, HSA_SIGNAL_CONDITION_LT, kInitSignalValueOne,
                                      kTimeout4Secs, wait_state) != 0) {
       if (HIP_SKIP_ABORT_ON_GPU_ERROR && amd::Device::IsGPUInError()) {
@@ -92,6 +151,17 @@ inline bool WaitForSignal(hsa_signal_t signal, bool active_wait = false, bool yi
       }
       if (yield && wait_state == HSA_WAIT_STATE_ACTIVE) {
         amd::Os::yield();
+      }
+      if (ROC_SIGNAL_DEADLOCK_LOG) {
+        elapsed_ns += kTimeout4Secs;
+        if (elapsed_ns >= DeadlockTimeoutNs()) {
+          // First (and only) time this wait crosses the deadlock-detection window: log once,
+          // then freeze this thread permanently -- deliberately not a real wait of any kind,
+          // so it stays parked here even if the signal is later satisfied by something else,
+          // instead of silently resuming and erasing the evidence.
+          LogSignalTimeoutOnce(signal);
+          FreezeThreadForever();
+        }
       }
     }
 
