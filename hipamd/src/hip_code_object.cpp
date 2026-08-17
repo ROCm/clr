@@ -476,11 +476,7 @@ hipError_t StatCO::GetFunc(hipFunction_t* hfunc, const void* hostFunction, int d
   if (module != nullptr) {
     std::scoped_lock lock(sclock_);
     if (*(module) == nullptr) {
-      hipError_t err = DigestFatBinary(module_to_hostModule_[module], *module);
-
-      if (err != hipSuccess) {
-        return err;
-      }
+     IHIP_RETURN_ONFAIL(DigestFatBinary(module_to_hostModule_[module], *module));
     }
   } else {
     // Module was nullptr
@@ -502,7 +498,7 @@ hipError_t StatCO::GetFuncAttr(hipFuncAttributes* func_attr, const void* hostFun
   // Lazy load
   FatBinaryInfo** module = it->second->ModuleInfo();
   if (*(module) == nullptr) {
-    std::ignore = DigestFatBinary(module_to_hostModule_[module], *module);
+    IHIP_RETURN_ONFAIL(DigestFatBinary(module_to_hostModule_[module], *module));
   }
 
   return it->second->GetStatFuncAttr(func_attr, deviceId);
@@ -533,7 +529,7 @@ hipError_t StatCO::GetGlobalVar(const void* hostVar, int deviceId, hipDeviceptr_
   // Lazy load
   FatBinaryInfo** module = it->second->ModuleInfo();
   if (*(module) == nullptr) {
-    std::ignore = DigestFatBinary(module_to_hostModule_[module], *module);
+    IHIP_RETURN_ONFAIL(DigestFatBinary(module_to_hostModule_[module], *module));
   }
 
   amd::Memory* mem = nullptr;
@@ -582,7 +578,7 @@ hipError_t StatCO::InitManagedVarDevicePtr(int deviceId) {
         // Lazy load
         FatBinaryInfo** module = var->ModuleInfo();
         if (*(module) == nullptr) {
-          std::ignore = DigestFatBinary(module_to_hostModule_[module], *module);
+          IHIP_RETURN_ONFAIL(DigestFatBinary(module_to_hostModule_[module], *module));
         }
         hip::Stream* stream = g_devices.at(deviceId)->NullStream();
         if (stream == nullptr) {
