@@ -32,6 +32,7 @@
 #include "rocsched.hpp"
 
 namespace amd::roc {
+struct AqlOrderedPublishState;
 class Device;
 class Memory;
 struct ProfilingSignal;
@@ -427,6 +428,10 @@ class VirtualGPU : public device::VirtualDevice {
   //! Dispatches a barrier with blocking HSA signals
   void dispatchBlockingWait();
 
+  //! Ring the doorbell for a reservation, in reservation order. Every reserved slot must be
+  //! committed: an abandoned reservation stalls every stream sharing the HW queue.
+  void CommitAqlSlots(uint64_t start_slot, uint64_t packet_count);
+
   inline bool dispatchAqlPacket(uint8_t* aqlpacket, const std::string& kernelName,
                                 amd::AccumulateCommand* vcmd = nullptr);
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest,
@@ -518,6 +523,10 @@ class VirtualGPU : public device::VirtualDevice {
   Timestamp* timestamp_;
   hsa_agent_t gpu_device_;  //!< Physical device
   hsa_queue_t* gpu_queue_;  //!< Queue associated with a gpu
+  //! Doorbell order shared by all VirtualGPUs on this pooled HW queue. Owned by the queue pool,
+  //! which outlives this object. Null when doorbell ordering is disabled, which rings the
+  //! doorbell as soon as the packet is written.
+  AqlOrderedPublishState* aql_ordered_publish_state_;
   hsa_barrier_and_packet_t barrier_packet_;
   hsa_amd_barrier_value_packet_t barrier_value_packet_;
 

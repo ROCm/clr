@@ -255,6 +255,9 @@ release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
          "Enable/Disable multiple kern arg copies")                           \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
+release(uint, DEBUG_CLR_ORDER_DOORBELL, 2,                                    \
+        "Order shared AQL ring doorbells by reservation "                     \
+        "(0=never, 1=Intel hosts only, 2=every host (default))")              \
 
 namespace amd {
 

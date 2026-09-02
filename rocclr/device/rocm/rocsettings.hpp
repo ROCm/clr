@@ -52,7 +52,8 @@ class Settings : public device::Settings {
       uint system_scope_signal_ : 1;    //!< HSA signal is visibile to the entire system
       uint fgs_kernel_arg_ : 1;         //!< Use fine grain kernel arg segment
       uint barrier_value_packet_ : 1;   //!< Barrier value packet functionality
-      uint reserved_ : 21;
+      uint isOrderedDoorbell_ : 1;      //!< Ring shared AQL ring doorbells in slot order
+      uint reserved_ : 20;
     };
     uint value_;
   };
