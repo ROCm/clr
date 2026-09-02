@@ -836,6 +836,39 @@ static inline void packet_store_release(uint32_t* packet, uint16_t header, uint1
 
 // ================================================================================================
 template <typename AqlPacket>
+static inline void nontemporalCopyAqlBody(AqlPacket* dst, const AqlPacket* src) {
+  static_assert(sizeof(AqlPacket) == 64, "AQL packets must be 64 bytes");
+  constexpr uint32_t kHeaderBytes = sizeof(uint32_t);
+  auto* dst_bytes = reinterpret_cast<uint8_t*>(dst);
+  const auto* src_bytes = reinterpret_cast<const uint8_t*>(src);
+#if defined(ATI_ARCH_X86)
+  for (uint32_t offset = kHeaderBytes; offset != sizeof(__m128i); offset += sizeof(int)) {
+    int dword;
+    std::memcpy(&dword, src_bytes + offset, sizeof(dword));
+    _mm_stream_si32(reinterpret_cast<int*>(dst_bytes + offset), dword);
+  }
+  for (uint32_t offset = sizeof(__m128i); offset != sizeof(AqlPacket);
+       offset += sizeof(__m128i)) {
+    _mm_stream_si128(reinterpret_cast<__m128i*>(dst_bytes + offset),
+                     _mm_loadu_si128(reinterpret_cast<const __m128i*>(src_bytes + offset)));
+  }
+#else
+  std::memcpy(dst_bytes + kHeaderBytes, src_bytes + kHeaderBytes,
+              sizeof(AqlPacket) - kHeaderBytes);
+#endif  // ATI_ARCH_X86
+}
+
+// ================================================================================================
+template <typename AqlPacket>
+static inline void writePacketToRingBuffer(AqlPacket* aql_loc, const AqlPacket* packet,
+                                           uint16_t header, uint16_t rest) {
+  nontemporalCopyAqlBody(aql_loc, packet);
+  _mm_sfence();
+  packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
+}
+
+// ================================================================================================
+template <typename AqlPacket>
 bool VirtualGPU::dispatchGenericAqlPacket(
   AqlPacket* packet, uint16_t header, uint16_t rest, bool blocking) {
   const uint32_t queueSize = gpu_queue_->size;
@@ -898,10 +931,17 @@ bool VirtualGPU::dispatchGenericAqlPacket(
   }
 
   AqlPacket* aql_loc = &((AqlPacket*)(gpu_queue_->base_address))[index & queueMask];
-  *aql_loc = *packet;
-  if (header != 0) {
-    packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
+  // A caller that passes no header has already put the one it wants in the packet, so publish
+  // that one. The header always has to be written separately from the body, and last.
+  uint16_t publish_header = header;
+  uint16_t publish_rest = rest;
+  if (header == 0) {
+    uint32_t packet_header;
+    std::memcpy(&packet_header, packet, sizeof(packet_header));
+    publish_header = static_cast<uint16_t>(packet_header);
+    publish_rest = static_cast<uint16_t>(packet_header >> 16);
   }
+  writePacketToRingBuffer(aql_loc, packet, publish_header, publish_rest);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
           "SWq=0x%zx, HWq=0x%zx, id=%d, Dispatch Header = "
           "0x%x (type=%d, barrier=%d, acquire=%d, release=%d), "
@@ -1072,8 +1112,7 @@ void VirtualGPU::dispatchBarrierPacket(uint16_t packetHeader, bool skipSignal,
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_barrier_and_packet_t* aql_loc =
     &(reinterpret_cast<hsa_barrier_and_packet_t*>(gpu_queue_->base_address))[index & queueMask];
-  *aql_loc = barrier_packet_;
-  __atomic_store_n(reinterpret_cast<uint32_t*>(aql_loc), packetHeader, __ATOMIC_RELEASE);
+  writePacketToRingBuffer(aql_loc, &barrier_packet_, packetHeader, uint16_t{0});
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
   ClPrint(amd::LOG_DEBUG, amd::LOG_AQL,
@@ -1150,8 +1189,7 @@ void VirtualGPU::dispatchBarrierValuePacket(uint16_t packetHeader, bool resolveD
   while ((index - hsa_queue_load_read_index_scacquire(gpu_queue_)) >= queueMask);
   hsa_amd_barrier_value_packet_t* aql_loc = &(reinterpret_cast<hsa_amd_barrier_value_packet_t*>(
       gpu_queue_->base_address))[index & queueMask];
-  *aql_loc = barrier_value_packet_;
-  packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), packetHeader, rest);
+  writePacketToRingBuffer(aql_loc, &barrier_value_packet_, packetHeader, rest);
 
   hsa_signal_store_screlease(gpu_queue_->doorbell_signal, index);
 
