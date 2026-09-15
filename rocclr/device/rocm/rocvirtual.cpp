@@ -859,9 +859,56 @@ static inline void nontemporalCopyAqlBody(AqlPacket* dst, const AqlPacket* src) 
 }
 
 // ================================================================================================
+static inline bool useMovdir64b() {
+#if defined(ATI_ARCH_X86) && defined(_LP64)
+  static const bool enabled = [] {
+    const bool supported = Os::hasMovdir64b();
+    const bool use_movdir64b = DEBUG_CLR_USE_MOVDIR64B != 0 && supported;
+    ClPrint(amd::LOG_INFO, amd::LOG_INIT,
+            "AQL packet writes use %s (CPU MOVDIR64B: %s, DEBUG_CLR_USE_MOVDIR64B=%u)",
+            use_movdir64b ? "MOVDIR64B" : "non-temporal stores", supported ? "yes" : "no",
+            DEBUG_CLR_USE_MOVDIR64B);
+    return use_movdir64b;
+  }();
+  return enabled;
+#else
+  return false;
+#endif  // ATI_ARCH_X86 && _LP64
+}
+
+// ================================================================================================
+// Write 64 bytes from src to dst as a single atomic store. dst must be 64-byte aligned.
+static inline void movdir64bCopy(void* dst, const void* src) {
+#if defined(ATI_ARCH_X86) && defined(_LP64)
+  assert((reinterpret_cast<uintptr_t>(dst) & 63) == 0 && "MOVDIR64B dst must be 64-byte aligned");
+  __asm__ __volatile__("movdir64b %1, %0"
+                       : : "r"(dst), "m"(*(const char(*)[64])src) : "memory");
+#else
+  // Unreachable: useMovdir64b() is false wherever the instruction does not exist.
+  (void)dst;
+  (void)src;
+#endif  // ATI_ARCH_X86 && _LP64
+}
+
+// ================================================================================================
+// MOVDIR64B lands the whole packet, header included, as one atomic store, so the packet processor
+// can only see the slot's old invalid header or the complete new packet. That removes both the
+// torn-body window and the fence the split body/header path needs.
+//
+// Neither path fences after the header: ROCr sfences before it writes the hardware doorbell.
 template <typename AqlPacket>
 static inline void writePacketToRingBuffer(AqlPacket* aql_loc, const AqlPacket* packet,
                                            uint16_t header, uint16_t rest) {
+  if (useMovdir64b()) {
+    // The header has to travel with the body, so merge it into an aligned staging copy.
+    alignas(64) AqlPacket staging;
+    std::memcpy(&staging, packet, sizeof(staging));
+    const uint32_t header_dword = header | (static_cast<uint32_t>(rest) << 16);
+    std::memcpy(&staging, &header_dword, sizeof(header_dword));
+    movdir64bCopy(aql_loc, &staging);
+    return;
+  }
+
   nontemporalCopyAqlBody(aql_loc, packet);
   _mm_sfence();
   packet_store_release(reinterpret_cast<uint32_t*>(aql_loc), header, rest);
