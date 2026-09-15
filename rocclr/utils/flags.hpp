@@ -255,6 +255,9 @@ release(bool, DEBUG_HIP_KERNARG_COPY_OPT, true,                               \
          "Enable/Disable multiple kern arg copies")                           \
 release(bool, DEBUG_CLR_KERNARG_HDP_FLUSH_WA, false,                          \
         "Toggle kernel arg copy workaround")                                  \
+release(uint, DEBUG_CLR_USE_MOVDIR64B, 1,                                     \
+        "Use MOVDIR64B whole-packet writes for the AQL ring "                 \
+        "(1=enabled where supported (default), 0=non-temporal stores)")       \
 
 namespace amd {
 
