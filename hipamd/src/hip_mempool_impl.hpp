@@ -225,8 +225,14 @@ class MemoryPool : public amd::ReferenceCountedObject, amd::VmHeapArray {
     }
     state_.interprocess_ = properties_.handleTypes != hipMemHandleTypeNone;
     // Check if VM heap can be enabled
+    // On gfx12, hsa_amd_vmem_map can return before the new mapping is visible
+    // to GPU work submitted afterwards, so freshly committed pool memory reads
+    // back as zeros. Keep the VM heap off there unless the user explicitly
+    // opts in with DEBUG_HIP_MEM_POOL_VMHEAP=1.
+    const bool vm_heap_asic_ok = device_->devices()[0]->isa().versionMajor() != 12 ||
+                                 std::getenv("DEBUG_HIP_MEM_POOL_VMHEAP") != nullptr;
     if (DEBUG_HIP_MEM_POOL_VMHEAP && AMD_DIRECT_DISPATCH && HIP_MEM_POOL_USE_VM &&
-        !state_.phys_mem_ && !state_.interprocess_) {
+        !state_.phys_mem_ && !state_.interprocess_ && vm_heap_asic_ok) {
       state_.use_vm_heap_ = true;
       busy_heap_.EnableVmHeap();
       free_heap_.EnableVmHeap();
