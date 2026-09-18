@@ -98,6 +98,13 @@ Heap::SortedMap::iterator Heap::EraseAllocation(Heap::SortedMap::iterator& it) {
 
 // ================================================================================================
 bool Heap::ReleaseAllMemory(size_t min_bytes_to_hold, bool safe_release) {
+  // On the direct allocation path the release threshold is enforced by this
+  // overload as well: pressure-path callers pass min_bytes_to_hold = 0, which
+  // must not undercut hipMemPoolAttrReleaseThreshold. The VM heap path
+  // enforces the threshold in VmHeap::UnmapPhysMemory instead.
+  if (!use_vm_heap_ && (release_threshold_ > min_bytes_to_hold)) {
+    min_bytes_to_hold = release_threshold_;
+  }
   for (auto it = allocations_.begin(); it != allocations_.end();) {
     // Make sure the heap is smaller than the minimum value to hold
     if (total_size_ <= min_bytes_to_hold) {
