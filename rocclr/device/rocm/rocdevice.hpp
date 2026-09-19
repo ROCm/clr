@@ -88,6 +88,10 @@ class ProfilingSignal : public amd::ReferenceCountedObject {
   } Flags;
 
   Flags flags_;
+  // Advisory metadata for this retained signal generation. No queue/object
+  // pointer escapes; a consumer rechecks queue progress under the device lock.
+  std::atomic<uint64_t> native_threshold_index_{std::numeric_limits<uint64_t>::max()};
+  std::atomic<uint64_t> native_producer_queue_id_{std::numeric_limits<uint64_t>::max()};
 
   //! Cached timing data - populated when signal completes, avoids repeated HSA calls
   struct CachedTiming {
@@ -445,6 +449,8 @@ class Device : public NullDevice {
 
   //! Gets free memory on a GPU device
   virtual bool globalFreeMemory(size_t* freeMemory) const;
+  void* hostExecutableAlloc(size_t size) const;
+
   virtual void* hostAlloc(size_t size, size_t alignment,
                           MemorySegment mem_seg = MemorySegment::kNoAtomics,
                           const void* agentInfo = nullptr) const override;  // nullptr uses default CPU agent
@@ -622,6 +628,10 @@ class Device : public NullDevice {
 
   // Returns the number of allocated normal queues on this device
   uint32_t NumNormalQueues() const { return num_normal_queues_.load(); }
+
+  // Advisory only: no pointer escapes the queue lifetime lock. Unknown queues,
+  // lock contention, or an unusually large pool select ordinary AQL waiting.
+  bool TryNativeQueueReadIndex(uint64_t queue_id, uint64_t* read_index);
 
  private:
   bool create();

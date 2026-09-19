@@ -2004,6 +2004,23 @@ hsa_amd_memory_pool_t Device::getHostMemoryPool(MemorySegment mem_seg,
 }
 
 // ================================================================================================
+void* Device::hostExecutableAlloc(size_t size) const {
+  void* allocation = nullptr;
+  // Request the measured native-instruction cache policy directly. Keep
+  // fine-grained coherence and executable permission without depending on
+  // application kernarg policy or using the kernarg pool as a cache-policy proxy.
+  const auto pool = getHostMemoryPool(kAtomics);
+  const auto flags = HSA_AMD_MEMORY_POOL_EXECUTABLE_FLAG | HSA_AMD_MEMORY_POOL_UNCACHED_FLAG;
+  if (Hsa::memory_pool_allocate(pool, size, flags, &allocation) != HSA_STATUS_SUCCESS)
+    return nullptr;
+  if (Hsa::agents_allow_access(gpu_agents_.size(), gpu_agents_.data(), nullptr, allocation) !=
+      HSA_STATUS_SUCCESS) {
+    hostFree(allocation, size);
+    return nullptr;
+  }
+  return allocation;
+}
+
 void* Device::hostAlloc(size_t size, size_t alignment, MemorySegment mem_seg,
                         const void* agentInfo) const {
   void* ptr = nullptr;
@@ -2819,6 +2836,25 @@ void Device::getHwEventTime(const amd::Event& event, uint64_t* start, uint64_t* 
     fetchSignalTime(reinterpret_cast<ProfilingSignal*>(hw_event)->signal_, getBackendDevice(),
                     start, end);
   }
+}
+
+// ================================================================================================
+// Queue-pool mutation uses the same lock. Never wait for it on the dispatch path;
+// unavailable/contended queues simply keep the original AQL dependency.
+bool Device::TryNativeQueueReadIndex(uint64_t queue_id, uint64_t* read_index) {
+  if (!active_queue_access_.tryLock()) return false;
+  std::unique_lock<amd::Monitor> lock(active_queue_access_, std::adopt_lock);
+  size_t inspected = 0;
+  for (const auto& pool : queuePool_) {
+    for (const auto& entry : pool) {
+      if (++inspected > 64) return false;
+      if (entry.first->id == queue_id && entry.second.refCount > 0) {
+        *read_index = Hsa::queue_load_read_index_scacquire(entry.first);
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 // ================================================================================================
