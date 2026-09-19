@@ -1,0 +1,1366 @@
+diff --git a/python/sglang/srt/environ.py b/python/sglang/srt/environ.py
+index 46e9c70dc3..41a7877a08 100644
+--- a/python/sglang/srt/environ.py
++++ b/python/sglang/srt/environ.py
+@@ -902,6 +902,7 @@ class Envs:
+     # Enable dual-stream MoE (shared experts vs routed experts) on the
+     # ROCm/AITER path. Requires GPU_MAX_HW_QUEUES>=5 to avoid HW-queue serialization.
+     SGLANG_ROCM_USE_MULTI_STREAM = EnvBool(False)
++    SGLANG_ROCM_INDEXER_PROJECTION_SCHEDULE = EnvStr(None)
+     # Fold the KDA [f_a|b] tail into the wide [q,k,v,g] projection so the whole
+     # in-proj is one GEMM. Decode is bandwidth bound there, so the 144 extra
+     # output columns ride along nearly free.
+diff --git a/python/sglang/srt/layers/attention/dsa/dsa_indexer.py b/python/sglang/srt/layers/attention/dsa/dsa_indexer.py
+index 26a457f62d..89e3464811 100644
+--- a/python/sglang/srt/layers/attention/dsa/dsa_indexer.py
++++ b/python/sglang/srt/layers/attention/dsa/dsa_indexer.py
+@@ -131,6 +131,9 @@ from sglang.srt.model_executor.runner import get_is_capture_mode
+ 
+ if TYPE_CHECKING:
+     from sglang.srt.mem_cache.memory_pool import DSATokenToKVPool
++    from sglang.srt.model_executor.runner_utils.indexer_projection_schedule import (
++        IndexerProjectionSchedule,
++    )
+ 
+ 
+ DUAL_STREAM_TOKEN_THRESHOLD = 1024 if _is_cuda else 0
+@@ -251,6 +254,7 @@ class Indexer(DSANPUIndexerMixin, BaseFusedOp):
+             and not is_neox_style
+         )
+         self.alt_stream = alt_stream
++        self.projection_schedule: Optional[IndexerProjectionSchedule] = None
+         self.dsa_enable_prefill_cp = is_dsa_enable_prefill_cp()
+         if self.dsa_enable_prefill_cp:
+             self.cp_size = get_parallel().attn_cp_size
+@@ -471,6 +475,23 @@ class Indexer(DSANPUIndexerMixin, BaseFusedOp):
+ 
+             current_stream.wait_stream(self.alt_stream)
+         else:
++            projection_schedule = self.projection_schedule
++            if (
++                projection_schedule is not None
++                and forward_batch.forward_mode.is_target_verify()
++            ):
++                if (
++                    q_lora.shape[0] != 4
++                    or self.use_dsa_indexer_fusion
++                    or self.dsa_enable_prefill_cp
++                    or is_cp_active(forward_batch)
++                    or self.alt_stream is not None
++                    or _is_in_piecewise_or_breakable_cuda_graph()
++                ):
++                    raise RuntimeError("Unsupported target indexer projection schedule")
++                projection_schedule.begin(self.layer_id, x)
++            else:
++                projection_schedule = None
+             query, _ = self.wq_b(q_lora)
+             query = rearrange(query, "l (h d) -> l h d", d=self.head_dim)
+             q_rope, _ = torch.split(
+@@ -478,6 +499,8 @@ class Indexer(DSANPUIndexerMixin, BaseFusedOp):
+             )
+             if self.use_dsa_indexer_fusion:
+                 key, weights_raw = self._fused_k_weights(x)
++            elif projection_schedule is not None:
++                key = projection_schedule.key(self.layer_id, self.wk, x)
+             else:
+                 key, _ = self.wk(x)
+             key = self.k_norm(key)
+diff --git a/python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py b/python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py
+index 3a047c8ffa..abca47c008 100644
+--- a/python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py
++++ b/python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py
+@@ -27,6 +27,7 @@ from sglang.srt.constants import GPU_MEMORY_TYPE_CUDA_GRAPH
+ from sglang.srt.distributed.device_communicators.pynccl_allocator import (
+     set_graph_pool_id,
+ )
++from sglang.srt.environ import envs
+ from sglang.srt.model_executor.runner_backend.base_cuda_graph_backend import (
+     BaseCudaGraphBackend,
+ )
+@@ -101,6 +102,59 @@ class FullCudaGraphBackend(BaseCudaGraphBackend):
+             and get_bool_env_var("SGLANG_MEMORY_SAVER_CUDA_GRAPH")
+         )
+ 
++        self._projection_schedule = None
++        mode = envs.SGLANG_ROCM_INDEXER_PROJECTION_SCHEDULE.get()
++        model_runner = cuda_graph_runner.model_runner
++        capture_mode = getattr(cuda_graph_runner, "capture_forward_mode", None)
++        if mode is not None and not model_runner.is_draft_worker:
++            if capture_mode is None or not capture_mode.is_target_verify():
++                raise ValueError(
++                    "Indexer projection scheduling requires target-verify capture mode"
++                )
++            from sglang.srt.layers.attention.dsa.dsa_indexer import (
++                Indexer,
++            )
++            from sglang.srt.model_executor.runner_utils.indexer_projection_schedule import (
++                IndexerProjectionSchedule,
++            )
++
++            args = model_runner.server_args
++            if (
++                torch.version.hip is None
++                or not torch.cuda.get_device_properties(
++                    torch.cuda.current_device()
++                ).gcnArchName.startswith("gfx950")
++                or args.pp_size != 1
++                or args.attn_cp_size != 1
++                or args.enable_lora
++                or args.enable_two_batch_overlap
++                or args.enable_pdmux
++                or envs.SGLANG_ROCM_USE_MULTI_STREAM.get()
++            ):
++                raise ValueError(
++                    "Indexer projection scheduling requires a serialized gfx950 target runner"
++                )
++            self._projection_indexers = [
++                module
++                for module in model_runner.model.modules()
++                if isinstance(module, Indexer)
++            ]
++            if not self._projection_indexers:
++                raise ValueError(
++                    "Indexer projection scheduling requested without target Indexers"
++                )
++            if any(
++                module.projection_schedule is not None
++                for module in self._projection_indexers
++            ):
++                raise RuntimeError(
++                    "Target Indexer already has a projection schedule owner"
++                )
++            layer_ids = tuple(module.layer_id for module in self._projection_indexers)
++            self._projection_schedule = IndexerProjectionSchedule(mode, layer_ids)
++            for module in self._projection_indexers:
++                module.projection_schedule = self._projection_schedule
++
+     @contextmanager
+     def capture_session(self, stream: torch.cuda.Stream):
+         if self._pool is None:
+@@ -109,8 +163,14 @@ class FullCudaGraphBackend(BaseCudaGraphBackend):
+         self._capture_stream = stream
+         try:
+             yield
++        except BaseException:
++            if self._projection_schedule is not None:
++                self._device_module.synchronize()
++            raise
+         finally:
+             self._capture_stream = None
++            if self._projection_schedule is not None:
++                self._projection_schedule.finish_capture()
+ 
+     def capture_one(
+         self,
+@@ -128,6 +188,8 @@ class FullCudaGraphBackend(BaseCudaGraphBackend):
+         # (its unscheduled profiler records the whole capture in one pass), so no
+         # stepping happens here.
+         runner = self._cuda_graph_runner
++        if self._projection_schedule is not None:
++            self._projection_schedule.prepare_capture(shape_key)
+         profiler = (
+             getattr(runner, "_profiler", None)
+             if getattr(runner, "enable_profile_cuda_graph", False)
+@@ -190,6 +252,8 @@ class FullCudaGraphBackend(BaseCudaGraphBackend):
+ 
+         self._graphs[shape_key] = graph
+         self._outputs[shape_key] = out
++        if self._projection_schedule is not None:
++            self._projection_schedule.finish_capture(shape_key)
+ 
+     def can_run(self, forward_batch: ForwardBatch, shape_key: ShapeKey) -> bool:
+         return shape_key in self._graphs
+@@ -209,7 +273,14 @@ class FullCudaGraphBackend(BaseCudaGraphBackend):
+         return self._outputs[shape_key]
+ 
+     def cleanup(self) -> None:
++        if self._projection_schedule is not None:
++            self._device_module.synchronize()
+         self._graphs.clear()
+         self._outputs.clear()
+         self._output_buffer = None
+         self._pool = None
++        if self._projection_schedule is not None:
++            for module in self._projection_indexers:
++                module.projection_schedule = None
++            self._projection_schedule.close()
++            self._projection_schedule = None
+diff --git a/python/sglang/srt/model_executor/runner_utils/indexer_projection_schedule.py b/python/sglang/srt/model_executor/runner_utils/indexer_projection_schedule.py
+new file mode 100644
+index 0000000000..80b7a21e53
+--- /dev/null
++++ b/python/sglang/srt/model_executor/runner_utils/indexer_projection_schedule.py
+@@ -0,0 +1,91 @@
++from __future__ import annotations
++
++import logging
++from typing import Any
++
++import torch
++
++logger = logging.getLogger(__name__)
++
++
++class IndexerProjectionSchedule:
++    """Own ordinary projection events for one serialized target graph runner."""
++
++    def __init__(self, mode: str, layer_ids: tuple[int, ...]) -> None:
++        if mode not in ("serial", "events"):
++            raise ValueError(f"Invalid indexer projection schedule: {mode}")
++        if not layer_ids or len(set(layer_ids)) != len(layer_ids):
++            raise ValueError("Indexer projection layers must be nonempty and unique")
++        self.mode = mode
++        self.stream = torch.cuda.Stream()
++        self.layer_ids = layer_ids
++        self.generation = 0
++        self.eager_events = self._new_events()
++        self.events = self.eager_events
++        self.graph_events: dict[Any, Any] = {}
++        self.census: set[tuple[int, int, bool]] = set()
++
++    def _new_events(self) -> dict[int, tuple[torch.cuda.Event, torch.cuda.Event]]:
++        return {
++            layer_id: (
++                torch.cuda.Event(enable_timing=False),
++                torch.cuda.Event(enable_timing=False),
++            )
++            for layer_id in self.layer_ids
++        }
++
++    def prepare_capture(self, shape_key: Any) -> None:
++        if (
++            shape_key.size != 1
++            or shape_key.stream_idx is not None
++            or shape_key.variant_label is not None
++        ):
++            raise ValueError(f"Unsupported indexer projection graph: {shape_key}")
++        # Recapture must retire the old graph's events before replacing its owner.
++        torch.cuda.synchronize()
++        self.generation += 1
++        self.events = self._new_events()
++
++    def finish_capture(self, shape_key: Any = None) -> None:
++        if shape_key is not None:
++            self.graph_events[shape_key] = (self.generation, self.events)
++        self.events = self.eager_events
++
++    def begin(self, layer_id: int, x: Any) -> None:
++        capturing = torch.cuda.is_current_stream_capturing()
++        census_key = (layer_id, self.generation, capturing)
++        if census_key not in self.census:
++            logger.info(
++                "INDEXER_PROJECTION schedule=%s layer=%s generation=%s capture=%s rows=4",
++                self.mode,
++                layer_id,
++                self.generation,
++                capturing,
++            )
++            self.census.add(census_key)
++        if self.mode == "events":
++            main = torch.cuda.current_stream()
++            self.events[layer_id][0].record(main)
++            if not capturing:
++                for tensor in x if isinstance(x, tuple) else (x,):
++                    if isinstance(tensor, torch.Tensor):
++                        tensor.record_stream(self.stream)
++
++    def key(self, layer_id: int, projection: Any, x: Any) -> torch.Tensor:
++        if self.mode == "serial":
++            return projection(x)[0]
++        main = torch.cuda.current_stream()
++        ready, done = self.events[layer_id]
++        with torch.cuda.stream(self.stream):
++            self.stream.wait_event(ready)
++            key, _ = projection(x)
++            done.record(self.stream)
++        main.wait_event(done)
++        if not torch.cuda.is_current_stream_capturing():
++            key.record_stream(main)
++        return key
++
++    def close(self) -> None:
++        torch.cuda.synchronize()
++        self.graph_events.clear()
++        self.events = self.eager_events = {}
+diff --git a/test/registered/unit/layers/attention/test_dsa_indexer_projection_schedule.py b/test/registered/unit/layers/attention/test_dsa_indexer_projection_schedule.py
+new file mode 100644
+index 0000000000..e0c2cdd18c
+--- /dev/null
++++ b/test/registered/unit/layers/attention/test_dsa_indexer_projection_schedule.py
+@@ -0,0 +1,167 @@
++"""CPU checks for ordinary-event ordering and graph-generation ownership."""
++
++import contextlib
++import importlib.util
++import sys
++from pathlib import Path
++from types import SimpleNamespace
++from unittest import TestCase, mock
++
++import torch
++
++# Import the actual helper without importing device backends or the public API.
++SOURCE = (
++    Path(__file__).resolve().parents[5]
++    / "python/sglang/srt/model_executor/runner_utils/indexer_projection_schedule.py"
++)
++spec = importlib.util.spec_from_file_location("indexer_projection_schedule", SOURCE)
++module = importlib.util.module_from_spec(spec)
++spec.loader.exec_module(module)
++
++ci_path = SOURCE.parents[3] / "test/ci/ci_register.py"
++ci_spec = importlib.util.spec_from_file_location("ci_register", ci_path)
++ci_module = importlib.util.module_from_spec(ci_spec)
++sys.modules[ci_spec.name] = ci_module
++ci_spec.loader.exec_module(ci_module)
++register_cpu_ci = ci_module.register_cpu_ci
++register_cpu_ci(est_time=2, suite="base-a-test-cpu")
++
++
++class TestProjectionSchedule(TestCase):
++    def setUp(self):
++        self.log = []
++        self.main = SimpleNamespace(
++            wait_event=lambda event: self.log.append(("main_wait", event))
++        )
++        self.side = SimpleNamespace(
++            wait_event=lambda event: self.log.append(("side_wait", event))
++        )
++
++        def event(**kwargs):
++            result = SimpleNamespace()
++            result.record = lambda stream: self.log.append(("record", result, stream))
++            return result
++
++        self.patches = [
++            mock.patch.object(torch.cuda, "Stream", return_value=self.side),
++            mock.patch.object(torch.cuda, "Event", side_effect=event),
++            mock.patch.object(torch.cuda, "current_stream", return_value=self.main),
++            mock.patch.object(
++                torch.cuda, "stream", return_value=contextlib.nullcontext()
++            ),
++            mock.patch.object(
++                torch.cuda, "is_current_stream_capturing", return_value=False
++            ),
++            mock.patch.object(
++                torch.cuda,
++                "synchronize",
++                side_effect=lambda: self.log.append(("sync",)),
++            ),
++        ]
++        for patch in self.patches:
++            patch.start()
++            self.addCleanup(patch.stop)
++
++    def test_serial_has_no_cross_stream_events(self):
++        schedule = module.IndexerProjectionSchedule("serial", (0, 1))
++        schedule.begin(0, object())
++        self.log.append(("query",))
++        result = schedule.key(0, lambda x: (self.log.append(("key",)), None), object())
++        self.assertIsNone(result)
++        self.assertEqual(self.log, [("query",), ("key",)])
++
++    def test_events_fork_before_query_and_join_before_consumption(self):
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        key = mock.Mock(spec=torch.Tensor)
++        ready, done = schedule.events[0]
++        schedule.begin(0, object())
++        self.log.append(("query",))
++
++        def projection(x):
++            self.log.append(("key",))
++            return key, None
++
++        self.assertIs(schedule.key(0, projection, object()), key)
++        self.assertEqual(
++            self.log,
++            [
++                ("record", ready, self.main),
++                ("query",),
++                ("side_wait", ready),
++                ("key",),
++                ("record", done, self.side),
++                ("main_wait", done),
++            ],
++        )
++        key.record_stream.assert_called_once_with(self.main)
++
++    def test_every_tuple_input_is_retained_on_side(self):
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        values = [mock.Mock(spec=torch.Tensor) for _ in range(3)]
++        schedule.begin(0, tuple(values))
++        for value in values:
++            value.record_stream.assert_called_once_with(self.side)
++
++    def test_capture_does_not_record_allocator_streams(self):
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        value = mock.Mock(spec=torch.Tensor)
++        key = mock.Mock(spec=torch.Tensor)
++        with mock.patch.object(
++            torch.cuda, "is_current_stream_capturing", return_value=True
++        ):
++            schedule.begin(0, value)
++            schedule.key(0, lambda x: (key, None), value)
++        value.record_stream.assert_not_called()
++        key.record_stream.assert_not_called()
++
++    def test_failed_capture_preserves_previous_graph_events(self):
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        shape = mock.Mock(size=1, stream_idx=None, variant_label=None)
++        schedule.prepare_capture(shape)
++        first = schedule.events
++        schedule.finish_capture(shape)
++        schedule.prepare_capture(shape)
++        self.assertIsNot(schedule.events, first)
++        schedule.finish_capture()
++        self.assertIs(schedule.graph_events[shape][1], first)
++        self.assertIs(schedule.events, schedule.eager_events)
++        self.assertEqual(self.log, [("sync",), ("sync",)])
++
++    def test_recapture_retains_each_live_graph_generation(self):
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        a = mock.Mock(size=1, stream_idx=None, variant_label=None)
++        b = mock.Mock(size=1, stream_idx=None, variant_label=None)
++        schedule.prepare_capture(a)
++        schedule.finish_capture(a)
++        old = schedule.graph_events[a]
++        schedule.prepare_capture(b)
++        schedule.finish_capture(b)
++        self.assertIsNot(old[1], schedule.graph_events[b][1])
++        schedule.prepare_capture(a)
++        schedule.finish_capture(a)
++        self.assertGreater(schedule.graph_events[a][0], old[0])
++        schedule.close()
++        self.assertFalse(schedule.graph_events)
++        self.assertFalse(schedule.events)
++
++    def test_invalid_mode_scope_and_empty_layers_refuse(self):
++        for mode, layers in [("poll", (0,)), ("events", ()), ("events", (0, 0))]:
++            with self.assertRaises(ValueError):
++                module.IndexerProjectionSchedule(mode, layers)
++        schedule = module.IndexerProjectionSchedule("events", (0,))
++        for kwargs in [
++            dict(size=0),
++            dict(size=2),
++            dict(stream_idx=0),
++            dict(variant_label="lora"),
++        ]:
++            fields = dict(size=1, stream_idx=None, variant_label=None)
++            fields.update(kwargs)
++            with self.assertRaises(ValueError):
++                schedule.prepare_capture(SimpleNamespace(**fields))
++
++
++if __name__ == "__main__":
++    import unittest
++
++    unittest.main()
+diff --git a/test/manual/test_dsa_indexer_projection_events.py b/test/manual/test_dsa_indexer_projection_events.py
+new file mode 100644
+index 0000000000..a56ad79350
+--- /dev/null
++++ b/test/manual/test_dsa_indexer_projection_events.py
+@@ -0,0 +1,903 @@
++"""Diagnostic hooks for the actual L10 serving runner; never a timing harness.
++
++Install in every worker before ModelRunner construction. Each target Indexer runs
++the selected schedule and the original serial path against restored cache bytes.
++The selected output continues through the unchanged main attention/model. Error
++flags accumulate on device, including across queued real-runner executions.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import json
++import os
++import sys
++from pathlib import Path
++
++import torch
++
++_active = None
++_errors = None
++_slots = {}
++_full_taps = {}
++_graph_taps = {}
++_projection_taps = {}
++_graph_projection_taps = {}
++_debug_taps = {}
++_graph_debug_taps = {}
++_runner_counts = {}
++_stage_taps = {}
++_graph_stage_taps = {}
++_characterize = os.environ.get("NATIVE_BASELINE_CHARACTERIZE") == "1"
++_canonical_reference = None
++_observed = None
++_observed_slots = {}
++_last_replay = None
++_serving_checks_enabled = None
++_coherent_shadow = os.environ.get("NATIVE_COHERENT_SHADOW") == "1"
++_envelope = None
++if _coherent_shadow:
++    envelope_path = Path(os.environ["NATIVE_QK_ENVELOPE"])
++    envelope_bytes = envelope_path.read_bytes()
++    if (
++        hashlib.sha256(envelope_bytes).hexdigest()
++        != "2271908e86c1afbf0a1a194e6ba7721c3acdc742d578f65188ccab05ab7da772"
++    ):
++        raise AssertionError("Frozen A-derived Q/K envelope changed")
++    _envelope = json.loads(envelope_bytes)["projections"]
++
++
++def _tensors(value, prefix=""):
++    if isinstance(value, torch.Tensor):
++        yield prefix, value
++    elif isinstance(value, (tuple, list)):
++        for i, child in enumerate(value):
++            yield from _tensors(child, f"{prefix}/{i}")
++    elif isinstance(value, dict):
++        for name, child in value.items():
++            yield from _tensors(child, f"{prefix}/{name}")
++
++
++def _tap(label, value):
++    if _active is not None:
++        for suffix, tensor in _tensors(value):
++            name = f"{label}{suffix}"
++            _active.setdefault(name, []).append(tensor.clone())
++    return value
++
++
++def _compare(name, actual, expected):
++    if actual.shape != expected.shape or actual.dtype != expected.dtype:
++        raise AssertionError(f"Diagnostic shape/dtype mismatch: {name}")
++    if _coherent_shadow and name.startswith(
++        ("final_logits/", "consumer/", "alternating/")
++    ):
++        slot = _observed_slots.setdefault(name, len(_observed_slots))
++        mismatch = torch.any(
++            actual.contiguous().view(torch.uint8)
++            != expected.contiguous().view(torch.uint8)
++        )
++        _observed[slot].logical_or_(mismatch)
++        return
++    slot = _slots.setdefault(name, len(_slots))
++    if slot >= _errors.numel():
++        raise AssertionError("Diagnostic error bank exhausted")
++    ordered_selection = _coherent_shadow and (
++        "/topk_transform/" in name or name.endswith("/selected_indices")
++    )
++    if ordered_selection:
++        _errors[slot].logical_or_(
++            torch.any((actual < 0) != (expected < 0))
++            | torch.any(actual < -1)
++            | torch.any(expected < -1)
++        )
++        slot_observed = _observed_slots.setdefault(
++            "ordered_selection/" + name, len(_observed_slots)
++        )
++        _observed[slot_observed].logical_or_(torch.any(actual != expected))
++        return
++    projection = next(
++        (
++            projection
++            for projection in ("wq_b", "wk")
++            if name.endswith(f"/{projection}/0/0")
++        ),
++        None,
++    )
++    if _coherent_shadow and projection is not None:
++        bound = _envelope[projection]
++        a, b = actual.float(), expected.float()
++        difference = (a - b).abs()
++        reference_rms = b.square().mean().sqrt()
++        mismatch = (
++            ~torch.isfinite(a).all()
++            | ~torch.isfinite(b).all()
++            | (
++                difference.square().mean().sqrt()
++                > bound["max_normalized_rms"] * reference_rms
++            )
++            | (difference.max() > bound["max_abs_over_reference_rms"] * reference_rms)
++        )
++    else:
++        mismatch = torch.any(
++            actual.contiguous().view(torch.uint8)
++            != expected.contiguous().view(torch.uint8)
++        )
++    _errors[slot].logical_or_(mismatch)
++
++
++def _check(where):
++    torch.cuda.synchronize()
++    flags = _errors.cpu().tolist()
++    failed = [name for name, slot in _slots.items() if flags[slot]]
++    observed_flags = _observed.cpu().tolist() if _observed is not None else []
++    receipt = {
++        "where": where,
++        "comparisons": list(_slots),
++        "failed": failed,
++        "cross_replay_numerical_differences": [
++            name for name, slot in _observed_slots.items() if observed_flags[slot]
++        ],
++        "qualification": "projection_and_event_dependencies_only"
++        if _coherent_shadow
++        else "original_exact_or_characterization",
++    }
++    if _observed is not None:
++        _observed.zero_()
++    path = Path(os.environ["NATIVE_ARM_OUTPUT"])
++    rank = torch.distributed.get_rank()
++    with (path / f"correctness-rank{rank}.jsonl").open("a") as file:
++        file.write(json.dumps(receipt) + "\n")
++    if _characterize:
++        _errors.zero_()
++    if failed and not _characterize:
++        if _last_replay is not None:
++            graph_key, batch = _last_replay
++            failure_path = path / f"first-failure-rank{rank}.pt"
++            if not failure_path.exists():
++                values = {
++                    name: tensor.cpu()
++                    for name, tensor in _graph_debug_taps[graph_key].items()
++                }
++                values.update(
++                    input_ids=batch.input_ids.cpu(),
++                    positions=batch.positions.cpu(),
++                    out_cache_loc=batch.out_cache_loc.cpu(),
++                    seq_lens=batch.seq_lens.cpu(),
++                    failed=failed,
++                    where=where,
++                )
++                torch.save(values, failure_path)
++        raise AssertionError(f"Projection/consumer mismatch at {where}: {failed}")
++
++
++def attach(model_runner, indexers):
++    """Called by the private worker launcher before the real runner captures."""
++    global _errors, _observed, _serving_checks_enabled
++    if getattr(model_runner, "_native_diagnostic_attached", False):
++        return
++    model_runner._native_diagnostic_attached = True
++    if _errors is None:
++        _errors = torch.zeros(512, dtype=torch.bool, device="cuda")
++        _observed = torch.zeros(512, dtype=torch.bool, device="cuda")
++        _serving_checks_enabled = torch.zeros(1, dtype=torch.bool, device="cuda")
++    for indexer in indexers:
++        if not hasattr(indexer, "wq_b") and not hasattr(indexer, "wk"):
++            continue
++        for name in ("wq_b", "wk", "k_norm", "rotary_emb"):
++
++            def stage_hook(module, args, output, label=name):
++                _tap(label, output)
++                if _canonical_reference is not None and label in _canonical_reference:
++                    # The original complete projection above still ran and was
++                    # retained. Feed equal raw inputs to downstream consumers.
++                    return (_canonical_reference[label].clone(), *output[1:])
++                return output
++
++            getattr(indexer, name).register_forward_hook(stage_hook)
++    for name, module in model_runner.model.named_modules():
++        if type(module).__name__ == "DeepseekV2DecoderLayer" or (
++            name.endswith("self_attn") and hasattr(module, "layer_id")
++        ):
++
++            def save(module, args, output, label=name):
++                for suffix, tensor in _tensors(output):
++                    _full_taps[f"{label}{suffix}"] = tensor.clone()
++
++            module.register_forward_hook(save)
++
++
++def begin_capture():
++    _full_taps.clear()
++    _projection_taps.clear()
++    _debug_taps.clear()
++    _stage_taps.clear()
++
++
++def finish_capture(key):
++    _graph_taps[key] = dict(_full_taps)
++    _graph_projection_taps[key] = dict(_projection_taps)
++    _graph_debug_taps[key] = dict(_debug_taps)
++    _graph_stage_taps[key] = dict(_stage_taps)
++
++
++def check_lifecycle(runner):
++    """Exercise the actual backend failure path, then real-runner recapture."""
++    backend = runner.backend
++    owner = backend._projection_schedule
++    old_graphs = dict(backend._graphs)
++    old_events = dict(owner.graph_events)
++    key = next(iter(old_graphs))
++
++    class InjectedFailure(Exception):
++        pass
++
++    def fail():
++        raise InjectedFailure("intentional pre-capture forward failure")
++
++    try:
++        with backend.capture_session(runner.stream):
++            backend.capture_one(key, fail)
++    except InjectedFailure:
++        pass
++    else:
++        raise AssertionError("Capture failure injection did not execute")
++    if backend._graphs != old_graphs or owner.graph_events != old_events:
++        raise AssertionError("Failed capture retired a live graph/event generation")
++    if owner.events is not owner.eager_events:
++        raise AssertionError("Failed capture left temporary event ownership active")
++    runner.capture()
++    if any(backend._graphs[k] is graph for k, graph in old_graphs.items()):
++        raise AssertionError("Real runner did not replace all graphs on recapture")
++    if any(owner.graph_events[k][0] <= pair[0] for k, pair in old_events.items()):
++        raise AssertionError("Real runner did not advance event generations")
++    indexers = list(backend._projection_indexers)
++    backend.cleanup()
++    if backend._graphs or owner.graph_events or owner.events:
++        raise AssertionError("Backend cleanup retained a graph/event generation")
++    if any(indexer.projection_schedule is not None for indexer in indexers):
++        raise AssertionError("Backend cleanup did not detach the owner")
++    from sglang.srt.model_executor.runner_backend.utils import resolve_decode_backend
++
++    runner.backend = resolve_decode_backend(runner)
++    runner.capture()
++    _check("capture_failure_and_recapture")
++
++
++def discrepancy(actual, expected):
++    a = actual.detach().cpu().contiguous()
++    b = expected.detach().cpu().contiguous()
++    av, bv = a.flatten(), b.flatten()
++    mask = (
++        av.view(torch.uint8).reshape(av.numel(), -1)
++        != bv.view(torch.uint8).reshape(bv.numel(), -1)
++    ).any(1)
++    finite = torch.isfinite(av.float()) & torch.isfinite(bv.float())
++    delta = torch.where(finite, (av.float() - bv.float()).abs(), 0)
++    maximum = int(delta.argmax())
++    first = mask.nonzero().flatten()[:16]
++    row = dict(
++        shape=list(a.shape),
++        dtype=str(a.dtype),
++        different=int(mask.sum()),
++        count=a.numel(),
++        max_abs=float(delta.max()),
++        rms=float(delta.square().mean().sqrt()),
++        reference_rms=float(bv.float()[finite].square().mean().sqrt())
++        if finite.any()
++        else 0.0,
++        nonfinite_pattern_equal=bool(
++            torch.equal(torch.isfinite(av.float()), torch.isfinite(bv.float()))
++        ),
++        max_index=maximum,
++        max_values=[float(av[maximum]), float(bv[maximum])],
++        first_indices=first.tolist(),
++        first_actual=av.float()[first].tolist(),
++        first_expected=bv.float()[first].tolist(),
++    )
++    if a.dtype in (torch.int32, torch.int64) and a.ndim == 2:
++        row["ordered_equal"] = bool(torch.equal(a, b))
++        row["selected_sets_equal"] = all(
++            set(x.tolist()) == set(y.tolist()) for x, y in zip(a, b)
++        )
++        row["minimum_set_overlap"] = min(
++            len(set(x.tolist()) & set(y.tolist()))
++            / max(1, len(set(x.tolist()) | set(y.tolist())))
++            for x, y in zip(a, b)
++        )
++    return row
++
++
++def characterize_runner(runner, forward_batch, original_execute, args, kwargs):
++    key = runner._replay_graph_key
++    taps = _graph_taps[key]
++    stages = _graph_stage_taps[key]
++    output_dir = Path(os.environ["NATIVE_ARM_OUTPUT"])
++    rank = torch.distributed.get_rank()
++    pool = runner.model_runner.token_to_kv_pool
++    # Restore the complete target main-attention and index cache state before
++    # each same-input replay; graph metadata is prepared by actual execute().
++    mutable = list(pool.kv_buffer) + list(pool.index_key_cache.buffer)
++    snapshots = [tensor.clone() for tensor in mutable]
++    torch.cuda.synchronize()
++    baseline = None
++    records = []
++    saved_raw = {}
++    for trial in range(32):
++        for tensor, saved in zip(mutable, snapshots):
++            tensor.copy_(saved)
++        result = original_execute(runner, forward_batch, *args, **kwargs)
++        torch.cuda.synchronize()
++        current = {f"consumer/{name}": tensor.clone() for name, tensor in taps.items()}
++        current["final_logits"] = result.next_token_logits.clone()
++        if baseline is None:
++            baseline = {name: tensor.clone() for name, tensor in current.items()}
++        rows = {
++            f"within_forward/{name}": discrepancy(a, b)
++            for name, (a, b) in stages.items()
++        }
++        rows.update(
++            {
++                f"same_input_replay/{name}": discrepancy(tensor, baseline[name])
++                for name, tensor in current.items()
++            }
++        )
++        records.append(dict(trial=trial, comparisons=rows))
++        if trial in (0, 31):
++            saved_raw[str(trial)] = {
++                f"within_forward/{name}/{side}": tensor.cpu()
++                for name, pair in stages.items()
++                for side, tensor in zip(("candidate", "serial_reference"), pair)
++            }
++            saved_raw[str(trial)].update(
++                {name: tensor.cpu() for name, tensor in current.items()}
++            )
++        _check(f"characterization/{key}/same_input{trial}")
++    for tensor, saved in zip(mutable, snapshots):
++        tensor.copy_(saved)
++    original_execute(runner, forward_batch, *args, **kwargs)
++    name = f"characterization-rank{rank}-graph{len(_runner_counts)}"
++    torch.save(saved_raw, output_dir / (name + ".pt"))
++    receipt = dict(
++        valid_as_correctness=False,
++        key=str(key),
++        input_ids=forward_batch.input_ids.cpu().tolist(),
++        positions=forward_batch.positions.cpu().tolist(),
++        out_cache_loc=forward_batch.out_cache_loc.cpu().tolist(),
++        restored_cache_bytes=sum(
++            tensor.numel() * tensor.element_size() for tensor in mutable
++        ),
++        records=records,
++    )
++    (output_dir / (name + ".json")).write_text(json.dumps(receipt, indent=2))
++
++
++def selector_validity(logits, selected, table, lengths):
++    # Fixed diagnostic domain covers all <=6144-token correctness fixtures.
++    # Full primary serving never installs this helper.
++    columns = min(8192, logits.shape[-1], table.shape[-1])
++    score = logits[:, :columns]
++    lengths = lengths.reshape(-1, 1)
++    if lengths.shape[0] == 1:
++        lengths = lengths.expand(score.shape[0], 1)
++    if table.shape[0] == 1:
++        table = table.expand(score.shape[0], -1)
++    positions = torch.arange(columns, device=score.device).reshape(1, -1)
++    eligible = positions < lengths
++    physical = torch.where(
++        eligible, table[:, :columns].long(), torch.iinfo(torch.int64).max
++    )
++    sorted_physical, logical_order = physical.sort(dim=1)
++    found = torch.searchsorted(
++        sorted_physical.contiguous(), selected.long().contiguous()
++    ).clamp(max=columns - 1)
++    mapped_physical = sorted_physical.gather(1, found)
++    logical = logical_order.gather(1, found)
++    selected_valid = selected >= 0
++    mapped = ((mapped_physical == selected) | ~selected_valid).all(dim=1)
++    selected_scores = score.gather(1, logical)
++    masked_scores = torch.where(eligible, score, -torch.inf)
++    k = selected.shape[1]
++    threshold = masked_scores.topk(k, dim=1).values[:, -1:]
++    expected_count = lengths.clamp(max=k).flatten()
++    correct_count = selected_valid.sum(dim=1) == expected_count
++    sorted_selected = selected.sort(dim=1).values
++    unique = ~(
++        (sorted_selected[:, 1:] == sorted_selected[:, :-1])
++        & (sorted_selected[:, 1:] >= 0)
++    ).any(dim=1)
++    none_below = ((selected_scores >= threshold) | ~selected_valid).all(dim=1)
++    all_above = ((selected_scores > threshold) & selected_valid).sum(dim=1) == (
++        masked_scores > threshold
++    ).sum(dim=1)
++    domain = ((lengths >= 0) & (lengths <= columns)).flatten()
++    finite = (torch.isfinite(score) | ~eligible).all(dim=1)
++    valid_sentinels = (selected >= -1).all(dim=1)
++    mapping_injective = ~(
++        (sorted_physical[:, 1:] == sorted_physical[:, :-1])
++        & (sorted_physical[:, 1:] != torch.iinfo(torch.int64).max)
++    ).any(dim=1)
++    valid = (
++        mapped
++        & correct_count
++        & unique
++        & none_below
++        & all_above
++        & domain
++        & finite
++        & valid_sentinels
++        & mapping_injective
++    )
++    # Capture uses artificial zero page tables. The persistent flag is set
++    # before every actual runner execution, and is false only during startup.
++    return valid | ~_serving_checks_enabled
++
++
++def install():
++    from sglang.srt.layers.attention.dsa.dsa_indexer import Indexer
++    from sglang.srt.layers.attention.dsa.dsa_indexer_metadata import DSAIndexerMetadata
++    from sglang.srt.model_executor.forward_context import get_token_to_kv_pool
++    from sglang.srt.model_executor.runner.decode_cuda_graph_runner import (
++        DecodeCudaGraphRunner,
++    )
++
++    original_forward = Indexer.forward_cuda
++
++    def forward(self, x, q_lora, positions, forward_batch, layer_id, *args, **kwargs):
++        global _active, _canonical_reference
++        owner = self.projection_schedule
++        if owner is None or not forward_batch.forward_mode.is_target_verify():
++            return original_forward(
++                self, x, q_lora, positions, forward_batch, layer_id, *args, **kwargs
++            )
++        pool = get_token_to_kv_pool()
++        cache = pool.get_index_k_with_scale_buffer(layer_id=layer_id)
++        before = cache.clone()
++        candidate_stages = {}
++        reference_stages = {}
++        saved_mode = owner.mode
++        try:
++            _active = candidate_stages
++            _tap("input_x", x)
++            _tap("input_q_lora", q_lora)
++            candidate = original_forward(
++                self, x, q_lora, positions, forward_batch, layer_id, *args, **kwargs
++            )
++            if (
++                os.environ.get("NATIVE_FAULT_MISSING_JOIN") == "1"
++                and saved_mode == "events"
++            ):
++                # Close the captured side branch after the deliberately early
++                # consumers, so the negative-control graph itself remains valid.
++                torch.cuda.current_stream().wait_event(owner.events[layer_id][1])
++            candidate_cache = cache.clone()
++            candidate_saved = candidate.clone() if candidate is not None else None
++            cache.copy_(before)
++            owner.mode = "serial"
++            _active = reference_stages
++            if _coherent_shadow:
++                _canonical_reference = {
++                    "wq_b": candidate_stages["wq_b/0"][0],
++                    "wk": candidate_stages["wk/0"][0],
++                }
++            _tap("input_x", x)
++            _tap("input_q_lora", q_lora)
++            reference = original_forward(
++                self, x, q_lora, positions, forward_batch, layer_id, *args, **kwargs
++            )
++        finally:
++            _canonical_reference = None
++            _active = None
++            owner.mode = saved_mode
++        if candidate_stages.keys() != reference_stages.keys():
++            raise AssertionError("Candidate/reference stage census differs")
++        for name, values in candidate_stages.items():
++            if name == "selector_validity":
++                _compare(
++                    f"L{layer_id}/candidate_selector_valid",
++                    values[0],
++                    torch.ones_like(values[0]),
++                )
++                _compare(
++                    f"L{layer_id}/reference_selector_valid",
++                    reference_stages[name][0],
++                    torch.ones_like(reference_stages[name][0]),
++                )
++            if len(values) != len(reference_stages[name]):
++                raise AssertionError(f"Stage invocation mismatch: {name}")
++            for i, (actual, expected) in enumerate(zip(values, reference_stages[name])):
++                _compare(f"L{layer_id}/{name}/{i}", actual, expected)
++                if _characterize:
++                    _stage_taps[f"L{layer_id}/{name}/{i}"] = (actual, expected)
++            if name in ("wq_b/0", "wk/0"):
++                _projection_taps[f"L{layer_id}/{name}"] = values[0]
++            if name.startswith(("wq_b", "wk", "input_", "topk_", "indexer_logits")):
++                actual_debug, expected_debug = values[0], reference_stages[name][0]
++                if name.startswith(("indexer_logits", "topk_page_table")):
++                    actual_debug, expected_debug = (
++                        actual_debug[..., :8192],
++                        expected_debug[..., :8192],
++                    )
++                _debug_taps[f"L{layer_id}/candidate/{name}"] = actual_debug
++                _debug_taps[f"L{layer_id}/reference/{name}"] = expected_debug
++        _compare(
++            f"L{layer_id}/complete_cache_written_and_untouched", candidate_cache, cache
++        )
++        if _coherent_shadow:
++            from sglang.srt.layers.attention.dsa.utils import (
++                INDEXER_K_CACHE_PRESHUFFLE_TILE,
++                aiter_can_use_preshuffle_paged_mqa,
++            )
++
++            loc = forward_batch.out_cache_loc.long().reshape(-1, 1)
++            page = loc // pool.page_size
++            token = loc % pool.page_size
++            columns = torch.arange(pool.index_head_dim, device=loc.device).reshape(
++                1, -1
++            )
++            base = page * cache.shape[1]
++            if aiter_can_use_preshuffle_paged_mqa():
++                tile = INDEXER_K_CACHE_PRESHUFFLE_TILE
++                key_offsets = (
++                    base
++                    + (token // tile) * (tile * pool.index_head_dim)
++                    + (columns // tile) * (tile * tile)
++                    + (token % tile) * tile
++                    + columns % tile
++                )
++            else:
++                key_offsets = base + token * pool.index_head_dim + columns
++            scale_offsets = (
++                base
++                + pool.page_size * pool.index_head_dim
++                + token * 4
++                + torch.arange(4, device=loc.device).reshape(1, -1)
++            )
++            written = torch.cat((key_offsets, scale_offsets), dim=1).flatten()
++            untouched = candidate_cache.clone().flatten()
++            untouched[written] = before.flatten()[written]
++            _compare(f"L{layer_id}/untouched_cache_exact", untouched, before.flatten())
++        if _characterize:
++            pages = forward_batch.out_cache_loc // pool.page_size
++            _stage_taps[f"L{layer_id}/cache_written_pages"] = (
++                candidate_cache[pages].clone(),
++                cache[pages].clone(),
++            )
++        if candidate_saved is not None:
++            if _coherent_shadow:
++                _compare(
++                    f"L{layer_id}/candidate_selector_output_binding",
++                    candidate_saved,
++                    candidate_stages["topk_transform"][0],
++                )
++                _compare(
++                    f"L{layer_id}/reference_selector_output_binding",
++                    reference,
++                    reference_stages["topk_transform"][0],
++                )
++            _compare(f"L{layer_id}/selected_indices", candidate_saved, reference)
++        # Consumers must see the selected execution, including when a diagnostic
++        # failure is present. The serial shadow may reuse metadata output buffers.
++        cache.copy_(candidate_cache)
++        return candidate_saved
++
++    Indexer.forward_cuda = forward
++    if os.environ.get("NATIVE_FAULT_MISSING_JOIN") == "1":
++        from sglang.srt.model_executor.runner_utils.indexer_projection_schedule import (
++            IndexerProjectionSchedule,
++        )
++
++        original_key = IndexerProjectionSchedule.key
++
++        def missing_join(self, layer_id, projection, x):
++            if self.mode != "events":
++                return original_key(self, layer_id, projection, x)
++            ready, done = self.events[layer_id]
++            with torch.cuda.stream(self.stream):
++                self.stream.wait_event(ready)
++                torch.cuda._sleep(20_000_000)
++                key, _ = projection(x)
++                done.record(self.stream)
++            return key
++
++        IndexerProjectionSchedule.key = missing_join
++    for method in ("_get_q_k_bf16", "_get_logits_head_gate"):
++        original = getattr(Indexer, method)
++
++        def wrapped(self, *args, _original=original, _label=method, **kwargs):
++            return _tap(_label, _original(self, *args, **kwargs))
++
++        setattr(Indexer, method, wrapped)
++    original_topk = DSAIndexerMetadata.topk_transform
++
++    def topk(self, logits, *args, **kwargs):
++        _tap("topk_page_table", self.attn_metadata.page_table_1[..., :8192])
++        _tap("topk_lengths", self.get_seqlens_expanded())
++        _tap("indexer_logits", logits)
++        selected = original_topk(self, logits, *args, **kwargs)
++        if _coherent_shadow and _active is not None:
++            from sglang.srt.environ import envs
++            from sglang.srt.layers.attention.dsa.dsa_topk_backend import (
++                TopkTransformMethod,
++            )
++
++            if (
++                self.topk_transform_method != TopkTransformMethod.PAGED
++                or not envs.SGLANG_DSA_FUSE_TOPK.get()
++                or envs.SGLANG_DSA_TOPK_BROADCAST.get()
++            ):
++                raise AssertionError(
++                    "Unsupported selector mapping for exact validity oracle"
++                )
++            _tap(
++                "selector_validity",
++                selector_validity(
++                    logits,
++                    selected,
++                    self.attn_metadata.page_table_1,
++                    self.get_seqlens_expanded(),
++                ),
++            )
++        return _tap("topk_transform", selected)
++
++    DSAIndexerMetadata.topk_transform = topk
++    from sglang.kernels.ops.attention.dsa import tilelang_kernel
++
++    original_quant = tilelang_kernel.act_quant
++
++    def quant(*args, **kwargs):
++        return _tap("query_quant_bytes_scales", original_quant(*args, **kwargs))
++
++    tilelang_kernel.act_quant = quant
++    execute_baseline = DecodeCudaGraphRunner.execute
++
++    def original_execute(self, forward_batch, *args, **kwargs):
++        global _last_replay
++        if (
++            not self.model_runner.is_draft_worker
++            and self.backend._projection_schedule is not None
++        ):
++            _serving_checks_enabled.fill_(True)
++        output = execute_baseline(self, forward_batch, *args, **kwargs)
++        if (
++            not self.model_runner.is_draft_worker
++            and self.backend._projection_schedule is not None
++        ):
++            _last_replay = (self._replay_graph_key, forward_batch)
++            _compare(
++                "final_logits_finite_every_replay",
++                torch.isfinite(output.next_token_logits).all().reshape(1),
++                torch.ones(1, dtype=torch.bool, device="cuda"),
++            )
++        return output
++
++    def execute(self, forward_batch, *args, **kwargs):
++        output = original_execute(self, forward_batch, *args, **kwargs)
++        if (
++            self.model_runner.is_draft_worker
++            or self.backend._projection_schedule is None
++        ):
++            return output
++        key = str(self._replay_graph_key)
++        taps = _graph_taps[self._replay_graph_key]
++        if not taps:
++            raise AssertionError("No actual main-attention/layer output taps")
++        count = _runner_counts.get(key, 0)
++        if _characterize:
++            if (
++                os.environ["GPU_NATIVE_EVENT_WAIT"] != "0"
++                or self.backend._projection_schedule.mode != "serial"
++            ):
++                raise AssertionError("Characterization is restricted to A")
++            if count == 0:
++                characterize_runner(self, forward_batch, original_execute, args, kwargs)
++            _runner_counts[key] = count + 1
++            _check(f"characterization_serving/{key}/{count}")
++            return output
++        if count < 2:
++            # Keep serving-prepared positions/cache metadata, but change legal IDs
++            # on every queued call. Real outer batches separately vary the slots.
++            torch.cuda.synchronize()
++            rank = torch.distributed.get_rank()
++            debug_state = {
++                name: tensor.cpu()
++                for name, tensor in _graph_debug_taps[self._replay_graph_key].items()
++            }
++            debug_state.update(
++                input_ids=forward_batch.input_ids.cpu(),
++                positions=forward_batch.positions.cpu(),
++                out_cache_loc=forward_batch.out_cache_loc.cpu(),
++                seq_lens=forward_batch.seq_lens.cpu(),
++            )
++            torch.save(
++                debug_state,
++                Path(os.environ["NATIVE_ARM_OUTPUT"])
++                / f"initial-state-rank{rank}-graph{len(_runner_counts)}-batch{count}.pt",
++            )
++            _check(f"within_forward/{key}/batch{count}/initial_unchanged")
++            pool = self.model_runner.token_to_kv_pool
++            mutable = list(pool.kv_buffer) + list(pool.index_key_cache.buffer)
++            snapshots = [tensor.clone() for tensor in mutable]
++
++            def restore_cache():
++                for tensor, saved in zip(mutable, snapshots):
++                    tensor.copy_(saved)
++
++            original_ids = forward_batch.input_ids.clone()
++            alternate_ids = (original_ids + 1).remainder(
++                self.model_runner.model_config.hf_config.vocab_size
++            )
++            variants = (original_ids, alternate_ids)
++            projection_taps = _graph_projection_taps[self._replay_graph_key]
++            expected_states = []
++            for state_index, ids in enumerate(variants):
++                restore_cache()
++                forward_batch.input_ids.copy_(ids)
++                prepared = original_execute(self, forward_batch, *args, **kwargs)
++                expected_states.append(
++                    {
++                        "ids": ids.clone(),
++                        "logits": prepared.next_token_logits.clone(),
++                        "layers": {
++                            name: tensor.clone() for name, tensor in taps.items()
++                        },
++                        "projections": {
++                            name: tensor.clone()
++                            for name, tensor in projection_taps.items()
++                        },
++                    }
++                )
++                _check(f"within_forward/{key}/batch{count}/expected_state{state_index}")
++            torch.cuda.synchronize()
++            differing_projections = [
++                name
++                for name in projection_taps
++                if name.endswith("/wk/0")
++                and not torch.equal(
++                    expected_states[0]["projections"][name],
++                    expected_states[1]["projections"][name],
++                )
++            ]
++            if not differing_projections:
++                raise AssertionError("Alternating legal IDs did not change checked K")
++            stale_witnesses = []
++            for name in projection_taps:
++                projection = "wk" if name.endswith("/wk/0") else "wq_b"
++                bound = _envelope[projection]
++                for direction in (0, 1):
++                    stale = expected_states[direction]["projections"][name].float()
++                    current = expected_states[1 - direction]["projections"][
++                        name
++                    ].float()
++                    diff = (stale - current).abs()
++                    rms = float(current.square().mean().sqrt())
++                    nrms = float(diff.square().mean().sqrt()) / max(rms, 1e-30)
++                    max_norm = float(diff.max()) / max(rms, 1e-30)
++                    rejected = (
++                        nrms > bound["max_normalized_rms"]
++                        or max_norm > bound["max_abs_over_reference_rms"]
++                    )
++                    stale_witnesses.append(
++                        dict(
++                            name=name,
++                            stale_state=direction,
++                            current_state=1 - direction,
++                            normalized_rms=nrms,
++                            max_abs_over_reference_rms=max_norm,
++                            rejected=rejected,
++                        )
++                    )
++                    if not rejected:
++                        raise AssertionError(
++                            f"Alternating projection does not reject stale input: {stale_witnesses[-1]}"
++                        )
++            rank = torch.distributed.get_rank()
++            expected_path = (
++                Path(os.environ["NATIVE_ARM_OUTPUT"])
++                / f"expected-states-rank{rank}-graph{len(_runner_counts)}-batch{count}.pt"
++            )
++            torch.save(
++                [
++                    {name: tensor.cpu() for name, tensor in _tensors(state)}
++                    for state in expected_states
++                ],
++                expected_path,
++            )
++            print(
++                f"NATIVE_REPLAY_BEGIN pid={os.getpid()} key={key} batch={count}",
++                file=sys.stderr,
++                flush=True,
++            )
++            if os.environ.get("NATIVE_PROFILE") == "1" and count == 0:
++                with torch.profiler.profile(
++                    activities=[
++                        torch.profiler.ProfilerActivity.CPU,
++                        torch.profiler.ProfilerActivity.CUDA,
++                    ]
++                ) as profiler:
++                    original_execute(self, forward_batch, *args, **kwargs)
++                    torch.cuda.synchronize()
++                profiler.export_chrome_trace(
++                    str(
++                        Path(os.environ["NATIVE_ARM_OUTPUT"])
++                        / f"target-replay-{os.getpid()}-{len(_runner_counts)}.json"
++                    )
++                )
++            for i in range(32):
++                expected = expected_states[i % 2]
++                restore_cache()
++                forward_batch.input_ids.copy_(variants[i % 2])
++                repeated = original_execute(self, forward_batch, *args, **kwargs)
++                _compare(
++                    "final_logits/repeated_runner",
++                    repeated.next_token_logits,
++                    expected["logits"],
++                )
++                for name, tensor in taps.items():
++                    _compare(f"consumer/{name}", tensor, expected["layers"][name])
++                for name, tensor in projection_taps.items():
++                    _compare(
++                        f"alternating/{name}", tensor, expected["projections"][name]
++                    )
++                _check(f"{key}/batch{count}/synchronized{i}")
++            for i in range(256):
++                expected = expected_states[i % 2]
++                restore_cache()
++                forward_batch.input_ids.copy_(variants[i % 2])
++                repeated = original_execute(self, forward_batch, *args, **kwargs)
++                _compare(
++                    "final_logits/queued_runner",
++                    repeated.next_token_logits,
++                    expected["logits"],
++                )
++                for name, tensor in taps.items():
++                    _compare(f"consumer/{name}", tensor, expected["layers"][name])
++                for name, tensor in projection_taps.items():
++                    _compare(
++                        f"alternating/{name}", tensor, expected["projections"][name]
++                    )
++            _check(f"{key}/batch{count}/queued256")
++            restore_cache()
++            forward_batch.input_ids.copy_(original_ids)
++            output = original_execute(self, forward_batch, *args, **kwargs)
++            _compare(
++                "final_logits/restored",
++                output.next_token_logits,
++                expected_states[0]["logits"],
++            )
++            _check(f"{key}/batch{count}/restored_original")
++            print(
++                f"NATIVE_REPLAY_END pid={os.getpid()} key={key} batch={count}",
++                file=sys.stderr,
++                flush=True,
++            )
++            receipt = {
++                "key": key,
++                "batch": count,
++                "synchronized": 32,
++                "queued": 256,
++                "input_ids": forward_batch.input_ids.cpu().tolist(),
++                "alternate_input_ids": alternate_ids.cpu().tolist(),
++                "input_pattern": "alternating_0_1_every_call",
++                "differing_projections": differing_projections,
++                "stale_projection_witnesses": stale_witnesses,
++                "expected_states_file": expected_path.name,
++                "positions": forward_batch.positions.cpu().tolist(),
++                "out_cache_loc": forward_batch.out_cache_loc.cpu().tolist(),
++                "seq_lens": forward_batch.seq_lens.cpu().tolist(),
++            }
++            with (
++                Path(os.environ["NATIVE_ARM_OUTPUT"])
++                / f"runner-inputs-rank{rank}.jsonl"
++            ).open("a") as file:
++                file.write(json.dumps(receipt) + "\n")
++        _compare(
++            "final_logits_finite",
++            torch.isfinite(output.next_token_logits).all().reshape(1),
++            torch.ones(1, dtype=torch.bool, device="cuda"),
++        )
++        _runner_counts[key] = count + 1
++        _check(f"serving/{key}/{count}")
++        return output
++
++    DecodeCudaGraphRunner.execute = execute

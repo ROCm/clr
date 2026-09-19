@@ -1,0 +1,37 @@
+{
+  "release": "marlowe-hip-7.2.4-native-wait-v7-rc4",
+  "clr_repository": "https://github.com/MarloweAI/clr.git",
+  "clr_commit": "85b0432bde51e66f8f79615de1022697ad59c5cf",
+  "hip_repository": "https://github.com/ROCm/HIP.git",
+  "hip_commit": "bc9af25177f96c0fea93198b89cf4c3cf08f3ea3",
+  "hip_library": "libamdhip64.so.7.2.53211-85b0432",
+  "hsa_library": "libhsa-runtime64.so.1.18.70204",
+  "architecture": "gfx950",
+  "default_enabled": false,
+  "qualified_for_production": false,
+  "hsa_sha256": "b8cdfe93d343649a35c1daf73a0a3a6840f09379ebeee9be65670461ffea43f4",
+  "build_base_image": "squashfs:sha256:43b9e7ae1e56863cd48be7af67958b8dd7ff833a907f13763883cd668a13ce06",
+  "libraries": {
+    "libamdhip64.so.7.2.53211-85b0432": "7f0b189768fbd6a4f7b3e20ff48a8297e0ee4b6965f7342f795789abd37bbd65",
+    "libhsa-runtime64.so.1.18.70204": "b8cdfe93d343649a35c1daf73a0a3a6840f09379ebeee9be65670461ffea43f4"
+  },
+  "aliases": {
+    "libamdhip64.so": "libamdhip64.so.7.2.53211-85b0432",
+    "libamdhip64.so.7": "libamdhip64.so.7.2.53211-85b0432",
+    "libhsa-runtime64.so": "libhsa-runtime64.so.1.18.70204",
+    "libhsa-runtime64.so.1": "libhsa-runtime64.so.1.18.70204"
+  },
+  "build_tools": {
+    "cmake": "cmake version 4.3.4\n\nCMake suite maintained and supported by Kitware (kitware.com/cmake).\n",
+    "/opt/rocm/llvm/bin/clang": "AMD clang version 22.0.0git (https://github.com/RadeonOpenCompute/llvm-project roc-7.2.4 26084 f58b06dce1f9c15707c5f808fd002e18c2accf7e)\nTarget: x86_64-unknown-linux-gnu\nThread model: posix\nInstalledDir: /opt/rocm-7.2.4/lib/llvm/bin\nConfiguration file: /opt/rocm-7.2.4/lib/llvm/bin/clang.cfg\n"
+  },
+  "recipe_sha256": {
+    "assemble.py": "017d62847c4190dbda3c729e96c7a630d314decc3b50ce274b2843ac3374e0d1",
+    "build.sh": "61e2f15840ebc52a340e6fc0e2cb39bd5e454ff8366b8431cd91d79d162b96ae",
+    "requirements-build.txt": "beae5b8a018405d2b5ba6a82a7565b7722d2f7550239cc258408d7251eb82473",
+    "verify.py": "70b75df5846c010a9b2a04220e3586d9c3f6eafab3e681614c9f461c6c730fc8",
+    "run": "6e012eb95741c1c14fc624c87d135b47a06d72ac94d8370e19a64eb59b39614b",
+    "ROCr-LICENSE.txt": "dac0a5360f50972cceaed16767bc9e94642aa497d558a74471e842f7192c7403",
+    "source-lock.json": "14807f971483dde28aac8667d5082403ff46a3d2c77ad15429e6c75c781e39b0"
+  }
+}

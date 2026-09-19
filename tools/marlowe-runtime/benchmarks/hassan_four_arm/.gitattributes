@@ -1,0 +1,5 @@
+# Preserve exact retained payload bytes, including upstream whitespace and the
+# unified diff's blank context lines. New adapter code uses normal checks.
+harness/client/benchmark_serving.py -whitespace
+harness/host-pointer-pinned-contract.cu.txt -whitespace
+patches/sglang-indexer-events.patch -whitespace

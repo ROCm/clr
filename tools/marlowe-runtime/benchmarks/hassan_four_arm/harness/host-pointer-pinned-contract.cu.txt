@@ -1,0 +1,51 @@
+#include <ATen/cuda/CUDAContext.h>
+#include <c10/cuda/CUDAException.h>
+#include <c10/cuda/CUDAGuard.h>
+#include <c10/util/irange.h>
+#include <cuda_runtime.h>
+
+#include <cstdint>
+#include <limits>
+#include <vector>
+
+#if !defined(USE_ROCM) && !defined(USE_MUSA)
+#include <dlfcn.h>
+#define WARP_SIZE 32
+#include "pytorch_extension_utils.h"
+#else
+#include "pytorch_extension_utils_rocm.h"
+#include "utils.h"  // WARP_SIZE
+#endif
+
+inline void* resolve_device_accessible_ptr(const at::Tensor& tensor) {
+  void* ptr = tensor.data_ptr();
+#if defined(USE_ROCM)
+  if (tensor.device().is_cpu()) {
+    void* device_ptr = nullptr;
+    C10_CUDA_CHECK(hipHostGetDevicePointer(&device_ptr, ptr, 0));
+    return device_ptr;
+  }
+#elif !defined(USE_MUSA)
+  if (tensor.device().is_cpu()) {
+    void* device_ptr = nullptr;
+    C10_CUDA_CHECK(cudaHostGetDevicePointer(&device_ptr, ptr, 0));
+    return device_ptr;
+  }
+#endif
+  return ptr;
+}
+
+#if !defined(USE_MUSA)
+int64_t get_device_accessible_ptr(const at::Tensor& tensor, int64_t device_index) {
+  TORCH_CHECK(device_index >= 0, "Target device index must be non-negative");
+  const c10::Device target_device(c10::DeviceType::CUDA, static_cast<c10::DeviceIndex>(device_index));
+  const at::cuda::OptionalCUDAGuard device_guard(target_device);
+  if (tensor.is_cuda()) {
+    TORCH_CHECK(tensor.device() == target_device, "GPU tensor must be on the target device");
+  } else {
+    TORCH_CHECK(tensor.device().is_cpu(), "Only CPU and target-device tensors are supported");
+  }
+  return reinterpret_cast<int64_t>(resolve_device_accessible_ptr(tensor));
+}
+#endif
+

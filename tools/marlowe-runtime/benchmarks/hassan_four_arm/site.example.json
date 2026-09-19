@@ -1,0 +1,12 @@
+{
+  "shared_root": "/REQUIRED/shared",
+  "output_root": "/REQUIRED/shared/new-run",
+  "sglang_root": "/REQUIRED/shared/patched-sglang",
+  "image": "/REQUIRED/shared/sglang-rocm.sqsh",
+  "runtime_archive": "/REQUIRED/shared/native-runtime.tar.gz",
+  "runtime_release": "/REQUIRED/shared/runtime-release",
+  "model": "/REQUIRED/shared/GLM-5.2-MXFP4-L10",
+  "warm_cache_archive": "/REQUIRED/shared/warm-cache-seed.tar",
+  "partition": "REQUIRED_SITE_PARTITION",
+  "job_name": "native-runtime-reproducer"
+}

@@ -1,0 +1,31 @@
+{
+  "base": "fb91baedab3e1de668d6e8f391ccd81cab9e9acd",
+  "files": {
+    "python/sglang/srt/layers/attention/dsa/dsa_indexer.py": "b7c42c9c10236946e9f8c2c87432333579cfea6852468dc1840d5dc6b5114b8f",
+    "python/sglang/srt/environ.py": "6c774f0285ceeff4bc18d1ca075b5f9b21e4856fbdb7734206385e435b4d021f",
+    "python/sglang/srt/model_executor/runner_backend/full_cuda_graph_backend.py": "37701bc27cd4a5bad1ad3942e2960373cf9b29721e339a91186144184d7d2d17",
+    "python/sglang/srt/model_executor/runner_utils/indexer_projection_schedule.py": "c9401b232180bd6e992b9de3b66bb53ca1e4351ac677d89feb3e6655666cb68b",
+    "test/registered/unit/layers/attention/test_dsa_indexer_projection_schedule.py": "eed19bfcc313b4ced3f2678e150a24a87bac0a9eb97f44fbad76497ee1393671",
+    "test/manual/test_dsa_indexer_projection_events.py": "a2f26b05d2cb94fabdc7062945bc6ff5d27ce4c6b09b865b0c053a004d839095"
+  },
+  "harness": {
+    "serving_step.sh": "6e996a48baee6f46cdf284fba8092ccdade22ab62ae88ed123a090ff417af7cd",
+    "probe_step.sh": "b8f41b06d90af02e68ea4dc52f17d0b4549ff6fea1c388050d171f136033cc71",
+    "client_entry.py": "b94efdf34f70fa4a675b854ae906e471b3f246c9cedbb51741ba8280225f4d9b",
+    "common_env.sh": "d07357eadb3d66a08727b064f072842ab940d8fe81d34d59139cbada5084d415",
+    "check_topk_witness.py": "06755a5aeb3125d8d2dbb04fccc2857552f63a45a9062c0cd0d7d929b19931bd",
+    "run_group.py": "03e4ef3300dd747edc3ae1d199902e5eb3339415ad88731e110971c6c84a1400",
+    "worker_hooks.py": "d34f0936059ce7d564a3f10433cc713f9812e59a4cfcd0254b4568eb8bedd5c2",
+    "server_entry.py": "2c61be2a504fddcbe1c02bd919e000593e6dc437116e9d765a24d674be82c8b1",
+    "runtime_standalone.sh": "fdfb75ed0b81a69cf4bf75fe6f1e95d7a137c95cb739b0d7204021159b61668c",
+    "test_host_pointer_bridge.py": "210d4b89a7bf348ed09cfb8b148ada530663f032a493d24321e37bdc1e63bf22",
+    "validate_runtime.py": "289af1be66cdc5aa5cce796be0668ee81aa58f20775a755a6f3ee3d93fd252a8",
+    "analyze_characterization.py": "aa5bae520e278041d19f14dbd0a180fd345dc91535166dfbc43ef24ecc5f695a",
+    "host_pointer_bridge.py": "0e1f9ab92d5b981478ae7abc15568bce97464751abbcc840b6482af182842cd1",
+    "dispatch_probe.py": "38079d0afe7482168a89cb8ae65cc0e33d2f554ea043b76d758ea56eac28e495",
+    "analyze_first_divergence.py": "67605586b87b30bbf6ad0767bcf1ef5724b8739c4a9d0996797f305f1bc95897",
+    "projection_repeat_probe.py": "b5ce76e1d4611bb125d04160d267573231398a4f18b122023f967a3a026e5ad9"
+  },
+  "envelope_sha256": "2271908e86c1afbf0a1a194e6ba7721c3acdc742d578f65188ccab05ab7da772",
+  "addendum_sha256": "045ae0e3fbd062bbcc52f6df8bc0eb824862f6460f4da7954c3d181f33dd2af6"
+}

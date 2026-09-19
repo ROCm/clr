@@ -1,0 +1,50 @@
+{
+  "(4, 4096, 2048)": {
+    "libtype": "flydsl",
+    "solution": 1400,
+    "config": {
+      "libtype": "flydsl",
+      "solidx": 1400,
+      "splitK": 4,
+      "us": 6.3172,
+      "kernelName": "flydsl_gemm3_abf16_wbf16_bf16_t16x64x128_split_k4_block_m_warp1_block_n_warp2_block_k_warp1_async_copyTrue_b_to_ldsTrue_b_preshuffleFalse_c_to_ldsFalse_gfx950",
+      "err_ratio": 0.0086,
+      "tflops": 10.62,
+      "bw": 2663.58
+    },
+    "input_dtype": "torch.bfloat16",
+    "weight_dtype": "torch.bfloat16",
+    "input_stride": [
+      2048,
+      1
+    ],
+    "weight_stride": [
+      2048,
+      1
+    ]
+  },
+  "(4, 128, 6144)": {
+    "libtype": "flydsl",
+    "solution": 4881,
+    "config": {
+      "libtype": "flydsl",
+      "solidx": 4881,
+      "splitK": 12,
+      "us": 4.5863,
+      "kernelName": "flydsl_gemm6_abf16_wbf16_bf16_t16x64x64_split_k12_block_m_warp1_block_n_warp2_block_k_warp1_async_copyTrue_b_to_ldsTrue_b_preshuffleFalse_c_to_ldsFalse_gfx950",
+      "err_ratio": 0.0215,
+      "tflops": 1.37,
+      "bw": 353.89
+    },
+    "input_dtype": "torch.bfloat16",
+    "weight_dtype": "torch.bfloat16",
+    "input_stride": [
+      6144,
+      1
+    ],
+    "weight_stride": [
+      6144,
+      1
+    ]
+  }
+}

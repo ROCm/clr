@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd "$(dirname "$0")" && pwd)
+if [[ $# -eq 0 ]]; then echo "Usage: $0 command [args...]" >&2; exit 2; fi
+export MARLOWE_RUNTIME_ROOT="$root"
+python3 "$root/verify.py" --files-only
+: "${GPU_NATIVE_EVENT_WAIT:=0}"
+case "$GPU_NATIVE_EVENT_WAIT" in 0|1) ;; *) echo 'GPU_NATIVE_EVENT_WAIT must be 0 or 1' >&2; exit 2 ;; esac
+export GPU_NATIVE_EVENT_WAIT
+export MARLOWE_RUNTIME_ROOT="$root"
+export LD_LIBRARY_PATH="$root/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_PRELOAD="libhsa-runtime64.so:libamdhip64.so${LD_PRELOAD:+:$LD_PRELOAD}"
+exec "$@"
