@@ -51,6 +51,41 @@ package before importing PyTorch. Record the mapped library paths, SHA-256
 values, and full control profile in every worker. Do not replace system ROCm
 libraries in place.
 
+### PyTorch bundled-library handling
+
+The retained HiSparse container can load HIP/HSA from PyTorch's own
+`/opt/venv/lib/python3.12/site-packages/torch/lib` in addition to a preloaded
+candidate. Preload alone therefore does not establish a valid comparison.
+The evaluated harness switches those bundled library paths before starting
+workers, inside a disposable writable container only. It preserves the stock
+files as `.v10-stock-backup`, verifies their hashes on every switch, and points
+the bundled paths to the frozen candidate for both candidate-off and
+candidate-on. For stock, the paths point back to the saved stock files.
+
+Each worker must map only the intended HIP/HSA identities, with the actual
+runtime controls recorded. A duplicate stock/candidate mapping invalidates the
+cohort. This is a packaging correction; the frozen runtime bytes are unchanged.
+When rolling back within that container, restore the bundled paths as well as
+removing candidate preload and controls, then start fresh workers. Recreating
+the container from the original image also restores the stock library layout.
+
+### Retained evaluation artifacts
+
+The frozen package (both libraries, aliases, and SHA-256 manifest) is retained at:
+
+```text
+# GCP workspace
+/home/sashawork/dev/amd-runtime-production/iterations/v10-e2e-qualification-20260919/package/
+# Cluster shared workspace
+/workspace/home/sasha/amd-runtime-production/iterations/v10-e2e-qualification-20260919/package/
+```
+
+The same evaluation directory contains `LATEST-REPORT.md`, `LIVE-PROGRESS.md`,
+and the `hs-full-matrix` harness/results. The container library switch is
+implemented by `hs-full-matrix/container_runtime_paths.py`. Preserve the frozen
+package when branching for further development: rebuilding or changing runtime
+sources creates a new candidate whose performance must be validated separately.
+
 Qualification is still in progress. Deployment requires completed and repeated
 microbenchmark, HiSparse C1/C4 prefetch-off/on, and standard GLM C1/C4/C16
 stock/off/on comparisons. Until those gates pass, the package is experimental.
