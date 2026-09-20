@@ -86,9 +86,11 @@ implemented by `hs-full-matrix/container_runtime_paths.py`. Preserve the frozen
 package when branching for further development: rebuilding or changing runtime
 sources creates a new candidate whose performance must be validated separately.
 
-Qualification is still in progress. Deployment requires completed and repeated
-microbenchmark, HiSparse C1/C4 prefetch-off/on, and standard GLM C1/C4/C16
-stock/off/on comparisons. Until those gates pass, the package is experimental.
+The scoped microbenchmark and simplified TP4 HiSparse evaluation is complete;
+see [audited results](V10_RESULTS.md). The user excluded standard TP8/EP8 GLM
+C1/C4/C16 runs from this evaluation. Those workloads remain unmeasured, and
+five microbenchmark cells regress. The package remains experimental and is not
+qualified for unrestricted production deployment.
 
 Rollback is process-level: stop candidate workers and restart them without the
 package preload and without candidate controls. Verify the restarted workers map
