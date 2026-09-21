@@ -55,13 +55,15 @@ cmake -S /path/to/clr -B /path/to/build-clr \
 cmake --build /path/to/build-clr --parallel 8
 ```
 
-Pair the resulting HIP library with the [matching ROCr patch and source pin](rocr/README.md).
-This companion patch is required to reproduce GPU-local signal placement.
-A supported public signal-placement interface remains an AMD design-review topic.
+Pair the resulting HIP library with the HSA library built by the
+[companion ROCr PR](https://github.com/MarloweAI/rocm-systems/pull/1), based on
+ROCm 7.2.4 source revision `97f5574fe2fdc7bef44fb01545347912ee9f1779`.
+That change is required to reproduce GPU-local signal placement. A supported
+public signal-placement interface remains an AMD design-review topic.
 
-The [graph frontier suite](../../hipamd/tests/graph_frontier/README.md) provides
+The [graph frontier suite](../tests/graph_frontier/README.md) provides
 13 bounded correctness cases and two standalone microbenchmarks. The
-[native event tests](../../hipamd/tests/native_event_wait/README.md) also include
+[native event tests](../tests/native_event_wait/README.md) also include
 a plain PyTorch counterpart. These are the focused reproductions shipped here.
 The broader validation figures below describe the recorded evaluation and are
 not the case count of this portable suite.

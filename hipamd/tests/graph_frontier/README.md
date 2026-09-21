@@ -8,7 +8,7 @@ or internal checkout. Run each process with exactly one visible GPU.
 ## Correctness checks
 
 Pass a directory containing the candidate `libamdhip64.so` and its matching
-`libhsa-runtime64.so`; see the [runtime build guide](../../../tools/marlowe-runtime/README.md).
+`libhsa-runtime64.so`; see the [runtime build guide](../../docs/graph_frontier_runtime.md).
 The runner compiles the fixtures, preloads both exact libraries in each child,
 verifies their loader paths and SHA-256 values, checks numerical results, and
 audits private-generation retirement. Each child has a 120-second timeout.
