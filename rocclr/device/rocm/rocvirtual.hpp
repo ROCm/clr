@@ -512,30 +512,22 @@ class VirtualGPU : public device::VirtualDevice {
   bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
                               const std::vector<std::string>& kernelNames,
                               amd::AccumulateCommand* vcmd = nullptr);
-  std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count, bool local) override;
-  bool resetGraphSignalArena(GraphSignalArena& arena, amd::AccumulateCommand& command) override;
+  std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count) override;
   bool graphSignalPacketsEligible(const std::vector<uint8_t*>& packets) const override;
   bool supportsGraphFrontier() const override;
   bool resetGraphSignalArenaCpu(GraphSignalArena&) override;
   std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierKernels(
       const std::vector<uint8_t*>& packets, const std::vector<uint64_t>& dependencies,
-      uint64_t completion, bool system_acquire, bool agent_release = false) override;
+      uint64_t completion, bool system_acquire) override;
   std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierJoin(
       const std::vector<uint64_t>& dependencies, uint64_t completion,
       bool system_release) override;
   void publishGraphFrontierBatch(const GraphFrontierBatch&) override;
   void importGraphFrontierPredecessor(void* ordinary_hw_event) override;
-  void materializeGraphFrontier(amd::Marker& command, uint64_t completion) override;
   void materializeGraphBoundary(amd::Marker& command,
                                 const GraphFrontierBoundary& boundary) override;
   void publishGraphFrontierPackets(const void* packets, size_t count);
 
-  bool dispatchGraphSignalPacketBatch(const std::vector<uint8_t*>& packets,
-      const std::vector<std::string>& names, amd::AccumulateCommand* command,
-      const std::vector<uint64_t>& dependencies, uint64_t completion) override;
-  bool dispatchAqlPacketBatchImpl(const std::vector<uint8_t*>& packets,
-      const std::vector<std::string>& names, amd::AccumulateCommand* command,
-      const std::vector<uint64_t>* dependencies, uint64_t completion);
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               bool attach_signal = false);
@@ -543,8 +535,7 @@ class VirtualGPU : public device::VirtualDevice {
   template <typename AqlPacket> bool dispatchGenericAqlPacketBatch(const std::vector<AqlPacket*>& packets,
                                                                    bool blocking, bool attach_signal = false,
                                                                    const std::vector<std::string>* kernelNames = nullptr,
-                                                                   bool tail_completion_only = false,
-                                                                   uint64_t graph_completion = 0);
+                                                                   bool tail_completion_only = false);
 
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);

@@ -1515,7 +1515,6 @@ class AccumulateCommand : public Command {
 // launch only when transferred into the submission batch. There is no cycle.
 class GraphFrontierMarker final : public Marker {
   std::atomic<Command*> owner_{nullptr};
-  uint64_t frontier_ = 0;
   const device::VirtualDevice::GraphFrontierBoundary* boundary_ = nullptr;
   static void completed(cl_event, cl_int status, void* data) {
     auto* self = static_cast<GraphFrontierMarker*>(data);
@@ -1530,13 +1529,12 @@ class GraphFrontierMarker final : public Marker {
     assert(owner_ == nullptr && owner.graphFrontier() != 0);
     owner.retain();
     owner_.store(&owner);
-    frontier_ = owner.graphFrontier();
     boundary_ = owner.graphBoundary();
+    assert(boundary_ != nullptr && !boundary_->tails.empty());
   }
   bool consumesGraphFrontier() const override { return true; }
   void submit(device::VirtualDevice& device) override {
-    if (boundary_ != nullptr) device.materializeGraphBoundary(*this, *boundary_);
-    else device.materializeGraphFrontier(*this, frontier_);
+    device.materializeGraphBoundary(*this, *boundary_);
   }
   void releaseResources() override {
     // A failed completion is not proof that the private waiter drained. Keep

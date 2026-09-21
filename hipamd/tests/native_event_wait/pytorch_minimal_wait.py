@@ -34,7 +34,6 @@ torch.cuda.init()
 libraries = sorted({line.split()[-1] for line in Path('/proc/self/maps').read_text().splitlines()
                     if 'libamdhip64.so' in line or 'libhsa-runtime64.so' in line})
 print(json.dumps({'torch': torch.__version__, 'compiled_hip': torch.version.hip,
-                  'enabled': os.environ.get('GPU_NATIVE_EVENT_WAIT', '0'),
                   'libraries': libraries}), file=sys.stderr)
 compute, side = torch.cuda.Stream(), torch.cuda.Stream()
 value = torch.zeros(1, device='cuda', dtype=torch.int32)

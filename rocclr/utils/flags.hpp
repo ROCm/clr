@@ -149,42 +149,12 @@ release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
 release(bool, GPU_NATIVE_EVENT_TRACE, false,                                 \
         "Trace native event counts at queue destruction")                     \
-release(bool, GPU_NATIVE_EVENT_WAIT, false,                                  \
-        "Experimental gfx950 native event pre-wait")                          \
-release(bool, GPU_GRAPH_NODE_COUNT_PLACEMENT, false,                         \
-        "Place longer graph segments first without changing enqueue order")  \
-release(bool, GPU_GRAPH_DIAGNOSTIC_SPARE, true,                               \
-        "Diagnostic control for the existing optional graph spare stream")   \
-release(bool, GPU_GRAPH_DIAGNOSTIC_QUALIFIED_SPARE, false,                    \
-        "Restrict optional spare to qualified kernel or placement graphs")   \
-release(bool, GPU_GRAPH_DIAGNOSTIC_LOGICAL_COALESCE, false,                  \
-        "Diagnostic: place eligible flat kernel graph on its launch stream") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_SHARED_RETIRE, false,                    \
-        "Diagnostic: one accumulator for a coalesced flat kernel graph")      \
-release(bool, GPU_GRAPH_DIAGNOSTIC_LANE_RETIRE, false,                      \
-        "Diagnostic: share captured-kernel retirement within logical lanes") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_COVERED_TAIL, false,                                          \
-        "Diagnostic: omit success-only final side waits already covered by explicit graph ancestry") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_FUSE_DEPS, false,                         \
-        "Diagnostic: import graph dependencies in the next captured batch")  \
 release(uint, GPU_GRAPH_DIAGNOSTIC_KERNEL_RETIRE_FAIL_AFTER_PACKETS, 0,       \
         "Diagnostic: fail a final-kernel batch after a published prefix.")    \
 release(uint, GPU_GRAPH_DIAGNOSTIC_FRONTIER_MAX_GENERATIONS, 1024,          \
         "Diagnostic: tighten the graph frontier resource cap (1 through 1024)") \
 release(bool, GPU_GRAPH_DIAGNOSTIC_FRONTIER_TIMESTAMPS, false,              \
         "Diagnostic: read completed private graph kernel dispatch timestamps") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_FRONTIER_DISTRIBUTED, false,             \
-        "Diagnostic: direct physical-queue graph tails and public bridge")    \
-release(bool, GPU_GRAPH_DIAGNOSTIC_FRONTIER, false,                         \
-        "Diagnostic: private GPU graph completion with deferred host retirement") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_LOCAL_SIGNALS, false,                    \
-        "Diagnostic: graph-owned GPU-local dependency signals")             \
-release(bool, GPU_GRAPH_DIAGNOSTIC_LOCAL_SIGNAL_HOST, false,                \
-        "Diagnostic: matched host backing for graph-owned signals")          \
-release(bool, GPU_GRAPH_DIAGNOSTIC_KERNEL_RETIRE, false,                     \
-        "Diagnostic: retire an ordered captured region on its final kernel.") \
-release(bool, GPU_GRAPH_DIAGNOSTIC_FUSE_FINAL, false,                        \
-        "Diagnostic: join graph side tails in the final completion marker")  \
 release(uint, GPU_GRAPH_DIAGNOSTIC_LANE_FAIL_AFTER, 0,                      \
         "Diagnostic: fail after this many published lane-retirement segments") \
 release(bool, GPU_GRAPH_DIAGNOSTIC_QUEUE_TRACE, false,                        \
@@ -295,7 +265,7 @@ release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
         "Forces the number of streams for the graph parallel execution")      \
 release(uint, DEBUG_HIP_GRAPH_BATCH_SIZE, 256,                                \
         "Number of graph nodes to batch at a time")                           \
-release(uint, DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING, 1,                          \
+release(uint, DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING, 2,                          \
         "0 = Disable, 1 = Enable, 2 = Force")                                 \
 release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
         "Blocks synchronization on CPU until the callback processing is done")\

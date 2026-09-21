@@ -267,7 +267,7 @@ class GraphNode : public hipGraphNodeDOTAttribute {
     for (auto& command : commands_) {
       // Bind executable ownership to the exact captured packet, not mutable
       // kernelParams_ which a later exec update may replace before recapture.
-      if (GPU_GRAPH_DIAGNOSTIC_FRONTIER && command->type() == CL_COMMAND_NDRANGE_KERNEL) {
+      if (command->type() == CL_COMMAND_NDRANGE_KERNEL) {
         auto& kernel = const_cast<amd::Kernel&>(
             static_cast<amd::NDRangeKernelCommand*>(command)->kernel());
         kernel.retain();
@@ -1007,14 +1007,10 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
   bool TopologicalOrder() { return Graph::TopologicalOrder(topoOrder_); }
   //! Update streams for the graph execution with launch stream from application
   void UpdateStreams(hip::Stream* launch_stream);
-  bool CanCoalesce(hip::Stream* launch_stream) const;
   bool CanUseGraphSignals(hip::Stream* launch_stream,
                           std::unordered_map<int, hip::Stream*>& assignment);
-  hipError_t RunGraphSignals(hip::Stream* launch_stream,
-                            const std::unordered_map<int, hip::Stream*>& assignment);
   hipError_t RunGraphFrontier(hip::Stream* launch_stream,
                              const std::unordered_map<int, hip::Stream*>& assignment);
-  static void ReleaseGraphSignalLaunch(cl_event event, cl_int status, void* data);
   bool NotifyGraphFrontiers();  // Initiate ordinary retirement before public destruction.
   //! Find the number of streams required per device for multi-device graph execution
   //! This method analyzes the stream-to-device mappings and recursively processes
@@ -1047,7 +1043,6 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
   bool repeatLaunch_ = false;
   //!< Track last launch stream to avoid redundant UpdateStreams
   hip::Stream* lastLaunchStream_ = nullptr;
-  bool streams_coalesced_ = false;  // Actual cached logical mapping, not eligibility.
 
   // PacketBatch structure
   struct PacketBatch {
@@ -1099,18 +1094,13 @@ class GraphExec : public amd::ReferenceCountedObject, public Graph {
     bool busy = false;
     bool quarantined = false;
   };
-  struct GraphSignalLaunch {
-    GraphExec* graph;
-    GraphSignalGeneration* generation;
-    uint64_t serial;
-  };
   // CPU lowering is serialized, never GPU execution. The callback takes only
   // pool_mutex_, and releases all references after dropping that lock.
   std::mutex graph_signal_launch_mutex_;
   std::mutex graph_signal_pool_mutex_;
   std::vector<std::unique_ptr<GraphSignalGeneration>> graph_signal_generations_;
   uint64_t graph_signal_launch_serial_ = 0;
-  GraphSignalGeneration* AcquireGraphSignalGeneration(hip::Stream* stream, size_t count = 0,
+  GraphSignalGeneration* AcquireGraphSignalGeneration(hip::Stream* stream, size_t count,
                                                        bool* capacity_exhausted = nullptr);
 };
 

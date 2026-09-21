@@ -73,7 +73,7 @@ int main() {
   release.join();
   HIP(hipStreamSynchronize(consumer)); HIP(hipStreamSynchronize(producer));
   unsigned actual=0; HIP(hipMemcpy(&actual,value,sizeof(actual),hipMemcpyDeviceToHost));
-  std::printf("POOL_PRESSURE mode=%s count=%d pending=%u watchdog=%d enqueue_ms=%.6f max_submit_ms=%.6f slowest=%d actual=%u\n",std::getenv("GPU_NATIVE_EVENT_WAIT"),count,pending,int(watchdog.load()),enqueue_ms,max_submit_ms,slowest,actual);
+  std::printf("POOL_PRESSURE mode=%s count=%d pending=%u watchdog=%d enqueue_ms=%.6f max_submit_ms=%.6f slowest=%d actual=%u\n","automatic",count,pending,int(watchdog.load()),enqueue_ms,max_submit_ms,slowest,actual);
   HIP(hipEventDestroy(ready)); HIP(hipStreamDestroy(consumer)); HIP(hipStreamDestroy(producer));
   HIP(hipFree(value)); HIP(hipHostFree(host_gate));
   if(actual!=count) return 6;

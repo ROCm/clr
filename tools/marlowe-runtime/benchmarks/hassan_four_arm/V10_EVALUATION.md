@@ -1,5 +1,9 @@
 # Frozen V10 evaluation profile
 
+This document records the historical binaries and their controls. The current
+branch provides [one enabled runtime configuration](../../README.md); the old
+on/off and central-diagnostic selectors below do not apply to new builds.
+
 This directory is an unchanged copy of Hassan's four-arm reproducer at commit
 `b8a96bb4d842f628142e417ebb6753d4492bcaff`. The reproducer's bundled runtime
 recipe describes its historical experiment. It was not used to build or select
@@ -36,13 +40,17 @@ GPU_NATIVE_EVENT_TRACE=0
 GPU_GRAPH_DIAGNOSTIC_FRONTIER_TIMESTAMPS=0
 ```
 
-Feature-off uses the same candidate libraries with native wait, node-count
-placement, lane retirement, covered-tail fusion, qualified spare, kernel
-retirement, local signals, frontier, and distributed-frontier controls set to
-zero. It sets `DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING=1`. Feature-off is therefore
-not the stock ROCm runtime. The central diagnostic profile is also not
-feature-off: it keeps the candidate-on profile and changes only
-`GPU_GRAPH_DIAGNOSTIC_FRONTIER_DISTRIBUTED=0`.
+The historical V10 feature-off measurements use the same candidate libraries
+with native wait, node-count placement, lane retirement, covered-tail fusion,
+dependency fusion (`GPU_GRAPH_DIAGNOSTIC_FUSE_DEPS`), final fusion
+(`GPU_GRAPH_DIAGNOSTIC_FUSE_FINAL`), qualified spare, kernel retirement, local
+signals, frontier, and distributed-frontier controls set to zero. They set
+`DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING=1` and retain
+`GPU_GRAPH_DIAGNOSTIC_SPARE=1`. This profile therefore includes the optional
+spare stream and is not the stock ROCm runtime.
+
+The central diagnostic profile is also not feature-off: it keeps the candidate-on
+profile and changes only `GPU_GRAPH_DIAGNOSTIC_FRONTIER_DISTRIBUTED=0`.
 
 ## Deployment and rollback
 
@@ -96,3 +104,16 @@ Rollback is process-level: stop candidate workers and restart them without the
 package preload and without candidate controls. Verify the restarted workers map
 the stock image's HIP and HSA libraries. Do not change libraries in a live
 process, and do not describe candidate feature-off as stock rollback.
+
+## Signal lifetime and failure handling
+
+Graph-local signals require the pinned HIP/HSA pair above. Verify both mapped
+library hashes; the private ROCr attributes select the measured signal storage
+policy and are not a portable HSA interface.
+
+A successful ordinary completion allows graph signal generations to be reused.
+An asynchronous error is not proof that GPU readers have stopped, so affected
+generations and their owners remain retained instead of being recycled. The pool
+is capped at 1,024 generations per executable; exhaustion falls back to the
+ordinary submission path before any private packets are published. Recovery from
+an error that leaves retained storage requires restarting the worker.

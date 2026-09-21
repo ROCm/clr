@@ -2579,23 +2579,6 @@ bool KernelBlitManager::streamOpsWait(device::Memory& memory, uint64_t value, si
 }
 
 // ================================================================================================
-bool KernelBlitManager::resetGraphSignals(const uint64_t* handles, uint32_t count) const {
-  amd::ScopedLock lock(lockXferOps_);
-  if (handles == nullptr || count == 0 || kernels_[GraphSignalReset] == nullptr) return false;
-  size_t offset[1] = {0};
-  size_t global[1] = {(static_cast<size_t>(count) + 63) & ~size_t(63)};
-  size_t local[1] = {64};
-  setArgument(kernels_[GraphSignalReset], 0, sizeof(cl_mem), handles, 0, nullptr, true);
-  setArgument(kernels_[GraphSignalReset], 1, sizeof(count), &count);
-  amd::NDRangeContainer range(1, offset, global, local);
-  address parameters = captureArguments(kernels_[GraphSignalReset]);
-  if (parameters == nullptr) return false;
-  bool result = gpu().submitKernelInternal(range, *kernels_[GraphSignalReset], parameters, nullptr);
-  releaseArguments(parameters);
-  // No synchronous blit fence. The caller appends ordinary GPU retirement.
-  return result;
-}
-
 bool KernelBlitManager::batchMemOps(const void* paramArray, size_t paramSize,
                                     uint32_t count) const {
   amd::ScopedLock k(lockXferOps_);

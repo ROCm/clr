@@ -162,18 +162,6 @@ const char* BlitLinearSourceCode = BLIT_KERNELS(
       __amd_copyBufferRectAligned(src, dst, srcRect, dstRect, size);
     }
 
-    __kernel void __amd_rocclr_graphSignalReset(__global const ulong* handles, uint count) {
-      uint i = __builtin_amdgcn_workgroup_id_x() * 64 + __builtin_amdgcn_workitem_id_x();
-      if (i < count) {
-        // Private ROCr SharedSignal ABI: value at8, start/end timestamps at32/40.
-        // Ownership fields are never overwritten and no host reader is active.
-        __global volatile ulong* signal = (__global volatile ulong*)handles[i];
-        signal[1] = 1;
-        signal[4] = 0;
-        signal[5] = 0;
-      }
-    }
-
     __kernel void __amd_rocclr_batchMemOp(__global void* params, uint count) {
       __amd_batchMemOp(params, count);
     });

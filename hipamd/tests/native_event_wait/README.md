@@ -1,6 +1,6 @@
 # Pending event interference on gfx950
 
-These standalone reproducers submit the same graph of2,048 increments in three
+These standalone reproducers submit the same graph of 2,048 increments in three
 cases: no waiter, a pending event waited by an otherwise empty side stream, and
 an already-completed event waited by that stream. Every measured replay checks
 producer output. The Python version uses ordinary PyTorch streams, events and
@@ -17,15 +17,16 @@ HIP runtime despite LD_LIBRARY_PATH. For the tested ROCm7.2.4 image, use both
 `LD_PRELOAD=libhsa-runtime64.so:libamdhip64.so` and an LD_LIBRARY_PATH with the
 candidate runtime directory first. Inspect the Python stderr library receipt.
 
-Run the identical executable/script in separate processes with
-`GPU_NATIVE_EVENT_WAIT=0` and `GPU_NATIVE_EVENT_WAIT=1`, alternating order across
-repeats. Leave GPU_MAX_HW_QUEUES at its default. Do not enable trace logging in
+Run the identical executable/script in separate stock-runtime and candidate-runtime
+processes, alternating order across repeats. The candidate enables eligible native
+prewaits automatically; the removed `GPU_NATIVE_EVENT_WAIT` variable has no effect.
+Leave GPU_MAX_HW_QUEUES at its default. Do not enable trace logging in
 clean timing runs. Keep the CPU query proving that the producer is still pending
 before submitting its external waiter; completed-event cases do not exercise
 the problem. A reduced difference is a mitigation result, not zero-cost waiting
 or a prediction of full-model throughput.
 
-This release backport is default-off and gfx950-only. It retains the original
+Native prewaits in this release are automatic for eligible HIP waits on gfx950. It retains the original
 AQL dependency packet after a native prewait. IRQ-backed signal layout and PM4
 encoding follow ROCr internals and require an AMD-owned supported interface for
 broader deployment. Do not treat this test alone as production qualification.
@@ -39,9 +40,8 @@ uses one visible GPU and prints the actual HIP/HSA mappings. Compile with:
 
 ```
 hipcc -O2 -std=c++17 -pthread --offload-arch=gfx950 native_pool_pressure.cpp -o native_pool_pressure
-GPU_NATIVE_EVENT_WAIT=1 <release>/run ./native_pool_pressure
+<release>/run ./native_pool_pressure
 ```
 
-The original RC3 runtime needs watchdog release at the second native instruction
-pool rotation; its disabled mode completes submission while the event is pending.
-The optional native path must fall back to AQL when an instruction chunk is busy.
+The native path must fall back to AQL when an instruction chunk is busy.
+The watchdog checks that this fallback preserves enqueue progress.

@@ -1338,18 +1338,10 @@ class VirtualDevice : public amd::ReferenceCountedObject {
     virtual bool dispatchTiming(size_t, uint64_t&, uint64_t&, uint64_t&) const { return false; }
     virtual ~GraphSignalArena() = default;
   };
-  virtual std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count, bool local) {
+  virtual std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count) {
     return nullptr;
   }
-  virtual bool resetGraphSignalArena(GraphSignalArena& arena, amd::AccumulateCommand& command) {
-    return false;
-  }
   virtual bool graphSignalPacketsEligible(const std::vector<uint8_t*>& packets) const {
-    return false;
-  }
-  virtual bool dispatchGraphSignalPacketBatch(const std::vector<uint8_t*>& packets,
-      const std::vector<std::string>& names, amd::AccumulateCommand* command,
-      const std::vector<uint64_t>& dependencies, uint64_t completion) {
     return false;
   }
   // Prepared private graph packets have no ordinary host completion. The caller
@@ -1367,13 +1359,12 @@ class VirtualDevice : public amd::ReferenceCountedObject {
   virtual bool resetGraphSignalArenaCpu(GraphSignalArena&) { return false; }
   virtual std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierKernels(
       const std::vector<uint8_t*>& packets, const std::vector<uint64_t>& dependencies,
-      uint64_t completion, bool system_acquire, bool agent_release = false) { return nullptr; }
+      uint64_t completion, bool system_acquire) { return nullptr; }
   virtual std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierJoin(
       const std::vector<uint64_t>& dependencies, uint64_t completion,
       bool system_release) { return nullptr; }
   virtual void publishGraphFrontierBatch(const GraphFrontierBatch&) { std::abort(); }
   virtual void importGraphFrontierPredecessor(void* ordinary_hw_event) { std::abort(); }
-  virtual void materializeGraphFrontier(amd::Marker&, uint64_t) { std::abort(); }
   virtual void materializeGraphBoundary(amd::Marker&, const GraphFrontierBoundary&) {
     std::abort();
   }
