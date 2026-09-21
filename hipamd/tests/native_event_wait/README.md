@@ -40,8 +40,13 @@ uses one visible GPU and prints the actual HIP/HSA mappings. Compile with:
 
 ```
 hipcc -O2 -std=c++17 -pthread --offload-arch=gfx950 native_pool_pressure.cpp -o native_pool_pressure
-<release>/run ./native_pool_pressure
+LD_LIBRARY_PATH=/path/to/candidate/lib:/opt/rocm/lib \
+LD_PRELOAD=/path/to/candidate/lib/libhsa-runtime64.so:/path/to/candidate/lib/libamdhip64.so \
+HIP_VISIBLE_DEVICES=0 ./native_pool_pressure
 ```
 
 The native path must fall back to AQL when an instruction chunk is busy.
 The watchdog checks that this fallback preserves enqueue progress.
+
+The [graph frontier runner](../graph_frontier/README.md) includes this check and
+verifies the selected libraries automatically.

@@ -19,7 +19,7 @@ __global__ void hold(volatile unsigned* gate) {
 __global__ void increment(unsigned* value) { ++*value; }
 int main() {
   int devices=0, version=0; HIP(hipGetDeviceCount(&devices)); HIP(hipRuntimeGetVersion(&version));
-  if(devices!=1 || version!=70253211) return 3;
+  if(devices!=1) return 3;
   std::set<std::string> hip_paths,hsa_paths;
   std::ifstream maps("/proc/self/maps"); std::string line;
   while(std::getline(maps,line)) {

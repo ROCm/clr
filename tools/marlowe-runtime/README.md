@@ -40,15 +40,40 @@ container-local PyTorch library links. There is no feature-off runtime profile.
 The package remains experimental; enabling it is a choice made by loading the
 package.
 
-## Measurements
+## Build and reproduce
 
-[Historical V10 results](benchmarks/hassan_four_arm/V10_RESULTS.md) cover the
-identified frozen binaries, including the earlier GLM TP4 study. Their old
-on/off and central-diagnostic controls describe those historical binaries only;
-see the [archived evaluation profile](benchmarks/hassan_four_arm/V10_EVALUATION.md).
-New builds have distinct library hashes and require their own validation.
+Build this CLR checkout for HIP with the ROCm 7.2.4 toolchain and HIP headers at
+`bc9af25177f96c0fea93198b89cf4c3cf08f3ea3`:
 
-## Current-build validation
+```sh
+cmake -S /path/to/clr -B /path/to/build-clr \
+  -DCLR_BUILD_HIP=ON -DCLR_BUILD_OCL=OFF -DHIP_PLATFORM=amd \
+  -D__HIP_ENABLE_PCH=OFF -DHIP_COMMON_DIR=/path/to/HIP \
+  -DCMAKE_PREFIX_PATH=/opt/rocm -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_C_COMPILER=/opt/rocm/llvm/bin/clang \
+  -DCMAKE_CXX_COMPILER=/opt/rocm/llvm/bin/clang++
+cmake --build /path/to/build-clr --parallel 8
+```
+
+Pair the resulting HIP library with the [matching ROCr patch and source pin](rocr/README.md).
+This companion patch is required to reproduce GPU-local signal placement.
+A supported public signal-placement interface remains an AMD design-review topic.
+
+The [graph frontier suite](../../hipamd/tests/graph_frontier/README.md) provides
+13 bounded correctness cases and two standalone microbenchmarks. The
+[native event tests](../../hipamd/tests/native_event_wait/README.md) also include
+a plain PyTorch counterpart. These are the focused reproductions shipped here.
+The broader validation figures below describe the recorded evaluation and are
+not the case count of this portable suite.
+
+## Historical workload evidence
+
+Earlier GLM TP4 and microbenchmark measurements remain available in the
+[immutable V10 report](https://github.com/MarloweAI/clr/blob/875d0cb00c70a6ddc0f13e84028795b94d73ea59/tools/marlowe-runtime/benchmarks/hassan_four_arm/V10_RESULTS.md)
+and its [binary profile](https://github.com/MarloweAI/clr/blob/875d0cb00c70a6ddc0f13e84028795b94d73ea59/tools/marlowe-runtime/benchmarks/hassan_four_arm/V10_EVALUATION.md).
+Those measurements apply to the identified historical binaries.
+
+## Recorded validation
 
 On MI355X with ROCm 7.2.4, the default configuration passes 73 bounded
 HIP/PyTorch correctness checks. A 329-cell microbenchmark comparison across four
@@ -61,4 +86,17 @@ The measured HIP SHA-256 is
 `c10f29781e9e4007a102bb93f767870a2d1506fd3032a8f634ac881b5a10c681`;
 the matched HSA SHA-256 is
 `2899f94063127a3c6d0bbba0e5c5c54cab3256499f2f0183f6a53631b5fdad12`.
-These checks do not include new full-model runs.
+The bundled portable suite also passes on a fresh build of this source: all
+13 correctness cases and 864 timing rows across two alternating stock/candidate
+rounds. That build has HIP SHA-256
+`a2e735d5bcae61e22198e040b3aa03704f02dc0fd06136270349392349e4f505`
+and the same matched HSA. These checks do not include new full-model runs.
+
+## AMD review scope
+
+This is a runtime prototype for technical review. The private ROCr attributes
+and native packet encoding need an AMD-supported interface. Validation covers
+Linux x86-64 and MI355X; other devices and operating systems remain unqualified.
+Shared physical queues saturated behind host-controlled waits need additional
+forward-progress validation because frontier submission holds multiple queue
+locks. The bounded host-fed capacity test does not cover every such sequence.

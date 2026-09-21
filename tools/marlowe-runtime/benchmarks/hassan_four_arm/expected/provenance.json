@@ -1,8 +1,0 @@
-{
-  "original_result_sha256": "81949e61ac030500d47a1d7c0151aa49491c62d5537705567570746a492c4dbd",
-  "portable_result_sha256": "aa3f7e3176553e2db6fcb19c5fb48bfb50a9ee991c3bc513941fa6fef179e26a",
-  "relocation": "Only absolute group-path prefixes are replaced with raw/. Numerical values, raw identity hashes and historical validity remain unchanged.",
-  "raw_files": 2312,
-  "raw_bytes": 2365227522,
-  "original_raw_manifest_sha256": "2a978bab6bdd33f2a23dce214fff2516169f2fad49b8f32227baf98e2b438132"
-}

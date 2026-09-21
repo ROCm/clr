@@ -226,7 +226,6 @@ class BlitManager : public amd::HeapObject {
       device::Memory& memory,  //!< Memory contents to compare the 'value' against
       uint64_t value, size_t offset, size_t sizeBytes, uint64_t flags, uint64_t mask) const = 0;
 
-
   //! Stream batch memory operation
   virtual bool batchMemOps(const void* paramArray, size_t paramSize, uint32_t count) const = 0;
 
