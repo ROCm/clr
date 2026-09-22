@@ -1616,6 +1616,9 @@ hipError_t hipGraphExecDestroy(hipGraphExec_t pGraphExec) {
     HIP_RETURN(hipErrorInvalidValue);
   }
   hip::GraphExec* ge = reinterpret_cast<hip::GraphExec*>(pGraphExec);
+  if (!ge->NotifyGraphFrontiers()) {
+    HIP_RETURN(hipErrorLaunchOutOfResources);
+  }
   ge->release();
   amd::ScopedLock lock(GraphExec::graphExecSetLock_);
   GraphExec::graphExecSet_.erase(ge);

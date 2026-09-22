@@ -50,6 +50,7 @@
 #include <vector>
 #include <map>
 #include <mutex>
+#include <memory>
 #include <list>
 #include <set>
 #include <unordered_set>
@@ -1329,6 +1330,44 @@ class VirtualDevice : public amd::ReferenceCountedObject {
   virtual bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
                                       const std::vector<std::string>& kernelNames,
                                       amd::AccumulateCommand* vcmd = nullptr) = 0 ;
+  // Internal graph dependency storage. It must never become a Command::HwEvent.
+  class GraphSignalArena {
+   public:
+    std::vector<uint64_t> handles;
+    // Diagnostic only, after ordinary GPU retirement and before arena reuse.
+    virtual bool dispatchTiming(size_t, uint64_t&, uint64_t&, uint64_t&) const { return false; }
+    virtual ~GraphSignalArena() = default;
+  };
+  virtual std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count) {
+    return nullptr;
+  }
+  virtual bool graphSignalPacketsEligible(const std::vector<uint8_t*>& packets) const {
+    return false;
+  }
+  // Prepared private graph packets have no ordinary host completion. The caller
+  // owns all token/argument lifetimes and holds execution() while publishing.
+  class GraphFrontierBatch {
+   public:
+    virtual ~GraphFrontierBatch() = default;
+  };
+  struct GraphFrontierTail { uint64_t queue; uint64_t signal; };
+  struct GraphFrontierBoundary {
+    const amd::Device* device = nullptr;
+    std::vector<GraphFrontierTail> tails;
+  };
+  virtual bool supportsGraphFrontier() const { return false; }
+  virtual bool resetGraphSignalArenaCpu(GraphSignalArena&) { return false; }
+  virtual std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierKernels(
+      const std::vector<uint8_t*>& packets, const std::vector<uint64_t>& dependencies,
+      uint64_t completion, bool system_acquire) { return nullptr; }
+  virtual std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierJoin(
+      const std::vector<uint64_t>& dependencies, uint64_t completion,
+      bool system_release) { return nullptr; }
+  virtual void publishGraphFrontierBatch(const GraphFrontierBatch&) { std::abort(); }
+  virtual void importGraphFrontierPredecessor(void* ordinary_hw_event) { std::abort(); }
+  virtual void materializeGraphBoundary(amd::Marker&, const GraphFrontierBoundary&) {
+    std::abort();
+  }
   //! Returns the number of outstanding HSA async handlers
   std::atomic<uint64_t>& QueuedAsyncHandlers() const { return queued_async_handlers_; }
 

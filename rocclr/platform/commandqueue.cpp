@@ -143,6 +143,13 @@ bool HostQueue::terminate() {
 
 void HostQueue::FlushSubmissionBatch() {
   if (size_ > DEBUG_CLR_MAX_BATCH_SIZE) {
+    if (lastEnqueueCommand_ != nullptr &&
+        lastEnqueueCommand_->graphFrontier() != 0) {
+      auto* bridge = lastEnqueueCommand_->takeGraphFrontierBridge();
+      bridge->enqueue();
+      bridge->release();
+      return;
+    }
     auto marker = new Marker(*this, false);
     if (marker != nullptr) {
       marker->enqueue();

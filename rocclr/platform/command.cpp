@@ -354,6 +354,21 @@ void Command::releaseResources() {
 }
 
 // ================================================================================================
+void Command::materializeGraphPredecessor(bool distributed_only) {
+  assert(queue_ != nullptr);
+  if (defersGraphRetirement() || consumesGraphFrontier()) return;
+  auto* predecessor = queue_->getLastQueuedCommand(false);
+  if (predecessor != nullptr && predecessor->graphFrontier() != 0 &&
+      (!distributed_only || predecessor->graphBoundary() != nullptr)) {
+    auto* bridge = predecessor->takeGraphFrontierBridge();
+    assert(bridge != nullptr);
+    // Recursive execution lock, empty event wait list, no notify_lock. This
+    // must also run before captured packets that bypass Command::enqueue.
+    bridge->enqueue();
+    bridge->release();
+  }
+}
+
 void Command::enqueue() {
   assert(queue_ != NULL && "Cannot be enqueued");
 
@@ -387,11 +402,12 @@ void Command::enqueue() {
     // The batch update must be lock protected to avoid a race condition
     // when multiple threads submit/flush/update the batch at the same time
     ScopedLock sl(queue_->vdev()->execution());
+    materializeGraphPredecessor();
     queue_->FormSubmissionBatch(this);
 
     // Enqueue flushes, except profiling markers to avoid frequent expensive callbacks
     if (((type() == 0) && profilingInfo().batch_flush_) || (type() == CL_COMMAND_MARKER) ||
-        (type() == CL_COMMAND_TASK)) {
+        ((type() == CL_COMMAND_TASK) && !defersGraphRetirement())) {
       // The current HSA signal tracking logic requires profiling enabled for the markers
       EnableProfiling();
       // Update batch head for the current marker. Hence the status of all commands can be

@@ -385,6 +385,19 @@ class Command : public Event {
    */
   virtual void submit(device::VirtualDevice& device) = 0;
 
+  // A private graph completion is never an HwEvent. It only chains GPU graph
+  // launches; ordinary submission consumes a preallocated public bridge first.
+  virtual uint64_t graphFrontier() const { return 0; }
+  virtual const device::VirtualDevice::GraphFrontierBoundary* graphBoundary() const {
+    return nullptr;
+  }
+  virtual bool defersGraphRetirement() const { return false; }
+  virtual bool consumesGraphFrontier() const { return false; }
+  virtual Command* takeGraphFrontierBridge() { return nullptr; }
+  // Caller holds this HostQueue virtual-device execution lock.
+  void materializeGraphPredecessor(bool distributed_only = false);
+
+
   //! Release the resources associated with this event.
   virtual void releaseResources();
 
@@ -1394,6 +1407,20 @@ class AccumulateCommand : public Command {
   //! Kernel names and timestamps list for activity profiling
   std::vector<std::string> kernelNames_;
   const std::vector<std::string>* kernelNamesRef_ = nullptr;
+  // Separate from eventWaitList: import only once, retain through GPU retirement.
+  Event* graph_entry_event_ = nullptr;
+  bool graph_entry_pending_ = false;
+  // Graph-internal waits are imported once at the next captured batch. Keep
+  // their command references through the consumer region's GPU retirement.
+  EventWaitList graph_dependencies_;
+  size_t graph_dependency_begin_ = 0;
+  // Borrowed only across the immediate synchronous seal/enqueue call. GraphExec
+  // owns the captured packet/name vectors until after all submissions complete.
+  const std::vector<uint8_t*>* graph_retirement_packets_ = nullptr;
+  const std::vector<std::string>* graph_retirement_names_ = nullptr;
+  bool graph_kernel_retirement_requested_ = false;
+  bool graph_kernel_retirement_submitting_ = false;
+  bool graph_kernel_retirement_failed_ = false;
   std::vector<std::pair<uint64_t, uint64_t>> tsList_;
 
  public:
@@ -1401,6 +1428,63 @@ class AccumulateCommand : public Command {
   AccumulateCommand(HostQueue& queue, const EventWaitList& eventWaitList = nullWaitList,
                     const Event* waitingEvent = nullptr)
       : Command(queue, CL_COMMAND_TASK, eventWaitList, 0, waitingEvent) {}
+
+  void setGraphEntryEvent(Event* event) {
+    assert(graph_entry_event_ == nullptr && event != nullptr);
+    event->retain();
+    graph_entry_event_ = event;
+    graph_entry_pending_ = true;
+  }
+  Event* pendingGraphEntryEvent() const {
+    return graph_entry_pending_ ? graph_entry_event_ : nullptr;
+  }
+  void consumeGraphEntryEvent() { graph_entry_pending_ = false; }
+  void appendGraphDependencies(const EventWaitList& events) {
+    assert(graph_dependency_begin_ == graph_dependencies_.size());
+    for (auto* event : events) {
+      event->retain();
+      graph_dependencies_.push_back(event);
+    }
+  }
+  const EventWaitList& graphDependencies() const { return graph_dependencies_; }
+  size_t graphDependencyBegin() const { return graph_dependency_begin_; }
+  void consumeGraphDependencies() { graph_dependency_begin_ = graph_dependencies_.size(); }
+  void requestGraphKernelRetirement() {
+    assert(graph_retirement_packets_ == nullptr);
+    graph_kernel_retirement_requested_ = true;
+  }
+  bool graphKernelRetirementRequested() const { return graph_kernel_retirement_requested_; }
+  void clearGraphKernelRetirementRequest() { graph_kernel_retirement_requested_ = false; }
+  void deferGraphKernelRetirement(const std::vector<uint8_t*>* packets,
+                                  const std::vector<std::string>* names) {
+    assert(graph_retirement_packets_ == nullptr && packets != nullptr && names != nullptr);
+    graph_retirement_packets_ = packets;
+    graph_retirement_names_ = names;
+  }
+  const std::vector<uint8_t*>* graphRetirementPackets() const { return graph_retirement_packets_; }
+  const std::vector<std::string>* graphRetirementNames() const { return graph_retirement_names_; }
+  void takeGraphKernelRetirement() {
+    graph_retirement_packets_ = nullptr;
+    graph_retirement_names_ = nullptr;
+    graph_kernel_retirement_requested_ = false;
+    graph_kernel_retirement_submitting_ = true;
+  }
+  bool graphKernelRetirementSubmitting() const { return graph_kernel_retirement_submitting_; }
+  void finishGraphKernelRetirement(bool success) {
+    graph_kernel_retirement_submitting_ = false;
+    graph_kernel_retirement_failed_ = !success;
+  }
+  bool graphKernelRetirementFailed() const { return graph_kernel_retirement_failed_; }
+  void releaseResources() override {
+    if (graph_entry_event_ != nullptr) {
+      graph_entry_event_->release();
+      graph_entry_event_ = nullptr;
+    }
+    for (auto* event : graph_dependencies_) event->release();
+    graph_dependencies_.clear();
+    graph_dependency_begin_ = 0;
+    Command::releaseResources();
+  }
 
   //! Add kernel name to the list if available
   void addKernelName(const std::string& kernelName) { kernelNames_.push_back(kernelName); }
@@ -1425,6 +1509,114 @@ class AccumulateCommand : public Command {
 
   //! The command implementation
   virtual void submit(device::VirtualDevice& device) { device.submitAccumulate(*this); }
+};
+
+// Each launch preallocates its bridge, but the bridge takes a reference to the
+// launch only when transferred into the submission batch. There is no cycle.
+class GraphFrontierMarker final : public Marker {
+  std::atomic<Command*> owner_{nullptr};
+  const device::VirtualDevice::GraphFrontierBoundary* boundary_ = nullptr;
+  static void completed(cl_event, cl_int status, void* data) {
+    auto* self = static_cast<GraphFrontierMarker*>(data);
+    if (status == CL_COMPLETE) {
+      if (auto* owner = self->owner_.exchange(nullptr)) owner->release();
+    }
+  }
+ public:
+  explicit GraphFrontierMarker(HostQueue& queue) : Marker(queue, false) {}
+  bool initialize() { return event().setCallback(CL_COMPLETE, completed, this, false); }
+  void arm(Command& owner) {
+    assert(owner_ == nullptr && owner.graphFrontier() != 0);
+    owner.retain();
+    owner_.store(&owner);
+    boundary_ = owner.graphBoundary();
+    assert(boundary_ != nullptr && !boundary_->tails.empty());
+  }
+  bool consumesGraphFrontier() const override { return true; }
+  void submit(device::VirtualDevice& device) override {
+    device.materializeGraphBoundary(*this, *boundary_);
+  }
+  void releaseResources() override {
+    // A failed completion is not proof that the private waiter drained. Keep
+    // its producer alive in that case, even if ordinary batch cleanup runs.
+    if (status() == CL_COMPLETE) {
+      if (auto* owner = owner_.exchange(nullptr)) owner->release();
+    }
+    Marker::releaseResources();
+  }
+};
+
+class GraphFrontierCommand final : public AccumulateCommand {
+  GraphFrontierMarker* bridge_;
+  std::atomic<Event*> predecessor_{nullptr};
+  std::function<void(bool)> release_owner_;
+  std::function<void(GraphFrontierCommand*, cl_int)> release_pending_;
+  uint64_t frontier_;  // Also a nonzero private-boundary tag when no final token is produced.
+  device::VirtualDevice::GraphFrontierBoundary boundary_;
+  bool distributed_ = false;
+  bool published_ = false;
+  bool resources_released_ = false;
+  static void completed(cl_event, cl_int status, void* data) {
+    auto* self = static_cast<GraphFrontierCommand*>(data);
+    // Detach the pool's owned pending reference on every terminal outcome.
+    // Errors quarantine storage; keeping this edge would create an idle cycle.
+    self->release_pending_(self, status);
+    // Once this launch retires, its reads of the prior token have retired too.
+    // Dropping this edge here bounds chains across ordinary batch watermarks.
+    // The launch's OWN generation remains leased until its final reference.
+    if (status == CL_COMPLETE) {
+      if (auto* predecessor = self->predecessor_.exchange(nullptr)) predecessor->release();
+    }
+  }
+ public:
+  GraphFrontierCommand(HostQueue& queue, uint64_t frontier,
+                       std::function<void(bool)> release_owner,
+                       std::function<void(GraphFrontierCommand*, cl_int)> release_pending)
+      : AccumulateCommand(queue), bridge_(new GraphFrontierMarker(queue)),
+        release_owner_(std::move(release_owner)),
+        release_pending_(std::move(release_pending)), frontier_(frontier) {}
+  bool initialize() {
+    return bridge_->initialize() && event().setCallback(CL_COMPLETE, completed, this, false);
+  }
+  void setPredecessor(Event* predecessor) {
+    assert(predecessor_ == nullptr);
+    if (predecessor != nullptr) predecessor->retain();
+    predecessor_.store(predecessor);
+  }
+  void markPublished() { published_ = true; }
+  uint64_t graphFrontier() const override { return frontier_; }
+  void sealGraphBoundary(device::VirtualDevice::GraphFrontierBoundary&& boundary) {
+    assert(!distributed_ && boundary.device != nullptr && !boundary.tails.empty());
+    boundary_ = std::move(boundary);  // Prepared before publication; move cannot allocate.
+    distributed_ = true;
+  }
+  const device::VirtualDevice::GraphFrontierBoundary* graphBoundary() const override {
+    return distributed_ ? &boundary_ : nullptr;
+  }
+  bool defersGraphRetirement() const override { return true; }
+  Command* takeGraphFrontierBridge() override {
+    assert(bridge_ != nullptr);
+    auto* bridge = bridge_;
+    bridge_ = nullptr;
+    bridge->arm(*this);
+    return bridge;
+  }
+  void submit(device::VirtualDevice&) override {}  // Packets already published atomically.
+  void releaseResources() override {
+    if (resources_released_) return;
+    resources_released_ = true;
+    const bool safe = !published_ || status() == CL_COMPLETE;
+    if (safe) {
+      if (auto* predecessor = predecessor_.exchange(nullptr)) predecessor->release();
+    }
+    if (bridge_ != nullptr) {
+      bridge_->release();
+      bridge_ = nullptr;
+    }
+    AccumulateCommand::releaseResources();
+    // This may destroy GraphExec, so do not consult graph/generation afterward.
+    release_owner_(safe);
+  }
 };
 
 /*! \brief  Maps CL objects created from external ones and syncs the contents (blocking).
@@ -1956,6 +2148,8 @@ union ComputeCommand {
   ExternalSemaphoreCmd cmd9;
   Marker cmd10;
   AccumulateCommand cmd11;
+  GraphFrontierCommand graphFrontierCommand;
+  GraphFrontierMarker graphFrontierMarker;
   AcquireExtObjectsCommand cmd13;
   ReleaseExtObjectsCommand cmd14;
   PerfCounterCommand cmd15;

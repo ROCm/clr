@@ -147,6 +147,18 @@ release(bool, GPU_ENABLE_COOP_GROUPS, true,                                   \
          "Enables cooperative group launch")                                  \
 release(uint, GPU_MAX_COMMAND_BUFFERS, 8,                                     \
          "The maximum number of command buffers allocated per queue")         \
+release(bool, GPU_NATIVE_EVENT_TRACE, false,                                 \
+        "Trace native event counts at queue destruction")                     \
+release(uint, GPU_GRAPH_DIAGNOSTIC_KERNEL_RETIRE_FAIL_AFTER_PACKETS, 0,       \
+        "Diagnostic: fail a final-kernel batch after a published prefix.")    \
+release(uint, GPU_GRAPH_DIAGNOSTIC_FRONTIER_MAX_GENERATIONS, 1024,          \
+        "Diagnostic: tighten the graph frontier resource cap (1 through 1024)") \
+release(bool, GPU_GRAPH_DIAGNOSTIC_FRONTIER_TIMESTAMPS, false,              \
+        "Diagnostic: read completed private graph kernel dispatch timestamps") \
+release(uint, GPU_GRAPH_DIAGNOSTIC_LANE_FAIL_AFTER, 0,                      \
+        "Diagnostic: fail after this many published lane-retirement segments") \
+release(bool, GPU_GRAPH_DIAGNOSTIC_QUEUE_TRACE, false,                        \
+        "Untimed graph stream selection and actual queue assignment receipts") \
 release(uint, GPU_MAX_HW_QUEUES, 4,                                           \
          "The maximum number of HW queues allocated per device")              \
 release(bool, GPU_IMAGE_BUFFER_WAR, true,                                     \
@@ -253,7 +265,7 @@ release(uint, DEBUG_HIP_FORCE_GRAPH_QUEUES, 4,                                \
         "Forces the number of streams for the graph parallel execution")      \
 release(uint, DEBUG_HIP_GRAPH_BATCH_SIZE, 256,                                \
         "Number of graph nodes to batch at a time")                           \
-release(uint, DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING, 1,                          \
+release(uint, DEBUG_HIP_GRAPH_SEGMENT_SCHEDULING, 2,                          \
         "0 = Disable, 1 = Enable, 2 = Force")                                 \
 release(uint, DEBUG_HIP_BLOCK_SYNC, 50,                                       \
         "Blocks synchronization on CPU until the callback processing is done")\

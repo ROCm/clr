@@ -63,6 +63,7 @@ struct RocrEntryPoints {
   decltype(hsa_signal_create)* hsa_signal_create_;
   decltype(hsa_signal_destroy)* hsa_signal_destroy_;
   decltype(hsa_signal_load_relaxed)* hsa_signal_load_relaxed_;
+  decltype(hsa_signal_load_scacquire)* hsa_signal_load_scacquire_;
   decltype(hsa_signal_store_relaxed)* hsa_signal_store_relaxed_;
   decltype(hsa_signal_silent_store_relaxed)* hsa_signal_silent_store_relaxed_;
   decltype(hsa_signal_store_screlease)* hsa_signal_store_screlease_;
@@ -222,6 +223,9 @@ class Hsa : public amd::AllStatic {
   }
   static hsa_status_t signal_destroy(hsa_signal_t signal) {
     return ROCR_DYN(hsa_signal_destroy)(signal);
+  }
+  static hsa_signal_value_t signal_load_scacquire(hsa_signal_t signal) {
+    return ROCR_DYN(hsa_signal_load_scacquire)(signal);
   }
   static hsa_signal_value_t signal_load_relaxed(hsa_signal_t signal) {
     return ROCR_DYN(hsa_signal_load_relaxed)(signal);

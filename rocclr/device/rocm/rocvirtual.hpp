@@ -209,7 +209,7 @@ class VirtualGPU : public device::VirtualDevice {
     ~ManagedBuffer();
 
     //! Allocates all necessary resources to manage memory
-    bool Create(amd::Device::MemorySegment mem_segment);
+    bool Create(amd::Device::MemorySegment mem_segment, bool force_host = false);
 
     //! Acquires memory for use on the gpu
     address Acquire(uint32_t size);
@@ -217,11 +217,17 @@ class VirtualGPU : public device::VirtualDevice {
     //! Acquires custom aligned memory for use on the gpu
     address Acquire(uint32_t size, uint32_t alignment);
 
+    //! Optional native instructions fall back instead of waiting for a busy chunk.
+    address TryAcquire(uint32_t size, uint32_t alignment);
+
+    uint64_t Rotations() const { return pool_rotations_; }
+
     //! Reset mem pool
     void ResetPool();
 
    private:
     VirtualGPU& gpu_;                        //!< Queue object for ROCm device
+    uint64_t pool_rotations_ = 0;
     address pool_base_ = nullptr;            //!< Memory pool base address
     uint32_t pool_size_;                     //!< Memory pool base size
     uint32_t pool_chunk_end_ = 0;            //!< The end offset of the current chunk
@@ -330,6 +336,23 @@ class VirtualGPU : public device::VirtualDevice {
     const VirtualGPU& gpu_;                          //!< VirtualGPU, associated with this tracker
     std::vector<ProfilingSignal*> external_signals_;  //!< External signals for a wait in this queue
     std::vector<hsa_signal_t> waiting_signals_;       //!< Current waiting signals in this queue
+    std::vector<uint64_t> waiting_native_queue_ids_;
+    std::vector<uint64_t> waiting_native_threshold_indices_;
+    bool waiting_breaks_native_history_ = false;
+   public:
+    bool WaitingBreaksNativeHistory() const { return waiting_breaks_native_history_; }
+    uint64_t NativeProducerQueueId(hsa_signal_t signal) const {
+      for (size_t i = 0; i < waiting_signals_.size(); ++i) {
+        if (waiting_signals_[i].handle == signal.handle) return waiting_native_queue_ids_[i];
+      }
+      return std::numeric_limits<uint64_t>::max();
+    }
+    uint64_t NativeThresholdIndex(hsa_signal_t signal) const {
+      for (size_t i = 0; i < waiting_signals_.size(); ++i) {
+        if (waiting_signals_[i].handle == signal.handle) return waiting_native_threshold_indices_[i];
+      }
+      return std::numeric_limits<uint64_t>::max();
+    }
   };
 
   VirtualGPU(Device& device, bool profiling = false, bool cooperative = false,
@@ -475,6 +498,8 @@ class VirtualGPU : public device::VirtualDevice {
 
  private:
   //! Dispatches a barrier with blocking HSA signals
+  void dispatchNativeEventWait(hsa_signal_t signal);
+  void dispatchNativeWaitRetirement(hsa_signal_t signal);
   void dispatchBlockingWait();
 
   bool dispatchAqlPacket(hsa_kernel_dispatch_packet_t* packet, uint16_t header, uint16_t rest,
@@ -487,13 +512,30 @@ class VirtualGPU : public device::VirtualDevice {
   bool dispatchAqlPacketBatch(const std::vector<uint8_t*>& packets,
                               const std::vector<std::string>& kernelNames,
                               amd::AccumulateCommand* vcmd = nullptr);
+  std::unique_ptr<GraphSignalArena> createGraphSignalArena(size_t count) override;
+  bool graphSignalPacketsEligible(const std::vector<uint8_t*>& packets) const override;
+  bool supportsGraphFrontier() const override;
+  bool resetGraphSignalArenaCpu(GraphSignalArena&) override;
+  std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierKernels(
+      const std::vector<uint8_t*>& packets, const std::vector<uint64_t>& dependencies,
+      uint64_t completion, bool system_acquire) override;
+  std::unique_ptr<GraphFrontierBatch> prepareGraphFrontierJoin(
+      const std::vector<uint64_t>& dependencies, uint64_t completion,
+      bool system_release) override;
+  void publishGraphFrontierBatch(const GraphFrontierBatch&) override;
+  void importGraphFrontierPredecessor(void* ordinary_hw_event) override;
+  void materializeGraphBoundary(amd::Marker& command,
+                                const GraphFrontierBoundary& boundary) override;
+  void publishGraphFrontierPackets(const void* packets, size_t count);
+
   template <typename AqlPacket> bool dispatchGenericAqlPacket(AqlPacket* packet, uint16_t header,
                                                               uint16_t rest, bool blocking,
                                                               bool attach_signal = false);
   //! Dispatches multiple AQL packets with a single doorbell ring
   template <typename AqlPacket> bool dispatchGenericAqlPacketBatch(const std::vector<AqlPacket*>& packets,
                                                                    bool blocking, bool attach_signal = false,
-                                                                   const std::vector<std::string>* kernelNames = nullptr);
+                                                                   const std::vector<std::string>* kernelNames = nullptr,
+                                                                   bool tail_completion_only = false);
 
   bool dispatchCounterAqlPacket(hsa_ext_amd_aql_pm4_packet_t* packet, const uint32_t gfxVersion,
                                 bool blocking, const hsa_ven_amd_aqlprofile_1_00_pfn_t* extApi);
@@ -613,6 +655,41 @@ class VirtualGPU : public device::VirtualDevice {
 
   ManagedBuffer managed_buffer_;          //!< Memory manager for staging copies
   ManagedBuffer managed_kernarg_buffer_;  //!< Managed memory for kernel args
+  ManagedBuffer native_wait_buffer_;     //!< Executable native wait instructions
+  bool native_wait_enabled_ = false;
+  // Admission is a cost heuristic; keep the history storage independent of it.
+  static constexpr uint64_t kNativeWaitMinDispatches = 24;
+  static constexpr uint64_t kNativeWaitHistoryCapacity = 256;
+  // Record actual kernel positions, not packet spans that include other work.
+  uint64_t native_kernel_positions_[kNativeWaitHistoryCapacity]{};
+  uint64_t native_history_queue_id_ = std::numeric_limits<uint64_t>::max();
+  unsigned native_history_head_ = 0;
+  unsigned native_history_count_ = 0;
+  uint64_t NativeThresholdIndex() const {
+    if (gpu_queue_ == nullptr || native_history_queue_id_ != gpu_queue_->id ||
+        native_history_count_ < kNativeWaitMinDispatches) {
+      return std::numeric_limits<uint64_t>::max();
+    }
+    return native_kernel_positions_[
+        (native_history_head_ + kNativeWaitHistoryCapacity - kNativeWaitMinDispatches) %
+        kNativeWaitHistoryCapacity];
+  }
+  void BreakNativeKernelHistory() {
+    native_history_head_ = native_history_count_ = 0;
+  }
+  void NoteNativeKernelPacket(uint64_t index) {
+    if (!native_wait_enabled_) return;
+    if (native_history_queue_id_ != gpu_queue_->id) {
+      native_history_queue_id_ = gpu_queue_->id;
+      native_history_head_ = native_history_count_ = 0;
+    }
+    native_kernel_positions_[native_history_head_] = index;
+    native_history_head_ = (native_history_head_ + 1) % kNativeWaitHistoryCapacity;
+    if (native_history_count_ < kNativeWaitHistoryCapacity) ++native_history_count_;
+  }
+  uint64_t native_wait_count_ = 0;
+  uint64_t native_irq_wait_count_ = 0;
+  uint64_t native_pool_fallback_count_ = 0;
 
   static constexpr uint32_t kStagingPoolNumSignals = 4; //!< Hsa Signal count for Staging Buffer
   static constexpr uint32_t kKernArgPoolNumSignals = 16; //!< Hsa Signal count for KernArg Buffer
