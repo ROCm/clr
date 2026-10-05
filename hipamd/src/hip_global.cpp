@@ -23,7 +23,10 @@ extern const char __hip_pch_wave32[];
 extern const char __hip_pch_wave64[];
 extern unsigned __hip_pch_wave32_size;
 extern unsigned __hip_pch_wave64_size;
+#endif
+
 void __hipGetPCH(const char** pch, unsigned int* size) {
+#ifdef __HIP_ENABLE_PCH
   hipDeviceProp_t deviceProp;
   int deviceId;
   hipError_t error = hipGetDevice(&deviceId);
@@ -35,8 +38,11 @@ void __hipGetPCH(const char** pch, unsigned int* size) {
     *pch = __hip_pch_wave64;
     *size = __hip_pch_wave64_size;
   }
-}
+#else
+  *pch = nullptr;
+  *size = 0;
 #endif
+}
 namespace hip {
 
 // forward declaration of methods required for managed variables
