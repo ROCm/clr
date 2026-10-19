@@ -11,6 +11,7 @@
 #include "hip/hip_runtime_api.h"
 #include "hip_internal.hpp"
 #include "platform/program.hpp"
+#include "amd_comgr/amd_comgr.h"
 
 #include <optional>
 
@@ -34,10 +35,11 @@ class FatBinaryInfo {
   explicit FatBinaryInfo(KpackParams kpack_params);
   ~FatBinaryInfo();
 
-  hipError_t ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices);
+  hipError_t ExtractFatBinaryUsingCOMGR(const std::vector<hip::Device*>& devices,
+                                        bool reuse_unbundled_data = false);
   hipError_t ExtractKpackBinary(const std::vector<hip::Device*>& devices);
   hipError_t AddDevProgram(hip::Device* device, const void* binary_image, size_t binary_size,
-                           size_t binary_offset);
+                           size_t binary_offset, amd_comgr_data_t data = {0});
   hipError_t BuildProgram(const int device_id);
 
   // Device Id bounds check
