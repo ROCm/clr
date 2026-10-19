@@ -14,6 +14,7 @@
 #include "amd_comgr/amd_comgr.h"
 
 #include <optional>
+#include <unordered_map>
 
 // Forward declaration for Unique FD
 struct UniqueFD;
@@ -90,6 +91,7 @@ class FatBinaryInfo {
   std::shared_ptr<UniqueFD> ufd_;                         //!< Unique file descriptor
   std::recursive_mutex fb_lock_;                          //!< Lock for the fat binary access
   std::unordered_set<const void*> code_obj_allocations_;  //!< Track allocations for code objects
+  std::unordered_map<const void*, amd_comgr_data_t> code_obj_data_;
 };
 
 };  // namespace hip

@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <utility>
 
 
 #include "vdi_common.hpp"
@@ -71,6 +72,8 @@ template <typename comgr_T> class ComgrUniqueHandle {
     assert(comgr_obj_.handle != 0);
     return comgr_obj_;
   }
+
+  comgr_T release() { return std::exchange(comgr_obj_, comgr_T{0}); }
 
  private:
   comgr_T comgr_obj_{0};

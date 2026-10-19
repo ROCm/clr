@@ -64,6 +64,7 @@ bool Comgr::LoadLib(bool is_versioned) {
   GET_COMGR_SYMBOL(amd_comgr_set_data)
   GET_COMGR_SYMBOL(amd_comgr_set_data_name)
   GET_COMGR_SYMBOL(amd_comgr_get_data)
+  GET_COMGR_OPTIONAL_SYMBOL(amd_comgr_get_data_pointer)
   GET_COMGR_SYMBOL(amd_comgr_get_data_name)
   GET_COMGR_SYMBOL(amd_comgr_get_data_isa_name)
   GET_COMGR_SYMBOL(amd_comgr_get_data_metadata)

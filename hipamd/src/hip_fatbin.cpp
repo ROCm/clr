@@ -66,6 +66,9 @@ FatBinaryInfo::~FatBinaryInfo() {
       dev_programs_[dev_id] = nullptr;
     }
   }
+  for (const auto& entry : code_obj_data_) {
+    amd::Comgr::release_data(entry.second);
+  }
   // Release Code object allocations
   for (const auto& i : code_obj_allocations_) {
     if (kpack_params_.has_value()) {
@@ -211,6 +214,7 @@ static bool UncompressAndPopulateCodeObject(
     const void* image, const std::set<std::string>& unique_isa_names,
     std::map<std::string, std::pair<const void*, size_t>>& code_obj_map,
     std::unordered_set<const void*>& allocations,
+    std::unordered_map<const void*, amd_comgr_data_t>& retained_data,
     std::map<const void*, std::unique_ptr<ComgrDataUniqueHandle>>* reused_data) {
   auto remove_file_extension = [](const std::string& input) -> std::string {
     size_t index = input.find_last_of(".");
@@ -335,22 +339,33 @@ static bool UncompressAndPopulateCodeObject(
       }
 
       if (item_size > 0) {
-        std::unique_ptr<char[]> item_data(new char[item_size]);
-        if (auto comgr_status =
-                amd::Comgr::get_data(item_handle->get(), &item_size, item_data.get());
-            comgr_status != AMD_COMGR_STATUS_SUCCESS) {
-          LogError("Failed to get data");
-          return false;
+        const char* image_data = nullptr;
+        if (amd::Comgr::has_data_pointer()) {
+          if (amd::Comgr::get_data_pointer(item_handle->get(), &item_size, &image_data) !=
+              AMD_COMGR_STATUS_SUCCESS) {
+            LogError("Failed to get data pointer");
+            return false;
+          }
+          if (retained_data.emplace(image_data, item_handle->get()).second) {
+            item_handle->release();
+          }
+        } else {
+          std::unique_ptr<char[]> item_data(new char[item_size]);
+          if (amd::Comgr::get_data(item_handle->get(), &item_size, item_data.get()) !=
+              AMD_COMGR_STATUS_SUCCESS) {
+            LogError("Failed to get data");
+            return false;
+          }
+          allocations.insert(item_data.get());
+          image_data = item_data.release();
+          if (reused_data != nullptr) {
+            reused_data->emplace(image_data, std::move(item_handle));
+          }
         }
 
         std::string bundle_entry = remove_file_extension(
             std::string(item_bundle_id.c_str() + sizeof(symbols::kOffloadHipV4FatBinName_) - 1));
-        allocations.insert(item_data.get());
-        const void* image_data = item_data.release();
         code_obj_map[bundle_entry] = std::make_pair(image_data, item_size);
-        if (reused_data != nullptr) {
-          reused_data->emplace(image_data, std::move(item_handle));
-        }
       }
     }
     passed = true;
@@ -484,7 +499,7 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   std::map<const void*, std::unique_ptr<ComgrDataUniqueHandle>> reused_data;
   if (is_compressed) {
     if (!UncompressAndPopulateCodeObject(image_, unique_isa_names, code_obj_map,
-                                         code_obj_allocations_,
+                                         code_obj_allocations_, code_obj_data_,
                                          reuse_unbundled_data ? &reused_data : nullptr)) {
       return hipErrorInvalidImage;
     }
@@ -495,6 +510,9 @@ hipError_t FatBinaryInfo::ExtractFatBinaryUsingCOMGR(const std::vector<hip::Devi
   }
 
   auto get_reused_data = [&](const void* binary) {
+    if (!reuse_unbundled_data) return amd_comgr_data_t{0};
+    auto retained = code_obj_data_.find(binary);
+    if (retained != code_obj_data_.end()) return retained->second;
     auto entry = reused_data.find(binary);
     return entry == reused_data.end() ? amd_comgr_data_t{0} : entry->second->get();
   };
