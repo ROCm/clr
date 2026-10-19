@@ -246,6 +246,8 @@ class Comgr : public amd::AllStatic {
   static amd_comgr_status_t get_data(amd_comgr_data_t data, size_t* size, char* bytes) {
     return COMGR_DYN(amd_comgr_get_data)(data, size, bytes);
   }
+  // Dynamic loading probes the optional symbol; static linking requires headers
+  // declaring it. Older COMGR builds keep the get_data copying fallback.
   static bool has_data_pointer() {
 #if defined(COMGR_DYN_DLL)
     return cep_.amd_comgr_get_data_pointer != nullptr;

@@ -85,9 +85,11 @@ typedef struct {
 } ElfSectionsDesc;
 
 namespace {
+// Read-only, seekable view. The caller's bytes must outlive the stream buffer.
 class MemoryStreamBuf final : public std::streambuf {
  public:
   MemoryStreamBuf(const char* data, size_t size) {
+    // setg requires mutable pointers, but no put area or writing override exists.
     char* begin = const_cast<char*>(data);
     setg(begin, begin, begin + size);
   }
@@ -231,6 +233,8 @@ bool Elf::Init() {
         return false;
       }
       {
+        // ELFIO eagerly owns the loaded section/segment data; the input stream
+        // need only live through load(), without an intermediate full-ELF copy.
         MemoryStreamBuf buffer(_rawElfBytes, _rawElfSize);
         std::istream is(&buffer);
         if (!_elfio.load(is)) {

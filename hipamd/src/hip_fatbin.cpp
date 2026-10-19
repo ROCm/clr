@@ -66,6 +66,7 @@ FatBinaryInfo::~FatBinaryInfo() {
       dev_programs_[dev_id] = nullptr;
     }
   }
+  // Programs can still use borrowed code-object bytes during destruction.
   for (const auto& entry : code_obj_data_) {
     amd::Comgr::release_data(entry.second);
   }
@@ -210,6 +211,9 @@ static bool IsCodeObjectElf(const void* image) {
   return ehdr->e_machine == EM_AMDGPU && ehdr->e_ident[EI_OSABI] == ELFOSABI_AMDGPU_HSA;
 }
 
+// retained_data owns borrowed output storage for the fat binary's lifetime.
+// In the copying fallback, reused_data only keeps COMGR objects alive through
+// device-program initialization so metadata/symbols need no second ELF import.
 static bool UncompressAndPopulateCodeObject(
     const void* image, const std::set<std::string>& unique_isa_names,
     std::map<std::string, std::pair<const void*, size_t>>& code_obj_map,
@@ -346,6 +350,9 @@ static bool UncompressAndPopulateCodeObject(
             LogError("Failed to get data pointer");
             return false;
           }
+          // The getter acquires no reference. Transfer our existing reference
+          // only for a new address; duplicate addresses already have an owner,
+          // and the local wrapper releases the extra reference in that case.
           if (retained_data.emplace(image_data, item_handle->get()).second) {
             item_handle->release();
           }
