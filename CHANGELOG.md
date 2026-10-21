@@ -9,11 +9,13 @@ Full documentation for HIP is available at [rocm.docs.amd.com](https://rocm.docs
 * New HIP APIs
     - `cooperative_groups::reduce()` allows calling reduce operators on `thread_block_tile` and `coalesced_threads`. The implementation is based on the `__reduce_*_sync` operations, so the macro `HIP_ENABLE_EXTRA_WARP_SYNC_TYPES` may be needed to unlock some optimizations.
 * New device attribute `hipDeviceAttributeGPUDirectRDMAWithHipVMMSupported`, indicating support for GPU Direct RDMA when using HIP VMM. This attribute corresponds to CUDA’s `CU_DEVICE_ATTRIBUTE_GPU_DIRECT_RDMA_WITH_CUDA_VMM_SUPPORTED`.
+* New `__hip_bfloat16` integer conversions: constructors and assignment operators for `long long`, `unsigned long long`, `long` and `unsigned long`, and the intrinsics `__ll2bfloat16_rn`, `__ull2bfloat16_rn` and `__uint2bfloat16_rn`. When compiled with Clang, all integer-to-`bfloat16` conversions round once (round-to-nearest-even), avoiding double rounding.
 
 ### Resolved issues
 
 * A segmentation fault that occurred in child graphs during the graph‑launch phase. The issue originated from the entire graph being launched solely according to the parent graph’s scheduling logic. The HIP runtime now introduces a per‑graph segment‑scheduling control flag and propagates the parent graph’s scheduling mode to its child graphs, ensuring consistent scheduling behavior (classic vs. segment) and preventing failures when the parent falls back to classic scheduling.
 * A segmentation fault caused by passing a null pointer to the hipMemGetAddressRange API. The function now handles null pointers correctly, matching the behavior of the corresponding CUDA API.
+* `bfloat16` conversions from `int` and `unsigned int` (constructors, assignment operators and `__int2bfloat16_rn`) now round to nearest-even in a single step when compiled with Clang. Previously, some values whose intermediate landed exactly on a `bfloat16` rounding tie could be misrounded by one ulp when the conversion was lowered through `float`.
 
 ### Changed
 
