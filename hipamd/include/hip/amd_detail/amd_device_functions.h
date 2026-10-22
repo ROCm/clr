@@ -249,11 +249,22 @@ __device__ static inline unsigned int __byte_perm(unsigned int x, unsigned int y
   cHoldKey.ui = s;
   cHoldVal.ui[0] = x;
   cHoldVal.ui[1] = y;
-  unsigned int result;
-  result = cHoldVal.c[cHoldKey.c[0] & 0x07];
-  result += (cHoldVal.c[(cHoldKey.c[0] & 0x70) >> 4] << 8);
-  result += (cHoldVal.c[cHoldKey.c[1] & 0x07] << 16);
-  result += (cHoldVal.c[(cHoldKey.c[1] & 0x70) >> 4] << 24);
+  // Each of the four output bytes is selected by a nibble of `s`: the low 3
+  // bits index one of the eight source bytes {x, y}, and bit 3 requests
+  // "sign replicate" mode -- the selected byte's most-significant bit is
+  // broadcast across all 8 bits (yielding 0x00 or 0xFF). The previous
+  // implementation masked the index with 0x07/0x70 and dropped the replicate
+  // bit, so selectors with a nibble in [0x8, 0xF] silently returned the plain
+  // byte instead of its sign broadcast. Ref: CUDA __byte_perm / PTX prmt.b32.
+  unsigned int result = 0;
+  for (int i = 0; i < 4; ++i) {
+    unsigned int nib = (s >> (4 * i)) & 0xF;
+    unsigned char b = cHoldVal.c[nib & 0x7];
+    if (nib & 0x8) {
+      b = (b & 0x80) ? 0xFF : 0x00;
+    }
+    result |= ((unsigned int) b) << (8 * i);
+  }
   return result;
 }
 
