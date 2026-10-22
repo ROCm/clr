@@ -200,7 +200,10 @@ void VmHeap::TrimPhysMemory(size_t unmap_threshold) {
   std::scoped_lock k(lock_);
   auto current = free_list_;
   auto unmap_org = unmap_threshold_;
-  unmap_threshold_ = unmap_threshold;
+  // Never trim below the user-configured threshold: callers passing a lower
+  // value (e.g. TrimPhysMemory(0) from sync/pressure paths) must not override
+  // hipMemPoolAttrReleaseThreshold.
+  unmap_threshold_ = (unmap_threshold > unmap_org) ? unmap_threshold : unmap_org;
   while (current != nullptr) {
     UnmapPhysMemory(current->offset_, current->size_);
     current = current->next_;
@@ -468,9 +471,9 @@ void VmHeapArray::SetUnmapThreshold(uint64_t threshold) {
   for (uint i = 0; i < kMaxArraySize; ++i) {
     // Note: it's not precisely correct to use the same threshold in all heaps,
     // but the logic will trim heaps in Free()
-    if (vm_heaps_[i]->created_) {
-      vm_heaps_[i]->SetUnmapThreshold(threshold);
-    }
+    // Apply to all heaps, including ones created later, so a threshold set
+    // before the first allocation is honored as well.
+    vm_heaps_[i]->SetUnmapThreshold(threshold);
   }
   unmap_threshold_ = threshold;
 }
