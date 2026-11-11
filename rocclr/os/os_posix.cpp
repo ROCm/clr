@@ -134,6 +134,8 @@ static void divisionErrorHandler(int sig, siginfo_t* info, void* ptr) {
 
 #if defined(ATI_ARCH_X86)
   insn = (address)uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP, REG_RIP)];
+#elif defined(ATI_ARCH_LOONGARCH64)
+  insn = (address)uc->uc_mcontext.__pc;
 #else
   assert(!"Unimplemented");
 #endif
@@ -142,6 +144,8 @@ static void divisionErrorHandler(int sig, siginfo_t* info, void* ptr) {
     if (Os::skipIDIV(insn)) {
 #if defined(ATI_ARCH_X86)
       uc->uc_mcontext.gregs[LP64_SWITCH(REG_EIP, REG_RIP)] = (greg_t)insn;
+#elif defined(ATI_ARCH_LOONGARCH64)
+      uc->uc_mcontext.__pc = (greg_t)insn;
 #else
       assert(!"Unimplemented");
 #endif
@@ -686,6 +690,9 @@ address Os::currentStackPtr() {
       : "=r"(value)
 #elif defined(ATI_ARCH_ARM)
       "mov %0,sp"
+      : "=r"(value)
+#elif defined(ATI_ARCH_LOONGARCH64)
+      "move %0,$sp"
       : "=r"(value)
 #else
       ""
