@@ -111,6 +111,8 @@ void Os::spinPause() {
   _mm_pause();
 #elif defined(ATI_ARCH_ARM)
   __asm__ __volatile__("yield");
+#elif defined(ATI_ARCH_LOONGARCH64)
+  // LoongArch does not have an alternative to mm_pause
 #endif
 }
 
