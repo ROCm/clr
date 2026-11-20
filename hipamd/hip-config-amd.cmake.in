@@ -78,10 +78,14 @@ if(NOT GPU_TARGETS)
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_STRIP_TRAILING_WHITESPACE)
 
-  if(AMDGPU_ARCH_ERROR)
+  # Detection failed only if the tool itself failed. Messages on stderr do not mean
+  # failure: any ROCm component the tool loads may print a diagnostic there, and
+  # discarding a valid architecture list because of one silently builds for the
+  # default architecture instead of the installed GPU.
+  if(NOT AMDGPU_ARCH_RESULT EQUAL 0)
     message(AUTHOR_WARNING
         " GPU_TARGETS was not set, and system GPU detection was unsuccsessful.\n \n"
-        " The amdgpu-arch tool failed:\n"
+        " The amdgpu-arch tool failed with exit code ${AMDGPU_ARCH_RESULT}:\n"
         " Error: '${AMDGPU_ARCH_ERROR}'\n"
         " Output: '${AMDGPU_ARCH_OUTPUT}'\n \n"
 
